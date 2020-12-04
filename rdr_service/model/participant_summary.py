@@ -378,7 +378,11 @@ class ParticipantSummary(Base):
     are currently present for the participant.
     """
 
-    wasEhrDataAvailable = None  # Placeholder filled in by the DAO using the value in ehrStatus
+    wasEhrDataAvailable = Column(
+        "was_ehr_data_available",
+        Boolean,
+        Computed(ehrStatus == EhrStatus.PRESENT, persisted=True)
+    )
     """
     A true or false value that indicates whether Electronic Health Records (EHR)
     have ever been present for the participant.

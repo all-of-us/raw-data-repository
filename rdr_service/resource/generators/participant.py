@@ -29,6 +29,7 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
+from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
@@ -40,7 +41,8 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
-    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus
+    SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
+    DeceasedReportStatus
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -54,6 +56,7 @@ _consent_module_question_map = {
     'ProgramUpdate': None,
     'COPE': 'section_participation',
     'cope_nov': 'section_participation',
+    'cope_dec': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
@@ -67,6 +70,7 @@ _consent_expired_question_map = {
     'ProgramUpdate': None,
     'COPE': None,
     'cope_nov': None,
+    'cope_dec': None,
     'GeneticAncestry': None
 }
 
@@ -206,6 +210,22 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         organization = ro_session.query(Organization.externalId). \
             filter(Organization.organizationId == p.organizationId).first()
 
+        # See DeceasedReportDao._update_participant_summary() for the logic for populating
+        # the deceased status details in participant_summary.  DENIED reports are not reflected in
+        # participant_summary, only PENDING and APPROVED.  Also, when records are inserted into the deceased_report
+        # table there is a check to ensure each participant only has one report that is PENDING or APPROVED
+        deceased = ro_session.query(DeceasedReport) \
+            .filter(DeceasedReport.participantId == p_id,
+                    DeceasedReport.status != DeceasedReportStatus.DENIED).one_or_none()
+        if deceased:
+            deceased_status = DeceasedStatus(str(deceased.status))
+            deceased_authored = deceased.reviewed if deceased_status == DeceasedStatus.APPROVED else deceased.authored
+            deceased_date_of_death = deceased.dateOfDeath
+        else:
+            deceased_status = DeceasedStatus.UNSET
+            deceased_authored = None
+            deceased_date_of_death = None
+
         withdrawal_status = WithdrawalStatus(p.withdrawalStatus)
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
@@ -252,7 +272,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'is_ghost_id': 1 if p.isGhostId is True else 0,
             'test_participant': 1 if p.isTestParticipant else 0,
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
-            'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag)
+            'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag),
+            'deceased_status': str(deceased_status),
+            'deceased_status_id': int(deceased_status),
+            'deceased_authored': deceased_authored,
+            # TODO:  Enable this field definition in the BQ model if it's determined it should be included in PDR
+            'date_of_death': deceased_date_of_death
         }
 
         return data

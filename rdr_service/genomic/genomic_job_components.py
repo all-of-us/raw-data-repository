@@ -1705,8 +1705,7 @@ class GenomicBiobankSamplesCoupler:
                                                                 bid=_bid)
 
             # Determine which sample ID to use
-            sample_data = self._determine_best_sample(blood=blood_sample_data,
-                                                      saliva=saliva_sample_data)
+            sample_data = self._determine_best_sample(blood_sample_data, saliva_sample_data)
 
             # update the sample id, collected site, and biobank order
             if sample_data is not None:
@@ -1760,7 +1759,9 @@ class GenomicBiobankSamplesCoupler:
           END AS gror_consent,
           CASE
               WHEN native.participant_id IS NULL THEN 1 ELSE 0
-          END AS valid_ai_an
+          END AS valid_ai_an,
+          ss.status,
+          ss.test
         FROM
             biobank_stored_sample ss
             JOIN participant p ON ss.biobank_id = p.biobank_id
@@ -1778,20 +1779,7 @@ class GenomicBiobankSamplesCoupler:
                     AND m.genomic_workflow_state <> :ignore_param
             LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
         WHERE TRUE
-            AND (
-                    CASE WHEN (
-                            ps.sample_status_1ed04 = :sample_status_param
-                            AND ss.test = "1ED04" 
-                            AND ss.status < 13
-                            ) THEN ss.test = "1ED04"
-                        WHEN (
-                            ps.sample_status_1sal2 = :sample_status_param
-                            AND ss.test = "1SAL2" 
-                            AND ss.status < 13
-                            ) THEN ss.test = "1SAL2"
-                        ELSE ss.test = "1ED04"
-                    END
-                )
+            AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
             AND m.id IS NULL
@@ -1809,7 +1797,54 @@ class GenomicBiobankSamplesCoupler:
         }
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
-        return list(zip(*result))
+
+        result = self._prioritize_samples_by_participant(result)
+        return list(zip(*result))[:-2]  # Slicing to remove the last two columns retrieved for prioritization
+
+    def _prioritize_samples_by_participant(self, sample_results):
+        preferred_samples = {}
+
+        for sample in sample_results:
+            preferred_sample = sample
+
+            previously_found_sample = preferred_samples.get(sample.participant_id, None)
+            if previously_found_sample is not None:
+                preferred_sample = self._determine_best_sample(previously_found_sample, sample)
+
+            preferred_samples[sample.participant_id] = preferred_sample
+
+        return list(preferred_samples.values())
+
+    @staticmethod
+    def _determine_best_sample(sample_one, sample_two):
+        if sample_one is None:
+            return sample_two
+        if sample_two is None:
+            return sample_one
+
+        # Return the usable sample (status less than NOT_RECEIVED) if one is usable and the other isn't
+        if sample_one.status < int(SampleStatus.SAMPLE_NOT_RECEIVED) <= sample_two.status:
+            return sample_one
+        elif sample_two.status < int(SampleStatus.SAMPLE_NOT_RECEIVED) <= sample_two.status:
+            return sample_two
+        elif sample_one.status >= int(SampleStatus.SAMPLE_NOT_RECEIVED) \
+                and sample_two.status >= int(SampleStatus.SAMPLE_NOT_RECEIVED):
+            return None
+
+        # Both are usable
+        # Return the sample by the priority of the code: 1ED04, then 1ED10, and 1SAL2 last
+        test_codes_by_preference = ['1ED04', '1ED10', '1SAL2']  # most desirable first
+        samples_by_code = {}
+        for sample in [sample_one, sample_two]:
+            samples_by_code[sample.test] = sample
+
+        for test_code in test_codes_by_preference:
+            if samples_by_code.get(test_code):
+                return samples_by_code[test_code]
+
+        logging.error(f'Should have been able to select between '
+                      f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
+
 
     def _get_new_c2_participants(self, from_date):
         """
@@ -1850,7 +1885,7 @@ class GenomicBiobankSamplesCoupler:
                   WHEN native.participant_id IS NULL THEN 1 ELSE 0
               END AS valid_ai_an
             FROM
-                participant_summary ps    
+                participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
                 LEFT JOIN (
                   SELECT ra.participant_id
@@ -1877,7 +1912,7 @@ class GenomicBiobankSamplesCoupler:
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
                 AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id   
+            ORDER BY ps.biobank_id
         """
 
         params = {
@@ -1935,7 +1970,7 @@ class GenomicBiobankSamplesCoupler:
                   WHEN native.participant_id IS NULL THEN 1 ELSE 0
               END AS valid_ai_an
             FROM
-                participant_summary ps    
+                participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
                 LEFT JOIN (
                   SELECT ra.participant_id
@@ -1947,7 +1982,7 @@ class GenomicBiobankSamplesCoupler:
                     AND m.genomic_workflow_state <> :ignore_param
                 JOIN questionnaire_response qr
                     ON qr.participant_id = ps.participant_id
-                JOIN questionnaire_response_answer qra 
+                JOIN questionnaire_response_answer qra
                     ON qra.questionnaire_response_id = qr.questionnaire_response_id
                 JOIN code recon ON recon.code_id = qra.value_code_id
                     AND recon.value = :c1_reconsent_param
@@ -1958,7 +1993,7 @@ class GenomicBiobankSamplesCoupler:
                         ps.sample_status_1sal2 = :sample_status_param
                     )
                 AND ps.consent_cohort = :cohort_1_param
-                AND qr.authored > :from_date_param                
+                AND qr.authored > :from_date_param
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 1
@@ -1967,7 +2002,7 @@ class GenomicBiobankSamplesCoupler:
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
                 AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id   
+            ORDER BY ps.biobank_id
         """
 
         params = {
@@ -1990,34 +2025,27 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_usable_blood_sample(self, pid, bid):
         """
-        Select 1ED04 based on max collected date and 1ED04
+        Select 1ED04 or 1ED10 based on max collected date
         :param pid: participant_id
         :param bid: biobank_id
         :return: tuple(blood_collected date, blood sample, blood site, blood order)
         """
         _samples_sql = """
-            # Max 1ED04 Sample
-            SELECT ed04.collected AS blood_collected
-                , ssed.biobank_stored_sample_id AS blood_sample
+            # Latest 1ED04 or 1ED10 Sample
+            SELECT ssed.biobank_stored_sample_id AS blood_sample
                 , oed.collected_site_id AS blood_site
                 , oed.biobank_order_id AS blood_order
+                , ssed.test, ssed.status
             FROM biobank_stored_sample ssed
                 JOIN biobank_order_identifier edid ON edid.value = ssed.biobank_order_identifier
                 JOIN biobank_order oed ON oed.biobank_order_id = edid.biobank_order_id
-                JOIN biobank_ordered_sample ed04 ON oed.biobank_order_id = ed04.order_id
-                    AND ed04.test = "1ED04"
+                JOIN biobank_ordered_sample oeds ON oed.biobank_order_id = oeds.order_id
+                    AND ssed.test = oeds.test
             WHERE TRUE
                 and ssed.biobank_id = :bid_param
-                and ssed.test = "1ED04"
+                and ssed.test in ("1ED04", "1ED10")
                 and ssed.status < 13
-                and ed04.collected = (
-                    SELECT MAX(os.collected)
-                    FROM biobank_ordered_sample os
-                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                    WHERE os.test = "1ED04"
-                        AND o.participant_id = :pid_param
-                    GROUP BY o.participant_id
-                )              
+            ORDER BY oeds.collected DESC
             """
 
         params = {
@@ -2039,10 +2067,10 @@ class GenomicBiobankSamplesCoupler:
         """
         _samples_sql = """
             # Max 1SAL2 Sample
-            select sal2.collected AS saliva_collected
-                , sssal.biobank_stored_sample_id AS saliva_sample
+            select sssal.biobank_stored_sample_id AS saliva_sample
                 , osal.collected_site_id AS saliva_site
                 , osal.biobank_order_id AS saliva_order
+                , sssal.test, sssal.status
             FROM biobank_order osal
                 JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
                 JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
@@ -2059,7 +2087,7 @@ class GenomicBiobankSamplesCoupler:
                     WHERE os.test = "1SAL2"
                             AND o.participant_id = :pid_param
                         GROUP BY o.participant_id
-                    )            
+                    )
             """
 
         params = {
@@ -2071,33 +2099,6 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_samples_sql, params).first()
 
         return result
-
-    def _determine_best_sample(self, blood, saliva):
-        """
-        Determines which sample to use based on:
-        latest collection date, Blood over Saliva
-        :param blood:
-        :param saliva:
-        :return: tuple of sample to use (sample_id to use, collected_site_ID, biobank_order_id)
-        """
-        if blood is None:
-            if saliva is None:
-                # If both None, return None
-                return None
-
-            # if only blood is none, return saliva
-            return saliva[1:]
-
-        # if only saliva is None, return blood
-        if saliva is None:
-            return blood[1:]
-
-        # if both samples, return latest or blood if same date
-        if blood[0] >= saliva[0]:
-            return blood[1:]
-
-        else:
-            return saliva[1:]
 
     def _create_new_genomic_set(self):
         """Inserts a new genomic set for this run"""
@@ -2461,7 +2462,7 @@ class ManifestDefinitionProvider:
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
-                )
+                ).order_by(GenomicSetMember.genomicWorkflowStateModifiedTime).limit(10000)
             )
 
         # Color GEM A3 Manifest

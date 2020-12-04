@@ -2,10 +2,6 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-#
-# This file is subject to the terms and conditions defined in the
-# file 'LICENSE', which is part of this source code package.
-#
 from sqlalchemy.sql import text
 
 from rdr_service.dao.resource_dao import ResourceDataDao
@@ -25,6 +21,7 @@ class GenomicSetSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicSet resource object
     """
+    ro_dao = None
 
     def make_resource(self, _pk, backup=False):
         """
@@ -33,10 +30,12 @@ class GenomicSetSchemaGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
-        ro_dao = ResourceDataDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_set where id = :id'), {'id': _pk}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # Populate Enum fields.
             if data['genomic_set_status']:
@@ -47,20 +46,35 @@ class GenomicSetSchemaGenerator(generators.BaseGenerator):
             return generators.ResourceRecordSet(schemas.GenomicSetSchema, data)
 
 
-def genomic_set_update(_pk):
+def genomic_set_update(_pk, gen=None, w_dao=None):
     """
     Generate GenomicSet resource record.
     :param _pk: Primary Key
+    :param gen: GenomicSetSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicSetSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_set_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
     """
     gen = GenomicSetSchemaGenerator()
-    res = gen.make_resource(_pk)
-    res.save()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_set_update(_pk, gen=gen, w_dao=w_dao)
 
 
 class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicSetMember resource object
     """
+    ro_dao = None
 
     def make_resource(self, _pk, backup=False):
         """
@@ -69,10 +83,12 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
-        ro_dao = ResourceDataDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _pk}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # Populate Enum fields.
             if data['validation_status']:
@@ -97,20 +113,35 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
             return generators.ResourceRecordSet(schemas.GenomicSetMemberSchema, data)
 
 
-def genomic_set_member_update(_pk):
+def genomic_set_member_update(_pk, gen=None, w_dao=None):
     """
     Generate GenomicSetMember Resource record.
     :param _pk: Primary Key
+    :param gen: GenomicSetMemberSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicSetMemberSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_set_member_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
     """
     gen = GenomicSetMemberSchemaGenerator()
-    res = gen.make_resource(_pk)
-    res.save()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_set_member_update(_pk, gen=gen, w_dao=w_dao)
 
 
 class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicJobRun resource object
     """
+    ro_dao = None
 
     def make_resource(self, _pk, backup=False):
         """
@@ -119,10 +150,12 @@ class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
-        ro_dao = ResourceDataDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_job_run where id = :id'), {'id': _pk}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
             # Populate Enum fields.
             # column data is in 'job_id', instead of 'job' for this one.
             if data['job_id']:
@@ -141,20 +174,35 @@ class GenomicJobRunSchemaGenerator(generators.BaseGenerator):
             return generators.ResourceRecordSet(schemas.GenomicJobRunSchema, data)
 
 
-def genomic_job_run_update(_pk):
+def genomic_job_run_update(_pk, gen=None, w_dao=None):
     """
     Generate GenomicJobRun record.
     :param _pk: Primary Key
+    :param gen: GenomicJobRunSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicJobRunSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_job_run_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
     """
     gen = GenomicJobRunSchemaGenerator()
-    res = gen.make_resource(_pk)
-    res.save()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_job_run_update(_pk, gen=gen, w_dao=w_dao)
 
 
 class GenomicFileProcessedSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicFileProcessed resource object
     """
+    ro_dao = None
 
     def make_resource(self, _pk, backup=False):
         """
@@ -163,10 +211,12 @@ class GenomicFileProcessedSchemaGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
-        ro_dao = ResourceDataDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_file_processed where id = :id'), {'id': _pk}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
             # Populate Enum fields.
             if data['file_status']:
                 enum = GenomicSubProcessStatusEnum(data['file_status'])
@@ -180,20 +230,35 @@ class GenomicFileProcessedSchemaGenerator(generators.BaseGenerator):
             return generators.ResourceRecordSet(schemas.GenomicFileProcessedSchema, data)
 
 
-def genomic_file_processed_update(_pk):
+def genomic_file_processed_update(_pk, gen=None, w_dao=None):
     """
     Generate GenomicFileProcessed record.
     :param _pk: Primary Key
+    :param gen: GenomicFileProcessedSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicFileProcessedSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_file_processed_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
     """
     gen = GenomicFileProcessedSchemaGenerator()
-    res = gen.make_resource(_pk)
-    res.save()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_file_processed_update(_pk, gen=gen, w_dao=w_dao)
 
 
 class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicGCValidationMetrics resource object
     """
+    ro_dao = None
 
     def make_resource(self, _pk, backup=False):
         """
@@ -202,20 +267,36 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
         :param backup: if True, get from backup database instead of Primary.
         :return: resource object
         """
-        ro_dao = ResourceDataDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _pk}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             return generators.ResourceRecordSet(schemas.GenomicGCValidationMetricsSchema, data)
 
 
-def genomic_gc_validation_metrics_update(_pk):
+def genomic_gc_validation_metrics_update(_pk, gen=None, w_dao=None):
     """
     Generate GenomicGCValidationMetrics resource record.
     :param _pk: Primary Key
+    :param gen: GenomicGCValidationMetricsSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicGCValidationMetricsSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_gc_validation_metrics_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
     """
     gen = GenomicGCValidationMetricsSchemaGenerator()
-    res = gen.make_resource(_pk)
-    res.save()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_gc_validation_metrics_update(_pk, gen=gen, w_dao=w_dao)

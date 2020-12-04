@@ -178,19 +178,8 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
 
         # The first_seen and last_seen fields are set with mysql's NOW function,
         #   so check that the time is close to what is expected
-
-        # mysql isn't storing the microseconds
-        first_seen = first_seen.replace(microsecond=0)
-        last_seen = last_seen.replace(microsecond=0)
-
-        self.assertLessEqual(first_seen, record.firstSeen,
-                             "The record found has a firstSeen time earlier than expected")
-        self.assertGreaterEqual(1, (record.firstSeen - first_seen).seconds,
-                                "The record found has a firstSeen time much later than expected")
-        self.assertLessEqual(last_seen, record.lastSeen,
-                             "The record found has a lastSeen time earlier than expected")
-        self.assertGreaterEqual(1, (record.lastSeen - last_seen).seconds,
-                                "The record found has a lastSeen time much later than expected")
+        self.assertAlmostEquals(first_seen, record.firstSeen, delta=datetime.timedelta(seconds=1))
+        self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
 
         # Check generated data.
         gen = ParticipantSummaryGenerator()
@@ -199,12 +188,15 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
 
         # Look for a matching dict entry in the ps_data['ehr_receipts'] list, since it may also contain other entries
         # depending on the test construction
-        generated_ehr_receipt = {
-            'file_timestamp': file_timestamp,
-            'first_seen': first_seen,
-            'last_seen': last_seen
-        }
-        self.assertIn(generated_ehr_receipt, ps_data['ehr_receipts'])
+        def ehr_receipt_matches_expected(generated_ehr_receipt):
+            first_seen_timedelta = generated_ehr_receipt['first_seen'] - first_seen
+            last_seen_timedelta = generated_ehr_receipt['last_seen'] - last_seen
+            return all([
+                generated_ehr_receipt['file_timestamp'] == file_timestamp,
+                first_seen_timedelta <= datetime.timedelta(seconds=1),
+                last_seen_timedelta <= datetime.timedelta(seconds=1)
+            ])
+        self.assertTrue(any([ehr_receipt_matches_expected(ehr_receipt) for ehr_receipt in ps_data['ehr_receipts']]))
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_participant_summaries_job")
     def test_updates_participant_summaries(self, mock_summary_job):
@@ -274,6 +266,126 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
             first_seen=first_job_run_time,
             last_seen=first_job_run_time
         )
+
+    @staticmethod
+    def build_expected_patch_data(participant_id, ehr_status: EhrStatus, is_ehr_available,
+                                  first_ehr_time, latest_ehr_time):
+        return {
+            'pid': participant_id,
+            'patch': {
+                'ehr_status': str(ehr_status),
+                'is_ehr_data_available': int(is_ehr_available),
+                'ehr_status_id': int(ehr_status),
+                'ehr_receipt': first_ehr_time,
+                'ehr_update': latest_ehr_time
+            }
+        }
+
+    def assert_patch_rebuilds_match(self, expected_patch_data_list, mock_rebuild_tasks):
+        self.assertIsNotNone(mock_rebuild_tasks.call_args, "Rebuild wasn't called")
+
+        actual_patch_data = []
+        for call_args in mock_rebuild_tasks.call_args_list:
+            call_patch_data, *_ = call_args.args
+            actual_patch_data += call_patch_data
+
+        self.assertEqual(len(expected_patch_data_list), len(actual_patch_data),
+                         "Unexpected number of participants were rebuilt")
+
+        for expected_data in expected_patch_data_list:
+            found_expected_pid = False
+            for actual_data in actual_patch_data:
+                if expected_data['pid'] == actual_data['pid']:
+                    found_expected_pid = True
+                    self.assertDictEqual(expected_data, actual_data)
+                    break
+            if not found_expected_pid:
+                self.fail(f"Did not find a rebuild call for {expected_data['pid']}")
+
+    @mock.patch('rdr_service.offline.update_ehr_status.dispatch_participant_rebuild_tasks')
+    @mock.patch('rdr_service.offline.update_ehr_status.make_update_participant_summaries_job')
+    def test_participant_pdr_patch_requests(self, mock_summary_job, mock_rebuild_tasks):
+        """Checking that participant ehr data gets patched und different scenarios"""
+
+        # There are four different scenarios tested here, each of them requiring that different data be sent to PDR:
+        #   1 - participants that still appear in the view, but don't have a new file upload timestamp should not be
+        #       patched again because their participant summary data hasn't changed since the last time they were
+        #       patched.
+        #   2 - participants that have appeared in the view previously, but have a new file upload should be patched
+        #       with the new ehr_update file time
+        #   3 - participants that newly appear in the view should be patched
+        #   4 - participants that have had EHR data available but are no longer in the view need to have PDR patched
+        #       to set is_ehr_data_available to False
+
+        # set up data for first scenario (appear in the view with previously patched data)
+        first_upload_datetime = datetime.datetime(2020, 3, 12, 8)
+        first_pid = self.data_generator.create_database_participant_summary(
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=first_upload_datetime,
+            ehrUpdateTime=first_upload_datetime
+        ).participantId
+        first_view_data = self.EhrUpdatePidRow(first_pid, first_upload_datetime)
+        self.data_generator.create_database_participant_ehr_receipt(
+            participantId=first_pid,
+            fileTimestamp=first_upload_datetime,
+            firstSeen=datetime.datetime(2020, 1, 23)
+        )
+
+        # set up data for second scenario (appear in the view with new data to be patched)
+        seconds_first_upload_time = datetime.datetime(2020, 2, 1)
+        second_pid = self.data_generator.create_database_participant_summary(
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=seconds_first_upload_time,
+            ehrUpdateTime=seconds_first_upload_time
+        ).participantId
+        second_view_data = self.EhrUpdatePidRow(second_pid, datetime.datetime(2020, 3, 12, 10))
+        self.data_generator.create_database_participant_ehr_receipt(
+            participantId=second_pid,
+            fileTimestamp=seconds_first_upload_time,
+            firstSeen=datetime.datetime(2020, 2, 6)
+        )
+
+        # initialize data for the third scenario (new participant appears in the view)
+        third_pid = self.data_generator.create_database_participant_summary().participantId
+        third_view_data = self.EhrUpdatePidRow(third_pid, datetime.datetime(2020, 3, 14, 10))
+
+        # set up data for the fourth scenario (participant is no longer in the view)
+        fourth_upload_time = datetime.datetime(2020, 5, 10)
+        fourth_pid = self.data_generator.create_database_participant_summary(
+            ehrStatus=EhrStatus.PRESENT,
+            isEhrDataAvailable=True,
+            ehrReceiptTime=fourth_upload_time,
+            ehrUpdateTime=fourth_upload_time
+        ).participantId
+
+        mock_summary_job.return_value.__iter__.return_value = [[first_view_data, second_view_data, third_view_data]]
+        update_ehr_status.update_ehr_status_participant()
+
+        self.assert_patch_rebuilds_match([
+            self.build_expected_patch_data(
+                second_pid,
+                EhrStatus.PRESENT,
+                True,
+                seconds_first_upload_time,
+                second_view_data.latest_upload_time
+            ),
+            self.build_expected_patch_data(
+                third_pid,
+                EhrStatus.PRESENT,
+                True,
+                third_view_data.latest_upload_time,
+                third_view_data.latest_upload_time
+            ),
+            self.build_expected_patch_data(
+                fourth_pid,
+                EhrStatus.PRESENT,
+                False,
+                fourth_upload_time,
+                fourth_upload_time
+            )
+        ], mock_rebuild_tasks)
 
 
     @mock.patch("rdr_service.offline.update_ehr_status.make_update_organizations_job")

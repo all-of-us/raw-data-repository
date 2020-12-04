@@ -12,6 +12,9 @@
 
 pip-tools
 
+# AOU Cloud Services
+-e git+ssh://git@github.com/all-of-us/python-aou-cloud-services.git@rdr-compatible#egg=aou_cloud
+
 ## web service
 flask
 blinker

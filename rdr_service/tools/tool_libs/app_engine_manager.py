@@ -344,8 +344,7 @@ class DeployAppClass(object):
 
         # Note: self.services will either be a user-provided list from --services arg, or the GCP_SERVICES list from
         # gcp_config.  Need to iterate through each service to make sure appropriate instances get restarted
-        for service in self.services:
-            gcp_restart_instances(self.gcp_env.project, service=service)
+        gcp_restart_instances(self.gcp_env.project)
 
         return 0 if result else 1
 

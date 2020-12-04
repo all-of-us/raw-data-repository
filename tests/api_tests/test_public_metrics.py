@@ -99,6 +99,14 @@ class PublicMetricsApiTest(BaseTestCase):
             CalendarDao().insert(calendar_day)
             curr_date = curr_date + datetime.timedelta(days=1)
 
+        self.clear_table_after_test('metrics_enrollment_status_cache')
+        self.clear_table_after_test('metrics_gender_cache')
+        self.clear_table_after_test('metrics_age_cache')
+        self.clear_table_after_test('metrics_race_cache')
+        self.clear_table_after_test('metrics_region_cache')
+        self.clear_table_after_test('metrics_lifecycle_cache')
+        self.clear_table_after_test('metrics_language_cache')
+
     def _insert(
         self,
         participant,

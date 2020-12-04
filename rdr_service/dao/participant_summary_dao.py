@@ -5,6 +5,7 @@ import threading
 import sqlalchemy
 import sqlalchemy.orm
 from sqlalchemy import or_, and_
+from sqlalchemy.sql import expression
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -827,7 +828,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
                  model.consentForGenomicsRORAuthored > eighteen_month_ago):
                 result["retentionType"] = str(RetentionType.ACTIVE)
-            if model.ehrReceiptTime and model.ehrReceiptTime > eighteen_month_ago:
+            if model.ehrUpdateTime and model.ehrUpdateTime > eighteen_month_ago:
                 if result["retentionType"] == str(RetentionType.ACTIVE):
                     result["retentionType"] = str(RetentionType.ACTIVE_AND_PASSIVE)
                 else:
@@ -846,6 +847,14 @@ class ParticipantSummaryDao(UpdatableDao):
         format_json_hpo(result, self.hpo_dao, "hpoId")
         result["awardee"] = result["hpoId"]
         _initialize_field_type_sets()
+
+        for new_field_name, existing_field_name in self.get_aliased_field_map().items():
+            result[new_field_name] = getattr(model, existing_field_name)
+
+            # register new field as date if field is date
+            if type(result[new_field_name]) is datetime.datetime:
+                _DATE_FIELDS.add(new_field_name)
+
         for fieldname in _DATE_FIELDS:
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
@@ -859,15 +868,17 @@ class ParticipantSummaryDao(UpdatableDao):
                 or model.deceasedStatus == DeceasedStatus.APPROVED:
             result["recontactMethod"] = "NO_CONTACT"
 
-        # Map deprecated EHR fields to updated names
-        result['wasEhrDataAvailable'] = model.ehrStatus == EhrStatus.PRESENT
-        result['firstEhrReceiptTime'] = model.ehrReceiptTime
-        result['latestEhrReceiptTime'] = model.ehrUpdateTime
-
         # Strip None values.
         result = {k: v for k, v in list(result.items()) if v is not None}
 
         return result
+
+    @staticmethod
+    def get_aliased_field_map():
+        return {
+            'firstEhrReceiptTime': 'ehrReceiptTime',
+            'latestEhrReceiptTime': 'ehrUpdateTime'
+        }
 
     def _decode_token(self, query_def, fields):
         """ If token exists in participant_summary api, decode and use lastModified to add a buffer
@@ -891,6 +902,13 @@ class ParticipantSummaryDao(UpdatableDao):
             summary.ehrReceiptTime = update_time
         summary.ehrUpdateTime = update_time
         return summary
+
+    def get_participant_ids_with_ehr_data_available(self):
+        with self.session() as session:
+            result = session.query(ParticipantSummary.participantId).filter(
+                ParticipantSummary.isEhrDataAvailable == expression.true()
+            ).all()
+            return {row.participantId for row in result}
 
     def prepare_for_ehr_status_update(self):
         with self.session() as session:
@@ -1064,8 +1082,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                     field == RetentionStatus.ELIGIBLE,
                     active_criterion,
                     or_(
-                        ParticipantSummary.ehrReceiptTime == None,
-                        ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                        ParticipantSummary.ehrUpdateTime == None,
+                        ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
                     )
 
                 )
@@ -1073,13 +1091,13 @@ class RetentionTypeFieldFilter(FieldFilter):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
                     not_active_criterion,
-                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
                 )
             elif self.value == str(RetentionType.ACTIVE_AND_PASSIVE):
                 query = query.filter(
                     field == RetentionStatus.ELIGIBLE,
                     active_criterion,
-                    ParticipantSummary.ehrReceiptTime > eighteen_month_ago
+                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
                 )
             elif self.value == str(RetentionType.UNSET):
                 query = query.filter(
@@ -1088,8 +1106,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                         and_(
                             not_active_criterion,
                             or_(
-                                ParticipantSummary.ehrReceiptTime == None,
-                                ParticipantSummary.ehrReceiptTime <= eighteen_month_ago
+                                ParticipantSummary.ehrUpdateTime == None,
+                                ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
                             )
                         )
                     )

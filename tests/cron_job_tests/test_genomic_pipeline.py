@@ -894,6 +894,7 @@ class GenomicPipelineTest(BaseTestCase):
             self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
                                sampleStatus1ED04=0,
+                               sampleStatus1ED10=1 if bid == 100003 else 0,
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
@@ -938,6 +939,17 @@ class GenomicPipelineTest(BaseTestCase):
                 insert_dtm = fake_datetime_old
             with clock.FakeClock(insert_dtm):
                 self._make_stored_sample(**sample_args)
+
+            # Make a 1ED10 test for 100003 (in addition to the 1SAL2 test for that participant)
+            if bid == 100003:
+                self._make_stored_sample(
+                    test='1ED10',
+                    confirmed=fake_datetime_new,
+                    created=fake_datetime_old,
+                    biobankId=bid,
+                    biobankOrderIdentifier=test_identifier.value,
+                    biobankStoredSampleId='003_1ED10',
+                )
 
             # Make Mail Kit NY participant
             if bid == 100008:
@@ -993,7 +1005,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == 100003:
                 # 100003 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('100003', member.collectionTubeId)
+                self.assertEqual('003_1ED10', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1076,7 +1088,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100003, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual('003_1ED10', rows[2][ExpectedCsvColumns.SAMPLE_ID])
             self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1084,7 +1096,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100003, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual('003_1ED10', rows[3][ExpectedCsvColumns.SAMPLE_ID])
             self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1437,12 +1449,11 @@ class GenomicPipelineTest(BaseTestCase):
 
             insert_dtm = fake_datetime_new
 
-            # Testing sample business logic (prioritize newer collected samples then 1ED04)
             col_date_1 = datetime.datetime(2018, 6, 30, 0, 0, 0, 0)
             col_date_2 = datetime.datetime(2019, 6, 30, 0, 0, 0, 0)
 
             if bid == 100001:
-                # SAL2 newer than ED04 -> Use SAL2
+                # ED04 with bad status and SAL2 -> Use SAL2
                 sample_1 = self._make_ordered_sample(_test="1ED04", _collected=col_date_1)
                 sample_2 = self._make_ordered_sample(_test="1SAL2", _collected=col_date_2)
 
@@ -1471,6 +1482,7 @@ class GenomicPipelineTest(BaseTestCase):
                     'biobankId': bid,
                     'biobankOrderIdentifier': test_identifier.value,
                     'biobankStoredSampleId': 10000101,
+                    'status': SampleStatus.SAMPLE_NOT_RECEIVED
                 }
 
                 sample_args2 = {
@@ -1480,6 +1492,7 @@ class GenomicPipelineTest(BaseTestCase):
                     'biobankId': bid,
                     'biobankOrderIdentifier': test_identifier2.value,
                     'biobankStoredSampleId': 10000102,
+                    'status': SampleStatus.RECEIVED
                 }
 
                 with clock.FakeClock(insert_dtm):
@@ -1487,8 +1500,8 @@ class GenomicPipelineTest(BaseTestCase):
                     self._make_stored_sample(**sample_args2)
 
             elif bid == 100002:
-                # ED04 and SAL2 same collected date -> Use ED04
-                sample_1 = self._make_ordered_sample(_test="1ED04", _collected=col_date_1)
+                # ED10 and SAL2 -> Use ED10
+                sample_1 = self._make_ordered_sample(_test="1ED10", _collected=col_date_1)
                 sample_2 = self._make_ordered_sample(_test="1SAL2", _collected=col_date_1)
 
                 test_identifier2 = BiobankOrderIdentifier(
@@ -1510,7 +1523,7 @@ class GenomicPipelineTest(BaseTestCase):
                 insert_dtm = fake_datetime_old
 
                 sample_args1 = {
-                    'test': '1ED04',
+                    'test': '1ED10',
                     'confirmed': fake_datetime_new,
                     'created': fake_datetime_old,
                     'biobankId': bid,
@@ -1890,13 +1903,16 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, missing_cols)
             rows = list(csv_reader)
             self.assertEqual(2, len(rows))
-            self.assertEqual(test_member_1.biobankId, int(rows[0]['biobank_id']))
-            self.assertEqual(test_member_1.sampleId, rows[0]['sample_id'])
-            self.assertEqual(test_member_1.sexAtBirth, rows[0]['sex_at_birth'])
-            self.assertEqual("yes", rows[0]['consent_for_ror'])
-            self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(rows[0]['date_of_consent_for_ror']))
-            self.assertEqual(test_member_1.chipwellbarcode, rows[0]['chipwellbarcode'])
-            self.assertEqual('JH', rows[0]['genome_center'])
+            self.assertIn(test_member_1.biobankId, [int(rows[0]['biobank_id']), int(rows[1]['biobank_id'])])
+            for row in rows:
+                if test_member_1.biobankId == int(row['biobank_id']):
+                    self.assertEqual(test_member_1.biobankId, int(row['biobank_id']))
+                    self.assertEqual(test_member_1.sampleId, row['sample_id'])
+                    self.assertEqual(test_member_1.sexAtBirth, row['sex_at_birth'])
+                    self.assertEqual("yes", row['consent_for_ror'])
+                    self.assertEqual(test_member_1.consentForGenomicsRORAuthored, parse(row['date_of_consent_for_ror']))
+                    self.assertEqual(test_member_1.chipwellbarcode, row['chipwellbarcode'])
+                    self.assertEqual('JH', row['genome_center'])
 
         # Array
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1

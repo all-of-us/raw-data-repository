@@ -11,6 +11,7 @@ from sqlalchemy import func
 from rdr_service import config
 from rdr_service.cloud_utils.bigquery import BigQueryJob
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_hpo_dao import bq_hpo_update
@@ -34,7 +35,7 @@ class BigQueryJobError(BaseException):
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
 
-def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=None, build_locally=None):
+def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_PROJECT, build_locally=None):
     """
     A utility routine to handle dispatching batched requests for rebuilding participants.  Is also called
     from other cron job endpoint handlers (e.g., biobank reconciliation and EHR status update jobs)
