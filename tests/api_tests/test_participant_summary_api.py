@@ -1,3 +1,4 @@
+from copy import deepcopy
 import datetime
 import http.client
 from mock import patch
@@ -91,27 +92,16 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.hpo_dao = HPODao()
-        self.original_user_roles = None
         # Needed by test_switch_to_test_account
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
 
-    def tearDown(self):
-        if self.original_user_roles is not None:
-            self.overwrite_test_user_awardee(None, self.original_user_roles, save_current=False)
-
-        super(ParticipantSummaryApiTest, self).tearDown()
-
-    def overwrite_test_user_awardee(self, awardee, roles, save_current=True):
-        user_info = config.getSettingJson(config.USER_INFO)
-
-        if save_current:
-            # Save what was there so we can set it back in the tearDown
-            self.original_user_roles = user_info['example@example.com']['roles']
-        user_info['example@example.com']['roles'] = roles
-        user_info['example@example.com']['awardee'] = awardee
-        config.override_setting(config.USER_INFO, user_info)
+    def overwrite_test_user_awardee(self, awardee, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
+        new_user_info['example@example.com']['awardee'] = awardee
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def create_demographics_questionnaire(self):
         """Uses the demographics test data questionnaire.  Returns the questionnaire id"""
