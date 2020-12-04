@@ -1,5 +1,5 @@
 import logging
-from aou_cloud.services.system_utils import JSONObject
+from rdr_service.services.system_utils import JSONObject
 
 from rdr_service.dao.genomics_dao import GenomicSetDao
 from rdr_service.genomic import (
