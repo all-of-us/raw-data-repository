@@ -2,7 +2,7 @@ from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
-    BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier
+    BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
@@ -268,6 +268,23 @@ class DataGenerator:
 
         return ParticipantSummary(**defaults)
 
+    def create_database_biobank_specimen(self, **kwargs):
+        specimen = self._biobank_specimen_with_defaults(**kwargs)
+        self._commit_to_database(specimen)
+        return specimen
+
+    def _biobank_specimen_with_defaults(self, **kwargs):
+        defaults = {
+            'orderId': 'test_order',
+            'rlimsId': self.faker.pystr()
+        }
+        defaults.update(kwargs)
+
+        if 'biobankId' not in defaults:
+            defaults['biobankId'] = self.create_database_participant().biobankId
+
+        return BiobankSpecimen(**defaults)
+
     def create_database_participant_ehr_receipt(self, **kwargs):
         participant_ehr_receipt = self._participant_ehr_receipt_with_defaults(**kwargs)
         self._commit_to_database(participant_ehr_receipt)
@@ -283,6 +300,18 @@ class DataGenerator:
         defaults.update(kwargs)
 
         return ParticipantEhrReceipt(**defaults)
+
+    def create_database_specimen_attribute(self, **kwargs):
+        specimen_attribute = self._specimen_attribute_with_defaults(**kwargs)
+        self._commit_to_database(specimen_attribute)
+        return specimen_attribute
+
+    def _specimen_attribute_with_defaults(self, **kwargs):
+        if 'specimen_id' not in kwargs:
+            generated_specimen = self.create_database_biobank_specimen()
+            kwargs['specimen_id'] = generated_specimen.id
+            kwargs['specimen_rlims_id'] = generated_specimen.rlimsId
+        return BiobankSpecimenAttribute(**kwargs)
 
     @staticmethod
     def _participant_history_with_defaults(**kwargs):
