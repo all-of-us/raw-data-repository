@@ -24,6 +24,7 @@ from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
 
+from tests.api_tests.test_participant_summary_api import participant_summary_default_values
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.concepts import Concept
@@ -42,105 +43,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
     def setUp(self):
         super(QuestionnaireResponseApiTest, self).setUp()
         self._ehr_questionnaire_id = None
-        self.participant_summary_default_values = {
-            "ageRange": "UNSET",
-            "race": "UNSET",
-            "hpoId": "UNSET",
-            "awardee": "UNSET",
-            "site": "UNSET",
-            "organization": "UNSET",
-            "education": "UNSET",
-            "income": "UNSET",
-            "language": "UNSET",
-            "primaryLanguage": "UNSET",
-            "sex": "UNSET",
-            "sexualOrientation": "UNSET",
-            "state": "UNSET",
-            "recontactMethod": "UNSET",
-            "enrollmentStatus": "INTERESTED",
-            "samplesToIsolateDNA": "UNSET",
-            "numBaselineSamplesArrived": 0,
-            "numCompletedPPIModules": 1,
-            "numCompletedBaselinePPIModules": 1,
-            "physicalMeasurementsStatus": "UNSET",
-            "consentForGenomicsROR": "UNSET",
-            "consentForDvElectronicHealthRecordsSharing": "UNSET",
-            "consentForElectronicHealthRecords": "UNSET",
-            "consentForStudyEnrollment": "SUBMITTED",
-            "consentForCABoR": "UNSET",
-            "questionnaireOnFamilyHealth": "UNSET",
-            "questionnaireOnHealthcareAccess": "UNSET",
-            "questionnaireOnMedicalHistory": "UNSET",
-            "questionnaireOnMedications": "UNSET",
-            "questionnaireOnOverallHealth": "UNSET",
-            "questionnaireOnLifestyle": "UNSET",
-            "questionnaireOnTheBasics": "SUBMITTED",
-            "questionnaireOnCopeMay": "UNSET",
-            "questionnaireOnCopeJune": "UNSET",
-            "questionnaireOnCopeJuly": "UNSET",
-            "questionnaireOnCopeNov": "UNSET",
-            "questionnaireOnCopeDec": "UNSET",
-            "questionnaireOnDnaProgram": "UNSET",
-            "biospecimenCollectedSite": "UNSET",
-            "biospecimenFinalizedSite": "UNSET",
-            "biospecimenProcessedSite": "UNSET",
-            "biospecimenSourceSite": "UNSET",
-            "physicalMeasurementsCreatedSite": "UNSET",
-            "physicalMeasurementsFinalizedSite": "UNSET",
-            "biospecimenStatus": "UNSET",
-            "sampleOrderStatus1ED04": "UNSET",
-            "sampleOrderStatus1ED10": "UNSET",
-            "sampleOrderStatus1HEP4": "UNSET",
-            "sampleOrderStatus1PST8": "UNSET",
-            "sampleOrderStatus1PS08": "UNSET",
-            "sampleOrderStatus2PST8": "UNSET",
-            "sampleOrderStatus1SAL": "UNSET",
-            "sampleOrderStatus1SAL2": "UNSET",
-            "sampleOrderStatus1SST8": "UNSET",
-            "sampleOrderStatus2SST8": "UNSET",
-            "sampleOrderStatus1SS08": "UNSET",
-            "sampleOrderStatus1UR10": "UNSET",
-            "sampleOrderStatus1UR90": "UNSET",
-            "sampleOrderStatus2ED10": "UNSET",
-            "sampleOrderStatus1CFD9": "UNSET",
-            "sampleOrderStatus1PXR2": "UNSET",
-            "sampleOrderStatus1ED02": "UNSET",
-            "sampleOrderStatusDV1SAL2": "UNSET",
-            "sampleStatus1ED04": "UNSET",
-            "sampleStatus1ED10": "UNSET",
-            "sampleStatus1HEP4": "UNSET",
-            "sampleStatus1PST8": "UNSET",
-            "sampleStatus2PST8": "UNSET",
-            "sampleStatus1PS08": "UNSET",
-            "sampleStatus1SAL": "UNSET",
-            "sampleStatus1SAL2": "UNSET",
-            "sampleStatus1SST8": "UNSET",
-            "sampleStatus2SST8": "UNSET",
-            "sampleStatus1SS08": "UNSET",
-            "sampleStatus1UR10": "UNSET",
-            "sampleStatus1UR90": "UNSET",
-            "sampleStatus2ED10": "UNSET",
-            "sampleStatus1CFD9": "UNSET",
-            "sampleStatus1ED02": "UNSET",
-            "sampleStatus1PXR2": "UNSET",
-            "sampleStatusDV1SAL2": "UNSET",
-            "withdrawalStatus": "NOT_WITHDRAWN",
-            "withdrawalReason": "UNSET",
-            "suspensionStatus": "NOT_SUSPENDED",
-            "numberDistinctVisits": 0,
-            "ehrStatus": "UNSET",
-            "ehrConsentExpireStatus": "UNSET",
-            "patientStatus": [],
-            "participantOrigin": 'example',
-            "semanticVersionForPrimaryConsent": "v1",
-            "deceasedStatus": "UNSET",
-            "retentionEligibleStatus": "NOT_ELIGIBLE",
-            "retentionType": "UNSET",
-            "enrollmentSite": "UNSET",
-            "sample1SAL2CollectionMethod": "UNSET",
-            "isEhrDataAvailable": False,
-            "wasEhrDataAvailable": False
-        }
 
     def test_duplicate_consent_submission(self):
         """
@@ -491,7 +393,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = self.participant_summary_default_values
+        expected = dict(participant_summary_default_values)
         expected.update({
             "genderIdentity": "GenderIdentity_NonBinary",
             "firstName": self.first_name,
@@ -523,7 +425,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = self.participant_summary_default_values
+        expected = dict(participant_summary_default_values)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -613,7 +515,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = self.participant_summary_default_values
+        expected = dict(participant_summary_default_values)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -743,7 +645,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = {
+        expected = dict(participant_summary_default_values)
+        expected.update({
             "genderIdentity": "GenderIdentity_MoreThanOne",
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -760,8 +663,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
-        }
-        expected.update(self.participant_summary_default_values)
+        })
         self.assertJsonResponseMatches(expected, summary)
 
     def _get_expected_gender_code_ids(self, gender_code_values):
@@ -891,7 +793,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = {
+        expected = dict(participant_summary_default_values)
+        expected.update({
             "genderIdentity": "GenderIdentity_Man",
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -906,8 +809,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
             "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
             "signUpTime": TIME_1.isoformat(),
-        }
-        expected.update(self.participant_summary_default_values)
+        })
         self.assertJsonResponseMatches(expected, summary)
 
     def test_gender_prefer_not_answer(self):
@@ -932,7 +834,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = {
+        expected = dict(participant_summary_default_values)
+        expected.update({
             "genderIdentity": "PMI_PreferNotToAnswer",
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -949,8 +852,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
-        }
-        expected.update(self.participant_summary_default_values)
+        })
         self.assertJsonResponseMatches(expected, summary)
 
     def test_gender_plus_skip_equals_gender(self):
@@ -976,7 +878,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = {
+        expected = dict(participant_summary_default_values)
+        expected.update({
             "genderIdentity": "GenderIdentity_Man",
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -993,8 +896,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
-        }
-        expected.update(self.participant_summary_default_values)
+        })
         self.assertJsonResponseMatches(expected, summary)
 
     def test_different_origin_cannot_submit(self):
