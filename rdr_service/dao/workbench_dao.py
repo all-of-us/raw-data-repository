@@ -628,8 +628,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             last_sync_date = clock.CLOCK.now()
 
         return {
-            "total_projects": total,
-            "match_projects": match_number,
+            "totalActiveProjects": total,
+            "totalMatchedRecords": match_number,
             "page": page,
             "pageSize": page_size,
             "last_sync_date": last_sync_date,
