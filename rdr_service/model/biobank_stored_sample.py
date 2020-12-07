@@ -101,8 +101,6 @@ class BiobankStoredSampleStatusImportTmp(Base):
     __tablename__ = "biobank_stored_sample_status_import_tmp"
 
     id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column("created", UTCDateTime, nullable=False)
-    modified = Column("modified", UTCDateTime, nullable=False)
 
     # Fields imported from CSV
     sample_family_id = Column("sample_family_id", String(80))
@@ -122,7 +120,3 @@ class BiobankStoredSampleStatusImportTmp(Base):
     sample_treatment = Column("sample_treatment", String(80))
     sample_family_create_date = Column("sample_family_create_date", UTCDateTime)
     sent_order_id = Column("sent_order_id", String(80))
-
-
-event.listen(BiobankStoredSampleStatusImportTmp, 'before_insert', model_insert_listener)
-event.listen(BiobankStoredSampleStatusImportTmp, 'before_update', model_update_listener)
