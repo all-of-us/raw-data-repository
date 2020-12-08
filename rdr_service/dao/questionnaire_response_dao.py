@@ -287,8 +287,11 @@ class QuestionnaireResponseDao(BaseDao):
             return 'July'
         elif response_authored_date < datetime(2020, 12, 5):  # Nov scheduled to close on Dec 3rd
             return 'Nov'
-        else:
+        # TODO: this may need to be adjusted when the January survey release date is decided
+        elif response_authored_date < datetime(2021, 1, 1):
             return 'Dec'
+        else:
+            return 'Jan'
 
     def _update_participant_summary(
         self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
