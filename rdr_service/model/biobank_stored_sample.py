@@ -1,7 +1,7 @@
 from sqlalchemy import Column, ForeignKey, Index, Integer, String, DateTime, event
 
 from rdr_service import clock
-from rdr_service.model.base import Base, model_update_listener, model_insert_listener
+from rdr_service.model.base import Base, model_update_listener
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import SampleStatus
 
