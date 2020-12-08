@@ -1,11 +1,55 @@
+from sqlalchemy import or_, and_
+
 from rdr_service.api_util import format_json_date
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.object_preloader import LoadingStrategy
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
 from werkzeug.exceptions import BadRequest
+
+
+class RlimsIdLoadingStrategy(LoadingStrategy):
+
+    @staticmethod
+    def get_key_from_object(obj):
+        return obj.rlimsId
+
+    @staticmethod
+    def get_filtered_query(query, object_class, keys):
+        return query.filter(object_class.rlimsId.in_(keys))
+
+
+class SpecimenAttributeLoadingStrategy(LoadingStrategy):
+
+    @staticmethod
+    def get_key_from_object(obj):
+        return obj.specimen_rlims_id, obj.name
+
+    @staticmethod
+    def get_filtered_query(query, object_class, keys):
+        filter_list = [and_(
+            BiobankSpecimenAttribute.specimen_rlims_id == rlims_id,
+            BiobankSpecimenAttribute.name == name
+        ) for rlims_id, name in keys]
+        return query.filter(or_(*filter_list))
+
+
+class AliquotDatasetItemLoadingStrategy(LoadingStrategy):
+
+    @staticmethod
+    def get_key_from_object(obj):
+        return obj.dataset_rlims_id, obj.paramId
+
+    @staticmethod
+    def get_filtered_query(query, object_class, keys):
+        filter_list = [and_(
+            BiobankAliquotDatasetItem.dataset_rlims_id == dataset_rlims_id,
+            BiobankAliquotDatasetItem.paramId == paramId
+        ) for dataset_rlims_id, paramId in keys]
+        return query.filter(or_(*filter_list))
 
 
 class BiobankDaoBase(UpdatableDao):
