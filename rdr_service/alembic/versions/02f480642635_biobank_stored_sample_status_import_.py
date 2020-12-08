@@ -1,7 +1,7 @@
 """biobank stored sample status import temp table
 
 Revision ID: 02f480642635
-Revises: cab7fdee2895
+Revises: ebb897e84b1b
 Create Date: 2020-12-07 12:51:12.215106
 
 """
@@ -11,7 +11,7 @@ import rdr_service.model.utils
 
 # revision identifiers, used by Alembic.
 revision = '02f480642635'
-down_revision = 'cab7fdee2895'
+down_revision = 'ebb897e84b1b'
 branch_labels = None
 depends_on = None
 
