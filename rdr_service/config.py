@@ -108,6 +108,8 @@ BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_
 BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN = 'biobank_samples_monthly_inventory_file_pattern'
 COPE_FORM_ID_MAP = 'cope_form_id_map'
 HPO_LITE_AWARDEE = 'hpo_lite_awardee'
+HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
+HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
 
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'

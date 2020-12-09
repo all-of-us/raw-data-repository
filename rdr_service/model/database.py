@@ -50,6 +50,7 @@ from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.resource_search_results import ResourceSearchResults
 from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, QuestCovidAntibodyTestResult,\
     QuestCovidAntibodyTest
+from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImportRecord
 
 RETRY_CONNECTION_LIMIT = 10
 
