@@ -66,6 +66,3 @@ class BiobankSpecimenDaoTest(BaseTestCase):
 
             self.assertEqual(specimen_object.id, parsed_model.id)
             self.assertEqual(dataset_item_object.id, parsed_model.aliquots[0].datasets[0].datasetItems[0].id)
-
-        # TODO: MAKE SURE THAT UPDATING SPECIMENS STILL WORKS!!
-        #  I DON'T THINK IT DOES!!!!
