@@ -6,6 +6,7 @@
 #
 
 import gettext
+import json
 import logging
 import os
 import re
@@ -13,7 +14,8 @@ import shlex
 import signal
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, date
+from json import JSONDecodeError
 
 try:
     import requests
@@ -24,6 +26,62 @@ except ImportError:
     pass
 
 _logger = logging.getLogger("rdr_logger")
+
+
+class JSONObject:
+    """ Simple object to recursively convert a dict or json string to object properties """
+    __data_dict__ = None
+
+    def __init__(self, data):
+
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        if data:
+            for k, v in data.items():
+                if isinstance(v, dict):
+                    self.__dict__[k] = JSONObject(v)
+                elif isinstance(v, list):
+                    _tmp = list()
+                    for i in v:
+                        if isinstance(i, dict):
+                            _tmp.append(JSONObject(i))
+                        elif isinstance(i, str):
+                            try:
+                                _tmp_data = json.loads(i)
+                                if _tmp_data:
+                                    _tmp.append(JSONObject(_tmp_data))
+                                else:
+                                    _tmp.append(i)  # For when the value is a string = 'null'.
+                            except JSONDecodeError:
+                                _tmp.append(i)
+                        else:
+                            _tmp.append(i)
+                    self.__dict__[k] = _tmp
+                else:
+                    self.__dict__[k] = v
+
+        self.__data_dict__ = data
+        self.__data_str__ = json.dumps(data, default=self.json_serial)
+
+    def json_serial(self, obj):
+        """JSON serializer for objects not serializable by default json code"""
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return obj.__repr__()
+
+    def to_json(self, indent=None):
+        """ Export config as json """
+        if indent:
+            return json.dumps(self.__data_dict__, default=self.json_serial, indent=indent)
+        return self.__data_str__
+
+    def to_dict(self):
+        """ Export config as json """
+        return self.__data_dict__
+
+    def __repr__(self):
+        return self.__data_str__
 
 
 class TerminalColors(object):

@@ -89,6 +89,11 @@ cron:
   timezone: America/New_York
   schedule: every day 06:00
   target: offline
+- description: Genomic Feedback Manifest Workflow
+  url: /offline/GenomicFeedbackManifestWorkflow
+  timezone: America/New_York
+  schedule: every thursday 06:00
+  target: offline
 - description: Genomic AW1C (CVL) Workflow (Manual)
   url: /offline/GenomicAW1CManifestWorkflow
   timezone: America/New_York

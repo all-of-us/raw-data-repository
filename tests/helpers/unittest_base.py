@@ -384,10 +384,15 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     """ Base class for unit tests."""
 
     _configs_dir = os.path.join(tempfile.gettempdir(), 'configs')
+    _first_setup = True
 
     def __init__(self, *args, **kwargs):
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
+        self.config_data_to_reset = {}
+
+    def _set_up_test_suite(self):
+        self.setup_config()
 
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super(BaseTestCase, self).setUp()
@@ -399,7 +404,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         # Change this to logging.ERROR when you want to see API server errors.
         logger.setLevel(logging.CRITICAL)
 
-        self.setup_config()
+        if BaseTestCase._first_setup:
+            self._set_up_test_suite()
+            BaseTestCase._first_setup = False
+
         self.setup_storage()
         self.app = main.app.test_client()
 
@@ -416,6 +424,10 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         super(BaseTestCase, self).tearDown()
         self.session.close()
 
+        for key, original_data in self.config_data_to_reset.items():
+            config.override_setting(key, original_data)
+        self.config_data_to_reset = {}
+
     def setup_storage(self):
         temp_folder_path = mkdtemp()
         self.addCleanup(shutil.rmtree, temp_folder_path)
@@ -423,19 +435,37 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
     def setup_config(self):
         os.environ['RDR_CONFIG_ROOT'] = self._configs_dir
-        if not os.path.exists(self._configs_dir) or \
-                not os.path.exists(os.path.join(self._configs_dir, 'current_config.json')) or \
-                not os.path.exists(os.path.join(self._configs_dir, 'db_config.json')):
+        if not os.path.exists(self._configs_dir):
             os.mkdir(self._configs_dir)
-            data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
-                                                "rdr_service", "config", "base_config.json"),
-                                   os.path.join(os.path.dirname(__file__), "..", "..",
-                                                "rdr_service", "config", "config_dev.json"))
-
-            shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"),
-                        self._configs_dir)
-            config.store_current_config(data)
             atexit.register(self.remove_config)
+
+        data = read_dev_config(os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "base_config.json"),
+                               os.path.join(os.path.dirname(__file__), "..", "..",
+                                            "rdr_service", "config", "config_dev.json"))
+
+        shutil.copy(os.path.join(os.path.dirname(__file__), "..", ".test_configs", "db_config.json"),
+                    self._configs_dir)
+        config.store_current_config(data)
+
+    def temporarily_override_config_setting(self, key, value):
+        """
+        Overrides a value in the config until the end of the test. If the config already has a value for the given key,
+        then that value is restored at the end of the test.
+        :param key: Name of the config item to set
+        :param value: What the config should return for the key until the end of the test.
+        """
+
+        # If config_data_to_reset doesn't have an original value for the key, then this is the first time the call to
+        # override a value has been called and what is there now is an original value that should be restored
+        if key not in self.config_data_to_reset:
+            # As of writing this, having None as an override value in the config causes it to fall through to
+            # reading from the config itself (as if there wasn't anything in the override dict). So setting None
+            # as the value to restore when there was nothing there to begin with works out well.
+            original_value = config.getSettingJson(key, default=None)
+            self.config_data_to_reset[key] = original_value
+
+        config.override_setting(key, value)
 
     def remove_config(self):
         if os.path.exists(self._configs_dir):

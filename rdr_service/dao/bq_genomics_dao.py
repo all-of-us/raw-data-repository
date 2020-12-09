@@ -22,6 +22,8 @@ class BQGenomicSetGenerator(BigQueryGenerator):
     Generate a GenomicSet BQRecord object
     """
 
+    ro_dao = None
+
     def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
         Build a BQRecord object from the given primary key id.
@@ -30,10 +32,12 @@ class BQGenomicSetGenerator(BigQueryGenerator):
         :param backup: if True, get from backup database
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_set where id = :id'), {'id': _id}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
@@ -50,24 +54,41 @@ class BQGenomicSetGenerator(BigQueryGenerator):
             return BQRecord(schema=BQGenomicSetSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_genomic_set_update(_id, project_id=None):
+def bq_genomic_set_update(_id, project_id=None, gen=None, w_dao=None):
     """
     Generate GenomicSet record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
     """
-    gen = BQGenomicSetGenerator()
-    bqr = gen.make_bqrecord(_id)
+    if not gen:
+        gen = BQGenomicSetGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
 
-    w_dao = BigQuerySyncDao()
+    bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicSet, w_dao=w_dao, w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_set_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicSetGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_set_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
     """
     Generate a GenomicSetMember BQRecord object
     """
+    ro_dao = None
 
     def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
@@ -77,10 +98,12 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
         :param backup: if True, get from backup database
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _id}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
@@ -110,24 +133,41 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
             return BQRecord(schema=BQGenomicSetMemberSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_genomic_set_member_update(_id, project_id=None):
+def bq_genomic_set_member_update(_id, project_id=None, gen=None, w_dao=None):
     """
     Generate GenomicSetMember record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
     """
-    gen = BQGenomicSetMemberSchemaGenerator()
-    bqr = gen.make_bqrecord(_id)
+    if not gen:
+        gen = BQGenomicSetMemberSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
 
-    w_dao = BigQuerySyncDao()
+    bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicSetMember, w_dao=w_dao, w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_set_member_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicSetMemberSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_set_member_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQGenomicJobRunSchemaGenerator(BigQueryGenerator):
     """
     Generate a GenomicJobRun BQRecord object
     """
+    ro_dao = None
 
     def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
@@ -137,10 +177,12 @@ class BQGenomicJobRunSchemaGenerator(BigQueryGenerator):
         :param backup: if True, get from backup database
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_job_run where id = :id'), {'id': _id}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
@@ -163,24 +205,41 @@ class BQGenomicJobRunSchemaGenerator(BigQueryGenerator):
             return BQRecord(schema=BQGenomicJobRunSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_genomic_job_run_update(_id, project_id=None):
+def bq_genomic_job_run_update(_id, project_id=None, gen=None, w_dao=None):
     """
     Generate GenomicJobRun record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
     """
-    gen = BQGenomicJobRunSchemaGenerator()
-    bqr = gen.make_bqrecord(_id)
+    if not gen:
+        gen = BQGenomicJobRunSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
 
-    w_dao = BigQuerySyncDao()
+    bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicJobRun, w_dao=w_dao, w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_job_run_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicJobRunSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_job_run_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQGenomicFileProcessedSchemaGenerator(BigQueryGenerator):
     """
     Generate a BQGenomicFileProcessed BQRecord object
     """
+    ro_dao = None
 
     def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
@@ -190,10 +249,12 @@ class BQGenomicFileProcessedSchemaGenerator(BigQueryGenerator):
         :param backup: if True, get from backup database
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_file_processed where id = :id'), {'id': _id}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
 
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
@@ -211,25 +272,42 @@ class BQGenomicFileProcessedSchemaGenerator(BigQueryGenerator):
             return BQRecord(schema=BQGenomicFileProcessedSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_genomic_file_processed_update(_id, project_id=None):
+def bq_genomic_file_processed_update(_id, project_id=None, gen=None, w_dao=None):
     """
     Generate BQGenomicFileProcessed record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
     """
-    gen = BQGenomicFileProcessedSchemaGenerator()
-    bqr = gen.make_bqrecord(_id)
+    if not gen:
+        gen = BQGenomicFileProcessedSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
 
-    w_dao = BigQuerySyncDao()
+    bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicFileProcessed, w_dao=w_dao,
                           w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_file_processed_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicFileProcessedSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_file_processed_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
     """
     Generate a GenomicGCValidationMetrics BQRecord object
     """
+    ro_dao = None
 
     def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
         """
@@ -239,11 +317,13 @@ class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
         :param backup: if True, get from backup database
         :return: BQRecord object
         """
-        ro_dao = BigQuerySyncDao(backup=backup)
-        with ro_dao.session() as ro_session:
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _id}).first()
-            data = ro_dao.to_dict(row)
+            data = self.ro_dao.to_dict(row)
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
             data['orig_created'] = data['created']
@@ -252,16 +332,32 @@ class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
             return BQRecord(schema=BQGenomicGCValidationMetricsSchema, data=data, convert_to_enum=convert_to_enum)
 
 
-def bq_genomic_gc_validation_metrics_update(_id, project_id=None):
+def bq_genomic_gc_validation_metrics_update(_id, project_id=None, gen=None, w_dao=None):
     """
     Generate GenomicGCValidationMetrics record for BQ.
     :param _id: Primary Key
     :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
     """
-    gen = BQGenomicGCValidationMetricsSchemaGenerator()
-    bqr = gen.make_bqrecord(_id)
+    if not gen:
+        gen = BQGenomicGCValidationMetricsSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
 
-    w_dao = BigQuerySyncDao()
+    bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
         gen.save_bqrecord(_id, bqr, bqtable=BQGenomicGCValidationMetrics, w_dao=w_dao, w_session=w_session,
                           project_id=project_id)
+
+
+def bq_genomic_gc_validation_metrics_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicGCValidationMetricsSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_gc_validation_metrics_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)

@@ -709,8 +709,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 2)
         # test search by project purpose
         result = self.send_get('researchHub/projectDirectory?projectPurpose=controlSet')
-        self.assertEqual(result['total_projects'], 2)
-        self.assertEqual(result['match_projects'], 1)
+        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalMatchedRecords'], 1)
         self.assertEqual(len(result['data']), 1)
         # test search by multiple project purpose
         result = self.send_get('researchHub/projectDirectory?projectPurpose=controlSet,socialBehavioral')
@@ -723,8 +723,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         # test search by generalized parameter workspaceLike
         result = self.send_get('researchHub/projectDirectory?workspaceLike=str')
-        self.assertEqual(result['total_projects'], 2)
-        self.assertEqual(result['match_projects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 2)
         result = self.send_get('researchHub/projectDirectory?workspaceLike=string2')
         self.assertEqual(len(result['data']), 1)
@@ -745,8 +745,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         # test search by user id
         result = self.send_get('researchHub/projectDirectory?userId=1&userRole=owner')
-        self.assertEqual(result['total_projects'], 2)
-        self.assertEqual(result['match_projects'], 1)
+        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalMatchedRecords'], 1)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?userId=1&userRole=member')
         self.assertEqual(len(result['data']), 1)
@@ -754,15 +754,15 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 2)
         # test page and page size
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=1')
-        self.assertEqual(result['total_projects'], 2)
-        self.assertEqual(result['match_projects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?page=2&pageSize=1')
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?page=3&pageSize=1')
         self.assertEqual(len(result['data']), 0)
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=2')
-        self.assertEqual(result['match_projects'], 2)
+        self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 2)
 
     def test_get_research_projects_directory_less_than_23_hours(self):

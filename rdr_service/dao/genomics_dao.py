@@ -18,8 +18,8 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicJobRun,
     GenomicFileProcessed,
-    GenomicGCValidationMetrics
-)
+    GenomicGCValidationMetrics,
+    GenomicManifestFile, GenomicManifestFeedback)
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -752,7 +752,8 @@ class GenomicFileProcessedDao(UpdatableDao):
                            file_name,
                            end_time=None,
                            file_result=None,
-                           upload_date=None):
+                           upload_date=None,
+                           manifest_file_id=None):
         """
         Inserts the file record
         :param run_id: the id of the current genomics_job_run
@@ -771,6 +772,7 @@ class GenomicFileProcessedDao(UpdatableDao):
         processing_file.endTime = end_time
         processing_file.fileResult = file_result
         processing_file.uploadDate = upload_date
+        processing_file.genomicManifestFileId = manifest_file_id
 
         return self.insert(processing_file)
 
@@ -832,6 +834,7 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
             'genomeCoverage': 'genomecoverage',
             'aouHdrCoverage': 'aouhdrcoverage',
             'contamination': 'contamination',
+            'contaminationCategory': 'contamination_category',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
             'alignedQ30Bases': 'alignedq30bases',
@@ -1182,3 +1185,76 @@ class GenomicOutreachDao(BaseDao):
 
         return state_mapping[resource_status]
 
+
+class GenomicManifestFileDao(BaseDao):
+    def __init__(self):
+        super(GenomicManifestFileDao, self).__init__(
+            GenomicManifestFile, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
+class GenomicManifestFeedbackDao(BaseDao):
+    def __init__(self):
+        super(GenomicManifestFeedbackDao, self).__init__(
+            GenomicManifestFeedback, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_feedback_record_from_manifest_id(self, manifest_id):
+        """
+        Returns the feedback record for a manifest ID
+        :param manifest_id:
+        :return: GenomicManifestFeedback object
+        """
+        with self.session() as session:
+            return session.query(GenomicManifestFeedback).filter(
+                GenomicManifestFeedback.inputManifestFileId == manifest_id,
+                GenomicManifestFeedback.ignore == False
+            ).one_or_none()
+
+    def increment_feedback_count(self, manifest_id):
+        """
+        Update the manifest feedback record's count
+        :param manifest_id:
+        :return:
+        """
+        fb = self.get_feedback_record_from_manifest_id(manifest_id)
+
+        # Increment and update the record
+        if fb is not None:
+            fb.feedbackRecordCount += 1
+
+            with self.session() as session:
+                session.merge(fb)
+        else:
+            raise ValueError(f'No feedback record for manifest id {manifest_id}')
+
+    def get_feedback_equals_record_count(self):
+        """
+        Retrieves feedback records where feedback count = record_count
+        :return: list of feedback records
+        """
+
+        with self.session() as session:
+            results = session.query(GenomicManifestFeedback).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
+            ).filter(
+                GenomicManifestFeedback.ignore == 0,
+                GenomicManifestFeedback.feedbackRecordCount == GenomicManifestFile.recordCount,
+                GenomicManifestFeedback.feedbackManifestFileId == None,
+            ).all()
+
+        return list(results)
+
+    def get_feedback_records_for_aw2f(self):
+        pass

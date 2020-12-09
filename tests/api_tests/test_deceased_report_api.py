@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 import pytz
 from mock import patch
@@ -16,25 +17,11 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class DeceasedReportTestBase(BaseTestCase):
-    def setUp(self):
-        super(DeceasedReportTestBase, self).setUp()
-        self.original_user_roles = None
 
-    def tearDown(self):
-        if self.original_user_roles is not None:
-            self.overwrite_test_user_roles(self.original_user_roles, save_current=False)
-
-        super(DeceasedReportTestBase, self).tearDown()
-
-    def overwrite_test_user_roles(self, roles, save_current=True):
-        user_info = config.getSettingJson(config.USER_INFO)
-
-        if save_current:
-            # Save what was there so we can set it back in the tearDown
-            self.original_user_roles = user_info['example@example.com']['roles']
-
-        user_info['example@example.com']['roles'] = roles
-        config.override_setting(config.USER_INFO, user_info)
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     @staticmethod
     def get_deceased_report_id(response):
@@ -493,10 +480,10 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.overwrite_test_user_roles(['testing'])
         self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
 
-        self.overwrite_test_user_roles([PTC], save_current=False)
+        self.overwrite_test_user_roles([PTC])
         self.post_report_review(review_json, report.id, report.participantId, expected_status=403)
 
-        self.overwrite_test_user_roles([HEALTHPRO], save_current=False)
+        self.overwrite_test_user_roles([HEALTHPRO])
         self.post_report_review(review_json, report.id, report.participantId, expected_status=200)
 
     def test_report_denial(self):
@@ -819,8 +806,8 @@ class SearchDeceasedReportApiTest(DeceasedReportTestBase):
         self.overwrite_test_user_roles(['TEST'])
         self.send_get(f'DeceasedReports', expected_status=403)
 
-        self.overwrite_test_user_roles([PTC], save_current=False)
+        self.overwrite_test_user_roles([PTC])
         self.send_get(f'DeceasedReports', expected_status=403)
 
-        self.overwrite_test_user_roles([HEALTHPRO], save_current=False)
+        self.overwrite_test_user_roles([HEALTHPRO])
         self.send_get(f'DeceasedReports', expected_status=200)

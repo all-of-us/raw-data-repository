@@ -49,14 +49,14 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-    ParticipantCohort, GenomicQcStatus)
+    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
     GenomicFileProcessedDao,
     GenomicSetDao,
-    GenomicJobRunDao
-)
+    GenomicJobRunDao,
+    GenomicManifestFeedbackDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -79,6 +79,7 @@ from rdr_service.config import (
     GAE_PROJECT,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
+    BIOBANK_AW2F_SUBFOLDER,
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 
@@ -116,6 +117,7 @@ class GenomicFileIngester:
         self.member_dao = GenomicSetMemberDao()
         self.job_run_dao = GenomicJobRunDao()
         self.sample_dao = BiobankStoredSampleDao()
+        self.feedback_dao = GenomicManifestFeedbackDao()
 
     def generate_file_processing_queue(self):
         """
@@ -124,6 +126,14 @@ class GenomicFileIngester:
         """
         # Check Target file is set.
         # It will not be set in cron job, but will be set by tool when run manually
+
+        _manifest_file_id = None
+
+        try:
+            _manifest_file_id = self.controller.task_data.manifest_file.id
+        except AttributeError:
+            pass
+
         if self.target_file is not None:
             if self.controller.storage_provider is not None:
                 _blob = self.controller.storage_provider.get_blob(self.bucket_name, self.target_file)
@@ -145,7 +155,8 @@ class GenomicFileIngester:
                     file_path,
                     self.bucket_name,
                     file_data[0].split('/')[-1],
-                    upload_date=file_data[1])
+                    upload_date=file_data[1],
+                    manifest_file_id=_manifest_file_id)
 
                 # For BQ/PDR
                 bq_genomic_file_processed_update(new_file_record.id, project_id=self.controller.bq_project_id)
@@ -359,6 +370,7 @@ class GenomicFileIngester:
                         member.__setattr__(key, None)
 
                 member.reconcileGCManifestJobRunId = self.job_run_id
+                member.aw1FileProcessedId = self.file_obj.id
 
                 # Update genomic state for failures
                 _signal = "aw1-reconciled"
@@ -551,20 +563,38 @@ class GenomicFileIngester:
             except KeyError:
                 pass
 
-            # TODO: Fix aligned q30 bases data-length
-
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id_with_state(int(sample_id),
-                                                                          genome_type,
-                                                                          GenomicWorkflowState.AW1)
+            member = self.member_dao.get_member_from_sample_id(int(sample_id),
+                                                               genome_type,)
             if member is not None:
                 row_copy['member_id'] = member.id
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
                 if existing_metrics_obj is None:
-                    self.member_dao.update_member_state(member, GenomicWorkflowState.AW2)
+
+                    # Calculate contamination_category if contamination supplied
+                    try:
+                        category = self.calculate_contamination_category(float(row_copy['contamination']), member)
+                        row_copy['contamination_category'] = category
+
+                    except (KeyError, ValueError):
+                        logging.error('Sample supplied without contamination.')
+
                     self.metrics_dao.insert_gc_validation_metrics(row_copy)
+
+                    member.aw2FileProcessedId = self.file_obj.id
+                    member.genomicWorkflowState = GenomicWorkflowState.AW2
+
+                    with self.member_dao.session() as session:
+                        session.merge(member)
+
+                    # For feedback manifest loop
+                    # Get the genomic_manifest_file
+                    manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+                    if manifest_file is not None:
+                        self.feedback_dao.increment_feedback_count(manifest_file.id)
 
                 else:
                     logging.info(f"Found existing metrics object for member ID {member.id}")
@@ -714,6 +744,36 @@ class GenomicFileIngester:
         else:
             logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
             return GenomicQcStatus.UNSET
+
+    def calculate_contamination_category(self, raw_contamination, member):
+        """
+        Takes contamination value from AW2 and calculates GenomicContaminationCategory
+        :param raw_contamination:
+        :param member:
+        :return: GenomicContaminationCategory
+        """
+        ps_dao = ParticipantSummaryDao()
+        ps = ps_dao.get(member.participantId)
+
+        # TODO: implement terminal, no extract
+
+        # No Extract if contamination <1%
+        if raw_contamination < 0.01:
+            return GenomicContaminationCategory.NO_EXTRACT
+
+        # Only extract WGS if contamination between 1 and 3 % inclusive AND ROR
+        elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+            return GenomicContaminationCategory.EXTRACT_WGS
+
+        # No Extract if contamination between 1 and 3 % inclusive and GROR is not Yes
+        elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
+            return GenomicContaminationCategory.NO_EXTRACT
+
+        # Extract Both if contamination > 3%
+        elif raw_contamination > 0.03:
+            return GenomicContaminationCategory.EXTRACT_BOTH
+
+        return GenomicContaminationCategory.UNSET
 
 
 class GenomicFileValidator:
@@ -2181,6 +2241,17 @@ class ManifestDefinitionProvider:
             signal="bypass",
         )
 
+        # DRC to Biobank AW2F Feedback/Contamination Manifest
+        # TODO: Get filename from manifest_file record
+        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW2F] = self.ManifestDef(
+            job_run_field=None,
+            source_data=self._get_source_data_query(GenomicManifestTypes.AW2F),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
+            columns=self._get_manifest_columns(GenomicManifestTypes.AW2F),
+            signal="bypass",
+        )
+
     def _get_source_data_query(self, manifest_type):
         """
         Returns the query to use for manifest's source data
@@ -2415,6 +2486,77 @@ class ManifestDefinitionProvider:
                 )
             )
 
+        if manifest_type == GenomicManifestTypes.AW2F:
+            query_sql = (
+                sqlalchemy.select(
+                    [
+                        GenomicSetMember.packageId,
+                        sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                               GenomicSetMember.biobankId, "_", GenomicSetMember.sampleId),
+                        GenomicSetMember.gcManifestBoxStorageUnitId,
+                        GenomicSetMember.gcManifestBoxPlateId,
+                        GenomicSetMember.gcManifestWellPosition,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.gcManifestParentSampleId,
+                        GenomicSetMember.collectionTubeId,
+                        GenomicSetMember.gcManifestMatrixId,
+                        sqlalchemy.bindparam('collection_date', ''),
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sexAtBirth,
+                        sqlalchemy.bindparam('age', ''),
+                        sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
+                                           sqlalchemy.sql.expression.literal("Y"),
+                                           sqlalchemy.sql.expression.literal("N")),
+                        sqlalchemy.bindparam('sample_type', 'DNA'),
+                        GenomicSetMember.gcManifestTreatments,
+                        GenomicSetMember.gcManifestQuantity_ul,
+                        GenomicSetMember.gcManifestTotalConcentration_ng_per_ul,
+                        GenomicSetMember.gcManifestTotalDNA_ng,
+                        GenomicSetMember.gcManifestVisitDescription,
+                        GenomicSetMember.gcManifestSampleSource,
+                        GenomicSetMember.gcManifestStudy,
+                        GenomicSetMember.gcManifestTrackingNumber,
+                        GenomicSetMember.gcManifestContact,
+                        GenomicSetMember.gcManifestEmail,
+                        GenomicSetMember.gcManifestStudyPI,
+                        GenomicSetMember.gcManifestTestName,
+                        GenomicSetMember.gcManifestFailureMode,
+                        GenomicSetMember.gcManifestFailureDescription,
+                        GenomicGCValidationMetrics.processingStatus,
+                        GenomicGCValidationMetrics.contamination,
+                        sqlalchemy.case(
+                            [
+                                (GenomicGCValidationMetrics.contaminationCategory ==
+                                 GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
+
+                                (GenomicGCValidationMetrics.contaminationCategory ==
+                                 GenomicContaminationCategory.NO_EXTRACT, "no extract"),
+
+                                (GenomicGCValidationMetrics.contaminationCategory ==
+                                 GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
+
+                                (GenomicGCValidationMetrics.contaminationCategory ==
+                                 GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
+                            ], else_=""
+                        ),
+                        sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                           sqlalchemy.sql.expression.literal("yes"),
+                                           sqlalchemy.sql.expression.literal("no")),
+                    ]
+                ).select_from(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    )
+                ).where(
+                    (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicSetMember.genomeType == "aou_array")
+                )
+            )
+
         return query_sql
 
     def _get_manifest_columns(self, manifest_type):
@@ -2513,6 +2655,43 @@ class ManifestDefinitionProvider:
                 "research_id",
             )
 
+        elif manifest_type == GenomicManifestTypes.AW2F:
+            columns = (
+                "PACKAGE_ID",
+                "BIOBANKID_SAMPLEID",
+                "BOX_STORAGEUNIT_ID",
+                "BOX_ID/PLATE_ID",
+                "WELL_POSITION",
+                "SAMPLE_ID",
+                "PARENT_SAMPLE_ID",
+                "COLLECTION_TUBE_ID",
+                "MATRIX_ID",
+                "COLLECTION_DATE",
+                "BIOBANK_ID",
+                "SEX_AT_BIRTH",
+                "AGE",
+                "NY_STATE_(Y/N)",
+                "SAMPLE_TYPE",
+                "TREATMENTS",
+                "QUANTITY_(uL)",
+                "TOTAL_CONCENTRATION_(ng/uL)",
+                "TOTAL_DNA(ng)",
+                "VISIT_DESCRIPTION",
+                "SAMPLE_SOURCE",
+                "STUDY",
+                "TRACKING_NUMBER",
+                "CONTACT",
+                "EMAIL",
+                "STUDY_PI",
+                "TEST_NAME",
+                "FAILURE_MODE",
+                "FAILURE_MODE_DESC",
+                "PROCESSING_STATUS",
+                "CONTAMINATION",
+                "CONTAMINATION_CATEGORY",
+                "CONSENT_FOR_ROR",
+            )
+
         return columns
 
     def get_def(self, manifest_type):
@@ -2539,10 +2718,13 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type, genome_type):
+    def generate_and_transfer_manifest(self, manifest_type, genome_type, **kwargs):
         """
         Main execution method for ManifestCompiler
-        :return: result code
+        :return: result dict:
+            "code": (i.e. SUCCESS)
+            "feedback_file": None or feedback file record to update,
+            "record_count": integer
         """
         self.manifest_def = self.def_provider.get_def(manifest_type)
 
@@ -2550,23 +2732,43 @@ class ManifestCompiler:
         if source_data:
             self.output_file_name = self.manifest_def.output_filename
 
+            # If the new manifest is a feedback manifest,
+            # it will have an input manifest
+            if "input_manifest" in kwargs.keys():
+
+                # AW2F manifest file name is based of of AW1
+                if manifest_type == GenomicManifestTypes.AW2F:
+
+                    new_name = kwargs['input_manifest'].filePath.split('/')[-1]
+                    new_name = new_name.replace('.csv', '_contamination.csv')
+
+                    self.output_file_name = self.manifest_def.output_filename.replace(
+                        "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
+                        f"{new_name}"
+                    )
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.manifest_def.output_filename}'
+                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
             )
 
             self._write_and_upload_manifest(source_data)
 
             results = []
+
+            record_count = len(source_data)
+
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-                results.append(
-                    self.member_dao.update_member_job_run_id(
-                        member,
-                        job_run_id=self.run_id,
-                        field=self.manifest_def.job_run_field
+
+                if self.manifest_def.job_run_field is not None:
+                    results.append(
+                        self.member_dao.update_member_job_run_id(
+                            member,
+                            job_run_id=self.run_id,
+                            field=self.manifest_def.job_run_field
+                        )
                     )
-                )
 
                 # Handle Genomic States for manifests
                 if self.manifest_def.signal != "bypass":
@@ -2576,9 +2778,17 @@ class ManifestCompiler:
                     if new_state is not None or new_state != member.genomicWorkflowState:
                         self.member_dao.update_member_state(member, new_state)
 
-            return GenomicSubProcessResult.SUCCESS \
+            # Assemble result dict
+            result_code = GenomicSubProcessResult.SUCCESS \
                 if GenomicSubProcessResult.ERROR not in results \
                 else GenomicSubProcessResult.ERROR
+
+            result = {
+                "code": result_code,
+                "record_count": record_count,
+            }
+
+            return result
         logging.info(f'No records found for manifest type: {manifest_type}.')
         return GenomicSubProcessResult.NO_FILES
 
@@ -2598,7 +2808,7 @@ class ManifestCompiler:
         try:
             # Use SQL exporter
             exporter = SqlExporter(self.bucket_name)
-            with exporter.open_cloud_writer(self.manifest_def.output_filename) as writer:
+            with exporter.open_cloud_writer(self.output_file_name) as writer:
                 writer.write_header(self.manifest_def.columns)
                 writer.write_rows(source_data)
             return GenomicSubProcessResult.SUCCESS
