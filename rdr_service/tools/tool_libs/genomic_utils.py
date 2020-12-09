@@ -583,7 +583,7 @@ class JobRunResult(GenomicManifestBase):
             self.dao.update(job_run)
 
             # Update run for PDR
-            bq_genomic_job_run_update(job_run.id)
+            bq_genomic_job_run_update(job_run.id, project_id=self.gcp_env.project)
             genomic_job_run_update(job_run.id)
 
         return 0
@@ -1021,7 +1021,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                                       storage_provider=self.gscp,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
-                controller.ingest_specific_aw2_manifest(file_name)
+                controller.ingest_specific_manifest(file_name)
 
             return 0
 

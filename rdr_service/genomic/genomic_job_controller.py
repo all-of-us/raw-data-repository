@@ -176,9 +176,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_specific_aw2_manifest(self, filename):
+    def ingest_specific_manifest(self, filename):
         """
-        Uses GenomicFileIngester to ingest specific GC Validation Manifest files (AW2).
+        Uses GenomicFileIngester to ingest specific Manifest file.
         """
         try:
             self.ingester = GenomicFileIngester(job_id=self.job_id,

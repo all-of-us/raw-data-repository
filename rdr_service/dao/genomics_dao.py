@@ -10,8 +10,8 @@ from sqlalchemy.sql import functions
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
-from rdr_service.dao.base_dao import UpdatableDao, BaseDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update, bq_genomic_set_member_update
+from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -32,7 +32,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_gc_validation_metrics_update, genomic_set_member_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -810,7 +810,7 @@ class GenomicFileProcessedDao(UpdatableDao):
         return session.execute(query, query_params)
 
 
-class GenomicGCValidationMetricsDao(UpdatableDao):
+class GenomicGCValidationMetricsDao(UpsertableDao):
     """ Stub for GenomicGCValidationMetrics model """
 
     def from_client_json(self):
@@ -848,30 +848,25 @@ class GenomicGCValidationMetricsDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
-    def insert_gc_validation_metrics(self, data_to_insert):
+    def upsert_gc_validation_metrics_from_dict(self, data_to_upsert, existing_id=None):
         """
-        Insert a GC validation metrics object
-        :param data_to_insert: dictionary of row-data from AW2 file to insert
-        :return: result code
+        Upsert a GC validation metrics object
+        :param data_to_upsert: dictionary of row-data from AW2 file to insert
+        :param existing_id: an existing metrics ID if it is available
+        :return: upserted metrics object
         """
-        try:
-            gc_metrics_obj = GenomicGCValidationMetrics()
-            for key in self.data_mappings.keys():
-                try:
-                    gc_metrics_obj.__setattr__(key, data_to_insert[self.data_mappings[key]])
-                except KeyError:
-                    gc_metrics_obj.__setattr__(key, None)
+        gc_metrics_obj = GenomicGCValidationMetrics()
+        gc_metrics_obj.id = existing_id
+        for key in self.data_mappings.keys():
+            try:
+                gc_metrics_obj.__setattr__(key, data_to_upsert[self.data_mappings[key]])
+            except KeyError:
+                gc_metrics_obj.__setattr__(key, None)
 
-            logging.info(f'Inserting GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
-            inserted_metrics_obj = self.insert(gc_metrics_obj)
+        logging.info(f'Inserting GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
+        upserted_metrics_obj = self.upsert(gc_metrics_obj)
 
-            # Update GC Metrics for PDR
-            bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
-            genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
-
-            return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
-            return GenomicSubProcessResult.ERROR
+        return upserted_metrics_obj
 
     def get_null_set_members(self):
         """

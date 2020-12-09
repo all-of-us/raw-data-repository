@@ -227,24 +227,21 @@ class GenomicPipelineTest(BaseTestCase):
         self.summary_dao.insert(summary)
         return summary
 
-    def test_gc_validation_metrics_end_to_end(self):
+    def test_ingest_array_aw2_end_to_end(self):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
         # add to subfolder
-        end_to_end_test_files = (
-            'RDR_AoU_GEN_TestDataManifest.csv',
-            'test_empty_wells.csv'
-        )
+        test_file = 'RDR_AoU_GEN_TestDataManifest.csv'
 
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
 
-        for test_file in end_to_end_test_files:
-            pytz.timezone('US/Central').localize(test_date)
+        pytz.timezone('US/Central').localize(test_date)
 
-            with clock.FakeClock(test_date):
-                self._create_ingestion_test_file(test_file, bucket_name,
-                                                 folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
-                                                 include_sub_num=True)
+        with clock.FakeClock(test_date):
+            test_file_name = self._create_ingestion_test_file(test_file, bucket_name,
+                                                              folder=subfolder,
+                                                              include_sub_num=True)
 
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
@@ -252,15 +249,37 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
-        # run the GC Metrics Ingestion workflow
-        genomic_pipeline.ingest_genomic_centers_metrics_files()
+        # run the GC Metrics Ingestion workflow via cloud task
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
+            }
+        }
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         # test file processing queue
-        files_processed = self.file_processed_dao.get_all()
-        self.assertEqual(len(files_processed), 1)
-        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
+        file_processed = self.file_processed_dao.get(1)
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(file_processed.uploadDate))
+        self.assertEqual(1, file_processed.genomicManifestFileId)
 
-        self._gc_files_processed_test_cases(files_processed)
+        self.assertEqual(
+            file_processed.fileName,
+            'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
+        )
+        self.assertEqual(
+            file_processed.filePath,
+            f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+            f'{config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])}/'
+            f'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
+        )
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -275,13 +294,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, member.aw2FileProcessedId)
 
         # Test successful run result
-        run_obj = self.job_run_dao.get(1)
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
         # Test Inserted metrics are not re-inserted
         # Setup Test file (reusing test file)
         updated_aw2_file = test_data.open_genomic_set_file('RDR_AoU_GEN_TestDataManifest.csv')
-        #updated_aw2_file = updated_aw2_file.replace('10002', '11002')
+        updated_aw2_file = updated_aw2_file.replace('10002', '11002')
 
         updated_aw2_filename = "RDR_AoU_GEN_TestDataManifest_11192020.csv"
 
@@ -289,26 +308,22 @@ class GenomicPipelineTest(BaseTestCase):
             updated_aw2_filename,
             updated_aw2_file,
             bucket=bucket_name,
-            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]),
+            folder=subfolder,
         )
 
-        # Reset members' states back to AW1
-        members = self.member_dao.get_all()
-        for m in members:
-            m.genomicWorkflowState = GenomicWorkflowState.AW1
-            self.member_dao.update(m)
-
         # run the GC Metrics Ingestion workflow again
-        genomic_pipeline.ingest_genomic_centers_metrics_files()
+        task_data['file_data']['file_path'] = f"{bucket_name}/{subfolder}/{updated_aw2_filename}"
+
+        # Simulate new file uploaded
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         gc_metrics = self.metrics_dao.get_all()
-        # Test that the insert is skipped
+        # Test that no new records were inserted
         self.assertEqual(len(gc_metrics), 2)
-        # TODO: Removing the update functionality for now.
-        #  When rerunning AW2, previously inserted metrics will be skipped
-        # for m in gc_metrics:
-        #     if m.genomicSetMemberId == 2:
-        #         self.assertEqual(m.limsId, '11002')
+        # Test the data was updated
+        for m in gc_metrics:
+            if m.genomicSetMemberId == 2:
+                self.assertEqual(m.limsId, '11002')
 
     def test_ingest_specific_aw2_file(self):
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
@@ -339,7 +354,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Use the Controller to run the job
         with GenomicJobController(GenomicJob.METRICS_INGESTION) as controller:
             controller.bucket_name = bucket_name
-            controller.ingest_specific_aw2_manifest(file_name)
+            controller.ingest_specific_manifest(file_name)
 
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
@@ -445,18 +460,35 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
 
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         pytz.timezone('US/Central').localize(test_date)
 
         with clock.FakeClock(test_date):
-            self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                             bucket_name,
-                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+            test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                                               bucket_name,
+                                                               folder=subfolder)
 
         self._update_test_sample_ids()
 
-        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        # run the GC Metrics Ingestion workflow via cloud task
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
+            }
+        }
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        #genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()
@@ -483,6 +515,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
     def _create_ingestion_test_file(self,
                                     test_data_filename,
@@ -502,6 +535,7 @@ class GenomicPipelineTest(BaseTestCase):
                               test_data_file,
                               folder=folder,
                               bucket=bucket_name)
+        return input_filename
 
     def _create_fake_genomic_set(self,
                                  genomic_set_name,

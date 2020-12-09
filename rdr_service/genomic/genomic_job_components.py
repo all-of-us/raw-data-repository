@@ -571,38 +571,43 @@ class GenomicFileIngester:
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    metric_id = None
 
-                if existing_metrics_obj is None:
+                # Calculate contamination_category if contamination supplied
+                try:
+                    category = self.calculate_contamination_category(float(row_copy['contamination']), member)
+                    row_copy['contamination_category'] = category
 
-                    # Calculate contamination_category if contamination supplied
-                    try:
-                        category = self.calculate_contamination_category(float(row_copy['contamination']), member)
-                        row_copy['contamination_category'] = category
+                except (KeyError, ValueError):
+                    logging.error('Sample supplied without contamination.')
 
-                    except (KeyError, ValueError):
-                        logging.error('Sample supplied without contamination.')
+                upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
-                    self.metrics_dao.insert_gc_validation_metrics(row_copy)
+                # Update GC Metrics for PDR
+                if upserted_obj:
+                    bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(upserted_obj.id)
 
-                    member.aw2FileProcessedId = self.file_obj.id
+                member.aw2FileProcessedId = self.file_obj.id
+
+                # Only update the state if it was AW1
+                if member.genomicWorkflowState == GenomicWorkflowState.AW1:
                     member.genomicWorkflowState = GenomicWorkflowState.AW2
 
-                    with self.member_dao.session() as session:
-                        session.merge(member)
+                with self.member_dao.session() as session:
+                    session.merge(member)
 
-                    # For feedback manifest loop
-                    # Get the genomic_manifest_file
-                    manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-                    if manifest_file is not None:
-                        self.feedback_dao.increment_feedback_count(manifest_file.id)
-
-                else:
-                    logging.info(f"Found existing metrics object for member ID {member.id}")
-                    # Don't overwrite metrics object
-                    continue
+                # For feedback manifest loop
+                # Get the genomic_manifest_file
+                manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+                if manifest_file is not None:
+                    self.feedback_dao.increment_feedback_count(manifest_file.id)
 
             else:
-                logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
                 continue
 
         return GenomicSubProcessResult.SUCCESS
@@ -1229,7 +1234,7 @@ class GenomicReconciler:
                         setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.update(metric)
+            inserted_metrics_obj = self.metrics_dao.upsert(metric)
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
@@ -1300,7 +1305,7 @@ class GenomicReconciler:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.update(metric.GenomicGCValidationMetrics)
+            inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
