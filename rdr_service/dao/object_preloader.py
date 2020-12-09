@@ -43,8 +43,12 @@ class ObjectPreloader:
         :param strategy_map: A dictionary keyed with each model class that will need to be loaded, and a concrete
         LoadingStrategy class that defines how to interact with the object
         """
-        self._object_class_map = {}
         self._strategy_map = strategy_map
+        self._initialize_object_state()
+
+    def _initialize_object_state(self):
+        self._object_class_map = {}
+        self.is_hydrated = False
 
     def _get_strategy_for_class(self, object_class) -> LoadingStrategy:
         strategy = self._strategy_map.get(object_class)
@@ -88,6 +92,8 @@ class ObjectPreloader:
                 key = strategy.get_key_from_object(obj)
                 object_map[key] = obj
 
+        self.is_hydrated = True
+
     def get_object(self, obj):
         """
         Retrieve an object that has been loaded from the database.
@@ -98,3 +104,9 @@ class ObjectPreloader:
         object_map = self._get_object_map_for_class(object_class)
         strategy = self._get_strategy_for_class(object_class)
         return object_map.get(strategy.get_key_from_object(obj))
+
+    def clear(self):
+        """
+        Clears out hydrated and registered objects so the preloader instance can be reused.
+        """
+        self._initialize_object_state()

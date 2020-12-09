@@ -5,7 +5,7 @@ from rdr_service.model.config_utils import from_client_biobank_id, to_client_bio
 from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.dao.object_preloader import LoadingStrategy
+from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
 from werkzeug.exceptions import BadRequest
@@ -53,6 +53,10 @@ class AliquotDatasetItemLoadingStrategy(LoadingStrategy):
 
 
 class BiobankDaoBase(UpdatableDao):
+    def __init__(self, object_type, preloader=None):
+        super(BiobankDaoBase, self).__init__(object_type)
+        self.preloader: ObjectPreloader = preloader
+
     @staticmethod
     def parse_nullable_date(date_str):
         if date_str:  # Empty strings are falsy
@@ -161,8 +165,14 @@ class BiobankSpecimenDao(BiobankDaoBase):
 
     validate_version_match = False
 
-    def __init__(self):
-        super().__init__(BiobankSpecimen)
+    def __init__(self, preloader=ObjectPreloader({
+        BiobankSpecimen: RlimsIdLoadingStrategy,
+        BiobankSpecimenAttribute: SpecimenAttributeLoadingStrategy,
+        BiobankAliquot: RlimsIdLoadingStrategy,
+        BiobankAliquotDataset: RlimsIdLoadingStrategy,
+        BiobankAliquotDatasetItem: AliquotDatasetItemLoadingStrategy
+    })):
+        super().__init__(BiobankSpecimen, preloader=preloader)
 
     def get_etag(self, id_, pid):  # pylint: disable=unused-argument
         return None
@@ -223,17 +233,31 @@ class BiobankSpecimenDao(BiobankDaoBase):
 
         with self.session() as session:
             if 'attributes' in resource:
-                attribute_dao = BiobankSpecimenAttributeDao()
+                attribute_dao = BiobankSpecimenAttributeDao(preloader=self.preloader)
                 order.attributes = attribute_dao.collection_from_json(resource['attributes'],
                                                                       specimen_rlims_id=order.rlimsId, session=session)
 
             if 'aliquots' in resource:
-                aliquot_dao = BiobankAliquotDao()
+                aliquot_dao = BiobankAliquotDao(preloader=self.preloader)
                 order.aliquots = aliquot_dao.collection_from_json(resource['aliquots'],
                                                                   specimen_rlims_id=order.rlimsId, session=session)
 
             order.id = self.get_id_with_session(order, session)
         return order
+
+    def ready_preloader(self, specimen_json):
+        specimen_rlims_id = specimen_json['rlimsID']
+        self.preloader.register_for_hydration(BiobankSpecimen(rlimsId=specimen_rlims_id))
+
+        if 'attributes' in specimen_json:
+            attribute_dao = BiobankSpecimenAttributeDao()
+            for attribute_json in specimen_json['attributes']:
+                attribute_dao.ready_preloader(self.preloader, attribute_json, specimen_rlims_id)
+
+        if 'aliquots' in specimen_json:
+            aliquot_dao = BiobankAliquotDao()
+            for aliquot_json in specimen_json['aliquots']:
+                aliquot_dao.ready_preloader(self.preloader, aliquot_json)
 
     def exists(self, resource):
         with self.session() as session:
@@ -243,11 +267,14 @@ class BiobankSpecimenDao(BiobankDaoBase):
     def get_with_rlims_id(rlims_id, session):
         return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == rlims_id).one()
 
-    @staticmethod
-    def get_id_with_session(obj, session):
-        order = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one_or_none()
-        if order is not None:
-            return order.id
+    def get_id_with_session(self, obj, session):
+        if self.preloader and self.preloader.is_hydrated:
+            specimen = self.preloader.get_object(obj)
+        else:
+            specimen = session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == obj.rlimsId).one_or_none()
+
+        if specimen is not None:
+            return specimen.id
         else:
             return None
 
@@ -270,8 +297,8 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
 
     validate_version_match = False
 
-    def __init__(self):
-        super().__init__(BiobankSpecimenAttribute)
+    def __init__(self, preloader=None):
+        super().__init__(BiobankSpecimenAttribute, preloader=preloader)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
@@ -292,6 +319,12 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
             attribute.id = self.get_id_with_session(attribute, session)
         return attribute
 
+    @staticmethod
+    def ready_preloader(preloader: ObjectPreloader, attribute_json, specimen_rlims_id):
+        attribute = BiobankSpecimenAttribute(name=attribute_json['name'])
+        attribute.specimen_rlims_id = specimen_rlims_id
+        preloader.register_for_hydration(attribute)
+
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
@@ -301,12 +334,15 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
 
         return result
 
-    @staticmethod
-    def get_id_with_session(obj, session):
-        attribute = session.query(BiobankSpecimenAttribute).filter(
-            BiobankSpecimenAttribute.specimen_rlims_id == obj.specimen_rlims_id,
-            BiobankSpecimenAttribute.name == obj.name
-        ).one_or_none()
+    def get_id_with_session(self, obj, session):
+        if self.preloader and self.preloader.is_hydrated:
+            attribute = self.preloader.get_object(obj)
+        else:
+            attribute = session.query(BiobankSpecimenAttribute).filter(
+                BiobankSpecimenAttribute.specimen_rlims_id == obj.specimen_rlims_id,
+                BiobankSpecimenAttribute.name == obj.name
+            ).one_or_none()
+
         if attribute is not None:
             return attribute.id
         else:
@@ -317,8 +353,8 @@ class BiobankAliquotDao(BiobankDaoBase):
 
     validate_version_match = False
 
-    def __init__(self):
-        super().__init__(BiobankAliquot)
+    def __init__(self, preloader=None):
+        super().__init__(BiobankAliquot, preloader=preloader)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
@@ -352,7 +388,7 @@ class BiobankAliquotDao(BiobankDaoBase):
             self.read_client_disposal(resource['disposalStatus'], aliquot)
 
         if 'datasets' in resource:
-            dataset_dao = BiobankAliquotDatasetDao()
+            dataset_dao = BiobankAliquotDatasetDao(preloader=self.preloader)
             aliquot.datasets = dataset_dao.collection_from_json(resource['datasets'], aliquot_rlims_id=aliquot.rlimsId,
                                                                 session=session)
 
@@ -361,6 +397,18 @@ class BiobankAliquotDao(BiobankDaoBase):
                                                          parent_aliquot_rlims_id=aliquot.rlimsId, session=session)
 
         aliquot.id = self.get_id_with_session(aliquot, session)
+
+    def ready_preloader(self, preloader: ObjectPreloader, aliquot_json):
+        preloader.register_for_hydration(BiobankAliquot(rlimsId=aliquot_json['rlimsID']))
+
+        if 'datasets' in aliquot_json:
+            dataset_dao = BiobankAliquotDatasetDao()
+            for dataset_json in aliquot_json['datasets']:
+                dataset_dao.ready_preloader(preloader, dataset_json)
+
+        if 'aliquots' in aliquot_json:
+            for child_json in aliquot_json['aliquots']:
+                self.ready_preloader(preloader, child_json)
 
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
@@ -388,11 +436,14 @@ class BiobankAliquotDao(BiobankDaoBase):
     def get_with_rlims_id(rlims_id, session):
         return session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id).one()
 
-    @staticmethod
-    def get_id_with_session(obj, session):
-        aliquot = session.query(BiobankAliquot).filter(
-            BiobankAliquot.rlimsId == obj.rlimsId,
-        ).one_or_none()
+    def get_id_with_session(self, obj, session):
+        if self.preloader and self.preloader.is_hydrated:
+            aliquot = self.preloader.get_object(obj)
+        else:
+            aliquot = session.query(BiobankAliquot).filter(
+                BiobankAliquot.rlimsId == obj.rlimsId,
+            ).one_or_none()
+
         if aliquot is not None:
             return aliquot.id
         else:
@@ -403,8 +454,8 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
     validate_version_match = False
 
-    def __init__(self):
-        super().__init__(BiobankAliquotDataset)
+    def __init__(self, preloader=None):
+        super().__init__(BiobankAliquotDataset, preloader=preloader)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
@@ -419,7 +470,7 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
             self.map_optional_json_field_to_object(resource, dataset, field_name)
 
         if 'datasetItems' in resource:
-            item_dao = BiobankAliquotDatasetItemDao()
+            item_dao = BiobankAliquotDatasetItemDao(preloader=self.preloader)
 
             if session is None:
                 with self.session() as session:
@@ -432,6 +483,16 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
         dataset.id = self.get_id_with_session(dataset, session)
         return dataset
+
+    def ready_preloader(self, preloader: ObjectPreloader, dataset_json):
+        dataset_rlims_id = dataset_json['rlimsID']
+        preloader.register_for_hydration(BiobankAliquotDataset(rlimsId=dataset_rlims_id))
+
+        if 'datasetItems' in dataset_json:
+            item_dao = BiobankAliquotDatasetItemDao()
+
+            for dataset_item_json in dataset_json['datasetItems']:
+                item_dao.ready_preloader(preloader, dataset_item_json, dataset_rlims_id)
 
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
@@ -446,11 +507,14 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
         return result
 
-    @staticmethod
-    def get_id_with_session(obj, session):
-        dataset = session.query(BiobankAliquotDataset).filter(
-            BiobankAliquotDataset.rlimsId == obj.rlimsId,
-        ).one_or_none()
+    def get_id_with_session(self, obj, session):
+        if self.preloader and self.preloader.is_hydrated:
+            dataset = self.preloader.get_object(obj)
+        else:
+            dataset = session.query(BiobankAliquotDataset).filter(
+                BiobankAliquotDataset.rlimsId == obj.rlimsId,
+            ).one_or_none()
+
         if dataset is not None:
             return dataset.id
         else:
@@ -459,8 +523,8 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
 
 class BiobankAliquotDatasetItemDao(BiobankDaoBase):
 
-    def __init__(self):
-        super().__init__(BiobankAliquotDatasetItem)
+    def __init__(self, preloader=None):
+        super().__init__(BiobankAliquotDatasetItem, preloader=preloader)
 
     #pylint: disable=unused-argument
     def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
@@ -477,6 +541,11 @@ class BiobankAliquotDatasetItemDao(BiobankDaoBase):
         item.id = self.get_id_with_session(item, session)
         return item
 
+    def ready_preloader(self, preloader: ObjectPreloader, dataset_item_json, dataset_rlims_id):
+        dataset_item = BiobankAliquotDatasetItem(paramId=dataset_item_json['paramID'])
+        dataset_item.dataset_rlims_id = dataset_rlims_id
+        preloader.register_for_hydration(dataset_item)
+
     def to_client_json_with_session(self, model, session):
         result = model.asdict()
 
@@ -487,12 +556,15 @@ class BiobankAliquotDatasetItemDao(BiobankDaoBase):
 
         return result
 
-    @staticmethod
-    def get_id_with_session(obj, session):
-        dataset_item = session.query(BiobankAliquotDatasetItem).filter(
-            BiobankAliquotDatasetItem.dataset_rlims_id == obj.dataset_rlims_id,
-            BiobankAliquotDatasetItem.paramId == obj.paramId
-        ).one_or_none()
+    def get_id_with_session(self, obj, session):
+        if self.preloader and self.preloader.is_hydrated:
+            dataset_item = self.preloader.get_object(obj)
+        else:
+            dataset_item = session.query(BiobankAliquotDatasetItem).filter(
+                BiobankAliquotDatasetItem.dataset_rlims_id == obj.dataset_rlims_id,
+                BiobankAliquotDatasetItem.paramId == obj.paramId
+            ).one_or_none()
+
         if dataset_item is not None:
             return dataset_item.id
         else:
