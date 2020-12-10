@@ -106,8 +106,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
         # This section refactors how the module answer data is built, replacing  the sp_get_questionnaire_answers
         # stored procedure.  That procedure's logic was no longer consistent with how codebook structures are defined
-        # in the new REDCap-managed DRC process.  TODO: tech debt item for PDR PostgreSQL to consider changes to code
-        #  table more robustly handle the codebook definitions we get from REDCap
+        # in the new REDCap-managed DRC process.  TODO: tech debt for PDR PostgreSQL to consider changes to the
+        #  code table sp we can more robustly handle the codebook definitions we get from REDCap
         with self.ro_dao.session() as session:
 
             question_codes = session.execute(_question_code_sql, {'module_id': module_id})
@@ -122,30 +122,27 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id})
-                # Answers are processed in reverse chronological order.  Partial responses with a subset of
-                # question codes may be merged with earlier responses that have a more complete payload.
-                #
-                # Some question codes can repeat in the same response, because of multi-select questions
-                # The answer values for those codes are concatenated into a comma-separated list.  This
-                # reproduces the GROUP_CONCAT logic from the sp_get_questionnaire_answers stored proc
+                # Response payloads are processed in reverse chronological order.  Partial responses with a subset of
+                # codes/answers may be merged with earlier responses that have a more complete payload.
                 ans_dict = {}
                 for ans in answers:
-                    # Note: BigQuery will ignore unrecognized fields, but log when we see codes for the first time,
-                    # in case we need to confirm BQ schemas are in sync with RDR code table
+                    # Note: BigQuery will ignore unrecognized fields, but log when the response has codes we're seeing
+                    # for the first time, in case we need to confirm BQ schemas are in sync with RDR code table
                     if ans.code_name not in fields.keys():
                         logging.warning("""questionnaireResponseID {0} contains previously unrecognized answer code {1}
                                 for module {3}
                             """.format(qr.questionnaire_response_id, ans.code_name, module_id))
 
-                    # Handle multi-select responses (such as ethnicity or gender identity response options) where
+                    # Handle multi-select question codes (such as ethnicity or gender identity response options) where
                     # user provided more than one answer.  Add to comma-separated list if there's already an answer val
+                    # This reproduces the GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
                     if ans.code_name in ans_dict.keys() and ans_dict[ans.code_name]:
                         prev_answer = ans_dict[ans.code_name]
                         ans_dict[ans.code_name] = ",".join([prev_answer, ans.answer])
                     else:
                         ans_dict[ans.code_name] = ans.answer
 
-                # Populate any answers that were not part of any partial / more recent responses already processed
+                # Populate any answers that were not part of a more recent partial responses already processed
                 for code_key, answer_val in ans_dict.items():
                     if not fields[code_key]:
                         fields[code_key] = answer_val
