@@ -498,16 +498,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             consent['consent_value_id'] = self._lookup_code_id(consent_value, ro_session)
                             consent['consent_expired'] = \
                                 qnan.get(_consent_expired_question_map[module_name] or 'None', None)
-                            # Check for a specific submittal status based on the answer value (default to SUBMITTED)
+
+                            # Note: Currently, consent_expired only applies for EHRConsentPII.  Expired EHR consent
+                            # (EHRConsentPII_ConsentExpired_Yes) is always accompanied by consent_value
+                            # ConsentPermission_No so we can rely on consent_value alone to map the module_status
                             module_status = _consent_answer_status_map.get(consent_value, None)
                             if not module_status:
-                                logging.warning(
-                                    f'Defaulting {module_name} answer {consent_value} to status SUBMITTED (pid: {p_id})'
-                                )
-                                # TODO: SUBMITTED is what all module statuses used to default to, so will use the same
-                                # default in cases where there was no known value in the map for the answer code.
-                                # May want to reconsider if this should be something else (UNSET?)
-                                module_status = BQModuleStatusEnum.SUBMITTED
+                                # This seems the appropriate status for cases where there wasn't any recognized
+                                #  consent answer found in the payload (not even PMI_SKIP, which maps to UNSET)
+                                module_status = BQModuleStatusEnum.SUBMITTED_INVALID
+                                logging.warning("""
+                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID (pid {1})
+                                """.format(module_name, p_id))
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
