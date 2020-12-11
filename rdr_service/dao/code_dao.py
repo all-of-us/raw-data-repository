@@ -127,11 +127,12 @@ SYSTEM_AND_VALUE = ("system", "value")
 
 
 class CodeDao(CacheAllDao):
-    def __init__(self, silent=False):
+    def __init__(self, silent=False, use_cache=True):
         super(CodeDao, self).__init__(
             Code, cache_index=CODE_CACHE_INDEX, cache_ttl_seconds=600, index_field_keys=[SYSTEM_AND_VALUE]
         )
         self.silent = silent
+        self.use_cache = use_cache
 
     def _load_cache(self):
         result = super(CodeDao, self)._load_cache()
@@ -174,7 +175,15 @@ class CodeDao(CacheAllDao):
         return session.query(Code).filter(Code.system == system).filter(Code.value == value).one_or_none()
 
     def get_code(self, system, value):
-        return self._get_cache().index_maps[SYSTEM_AND_VALUE].get((system, value))
+        if self.use_cache:
+            return self._get_cache().index_maps[SYSTEM_AND_VALUE].get((system, value))
+        else:
+            with self.session() as session:
+                print('looking for sys:', system, ', code:', value)
+                return session.query(Code).filter(
+                    Code.system == system,
+                    Code.value == value
+                ).one_or_none()
 
     def find_ancestor_of_type(self, code, code_type):
         if code.codeType == code_type:

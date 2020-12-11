@@ -96,7 +96,7 @@ def _get_validation_result(key, codes_to_answers):
         return result
     participant_id = summaries[0].participantId
 
-    code_dao = CodeDao()
+    code_dao = CodeDao(use_cache=False)
     qra_dao = QuestionnaireResponseAnswerDao()
     with qra_dao.session() as session:
         for code_string, answer_string in list(codes_to_answers.items()):
