@@ -96,7 +96,7 @@ def _get_validation_result(key, codes_to_answers):
         return result
     participant_id = summaries[0].participantId
 
-    code_dao = CodeDao()
+    code_dao = CodeDao(use_cache=False)
     qra_dao = QuestionnaireResponseAnswerDao()
     with qra_dao.session() as session:
         for code_string, answer_string in list(codes_to_answers.items()):
@@ -106,7 +106,7 @@ def _get_validation_result(key, codes_to_answers):
             if not question_code:
                 result.add_error(f"Could not find question code {code_string}, skipping answer {answer_string}.")
                 continue
-            if question_code.codeType != CodeType.QUESTION:
+            if question_code.codeType != CodeType.QUESTION and question_code.codeType != CodeType.TOPIC:
                 result.add_error(f"Code {code_string} type is {question_code.codeType}, not QUESTION; skipping.")
                 continue
 
