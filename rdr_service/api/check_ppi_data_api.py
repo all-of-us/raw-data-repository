@@ -106,7 +106,7 @@ def _get_validation_result(key, codes_to_answers):
             if not question_code:
                 result.add_error(f"Could not find question code {code_string}, skipping answer {answer_string}.")
                 continue
-            if question_code.codeType != CodeType.QUESTION:
+            if question_code.codeType != CodeType.QUESTION and question_code.codeType != CodeType.TOPIC:
                 result.add_error(f"Code {code_string} type is {question_code.codeType}, not QUESTION; skipping.")
                 continue
 
