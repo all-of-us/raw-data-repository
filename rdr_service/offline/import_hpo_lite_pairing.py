@@ -116,6 +116,7 @@ class HpoLitePairingImporter:
                     import_record.uploadingUser = upload_user
 
                     self.base_dao.insert_with_session(session, import_record)
+                    session.commit()
 
                 except IntegrityError:
                     session.rollback()
