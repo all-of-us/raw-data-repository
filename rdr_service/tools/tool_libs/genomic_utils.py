@@ -847,8 +847,6 @@ class ChangeCollectionTube(GenomicManifestBase):
             self.counter += 1
 
 
-
-
 class UpdateGcMetricsClass(GenomicManifestBase):
     """
     Class for updating GC Metrics records

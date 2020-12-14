@@ -82,7 +82,7 @@ cron:
 - description: Genomic AW1 Workflow
   url: /offline/GenomicGCManifestWorkflow
   timezone: America/New_York
-  schedule: every day 05:45
+  schedule: 1 of jan 12:00
   target: offline
 - description: Genomic AW1 Failures Workflow
   url: /offline/GenomicFailuresWorkflow
@@ -107,7 +107,7 @@ cron:
 - description: Genomic AW2 Workflow
   url: /offline/GenomicDataManifestWorkflow
   timezone: America/New_York
-  schedule: every day 05:00
+  schedule: 1 of jan 12:00
   target: offline
 - description: Genomic Reconciliation Array Data Workflow
   url: /offline/GenomicArrayReconciliationWorkflow
