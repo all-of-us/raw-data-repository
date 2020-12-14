@@ -36,7 +36,20 @@ class BiobankSpecimenApi(BiobankApiBase):
             success_count = 0
             total_count = 0
             errors = []
+
+            for specimen_json in resource:
+                try:
+                    self.dao.ready_preloader(specimen_json)
+                except KeyError:
+                    # If there's a problem parsing something in the specimen json ignore it for now, when the
+                    # request is fully processed (after loading) an error message will be added to the response
+                    # for it.
+                    logging.error('Error found when preprocessing specimen for migration', exc_info=True)
+
             with self.dao.session() as session:
+
+                self.dao.preloader.hydrate(session)
+
                 for specimen_json in resource:
                     rlims_id = specimen_json.get('rlimsID', '')
 
@@ -67,6 +80,8 @@ class BiobankSpecimenApi(BiobankApiBase):
                         success_count += 1
                     finally:
                         total_count += 1
+
+            self.dao.preloader.clear()
 
             log_api_request(log=request.log_record)
             result = {

@@ -817,6 +817,22 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeDec)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
+    def test_january_cope_survey(self):
+        self.insert_codes()
+        p = Participant(participantId=1, biobankId=2)
+        self.participant_dao.insert(p)
+
+        self._setup_participant()
+        num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
+
+        self._create_cope_questionnaire(identifier='JanCope')
+
+        self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2021, 1, 17))
+
+        participant_summary = self.participant_summary_dao.get(1)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJan)
+        self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
+
     def test_ppi_questionnaire_count_field_not_found(self):
         """Make sure QuestionnaireResponseDao doesn't fail when an unknown field is part of the list"""
 
