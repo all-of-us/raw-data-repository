@@ -4,6 +4,7 @@ import os
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
+from rdr_service.tools.tool_libs._tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
@@ -61,14 +62,17 @@ class CodesManagementTest(BaseTestCase):
 
         with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
-                mock.patch('rdr_service.tools.tool_libs.codes_management.open'):  # Prevent tests from making real files
+                mock.patch('rdr_service.tools.tool_libs.codes_management.open'),\
+                mock.patch.object(ToolBase, 'initialize_process_context') as mock_init_env:
+            mock_init_env.return_value.__enter__.return_value = gcp_env
+
             mock_redcap_instance = mock_redcap_class.return_value
             mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
             sync_codes_tool = CodesSyncClass(args, gcp_env)
-            return sync_codes_tool.run(), mock_redcap_instance, mock_csv_writerow
+            return sync_codes_tool.run_process(), mock_redcap_instance, mock_csv_writerow
 
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
@@ -143,7 +147,7 @@ class CodesManagementTest(BaseTestCase):
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
 
-    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    @mock.patch('rdr_service.offline.codebook_importer.logging')
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
 
@@ -219,7 +223,7 @@ class CodesManagementTest(BaseTestCase):
         self.assertEqual(0, return_val,
                          'Script should successfully exit, allowing for intentional reuse of the question code')
 
-    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    @mock.patch('rdr_service.offline.codebook_importer.logging')
     def test_dry_run(self, mock_logger):
         self.run_tool([
             self._get_mock_dictionary_item(
@@ -249,7 +253,7 @@ class CodesManagementTest(BaseTestCase):
         mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A3')
         mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A4')
 
-    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
+    @mock.patch('rdr_service.offline.codebook_importer.logging')
     def test_dry_run_with_reuse_and_errors(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
         self.data_generator.create_database_code(value='accidental_reuse')
