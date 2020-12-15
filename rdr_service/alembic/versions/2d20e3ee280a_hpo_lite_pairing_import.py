@@ -1,8 +1,8 @@
-"""hph lite pairing import
+"""hpo lite pairing import
 
-Revision ID: a3c813a235e1
-Revises: cab7fdee2895
-Create Date: 2020-12-08 16:01:08.605796
+Revision ID: 2d20e3ee280a
+Revises: 02f480642635
+Create Date: 2020-12-15 10:13:16.535901
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'a3c813a235e1'
-down_revision = 'cab7fdee2895'
+revision = '2d20e3ee280a'
+down_revision = '02f480642635'
 branch_labels = None
 depends_on = None
 
