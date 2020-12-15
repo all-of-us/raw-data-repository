@@ -13,7 +13,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessResult as _GenomicSubProcessResult,
     GenomicJob as _GenomicJob,
     GenomicWorkflowState as _GenomicWorkflowState,
-    GenomicQcStatus as _GenomicQcStatus
+    GenomicQcStatus as _GenomicQcStatus,
+    GenomicContaminationCategory as _GenomicContaminationCategory,
+    GenomicManifestTypes as _GenomicManifestTypes
 )
 
 # Convert weird participant_enums to standard python enums.
@@ -25,6 +27,8 @@ GenomicSubProcessResultEnum = Enum('GenomicSubProcessResultEnum', _GenomicSubPro
 GenomicJobEnum = Enum('GenomicJobEnum', _GenomicJob.to_dict())
 GenomicWorkflowStateEnum = Enum('GenomicWorkflowStateEnum', _GenomicWorkflowState.to_dict())
 GenomicQcStatusEnum = Enum('GenomicQcStatusEnum', _GenomicQcStatus.to_dict())
+GenomicContaminationCategoryEnum = Enum('GenomicContaminationCategoryEnum', _GenomicContaminationCategory.to_dict())
+GenomicManifestTypesEnum = Enum('GenomicManifestTypesEnum', _GenomicManifestTypes.to_dict())
 
 
 class BQGenomicSetSchema(BQSchema):
@@ -125,6 +129,8 @@ class BQGenomicSetMemberSchema(BQSchema):
     gem_pass = BQField('gem_pass', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     gem_a3_manifest_job_run_id = BQField('gem_a3_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                          BQFieldModeEnum.NULLABLE)
+    aw3_manifest_job_run_id = BQField('aw3_manifest_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw4_manifest_job_run_id = BQField('aw4_manifest_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     cvl_aw1c_manifest_job_run_id = BQField('cvl_aw1c_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
                                            BQFieldModeEnum.NULLABLE)
     cvl_aw1cf_manifest_job_run_id = BQField('cvl_aw1cf_manifest_job_run_id', BQFieldTypeEnum.INTEGER,
@@ -161,6 +167,9 @@ class BQGenomicSetMemberSchema(BQSchema):
     qc_status_id = BQField('qc_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                            fld_enum=GenomicQcStatusEnum)
     fingerprint_path = BQField('fingerprint_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    aw1_file_processed_id = BQField('aw1_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    aw2f_file_processed_id = BQField('aw2f_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
@@ -233,6 +242,7 @@ class BQGenomicFileProcessedSchema(BQSchema):
     file_result = BQField('file_result', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=GenomicSubProcessResultEnum)
     upload_date = BQField('upload_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    genomic_manifest_file_id = BQField('genomic_manifest_file_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicFileProcessed(BQTable):
@@ -246,6 +256,68 @@ class BQGenomicFileProcessedView(BQView):
     __viewdescr__ = 'Genomic File Processed View'
     __pk_id__ = 'id'
     __table__ = BQGenomicFileProcessed
+
+
+class BQGenomicManifestFileSchema(BQSchema):
+    id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+
+    # RDR fields
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    upload_date = BQField('upload_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    manifest_type_id = BQField('manifest_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                               fld_enum=GenomicManifestTypesEnum)
+    manifest_type = BQField('manifest_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                            fld_enum=GenomicManifestTypesEnum)
+    file_path = BQField('file_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    bucket_name = BQField('bucket_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    record_count = BQField('record_count', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    rdr_processing_complete = BQField('rdr_processing_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    rdr_processing_complete_date = BQField('rdr_processing_complete_date', BQFieldTypeEnum.DATETIME,
+                                           BQFieldModeEnum.NULLABLE)
+    ignore = BQField('ignore', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+
+
+class BQGenomicManifestFile(BQTable):
+    """  BigQuery Table """
+    __tablename__ = 'genomic_manifest_file'
+    __schema__ = BQGenomicManifestFileSchema
+
+
+class BQGenomicManifestFileView(BQView):
+    __viewname__ = 'v_genomic_manifest_file'
+    __viewdescr__ = 'Genomic Manifest File View'
+    __pk_id__ = 'id'
+    __table__ = BQGenomicManifestFile
+
+
+class BQGenomicManifestFeedbackSchema(BQSchema):
+    id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    modified = BQField('modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+
+    # RDR fields
+    orig_id = BQField('orig_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    input_manifest_file_id = BQField('input_manifest_file_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    feedback_manifest_file_id = BQField('feedback_manifest_file_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    feedback_record_count = BQField('feedback_record_count', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    feedback_complete = BQField('feedback_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    feedback_complete_date = BQField('feedback_complete_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    ignore = BQField('ignore', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+
+
+class BQGenomicManifestFeedback(BQTable):
+    """  BigQuery Table """
+    __tablename__ = 'genomic_manifest_feedback'
+    __schema__ = BQGenomicManifestFeedbackSchema
+
+
+class BQGenomicManifestFeedbackView(BQView):
+    __viewname__ = 'v_genomic_manifest_feedback'
+    __viewdescr__ = 'Genomic Manifest Feedback View'
+    __pk_id__ = 'id'
+    __table__ = BQGenomicManifestFeedback
 
 
 class BQGenomicGCValidationMetricsSchema(BQSchema):
@@ -306,6 +378,9 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     vcf_tbi_received = BQField('vcf_tbi_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    contamination_category = BQField('contamination_category', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    contamination_category_id = BQField('contamination_category_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                                        fld_enum=GenomicContaminationCategoryEnum)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
