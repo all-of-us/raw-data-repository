@@ -14,7 +14,8 @@ from rdr_service.model.bq_genomics import \
     BQGenomicGCValidationMetricsSchema, BQGenomicGCValidationMetrics, \
     GenomicSetStatusEnum, GenomicSetMemberStatusEnum, GenomicValidationFlag, GenomicSubProcessStatusEnum, \
     GenomicSubProcessResultEnum, GenomicJobEnum, GenomicWorkflowStateEnum, BQGenomicFileProcessedSchema, \
-    BQGenomicFileProcessed, GenomicQcStatusEnum
+    BQGenomicFileProcessed, GenomicQcStatusEnum, GenomicContaminationCategoryEnum, GenomicManifestTypesEnum, \
+    BQGenomicManifestFileSchema, BQGenomicManifestFile, BQGenomicManifestFeedbackSchema, BQGenomicManifestFeedback
 
 
 class BQGenomicSetGenerator(BigQueryGenerator):
@@ -303,6 +304,131 @@ def bq_genomic_file_processed_batch_update(_ids, project_id=None):
         bq_genomic_file_processed_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
+class BQGenomicManifestFileSchemaGenerator(BigQueryGenerator):
+    """
+    Generate a BQGenomicManifestFile BQRecord object
+    """
+    ro_dao = None
+
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
+        """
+        Build a BQRecord object from the given primary key id.
+        :param _id: Primary key value from rdr table.
+        :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
+        :param backup: if True, get from backup database
+        :return: BQRecord object
+        """
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_manifest_file where id = :id'), {'id': _id}).first()
+            data = self.ro_dao.to_dict(row)
+
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
+
+            # Populate Enum fields.
+            if data['manifest_type_id']:
+                enum = GenomicManifestTypesEnum(data['manifest_type_id'])
+                data['manifest_type'] = enum.name
+                data['manifest_type_id'] = enum.value
+
+            return BQRecord(schema=BQGenomicManifestFileSchema, data=data, convert_to_enum=convert_to_enum)
+
+
+def bq_genomic_manifest_file_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate BQGenomicManifestFile record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQGenomicManifestFileSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQGenomicManifestFile, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_manifest_file_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicManifestFileSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_manifest_file_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
+class BQGenomicManifestFeedbackSchemaGenerator(BigQueryGenerator):
+    """
+    Generate a BQGenomicManifestFeedback BQRecord object
+    """
+    ro_dao = None
+
+    def make_bqrecord(self, _id, convert_to_enum=False, backup=False):
+        """
+        Build a BQRecord object from the given primary key id.
+        :param _id: Primary key value from rdr table.
+        :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
+        :param backup: if True, get from backup database
+        :return: BQRecord object
+        """
+        if not self.ro_dao:
+            self.ro_dao = BigQuerySyncDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(
+                text('select * from genomic_manifest_feedback where id = :id'),
+                {'id': _id}
+            ).first()
+            data = self.ro_dao.to_dict(row)
+
+            # PDR-149:  Preserve id values from RDR
+            data['orig_id'] = data['id']
+
+            return BQRecord(schema=BQGenomicManifestFeedbackSchema, data=data, convert_to_enum=convert_to_enum)
+
+
+def bq_genomic_manifest_feedback_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate BQGenomicManifestFeedback record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQGenomicSetGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQGenomicManifestFeedbackSchemaGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQGenomicManifestFeedback, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_genomic_manifest_feedback_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQGenomicManifestFeedbackSchemaGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_genomic_manifest_file_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
 class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
     """
     Generate a GenomicGCValidationMetrics BQRecord object
@@ -328,6 +454,12 @@ class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
             data['orig_id'] = data['id']
             data['orig_created'] = data['created']
             data['orig_modified'] = data['modified']
+
+            # Populate Enum fields.
+            if data['contamination_category']:
+                enum = GenomicContaminationCategoryEnum(data['contamination_category'])
+                data['contamination_category'] = enum.name
+                data['contamination_category_id'] = enum.value
 
             return BQRecord(schema=BQGenomicGCValidationMetricsSchema, data=data, convert_to_enum=convert_to_enum)
 

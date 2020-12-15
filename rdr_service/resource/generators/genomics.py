@@ -13,7 +13,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessResult as GenomicSubProcessResultEnum,
     GenomicJob as GenomicJobEnum,
     GenomicWorkflowState as GenomicWorkflowStateEnum,
-    GenomicQcStatus as GenomicQcStatusEnum)
+    GenomicQcStatus as GenomicQcStatusEnum,
+    GenomicManifestTypes as GenomicManifestTypesEnum,
+    GenomicContaminationCategory as GenomicContaminationCategoryEnum)
 from rdr_service.resource import generators, schemas
 
 
@@ -254,6 +256,108 @@ def genomic_file_processed_batch_update(_pk_ids):
         genomic_file_processed_update(_pk, gen=gen, w_dao=w_dao)
 
 
+class GenomicManifestFileSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicManifestFile resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from genomic_manifest_file where id = :id'), {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            # Populate Enum fields.
+            if data['manifest_type_id']:
+                enum = GenomicManifestTypesEnum(data['manifest_type_id'])
+                data['manifest_type'] = str(enum)
+                data['manifest_type_id_id'] = int(enum)
+
+            return generators.ResourceRecordSet(schemas.GenomicManifestFileSchema, data)
+
+
+def genomic_manifest_file_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicManifestFile record.
+    :param _pk: Primary Key
+    :param gen: GenomicManifestFileSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicManifestFileSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_manifest_file_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicManifestFileSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_manifest_file_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicManifestFeedbackSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicManifestFeedback resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(
+                text('select * from genomic_manifest_feedback where id = :id'),
+                {'id': _pk}
+            ).first()
+            data = self.ro_dao.to_dict(row)
+
+            return generators.ResourceRecordSet(schemas.GenomicManifestFeedbackSchema, data)
+
+
+def genomic_manifest_feedback_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicManifestFeedback record.
+    :param _pk: Primary Key
+    :param gen: GenomicManifestFeedbackSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicManifestFeedbackSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_manifest_feedback_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicManifestFeedbackSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_manifest_feedback_update(_pk, gen=gen, w_dao=w_dao)
+
+
 class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
     """
     Generate a GenomicGCValidationMetrics resource object
@@ -274,6 +378,12 @@ class GenomicGCValidationMetricsSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_gc_validation_metrics where id = :id'),
                                      {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
+
+            # Populate Enum fields.
+            if data['contamination_category']:
+                enum = GenomicContaminationCategoryEnum(data['contamination_category'])
+                data['contamination_category'] = str(enum)
+                data['contamination_category_id'] = int(enum)
 
             return generators.ResourceRecordSet(schemas.GenomicGCValidationMetricsSchema, data)
 
