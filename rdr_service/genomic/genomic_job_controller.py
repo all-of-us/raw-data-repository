@@ -17,7 +17,8 @@ from rdr_service.config import (
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException)
-from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
+    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
@@ -33,7 +34,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
     GenomicManifestFileDao, GenomicManifestFeedbackDao)
-from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update
+from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
+    genomic_manifest_file_update, genomic_manifest_feedback_update
 
 
 class GenomicJobController:
@@ -121,7 +123,11 @@ class GenomicJobController:
             rdrProcessingComplete=0,
         )
 
-        return self.manifest_file_dao.insert(file_to_insert)
+        file = self.manifest_file_dao.insert(file_to_insert)
+        bq_genomic_manifest_file_update(file.id, self.bq_project_id)
+        genomic_manifest_file_update(file.id)
+
+        return file
 
     def insert_genomic_manifest_feedback_record(self, manifest_file):
         """
@@ -142,7 +148,11 @@ class GenomicJobController:
             ignore=0,
         )
 
-        return self.manifest_feedback_dao.insert(feedback_to_insert)
+        feedback = self.manifest_feedback_dao.insert(feedback_to_insert)
+        bq_genomic_manifest_feedback_update(feedback.id, self.bq_project_id)
+        genomic_manifest_feedback_update(feedback.id)
+
+        return feedback
 
     def get_feedback_complete_records(self):
         """
@@ -435,6 +445,9 @@ class GenomicJobController:
                     rdrProcessingCompleteDate=now_time,
                 )
                 new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+
+                bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
+                genomic_manifest_file_update(new_manifest_obj.id)
 
                 # update feedback records if manifest is a feedback manifest
                 if "feedback_record" in kwargs.keys():
