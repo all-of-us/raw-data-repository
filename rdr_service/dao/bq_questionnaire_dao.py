@@ -8,6 +8,7 @@ from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
+from rdr_service.code_constants import PPI_SYSTEM
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -32,7 +33,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
         # Query to get all the question codes across all questionnaire versions of the module.
         _question_code_sql = """
-            -- select c.code_id, c.value
             select c.value
             from code c
             inner join (
@@ -40,7 +40,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 from questionnaire_question qq where qq.questionnaire_id in (
                     select qc.questionnaire_id from questionnaire_concept qc
                             where qc.code_id = (
-                                select code_id from code c2 where c2.value = :module_id )
+                                select code_id from code c2 where c2.value = :module_id and system = :system
+                            )
                 )
             ) qq2 on qq2.code_id = c.code_id
             order by c.code_id;
@@ -56,9 +57,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 inner join questionnaire_history qh on q.version = qh.version
                        and qh.questionnaire_id = q.questionnaire_id
                 inner join questionnaire_concept qc on qc.questionnaire_id = q.questionnaire_id
+                      and qc.questionnaire_version = qh.version
                 inner join code c on c.code_id = qc.code_id
-                where c.value = :module_id
-                order by qr.created DESC
+                where c.value = :module_id and c.system = :system
+                order by qr.created
             );
         """
 
@@ -66,7 +68,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         _response_answers_sql = """
             SELECT qr.questionnaire_id,
                qq.code_id,
-               (select c.value from code c where c.code_id = qq.code_id) as code_name,
+               (select c.value from code c where c.code_id = qq.code_id and c.system = :system) as code_name,
                COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
                         qra.value_integer, qra.value_decimal,
                         qra.value_boolean, qra.value_string, qra.value_system,
@@ -76,10 +78,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                                 ON qra.questionnaire_response_id = qr.questionnaire_response_id
                      INNER JOIN questionnaire_question qq
                                 ON qra.question_id = qq.questionnaire_question_id
-                     INNER JOIN questionnaire q
-                                ON qq.questionnaire_id = q.questionnaire_id
             WHERE qr.questionnaire_response_id = :qr_id
-            order by qr.created DESC;
+            order by qr.created;
         """
 
         if not self.ro_dao:
@@ -111,20 +111,22 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         #  code table sp we can more robustly handle the codebook definitions we get from REDCap
         with self.ro_dao.session() as session:
 
-            question_codes = session.execute(_question_code_sql, {'module_id': module_id})
+            question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
             # Start with all known question codes for this module, with answer values set to None
             fields = {qc.value: None for qc in question_codes}
 
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
-            responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id})
+            responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
+                                                                            'system': PPI_SYSTEM })
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
 
-                answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id})
-                # Response payloads are processed in reverse chronological order.  Partial responses with a subset of
-                # codes/answers may be merged with earlier responses that have a more complete payload.
+                answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
+                                                                  'system': PPI_SYSTEM})
+                # Response payloads are processed in chronological order.  Partial responses with a subset of
+                # codes/answers may be merged other responses that have a more complete payload.
                 ans_dict = {}
                 for ans in answers:
                     # Note: BigQuery will ignore unrecognized fields, but log when the response has codes we're seeing
@@ -143,10 +145,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     else:
                         ans_dict[ans.code_name] = ans.answer
 
-                # Populate any answers that were not part of a more recent partial responses already processed
-                for code_key, answer_val in ans_dict.items():
-                    if not fields[code_key]:
-                        fields[code_key] = answer_val
+                fields.update(ans_dict)
 
                 # Merge the updated full survey fields dict with the response's metadata
                 data.update(fields)

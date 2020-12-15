@@ -6,6 +6,7 @@ from sqlalchemy.sql import text
 
 from marshmallow import validate
 
+from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import fields
 
@@ -70,36 +71,65 @@ class _QuestionnaireSchema:
 
         dao = ResourceDataDao(backup=True)
 
-        # Load module field data from the code table if available.
-        results = dao.call_proc('sp_get_code_module_items', args=[self._module])
-        if results:
-            for row in results:
-                if row['code_type'] != 3:
-                    continue
+        # DEPRECATED after RDR 1.85.2:  Load module field data from the code table if available, using stored proc
+        # results = dao.call_proc('sp_get_code_module_items', args=[self._module])
 
-                # Verify field name meets BigQuery requirements.
-                name = row['value']
-                is_valid, msg = self.field_name_is_valid(name)
-                if not is_valid:
-                    self._errors.append(msg)
-                    continue
-
-                _schema[name] = fields.Text()
-
-        # This query makes better use of the indexes.
-        _sql_term = text("""
-            select convert(qh.resource using utf8) as resource
-                from questionnaire_history qh
-                where qh.questionnaire_id = (
-                    select max(questionnaire_id) as questionnaire_id
-                    from questionnaire_concept qc
-                             inner join code c on qc.code_id = c.code_id
-                    where qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                );
-        """)
-
+        # This query replaces the sp_get_code_module_items stored procedure, which does not support the
+        # DRC-managed codebooks where codes may be shared between modules. Columns are returned in the
+        # same order as the stored procedure returned them (as a debug aid for comparing results).
+        _question_codes_sql = """
+             select c.code_id,
+                    c.parent_id,
+                    c.topic,
+                    c.code_type,
+                    c.value,
+                    c.display,
+                    c.system,
+                    c.mapped,
+                    c.created,
+                    c.code_book_id,
+                    c.short_value
+             from code c
+             inner join (
+                 select distinct qq.code_id
+                 from questionnaire_question qq where qq.questionnaire_id in (
+                     select qc.questionnaire_id from questionnaire_concept qc
+                             where qc.code_id = (
+                                 select code_id from code c2 where c2.value = :module_id and system = :system
+                             )
+                 )
+             ) qq2 on qq2.code_id = c.code_id
+             -- Filter on question codes only
+             where c.code_type = 3
+             order by c.code_id;
+         """
         with dao.session() as session:
-            result = session.execute(_sql_term, {'mod': self._module}).first()
+            results = session.execute(_question_codes_sql, {'module_id': self._module, 'system': PPI_SYSTEM})
+
+            if results:
+                for row in results:
+                    # Verify field name meets BigQuery requirements.
+                    name = row['value']
+                    is_valid, msg = self.field_name_is_valid(name)
+                    if not is_valid:
+                        self._errors.append(msg)
+                        continue
+
+                    _schema[name] = fields.Text()
+
+            # This query makes better use of the indexes.
+            _sql_term = text("""
+                select convert(qh.resource using utf8) as resource
+                    from questionnaire_history qh
+                    where qh.questionnaire_id = (
+                        select max(questionnaire_id) as questionnaire_id
+                        from questionnaire_concept qc
+                                 inner join code c on qc.code_id = c.code_id
+                        where qc.code_id in (select c1.code_id from code c1 where c1.value = :mod and system = :system)
+                    );
+            """)
+
+            result = session.execute(_sql_term, {'mod': self._module, 'system': PPI_SYSTEM}).first()
             if not result:
                 return _schema
 
@@ -340,4 +370,20 @@ class BQPDRPersonalMedicalHistorySchema(_QuestionnaireSchema):
 class BQPDRCOPEMaySchema(_QuestionnaireSchema):
     """ COPE Module """
     _module = 'COPE'
+    _excluded_fields = ()
+
+#
+#  COPE Nov Survey
+#
+class BQPDRCOPENovSchema(_QuestionnaireSchema):
+    """ COPE Module """
+    _module = 'cope_nov'
+    _excluded_fields = ()
+
+#
+#  COPE Dec Survey
+#
+class BQPDRCOPEDecSchema(_QuestionnaireSchema):
+    """ COPE Module """
+    _module = 'cope_dec'
     _excluded_fields = ()
