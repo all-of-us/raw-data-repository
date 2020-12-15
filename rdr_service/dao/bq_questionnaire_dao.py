@@ -17,10 +17,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
     """
     ro_dao = None
 
-    # TODO:  Can we cut down on DB hits by maintaining a class dict variable that saves the list of question codes
-    # previously retrieved for each module in the make_bqrecord() table_map?  Is that safe during
-    # a longer-running rebuild tasks, or could we miss POST Questionnaire updates that impact this generator?
-
     def make_bqrecord(self, p_id, module_id, latest=False, convert_to_enum=False):
         """
         Generate a list of questionnaire module BQRecords for the given participant id.
@@ -118,7 +114,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
             responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
-                                                                            'system': PPI_SYSTEM })
+                                                                            'system': PPI_SYSTEM})
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)

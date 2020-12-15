@@ -387,3 +387,11 @@ class BQPDRCOPEDecSchema(_QuestionnaireSchema):
     """ COPE Module """
     _module = 'cope_dec'
     _excluded_fields = ()
+
+#
+#  COPE Dec Survey
+#
+class BQPDRCOPEJanSchema(_QuestionnaireSchema):
+    """ COPE Module """
+    _module = 'cope_jan'
+    _excluded_fields = ()
