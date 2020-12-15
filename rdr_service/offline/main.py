@@ -19,6 +19,7 @@ from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
+from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
@@ -457,6 +458,13 @@ def import_deceased_reports():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def import_hpo_lite_pairing():
+    importer = HpoLitePairingImporter()
+    importer.import_pairing_data()
+    return '{ "success": "true" }'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def clean_up_request_logs():
     dao = BaseDao(None)
     with dao.session() as session:
@@ -695,6 +703,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "DeceasedReportImport",
         endpoint="deceased_report_import",
         view_func=import_deceased_reports,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "HpoLitePairingImport",
+        endpoint="hpo_lite_pairing_import",
+        view_func=import_hpo_lite_pairing,
         methods=["GET"],
     )
 
