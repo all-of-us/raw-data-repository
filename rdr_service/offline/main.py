@@ -262,10 +262,6 @@ def genomic_c1_participant_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_gc_manifest_workflow():
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.genomic_centers_manifest_workflow()
     return '{"success": "true"}'
 
@@ -306,10 +302,6 @@ def aw1cf_failures_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_data_manifest_workflow():
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.ingest_genomic_centers_metrics_files()
     return '{"success": "true"}'
 
