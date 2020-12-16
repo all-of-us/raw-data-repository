@@ -99,8 +99,6 @@ class _QuestionnaireSchema:
                              )
                  )
              ) qq2 on qq2.code_id = c.code_id
-             -- Filter on question codes only
-             where c.code_type = 3
              order by c.code_id;
          """
         with dao.session() as session:
