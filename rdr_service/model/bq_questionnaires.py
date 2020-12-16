@@ -105,8 +105,7 @@ class _BQModuleSchema(BQSchema):
                             )
                 )
             ) qq2 on qq2.code_id = c.code_id
-            where c.code_type = 3
-            order by c.code_id;
+            order by c.code_id
         """
         with dao.session() as session:
             results = session.execute(_question_codes_sql, {'module_id': self._module, 'system': PPI_SYSTEM})
