@@ -508,8 +508,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 #  consent answer found in the payload (not even PMI_SKIP, which maps to UNSET)
                                 module_status = BQModuleStatusEnum.SUBMITTED_INVALID
                                 logging.warning("""
-                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID (pid {1})
-                                """.format(module_name, p_id))
+                                    No consent answer for module {0}.  Defaulting status to SUBMITTED_INVALID
+                                    (pid {1}, response {2})
+                                """.format(module_name, p_id, row.questionnaireResponseId))
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value

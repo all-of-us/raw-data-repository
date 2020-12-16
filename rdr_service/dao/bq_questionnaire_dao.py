@@ -122,19 +122,21 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                                                                   'system': PPI_SYSTEM})
                 ans_dict = {qc.value: None for qc in question_codes}
                 for ans in answers:
-                    # Note: BigQuery will ignore unrecognized fields, but log when the response has codes we're seeing
-                    # for the first time, in case we need to confirm BQ schemas are in sync with RDR code table
+                    # Note: BigQuery will ignore unrecognized fields, but log potentially new content for debugging
+                    # purposes
                     if ans.code_name not in ans_dict.keys():
-                        logging.warning("""questionnaireResponseID {0} contains previously unrecognized answer code {1}
-                                for module {3}
+                        logging.debug("""questionnaireResponseID {0} contains previously unrecognized answer code {1}
+                                for module {2}
                             """.format(qr.questionnaire_response_id, ans.code_name, module_id))
 
                     # Handle multi-select question codes (such as ethnicity or gender identity response options) where
-                    # user provided more than one answer.  Add to comma-separated list if there's already an answer val
-                    # This reproduces the GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
+                    # user provided more than one answer and concatenate into comma-separated list.  This mirrors
+                    # GROUP_CONCAT SQL logic from the deprecated sp_get_questionnaire_answers proc
                     if ans.code_name in ans_dict.keys() and ans_dict[ans.code_name]:
-                        prev_answer = ans_dict[ans.code_name]
-                        ans_dict[ans.code_name] = ",".join([prev_answer, ans.answer])
+                        # If answer value coalesced to null, skip those (found during testing in lower environments)
+                        if ans.answer:
+                            prev_answer = ans_dict[ans.code_name]
+                            ans_dict[ans.code_name] = ",".join([prev_answer, ans.answer])
                     else:
                         ans_dict[ans.code_name] = ans.answer
 
