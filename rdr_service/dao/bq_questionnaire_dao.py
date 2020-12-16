@@ -21,7 +21,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         """
         Generate a list of questionnaire module BQRecords for the given participant id.
         :param p_id: participant id
-        :param module_id: A questionnaire module id, IE: 'TheBasics'.
+        :param module_id: A questionnaire module id, IE: 'TheBasics'.  Note that the code table can have multiple
+                          entries that match this value, so we automatically filter on the system (PPI_SYSTEM) as well
         :param latest: only process the most recent response if True
         :param convert_to_enum: If schema field description includes Enum class info, convert value to Enum.
         :return: BQTable object, List of BQRecord objects
@@ -44,6 +45,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         """
 
         # Query to get a list of questionnaire_response_id values for this participant and module
+        # The list will be from most recently received/replayed response to earliest.  This mirrors how the
+        # deprecated stored procedure sp_get_questionnaire_answers used to order its results
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
                    qr.participant_id
@@ -56,11 +59,11 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                       and qc.questionnaire_version = qh.version
                 inner join code c on c.code_id = qc.code_id
                 where c.value = :module_id and c.system = :system
-                order by qr.created
+                order by qr.created DESC
             );
         """
 
-        # Query to get questionnaire answers for a specific questionnaire_response_id
+        # Query to get questionnaire answers for a specific questionnaire_response_id (no ordering needed)
         _response_answers_sql = """
             SELECT qr.questionnaire_id,
                qq.code_id,
@@ -75,7 +78,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                      INNER JOIN questionnaire_question qq
                                 ON qra.question_id = qq.questionnaire_question_id
             WHERE qr.questionnaire_response_id = :qr_id
-            order by qr.created;
         """
 
         if not self.ro_dao:
@@ -106,10 +108,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # in the new REDCap-managed DRC process.  TODO: tech debt for PDR PostgreSQL to consider changes to the
         #  code table sp we can more robustly handle the codebook definitions we get from REDCap
         with self.ro_dao.session() as session:
-
             question_codes = session.execute(_question_code_sql, {'module_id': module_id, 'system': PPI_SYSTEM})
-            # Start with all known question codes for this module, with answer values set to None
-            fields = {qc.value: None for qc in question_codes}
 
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
@@ -121,13 +120,11 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
-                # Response payloads are processed in chronological order.  Partial responses with a subset of
-                # codes/answers may be merged other responses that have a more complete payload.
-                ans_dict = {}
+                ans_dict = {qc.value: None for qc in question_codes}
                 for ans in answers:
                     # Note: BigQuery will ignore unrecognized fields, but log when the response has codes we're seeing
                     # for the first time, in case we need to confirm BQ schemas are in sync with RDR code table
-                    if ans.code_name not in fields.keys():
+                    if ans.code_name not in ans_dict.keys():
                         logging.warning("""questionnaireResponseID {0} contains previously unrecognized answer code {1}
                                 for module {3}
                             """.format(qr.questionnaire_response_id, ans.code_name, module_id))
@@ -141,10 +138,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     else:
                         ans_dict[ans.code_name] = ans.answer
 
-                fields.update(ans_dict)
-
-                # Merge the updated full survey fields dict with the response's metadata
-                data.update(fields)
+                # Merge all the answers from this response payload with the response metadata and save
+                data.update(ans_dict)
                 qnans.append(data)
 
             if len(qnans) == 0:
@@ -199,7 +194,7 @@ def bq_questionnaire_update_task(p_id, qr_id):
     sql = text("""
     select c.value from
         questionnaire_response qr inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-        inner join code c on qc.code_id = c.code_id
+        inner join code c on qc.code_id = c.code_id and system = :system
     where qr.questionnaire_response_id = :qr_id
   """)
 
@@ -210,7 +205,7 @@ def bq_questionnaire_update_task(p_id, qr_id):
 
     with ro_dao.session() as ro_session:
 
-        results = ro_session.execute(sql, {'qr_id': qr_id})
+        results = ro_session.execute(sql, {'qr_id': qr_id, 'system': PPI_SYSTEM})
         if results:
             for row in results:
                 module_id = row.value
