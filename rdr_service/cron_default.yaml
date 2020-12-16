@@ -154,3 +154,8 @@ cron:
   timezone: America/New_York
   schedule: every day 07:45
   target: offline
+- description: Clean up request logs
+  url: /offline/CleanUpRequestLogs
+  timezone: America/New_York
+  schedule: every saturday 23:00
+  target: offline
