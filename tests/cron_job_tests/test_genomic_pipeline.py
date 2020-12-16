@@ -486,9 +486,7 @@ class GenomicPipelineTest(BaseTestCase):
         }
 
         # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
-
-        #genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # run_id = 1 & 2
 
         # Test the fields against the DB
         gc_metrics = self.metrics_dao.get_all()

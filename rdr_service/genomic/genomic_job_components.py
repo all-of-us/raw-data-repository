@@ -557,9 +557,15 @@ class GenomicFileIngester:
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['sampleid']
 
-            # TODO: limit call rate to 10 characters for now until clarification from GCs
             try:
                 row_copy['callrate'] = row_copy['callrate'][:10]
+            except KeyError:
+                pass
+
+            # Clean up contamination if data is less than 0
+            try:
+                if '-' in row_copy['contamination']:
+                    row_copy['contamination'] = '0.0'
             except KeyError:
                 pass
 
@@ -1095,7 +1101,10 @@ class GenomicFileValidator:
 
         cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '').replace('_', '')
                        for field in fields])
-        return cases == self.valid_schema
+        all_file_columns_valid = all([c in self.valid_schema for c in cases])
+        all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
+
+        return all([all_file_columns_valid, all_expected_columns_in_file])
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
@@ -2302,6 +2311,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
@@ -2359,6 +2369,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
@@ -2461,13 +2472,24 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
-                ).order_by(GenomicSetMember.genomicWorkflowStateModifiedTime).limit(10000)
+                ).group_by(
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.sexAtBirth,
+                        sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                           sqlalchemy.sql.expression.literal("yes"),
+                                           sqlalchemy.sql.expression.literal("no")),
+                        ParticipantSummary.consentForGenomicsRORAuthored,
+                        GenomicGCValidationMetrics.chipwellbarcode,
+                        sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
+                           ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
             )
 
         # Color GEM A3 Manifest

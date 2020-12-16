@@ -960,7 +960,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 session.query(GenomicGCValidationMetrics)
                 .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
                         GenomicGCValidationMetrics.ignoreFlag != 1)
-                .first()
+                .one_or_none()
             )
 
     def update_metric_set_member_id(self, metric_obj, member_id):
