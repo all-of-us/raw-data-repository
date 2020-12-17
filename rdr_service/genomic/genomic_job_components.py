@@ -756,7 +756,8 @@ class GenomicFileIngester:
         """Check for any stored sample for the participant that is not contaminated
         and is a 1ED04, 1ED10, or 1SAL2 test"""
         query = session.query(BiobankStoredSample).filter(
-            BiobankStoredSample.biobankId == biobank_id
+            BiobankStoredSample.biobankId == biobank_id,
+            BiobankStoredSample.status < SampleStatus.SAMPLE_NOT_RECEIVED
         ).outerjoin(GenomicSampleContamination).filter(
             GenomicSampleContamination.id.is_(None),
             BiobankStoredSample.test.in_(['1ED04', '1ED10', '1SAL2'])
