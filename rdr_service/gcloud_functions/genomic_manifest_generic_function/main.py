@@ -37,7 +37,7 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
     def created(self):
         """ Handle storage object created event. """
         # Verify this is a file that we want to process.
-        if 'aw1_genotyping_sample_manifests' not in self.event.name.lower():
+        if 'aw2_genotyping_data_manifests' not in self.event.name.lower():
             _logger.info(f'Skipping file {self.event.name}, name does not match AW1 file.')
             return
 
@@ -54,7 +54,7 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
         _logger.info("Pushing cloud task...")
 
         _task = GCPCloudTask()
-        _task.execute('/resource/task/IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
+        _task.execute('/resource/task/IngestAW2ManifestTaskApi', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

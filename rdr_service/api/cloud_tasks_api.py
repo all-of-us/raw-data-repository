@@ -184,7 +184,7 @@ class IngestAW2ManifestTaskApi(Resource):
             "job": GenomicJob.METRICS_INGESTION,
             "bucket": data["bucket_name"],
             "file_data": {
-                "create_feedback_record": True,
+                "create_feedback_record": False,
                 "upload_date": data["upload_date"],
                 "manifest_type": GenomicManifestTypes.GC_DRC,
                 "file_path": data["file_path"],
