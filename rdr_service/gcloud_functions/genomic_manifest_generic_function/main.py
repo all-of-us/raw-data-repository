@@ -46,7 +46,9 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
         cloud_file_path = f'{self.event.bucket}/{self.event.name}'
 
         data = {
-            "filename": cloud_file_path
+            "file_path": cloud_file_path,
+            "bucket_name": self.event.bucket,
+            "upload_date": self.event.timeCreated,
         }
 
         _logger.info("Pushing cloud task...")
@@ -62,9 +64,16 @@ def get_deploy_args(gcp_env):
     """
     _project_suffix = gcp_env.project.split('-')[-1]
 
+    # Change these to appropriate buckets in derived functions for GCs' buckets
     cloud_resource = 'aou-rdr-sandbox-mock-data'
 
     if _project_suffix == 'sandbox':
+        cloud_resource = 'aou-rdr-sandbox-mock-data'
+
+    if _project_suffix == 'stable':
+        cloud_resource = 'aou-rdr-sandbox-mock-data'
+
+    if _project_suffix == 'prod':
         cloud_resource = 'aou-rdr-sandbox-mock-data'
 
     args = [function_name]

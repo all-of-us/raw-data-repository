@@ -12,7 +12,9 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_file_processed_batch_update
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
+from rdr_service.offline import genomic_pipeline
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
+from rdr_service.participant_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update
@@ -140,9 +142,56 @@ class IngestAW1ManifestTaskApi(Resource):
     @task_auth_required
     def post(self):
         log_task_headers()
+
+        # from cloud function
         data = request.get_json(force=True)
+
         logging.info(f'Ingesting AW1 File: {data.get("filename")}')
-        # TODO: Call Genomic Code here
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": data["bucket_name"],
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": data["upload_date"],
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": data["file_path"],
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class IngestAW2ManifestTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ingest AW2 Manifest.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ingesting AW2 File: {data.get("filename")}')
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": data["bucket_name"],
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": data["upload_date"],
+                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "file_path": data["file_path"],
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
         logging.info('Complete.')
         return '{"success": "true"}'
 
