@@ -610,7 +610,7 @@ class GenomicFileIngester:
                 # Get the genomic_manifest_file
                 manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
                 if manifest_file is not None:
-                    self.feedback_dao.increment_feedback_count(manifest_file.id)
+                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
             else:
                 logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
