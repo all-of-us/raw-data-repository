@@ -7,6 +7,7 @@ from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -450,5 +451,25 @@ class GenomicGCValidationMetrics(Base):
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
 
+
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
+
+
+class GenomicSampleContamination(Base):
+    """A list of samples that have been found to be contaminated with
+    information on what stage of the process they have been added to the table."""
+    __tablename__ = 'genomic_sample_contamination'
+
+    # Primary Key
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    sampleId = Column('sample_id', ForeignKey(BiobankStoredSample.biobankStoredSampleId), nullable=False)
+    failedInJob = Column('failed_in_job', Enum(GenomicJob), nullable=False)
+
+
+event.listen(GenomicSampleContamination, 'before_insert', model_insert_listener)
+event.listen(GenomicSampleContamination, 'before_update', model_update_listener)

@@ -40,13 +40,16 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicJobRun,
-    GenomicGCValidationMetrics)
+    GenomicGCValidationMetrics,
+    GenomicSampleContamination
+)
 from rdr_service.model.participant import Participant
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
+from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -252,6 +255,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
+
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
@@ -455,6 +463,8 @@ class GenomicPipelineTest(BaseTestCase):
                                              folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
+
+        self._create_stored_samples([(2, 1002)])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
@@ -721,6 +731,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003)
+        ])
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
 
@@ -811,6 +827,11 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (2, 1002),
+            (3, 1003)
+        ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
         manifest_file = self.file_processed_dao.get(1)
@@ -1667,6 +1688,12 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
 
+        # Test that swapping out collection tube ids records the old id as contaminated
+        self.session.query(GenomicSampleContamination).filter(
+            GenomicSampleContamination.sampleId == 2,  # Participant 2's collection tube id is replaced with 100002
+            GenomicSampleContamination.failedInJob == GenomicJob.AW1_MANIFEST
+        ).one()
+
     @mock.patch('rdr_service.genomic.genomic_job_components.GenomicFileIngester._check_if_control_sample')
     def test_ingest_specific_aw1_manifest(self, control_check_mock):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
@@ -1832,6 +1859,11 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
@@ -2077,6 +2109,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_cvl_w1_manifest(self):
+
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -2092,6 +2125,8 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
+
+        self._create_stored_samples([(2, 1002)])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
@@ -2307,6 +2342,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
         # Test sequencing file (required for GEM)
@@ -2423,6 +2463,8 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
 
         self._update_test_sample_ids()
+
+        self._create_stored_samples([(2, 1002)])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
@@ -2860,6 +2902,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._update_test_sample_ids()
 
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
+
         # TODO: implement manifest_file record for AW2
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
 
@@ -2968,3 +3015,88 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(5)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_contamination_calculation_with_another_sample_viable(self):
+        file_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
+        participant = self.data_generator.create_database_participant_summary().participant
+        contaminated_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            test='1ED04'
+        )
+        # create a viable sample
+        self.data_generator.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='1ED10')
+
+        contamination_category = file_ingester.calculate_contamination_category(
+            contaminated_sample.biobankStoredSampleId,
+            0.09,
+            GenomicSetMember(participantId=participant.participantId, biobankId=participant.biobankId)
+        )
+        self.assertNotEqual(GenomicContaminationCategory.TERMINAL_NO_EXTRACT, contamination_category)
+
+        self.session.query(GenomicSampleContamination).filter(
+            GenomicSampleContamination.sampleId == contaminated_sample.biobankStoredSampleId
+        ).one()  # There should be a contamination record for the sample
+
+    def test_contamination_calculation_with_another_contaminated_sample(self):
+        file_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
+        participant = self.data_generator.create_database_participant_summary().participant
+        contaminated_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            test='1ED04'
+        )
+        other_contaminated_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            test='1ED10'
+        )
+        self.session.add(GenomicSampleContamination(
+            sampleId=other_contaminated_sample.biobankStoredSampleId,
+            failedInJob=GenomicJob.METRICS_INGESTION
+        ))
+        self.session.commit()
+
+        contamination_category = file_ingester.calculate_contamination_category(
+            contaminated_sample.biobankStoredSampleId,
+            0.09,
+            GenomicSetMember(participantId=participant.participantId, biobankId=participant.biobankId)
+        )
+        self.assertEqual(GenomicContaminationCategory.TERMINAL_NO_EXTRACT, contamination_category)
+
+        self.session.query(GenomicSampleContamination).filter(
+            GenomicSampleContamination.sampleId == contaminated_sample.biobankStoredSampleId
+        ).one()  # There should be a contamination record for the sample
+
+    def test_contamination_calculation_with_no_other_sample(self):
+        file_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
+        participant = self.data_generator.create_database_participant_summary().participant
+        contaminated_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=participant.biobankId,
+            test='1ED04'
+        )
+
+        contamination_category = file_ingester.calculate_contamination_category(
+            contaminated_sample.biobankStoredSampleId,
+            0.09,
+            GenomicSetMember(participantId=participant.participantId, biobankId=participant.biobankId)
+        )
+        self.assertEqual(GenomicContaminationCategory.TERMINAL_NO_EXTRACT, contamination_category)
+
+        self.session.query(GenomicSampleContamination).filter(
+            GenomicSampleContamination.sampleId == contaminated_sample.biobankStoredSampleId
+        ).one()  # There should be a contamination record for the sample
+
+    def _create_stored_samples(self, stored_sample_date):
+        for biobank_id, stored_sample_id in stored_sample_date:
+            # Create the participant and summary if needed
+            participant = self.session.query(Participant).filter(
+                Participant.biobankId == biobank_id
+            ).one_or_none()
+            if participant is None:
+                self.data_generator.create_database_participant(biobankId=biobank_id)
+                # self.data_generator.create_database_participant_summary(participant=participant)
+
+            self.data_generator.create_database_biobank_stored_sample(
+                biobankId=biobank_id,
+                biobankStoredSampleId=stored_sample_id,
+                test='1SAL2'
+            )
+
