@@ -33,7 +33,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_gc_validation_metrics_update, genomic_set_member_update, \
+from rdr_service.resource.generators.genomics import genomic_set_member_update, \
     genomic_manifest_feedback_update
 
 
