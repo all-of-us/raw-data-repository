@@ -34,6 +34,8 @@ class SchemaID(IntEnum):
     genomic_job_run = 3020
     genomic_gc_validation_metrics = 3030
     genomic_file_processed = 3040
+    genomic_manifest_file = 3050
+    genomic_manifest_feedback = 3060
 
     # Workbench
     workbench_researcher = 4000

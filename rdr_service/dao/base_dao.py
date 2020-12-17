@@ -753,6 +753,7 @@ class FhirMixin(object):
         js.extend(self._PROPERTIES)
         return js
 
+
 def save_raw_request_record(log: RequestsLog):
     """
     Save the request payload and possibly link it to a table record
@@ -775,14 +776,5 @@ def save_raw_request_record(log: RequestsLog):
             log.resource = None
             session.add(log)
             session.flush()
-
-        # for a small window each sunday, check for old records and delete them.
-        now = datetime.datetime.utcnow()
-        if now.weekday() == 6 and now.hour == 0:
-            old_date = datetime.datetime.utcnow() - datetime.timedelta(days=180)
-            count = session.query(RequestsLog).filter(RequestsLog.created < old_date).count()
-            if count > 0:
-                session.query(RequestsLog).filter(RequestsLog.created < old_date).delete(synchronize_session=False)
-                session.commit()
 
         return log

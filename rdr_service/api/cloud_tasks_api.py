@@ -9,7 +9,8 @@ from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_job_run_batch_update, bq_genomic_gc_validation_metrics_batch_update, \
-    bq_genomic_file_processed_batch_update
+    bq_genomic_file_processed_batch_update, bq_genomic_manifest_file_batch_update, \
+    bq_genomic_manifest_feedback_batch_update
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.offline import genomic_pipeline
@@ -17,7 +18,8 @@ from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_tas
 from rdr_service.participant_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
-    genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update
+    genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update, \
+    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.tasks import batch_rebuild_participants_task
 
@@ -224,6 +226,12 @@ class RebuildGenomicTableRecordsApi(Resource):
         elif table == 'genomic_gc_validation_metrics':
             bq_genomic_gc_validation_metrics_batch_update(batch)
             genomic_gc_validation_metrics_batch_update(batch)
+        elif table == 'genomic_manifest_file':
+            bq_genomic_manifest_file_batch_update(batch)
+            genomic_manifest_file_batch_update(batch)
+        elif table == 'genomic_manifest_feedback':
+            bq_genomic_manifest_feedback_batch_update(batch)
+            genomic_manifest_feedback_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
 

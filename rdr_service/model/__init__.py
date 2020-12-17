@@ -20,6 +20,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMay'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENov'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDec'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEJan'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -32,7 +33,9 @@ BQ_TABLES = [
     ('rdr_service.model.bq_genomics', 'BQGenomicSetMember'),
     ('rdr_service.model.bq_genomics', 'BQGenomicJobRun'),
     ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetrics'),
-    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessed')
+    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessed'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicManifestFile'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicManifestFeedback')
 ]
 
 BQ_VIEWS = [
@@ -68,6 +71,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMayView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENovView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDecView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEJanView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
@@ -85,5 +89,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_genomics', 'BQGenomicSetMemberView'),
     ('rdr_service.model.bq_genomics', 'BQGenomicJobRunView'),
     ('rdr_service.model.bq_genomics', 'BQGenomicGCValidationMetricsView'),
-    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessedView')
+    ('rdr_service.model.bq_genomics', 'BQGenomicFileProcessedView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicManifestFileView'),
+    ('rdr_service.model.bq_genomics', 'BQGenomicManifestFeedbackView')
 ]

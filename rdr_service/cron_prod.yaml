@@ -34,3 +34,8 @@ cron:
   timezone: America/New_York
   schedule: every day 03:00
   target: offline
+- description: HPO LITE PAIRING Import
+  url: /offline/HpoLitePairingImport
+  timezone: America/New_York
+  schedule: every day 03:15
+  target: offline

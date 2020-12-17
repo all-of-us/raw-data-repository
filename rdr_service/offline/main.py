@@ -2,7 +2,7 @@
 import json
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, got_request_exception, request
 from sqlalchemy.exc import DBAPIError
@@ -10,13 +10,16 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER
+from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
+from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
@@ -453,6 +456,25 @@ def import_deceased_reports():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def import_hpo_lite_pairing():
+    importer = HpoLitePairingImporter()
+    importer.import_pairing_data()
+    return '{ "success": "true" }'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def clean_up_request_logs():
+    dao = BaseDao(None)
+    with dao.session() as session:
+        six_months_ago = datetime.utcnow() - timedelta(days=180)
+        session.query(RequestsLog).filter(
+            RequestsLog.created < six_months_ago
+        ).delete(synchronize_session=False)
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -681,6 +703,20 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "DeceasedReportImport",
         endpoint="deceased_report_import",
         view_func=import_deceased_reports,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "HpoLitePairingImport",
+        endpoint="hpo_lite_pairing_import",
+        view_func=import_hpo_lite_pairing,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CleanUpRequestLogs",
+        endpoint="request_log_cleanup",
+        view_func=clean_up_request_logs,
         methods=["GET"],
     )
 

@@ -15,7 +15,9 @@ from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicJob,
     GenomicWorkflowState,
-    GenomicQcStatus
+    GenomicQcStatus,
+    GenomicContaminationCategory,
+    GenomicManifestTypes
 )
 
 
@@ -87,6 +89,8 @@ class GenomicSetMemberSchema(Schema):
     gem_a2_manifest_job_run_id = fields.Int32()
     gem_pass = fields.String(validate=validate.Length(max=10))
     gem_a3_manifest_job_run_id = fields.Int32()
+    aw3_manifest_job_run_id = fields.Int32()
+    aw4_manifest_job_run_id = fields.Int32()
     cvl_aw1c_manifest_job_run_id = fields.Int32()
     cvl_aw1cf_manifest_job_run_id = fields.Int32()
     cvl_w1_manifest_job_run_id = fields.Int32()
@@ -108,6 +112,9 @@ class GenomicSetMemberSchema(Schema):
     qc_status_id = fields.EnumInteger(enum=GenomicQcStatus)
     fingerprint_path = fields.String(validate=validate.Length(max=255))
     dev_note = fields.String(validate=validate.Length(max=255))
+    aw1_file_processed_id = fields.Int32()
+    aw2_file_processed_id = fields.Int32()
+    aw2f_file_processed_id = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_set_member
@@ -148,10 +155,50 @@ class GenomicFileProcessedSchema(Schema):
     file_result = fields.EnumString(enum=GenomicSubProcessResult)
     file_result_id = fields.EnumInteger(enum=GenomicSubProcessResult)
     upload_date = fields.DateTime()
+    genomic_manifest_file_id = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_file_processed
         resource_uri = 'GenomicFileProcessed'
+        resource_pk_field = 'id'
+
+
+class GenomicManifestFileSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    upload_date = fields.DateTime()
+    manifest_type = fields.EnumString(enum=GenomicManifestTypes)
+    manifest_type_id = fields.EnumInteger(enum=GenomicManifestTypes)
+    file_path = fields.String(validate=validate.Length(max=255))
+    bucket_name = fields.String(validate=validate.Length(max=128))
+    record_count = fields.Int32()
+    rdr_processing_complete = fields.Int16()
+    rdr_processing_complete_date = fields.DateTime()
+    ignore = fields.Int16()
+
+    class Meta:
+        schema_id = SchemaID.genomic_manifest_file
+        resource_uri = 'GenomicManifestFile'
+        resource_pk_field = 'id'
+
+
+class GenomicManifestFeedbackSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    input_manifest_file_id = fields.Int32()
+    feedback_manifest_file_id = fields.Int32()
+    feedback_record_count = fields.Int32()
+    feedback_complete = fields.Int16()
+    feedback_complete_date = fields.DateTime()
+    ignore = fields.Int16()
+
+    class Meta:
+        schema_id = SchemaID.genomic_manifest_feedback
+        resource_uri = 'GenomicManifestFeedback'
         resource_pk_field = 'id'
 
 
@@ -210,6 +257,8 @@ class GenomicGCValidationMetricsSchema(Schema):
     vcf_tbi_received = fields.Int16()
     ignore_flag = fields.Int16()
     dev_note = fields.String(validate=validate.Length(max=255))
+    contamination_category = fields.EnumString(enum=GenomicContaminationCategory)
+    contamination_category_id = fields.EnumInteger(enum=GenomicContaminationCategory)
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics
