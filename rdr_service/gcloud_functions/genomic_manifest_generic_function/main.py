@@ -36,7 +36,7 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
     def created(self):
         """ Handle storage object created event. """
         # Verify this is a file that we want to process.
-        if 'awa_genotyping_sample_manifests' not in self.event.name.lower():
+        if 'aw1_genotyping_sample_manifests' not in self.event.name.lower():
             _logger.info(f'Skipping file {self.event.name}, name does not match AW1 file.')
             return
 
