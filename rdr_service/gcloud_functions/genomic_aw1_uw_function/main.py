@@ -79,7 +79,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_manifest_generic_function(_event, _context):
+def genomic_aw1_uw_function(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
