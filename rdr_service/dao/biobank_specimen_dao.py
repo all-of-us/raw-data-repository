@@ -249,12 +249,12 @@ class BiobankSpecimenDao(BiobankDaoBase):
         specimen_rlims_id = specimen_json['rlimsID']
         self.preloader.register_for_hydration(BiobankSpecimen(rlimsId=specimen_rlims_id))
 
-        if 'attributes' in specimen_json:
+        if specimen_json.get('attributes'):
             attribute_dao = BiobankSpecimenAttributeDao()
             for attribute_json in specimen_json['attributes']:
                 attribute_dao.ready_preloader(self.preloader, attribute_json, specimen_rlims_id)
 
-        if 'aliquots' in specimen_json:
+        if specimen_json.get('aliquots'):
             aliquot_dao = BiobankAliquotDao()
             for aliquot_json in specimen_json['aliquots']:
                 aliquot_dao.ready_preloader(self.preloader, aliquot_json)
@@ -401,12 +401,12 @@ class BiobankAliquotDao(BiobankDaoBase):
     def ready_preloader(self, preloader: ObjectPreloader, aliquot_json):
         preloader.register_for_hydration(BiobankAliquot(rlimsId=aliquot_json['rlimsID']))
 
-        if 'datasets' in aliquot_json:
+        if aliquot_json.get('datasets'):
             dataset_dao = BiobankAliquotDatasetDao()
             for dataset_json in aliquot_json['datasets']:
                 dataset_dao.ready_preloader(preloader, dataset_json)
 
-        if 'aliquots' in aliquot_json:
+        if aliquot_json.get('aliquots'):
             for child_json in aliquot_json['aliquots']:
                 self.ready_preloader(preloader, child_json)
 
@@ -488,7 +488,7 @@ class BiobankAliquotDatasetDao(BiobankDaoBase):
         dataset_rlims_id = dataset_json['rlimsID']
         preloader.register_for_hydration(BiobankAliquotDataset(rlimsId=dataset_rlims_id))
 
-        if 'datasetItems' in dataset_json:
+        if dataset_json.get('datasetItems'):
             item_dao = BiobankAliquotDatasetItemDao()
 
             for dataset_item_json in dataset_json['datasetItems']:

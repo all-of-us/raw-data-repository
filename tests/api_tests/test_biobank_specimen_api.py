@@ -245,6 +245,15 @@ class BiobankOrderApiTest(BaseTestCase):
         saved_specimen_client_json = self.retrieve_specimen_json(result['id'])
         self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
 
+    def test_allow_for_null_collections_on_migration(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = None
+        self.send_put(f"Biobank/specimens", request_data=[payload])
+
+        specimen = self.get_specimen_from_dao(rlims_id=payload['rlimsID'])
+        saved_specimen_client_json = self.dao.to_client_json(specimen)
+        self.assertSpecimenJsonMatches(saved_specimen_client_json, payload)
+
     def test_clear_specimen_data(self):
         payload = self.get_minimal_specimen_json()
         self._add_specimen_data_to_payload(payload)
