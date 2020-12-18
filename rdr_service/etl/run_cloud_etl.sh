@@ -59,7 +59,8 @@ set_db_connection_string
 
 echo "Running ETL..."
 
-mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/etl.sql
+mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/partially_initialize_cdm.sql
+mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 
 echo "Done with ETL. Please manually run export."
 
