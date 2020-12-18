@@ -562,10 +562,18 @@ class GenomicFileIngester:
             except KeyError:
                 pass
 
-            # Clean up contamination if data is less than 0
+            # Validate and clean contamination data
             try:
-                if '-' in row_copy['contamination']:
-                    row_copy['contamination'] = '0.0'
+                row_copy['contamination'] = float(row_copy['contamination'])
+
+                # Percentages shouldn't be less than 0
+                if row_copy['contamination'] < 0:
+                    row_copy['contamination'] = 0
+
+            except ValueError:
+                logging.error(f'contamination must be a number for sample_id: {sample_id}')
+                return GenomicSubProcessResult.ERROR
+
             except KeyError:
                 pass
 

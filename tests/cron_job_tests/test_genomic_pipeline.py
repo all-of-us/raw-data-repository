@@ -301,6 +301,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file (reusing test file)
         updated_aw2_file = test_data.open_genomic_set_file('RDR_AoU_GEN_TestDataManifest.csv')
         updated_aw2_file = updated_aw2_file.replace('10002', '11002')
+        updated_aw2_file = updated_aw2_file.replace('0.1345', '-0.005')
 
         updated_aw2_filename = "RDR_AoU_GEN_TestDataManifest_11192020.csv"
 
@@ -324,6 +325,9 @@ class GenomicPipelineTest(BaseTestCase):
         for m in gc_metrics:
             if m.genomicSetMemberId == 2:
                 self.assertEqual(m.limsId, '11002')
+
+                # Test negative contamination is 0
+                self.assertEqual('0', gc_metrics[1].contamination)
 
     def test_ingest_specific_aw2_file(self):
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,

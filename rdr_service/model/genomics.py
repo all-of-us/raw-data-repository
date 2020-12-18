@@ -379,6 +379,7 @@ class GenomicGCValidationMetrics(Base):
     meanCoverage = Column('mean_coverage', String(10), nullable=True)
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
     aouHdrCoverage = Column('aou_hdr_coverage', String(10), nullable=True)
+    # TODO: change datatype of contamintion to float in RDR and PDR
     contamination = Column('contamination', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
