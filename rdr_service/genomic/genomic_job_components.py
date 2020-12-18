@@ -18,6 +18,7 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -34,6 +35,7 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicGCValidationMetrics,
+    GenomicSampleContamination
 )
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
@@ -324,6 +326,9 @@ class GenomicFileIngester:
                                                                                      _state)
                         # Validate new collection tube ID, set collection tube ID
                         if member and self._validate_collection_tube_id(collection_tube_id, bid):
+                            with self.member_dao.session() as session:
+                                self._record_sample_as_contaminated(session, member.collectionTubeId)
+
                             member.collectionTubeId = collection_tube_id
 
                         else:
@@ -576,7 +581,8 @@ class GenomicFileIngester:
 
                     # Calculate contamination_category if contamination supplied
                     try:
-                        category = self.calculate_contamination_category(float(row_copy['contamination']), member)
+                        contamination_value = float(row_copy['contamination'])
+                        category = self.calculate_contamination_category(sample_id, contamination_value, member)
                         row_copy['contamination_category'] = category
 
                     except (KeyError, ValueError):
@@ -745,9 +751,31 @@ class GenomicFileIngester:
             logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
             return GenomicQcStatus.UNSET
 
-    def calculate_contamination_category(self, raw_contamination, member):
+    @staticmethod
+    def _participant_has_potentially_clean_samples(session, biobank_id):
+        """Check for any stored sample for the participant that is not contaminated
+        and is a 1ED04, 1ED10, or 1SAL2 test"""
+        query = session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankId == biobank_id,
+            BiobankStoredSample.status < SampleStatus.SAMPLE_NOT_RECEIVED
+        ).outerjoin(GenomicSampleContamination).filter(
+            GenomicSampleContamination.id.is_(None),
+            BiobankStoredSample.test.in_(['1ED04', '1ED10', '1SAL2'])
+        )
+
+        exists_query = session.query(query.exists())
+        return exists_query.scalar()
+
+    def _record_sample_as_contaminated(self, session, sample_id):
+        session.add(GenomicSampleContamination(
+            sampleId=sample_id,
+            failedInJob=self.job_id
+        ))
+
+    def calculate_contamination_category(self, sample_id, raw_contamination, member: GenomicSetMember):
         """
         Takes contamination value from AW2 and calculates GenomicContaminationCategory
+        :param sample_id:
         :param raw_contamination:
         :param member:
         :return: GenomicContaminationCategory
@@ -755,25 +783,34 @@ class GenomicFileIngester:
         ps_dao = ParticipantSummaryDao()
         ps = ps_dao.get(member.participantId)
 
-        # TODO: implement terminal, no extract
+        contamination_category = GenomicContaminationCategory.UNSET
 
         # No Extract if contamination <1%
         if raw_contamination < 0.01:
-            return GenomicContaminationCategory.NO_EXTRACT
+            contamination_category = GenomicContaminationCategory.NO_EXTRACT
 
         # Only extract WGS if contamination between 1 and 3 % inclusive AND ROR
         elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
-            return GenomicContaminationCategory.EXTRACT_WGS
+            contamination_category = GenomicContaminationCategory.EXTRACT_WGS
 
         # No Extract if contamination between 1 and 3 % inclusive and GROR is not Yes
         elif (0.01 <= raw_contamination <= 0.03) and ps.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
-            return GenomicContaminationCategory.NO_EXTRACT
+            contamination_category = GenomicContaminationCategory.NO_EXTRACT
 
         # Extract Both if contamination > 3%
         elif raw_contamination > 0.03:
-            return GenomicContaminationCategory.EXTRACT_BOTH
+            contamination_category = GenomicContaminationCategory.EXTRACT_BOTH
 
-        return GenomicContaminationCategory.UNSET
+        with ps_dao.session() as session:
+            if raw_contamination >= 0.01:
+                # Record in the contamination table, regardless of GROR consent
+                self._record_sample_as_contaminated(session, sample_id)
+
+            if contamination_category != GenomicContaminationCategory.NO_EXTRACT and \
+                    not self._participant_has_potentially_clean_samples(session, member.biobankId):
+                contamination_category = GenomicContaminationCategory.TERMINAL_NO_EXTRACT
+
+        return contamination_category
 
 
 class GenomicFileValidator:
