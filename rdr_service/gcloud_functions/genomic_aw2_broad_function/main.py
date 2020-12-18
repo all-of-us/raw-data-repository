@@ -12,7 +12,7 @@ from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
 # Function name must contain only lower case Latin letters, digits or underscore. It must
 # start with letter, must not end with a hyphen, and must be at most 63 characters long.
 # There must be a python function in this file with the same name as the entry point.
-function_name = 'genomic_aw1_bi_function'
+function_name = 'genomic_aw2_broad_function'
 
 # [--trigger-bucket=TRIGGER_BUCKET | --trigger-http | --trigger-topic=TRIGGER_TOPIC |
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
@@ -33,8 +33,8 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
     def created(self):
         """ Handle storage object created event. """
         # Verify this is a file that we want to process.
-        if '_sample_manifests' not in self.event.name.lower():
-            _logger.info(f'Skipping file {self.event.name}, name does not match AW1 file.')
+        if '_data_manifests' not in self.event.name.lower():
+            _logger.info(f'Skipping file {self.event.name}, name does not match Data Manifest file.')
             return
 
         _logger.info(f"file found: {self.event.name}")
@@ -50,7 +50,7 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
         _logger.info("Pushing cloud task...")
 
         _task = GCPCloudTask()
-        _task.execute('/resource/task/IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
+        _task.execute('/resource/task/IngestAW2ManifestTaskApi', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):
@@ -67,10 +67,10 @@ def get_deploy_args(gcp_env):
         cloud_resource = 'aou-rdr-sandbox-mock-data'
 
     if _project_suffix == 'stable':
-        cloud_resource = 'genomics-broad-dryrun'
+        cloud_resource = 'genomics-raw-broad'
 
     if _project_suffix == 'prod':
-        cloud_resource = 'prod-genomics-broad'
+        cloud_resource = 'prod-genomics-data-broad'
 
     args = [function_name]
     for arg in deploy_args:
@@ -79,7 +79,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_aw1_bi_function(_event, _context):
+def genomic_aw2_broad_function(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python

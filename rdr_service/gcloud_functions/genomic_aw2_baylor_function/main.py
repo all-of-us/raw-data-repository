@@ -12,7 +12,7 @@ from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
 # Function name must contain only lower case Latin letters, digits or underscore. It must
 # start with letter, must not end with a hyphen, and must be at most 63 characters long.
 # There must be a python function in this file with the same name as the entry point.
-function_name = 'genomic_aw2_bi_function'
+function_name = 'genomic_aw2_baylor_function'
 
 # [--trigger-bucket=TRIGGER_BUCKET | --trigger-http | --trigger-topic=TRIGGER_TOPIC |
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
@@ -67,10 +67,10 @@ def get_deploy_args(gcp_env):
         cloud_resource = 'aou-rdr-sandbox-mock-data'
 
     if _project_suffix == 'stable':
-        cloud_resource = 'genomics-raw-broad'
+        cloud_resource = 'genomics-raw-baylor'
 
     if _project_suffix == 'prod':
-        cloud_resource = 'prod-genomics-data-broad'
+        cloud_resource = 'prod-genomics-data-baylor'
 
     args = [function_name]
     for arg in deploy_args:
@@ -79,7 +79,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_aw2_bi_function(_event, _context):
+def genomic_aw2_baylor_function(_event, _context):
     """
     GCloud Function Entry Point (Storage Pub/Sub Event).
     https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
