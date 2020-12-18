@@ -7,7 +7,7 @@ from sqlalchemy.exc import DBAPIError
 from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
-    RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi
+    RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
@@ -49,6 +49,10 @@ def _build_resource_app():
     # Ingest AW1 manifest
     _api.add_resource(IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
                       endpoint="ingest_aw1_manifest_task", methods=["POST"])
+
+    # Ingest AW2 manifest
+    _api.add_resource(IngestAW2ManifestTaskApi, TASK_PREFIX + "IngestAW2ManifestTaskApi",
+                      endpoint="ingest_aw2_manifest_task", methods=["POST"])
 
     #
     # End Task API endpoints

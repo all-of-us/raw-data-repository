@@ -562,9 +562,23 @@ class GenomicFileIngester:
             row_copy['file_id'] = self.file_obj.id
             sample_id = row_copy['sampleid']
 
-            # TODO: limit call rate to 10 characters for now until clarification from GCs
             try:
                 row_copy['callrate'] = row_copy['callrate'][:10]
+            except KeyError:
+                pass
+
+            # Validate and clean contamination data
+            try:
+                row_copy['contamination'] = float(row_copy['contamination'])
+
+                # Percentages shouldn't be less than 0
+                if row_copy['contamination'] < 0:
+                    row_copy['contamination'] = 0
+
+            except ValueError:
+                logging.error(f'contamination must be a number for sample_id: {sample_id}')
+                return GenomicSubProcessResult.ERROR
+
             except KeyError:
                 pass
 
@@ -576,39 +590,44 @@ class GenomicFileIngester:
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    metric_id = None
 
-                if existing_metrics_obj is None:
+                # Calculate contamination_category if contamination supplied
+                try:
+                    contamination_value = float(row_copy['contamination'])
+                    category = self.calculate_contamination_category(sample_id, contamination_value, member)
+                    row_copy['contamination_category'] = category
 
-                    # Calculate contamination_category if contamination supplied
-                    try:
-                        contamination_value = float(row_copy['contamination'])
-                        category = self.calculate_contamination_category(sample_id, contamination_value, member)
-                        row_copy['contamination_category'] = category
+                except (KeyError, ValueError):
+                    logging.error('Sample supplied without contamination.')
 
-                    except (KeyError, ValueError):
-                        logging.error('Sample supplied without contamination.')
+                upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
-                    self.metrics_dao.insert_gc_validation_metrics(row_copy)
+                # Update GC Metrics for PDR
+                if upserted_obj:
+                    bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(upserted_obj.id)
 
-                    member.aw2FileProcessedId = self.file_obj.id
+                member.aw2FileProcessedId = self.file_obj.id
+
+                # Only update the state if it was AW1
+                if member.genomicWorkflowState == GenomicWorkflowState.AW1:
                     member.genomicWorkflowState = GenomicWorkflowState.AW2
 
-                    with self.member_dao.session() as session:
-                        session.merge(member)
+                with self.member_dao.session() as session:
+                    session.merge(member)
 
-                    # For feedback manifest loop
-                    # Get the genomic_manifest_file
-                    manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-                    if manifest_file is not None:
-                        self.feedback_dao.increment_feedback_count(manifest_file.id)
-
-                else:
-                    logging.info(f"Found existing metrics object for member ID {member.id}")
-                    # Don't overwrite metrics object
-                    continue
+                # For feedback manifest loop
+                # Get the genomic_manifest_file
+                manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+                if manifest_file is not None:
+                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
             else:
-                logging.error(f"No GSM in AW1 state bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
                 continue
 
         return GenomicSubProcessResult.SUCCESS
@@ -1127,7 +1146,10 @@ class GenomicFileValidator:
 
         cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '').replace('_', '')
                        for field in fields])
-        return cases == self.valid_schema
+        all_file_columns_valid = all([c in self.valid_schema for c in cases])
+        all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
+
+        return all([all_file_columns_valid, all_expected_columns_in_file])
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
@@ -1266,7 +1288,7 @@ class GenomicReconciler:
                         setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.update(metric)
+            inserted_metrics_obj = self.metrics_dao.upsert(metric)
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
@@ -1337,7 +1359,7 @@ class GenomicReconciler:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.update(metric.GenomicGCValidationMetrics)
+            inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
 
             # Update GC Metrics for PDR
             if inserted_metrics_obj:
@@ -2334,6 +2356,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
@@ -2391,6 +2414,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == self.PROCESSING_STATUS_PASS) &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
@@ -2493,13 +2517,24 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                    (GenomicGCValidationMetrics.ignoreFlag != 1) &
                     (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                     (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
-                ).order_by(GenomicSetMember.genomicWorkflowStateModifiedTime).limit(10000)
+                ).group_by(
+                        GenomicSetMember.biobankId,
+                        GenomicSetMember.sampleId,
+                        GenomicSetMember.sexAtBirth,
+                        sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                           sqlalchemy.sql.expression.literal("yes"),
+                                           sqlalchemy.sql.expression.literal("no")),
+                        ParticipantSummary.consentForGenomicsRORAuthored,
+                        GenomicGCValidationMetrics.chipwellbarcode,
+                        sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
+                           ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
             )
 
         # Color GEM A3 Manifest

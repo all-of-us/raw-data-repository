@@ -12,8 +12,8 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicJob,
-    GenomicManifestTypes
-)
+    GenomicManifestTypes,
+    GenomicSubProcessResult)
 import rdr_service.config as config
 
 
@@ -338,6 +338,8 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict):
         if task_data.file_data.create_feedback_record:
             controller.insert_genomic_manifest_feedback_record(manifest_file)
 
+        controller.job_result = GenomicSubProcessResult.SUCCESS
+
     if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
@@ -349,11 +351,15 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject):
     Sets up the genomic manifest file record and begin pipeline
     :param _task_data: dictionary of metadata needed by the controller
     """
-    if _task_data.job == GenomicJob.AW1_MANIFEST:
-        with GenomicJobController(GenomicJob.AW1_MANIFEST,
+    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION):
+
+        with GenomicJobController(_task_data.job,
                                   task_data=_task_data) as controller:
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
 
-            controller.ingest_specific_aw1_manifest(file_name)
+            controller.ingest_specific_manifest(file_name)
+
+    else:
+        logging.error(f'No task for {_task_data.job}')

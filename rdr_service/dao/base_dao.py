@@ -624,12 +624,12 @@ class UpsertableDao(BaseDao):
 
     def _do_upsert(self, session, obj):
         """Perform the upsert of the specified object. Subclasses can override to alter things."""
-        session.merge(obj)
+        return session.merge(obj)
 
     def upsert_with_session(self, session, obj):
         """Upserts the object in the database with the specified session."""
         self._validate_upsert(session, obj)
-        self._do_upsert(session, obj)
+        return self._do_upsert(session, obj)
 
     def upsert(self, obj):
         """Upserts the object in the database (creating the object if it does not exist, and replacing

@@ -583,7 +583,7 @@ class JobRunResult(GenomicManifestBase):
             self.dao.update(job_run)
 
             # Update run for PDR
-            bq_genomic_job_run_update(job_run.id)
+            bq_genomic_job_run_update(job_run.id, project_id=self.gcp_env.project)
             genomic_job_run_update(job_run.id)
 
         return 0
@@ -847,8 +847,6 @@ class ChangeCollectionTube(GenomicManifestBase):
             self.counter += 1
 
 
-
-
 class UpdateGcMetricsClass(GenomicManifestBase):
     """
     Class for updating GC Metrics records
@@ -981,6 +979,17 @@ class GenomicProcessRunner(GenomicManifestBase):
                     _logger.info(f'File Specified: {self.args.file}')
                     return self.run_aw2_manifest()
 
+                elif self.args.csv:
+                    _logger.info(f'File list Specified: {self.args.csv}')
+                    print(f'Multiple File List Specified: {self.args.csv}')
+
+                    # Validate file exists
+                    if not os.path.exists(self.args.csv):
+                        _logger.error(f'File {self.args.csv} was not found.')
+                        return 1
+
+                    return self.process_multiple_aw2_from_file()
+
                 else:
                     _logger.error(f'A file is required for this job.')
                     return 1
@@ -1014,6 +1023,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         # Get bucket and filename from argument
         bucket_name = self.args.file.split('/')[0]
         file_name = self.args.file.replace(bucket_name + '/', '')
+        _logger.info(f'Processing: {file_name}')
 
         # Use a Controller to run the job
         try:
@@ -1021,7 +1031,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                                       storage_provider=self.gscp,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
-                controller.ingest_specific_aw2_manifest(file_name)
+                controller.ingest_specific_manifest(file_name)
 
             return 0
 
@@ -1029,6 +1039,19 @@ class GenomicProcessRunner(GenomicManifestBase):
             _logger.error(e)
             return 1
 
+    def process_multiple_aw2_from_file(self):
+        # Open list of files and run_aw2_manifest() for each one individually
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f)
+
+            # Run the AW2 manifest ingestion on each file
+            for l in csvreader:
+                self.args.file = l[0]
+                result = self.run_aw2_manifest()
+                if result == 1:
+                    return 1
+
+        return 0
 
 class FileUploadDateClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -1168,6 +1191,8 @@ def run():
     process_runner_parser.add_argument("--job", help="GenomicJob process to run",
                                        default=None, required=True)
     process_runner_parser.add_argument("--file", help="The full 'bucket/subfolder/file.ext to process",
+                                       default=None, required=False)
+    process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
                                        default=None, required=False)
     process_runner_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
