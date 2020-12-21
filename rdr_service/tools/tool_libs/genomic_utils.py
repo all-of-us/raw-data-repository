@@ -13,6 +13,7 @@ import sys
 import os
 import csv
 import pytz
+from sqlalchemy import text
 
 from rdr_service import clock, config
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -1053,6 +1054,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         return 0
 
+
 class FileUploadDateClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(FileUploadDateClass, self).__init__(args, gcp_env)
@@ -1119,6 +1121,109 @@ class FileUploadDateClass(GenomicManifestBase):
                 GenomicFileProcessed.uploadDate == None
             ).all()
 
+
+class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
+    """
+    Tool to backfill genomic_set_member.aw1_file_processed_id
+    For AW2F contamination workflow.
+    For AW1:
+    The ongoing AW1 ingestion will write this field as of RDR 1.86.1.
+    This is to backfill the field for previously ingested data.
+    AW1 files are matched to a genomic_set_member record
+    from the genomic_set_member.package_id field and the
+    package_id in the file name.
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(BackfillGenomicSetMemberFileProcessedID, self).__init__(args, gcp_env)
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Validate csv file exists
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        # Open file of package IDs
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f)
+
+            # Iterate through each package ID
+            for l in csvreader:
+                pkg = l[0]
+                result = 0
+
+                members_for_pkg = self.get_members_aw1_from_package_id(pkg)
+
+                record_count_for_pkg = len(members_for_pkg)
+                records_updated_count = 0
+
+                for m in members_for_pkg:
+                    if not self.args.dryrun:
+                        self.update_member_aw1_file_processed_id(m.member_id, m.aw1_id)
+                        records_updated_count += 1
+
+                _logger.warning(f'{pkg}: updated {records_updated_count}/{record_count_for_pkg}')
+
+                if result == 1:
+                    return 1
+
+        return 0
+
+    def get_members_aw1_from_package_id(self, pkg_id):
+        """
+        Return query results of AW1 file processed ID for all genomic
+        set members associated to a package ID
+        :param pkg_id: the package ID from file name to lookup
+        :return: result set of (member_id, aw1_id)
+        """
+
+        with self.dao.session() as session:
+            # Lookup AW1 file_processed_id from package ID
+            sql = """
+            SELECT m.id as member_id                    
+                , max(f.id) as aw1_id
+            FROM genomic_set_member m
+                JOIN genomic_manifest_file mf ON (
+                        # Strip only Package from file path
+                        SUBSTRING(
+                        SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(mf.file_path, "_", -1),
+                        ".csv",
+                        1
+                    ),
+                    1,15
+                    )
+                ) = m.package_id
+                JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
+                    and f.file_result = 1
+                    and f.file_status = 1
+            where true 
+                and reconcile_gc_manifest_job_run_id is not null
+                and m.package_id is not null
+                and m.package_id = :pkg_id
+            group by m.id, mf.id
+            """
+
+            return session.execute(text(sql), {'pkg_id': pkg_id}).fetchall()
+
+    def update_member_aw1_file_processed_id(self, mid, fid):
+        """
+
+        :param mid: member ID
+        :param fid: file_id
+        """
+        member = self.dao.get(mid)
+        member.aw1FileProcessedId = fid
+        with self.dao.session() as s:
+            s.merge(member)
 
 def run():
     # Set global debug value and setup application logging.
@@ -1208,6 +1313,12 @@ def run():
     collection_tube_parser.add_argument("--sample-override", help="for testing",
                                         default=False, action="store_true")  # noqa
 
+    # Backfill tool for genomic_set_member.*_file_processed_ID
+    backfill_file_processed_id_parser = subparser.add_parser("file-processed-id-backfill")
+    backfill_file_processed_id_parser.add_argument("--csv", help="A CSV file with the package_ids to backfill",
+                                        default=None, required=True)
+    backfill_file_processed_id_parser.add_argument("--dryrun",
+                                                   help="for testing", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
@@ -1250,6 +1361,10 @@ def run():
 
         elif args.util == 'collection-tube':
             process = ChangeCollectionTube(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'file-processed-id-backfill':
+            process = BackfillGenomicSetMemberFileProcessedID(args, gcp_env)
             exit_code = process.run()
 
         else:
