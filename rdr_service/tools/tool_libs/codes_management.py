@@ -173,7 +173,7 @@ class CodesSyncClass(ToolBase):
             project_api_key = self.parse_values_from_config(self.args.redcap_project)
 
             if not self.args.export_only:
-                code_importer = CodebookImporter(self.args.dry_run, session, self.codes_allowed_for_reuse)
+                code_importer = CodebookImporter(self.args.dry_run, session, self.codes_allowed_for_reuse, logger)
 
                 if not self.args.dry_run:
                     logger.info(f'Importing codes for {self.gcp_env.project}')

@@ -1,4 +1,3 @@
-import logging
 import re
 
 from rdr_service.clock import CLOCK
@@ -9,7 +8,7 @@ CODE_TYPES_WITH_OPTIONS = ['radio', 'dropdown', 'checkbox']
 
 
 class CodebookImporter:
-    def __init__(self, dry_run, session, codes_allowed_for_reuse):
+    def __init__(self, dry_run, session, codes_allowed_for_reuse, logger):
         self.dry_run = dry_run
         self.session = session
         self.codes_allowed_for_reuse = codes_allowed_for_reuse
@@ -18,6 +17,8 @@ class CodebookImporter:
         self.module_code = None
         self.invalid_codes_found = []
         self.questions_missing_options = []
+
+        self.logger = logger
 
     def initialize_code(self, value, display, parent=None, code_type=None):
         new_code = Code(
@@ -40,12 +41,12 @@ class CodebookImporter:
                 # so set up the tool to stop saving and print out the code.
                 # Let the script continue so that any other duplications can be caught.
                 self.code_reuse_found = True
-                logging.error(f'Code "{value}" is already in use')
+                self.logger.error(f'Code "{value}" is already in use')
             else:
                 # Allows for reused codes to be a child (or parent) of other codes being imported
                 return existing_code_with_value
         elif self.dry_run:
-            logging.info(f'Found new "{code_type}" type code, value: {value}')
+            self.logger.info(f'Found new "{code_type}" type code, value: {value}')
         elif not self.code_reuse_found and not self.dry_run:
             # Associating a code with a parent adds it to the session too,
             # so it should only happen when we intend to save it.
