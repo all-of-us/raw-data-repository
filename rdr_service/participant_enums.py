@@ -719,6 +719,9 @@ class GenomicManifestTypes(messages.Enum):
     AW3_ARRAY = 8
     AW3_WGS = 9
     AW2F = 10
+    GEM_A2 = 11
+    AW4_ARRAY = 12
+    AW4_WGS = 13
 
 
 class GenomicContaminationCategory(messages.Enum):
