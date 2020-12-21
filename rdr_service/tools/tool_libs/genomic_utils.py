@@ -1158,7 +1158,6 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
             # Iterate through each package ID
             for l in csvreader:
                 pkg = l[0]
-                result = 0
 
                 members_for_pkg = self.get_members_aw1_from_package_id(pkg)
 
@@ -1171,9 +1170,6 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
                         records_updated_count += 1
 
                 _logger.warning(f'{pkg}: updated {records_updated_count}/{record_count_for_pkg}')
-
-                if result == 1:
-                    return 1
 
         return 0
 
@@ -1192,7 +1188,7 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
                 , max(f.id) as aw1_id
             FROM genomic_set_member m
                 JOIN genomic_manifest_file mf ON (
-                        # Strip only Package from file path
+                        # Return only Package from file path
                         SUBSTRING(
                         SUBSTRING_INDEX(
                         SUBSTRING_INDEX(mf.file_path, "_", -1),
@@ -1313,7 +1309,7 @@ def run():
     collection_tube_parser.add_argument("--sample-override", help="for testing",
                                         default=False, action="store_true")  # noqa
 
-    # Backfill tool for genomic_set_member.*_file_processed_ID
+    # Backfill tool for genomic_set_member.aw1_file_processed_ID
     backfill_file_processed_id_parser = subparser.add_parser("file-processed-id-backfill")
     backfill_file_processed_id_parser.add_argument("--csv", help="A CSV file with the package_ids to backfill",
                                         default=None, required=True)
