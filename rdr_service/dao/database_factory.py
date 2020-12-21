@@ -98,7 +98,7 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False) ->
     return result
 
 
-def make_server_cursor_database(database_name="rdr", backup=False, instance_name=None, readonly=True):
+def make_server_cursor_database(database_name="rdr", backup=False, instance_name=None, alembic=False, **kwargs):
     """
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
@@ -108,10 +108,11 @@ def make_server_cursor_database(database_name="rdr", backup=False, instance_name
         return get_database()
     else:
         if backup:
-            return _BackupSqlDatabase(database_name, connect_args={"cursorclass": SSCursor})
+            return _BackupSqlDatabase(database_name, connect_args={"cursorclass": SSCursor}, **kwargs)
         return _SqlDatabase(
             database_name,
             instance_name=instance_name,
             connect_args={"cursorclass": SSCursor},
-            alembic=(not readonly)
+            alembic=alembic,
+            **kwargs
         )

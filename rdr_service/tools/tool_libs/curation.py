@@ -4,9 +4,15 @@
 #
 
 import logging
+from sqlalchemy.dialects.mysql import json
 
 from rdr_service import config
-from rdr_service.etl.model.src_clean import SrcClean
+from rdr_service.etl.model.src_clean import QuestionnaireResponsesByModule, QuestionnaireVibrentForms, SrcClean
+from rdr_service.model.code import Code
+from rdr_service.model.hpo import HPO
+from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
@@ -172,11 +178,58 @@ class CurationExportClass(ToolBase):
 
         return 0
 
+    @staticmethod
+    def _create_tables(session, table_class_list):
+        for table_class in table_class_list:
+            table_metadata = table_class.__table__
+
+            # Drop and create table
+            table_metadata.drop(session.bind, checkfirst=True)
+            table_metadata.create(session.bind)
+
+    @staticmethod
+    def _set_rdr_model_schema(model_class_list):
+        for rdr_model_class in model_class_list:
+            rdr_model_class.__table__.schema = 'rdr'
+
+    def _populate_questionnaire_vibrent_forms(self, session):
+        # Todo: this table is obsolete since external ids are already stored in questionnaire records
+        self._set_rdr_model_schema([QuestionnaireHistory])
+        form_id_select = session.query(
+            QuestionnaireHistory.questionnaireId,
+            QuestionnaireHistory.version,
+            "json_unquote(json_extract(convert(resource using utf8), '$.identifier[0].value'))"
+        )
+        insert_query = QuestionnaireVibrentForms.__table__.insert().from_select([
+            QuestionnaireVibrentForms.questionnaire_id,
+            QuestionnaireVibrentForms.version,
+            QuestionnaireVibrentForms.vibrent_form_id
+        ], form_id_select)
+        session.execute(insert_query)
+
+    def _populate_questionnaire_responses_by_module(self, session):
+        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept])
+
     def populate_cdm_database(self):
-        with self.get_session(database_name='cdm', readonly=False) as session:
-            # Reset table if needed
-            SrcClean.__table__.drop(session.bind, checkfirst=True)
-            SrcClean.__table__.create(session.bind)
+        with self.get_session(database_name='cdm', alembic=True) as session:
+            self._create_tables(session, [QuestionnaireVibrentForms, QuestionnaireResponsesByModule, SrcClean])
+
+        with self.get_session(database_name='cdm', isolation_level='READ UNCOMMITTED') as session:
+            self._populate_questionnaire_vibrent_forms(session)
+
+            self._set_rdr_model_schema([Participant])
+            participants = session.query(
+                Participant.participantId,
+                Participant.researchId
+            )
+
+
+            insert_query = SrcClean.__table__.insert().from_select([
+                SrcClean.participant_id,
+                SrcClean.research_id,
+            ], participants)
+            session.execute(insert_query)
+
             print('do src clean things now! :D')
 
         return 0
