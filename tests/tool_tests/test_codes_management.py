@@ -147,7 +147,7 @@ class CodesManagementTest(BaseTestCase):
         module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
         self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
 
-    @mock.patch('rdr_service.offline.codebook_importer.logging')
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
 
@@ -223,7 +223,7 @@ class CodesManagementTest(BaseTestCase):
         self.assertEqual(0, return_val,
                          'Script should successfully exit, allowing for intentional reuse of the question code')
 
-    @mock.patch('rdr_service.offline.codebook_importer.logging')
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_dry_run(self, mock_logger):
         self.run_tool([
             self._get_mock_dictionary_item(
@@ -253,7 +253,7 @@ class CodesManagementTest(BaseTestCase):
         mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A3')
         mock_logger.info.assert_any_call('Found new "ANSWER" type code, value: A4')
 
-    @mock.patch('rdr_service.offline.codebook_importer.logging')
+    @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_dry_run_with_reuse_and_errors(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
         self.data_generator.create_database_code(value='accidental_reuse')
