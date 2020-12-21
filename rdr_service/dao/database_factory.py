@@ -69,7 +69,7 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False) ->
     """
     # RDR tools define the connection string we should use in the environment var.
     env_db_connection_string = os.environ.get('DB_CONNECTION_STRING', None)
-    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string:
+    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string and not alembic:
         return env_db_connection_string
 
     # Only import "config" on demand, as it depends on Datastore packages (and
@@ -98,7 +98,7 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False) ->
     return result
 
 
-def make_server_cursor_database(backup=False, instance_name=None):
+def make_server_cursor_database(database_name="rdr", backup=False, instance_name=None, readonly=True):
     """
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
@@ -108,5 +108,10 @@ def make_server_cursor_database(backup=False, instance_name=None):
         return get_database()
     else:
         if backup:
-            return _BackupSqlDatabase("rdr", connect_args={"cursorclass": SSCursor})
-        return _SqlDatabase("rdr", instance_name=instance_name, connect_args={"cursorclass": SSCursor})
+            return _BackupSqlDatabase(database_name, connect_args={"cursorclass": SSCursor})
+        return _SqlDatabase(
+            database_name,
+            instance_name=instance_name,
+            connect_args={"cursorclass": SSCursor},
+            alembic=(not readonly)
+        )

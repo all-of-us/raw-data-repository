@@ -6,6 +6,7 @@
 import logging
 
 from rdr_service import config
+from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
@@ -145,13 +146,7 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
-    def run(self):
-        """
-        Main program process
-        :return: Exit code value
-        """
-        super(CurationExportClass, self).run()
-
+    def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
         self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
@@ -177,12 +172,40 @@ class CurationExportClass(ToolBase):
 
         return 0
 
+    def populate_cdm_database(self):
+        with self.get_session(database_name='cdm', readonly=False) as session:
+            # Reset table if needed
+            SrcClean.__table__.drop(session.bind, checkfirst=True)
+            SrcClean.__table__.create(session.bind)
+            print('do src clean things now! :D')
+
+        return 0
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        super(CurationExportClass, self).run()
+
+        if self.args.command == 'export':
+            return self.run_curation_export()
+        elif self.args.command == 'cdm-data':
+            return self.populate_cdm_database()
+
+        return 0
+
 
 def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
-    parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
+    subparsers = parser.add_subparsers(dest='command')
+
+    export_parser = subparsers.add_parser('export')
+    export_parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
+    export_parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
+
+    subparsers.add_parser('cdm-data')
 
 
 def run():

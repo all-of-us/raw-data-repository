@@ -47,8 +47,8 @@ class ToolBase(object):
         return app_config_manager.get_bucket_app_config()
 
     @staticmethod
-    def get_session():
-        return database_factory.make_server_cursor_database().session()
+    def get_session(database_name='rdr', readonly=True):
+        return database_factory.make_server_cursor_database(database_name=database_name, readonly=readonly).session()
 
 
 def cli_run(tool_cmd, tool_desc, tool_class: Type[ToolBase], parser_hook=None, defaults={}):
