@@ -1222,6 +1222,7 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
         with self.dao.session() as s:
             s.merge(member)
 
+
 class CalculateContaminationCategoryClass(GenomicManifestBase):
     """
     Recalculate contamination category for an arbitrary set of participants
@@ -1267,24 +1268,37 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
             self.process_contamination_category_locally()
 
     def process_contamination_category_using_cloud_task(self):
-        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+        #task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+        pass
 
     def process_contamination_category_locally(self):
 
         genomic_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
 
-        for m in self.member_ids:
+        for mid in self.member_ids:
 
-            # Get genomic_set_member
-            # Get sample_id
-            # Get contamination category
-            pass
+            # Get genomic_set_member and gc metric objects
+            with self.dao.session() as s:
+                record = s.query(GenomicSetMember, GenomicGCValidationMetrics).filter(
+                    GenomicSetMember.id == mid,
+                ).join(GenomicGCValidationMetrics).filter(
+                    GenomicGCValidationMetrics.ignoreFlag == 0,
+                ).one_or_none()
 
-            # contamination_category = genomic_ingester.calculate_contamination_category(
-            #     contaminated_sample.biobankStoredSampleId,
-            #     0.09,
-            #     GenomicSetMember(participantId=participant.participantId, biobankId=participant.biobankId)
-            # )
+                # calculate new contamination category
+                contamination_category = genomic_ingester.calculate_contamination_category(
+                    record.GenomicSetMember.collectionTubeId,
+                    float(record.GenomicGCValidationMetrics.contamination),
+                    record.GenomicSetMember
+                    )
+
+                # Update the contamination category
+                if not self.args.dryrun:
+                    record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
+                    s.merge(record.GenomicGCValidationMetrics)
+
+                    _logger.warning(f"Updated contamination category for member id: {mid}")
+
 
 def run():
     # Set global debug value and setup application logging.
