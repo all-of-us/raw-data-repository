@@ -1281,23 +1281,24 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
             with self.dao.session() as s:
                 record = s.query(GenomicSetMember, GenomicGCValidationMetrics).filter(
                     GenomicSetMember.id == mid,
-                ).join(GenomicGCValidationMetrics).filter(
-                    GenomicGCValidationMetrics.ignoreFlag == 0,
+                    GenomicSetMember.collectionTubeId != None,
+                    GenomicGCValidationMetrics.genomicSetMemberId == mid
                 ).one_or_none()
 
-                # calculate new contamination category
-                contamination_category = genomic_ingester.calculate_contamination_category(
-                    record.GenomicSetMember.collectionTubeId,
-                    float(record.GenomicGCValidationMetrics.contamination),
-                    record.GenomicSetMember
-                    )
+                if record is not None:
+                    # calculate new contamination category
+                    contamination_category = genomic_ingester.calculate_contamination_category(
+                        record.GenomicSetMember.collectionTubeId,
+                        float(record.GenomicGCValidationMetrics.contamination),
+                        record.GenomicSetMember
+                        )
 
-                # Update the contamination category
-                if not self.args.dryrun:
-                    record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
-                    s.merge(record.GenomicGCValidationMetrics)
+                    # Update the contamination category
+                    if not self.args.dryrun:
+                        record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
+                        s.merge(record.GenomicGCValidationMetrics)
 
-                    _logger.warning(f"Updated contamination category for member id: {mid}")
+                        _logger.warning(f"Updated contamination category for member id: {mid}")
 
 
 def run():
