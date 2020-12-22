@@ -4,6 +4,7 @@ import os
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
+from rdr_service.tools.tool_libs._tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
@@ -61,14 +62,17 @@ class CodesManagementTest(BaseTestCase):
 
         with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
-                mock.patch('rdr_service.tools.tool_libs.codes_management.open'):  # Prevent tests from making real files
+                mock.patch('rdr_service.tools.tool_libs.codes_management.open'),\
+                mock.patch.object(ToolBase, 'initialize_process_context') as mock_init_env:
+            mock_init_env.return_value.__enter__.return_value = gcp_env
+
             mock_redcap_instance = mock_redcap_class.return_value
             mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
             sync_codes_tool = CodesSyncClass(args, gcp_env)
-            return sync_codes_tool.run(), mock_redcap_instance, mock_csv_writerow
+            return sync_codes_tool.run_process(), mock_redcap_instance, mock_csv_writerow
 
     def _load_code_with_value(self, code_value) -> Code:
         return self.session.query(Code).filter(Code.value == code_value).one()
