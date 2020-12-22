@@ -41,3 +41,4 @@ class SrcClean(Base):
     questionnaire_response_id = Column(BigInteger)
     unit_id = Column(String(50))
     filter = Column(SmallInteger)
+    __table_args__ = (Index('idx_src_clean_participant_id', participant_id), )

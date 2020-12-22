@@ -4,7 +4,11 @@
 #
 
 import logging
-from sqlalchemy.dialects.mysql import json
+from sqlalchemy import and_, case, insert, or_
+from sqlalchemy.orm import aliased
+from sqlalchemy.sql import func
+from sqlalchemy.sql.expression import literal_column
+from sqlalchemy.sql.functions import coalesce, concat
 
 from rdr_service import config
 from rdr_service.etl.model.src_clean import QuestionnaireResponsesByModule, QuestionnaireVibrentForms, SrcClean
@@ -13,6 +17,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.participant_enums import WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
@@ -189,48 +194,182 @@ class CurationExportClass(ToolBase):
 
     @staticmethod
     def _set_rdr_model_schema(model_class_list):
+        """
+        When using a session set for the CDM database, any models referenced from the RDR database
+        need to have their schema set. Doing so results in output that explicitly references the RDR
+        database (ie: setting the schema will change it from "questionnaire_response"
+        to "rdr.questionnaire_response" in the sql generated).
+        """
         for rdr_model_class in model_class_list:
             rdr_model_class.__table__.schema = 'rdr'
 
     def _populate_questionnaire_vibrent_forms(self, session):
         # Todo: this table is obsolete since external ids are already stored in questionnaire records
         self._set_rdr_model_schema([QuestionnaireHistory])
-        form_id_select = session.query(
-            QuestionnaireHistory.questionnaireId,
-            QuestionnaireHistory.version,
-            "json_unquote(json_extract(convert(resource using utf8), '$.identifier[0].value'))"
-        )
-        insert_query = QuestionnaireVibrentForms.__table__.insert().from_select([
-            QuestionnaireVibrentForms.questionnaire_id,
-            QuestionnaireVibrentForms.version,
-            QuestionnaireVibrentForms.vibrent_form_id
-        ], form_id_select)
+        column_map = {
+            QuestionnaireVibrentForms.questionnaire_id: QuestionnaireHistory.questionnaireId,
+            QuestionnaireVibrentForms.version: QuestionnaireHistory.version,
+            QuestionnaireVibrentForms.vibrent_form_id:
+                "json_unquote(json_extract(convert(resource using utf8), '$.identifier[0].value'))"
+        }
+
+        # No joins are needed since there's only one table
+        form_id_select = session.query(*column_map.values())
+
+        insert_query = insert(QuestionnaireVibrentForms).from_select(column_map.keys(), form_id_select)
         session.execute(insert_query)
 
     def _populate_questionnaire_responses_by_module(self, session):
         self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept])
+        column_map = {
+            QuestionnaireResponsesByModule.participant_id: QuestionnaireResponse.participantId,
+            QuestionnaireResponsesByModule.authored: QuestionnaireResponse.authored,
+            QuestionnaireResponsesByModule.survey: case(
+                [(Code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
+                else_=Code.value
+            )
+        }
+
+        # QuestionnaireResponse is implicitly the first table, others are joined
+        responses_by_module_select = session.query(*column_map.values()).join(
+            QuestionnaireConcept,
+            and_(
+                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            Code,
+            Code.codeId == QuestionnaireConcept.codeId
+        ).join(
+            QuestionnaireVibrentForms,
+            and_(
+                QuestionnaireResponse.questionnaireId == QuestionnaireVibrentForms.questionnaire_id,
+                QuestionnaireResponse.questionnaireVersion == QuestionnaireVibrentForms.version
+            )
+        )
+
+        insert_query = insert(QuestionnaireResponsesByModule).from_select(column_map.keys(), responses_by_module_select)
+        session.execute(insert_query)
+
+    def _populate_src_clean(self, session):
+        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
+                                    QuestionnaireResponse, QuestionnaireResponseAnswer])
+        module_code = aliased(Code, name='co_b')
+        question_code = aliased(Code, name='co_q')
+        answer_code = aliased(Code, name='co_a')
+        column_map = {
+            SrcClean.participant_id: Participant.participantId,
+            SrcClean.research_id: Participant.researchId,
+            SrcClean.survey_name: module_code.value,
+            SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
+            SrcClean.question_ppi_code: question_code.shortValue,
+            SrcClean.question_code_id: QuestionnaireQuestion.codeId,
+            SrcClean.value_ppi_code: answer_code.shortValue,
+            SrcClean.topic_value: answer_code.topic,
+            SrcClean.value_code_id: QuestionnaireResponseAnswer.valueCodeId,
+            SrcClean.value_number: coalesce(
+                QuestionnaireResponseAnswer.valueDecimal,
+                QuestionnaireResponseAnswer.valueInteger
+            ),
+            SrcClean.value_boolean: QuestionnaireResponseAnswer.valueBoolean,
+            SrcClean.value_date: coalesce(
+                QuestionnaireResponseAnswer.valueDate,
+                QuestionnaireResponseAnswer.valueDateTime
+            ),
+            SrcClean.value_string: coalesce(
+                func.left(QuestionnaireResponseAnswer.valueString, 1024),
+                QuestionnaireResponseAnswer.valueDate,
+                QuestionnaireResponseAnswer.valueDateTime,
+                answer_code.display
+            ),
+            SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
+            SrcClean.unit_id: concat(
+                'cln.',
+                case(
+                    [
+                        (QuestionnaireResponseAnswer.valueCodeId.isnot(None), 'code'),
+                        (QuestionnaireResponseAnswer.valueInteger.isnot(None), 'int'),
+                        (QuestionnaireResponseAnswer.valueDecimal.isnot(None), 'dec'),
+                        (QuestionnaireResponseAnswer.valueBoolean.isnot(None), 'bool'),
+                        (QuestionnaireResponseAnswer.valueDate.isnot(None), 'date'),
+                        (QuestionnaireResponseAnswer.valueDateTime.isnot(None), 'dtime'),
+                        (QuestionnaireResponseAnswer.valueString.isnot(None), 'str'),
+                    ],
+                    else_=''
+                )
+            ),
+            SrcClean.filter: literal_column('0')
+        }
+
+        # Participant is implicitly the first table, others are joined
+        questionnaire_answers_select = session.query(*column_map.values()).join(
+            HPO
+        ).join(
+            QuestionnaireResponse
+        ).join(
+            QuestionnaireConcept,
+            and_(
+                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            QuestionnaireResponseAnswer
+        ).join(
+            QuestionnaireQuestion
+        ).join(
+            QuestionnaireVibrentForms,
+            and_(
+                QuestionnaireVibrentForms.questionnaire_id == QuestionnaireResponse.questionnaireId,
+                QuestionnaireVibrentForms.version == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            question_code,
+            question_code.codeId == QuestionnaireQuestion.codeId
+        ).outerjoin(
+            answer_code,
+            answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
+        ).outerjoin(
+            module_code,
+            module_code.codeId == QuestionnaireConcept.codeId
+        ).outerjoin(
+            QuestionnaireResponsesByModule,
+            and_(
+                QuestionnaireResponsesByModule.participant_id == QuestionnaireResponse.participantId,
+                QuestionnaireResponsesByModule.survey == case(
+                    [(module_code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
+                    else_=module_code.value
+                ),
+                QuestionnaireResponsesByModule.authored > QuestionnaireResponse.authored
+            )
+        ).filter(
+            Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
+            Participant.isGhostId.isnot(True),
+            Participant.isTestParticipant.isnot(True),
+            Participant.participantOrigin != 'careevolution',
+            HPO.name != 'TEST',
+            or_(
+                and_(QuestionnaireResponseAnswer.valueCodeId.isnot(None), answer_code.codeId.isnot(None)),
+                QuestionnaireResponseAnswer.valueInteger.isnot(None),
+                QuestionnaireResponseAnswer.valueDecimal.isnot(None),
+                QuestionnaireResponseAnswer.valueBoolean.isnot(None),
+                QuestionnaireResponseAnswer.valueDate.isnot(None),
+                QuestionnaireResponseAnswer.valueDateTime.isnot(None),
+                QuestionnaireResponseAnswer.valueString.isnot(None)
+            ),
+            QuestionnaireResponsesByModule.participant_id.is_(None)
+        )
+
+        insert_query = insert(SrcClean).from_select(column_map.keys(), questionnaire_answers_select)
+        session.execute(insert_query)
 
     def populate_cdm_database(self):
         with self.get_session(database_name='cdm', alembic=True) as session:
             self._create_tables(session, [QuestionnaireVibrentForms, QuestionnaireResponsesByModule, SrcClean])
 
-        with self.get_session(database_name='cdm', isolation_level='READ UNCOMMITTED') as session:
+        with self.get_session(database_name='cdm', isolation_level='READ UNCOMMITTED', alembic=True) as session:
             self._populate_questionnaire_vibrent_forms(session)
-
-            self._set_rdr_model_schema([Participant])
-            participants = session.query(
-                Participant.participantId,
-                Participant.researchId
-            )
-
-
-            insert_query = SrcClean.__table__.insert().from_select([
-                SrcClean.participant_id,
-                SrcClean.research_id,
-            ], participants)
-            session.execute(insert_query)
-
-            print('do src clean things now! :D')
+            self._populate_questionnaire_responses_by_module(session)
+            self._populate_src_clean(session)
 
         return 0
 

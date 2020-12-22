@@ -22,6 +22,7 @@ else
 fi
 
 mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/raw_sql/partially_initialize_cdm.sql
+python -m tools curation --project localhost cdm-data
 mysql -v -v -v -h 127.0.0.1 -u "$ROOT_DB_USER" $ROOT_PASSWORD_ARGS < etl/raw_sql/finalize_cdm_data.sql
 
 echo "Done."
