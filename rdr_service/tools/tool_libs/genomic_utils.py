@@ -1222,7 +1222,6 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
         with self.dao.session() as s:
             s.merge(member)
 
-
 class CalculateContaminationCategoryClass(GenomicManifestBase):
     """
     Recalculate contamination category for an arbitrary set of participants
@@ -1301,6 +1300,7 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     subparser = parser.add_subparsers(help='genomic utilities', dest='util')
 
@@ -1324,24 +1324,20 @@ def run():
     member_state_parser = subparser.add_parser("member-state")
     member_state_parser.add_argument("--csv", help="csv file with genomic_set_member.id, state",
                                      default=None, required=True)  # noqa
-    member_state_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Create GenomicSetMembers for provided control sample IDs (provided by Biobank)
     control_sample_parser = subparser.add_parser("control-sample")
     control_sample_parser.add_argument("--csv", help="csv file with control sample ids", default=None)  # noqa
-    control_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Create Arbitrary GenomicSetMembers for manually provided PID and sample IDs
     manual_sample_parser = subparser.add_parser("manual-sample")
     manual_sample_parser.add_argument("--csv", help="csv file with manual sample ids",
                                        default=None, required=True)  # noqa
-    manual_sample_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Update GenomicGCValidationMetrics from CSV
     gc_metrics_parser = subparser.add_parser("update-gc-metrics")
     gc_metrics_parser.add_argument("--csv", help="csv file with genomic_cv_validation_metrics.id, additional fields",
                                      default=None, required=True)  # noqa
-    gc_metrics_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Update Job Run ID to result
     job_run_parser = subparser.add_parser("job-run-result")
@@ -1351,7 +1347,6 @@ def run():
                                       default=None, required=True)  # noqa
     job_run_parser.add_argument("--message", help="genomic_job_run.result_message to update to (optional)",
                                       default=None, required=False)  # noqa
-    job_run_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Process Runner
     process_runner_parser = subparser.add_parser("process-runner")
@@ -1361,17 +1356,14 @@ def run():
                                        default=None, required=False)
     process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
                                        default=None, required=False)
-    process_runner_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
 
     # Backfill GenomicFileProcessed UploadDate
-    upload_date_parser = subparser.add_parser("backfill-upload-date")
-    upload_date_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
+    upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
     collection_tube_parser.add_argument("--file", help="A CSV file with collection-tube, biobank_id",
                                         default=None, required=False)
-    collection_tube_parser.add_argument("--dryrun", help="for testing", default=False, action="store_true")  # noqa
     collection_tube_parser.add_argument("--sample-override", help="for testing",
                                         default=False, action="store_true")  # noqa
 
@@ -1379,8 +1371,6 @@ def run():
     backfill_file_processed_id_parser = subparser.add_parser("file-processed-id-backfill")
     backfill_file_processed_id_parser.add_argument("--csv", help="A CSV file with the package_ids to backfill",
                                         default=None, required=True)
-    backfill_file_processed_id_parser.add_argument("--dryrun",
-                                                   help="for testing", default=False, action="store_true")  # noqa
 
     # Calculate contamination category
     contamination_category_parser = subparser.add_parser('contamination-category')
