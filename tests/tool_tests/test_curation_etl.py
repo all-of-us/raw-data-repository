@@ -68,6 +68,3 @@ class CurationEtlTest(BaseTestCase):
 
         # This will time out if the tool tries to take an exclusive lock on the participant
         self.run_tool()
-
-
-

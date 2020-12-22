@@ -254,9 +254,9 @@ class CurationExportClass(ToolBase):
     def _populate_src_clean(self, session):
         self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
-        module_code = aliased(Code, name='co_b')
-        question_code = aliased(Code, name='co_q')
-        answer_code = aliased(Code, name='co_a')
+        module_code = aliased(Code)
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
