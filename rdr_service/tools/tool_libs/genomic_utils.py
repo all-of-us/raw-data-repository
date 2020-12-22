@@ -1292,6 +1292,9 @@ def run():
     process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
                                        default=None, required=False)
 
+    # Backfill GenomicFileProcessed UploadDate
+    upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
+
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
     collection_tube_parser.add_argument("--file", help="A CSV file with collection-tube, biobank_id",
