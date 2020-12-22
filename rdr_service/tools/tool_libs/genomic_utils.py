@@ -16,12 +16,13 @@ import pytz
 from sqlalchemy import text
 
 from rdr_service import clock, config
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao
-from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler
+from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
@@ -1221,6 +1222,71 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
         with self.dao.session() as s:
             s.merge(member)
 
+
+class CalculateContaminationCategoryClass(GenomicManifestBase):
+    """
+    Recalculate contamination category for an arbitrary set of participants
+    Provides the option to use a Cloud Task
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(CalculateContaminationCategoryClass, self).__init__(args, gcp_env)
+
+        self.member_ids = []
+
+        self.genomic_ingester = None
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        # Validate csv file exists
+        if not os.path.exists(self.args.csv):
+            _logger.error(f'File {self.args.csv} was not found.')
+            return 1
+
+        _logger.info('Contamination Category')
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f)
+
+            # Get list of member IDs
+            for l in csvreader:
+                self.member_ids.append(l[0])
+
+        # Using a cloud task
+        if self.args.cloud_task:
+            _logger.info('Using Cloud Task...')
+            self.process_contamination_category_using_cloud_task()
+
+        else:
+            _logger.info('Processing contamination category locally...')
+            self.process_contamination_category_locally()
+
+    def process_contamination_category_using_cloud_task(self):
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+    def process_contamination_category_locally(self):
+
+        genomic_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
+
+        for m in self.member_ids:
+
+            # Get genomic_set_member
+            # Get sample_id
+            # Get contamination category
+            pass
+
+            # contamination_category = genomic_ingester.calculate_contamination_category(
+            #     contaminated_sample.biobankStoredSampleId,
+            #     0.09,
+            #     GenomicSetMember(participantId=participant.participantId, biobankId=participant.biobankId)
+            # )
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -1316,6 +1382,16 @@ def run():
     backfill_file_processed_id_parser.add_argument("--dryrun",
                                                    help="for testing", default=False, action="store_true")  # noqa
 
+    # Calculate contamination category
+    contamination_category_parser = subparser.add_parser('contamination-category')
+    contamination_category_parser.add_argument("--csv", help="A CSV file of genomic_set_member_ids",
+                                               default=None, required=True)
+    contamination_category_parser.add_argument("--cloud-task",
+                                               help="Use a cloud task",
+                                               default=False, action="store_true")  # noqa
+    contamination_category_parser.add_argument("--dryrun",
+                                                   help="for testing", default=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1361,6 +1437,10 @@ def run():
 
         elif args.util == 'file-processed-id-backfill':
             process = BackfillGenomicSetMemberFileProcessedID(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'contamination-category':
+            process = CalculateContaminationCategoryClass(args, gcp_env)
             exit_code = process.run()
 
         else:
