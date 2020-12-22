@@ -363,10 +363,11 @@ class CurationExportClass(ToolBase):
         session.execute(insert_query)
 
     def populate_cdm_database(self):
-        with self.get_session(database_name='cdm', alembic=True) as session:
+        with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
             self._create_tables(session, [QuestionnaireVibrentForms, QuestionnaireResponsesByModule, SrcClean])
 
-        with self.get_session(database_name='cdm', isolation_level='READ UNCOMMITTED', alembic=True) as session:
+        # using alembic here to get the database_factory code to set up a connection to the CDM database
+        with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
             self._populate_questionnaire_vibrent_forms(session)
             self._populate_questionnaire_responses_by_module(session)
             self._populate_src_clean(session)
