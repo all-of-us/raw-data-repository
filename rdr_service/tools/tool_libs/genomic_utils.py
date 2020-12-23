@@ -1274,14 +1274,18 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
         if _task is not None:
             task_queue = 'resource-tasks'
 
-            batch_size = 1
+            batch_size = 100
+
+            # Get total number of batches
             batch_total = math.ceil(len(self.member_ids) / batch_size)
             _logger.info(f'Found {batch_total} member_id batches of size {batch_size}.')
 
+            # Setup counts
             count = 0
             batch_count = 0
             batch = list()
 
+            # Add members to batch and submit cloud tasks
             for mid in self.member_ids:
                 batch.append(mid)
                 count += 1
@@ -1304,7 +1308,7 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
                     batch.clear()
                     count = 0
 
-            # Send remainder
+            # Submit remainder in last batch
             if count > 0:
                 batch_count += 1
                 data = {"member_ids": batch}
@@ -1441,8 +1445,6 @@ def run():
     contamination_category_parser.add_argument("--cloud-task",
                                                help="Use a cloud task",
                                                default=False, action="store_true")  # noqa
-    contamination_category_parser.add_argument("--dryrun",
-                                                   help="for testing", default=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 
