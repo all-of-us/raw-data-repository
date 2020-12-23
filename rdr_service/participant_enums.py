@@ -643,6 +643,7 @@ class GenomicJob(messages.Enum):
     GENOMIC_MANIFEST_FILE_TRIGGER = 28
     AW2F_MANIFEST = 29
     FEEDBACK_SCAN = 30
+    RECALCULATE_CONTAMINATION_CATEGORY = 31
 
 
 class GenomicWorkflowState(messages.Enum):

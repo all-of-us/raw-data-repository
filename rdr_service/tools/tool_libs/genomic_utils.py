@@ -9,6 +9,7 @@ import argparse
 # pylint: disable=broad-except
 import datetime
 import logging
+import math
 import sys
 import os
 import csv
@@ -1261,19 +1262,55 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
         # Using a cloud task
         if self.args.cloud_task:
             _logger.info('Using Cloud Task...')
-            self.process_contamination_category_using_cloud_task()
+            return self.process_contamination_category_using_cloud_task()
 
         else:
             _logger.info('Processing contamination category locally...')
-            self.process_contamination_category_locally()
+            return self.process_contamination_category_locally()
 
     def process_contamination_category_using_cloud_task(self):
-        #task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
-        pass
+        _task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if _task is not None:
+            task_queue = 'resource-tasks'
+
+            batch_size = 1
+            batch_total = math.ceil(len(self.member_ids) / batch_size)
+            _logger.info(f'Found {batch_total} member_id batches of size {batch_size}.')
+
+            count = 0
+            batch_count = 0
+            batch = list()
+
+            for mid in self.member_ids:
+                batch.append(mid)
+                count += 1
+
+                if count == batch_size:
+                    data = {"member_ids": batch}
+
+                    _task.execute('/resource/task/CalculateContaminationCategoryApi', payload=data, queue=task_queue)
+
+                    batch_count += 1
+                    _logger.info(f'Task created for batch {batch_count}')
+
+                    # Reset counts
+                    batch.clear()
+                    count = 0
+
+            # Send remainder
+            if count > 0:
+                batch_count += 1
+                data = {"member_ids": batch}
+                _task.execute('/resource/task/CalculateContaminationCategoryApi', payload=data, queue=task_queue)
+
+            _logger.info(f'Submitted {batch_count} tasks.')
+
+        return 0
 
     def process_contamination_category_locally(self):
 
-        genomic_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
+        genomic_ingester = GenomicFileIngester(job_id=GenomicJob.RECALCULATE_CONTAMINATION_CATEGORY)
 
         for mid in self.member_ids:
 
@@ -1300,6 +1337,7 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
 
                         _logger.warning(f"Updated contamination category for member id: {mid}")
 
+        return 0
 
 def run():
     # Set global debug value and setup application logging.

@@ -13,6 +13,9 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_manifest_feedback_batch_update
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.participant_enums import GenomicJob, GenomicManifestTypes
@@ -196,6 +199,57 @@ class IngestAW2ManifestTaskApi(Resource):
 
         logging.info('Complete.')
         return '{"success": "true"}'
+
+
+class CalculateContaminationCategoryApi(Resource):
+    """
+    Cloud Task endpoint: Calculate contamination category
+    """
+
+    def __init__(self):
+
+        self.dao = GenomicSetMemberDao()
+
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        batch = data['member_ids']
+        logging.info(f'Calculating Contamination Category for batch of {len(batch)} member IDs')
+
+        # iterate through batch and calculate contamination category
+        for _mid in batch:
+            self.process_member_id_contamination_category(_mid)
+
+        logging.info(f'Batch of {len(batch)} Complete.')
+        return '{"success": "true"}'
+
+    def process_member_id_contamination_category(self, member_id):
+
+        genomic_ingester = GenomicFileIngester(job_id=GenomicJob.RECALCULATE_CONTAMINATION_CATEGORY)
+
+        # Get genomic_set_member and gc metric objects
+        with self.dao.session() as s:
+            record = s.query(GenomicSetMember, GenomicGCValidationMetrics).filter(
+                GenomicSetMember.id == member_id,
+                GenomicSetMember.collectionTubeId != None,
+                GenomicGCValidationMetrics.genomicSetMemberId == member_id
+            ).one_or_none()
+
+            if record is not None:
+                # calculate new contamination category
+                contamination_category = genomic_ingester.calculate_contamination_category(
+                    record.GenomicSetMember.collectionTubeId,
+                    float(record.GenomicGCValidationMetrics.contamination),
+                    record.GenomicSetMember
+                )
+
+                # Update the contamination category
+                if not self.args.dryrun:
+                    record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
+                    s.merge(record.GenomicGCValidationMetrics)
+
+                    logging.warning(f"Updated contamination category for member id: {member_id}")
 
 
 class RebuildGenomicTableRecordsApi(Resource):
