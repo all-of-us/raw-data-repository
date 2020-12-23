@@ -1289,7 +1289,13 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
                 if count == batch_size:
                     data = {"member_ids": batch}
 
-                    _task.execute('/resource/task/CalculateContaminationCategoryApi', payload=data, queue=task_queue)
+                    if self.args.dryrun:
+                        _logger.info("In Dryrun mode, skip submitting cloud task.")
+                    else:
+                        _task.execute('calculate_contamination_category_task',
+                                      payload=data,
+                                      queue=task_queue,
+                                      project_id=self.gcp_env.project)
 
                     batch_count += 1
                     _logger.info(f'Task created for batch {batch_count}')
@@ -1302,7 +1308,10 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
             if count > 0:
                 batch_count += 1
                 data = {"member_ids": batch}
-                _task.execute('/resource/task/CalculateContaminationCategoryApi', payload=data, queue=task_queue)
+                _task.execute('calculate_contamination_category_task',
+                              payload=data,
+                              queue=task_queue,
+                              project_id=self.gcp_env.project)
 
             _logger.info(f'Submitted {batch_count} tasks.')
 

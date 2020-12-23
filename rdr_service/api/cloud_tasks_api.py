@@ -245,11 +245,10 @@ class CalculateContaminationCategoryApi(Resource):
                 )
 
                 # Update the contamination category
-                if not self.args.dryrun:
-                    record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
-                    s.merge(record.GenomicGCValidationMetrics)
+                record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
+                s.merge(record.GenomicGCValidationMetrics)
 
-                    logging.warning(f"Updated contamination category for member id: {member_id}")
+                logging.info(f"Updated contamination category for member id: {member_id}")
 
 
 class RebuildGenomicTableRecordsApi(Resource):
