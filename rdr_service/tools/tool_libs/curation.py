@@ -4,8 +4,20 @@
 #
 
 import logging
+from sqlalchemy import and_, case, insert, or_
+from sqlalchemy.orm import aliased
+from sqlalchemy.sql import func
+from sqlalchemy.sql.expression import literal_column
+from sqlalchemy.sql.functions import coalesce, concat
 
 from rdr_service import config
+from rdr_service.etl.model.src_clean import QuestionnaireResponsesByModule, QuestionnaireVibrentForms, SrcClean
+from rdr_service.model.code import Code
+from rdr_service.model.hpo import HPO
+from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.participant_enums import WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
 
@@ -145,13 +157,7 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
-    def run(self):
-        """
-        Main program process
-        :return: Exit code value
-        """
-        super(CurationExportClass, self).run()
-
+    def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
         self.db_conn = self.gcp_env.make_mysqldb_connection(user='alembic', database='cdm')
@@ -177,12 +183,222 @@ class CurationExportClass(ToolBase):
 
         return 0
 
+    @staticmethod
+    def _create_tables(session, table_class_list):
+        for table_class in table_class_list:
+            table_metadata = table_class.__table__
+
+            # Drop and create table
+            table_metadata.drop(session.bind, checkfirst=True)
+            table_metadata.create(session.bind)
+
+    @staticmethod
+    def _set_rdr_model_schema(model_class_list):
+        """
+        When using a session set for the CDM database, any models referenced from the RDR database
+        need to have their schema set. Doing so results in output that explicitly references the RDR
+        database (ie: setting the schema will change it from "questionnaire_response"
+        to "rdr.questionnaire_response" in the sql generated).
+        """
+        for rdr_model_class in model_class_list:
+            rdr_model_class.__table__.schema = 'rdr'
+
+    def _populate_questionnaire_vibrent_forms(self, session):
+        # Todo: this table is obsolete since external ids are already stored in questionnaire records
+        self._set_rdr_model_schema([QuestionnaireHistory])
+        column_map = {
+            QuestionnaireVibrentForms.questionnaire_id: QuestionnaireHistory.questionnaireId,
+            QuestionnaireVibrentForms.version: QuestionnaireHistory.version,
+            QuestionnaireVibrentForms.vibrent_form_id:
+                "json_unquote(json_extract(convert(resource using utf8), '$.identifier[0].value'))"
+        }
+
+        # No joins are needed since there's only one table
+        form_id_select = session.query(*column_map.values())
+
+        insert_query = insert(QuestionnaireVibrentForms).from_select(column_map.keys(), form_id_select)
+        session.execute(insert_query)
+
+    def _populate_questionnaire_responses_by_module(self, session):
+        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept])
+        column_map = {
+            QuestionnaireResponsesByModule.participant_id: QuestionnaireResponse.participantId,
+            QuestionnaireResponsesByModule.authored: QuestionnaireResponse.authored,
+            QuestionnaireResponsesByModule.survey: case(
+                [(Code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
+                else_=Code.value
+            )
+        }
+
+        # QuestionnaireResponse is implicitly the first table, others are joined
+        responses_by_module_select = session.query(*column_map.values()).join(
+            QuestionnaireConcept,
+            and_(
+                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            Code,
+            Code.codeId == QuestionnaireConcept.codeId
+        ).join(
+            QuestionnaireVibrentForms,
+            and_(
+                QuestionnaireResponse.questionnaireId == QuestionnaireVibrentForms.questionnaire_id,
+                QuestionnaireResponse.questionnaireVersion == QuestionnaireVibrentForms.version
+            )
+        )
+
+        insert_query = insert(QuestionnaireResponsesByModule).from_select(column_map.keys(), responses_by_module_select)
+        session.execute(insert_query)
+
+    def _populate_src_clean(self, session):
+        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
+                                    QuestionnaireResponse, QuestionnaireResponseAnswer])
+        module_code = aliased(Code)
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
+        column_map = {
+            SrcClean.participant_id: Participant.participantId,
+            SrcClean.research_id: Participant.researchId,
+            SrcClean.survey_name: module_code.value,
+            SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
+            SrcClean.question_ppi_code: question_code.shortValue,
+            SrcClean.question_code_id: QuestionnaireQuestion.codeId,
+            SrcClean.value_ppi_code: answer_code.shortValue,
+            SrcClean.topic_value: answer_code.topic,
+            SrcClean.value_code_id: QuestionnaireResponseAnswer.valueCodeId,
+            SrcClean.value_number: coalesce(
+                QuestionnaireResponseAnswer.valueDecimal,
+                QuestionnaireResponseAnswer.valueInteger
+            ),
+            SrcClean.value_boolean: QuestionnaireResponseAnswer.valueBoolean,
+            SrcClean.value_date: coalesce(
+                QuestionnaireResponseAnswer.valueDate,
+                QuestionnaireResponseAnswer.valueDateTime
+            ),
+            SrcClean.value_string: coalesce(
+                func.left(QuestionnaireResponseAnswer.valueString, 1024),
+                QuestionnaireResponseAnswer.valueDate,
+                QuestionnaireResponseAnswer.valueDateTime,
+                answer_code.display
+            ),
+            SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
+            SrcClean.unit_id: concat(
+                'cln.',
+                case(
+                    [
+                        (QuestionnaireResponseAnswer.valueCodeId.isnot(None), 'code'),
+                        (QuestionnaireResponseAnswer.valueInteger.isnot(None), 'int'),
+                        (QuestionnaireResponseAnswer.valueDecimal.isnot(None), 'dec'),
+                        (QuestionnaireResponseAnswer.valueBoolean.isnot(None), 'bool'),
+                        (QuestionnaireResponseAnswer.valueDate.isnot(None), 'date'),
+                        (QuestionnaireResponseAnswer.valueDateTime.isnot(None), 'dtime'),
+                        (QuestionnaireResponseAnswer.valueString.isnot(None), 'str'),
+                    ],
+                    else_=''
+                )
+            ),
+            SrcClean.filter: literal_column('0')
+        }
+
+        # Participant is implicitly the first table, others are joined
+        questionnaire_answers_select = session.query(*column_map.values()).join(
+            HPO
+        ).join(
+            QuestionnaireResponse
+        ).join(
+            QuestionnaireConcept,
+            and_(
+                QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            QuestionnaireResponseAnswer
+        ).join(
+            QuestionnaireQuestion
+        ).join(
+            QuestionnaireVibrentForms,
+            and_(
+                QuestionnaireVibrentForms.questionnaire_id == QuestionnaireResponse.questionnaireId,
+                QuestionnaireVibrentForms.version == QuestionnaireResponse.questionnaireVersion
+            )
+        ).join(
+            question_code,
+            question_code.codeId == QuestionnaireQuestion.codeId
+        ).outerjoin(
+            answer_code,
+            answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId
+        ).outerjoin(
+            module_code,
+            module_code.codeId == QuestionnaireConcept.codeId
+        ).outerjoin(
+            QuestionnaireResponsesByModule,
+            and_(
+                QuestionnaireResponsesByModule.participant_id == QuestionnaireResponse.participantId,
+                QuestionnaireResponsesByModule.survey == case(
+                    [(module_code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
+                    else_=module_code.value
+                ),
+                QuestionnaireResponsesByModule.authored > QuestionnaireResponse.authored
+            )
+        ).filter(
+            Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
+            Participant.isGhostId.isnot(True),
+            Participant.isTestParticipant.isnot(True),
+            Participant.participantOrigin != 'careevolution',
+            HPO.name != 'TEST',
+            or_(
+                and_(QuestionnaireResponseAnswer.valueCodeId.isnot(None), answer_code.codeId.isnot(None)),
+                QuestionnaireResponseAnswer.valueInteger.isnot(None),
+                QuestionnaireResponseAnswer.valueDecimal.isnot(None),
+                QuestionnaireResponseAnswer.valueBoolean.isnot(None),
+                QuestionnaireResponseAnswer.valueDate.isnot(None),
+                QuestionnaireResponseAnswer.valueDateTime.isnot(None),
+                QuestionnaireResponseAnswer.valueString.isnot(None)
+            ),
+            QuestionnaireResponsesByModule.participant_id.is_(None)
+        )
+
+        insert_query = insert(SrcClean).from_select(column_map.keys(), questionnaire_answers_select)
+        session.execute(insert_query)
+
+    def populate_cdm_database(self):
+        with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
+            self._create_tables(session, [QuestionnaireVibrentForms, QuestionnaireResponsesByModule, SrcClean])
+
+        # using alembic here to get the database_factory code to set up a connection to the CDM database
+        with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
+            self._populate_questionnaire_vibrent_forms(session)
+            self._populate_questionnaire_responses_by_module(session)
+            self._populate_src_clean(session)
+
+        return 0
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        super(CurationExportClass, self).run()
+
+        if self.args.command == 'export':
+            return self.run_curation_export()
+        elif self.args.command == 'cdm-data':
+            return self.populate_cdm_database()
+
+        return 0
+
 
 def add_additional_arguments(parser):
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
-    parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
+    subparsers = parser.add_subparsers(dest='command')
+
+    export_parser = subparsers.add_parser('export')
+    export_parser.add_argument("--export-path", help="Bucket path to export to", required=True, type=str)  # noqa
+    export_parser.add_argument("--table", help="Export a specific table", type=str, default=None)  # noqa
+
+    subparsers.add_parser('cdm-data')
 
 
 def run():

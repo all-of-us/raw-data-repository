@@ -60,18 +60,7 @@ set_db_connection_string
 echo "Running ETL..."
 
 mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/partially_initialize_cdm.sql
+python -m tools curation --project ${PROJECT} cdm-data
 mysql -v -v -v -h 127.0.0.1 -u "${ALEMBIC_DB_USER}" -p${PASSWORD} --port ${PORT} < etl/raw_sql/finalize_cdm_data.sql
 
 echo "Done with ETL. Please manually run export."
-
-# echo "Done with ETL. Exporting ETL results..."
-# etl/export_etl_results.sh --project ${PROJECT} --account ${ACCOUNT} --directory ${INSTANCE_NAME} ${INSTANCE_ARGS}
-
-#if [ -z "${NOCLONE}" ]
-#then
-#  SLEEP_TIME=600
-#  # TODO: do some kind of polling of task queue to determine when table export has completed.
-#  echo "Waiting ${SLEEP_TIME} seconds for export to complete."
-#  sleep ${SLEEP_TIME}
-#  echo "Sleep done. Instance ${INSTANCE_NAME} will now be deleted."
-#fi
