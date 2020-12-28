@@ -958,6 +958,27 @@ class BiobankOrderApiTest(BaseTestCase):
         attribute = specimen['attributes'][0]
         self.assertEqual('updated', attribute['value'])
 
+    def test_attribute_deletion(self):
+        payload = self.get_minimal_specimen_json()
+        payload['attributes'] = [
+            {
+                'name': 'attr_one',
+                'value': '1'
+            },
+            {
+                'name': 'attr_two',
+                'value': 'two'
+            }
+        ]
+        initial_result = self.put_specimen(payload)
+
+        self.send_delete(f"Biobank/specimens/sabrina/attributes/attr_one")
+
+        specimen = self.retrieve_specimen_json(initial_result['id'])
+        self.assertEqual(1, len(specimen['attributes']), 'Should only have one attribute after the delete request')
+        attribute = specimen['attributes'][0]
+        self.assertEqual('attr_two', attribute['name'])
+
     def test_parent_attribute_not_found(self):
         self.send_put(f"Biobank/specimens/sabrina/attributes/attr1", {
             'disposalDate': TIME_1.isoformat()

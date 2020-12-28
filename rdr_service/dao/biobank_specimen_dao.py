@@ -348,6 +348,13 @@ class BiobankSpecimenAttributeDao(BiobankDaoBase):
         else:
             return None
 
+    def delete(self, specimen_rlims_id, attribute_name):
+        with self.session() as session:
+            session.query(BiobankSpecimenAttribute).filter(
+                BiobankSpecimenAttribute.specimen_rlims_id == specimen_rlims_id,
+                BiobankSpecimenAttribute.name == attribute_name
+            ).delete()
+
 
 class BiobankAliquotDao(BiobankDaoBase):
 
