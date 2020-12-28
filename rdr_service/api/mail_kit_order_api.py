@@ -46,10 +46,10 @@ class MailKitOrderApi(UpdatableApi):
 
     def _to_mayo(self, fhir):
         """
-    Test to see if this Supply Delivery object is going to Mayo or not
-    :param fhir: fhir supply delivery object
-    :return: True if destination address is Mayo, otherwise False
-    """
+        Test to see if this Supply Delivery object is going to Mayo or not
+        :param fhir: fhir supply delivery object
+        :return: True if destination address is Mayo, otherwise False
+        """
         if not fhir or fhir.resourceType != "SupplyDelivery":
             raise ValueError("Argument must be a Supply Delivery FHIR object")
 
@@ -60,26 +60,17 @@ class MailKitOrderApi(UpdatableApi):
         #             '55901' in item.address.postalCode and item.address.line[0] == '3050 Superior Drive NW':
         #     return True
 
-        # check for two tracking numbers, one for the patient and one for mayo.
-        tid_to_patient = None
+        # check tracking numbers for mayo.
         tid_to_mayo = None
-        if hasattr(fhir, "partOf"):
-            for item in fhir.partOf:
-                if (
-                    hasattr(item, "identifier")
-                    and "trackingId" in item.identifier.system
-                ):
-                    tid_to_patient = item.identifier.value
-
-        if tid_to_patient and hasattr(fhir, "identifier"):
+        if hasattr(fhir, "identifier"):
             for item in fhir.identifier:
                 if "trackingId" in item.system:
                     tid_to_mayo = item.value
 
-        if tid_to_patient and tid_to_mayo:
+        if tid_to_mayo:
             return True
-
-        return False
+        else:
+            return False
 
     def _post_supply_delivery(self, resource):
         try:
