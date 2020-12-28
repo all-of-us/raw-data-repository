@@ -1312,10 +1312,15 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
             if count > 0:
                 batch_count += 1
                 data = {"member_ids": batch}
-                _task.execute('calculate_contamination_category_task',
-                              payload=data,
-                              queue=task_queue,
-                              project_id=self.gcp_env.project)
+
+                if self.args.dryrun:
+                    _logger.info("In Dryrun mode, skip submitting cloud task.")
+
+                else:
+                    _task.execute('calculate_contamination_category_task',
+                                  payload=data,
+                                  queue=task_queue,
+                                  project_id=self.gcp_env.project)
 
             _logger.info(f'Submitted {batch_count} tasks.')
 
@@ -1336,21 +1341,25 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
                 ).one_or_none()
 
                 if record is not None:
-                    # calculate new contamination category
-                    contamination_category = genomic_ingester.calculate_contamination_category(
-                        record.GenomicSetMember.collectionTubeId,
-                        float(record.GenomicGCValidationMetrics.contamination),
-                        record.GenomicSetMember
+                    # Don't update the contamination category if dryrun
+                    if self.args.dryrun:
+                        _logger.info(f"In Dryrun mode, skip updating calculating category for member id: {mid}.")
+
+                    else:
+                        # calculate new contamination category
+                        contamination_category = genomic_ingester.calculate_contamination_category(
+                            record.GenomicSetMember.collectionTubeId,
+                            float(record.GenomicGCValidationMetrics.contamination),
+                            record.GenomicSetMember
                         )
 
-                    # Update the contamination category
-                    if not self.args.dryrun:
                         record.GenomicGCValidationMetrics.contaminationCategory = contamination_category
                         s.merge(record.GenomicGCValidationMetrics)
 
                         _logger.warning(f"Updated contamination category for member id: {mid}")
 
         return 0
+
 
 def run():
     # Set global debug value and setup application logging.
