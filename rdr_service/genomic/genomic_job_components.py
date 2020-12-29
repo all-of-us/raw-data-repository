@@ -1331,8 +1331,9 @@ class GenomicReconciler:
         """
         metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
 
-        # TODO: Update filnames when clarified
-        external_ids = "LocalID_InternalRevisionNumber"
+        # TODO: this number may change in the future, currently all files have 1 as the revision number
+        # Will need to follow up with GCs on what this number represents
+        local_revision_id = "1"
 
         total_missing_data = []
 
@@ -1347,7 +1348,8 @@ class GenomicReconciler:
             for file_type in self.sequencing_file_types:
 
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
-                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_{external_ids}{file_type[1]}"
+                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
+                               f"{metric.GenomicGCValidationMetrics.limsId}_{local_revision_id}{file_type[1]}"
                     file_exists = self._get_full_filename(file.bucketName, filename)
 
                     if file_exists != 0:
