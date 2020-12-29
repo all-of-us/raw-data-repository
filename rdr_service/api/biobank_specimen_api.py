@@ -1,13 +1,13 @@
 from flask import request
 import logging
+from werkzeug.exceptions import BadRequest, NotFound
+from sqlalchemy.orm.exc import NoResultFound
 
 from rdr_service.api.base_api import UpdatableApi, log_api_request
 from rdr_service.api_util import BIOBANK
 from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao, BiobankAliquotDao,\
     BiobankAliquotDatasetDao
-from werkzeug.exceptions import BadRequest, NotFound
-from sqlalchemy.orm.exc import NoResultFound
 
 
 class BiobankApiBase(UpdatableApi):
@@ -176,6 +176,12 @@ class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
             attribute_dao.insert_with_session(session, attribute)
         else:
             attribute_dao.update_with_session(session, attribute)
+
+    @staticmethod
+    def delete(rlims_id, attribute_name):
+        attribute_dao = BiobankSpecimenAttributeDao()
+        attribute_dao.delete(rlims_id, attribute_name)
+        return 200
 
 
 class BiobankSpecimenAliquotApi(BiobankSpecimenTargetedUpdateBase):

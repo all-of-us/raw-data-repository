@@ -524,6 +524,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def send_put(self, *args, **kwargs):
         return self.send_request("PUT", *args, **kwargs)
 
+    def send_delete(self, *args, **kwargs):
+        return self.send_request("DELETE", *args, **kwargs)
+
     def send_patch(self, *args, **kwargs):
         return self.send_request("PATCH", *args, **kwargs)
 

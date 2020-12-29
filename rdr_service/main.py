@@ -238,7 +238,7 @@ api.add_resource(
     BiobankSpecimenAttributeApi,
     API_PREFIX + "Biobank/specimens/<string:rlims_id>/attributes/<string:attribute_name>",
     endpoint="biobank.parent_attribute",
-    methods=["PUT"],
+    methods=["PUT", "DELETE"],
     )
 
 api.add_resource(
