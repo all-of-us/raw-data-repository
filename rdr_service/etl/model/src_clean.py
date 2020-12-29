@@ -18,6 +18,7 @@ class QuestionnaireResponsesByModule(Base):
     id = Column(BigInteger, autoincrement=True, primary_key=True)
     participant_id = Column(BigInteger)
     authored = Column(DateTime)
+    created = Column(DateTime)
     survey = Column(String(200))
     __table_args__ = (Index('idx_questionnaire_responses_by_module_pid_survey', participant_id, survey), )
 

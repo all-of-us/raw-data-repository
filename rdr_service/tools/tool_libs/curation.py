@@ -224,6 +224,7 @@ class CurationExportClass(ToolBase):
         column_map = {
             QuestionnaireResponsesByModule.participant_id: QuestionnaireResponse.participantId,
             QuestionnaireResponsesByModule.authored: QuestionnaireResponse.authored,
+            QuestionnaireResponsesByModule.created: QuestionnaireResponse.created,
             QuestionnaireResponsesByModule.survey: case(
                 [(Code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
                 else_=Code.value
@@ -339,7 +340,11 @@ class CurationExportClass(ToolBase):
                     [(module_code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
                     else_=module_code.value
                 ),
-                QuestionnaireResponsesByModule.authored > QuestionnaireResponse.authored
+                case(  # If the authored date for the responses match, then join based on the created date instead
+                    [(QuestionnaireResponsesByModule.authored == QuestionnaireResponse.authored,
+                      QuestionnaireResponsesByModule.created > QuestionnaireResponse.created)],
+                    else_=(QuestionnaireResponsesByModule.authored > QuestionnaireResponse.authored)
+                )
             )
         ).filter(
             Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
