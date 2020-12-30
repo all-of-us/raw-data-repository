@@ -1305,10 +1305,11 @@ class GenomicReconciler:
                 total_missing_data.append((file.fileName, missing_data_files))
 
             # Update Job Run ID on member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                     project_id=self.controller.bq_project_id)
 
             if next_state is not None and next_state != member.genomicWorkflowState:
-                self.member_dao.update_member_state(member, next_state)
+                self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
@@ -1378,8 +1379,9 @@ class GenomicReconciler:
                 total_missing_data.append((file.fileName, missing_data_files))
 
             # Update Member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId')
-            self.member_dao.update_member_state(member, next_state)
+            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                     project_id=self.controller.bq_project_id)
+            self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
