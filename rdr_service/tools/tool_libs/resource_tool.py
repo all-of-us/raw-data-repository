@@ -41,7 +41,7 @@ tool_desc = "Tools for updating resource records in RDR"
 
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
-                     'genomic_file_processed')
+                     'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
