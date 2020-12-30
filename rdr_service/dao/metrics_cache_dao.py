@@ -1177,7 +1177,7 @@ class MetricsAgeCacheDao(BaseDao):
 class MetricsRaceCacheDao(BaseDao):
 
     def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
-        super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache)
+        super(MetricsRaceCacheDao, self).__init__(MetricsRaceCache, read_uncommitted=True)
         try:
             self.cache_type = MetricsCacheType(str(cache_type))
             self.version = version
@@ -1970,7 +1970,7 @@ class MetricsRegionCacheDao(BaseDao):
               ps.participant_origin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_stored_sample_time 
+              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_core_stored_sample_time
               FROM {temp_table_name}, code WHERE state_id=code_id
               ) ps,
               metrics_tmp_participant_origin po,
@@ -1992,7 +1992,7 @@ class MetricsRegionCacheDao(BaseDao):
               ps.participant_origin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_time 
+              SELECT participant_id, participant_origin, hpo_id, value, sign_up_time, consent_for_study_enrollment_time
               FROM {temp_table_name}, code WHERE state_id=code_id
               ) ps,
               metrics_tmp_participant_origin po,
@@ -2015,7 +2015,7 @@ class MetricsRegionCacheDao(BaseDao):
               ps.participant_origin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_time, enrollment_status_member_time 
+              SELECT participant_id, participant_origin, hpo_id, value, consent_for_study_enrollment_time, enrollment_status_member_time
               FROM {temp_table_name}, code WHERE state_id=code_id
               ) ps,
               metrics_tmp_participant_origin po,
@@ -2038,7 +2038,7 @@ class MetricsRegionCacheDao(BaseDao):
               ps.participant_origin
             FROM
               (
-              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time 
+              SELECT participant_id, participant_origin, hpo_id, value, enrollment_status_member_time, enrollment_status_core_stored_sample_time
               FROM {temp_table_name}, code WHERE state_id=code_id
               ) ps,
               metrics_tmp_participant_origin po,
