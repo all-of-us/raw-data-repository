@@ -4,28 +4,26 @@ from sqlalchemy.dialects.mysql import DECIMAL, TINYINT
 from rdr_service.model.base import Base
 
 
-class QuestionnaireVibrentForms(Base):
-    __tablename__ = 'questionnaire_vibrent_forms'
-    id = Column(BigInteger, autoincrement=True, primary_key=True)
-    questionnaire_id = Column(BigInteger)
-    version = Column(BigInteger)
-    vibrent_form_id = Column(String(200))
-    __table_args__ = (Index('idx_questionnaire_vibrent_forms_qid_version', questionnaire_id, version), )
-
-
-class QuestionnaireResponsesByModule(Base):
-    __tablename__ = 'questionnaire_responses_by_module'
+class QuestionnaireAnswersByModule(Base):
+    __tablename__ = 'questionnaire_answers_by_module'
     id = Column(BigInteger, autoincrement=True, primary_key=True)
     participant_id = Column(BigInteger)
     authored = Column(DateTime)
     created = Column(DateTime)
     survey = Column(String(200))
-    __table_args__ = (Index('idx_questionnaire_responses_by_module_pid_survey', participant_id, survey), )
+    response_id = Column(BigInteger)
+    question_code_id = Column(BigInteger)
+    __table_args__ = (Index(
+        'idx_participant_questionnaire_answers_by_module_and_code',
+        participant_id,
+        survey,
+        question_code_id
+    ), )
 
 
 class SrcClean(Base):
     __tablename__ = 'src_clean'
-    id = Column(BigInteger, autoincrement=True, primary_key=True)  # TODO: make sure this doesn't get to the export
+    id = Column(BigInteger, autoincrement=True, primary_key=True)
     participant_id = Column(BigInteger)
     research_id = Column(BigInteger)
     survey_name = Column(String(200))
