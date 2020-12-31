@@ -178,6 +178,7 @@ class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
             attribute_dao.update_with_session(session, attribute)
 
     @staticmethod
+    @auth_required(BIOBANK)
     def delete(rlims_id, attribute_name):
         attribute_dao = BiobankSpecimenAttributeDao()
         attribute_dao.delete(rlims_id, attribute_name)
