@@ -35,8 +35,8 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicGCValidationMetrics,
-    GenomicSampleContamination
-)
+    GenomicSampleContamination,
+    GenomicFileProcessed)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -2229,91 +2229,11 @@ class ManifestDefinitionProvider:
     PROCESSING_STATUS_PASS = 'pass'
     DEFAULT_SIGNAL = 'manifest-generated'
 
-    def __init__(self, job_run_id=None, bucket_name=None,):
+    def __init__(self, job_run_id=None, bucket_name=None, **kwargs):
         # Attributes
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
-
-        self.MANIFEST_DEFINITIONS = dict()
-        self._setup_manifest_definitions()
-
-    def _setup_manifest_definitions(self):
-        """
-        Creates the manifest definitions to use when generating the manifest
-        based on manifest type
-        """
-        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
-        # Set each Manifest Definition as an instance of ManifestDef()
-        # DRC Broad CVL WGS Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.CVL_W1] = self.ManifestDef(
-            job_run_field='cvlW1ManifestJobRunId',
-            source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
-            signal=self.DEFAULT_SIGNAL,
-        )
-
-        # Color Array A1 Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A1] = self.ManifestDef(
-            job_run_field='gemA1ManifestJobRunId',
-            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
-            signal=self.DEFAULT_SIGNAL,
-        )
-
-        # Color A3 Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.GEM_A3] = self.ManifestDef(
-            job_run_field='gemA3ManifestJobRunId',
-            source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
-            signal=self.DEFAULT_SIGNAL,
-        )
-
-        # DRC to CVL W3 Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.CVL_W3] = self.ManifestDef(
-            job_run_field='cvlW3ManifestJobRunID',
-            source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W3),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
-            signal=self.DEFAULT_SIGNAL,
-        )
-
-        # DRC to Broad AW3 Array Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_ARRAY] = self.ManifestDef(
-            job_run_field='aw3ManifestJobRunID',
-            source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.AW3_ARRAY),
-            signal="bypass",
-        )
-
-        # DRC to Broad AW3 WGS Manifest
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW3_WGS] = self.ManifestDef(
-            job_run_field='aw3ManifestJobRunID',
-            source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.AW3_WGS),
-            signal="bypass",
-        )
-
-        # DRC to Biobank AW2F Feedback/Contamination Manifest
-        # TODO: Get filename from manifest_file record
-        self.MANIFEST_DEFINITIONS[GenomicManifestTypes.AW2F] = self.ManifestDef(
-            job_run_field=None,
-            source_data=self._get_source_data_query(GenomicManifestTypes.AW2F),
-            destination_bucket=f'{self.bucket_name}',
-            output_filename=f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
-            columns=self._get_manifest_columns(GenomicManifestTypes.AW2F),
-            signal="bypass",
-        )
+        self.kwargs = kwargs
 
     def _get_source_data_query(self, manifest_type):
         """
@@ -2621,15 +2541,19 @@ class ManifestDefinitionProvider:
                     ]
                 ).select_from(
                     sqlalchemy.join(
-                        sqlalchemy.join(ParticipantSummary,
-                                        GenomicSetMember,
-                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        ParticipantSummary,
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == ParticipantSummary.participantId
+                    ).join(
                         GenomicGCValidationMetrics,
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ).join(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                    (GenomicSetMember.genomeType == "aou_array")
+                    (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
 
@@ -2771,7 +2695,88 @@ class ManifestDefinitionProvider:
         return columns
 
     def get_def(self, manifest_type):
-        return self.MANIFEST_DEFINITIONS[manifest_type]
+        """
+        Returns the manifest definition based on manifest_type
+        :param manifest_type:
+        :return: ManifestDef()
+        """
+        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+        # DRC Broad CVL WGS Manifest
+        if manifest_type == GenomicManifestTypes.CVL_W1:
+            return self.ManifestDef(
+                job_run_field='cvlW1ManifestJobRunId',
+                source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
+                signal=self.DEFAULT_SIGNAL,
+            )
+
+        # Color Array A1 Manifest
+        if manifest_type == GenomicManifestTypes.GEM_A1:
+            return self.ManifestDef(
+                job_run_field='gemA1ManifestJobRunId',
+                source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+                signal=self.DEFAULT_SIGNAL,
+            )
+        # Color A3 Manifest
+        if manifest_type == GenomicManifestTypes.GEM_A3:
+            return self.ManifestDef(
+                job_run_field='gemA3ManifestJobRunId',
+                source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
+                signal=self.DEFAULT_SIGNAL,
+            )
+
+        # DRC to CVL W3 Manifest
+        if manifest_type == GenomicManifestTypes.CVL_W3:
+            return self.ManifestDef(
+                job_run_field='cvlW3ManifestJobRunID',
+                source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W3),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
+                signal=self.DEFAULT_SIGNAL,
+            )
+
+        # DRC to Broad AW3 Array Manifest
+        if manifest_type == GenomicManifestTypes.AW3_ARRAY:
+            return self.ManifestDef(
+                job_run_field='aw3ManifestJobRunID',
+                source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.AW3_ARRAY),
+                signal="bypass",
+            )
+
+        # DRC to Broad AW3 WGS Manifest
+        if manifest_type == GenomicManifestTypes.AW3_WGS:
+            return self.ManifestDef(
+                job_run_field='aw3ManifestJobRunID',
+                source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.AW3_WGS),
+                signal="bypass",
+            )
+
+        # DRC to Biobank AW2F Feedback/Contamination Manifest
+        if manifest_type == GenomicManifestTypes.AW2F:
+            return self.ManifestDef(
+                job_run_field=None,
+                source_data=self._get_source_data_query(GenomicManifestTypes.AW2F),
+                destination_bucket=f'{self.bucket_name}',
+                output_filename=f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
+                columns=self._get_manifest_columns(GenomicManifestTypes.AW2F),
+                signal="bypass",
+            )
 
 
 class ManifestCompiler:
@@ -2786,9 +2791,7 @@ class ManifestCompiler:
         self.output_file_name = None
         self.manifest_def = None
 
-        self.def_provider = ManifestDefinitionProvider(
-            job_run_id=run_id, bucket_name=bucket_name
-        )
+        self.def_provider = None
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
@@ -2802,6 +2805,10 @@ class ManifestCompiler:
             "feedback_file": None or feedback file record to update,
             "record_count": integer
         """
+        self.def_provider = ManifestDefinitionProvider(
+            job_run_id=self.run_id, bucket_name=self.bucket_name, kwargs=kwargs
+        )
+
         self.manifest_def = self.def_provider.get_def(manifest_type)
 
         source_data = self._pull_source_data()
