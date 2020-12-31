@@ -9,9 +9,11 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
+from typing import Type
 
 from rdr_service import config
-from rdr_service.etl.model.src_clean import QuestionnaireResponsesByModule, QuestionnaireVibrentForms, SrcClean
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
@@ -203,36 +205,26 @@ class CurationExportClass(ToolBase):
         for rdr_model_class in model_class_list:
             rdr_model_class.__table__.schema = 'rdr'
 
-    def _populate_questionnaire_vibrent_forms(self, session):
-        # Todo: this table is obsolete since external ids are already stored in questionnaire records
-        self._set_rdr_model_schema([QuestionnaireHistory])
+    @staticmethod
+    def _module_code_or_external_id_if_cope(code_reference: Type[Code]):
+        return case(
+            [(code_reference.value == 'COPE', QuestionnaireHistory.externalId)],
+            else_=code_reference.value
+        )
+
+    def _populate_questionnaire_answers_by_module(self, session):
+        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireQuestion])
         column_map = {
-            QuestionnaireVibrentForms.questionnaire_id: QuestionnaireHistory.questionnaireId,
-            QuestionnaireVibrentForms.version: QuestionnaireHistory.version,
-            QuestionnaireVibrentForms.vibrent_form_id:
-                "json_unquote(json_extract(convert(resource using utf8), '$.identifier[0].value'))"
-        }
-
-        # No joins are needed since there's only one table
-        form_id_select = session.query(*column_map.values())
-
-        insert_query = insert(QuestionnaireVibrentForms).from_select(column_map.keys(), form_id_select)
-        session.execute(insert_query)
-
-    def _populate_questionnaire_responses_by_module(self, session):
-        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept])
-        column_map = {
-            QuestionnaireResponsesByModule.participant_id: QuestionnaireResponse.participantId,
-            QuestionnaireResponsesByModule.authored: QuestionnaireResponse.authored,
-            QuestionnaireResponsesByModule.created: QuestionnaireResponse.created,
-            QuestionnaireResponsesByModule.survey: case(
-                [(Code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
-                else_=Code.value
-            )
+            QuestionnaireAnswersByModule.participant_id: QuestionnaireResponse.participantId,
+            QuestionnaireAnswersByModule.authored: QuestionnaireResponse.authored,
+            QuestionnaireAnswersByModule.created: QuestionnaireResponse.created,
+            QuestionnaireAnswersByModule.survey: self._module_code_or_external_id_if_cope(Code),
+            QuestionnaireAnswersByModule.response_id: QuestionnaireResponse.questionnaireResponseId,
+            QuestionnaireAnswersByModule.question_code_id: QuestionnaireQuestion.codeId
         }
 
         # QuestionnaireResponse is implicitly the first table, others are joined
-        responses_by_module_select = session.query(*column_map.values()).join(
+        answers_by_module_select = session.query(*column_map.values()).join(
             QuestionnaireConcept,
             and_(
                 QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
@@ -242,22 +234,27 @@ class CurationExportClass(ToolBase):
             Code,
             Code.codeId == QuestionnaireConcept.codeId
         ).join(
-            QuestionnaireVibrentForms,
+            QuestionnaireHistory,
             and_(
-                QuestionnaireResponse.questionnaireId == QuestionnaireVibrentForms.questionnaire_id,
-                QuestionnaireResponse.questionnaireVersion == QuestionnaireVibrentForms.version
+                QuestionnaireHistory.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireHistory.version == QuestionnaireResponse.questionnaireVersion
             )
+        ).join(
+            QuestionnaireResponseAnswer,
+            QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+        ).join(
+            QuestionnaireQuestion
         )
 
-        insert_query = insert(QuestionnaireResponsesByModule).from_select(column_map.keys(), responses_by_module_select)
+        insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
         session.execute(insert_query)
 
-    def _populate_src_clean(self, session):
-        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
-                                    QuestionnaireResponse, QuestionnaireResponseAnswer])
+    @staticmethod
+    def _get_base_src_clean_answers_select(session):
         module_code = aliased(Code)
         question_code = aliased(Code)
         answer_code = aliased(Code)
+
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
@@ -316,12 +313,13 @@ class CurationExportClass(ToolBase):
         ).join(
             QuestionnaireResponseAnswer
         ).join(
-            QuestionnaireQuestion
+            QuestionnaireQuestion,
+            QuestionnaireQuestion.questionnaireQuestionId == QuestionnaireResponseAnswer.questionId
         ).join(
-            QuestionnaireVibrentForms,
+            QuestionnaireHistory,
             and_(
-                QuestionnaireVibrentForms.questionnaire_id == QuestionnaireResponse.questionnaireId,
-                QuestionnaireVibrentForms.version == QuestionnaireResponse.questionnaireVersion
+                QuestionnaireHistory.questionnaireId == QuestionnaireResponse.questionnaireId,
+                QuestionnaireHistory.version == QuestionnaireResponse.questionnaireVersion
             )
         ).join(
             question_code,
@@ -332,20 +330,6 @@ class CurationExportClass(ToolBase):
         ).outerjoin(
             module_code,
             module_code.codeId == QuestionnaireConcept.codeId
-        ).outerjoin(
-            QuestionnaireResponsesByModule,
-            and_(
-                QuestionnaireResponsesByModule.participant_id == QuestionnaireResponse.participantId,
-                QuestionnaireResponsesByModule.survey == case(
-                    [(module_code.value == 'COPE', QuestionnaireVibrentForms.vibrent_form_id)],
-                    else_=module_code.value
-                ),
-                case(  # If the authored date for the responses match, then join based on the created date instead
-                    [(QuestionnaireResponsesByModule.authored == QuestionnaireResponse.authored,
-                      QuestionnaireResponsesByModule.created > QuestionnaireResponse.created)],
-                    else_=(QuestionnaireResponsesByModule.authored > QuestionnaireResponse.authored)
-                )
-            )
         ).filter(
             Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
             Participant.isGhostId.isnot(True),
@@ -360,21 +344,81 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueDate.isnot(None),
                 QuestionnaireResponseAnswer.valueDateTime.isnot(None),
                 QuestionnaireResponseAnswer.valueString.isnot(None)
-            ),
-            QuestionnaireResponsesByModule.participant_id.is_(None)
+            )
         )
 
-        insert_query = insert(SrcClean).from_select(column_map.keys(), questionnaire_answers_select)
+        return column_map, questionnaire_answers_select, module_code
+
+    def _populate_src_clean(self, session):
+        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
+                                    QuestionnaireResponse, QuestionnaireResponseAnswer])
+
+        # These modules should have the latest answers for each question,
+        # rather than the answers from the latest response
+        rolled_up_module_codes = [CONSENT_FOR_STUDY_ENROLLMENT_MODULE]
+
+        responses_by_module_subquery = session.query(
+            QuestionnaireAnswersByModule.participant_id,
+            QuestionnaireAnswersByModule.response_id,
+            QuestionnaireAnswersByModule.survey,
+            QuestionnaireAnswersByModule.authored,
+            QuestionnaireAnswersByModule.created
+        ).distinct().subquery()
+
+        column_map, questionnaire_answers_select, module_code = self._get_base_src_clean_answers_select(session)
+        latest_responses_select = questionnaire_answers_select.outerjoin(
+            responses_by_module_subquery,
+            and_(
+                responses_by_module_subquery.c.participant_id == QuestionnaireResponse.participantId,
+                responses_by_module_subquery.c.response_id != QuestionnaireResponse.questionnaireResponseId,
+                responses_by_module_subquery.c.survey == self._module_code_or_external_id_if_cope(module_code),
+                case(  # If the authored date for the responses match, then join based on the created date instead
+                    [(responses_by_module_subquery.c.authored == QuestionnaireResponse.authored,
+                      responses_by_module_subquery.c.created > QuestionnaireResponse.created)],
+                    else_=(responses_by_module_subquery.c.authored > QuestionnaireResponse.authored)
+                )
+            )
+        ).filter(
+            responses_by_module_subquery.c.participant_id.is_(None),
+            module_code.system == PPI_SYSTEM,
+            module_code.value.notin_(rolled_up_module_codes)
+        )
+
+        insert_latest_responses_query = insert(SrcClean).from_select(column_map.keys(), latest_responses_select)
+        session.execute(insert_latest_responses_query)
+
+        rolled_up_responses_select = questionnaire_answers_select.outerjoin(
+            QuestionnaireAnswersByModule,
+            and_(
+                QuestionnaireAnswersByModule.participant_id == QuestionnaireResponse.participantId,
+                QuestionnaireAnswersByModule.response_id != QuestionnaireResponse.questionnaireResponseId,
+                QuestionnaireAnswersByModule.survey == self._module_code_or_external_id_if_cope(module_code),
+                QuestionnaireAnswersByModule.question_code_id == QuestionnaireQuestion.codeId,
+                case(  # If the authored date for the responses match, then join based on the created date instead
+                    [(QuestionnaireAnswersByModule.authored == QuestionnaireResponse.authored,
+                      QuestionnaireAnswersByModule.created > QuestionnaireResponse.created)],
+                    else_=(QuestionnaireAnswersByModule.authored > QuestionnaireResponse.authored)
+                )
+            )
+        ).filter(
+            QuestionnaireAnswersByModule.id.is_(None),
+            module_code.system == PPI_SYSTEM,
+            module_code.value.in_(rolled_up_module_codes)
+        )
+
+        insert_query = insert(SrcClean).from_select(column_map.keys(), rolled_up_responses_select)
         session.execute(insert_query)
 
     def populate_cdm_database(self):
         with self.get_session(database_name='cdm', alembic=True) as session:  # using alembic to get CREATE permission
-            self._create_tables(session, [QuestionnaireVibrentForms, QuestionnaireResponsesByModule, SrcClean])
+            self._create_tables(session, [
+                QuestionnaireAnswersByModule,
+                SrcClean
+            ])
 
         # using alembic here to get the database_factory code to set up a connection to the CDM database
         with self.get_session(database_name='cdm', alembic=True, isolation_level='READ UNCOMMITTED') as session:
-            self._populate_questionnaire_vibrent_forms(session)
-            self._populate_questionnaire_responses_by_module(session)
+            self._populate_questionnaire_answers_by_module(session)
             self._populate_src_clean(session)
 
         return 0
