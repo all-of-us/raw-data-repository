@@ -30,7 +30,6 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
-from rdr_service.offline.genomic_pipeline import reconcile_metrics_vs_genotyping_data
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -972,7 +971,21 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
-                reconcile_metrics_vs_genotyping_data(provider=self.gscp)
+                with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+                                          storage_provider=self.gscp,
+                                          bq_project_id=self.gcp_env.project) as controller:
+                    controller.run_reconciliation_to_genotyping_data()
+
+            except Exception as e:   # pylint: disable=broad-except
+                _logger.error(e)
+                return 1
+
+        if self.args.job == 'RECONCILE_SEQUENCING_DATA':
+            try:
+                with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+                                          storage_provider=self.gscp,
+                                          bq_project_id=self.gcp_env.project) as controller:
+                    controller.run_reconciliation_to_sequencing_data()
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)

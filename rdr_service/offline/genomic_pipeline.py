@@ -160,16 +160,18 @@ def reconcile_metrics_vs_genotyping_data(provider=None):
     Entrypoint for GC Metrics File reconciliation
     Genotyping Files (Array) vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA, storage_provider=provider) as controller:
+    with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+                              storage_provider=provider) as controller:
         controller.run_reconciliation_to_genotyping_data()
 
 
-def reconcile_metrics_vs_sequencing_data():
+def reconcile_metrics_vs_sequencing_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
     Sequencing Files (Array) vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA) as controller:
+    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA,
+                              storage_provider=provider) as controller:
         controller.run_reconciliation_to_sequencing_data()
 
 

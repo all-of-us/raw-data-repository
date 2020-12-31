@@ -485,9 +485,10 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
-    def update_member_job_run_id(self, member, job_run_id, field):
+    def update_member_job_run_id(self, member, job_run_id, field, project_id=None):
         """
         Updates the GenomicSetMember with a job_run_id for an arbitrary workflow
+        :param project_id:
         :param member: the GenomicSetMember object to update
         :param job_run_id:
         :param field: the field for the job-run workflow (i.e. reconciliation, cvl, etc.)
@@ -502,7 +503,7 @@ class GenomicSetMemberDao(UpdatableDao):
             updated_member = self.update(member)
 
             # Update member for PDR
-            bq_genomic_set_member_update(member.id)
+            bq_genomic_set_member_update(member.id, project_id=project_id)
             genomic_set_member_update(member.id)
 
             return updated_member
@@ -515,9 +516,10 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
-    def update_member_state(self, member, new_state):
+    def update_member_state(self, member, new_state, project_id=None):
         """
         Sets the member's state to a new state
+        :param project_id:
         :param member: GenomicWorkflowState
         :param new_state:
         """
@@ -527,7 +529,7 @@ class GenomicSetMemberDao(UpdatableDao):
         updated_member = self.update(member)
 
         # Update member for PDR
-        bq_genomic_set_member_update(member.id)
+        bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
 
         return updated_member

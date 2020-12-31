@@ -426,7 +426,7 @@ def bq_genomic_manifest_feedback_batch_update(_ids, project_id=None):
     gen = BQGenomicManifestFeedbackSchemaGenerator()
     w_dao = BigQuerySyncDao()
     for _id in _ids:
-        bq_genomic_manifest_file_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+        bq_genomic_manifest_feedback_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQGenomicGCValidationMetricsSchemaGenerator(BigQueryGenerator):
