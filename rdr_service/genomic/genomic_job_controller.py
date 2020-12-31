@@ -217,7 +217,9 @@ class GenomicJobController:
         """
         Reconciles the metrics to sequencing files using reconciler component
         """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
+        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
+                                            storage_provider=self.storage_provider,
+                                            controller=self)
         try:
             self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data()
         except RuntimeError:
