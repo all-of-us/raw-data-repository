@@ -2539,13 +2539,13 @@ class ManifestDefinitionProvider:
                     ]
                 ).select_from(
                     sqlalchemy.join(
-                        sqlalchemy.join(
-                            sqlalchemy.join(ParticipantSummary,
-                                            GenomicSetMember,
-                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
-                            GenomicGCValidationMetrics,
-                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                        ),
+                        ParticipantSummary,
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == ParticipantSummary.participantId
+                    ).join(
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ).join(
                         GenomicFileProcessed,
                         GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
                     )
