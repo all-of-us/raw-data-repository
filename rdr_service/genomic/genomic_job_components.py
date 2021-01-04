@@ -2873,10 +2873,7 @@ class ManifestCompiler:
 
             return result
         logging.info(f'No records found for manifest type: {manifest_type}.')
-        return {
-                "code": GenomicSubProcessResult.NO_FILES,
-                "record_count": 0,
-            }
+        return GenomicSubProcessResult.NO_FILES
 
     def _pull_source_data(self):
         """
