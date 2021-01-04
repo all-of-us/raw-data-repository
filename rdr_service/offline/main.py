@@ -107,7 +107,7 @@ def recalculate_public_metrics():
 
 
 @app_util.auth_required_cron
-def biobank_samples_pipeline():
+def run_biobank_samples_pipeline():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
@@ -480,7 +480,7 @@ def _build_pipeline_app():
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "BiobankSamplesPipeline",
         endpoint="biobankSamplesPipeline",
-        view_func=biobank_samples_pipeline,
+        view_func=run_biobank_samples_pipeline,
         methods=["GET"],
     )
 
