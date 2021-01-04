@@ -101,7 +101,7 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False) ->
     return result
 
 
-def make_server_cursor_database(database_name="rdr", backup=False, instance_name=None, alembic=False, **kwargs):
+def make_server_cursor_database(backup=False, instance_name=None, database_name="rdr", alembic=False, **kwargs):
     """
   Returns a database object that uses a server-side cursor when talking to the database.
   Useful in cases where you're reading a very large amount of data.
