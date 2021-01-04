@@ -112,7 +112,7 @@ cron:
 - description: Genomic GEM A1 Workflow
   url: /offline/GenomicGemA1Workflow
   timezone: America/New_York
-  schedule: every tuesday 12:00
+  schedule: every tuesday 00:00
   target: offline
 - description: Genomic GEM A2 Workflow
   url: /offline/GenomicGemA2Workflow
