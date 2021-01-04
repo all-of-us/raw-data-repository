@@ -99,6 +99,11 @@ cron:
   timezone: America/New_York
   schedule: every day 05:30
   target: offline
+- description: Genomic GEM A1 Workflow
+  url: /offline/GenomicGemA1Workflow
+  timezone: America/New_York
+  schedule: every tuesday 00:00
+  target: offline
 - description: Genomic GEM A2 Workflow
   url: /offline/GenomicGemA2Workflow
   timezone: America/New_York
