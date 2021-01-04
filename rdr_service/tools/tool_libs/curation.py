@@ -12,7 +12,8 @@ from sqlalchemy.sql.functions import coalesce, concat
 from typing import Type
 
 from rdr_service import config
-from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
+    STREET_ADDRESS2_QUESTION_CODE
 from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
@@ -213,7 +214,8 @@ class CurationExportClass(ToolBase):
         )
 
     def _populate_questionnaire_answers_by_module(self, session):
-        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireQuestion])
+        self._set_rdr_model_schema([Code, QuestionnaireResponse, QuestionnaireConcept, QuestionnaireHistory,
+                                    QuestionnaireQuestion, QuestionnaireResponseAnswer])
         column_map = {
             QuestionnaireAnswersByModule.participant_id: QuestionnaireResponse.participantId,
             QuestionnaireAnswersByModule.authored: QuestionnaireResponse.authored,
@@ -347,7 +349,7 @@ class CurationExportClass(ToolBase):
             )
         )
 
-        return column_map, questionnaire_answers_select, module_code
+        return column_map, questionnaire_answers_select, module_code, question_code
 
     def _populate_src_clean(self, session):
         self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
@@ -365,7 +367,9 @@ class CurationExportClass(ToolBase):
             QuestionnaireAnswersByModule.created
         ).distinct().subquery()
 
-        column_map, questionnaire_answers_select, module_code = self._get_base_src_clean_answers_select(session)
+        column_map, questionnaire_answers_select, module_code, question_code \
+            = self._get_base_src_clean_answers_select(session)
+
         latest_responses_select = questionnaire_answers_select.outerjoin(
             responses_by_module_subquery,
             and_(
@@ -387,13 +391,26 @@ class CurationExportClass(ToolBase):
         insert_latest_responses_query = insert(SrcClean).from_select(column_map.keys(), latest_responses_select)
         session.execute(insert_latest_responses_query)
 
+        street_address_1_code = session.query(Code).filter(Code.value == STREET_ADDRESS_QUESTION_CODE).one()
+
         rolled_up_responses_select = questionnaire_answers_select.outerjoin(
             QuestionnaireAnswersByModule,
             and_(
                 QuestionnaireAnswersByModule.participant_id == QuestionnaireResponse.participantId,
                 QuestionnaireAnswersByModule.response_id != QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireAnswersByModule.survey == self._module_code_or_external_id_if_cope(module_code),
-                QuestionnaireAnswersByModule.question_code_id == QuestionnaireQuestion.codeId,
+                case(
+                    [(
+                        # Any street address 2 answers should also be ignored if there are any later
+                        # street address 1 answers
+                        question_code.value == STREET_ADDRESS2_QUESTION_CODE,
+                        QuestionnaireAnswersByModule.question_code_id.in_([
+                            QuestionnaireQuestion.codeId,
+                            street_address_1_code.codeId
+                        ])
+                    )],
+                    else_=QuestionnaireAnswersByModule.question_code_id == QuestionnaireQuestion.codeId
+                ),
                 case(  # If the authored date for the responses match, then join based on the created date instead
                     [(QuestionnaireAnswersByModule.authored == QuestionnaireResponse.authored,
                       QuestionnaireAnswersByModule.created > QuestionnaireResponse.created)],
