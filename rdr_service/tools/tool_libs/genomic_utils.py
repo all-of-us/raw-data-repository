@@ -28,7 +28,8 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
+    GenomicManifestFeedback
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -36,6 +37,7 @@ from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStora
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
     GenomicWorkflowState, GenomicSetMemberStatus
+from rdr_service.tools.tool_libs._tool_base import ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -48,15 +50,15 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
-class GenomicManifestBase(object):
+class GenomicManifestBase(ToolBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         # Tool_lib attributes
-        self.args = args
-        self.gcp_env = gcp_env
+        super().__init__(args, gcp_env)
+
         self.dao = None
         self.gscp = GoogleCloudStorageProvider()
         self.lsp = LocalFilesystemStorageProvider()
@@ -1014,6 +1016,36 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
+        if self.args.job == 'AW2F_MANIFEST':
+            try:
+                if not self.args.csv:
+                    _logger.info('--csv of genomic_manifest_feedback ids record required for this job.')
+
+                else:
+                    _logger.info(f'Feedback record list specified: {self.args.csv}')
+
+                    # Validate csv file exists
+                    if not os.path.exists(self.args.csv):
+                        _logger.error(f'File {self.args.csv} was not found.')
+                        return 1
+
+                    # Open list of feedback records and process AW2F for each
+                    with open(self.args.csv, encoding='utf-8-sig') as f:
+                        csvreader = csv.reader(f)
+
+                        # Run the AW2 manifest ingestion on each file
+                        for l in csvreader:
+                            feedback_id = l[0]
+
+                            result = self.run_aw2f_manifest(feedback_id)
+
+                            if result != 0:
+                                return 1
+
+            except Exception as e:   # pylint: disable=broad-except
+                _logger.error(e)
+                return 1
+
         return 0
 
     def run_aw1_manifest(self):
@@ -1068,6 +1100,39 @@ class GenomicProcessRunner(GenomicManifestBase):
                     return 1
 
         return 0
+
+    def run_aw2f_manifest(self, feedback_id):
+        """
+        Runs the AW2f manifest generation workflow for a feedback ID
+        :param feedback_id:
+        :return:
+        """
+        try:
+
+            server_config = self.get_server_config()
+
+            # Get the feedback record for the ID
+            with self.dao.session() as s:
+                feedback_record = s.query(
+                    GenomicManifestFeedback
+                ).filter(GenomicManifestFeedback.id == feedback_id).one_or_none()
+
+            # Run the AW2F Workflow
+            with GenomicJobController(GenomicJob.AW2F_MANIFEST,
+                                      bq_project_id=self.gcp_env.project
+                                      ) as controller:
+
+                controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
+
+                controller.generate_manifest(GenomicManifestTypes.AW2F,
+                                             _genome_type=config.GENOME_TYPE_ARRAY,
+                                             feedback_record=feedback_record)
+
+            return 0
+
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.error(e)
+            return 1
 
 
 class FileUploadDateClass(GenomicManifestBase):
