@@ -1029,7 +1029,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                         _logger.error(f'File {self.args.csv} was not found.')
                         return 1
 
-                    # Open list of files and run_aw2_manifest() for each one individually
+                    # Open list of feedback records and process AW2F for each
                     with open(self.args.csv, encoding='utf-8-sig') as f:
                         csvreader = csv.reader(f)
 
