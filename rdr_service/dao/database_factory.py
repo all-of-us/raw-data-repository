@@ -13,7 +13,7 @@ SCHEMA_TRANSLATE_MAP = None
 class _SqlDatabase(Database):
     def __init__(self, db_name, backup=False, instance_name=None, alembic=False, **kwargs):
         url = make_url(get_db_connection_string(backup, instance_name, alembic))
-        if url.drivername != "sqlite" and not url.database:
+        if url.drivername != "sqlite" and (not url.database or url.database != db_name):
             url.database = db_name
         super(_SqlDatabase, self).__init__(url, **kwargs)
 
@@ -69,8 +69,11 @@ def get_db_connection_string(backup=False, instance_name=None, alembic=False) ->
     """
     # RDR tools define the connection string we should use in the environment var.
     env_db_connection_string = os.environ.get('DB_CONNECTION_STRING', None)
-    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string and not alembic:
-        return env_db_connection_string
+    if not os.environ.get("UNITTEST_FLAG", None) and env_db_connection_string:
+        result = env_db_connection_string
+        if alembic:
+            result = result.replace('rdr', 'alembic', 1)
+        return result
 
     # Only import "config" on demand, as it depends on Datastore packages (and
     # GAE). When running via CLI or tests, we'll have this from the environment
