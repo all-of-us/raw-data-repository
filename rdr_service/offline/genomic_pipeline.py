@@ -307,7 +307,6 @@ def scan_and_complete_feedback_records():
 
 
 def create_aw2f_manifest(feedback_record):
-    # TODO: Get Genome Type from file name (subfolder)
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
                               ) as controller:
