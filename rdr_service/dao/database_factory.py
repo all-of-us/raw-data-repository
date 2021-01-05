@@ -28,9 +28,20 @@ class _AlembicSqlDatabase(_SqlDatabase):
         super(_AlembicSqlDatabase, self).__init__(db_name, alembic=True, **kwargs)
 
 
+class _ReadUncommittedSqlDatabase(_SqlDatabase):
+    def __init__(self, db_name, **kwargs):
+        super(_ReadUncommittedSqlDatabase, self).__init__(db_name, **kwargs)
+
+
 def get_database(db_name="rdr") -> Database:
     """Returns a singleton _SqlDatabase which USEs the rdr DB."""
     return singletons.get(singletons.SQL_DATABASE_INDEX, _SqlDatabase, db_name=db_name)
+
+
+def get_read_uncommitted_database(db_name="rdr") -> Database:
+    """Returns a singleton read uncommitted _SqlDatabase which USEs the rdr DB."""
+    return singletons.get(singletons.READ_UNCOMMITTED_DATABASE_INDEX, _ReadUncommittedSqlDatabase, db_name=db_name,
+                          isolation_level='READ_UNCOMMITTED')
 
 
 def get_database_with_alembic_user(db_name='rdr'):
