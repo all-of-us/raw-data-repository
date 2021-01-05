@@ -13,7 +13,7 @@ SCHEMA_TRANSLATE_MAP = None
 class _SqlDatabase(Database):
     def __init__(self, db_name, backup=False, instance_name=None, alembic=False, **kwargs):
         url = make_url(get_db_connection_string(backup, instance_name, alembic))
-        if url.drivername != "sqlite" and (not url.database or url.database != db_name):
+        if url.drivername != "sqlite" and (not url.database or (url.database != db_name and db_name is not None)):
             url.database = db_name
         super(_SqlDatabase, self).__init__(url, **kwargs)
 
