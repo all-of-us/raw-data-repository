@@ -312,7 +312,10 @@ class GenomicManifestFile(Base):
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
     rdrProcessingCompleteDate = Column('rdr_processing_complete_date', UTCDateTime, nullable=True)
+    # TODO: Deprecated via DA-1865, to be removed after `ignore_flag` backfilled
     ignore = Column('ignore', SmallInteger, nullable=False, default=0)
+    # Replaces `ignore` DA-1865
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
 
     __table_args__ = (UniqueConstraint('file_path', 'ignore', name='_file_path_ignore_uc'),)
 
@@ -348,7 +351,10 @@ class GenomicManifestFeedback(Base):
     # feedback_complete = 1 and a feedback manifest is generated, i.e. AW2F.
     feedbackComplete = Column('feedback_complete', SmallInteger, nullable=False, default=0)
     feedbackCompleteDate = Column('feedback_complete_date', UTCDateTime, nullable=True)
+    # TODO: Deprecated via DA-1865, to be removed after `ignore_flag` backfilled
     ignore = Column('ignore', SmallInteger, nullable=False, default=0)
+    # Replaces `ignore` DA-1865
+    ignoreFlag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)

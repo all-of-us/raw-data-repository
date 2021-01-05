@@ -1217,7 +1217,7 @@ class GenomicManifestFeedbackDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicManifestFeedback).filter(
                 GenomicManifestFeedback.inputManifestFileId == manifest_id,
-                GenomicManifestFeedback.ignore == False
+                GenomicManifestFeedback.ignoreFlag == 0
             ).one_or_none()
 
     def increment_feedback_count(self, manifest_id):
@@ -1251,7 +1251,7 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFile,
                 GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
             ).filter(
-                GenomicManifestFeedback.ignore == 0,
+                GenomicManifestFeedback.ignoreFlag == 0,
                 GenomicManifestFeedback.feedbackRecordCount == GenomicManifestFile.recordCount,
                 GenomicManifestFeedback.feedbackManifestFileId == None,
             ).all()
