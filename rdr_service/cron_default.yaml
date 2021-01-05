@@ -1,17 +1,12 @@
 cron:
 - description: Daily Biobank sample import and order reconciliation
-  url: /offline/BiobankSamplesImport
+  url: /offline/BiobankSamplesPipeline
   schedule: every day 02:30
   timezone: America/New_York
   target: offline
 - description: Skew duplicate last modified
   url: /offline/SkewDuplicates
   schedule: every day 01:30
-  timezone: America/New_York
-  target: offline
-- description: Daily reconciliation report
-  url: /offline/DailyReconciliationReport
-  schedule: every day 03:00
   timezone: America/New_York
   target: offline
 - description: Monthly reconciliation report

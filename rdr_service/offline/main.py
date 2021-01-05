@@ -107,29 +107,19 @@ def recalculate_public_metrics():
 
 
 @app_util.auth_required_cron
-#@_alert_on_exceptions
-def import_biobank_samples():
+def run_biobank_samples_pipeline():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
-    written, _ = biobank_samples_pipeline.upsert_from_latest_csv()
+    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
     logging.info("Import complete %(written)d, generating report.", written)
-    return json.dumps({"written": written})
 
-
-@app_util.auth_required_cron
-#@_alert_on_exceptions
-def biobank_daily_reconciliation_report():
-    # TODO: setup to only run after import_biobank_samples completion instead of 1hr after start.
-    sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=False)
-    logging.info(f"Generating reconciliation report from {sample_file_path}, {sample_file}")
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
     return '{"success": "true"}'
 
 @app_util.auth_required_cron
-#@_alert_on_exceptions
 def biobank_monthly_reconciliation_report():
     # make sure this cron job is executed after import_biobank_samples
     sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)
@@ -488,18 +478,12 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "BiobankSamplesImport",
-        endpoint="biobankSamplesImport",
-        view_func=import_biobank_samples,
+        OFFLINE_PREFIX + "BiobankSamplesPipeline",
+        endpoint="biobankSamplesPipeline",
+        view_func=run_biobank_samples_pipeline,
         methods=["GET"],
     )
 
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "DailyReconciliationReport",
-        endpoint="dailyReconciliationReport",
-        view_func=biobank_daily_reconciliation_report,
-        methods=["GET"],
-    )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
