@@ -155,7 +155,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     else:
         mysql_login = "root"
 
-    database = database_factory.get_database()
+    database = database_factory.get_database(db_name=None)
     engine = database.get_engine()
 
     with engine.begin():
