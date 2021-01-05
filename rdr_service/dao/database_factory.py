@@ -13,8 +13,15 @@ SCHEMA_TRANSLATE_MAP = None
 class _SqlDatabase(Database):
     def __init__(self, db_name, backup=False, instance_name=None, alembic=False, **kwargs):
         url = make_url(get_db_connection_string(backup, instance_name, alembic))
-        if url.drivername != "sqlite" and (not url.database or (url.database != db_name and db_name is not None)):
+
+        # Set the URL's default database name if it's not using sqlite and if one of the following is true:
+        #   it doesn't already have a database set
+        #   it does have a database set, but it doesn't match the one requested (allows unit testing to default to cdm)
+        if url.drivername != "sqlite" and (
+                not url.database
+                or (url.database != db_name and db_name is not None)):
             url.database = db_name
+
         super(_SqlDatabase, self).__init__(url, **kwargs)
 
 
