@@ -2637,6 +2637,14 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_aw3_no_records(self):
+        genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 1
+
+        # Test run record result is success if no records
+        run_obj = self.job_run_dao.get(1)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
     def test_aw1c_manifest_ingestion(self):
         # Need W3 Manifest Job Run: run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.W3_MANIFEST,
