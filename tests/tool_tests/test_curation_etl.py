@@ -1,8 +1,10 @@
 from datetime import datetime
 import mock
 
-from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE
+from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
+    STREET_ADDRESS2_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
+from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
@@ -10,7 +12,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 class CurationEtlTest(BaseTestCase):
     def setUp(self):
-        super(CurationEtlTest, self).setUp()
+        super(CurationEtlTest, self).setUp(with_consent_codes=True)
         self._setup_data()
 
     def _setup_data(self):
@@ -123,11 +125,14 @@ class CurationEtlTest(BaseTestCase):
                 self.assertEqual(expected_answer, src_clean_answer.value_string)
 
     def _create_consent_questionnaire(self):
-        module_code = self.data_generator.create_database_code(value=CONSENT_FOR_STUDY_ENROLLMENT_MODULE)
+        module_code = self.session.query(Code).filter(Code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE).one()
         consent_question_codes = [
             self.data_generator.create_database_code(value=f'consent_q_code_{question_index}')
             for question_index in range(4)
         ]
+        consent_question_codes += self.session.query(Code).filter(Code.value.in_([
+            STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE
+        ])).all()
 
         consent_questionnaire = self.data_generator.create_database_questionnaire_history()
         for consent_question_code in consent_question_codes:
@@ -186,3 +191,47 @@ class CurationEtlTest(BaseTestCase):
                 SrcClean.question_code_id == question.codeId
             ).one()
             self.assertEqual(expected_answer, src_clean_answer_query.value_string)
+
+    def test_consent_address_roll_up(self):
+        """
+        For the consent survey, any answers for the first line of the street address should also
+        override previous answers for StreetAddress2
+        """
+
+        consent_questionnaire = self._create_consent_questionnaire()
+
+        # Set up a response that answers all the questions, including the two address lines
+        self._setup_questionnaire_response(self.participant, consent_questionnaire)
+        self._setup_questionnaire_response(
+            self.participant,
+            consent_questionnaire,
+            authored=datetime(2020, 5, 1)
+        )
+
+        # Enter another response that just updates the first line of the street address
+        expected_final_address = '42 Wallaby Way'
+        self._setup_questionnaire_response(
+            self.participant,
+            consent_questionnaire,
+            indexed_answers=[(4, expected_final_address)],  # Assuming the 4th question is the first line of the address
+            authored=datetime(2020, 8, 1)
+        )
+
+        # Check that the only address answer in src_clean is the updated line 1 for the street address (which will
+        # also replace line 2 for the the first response)
+        self.run_tool()
+
+        # Load all src_clean rows for lines 1 and 2 of the address
+        address_answers = self.session.query(SrcClean).join(
+            Code, Code.codeId == SrcClean.question_code_id
+        ).filter(
+            Code.value.in_([STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE])
+        ).all()
+
+        # Make sure we only get the updated address and nothing from the original response
+        self.assertEqual(
+            1,
+            len(address_answers),
+            'The updated street address should overwrite the previous answers for line 1 and 2 of the address'
+        )
+        self.assertEqual(expected_final_address, address_answers[0].value_string)
