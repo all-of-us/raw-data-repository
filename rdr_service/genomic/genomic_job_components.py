@@ -13,7 +13,7 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update, bq_genomic_file_processed_update
+    bq_genomic_set_update, bq_genomic_file_processed_update, bq_genomic_manifest_file_update
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
@@ -23,7 +23,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -416,6 +416,9 @@ class GenomicFileIngester:
 
                 with self.manifest_dao.session() as s:
                     s.merge(manifest_file)
+
+                    bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+                    genomic_manifest_file_update(manifest_file.id)
 
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
