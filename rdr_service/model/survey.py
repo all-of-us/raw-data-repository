@@ -25,7 +25,7 @@ class SurveyQuestion(Base):
     codeId = Column('code_id', Integer, ForeignKey(Code.codeId))
     surveyId = Column('survey_id', Integer, ForeignKey(Survey.id))
 
-    type = Column(String(200))
+    questionType = Column('question_type', String(200))
     validation = Column(String(200))
     display = Column(String(200))
 
