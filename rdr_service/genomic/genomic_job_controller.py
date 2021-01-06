@@ -1,7 +1,6 @@
 """
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
-import csv
 import logging
 from datetime import datetime
 
@@ -9,7 +8,7 @@ import pytz
 from sendgrid import sendgrid
 
 from rdr_service import clock, config
-from rdr_service.api_util import list_blobs, open_cloud_file
+from rdr_service.api_util import list_blobs
 
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
@@ -105,13 +104,6 @@ class GenomicJobController:
         except AttributeError:
             raise AttributeError("upload_date, manifest_type, and file_path required")
 
-        try:
-            with open_cloud_file(_file_path) as csv_file:
-                csv_reader = csv.DictReader(csv_file, delimiter=",")
-                count = len(list(csv_reader))
-        except FileNotFoundError:
-            raise
-
         file_to_insert = GenomicManifestFile(
             created=now,
             modified=now,
@@ -119,7 +111,7 @@ class GenomicJobController:
             manifestTypeId=_manifest_type,
             filePath=_file_path,
             bucketName=_file_path.split('/')[0],
-            recordCount=count,
+            recordCount=0,  # Initializing with 0, counting records when processing file
             rdrProcessingComplete=0,
         )
 

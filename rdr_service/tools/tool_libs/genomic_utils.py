@@ -30,6 +30,7 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
+from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -38,6 +39,8 @@ from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
     GenomicWorkflowState, GenomicSetMemberStatus
 from rdr_service.tools.tool_libs._tool_base import ToolBase
+
+from rdr_service.services.system_utils import JSONObject
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -1053,10 +1056,34 @@ class GenomicProcessRunner(GenomicManifestBase):
         bucket_name = self.args.file.split('/')[0]
         file_name = self.args.file.replace(bucket_name + '/', '')
 
+        # Get blob for file from gcs
+        _blob = self.gscp.get_blob(bucket_name, file_name)
+
+        # Set up file/JSON
+        task_data = {
+            "bucket": bucket_name,
+            "job": False,
+            "manifest_file": None,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": _blob.updated,
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": self.args.file,
+            }
+        }
+
+        # Call pipeline function
+        mf = genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data, project_id=self.gcp_env.project)
+
+        task_data['manifest_file'] = mf
+
+        _task_data = JSONObject(task_data)
+
         # Use a Controller to run the job
         try:
             with GenomicJobController(GenomicJob.AW1_MANIFEST,
                                       storage_provider=self.gscp,
+                                      task_data=_task_data,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
                 controller.ingest_specific_aw1_manifest(file_name)

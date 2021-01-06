@@ -13,7 +13,7 @@ from dateutil.parser import parse
 import sqlalchemy
 
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update, bq_genomic_file_processed_update
+    bq_genomic_set_update, bq_genomic_file_processed_update, bq_genomic_manifest_file_update
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
@@ -23,7 +23,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -58,7 +58,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao)
+    GenomicManifestFeedbackDao, GenomicManifestFileDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -120,6 +120,7 @@ class GenomicFileIngester:
         self.job_run_dao = GenomicJobRunDao()
         self.sample_dao = BiobankStoredSampleDao()
         self.feedback_dao = GenomicManifestFeedbackDao()
+        self.manifest_dao = GenomicManifestFileDao()
 
     def generate_file_processing_queue(self):
         """
@@ -306,6 +307,8 @@ class GenomicFileIngester:
             'gcManifestFailureDescription': 'failuremodedesc',
         }
         try:
+            count = 0
+
             for row in data['rows']:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
@@ -394,10 +397,28 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
+                count += 1
 
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
+
+            # Update the record count with the number of ingested records.
+            manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
+
+            # TODO: AW1F files won't have a manifest record,
+            #  this will be added in a follow-up PR
+            if manifest_file is not None:
+                # We want to add the record count to the existing record count for that manifest record
+                manifest_file.recordCount += count
+                manifest_file.processingComplete = 1
+                manifest_file.processingCompleteDate = clock.CLOCK.now()
+
+                with self.manifest_dao.session() as s:
+                    s.merge(manifest_file)
+
+                    bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+                    genomic_manifest_file_update(manifest_file.id)
 
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
