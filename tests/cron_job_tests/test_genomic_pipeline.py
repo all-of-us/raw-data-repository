@@ -343,6 +343,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=(1, 2),
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
+        self._update_test_sample_ids()
+
         # Setup Test file
         aw2_manifest_file = test_data.open_genomic_set_file("RDR_AoU_GEN_TestDataManifest.csv")
 

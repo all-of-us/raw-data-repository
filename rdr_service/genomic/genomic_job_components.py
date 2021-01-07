@@ -619,7 +619,7 @@ class GenomicFileIngester:
                 # Calculate contamination_category if contamination supplied
                 try:
                     contamination_value = float(row_copy['contamination'])
-                    category = self.calculate_contamination_category(sample_id, contamination_value, member)
+                    category = self.calculate_contamination_category(member.collectionTubeId, contamination_value, member)
                     row_copy['contamination_category'] = category
 
                 except (KeyError, ValueError):
@@ -649,7 +649,7 @@ class GenomicFileIngester:
 
             else:
                 logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
-                continue
+                return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
 
