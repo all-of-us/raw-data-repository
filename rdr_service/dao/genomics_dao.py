@@ -1220,9 +1220,10 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFeedback.ignoreFlag == 0
             ).one_or_none()
 
-    def increment_feedback_count(self, manifest_id):
+    def increment_feedback_count(self, manifest_id, _project_id):
         """
         Update the manifest feedback record's count
+        :param _project_id:
         :param manifest_id:
         :return:
         """
@@ -1235,7 +1236,7 @@ class GenomicManifestFeedbackDao(BaseDao):
             with self.session() as session:
                 session.merge(fb)
 
-            bq_genomic_manifest_feedback_update(fb.id)
+            bq_genomic_manifest_feedback_update(fb.id, project_id=_project_id)
             genomic_manifest_feedback_update(fb.id)
         else:
             raise ValueError(f'No feedback record for manifest id {manifest_id}')
