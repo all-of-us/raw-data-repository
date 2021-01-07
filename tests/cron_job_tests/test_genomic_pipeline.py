@@ -3,6 +3,7 @@ import datetime
 import time
 import os
 import mock
+import operator
 
 import pytz
 from dateutil.parser import parse
@@ -1127,6 +1128,8 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
+
+            rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
 
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
