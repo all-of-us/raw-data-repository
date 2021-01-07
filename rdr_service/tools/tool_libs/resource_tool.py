@@ -20,6 +20,8 @@ from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGener
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
+    bq_institutional_affiliations_update, bq_researcher_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
@@ -42,6 +44,9 @@ tool_desc = "Tools for updating resource records in RDR"
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
+
+RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
+
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
@@ -366,7 +371,7 @@ class GenomicResourceClass(object):
         _logger.info('')
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        _logger.info('  Genomic Table         : {0}'.format(clr.fmt(self.args.genomic_table)))
+        _logger.info('  Genomic Table         : {0}'.format(clr.fmt(self.args.table)))
 
         if self.args.all_ids or self.args.all_tables:
             dao = ResourceDataDao()
@@ -374,7 +379,7 @@ class GenomicResourceClass(object):
             if self.args.all_tables:
                 tables = [{'name': t, 'ids': list()} for t in GENOMIC_DB_TABLES]
             else:
-                tables = [{'name': self.args.genomic_table, 'ids': list()}]
+                tables = [{'name': self.args.table, 'ids': list()}]
             _logger.info('  Rebuild Table(s)      : {0}'.format(
                 clr.fmt(', '.join([t['name'] for t in tables]))))
 
@@ -390,11 +395,11 @@ class GenomicResourceClass(object):
 
         elif self.args.id:
             _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
-            self.update_single_id(self.args.genomic_table, self.args.id)
+            self.update_single_id(self.args.table, self.args.id)
         elif self.id_list:
             _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
             if len(self.id_list):
-                self.update_many_ids(self.args.genomic_table, self.id_list)
+                self.update_many_ids(self.args.table, self.id_list)
 
         return 1
 
@@ -522,6 +527,153 @@ class EHRReceiptClass(object):
 
         return 0
 
+
+class ResearchWorkbenchResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param id_list: list of integer ids from a research workbench table, if --table and --from-file were specified.
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+        self.id_list = id_list
+
+    def update_single_id(self, table, _id):
+
+        try:
+            if table == 'workspace':
+                bq_workspace_update(_id, project_id=self.gcp_env.project)
+            elif table == 'workspace_user':
+                bq_workspace_user_update(_id, project_id=self.gcp_env.project)
+            elif table == 'institutional_affiliations':
+                bq_institutional_affiliations_update(_id, project_id=self.gcp_env.project)
+            elif table == 'researcher':
+                bq_researcher_update(_id, project_id=self.gcp_env.project)
+        except NotFound:
+            return 1
+        return 0
+
+    def update_batch(self, table, _ids):
+
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i:i + n]
+
+        count = 0
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+            )
+
+        for batch in chunks(_ids, 250):
+            if self.gcp_env.project == 'localhost':
+                for _id in batch:
+                    self.update_single_id(table, _id)
+            else:
+                payload = {'table': table, 'ids': batch}
+                task.execute('rebuild_research_workbench_table_records_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            count += len(batch)
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+                )
+
+    def update_many_ids(self, table, _ids):
+        if not _ids:
+            _logger.warning(f'No records found in table {table}, skipping.')
+            return 1
+
+        _logger.info(f'Processing batch for table {table}...')
+        if self.args.batch:
+            self.update_batch(table, _ids)
+            _logger.info(f'Processing {table} batch complete.')
+            return 0
+
+        total_ids = len(_ids)
+        count = 0
+        errors = 0
+
+        for _id in _ids:
+            count += 1
+
+            if self.update_single_id(table, _id) != 0:
+                errors += 1
+                if self.args.debug:
+                    _logger.error(f'{table} ID {_id} not found.')
+
+            if not self.args.debug:
+                print_progress_bar(
+                    count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete"
+                )
+
+        if errors > 0:
+            _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
+
+        return 0
+
+
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.id and not self.args.all_ids and not self.args.all_tables and not self.id_list:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild Research Workbench Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Database Table        : {0}'.format(clr.fmt(self.args.table)))
+
+        table_map = {
+            'workspace': 'workbench_workspace_snapshot',
+            'workspace_user': 'workbench_workspace_user',
+            'researcher': 'workbench_researcher',
+            'institutional_affiliations': 'workbench_institutional_affiliations'
+        }
+
+        if self.args.all_ids or self.args.all_tables:
+            dao = ResourceDataDao()
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+            if self.args.all_tables:
+                tables = [{'name': t, 'ids': list()} for t in RESEARCH_WORKBENCH_TABLES]
+            else:
+                tables = [{'name': self.args.table, 'ids': list()}]
+            _logger.info('  Rebuild Table(s)      : {0}'.format(
+                clr.fmt(', '.join([t['name'] for t in tables]))))
+
+            for table in tables:
+                with dao.session() as session:
+                    results = session.execute(f'select id from {table_map[table["name"]]}')
+                    table['ids'] = [r.id for r in results]
+                    _logger.info('  Total Records         : {0} = {1}'.
+                                 format(clr.fmt(table["name"]), clr.fmt(len(table['ids']))))
+
+            for table in tables:
+                self.update_many_ids(table['name'], table['ids'])
+
+        elif self.args.id:
+            _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
+            self.update_single_id(self.args.table, self.args.id)
+        elif self.id_list:
+            _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
+            if len(self.id_list):
+                self.update_many_ids(self.args.table, self.id_list)
+
+        return 1
+
+
 def get_id_list(fname):
     """
     Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
@@ -540,6 +692,7 @@ def get_id_list(fname):
     ids = [int(i) for i in ids if i.strip()]
     return ids if len(ids) else None
 
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -555,43 +708,98 @@ def run():
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
 
-    subparser = parser.add_subparsers(help='pdr tools')
+    # The "dest" add_subparsers() argument specifies the property name in the args object where the
+    # sub-parser used in the command line will be stored. IE: if args.resource == 'participant'...
+    subparser = parser.add_subparsers(title='resource types', dest='resource',
+                                      help='specific resource type to work with')
 
-    # Rebuild PDR participants
-    rebuild_parser = subparser.add_parser("rebuild-pids")
+    # Common individual arguments that may be used in multiple subparsers.  The Help text and Choices can
+    # be overridden by calling update_argument() after the subparser has been created.
+    id_parser = argparse.ArgumentParser(add_help=False)
+    id_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)
+
+    all_ids_parser = argparse.ArgumentParser(add_help=False)
+    all_ids_parser.add_argument("--all-ids", help="rebuild all records", default=False, action="store_true")
+
+    from_file_parser = argparse.ArgumentParser(add_help=False)
+    from_file_parser.add_argument("--from-file", help="rebuild resource ids from a file with a list of ids",
+                                metavar='FILE', type=str, default=None)
+
+    table_parser = argparse.ArgumentParser(add_help=False)
+    table_parser.add_argument("--table", help="research workbench db table name to rebuild from", type=str,
+                              metavar='TABLE')
+
+    all_tables_parser = argparse.ArgumentParser(add_help=False)
+    all_tables_parser.add_argument("--all-tables", help="rebuild all records from all tables", default=False,
+                            action="store_true")
+
+    batch_parser = argparse.ArgumentParser(add_help=False)
+    batch_parser.add_argument("--batch", help="submit resource ids in batches to Cloud Tasks", default=False,
+                                action="store_true")
+    # End common subparser arguments.
+
+    def update_argument(p, dest, help=None):
+        """
+        Update sub-parser argument description and choices.
+        :param dest: Destination property where argument value is stored.  IE: 'file_name' == args.file_name.
+        """
+        if not p or not dest:
+            raise ValueError('Arguments must include a sub-parser and dest string.')
+        for a in p._actions:
+            if a.dest == dest:
+                a.help = help
+
+    def argument_conflict(args_, ids_, choices=()):
+        """ Check if common arguments conflict """
+        if args_.table and args_.all_tables:
+            _logger.error("Arguments 'table' and 'all-tables' conflict.")
+            return True
+        elif args_.all_tables and args_.from_file:
+            _logger.error("Argument 'from-file' cannot be used with 'all-tables', only with 'table'")
+            return True
+        elif args_.id and ids_:
+            _logger.error("Argument 'from-file' cannot be used if a single 'id' was also specified")
+            return True
+        elif ids_ and not args_.table:
+            _logger.error("Argument 'from-file' was provided without a specified 'table' ")
+            return True
+        if args_.table and args_.table not in choices:
+            _logger.error(f"Argument 'table' value '{args_.table}' is invalid, possible values are:\n   {choices}.")
+            return True
+        return False
+
+    # Rebuild participant resources
+    rebuild_parser = subparser.add_parser(
+        "participant",
+        parents=[from_file_parser, batch_parser])
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
     rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
                                 action="store_true")  # noqa
-    rebuild_parser.add_argument("--from-file", help="rebuild participant ids from a file with a list of pids",
-                                default=None)  # noqa
-    rebuild_parser.add_argument("--batch", help="Submit pids in batch to Cloud Tasks", default=False,
-                                action="store_true")  # noqa
+    update_argument(rebuild_parser, dest='from_file',
+                    help="rebuild participant ids from a file with a list of pids")
 
+    # Rebuild genomic resources.
+    genomic_parser = subparser.add_parser(
+        "genomic",
+        parents=[id_parser, all_ids_parser, table_parser, all_tables_parser, from_file_parser, batch_parser])
+    update_argument(genomic_parser, 'table', help="genomic db table name to rebuild from")
+    genomic_parser.epilog = f'Possible TABLE Values: {{{",".join(GENOMIC_DB_TABLES)}}}.'
 
-    genomic_parser = subparser.add_parser("genomic")
-    genomic_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)  # noqa
-    genomic_parser.add_argument("--all-ids", help="rebuild all records from table", default=False,
-                         action="store_true")  # noqa
-    genomic_parser.add_argument("--genomic-table", help="genomic table name to rebuild from.",
-                                choices=GENOMIC_DB_TABLES)
-    genomic_parser.add_argument("--all-tables", help="rebuild all records from all tables", default=False,
-                                action="store_true")  # noqa
-    genomic_parser.add_argument("--batch", help="Submit ids in batch to Cloud Tasks", default=False,
-                                action="store_true")  # noqa
-    genomic_parser.add_argument("--from-file",
-                                help="file containing id values from the specified --genomic-table to rebuild",
-                                default=None)  # noqa
-
-    ehr_parser = subparser.add_parser('ehr-receipt')
+    # Rebuild EHR receipt resources.
+    ehr_parser = subparser.add_parser('ehr-receipt', parents=[batch_parser, from_file_parser])
     ehr_parser.add_argument("--ehr", help="Submit batch to Cloud Tasks", default=False,
                                 action="store_true")  # noqa
-    ehr_parser.add_argument("--from-file",
-                            help="rebuild EHR info for specific participant ids read from a file with a list of pids",
-                            default=None)  # noqa
+    update_argument(ehr_parser, dest='from_file',
+                    help="rebuild EHR info for specific participant ids read from a file with a list of pids")
 
+    # Rebuild Research Workbench resources.
+    rw_parser = subparser.add_parser(
+        "research-workbench",
+        parents=[batch_parser, id_parser, all_ids_parser, table_parser, all_tables_parser, from_file_parser])
+    update_argument(rw_parser, 'table', help="research workbench db table name to rebuild from")
+    rw_parser.epilog = f'Possible TABLE Values: {{{",".join(RESEARCH_WORKBENCH_TABLES)}}}.'
 
     args = parser.parse_args()
-
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
 
@@ -599,31 +807,34 @@ def run():
         if hasattr(args, 'from_file') and args.from_file:
             ids = get_id_list(args.from_file)
 
-        if hasattr(args, 'pid') and hasattr(args, 'from_file'):
+        # Rebuild participant resources
+        if args.resource == 'participant':
             process = ParticipantResourceClass(args, gcp_env, ids)
             exit_code = process.run()
-        elif hasattr(args, 'genomic_table'):
-            if args.genomic_table and args.all_tables:
-                _logger.error("Arguments 'genomic-table' and 'all-tables' conflict.")
-                return 1
-            elif args.all_tables and args.from_file:
-                _logger.error("Argument 'from-file' cannot be used with 'all-tables', only with 'genomic-table'")
-                return 1
-            elif args.id and ids:
-                _logger.error("Argument 'from-file' cannot be used if a single 'id' was also specified")
-                return 1
-            elif ids and not args.genomic_table:
-                _logger.error("Argument 'from-file' was provided  without a specified 'genomic-table' ")
-                return 1
+
+        # Rebuild genomic resources.
+        elif args.resource == 'genomic':
+            if argument_conflict(args, ids, choices=GENOMIC_DB_TABLES):
+                sys.exit(1)
 
             process = GenomicResourceClass(args, gcp_env, ids)
             exit_code = process.run()
 
-        elif hasattr(args, 'ehr'):
+        # Rebuild EHR receipt resources.
+        elif args.resource == 'ehr-receipt':
             process = EHRReceiptClass(args, gcp_env, ids)
             exit_code = process.run()
+
+        # Rebuild Research Workbench resources.
+        elif args.resource == 'research-workbench':
+            if argument_conflict(args, ids, choices=RESEARCH_WORKBENCH_TABLES):
+                sys.exit(1)
+
+            process = ResearchWorkbenchResourceClass(args, gcp_env, ids)
+            exit_code = process.run()
+
         else:
-            _logger.info('Please select an option to run. For help use "pdr-tool --help".')
+            _logger.info('Please select an option to run. For help use "[resource] --help".')
             exit_code = 1
 
         return exit_code
