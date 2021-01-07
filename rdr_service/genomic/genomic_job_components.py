@@ -619,7 +619,8 @@ class GenomicFileIngester:
                 # Calculate contamination_category if contamination supplied
                 try:
                     contamination_value = float(row_copy['contamination'])
-                    category = self.calculate_contamination_category(sample_id, contamination_value, member)
+                    category = self.calculate_contamination_category(member.collectionTubeId,
+                                                                     contamination_value, member)
                     row_copy['contamination_category'] = category
 
                 except (KeyError, ValueError):
@@ -644,12 +645,13 @@ class GenomicFileIngester:
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
                 manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
-                if manifest_file is not None:
-                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
+                if manifest_file is not None and existing_metrics_obj is None:
+                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
+                                                               _project_id=self.controller.bq_project_id)
 
             else:
                 logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
-                continue
+                return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
 
