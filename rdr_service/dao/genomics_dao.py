@@ -11,8 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, \
-    bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -33,8 +32,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_set_member_update, \
-    genomic_manifest_feedback_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -1236,8 +1234,9 @@ class GenomicManifestFeedbackDao(BaseDao):
             with self.session() as session:
                 session.merge(fb)
 
-            bq_genomic_manifest_feedback_update(fb.id, project_id=_project_id)
-            genomic_manifest_feedback_update(fb.id)
+            # TODO: Deactivating until 1.87.1 (ignore_flag) is on Prod
+            # bq_genomic_manifest_feedback_update(fb.id, project_id=_project_id)
+            # genomic_manifest_feedback_update(fb.id)
         else:
             raise ValueError(f'No feedback record for manifest id {manifest_id}')
 
