@@ -9,7 +9,7 @@ from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
-from rdr_service.api_util import EXPORTER
+from rdr_service.api_util import EXPORTER, RDR, parse_date
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.model.requests_log import RequestsLog
@@ -207,6 +207,22 @@ def exclude_ghosts():
 @_alert_on_exceptions
 def run_sync_consent_files():
     sync_consent_files.do_sync_recent_consent_files()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required(RDR)
+def manually_trigger_consent_sync():
+    request_json = request.json
+
+    all_va = request.json.get('all_va')
+
+    start_date_str = request_json.get('start_date')
+    start_date = parse_date(start_date_str) if start_date_str else None
+
+    end_date_str = request_json.get('end_date')
+    end_date = parse_date(end_date_str) if end_date_str else None
+
+    sync_consent_files.do_sync_consent_files(all_va=all_va, start_date=start_date, end_date=end_date)
     return '{"success": "true"}'
 
 
@@ -537,6 +553,13 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "MarkGhostParticipants", endpoint="exclude_ghosts", view_func=exclude_ghosts, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ManuallySyncConsentFiles",
+        endpoint="manually_sync_consent_files",
+        view_func=manually_trigger_consent_sync,
+        methods=["POST"]
     )
 
     offline_app.add_url_rule(
