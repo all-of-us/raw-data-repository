@@ -1,0 +1,20 @@
+displayName: Genomic AW1 Ingestion 500 Error
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="logging.googleapis.com/user/genomic_aw1_ingestion_500_error"
+      resource.type="gae_app"
+    trigger:
+      count: 1
+  displayName: Genomic AW1 Ingestion 500 Error
+documentation:
+  content: 'Please review logs for AW1 ingestion from cloud task endpoint: "/resource/task/IngestAW1ManifestTaskApi"'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/5274640027293398095

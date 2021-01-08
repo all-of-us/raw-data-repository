@@ -1,0 +1,21 @@
+displayName: Bucket Alert Test
+enabled: false
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="logging.googleapis.com/user/bucket_alert" resource.type="cloud_function"
+      metric.label."log"="cloudfunctions.googleapis.com/cloud-functions"
+    trigger:
+      count: 1
+  displayName: logging/user/bucket_alert
+documentation:
+  content: This alert was sent from the PMI DRC because a file has been added to the
+    TEST BUCKET.
+  mimeType: text/markdown
+notificationChannels:
+- projects/all-of-us-rdr-sandbox/notificationChannels/5018997095143776167

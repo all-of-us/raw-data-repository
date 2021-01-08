@@ -1,0 +1,19 @@
+displayName: Genomic AW1 Ingestion 500 Error
+enabled: true
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_COUNT
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="logging.googleapis.com/user/genomic_aw1_ingestion_500_error"
+      resource.type="gae_app"
+    trigger:
+      count: 1
+  displayName: logging/user/genomic_aw1_ingestion_500_error [COUNT]
+notificationChannels:
+- projects/all-of-us-rdr-sandbox/notificationChannels/5018997095143776167
+

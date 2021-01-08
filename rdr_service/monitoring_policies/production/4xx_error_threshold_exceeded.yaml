@@ -1,0 +1,25 @@
+displayName: 4xx error threshold exceeded
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_SUM
+      groupByFields:
+      - project
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="appengine.googleapis.com/http/server/response_count" resource.type="gae_app"
+      metric.label."response_code">="400" metric.label."response_code"<"500" project="all-of-us-rdr-prod"
+    thresholdValue: 0.2
+    trigger:
+      count: 1
+  displayName: 4xx error threshold exceeded
+documentation:
+  content: '[playbook](https://docs.google.com/document/d/1FkzFyc_neXn4gAQfdaCoe91mogD4frIAOFtXDeDM-sU)'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784
+- projects/all-of-us-rdr-prod/notificationChannels/4514825055001290780

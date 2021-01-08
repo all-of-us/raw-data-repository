@@ -1,0 +1,25 @@
+displayName: RDR Uptime check
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 1200s
+      crossSeriesReducer: REDUCE_COUNT_FALSE
+      groupByFields:
+      - resource.label.*
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_GT
+    duration: 300s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      metric.label.check_id="default" AND project="all-of-us-rdr-prod" AND resource.type="gae_app"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Uptime Check Health on GAE Module default
+documentation:
+  content: '[playbook](https://docs.google.com/document/d/1FkzFyc_neXn4gAQfdaCoe91mogD4frIAOFtXDeDM-sU)'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/8969691573969500120
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784

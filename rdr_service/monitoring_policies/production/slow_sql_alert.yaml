@@ -1,0 +1,20 @@
+displayName: slow_sql_alert
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 0s
+    filter: metric.type="logging.googleapis.com/user/slow_sql" resource.type="cloudsql_database"
+    trigger:
+      count: 1
+  displayName: logging/user/slow_sql
+documentation:
+  content: Slow SQL query found on all-of-us-rdr-prod, running more than 30 mins
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/12901788330844057903
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784

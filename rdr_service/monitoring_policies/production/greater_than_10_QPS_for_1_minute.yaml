@@ -1,0 +1,25 @@
+displayName: '> 10 QPS for 1 minute'
+combiner: AND
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_SUM
+      groupByFields:
+      - project
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="appengine.googleapis.com/http/server/response_style_count"
+      AND project="all-of-us-rdr-prod" AND resource.type="gae_app"
+    thresholdValue: 10.0
+    trigger:
+      count: 1
+  displayName: Metric Threshold on GAE App all-of-us-rdr-prod
+documentation:
+  content: '[playbook](https://docs.google.com/document/d/1FkzFyc_neXn4gAQfdaCoe91mogD4frIAOFtXDeDM-sU)'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/3368992378722578004
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784
