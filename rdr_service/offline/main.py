@@ -215,6 +215,7 @@ def manually_trigger_consent_sync():
     request_json = request.json
 
     all_va = request.json.get('all_va')
+    zip_files = request.json.get('zip_files')
 
     start_date_str = request_json.get('start_date')
     start_date = parse_date(start_date_str) if start_date_str else None
@@ -222,7 +223,12 @@ def manually_trigger_consent_sync():
     end_date_str = request_json.get('end_date')
     end_date = parse_date(end_date_str) if end_date_str else None
 
-    sync_consent_files.do_sync_consent_files(all_va=all_va, start_date=start_date, end_date=end_date)
+    sync_consent_files.do_sync_consent_files(
+        zip_files=zip_files,
+        all_va=all_va,
+        start_date=start_date,
+        end_date=end_date
+    )
     return '{"success": "true"}'
 
 
