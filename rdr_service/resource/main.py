@@ -8,7 +8,7 @@ from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi, \
-    CalculateContaminationCategoryApi
+    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
@@ -42,6 +42,9 @@ def _build_resource_app():
 
     _api.add_resource(RebuildGenomicTableRecordsApi, TASK_PREFIX + "RebuildGenomicTableRecordsApi",
                       endpoint="rebuild_genomic_table_records_task", methods=["POST"])
+
+    _api.add_resource(RebuildResearchWorkbenchTableRecordsApi, TASK_PREFIX + "RebuildResearchWorkbenchTableRecordsApi",
+                      endpoint="rebuild_research_workbench_table_records_task", methods=["POST"])
 
     #
     # Begin Genomic Cloud Task API Endpoints

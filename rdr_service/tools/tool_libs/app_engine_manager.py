@@ -795,7 +795,7 @@ def run():
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--git-project", help="path to git project root directory", default=None)  # noqa
 
-    subparser = parser.add_subparsers(help='app engine services')
+    subparser = parser.add_subparsers(title='actions', dest='action', help='app engine services')
 
     # Deploy app
     deploy_parser = subparser.add_parser("deploy")
@@ -850,23 +850,23 @@ def run():
                 exit(1)
 
 
-        if hasattr(args, 'git_target'):
+        if args.action == 'deploy':
             process = DeployAppClass(args, gcp_env)
             exit_code = process.run()
 
-        elif hasattr(args, 'running_only'):
+        elif args.action == 'list':
             process = ListServicesClass(args, gcp_env)
             exit_code = process.run()
 
-        elif hasattr(args, 'split_by'):
+        elif args.action == 'split-traffic':
             process = SplitTrafficClass(args, gcp_env)
             exit_code = process.run()
 
-        elif hasattr(args, 'key'):
+        elif args.action == 'config':
             process = AppConfigClass(args, gcp_env)
             exit_code = process.run()
 
-        elif hasattr(args, 'run_single_util'):
+        elif args.action == 'test':
             process = RunGCPUtilCommand(args, gcp_env)
             exit_code = process.run()
 
