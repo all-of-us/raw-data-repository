@@ -1,0 +1,22 @@
+displayName: 5xx error QPS exceeded 0.1
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_SUM
+      groupByFields:
+      - project
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.label.response_code>="500" AND metric.label.response_code<"600"
+      AND metric.type="appengine.googleapis.com/http/server/response_count" AND project="all-of-us-rdr-staging"
+      AND resource.type="gae_app"
+    thresholdValue: 0.1
+    trigger:
+      count: 1
+  displayName: Metric Threshold on GAE App all-of-us-rdr-staging
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-staging/notificationChannels/1726500439316347724

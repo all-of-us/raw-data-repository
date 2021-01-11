@@ -1,0 +1,19 @@
+displayName: Latency (experimental)
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_MEAN
+      groupByFields:
+      - project
+      perSeriesAligner: ALIGN_SUM
+    comparison: COMPARISON_GT
+    duration: 120s
+    filter: metric.type="appengine.googleapis.com/http/server/response_latencies"
+      AND project="all-of-us-rdr-staging" AND resource.type="gae_app"
+    thresholdValue: 2000.0
+    trigger:
+      count: 1
+  displayName: Metric Threshold on GAE App all-of-us-rdr-staging
+enabled: true

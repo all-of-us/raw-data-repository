@@ -1,0 +1,27 @@
+displayName: Database disk utilization above 90%
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_MEAN
+      groupByFields:
+      - project
+      - resource.label.database_id
+      - resource.label.region
+      perSeriesAligner: ALIGN_MEAN
+    comparison: COMPARISON_GT
+    duration: 300s
+    filter: metric.type="cloudsql.googleapis.com/database/disk/utilization" resource.type="cloudsql_database"
+      resource.label."database_id"="all-of-us-rdr-prod:rdrmaindb" resource.label."region"="us-central"
+    thresholdValue: 0.9
+    trigger:
+      count: 1
+  displayName: Metric Threshold on Google Cloud SQL rdrmaindb
+documentation:
+  content: '[playbook](https://docs.google.com/document/d/1FkzFyc_neXn4gAQfdaCoe91mogD4frIAOFtXDeDM-sU)'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784
+- projects/all-of-us-rdr-prod/notificationChannels/5709812984167511304

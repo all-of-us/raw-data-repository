@@ -1,0 +1,26 @@
+displayName: Bad Request Above QPS Threshold
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_SUM
+      groupByFields:
+      - project
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.label.response_code>="400" AND metric.label.response_code<"500"
+      AND metric.type="appengine.googleapis.com/http/server/response_count" AND project="pmi-drc-api-test"
+      AND resource.type="gae_app"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Metric Threshold on GAE App pmi-drc-api-test
+documentation:
+  content: Bad requests above 1 QPS for one minute.
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/pmi-drc-api-test/notificationChannels/1401884321842244149
+- projects/pmi-drc-api-test/notificationChannels/7271756574530877070

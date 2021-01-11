@@ -1,0 +1,11 @@
+displayName: Uptime Check Policy
+combiner: OR
+conditions:
+- displayName: HTTP check on GAE Module default
+documentation:
+  content: HTTP checks are failing!
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/pmi-drc-api-test/notificationChannels/10742050425043267322
+- projects/pmi-drc-api-test/notificationChannels/7271756574530877070
