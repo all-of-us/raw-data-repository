@@ -738,7 +738,7 @@ def run():
                                 action="store_true")
     # End common subparser arguments.
 
-    def update_argument(p, dest, help_=None):
+    def update_argument(p, dest, help=None):  # pylint: disable=redefined-builtin
         """
         Update sub-parser argument description and choices.
         :param dest: Destination property where argument value is stored.  IE: 'file_name' == args.file_name.
@@ -747,7 +747,7 @@ def run():
             raise ValueError('Arguments must include a sub-parser and dest string.')
         for a in p._actions:
             if a.dest == dest:
-                a.help = help_
+                a.help = help
 
     def argument_conflict(args_, ids_, choices=()):
         """ Check if common arguments conflict """
