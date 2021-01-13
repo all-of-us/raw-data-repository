@@ -1541,15 +1541,20 @@ class GenomicReconciler:
         return 1 if len(filenames) > 0 else 0
 
     def _get_full_filename(self, filename):
-        """ Searches file_list for names ending in filename """
+        """ Searches file_list for names ending in filename
+        :param filename: file name to match
+        :return: first filename in list
+        """
         filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_full_filename_with_expression(self, expression):
         """ Searches file_list for names that match the expression
-        :return: the file name
+        :param expression: pattern to match
+        :return: file name with highest revision number
         """
         filenames = [name for name in self.file_list if re.search(expression, name)]
+        filenames.sort(reverse=True)
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
