@@ -1286,6 +1286,7 @@ class GenomicReconciler:
 
     def reconcile_metrics_to_genotyping_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time, _gc_site_id)
@@ -1309,6 +1310,7 @@ class GenomicReconciler:
             missing_data_files = []
 
             metric_touched = False
+
             for file_type in self.genotyping_file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
@@ -1320,7 +1322,6 @@ class GenomicReconciler:
                         metric_touched = True
 
                     if not file_exists:
-                        setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
             if metric_touched:
@@ -1335,18 +1336,20 @@ class GenomicReconciler:
 
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
 
-                # Update state for missing files
-                if len(missing_data_files) > 0:
-                    next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-
-                    total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
-
                 # Update Job Run ID on member
                 self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
                                                          project_id=self.controller.bq_project_id)
+            else:
+                next_state = None
 
-                if next_state is not None and next_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
+            # Update state for missing files
+            if len(missing_data_files) > 0:
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
+
+                total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
+
+            if next_state is not None and next_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
@@ -1363,11 +1366,22 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def reconcile_metrics_to_sequencing_data(self):
+    def reconcile_metrics_to_sequencing_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
+        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time, _gc_site_id)
+
+        # Get list of files in GC data bucket
+        if self.storage_provider:
+            # Use the storage provider if it was set by tool
+            files = self.storage_provider.list(self.bucket_name, prefix=None)
+
+        else:
+            files = list_blobs('/' + self.bucket_name)
+
+        self.file_list = [f.name for f in files]
 
         # TODO: this number may change in the future, currently all files have 1 as the revision number
         # Will need to follow up with GCs on what this number represents
@@ -1375,12 +1389,13 @@ class GenomicReconciler:
 
         total_missing_data = []
 
+        metric_touched = False
+
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
 
-            file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-            gc_prefix = file.fileName.split('_')[0]
+            gc_prefix = _gc_site_id.upper()
 
             missing_data_files = []
             for file_type in self.sequencing_file_types:
@@ -1388,37 +1403,45 @@ class GenomicReconciler:
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
                     filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
                                f"{metric.GenomicGCValidationMetrics.limsId}_{local_revision_id}{file_type[1]}"
-                    file_exists = self._get_full_filename(file.bucketName, filename)
+                    file_exists = self._get_full_filename(filename)
 
                     if file_exists != 0:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], 1)
                         setattr(metric.GenomicGCValidationMetrics, file_type[2],
-                                f'gs://{file.bucketName}/{file_exists}')
+                                f'gs://{self.bucket_name}/{file_exists}')
+                        metric_touched = True
 
                     if not file_exists:
-                        setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
+            if metric_touched:
+                # Only upsert the metric if changed
+                inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
 
-            # Update GC Metrics for PDR
-            if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                        project_id=self.controller.bq_project_id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                # Update GC Metrics for PDR
+                if inserted_metrics_obj:
+                    bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                            project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+
+                self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                         project_id=self.controller.bq_project_id)
+
+            else:
+                next_state = None
 
             # Handle for missing data files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((file.fileName, missing_data_files))
+                total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
+                                           missing_data_files))
 
             # Update Member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                     project_id=self.controller.bq_project_id)
-            self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
+            if next_state is not None and next_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:

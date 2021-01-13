@@ -2213,6 +2213,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 recon_gc_man_id=1,
+                                                genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -2548,7 +2549,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 recon_gc_man_id=1,
-                                                genome_center='JH',
+                                                genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A

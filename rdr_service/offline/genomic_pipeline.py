@@ -169,10 +169,11 @@ def reconcile_metrics_vs_genotyping_data(provider=None):
 def reconcile_metrics_vs_sequencing_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Sequencing Files (Array) vs Listed in Manifest.
+    Sequencing Files (WGS) vs Listed in Manifest.
     """
     with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA,
-                              storage_provider=provider) as controller:
+                              storage_provider=provider,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_sequencing_data()
 
 
