@@ -1194,6 +1194,13 @@ class GenomicManifestFileDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_manifest_file_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(GenomicManifestFile).filter(
+                GenomicManifestFile.filePath == filepath,
+                GenomicManifestFile.ignore_flag == 0
+            ).one_or_none()
+
 
 class GenomicManifestFeedbackDao(BaseDao):
     def __init__(self):

@@ -16,7 +16,8 @@ from rdr_service.config import (
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException)
-from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
+    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
@@ -32,7 +33,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
     GenomicManifestFileDao, GenomicManifestFeedbackDao)
-from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update
+from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
+    genomic_manifest_file_update, genomic_manifest_feedback_update
 
 
 class GenomicJobController:
@@ -102,24 +104,27 @@ class GenomicJobController:
         except AttributeError:
             raise AttributeError("upload_date, manifest_type, and file_path required")
 
-        file_to_insert = GenomicManifestFile(
-            created=now,
-            modified=now,
-            uploadDate=_uploadDate,
-            manifestTypeId=_manifest_type,
-            filePath=_file_path,
-            bucketName=_file_path.split('/')[0],
-            recordCount=0,  # Initializing with 0, counting records when processing file
-            rdrProcessingComplete=0,
-        )
+        manifest_file = self.manifest_file_dao.get_manifest_file_from_filepath(_file_path)
 
-        file = self.manifest_file_dao.insert(file_to_insert)
+        if manifest_file is None:
 
-        # TODO: Deactivating until 1.87.1 (ignore_flag) is on Prod
-        # bq_genomic_manifest_file_update(file.id, self.bq_project_id)
-        # genomic_manifest_file_update(file.id)
+            file_to_insert = GenomicManifestFile(
+                created=now,
+                modified=now,
+                uploadDate=_uploadDate,
+                manifestTypeId=_manifest_type,
+                filePath=_file_path,
+                bucketName=_file_path.split('/')[0],
+                recordCount=0,  # Initializing with 0, counting records when processing file
+                rdrProcessingComplete=0,
+            )
 
-        return file
+            manifest_file = self.manifest_file_dao.insert(file_to_insert)
+
+            bq_genomic_manifest_file_update(manifest_file.id, self.bq_project_id)
+            genomic_manifest_file_update(manifest_file.id)
+
+        return manifest_file
 
     def insert_genomic_manifest_feedback_record(self, manifest_file):
         """
@@ -131,22 +136,24 @@ class GenomicJobController:
         # Set attributes for GenomicManifestFile
         now = datetime.utcnow()
 
-        feedback_to_insert = GenomicManifestFeedback(
-            created=now,
-            modified=now,
-            inputManifestFileId=manifest_file.id,
-            feedbackRecordCount=0,
-            feedbackComplete=0,
-            ignore=0,
-        )
+        feedback_file = self.manifest_feedback_dao.get_feedback_record_from_manifest_id(manifest_file.id)
 
-        feedback = self.manifest_feedback_dao.insert(feedback_to_insert)
+        if feedback_file is None:
+            feedback_to_insert = GenomicManifestFeedback(
+                created=now,
+                modified=now,
+                inputManifestFileId=manifest_file.id,
+                feedbackRecordCount=0,
+                feedbackComplete=0,
+                ignore=0,
+            )
 
-        # TODO: Deactivating until 1.87.1 (ignore_flag) is on Prod
-        # bq_genomic_manifest_feedback_update(feedback.id, self.bq_project_id)
-        # genomic_manifest_feedback_update(feedback.id)
+            feedback_file = self.manifest_feedback_dao.insert(feedback_to_insert)
 
-        return feedback
+            bq_genomic_manifest_feedback_update(feedback_file.id, self.bq_project_id)
+            genomic_manifest_feedback_update(feedback_file.id)
+
+        return feedback_file
 
     def get_feedback_complete_records(self):
         """
