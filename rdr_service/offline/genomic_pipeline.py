@@ -161,7 +161,8 @@ def reconcile_metrics_vs_genotyping_data(provider=None):
     Genotyping Files (Array) vs Listed in Manifest.
     """
     with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
-                              storage_provider=provider) as controller:
+                              storage_provider=provider,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_genotyping_data()
 
 
