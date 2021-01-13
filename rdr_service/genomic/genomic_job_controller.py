@@ -449,9 +449,8 @@ class GenomicJobController:
                 )
                 new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
-                # TODO: Deactivating until 1.87.1 (ignore_flag) is on Prod
-                # bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
-                # genomic_manifest_file_update(new_manifest_obj.id)
+                bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
+                genomic_manifest_file_update(new_manifest_obj.id)
 
                 # update feedback records if manifest is a feedback manifest
                 if "feedback_record" in kwargs.keys():
