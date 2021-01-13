@@ -900,9 +900,9 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_2.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_2.cram',
+            f'test_data_folder/RDR_2_1002_10002_2.cram.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)

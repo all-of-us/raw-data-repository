@@ -1383,10 +1383,6 @@ class GenomicReconciler:
 
         self.file_list = [f.name for f in files]
 
-        # TODO: this number may change in the future, currently all files have 1 as the revision number
-        # Will need to follow up with GCs on what this number represents
-        local_revision_id = "1"
-
         total_missing_data = []
 
         metric_touched = False
@@ -1401,9 +1397,18 @@ class GenomicReconciler:
             for file_type in self.sequencing_file_types:
 
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
-                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
-                               f"{metric.GenomicGCValidationMetrics.limsId}_{local_revision_id}{file_type[1]}"
-                    file_exists = self._get_full_filename(filename)
+
+                    # Default filename in case the file is missing (used in alert)
+                    default_filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
+                                       f"{metric.GenomicGCValidationMetrics.limsId}_1{file_type[1]}"
+
+                    file_type_expression = file_type[1].replace('.', '\.')
+
+                    # Naming rule for WGS files:
+                    filename_exp = rf"{gc_prefix}_([A-Z]?){metric.biobankId}_{metric.sampleId}" \
+                                   rf"_{metric.GenomicGCValidationMetrics.limsId}_(\d+){file_type_expression}$"
+
+                    file_exists = self._get_full_filename_with_expression(filename_exp)
 
                     if file_exists != 0:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], 1)
@@ -1412,7 +1417,7 @@ class GenomicReconciler:
                         metric_touched = True
 
                     if not file_exists:
-                        missing_data_files.append(filename)
+                        missing_data_files.append(default_filename)
 
             if metric_touched:
                 # Only upsert the metric if changed
@@ -1538,6 +1543,13 @@ class GenomicReconciler:
     def _get_full_filename(self, filename):
         """ Searches file_list for names ending in filename """
         filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
+        return filenames[0] if len(filenames) > 0 else 0
+
+    def _get_full_filename_with_expression(self, expression):
+        """ Searches file_list for names that match the expression
+        :return: the file name
+        """
+        filenames = [name for name in self.file_list if re.search(expression, name)]
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
