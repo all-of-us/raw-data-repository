@@ -127,7 +127,7 @@ participant_summary_default_values = {
     "participantOrigin": 'example',
     "semanticVersionForPrimaryConsent": "v1",
     "deceasedStatus": "UNSET",
-    "retentionEligibleStatus": "NOT_ELIGIBLE",
+    "retentionEligibleStatus": "UNSET",
     "retentionType": "UNSET",
     "enrollmentSite": "UNSET",
     "sample1SAL2CollectionMethod": "UNSET",
@@ -3055,117 +3055,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get("ParticipantSummary?_includeTotal=true")
         BaseTestCase.switch_auth_user("example@example.com", "example")
         self.assertEqual(response['total'], 1)
-
-    def test_retention(self):
-        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
-        participant_id = participant["participantId"]
-        with FakeClock(TIME_1):
-            self.send_consent(participant_id)
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
-
-        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=NOT_ELIGIBLE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'NOT_ELIGIBLE')
-
-        self._make_participant_retention_eligible(participant_id[1:])
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
-        self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
-
-        ps = self.send_get("ParticipantSummary?retentionEligibleStatus=ELIGIBLE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionEligibleStatus'], 'ELIGIBLE')
-
-        self._remove_participant_retention_eligible(participant_id[1:])
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionEligibleStatus'], 'NOT_ELIGIBLE')
-        self.assertEqual(ps.get('retentionEligibleTime'), None)
-
-    def test_retention_type(self):
-        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
-        participant_id = participant["participantId"]
-        with FakeClock(TIME_1):
-            self.send_consent(participant_id)
-
-        eighteen_month_ago = clock.CLOCK.now() - datetime.timedelta(days=800)
-        attrs = {
-            'questionnaireOnMedicalHistoryAuthored': eighteen_month_ago
-        }
-        self._make_participant_retention_eligible(participant_id[1:], **attrs)
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionEligibleStatus'], 'ELIGIBLE')
-        self.assertEqual(ps['retentionEligibleTime'], TIME_4.isoformat())
-        self.assertEqual(ps['retentionType'], 'UNSET')
-
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'UNSET')
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=ELIGIBLE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'UNSET')
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
-                           "&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        in_eighteen_month = clock.CLOCK.now() - datetime.timedelta(days=20)
-        attrs = {
-            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month
-        }
-        self._make_participant_retention_eligible(participant_id[1:], **attrs)
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionType'], 'ACTIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE')
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&retentionEligibleStatus=ELIGIBLE"
-                           "&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        attrs = {
-            'questionnaireOnHealthcareAccessAuthored': None,
-            'ehrUpdateTime': in_eighteen_month
-        }
-        self._make_participant_retention_eligible(participant_id[1:], **attrs)
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionType'], 'PASSIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'PASSIVE')
-        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&retentionEligibleStatus=ELIGIBLE"
-                           "&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'PASSIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        attrs = {
-            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month,
-            'ehrUpdateTime': in_eighteen_month
-        }
-        self._make_participant_retention_eligible(participant_id[1:], **attrs)
-        ps = self.send_get("Participant/%s/Summary" % participant_id)
-        self.assertEqual(ps['retentionType'], 'ACTIVE_AND_PASSIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE_AND_PASSIVE&retentionEligibleStatus=ELIGIBLE"
-                           "&_includeTotal=TRUE")
-        self.assertEqual(ps['entry'][0]['resource']['retentionType'], 'ACTIVE_AND_PASSIVE')
-
-        ps = self.send_get("ParticipantSummary?retentionType=ACTIVE&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        ps = self.send_get("ParticipantSummary?retentionType=PASSIVE&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
-
-        ps = self.send_get("ParticipantSummary?retentionType=UNSET&_includeTotal=TRUE")
-        self.assertEqual(len(ps['entry']), 0)
 
     def test_query_by_enrollment_site(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})

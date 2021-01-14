@@ -37,7 +37,8 @@ from rdr_service.participant_enums import (
     ParticipantCohortPilotFlag,
     ConsentExpireStatus,
     DeceasedStatus,
-    RetentionStatus)
+    RetentionStatus,
+    RetentionType)
 
 
 # The only fields that can be returned, queried on, or ordered by for queries for withdrawn
@@ -66,58 +67,6 @@ WITHDRAWN_PARTICIPANT_FIELDS = [
 # The period of time for which withdrawn participants will still be returned in results for
 # queries that don't ask for withdrawn participants.
 WITHDRAWN_PARTICIPANT_VISIBILITY_TIME = datetime.timedelta(days=2)
-
-RETENTION_WINDOW = datetime.timedelta(days=547)
-
-# SQL Conditional for participant's retention eligibility computed column (1 = NOT_ELIGIBLE, 2 = ELIGIBLE)
-_COMPUTE_RETENTION_ELIGIBLE_SQL = """
-    CASE WHEN
-      consent_for_study_enrollment = 1
-      AND (
-        consent_for_electronic_health_records_first_yes_authored is not null OR
-        consent_for_dv_electronic_health_records_sharing = 1
-      )
-      AND questionnaire_on_the_basics = 1
-      AND questionnaire_on_overall_health = 1
-      AND questionnaire_on_lifestyle = 1
-      AND samples_to_isolate_dna = 1
-      AND withdrawal_status = 1
-      AND suspension_status = 1
-      AND deceased_status = 0
-    THEN 2 ELSE 1
-    END
-"""
-
-# SQL for calculating the date when a participant gained retention eligibility
-# Null unless the participant meets the retention-eligible requirements (above) and a qualifying test sample time
-# is present.  Otherwise, find the last of the consent / module authored dates and the earliest of the qualifying
-# DNA test samples.  The retention eligibility date is the later of those two
-_COMPUTE_RETENTION_ELIGIBLE_TIME_SQL = """
-     CASE WHEN retention_eligible_status = 2 AND
-          COALESCE(sample_status_1ed10_time, sample_status_2ed10_time, sample_status_1ed04_time,
-                 sample_status_1sal_time, sample_status_1sal2_time, 0) != 0
-        THEN GREATEST(
-            GREATEST(consent_for_study_enrollment_first_yes_authored,
-             COALESCE(baseline_questionnaires_first_complete_authored,
-                 GREATEST(questionnaire_on_the_basics_authored,
-                          questionnaire_on_overall_health_authored,
-                          questionnaire_on_lifestyle_authored)
-             ),
-             COALESCE(consent_for_electronic_health_records_first_yes_authored,
-             consent_for_study_enrollment_first_yes_authored),
-             COALESCE(consent_for_dv_electronic_health_records_sharing_authored,
-             consent_for_study_enrollment_first_yes_authored)
-            ),
-            LEAST(COALESCE(sample_status_1ed10_time, '9999-01-01'),
-                COALESCE(sample_status_2ed10_time, '9999-01-01'),
-                COALESCE(sample_status_1ed04_time, '9999-01-01'),
-                COALESCE(sample_status_1sal_time, '9999-01-01'),
-                COALESCE(sample_status_1sal2_time, '9999-01-01')
-            )
-        )
-        ELSE NULL
-     END
-"""
 
 
 class ParticipantSummary(Base):
@@ -1227,39 +1176,20 @@ class ParticipantSummary(Base):
 
     participant = relationship("Participant", back_populates="participantSummary")
 
-    retentionEligibleStatus = Column(
-        "retention_eligible_status",
-        Enum(RetentionStatus),
-        Computed(_COMPUTE_RETENTION_ELIGIBLE_SQL, persisted=True)
-    )
+    retentionEligibleStatus = Column("retention_eligible_status", Enum(RetentionStatus))
     """
-    A participant is considered eligible for retention if they have completed all of the following:
-
-    * Primary consent
-    * Is consented yes to EHR consent OR DV EHR attestation
-    * Completed the Basics, Lifestyle, and Overall Health PPI modules
-    * Provided a blood or saliva sample for DNA that has been received by the Biobank
-    * IS NOT withdrawn, deceased, or deactivated
-    * Completed PPI 1-3 (Basics, Lifestyle, and Overall Health)
-
+    Present if a participant is considered eligible for retention or not
     :ref:`Enumerated values <retention_status>`
     """
 
-    retentionEligibleTime = Column(
-        "retention_eligible_time", UTCDateTime, Computed(_COMPUTE_RETENTION_ELIGIBLE_TIME_SQL, persisted=True)
-    )
+    retentionEligibleTime = Column("retention_eligible_time", UTCDateTime)
     """
-    Present if a participant is retention eligible.
+    Present the retention eligible time
+    """
 
-    Is the latest date from the list of:
-
-    * The earliest date of sampleStatus...Time (any of the DNA sample tests)
-    * consentForStudyEnrollmentAuthored
-    * questionnaireOnTheBasicsAuthored
-    * questionnaireOnOverallHealthAuthored
-    * questionnaireOnLifestyleAuthored
-    * consentForElectronicHealthRecordsAuthored
-    * consentForDvElectronicHealthRecordsSharingAuthored
+    retentionType = Column("retention_type", Enum(RetentionType), default=RetentionType.UNSET)
+    """
+    Present the retention type: ACTIVE, PASSIVE or ACTIVE_AND_PASSIVE
     """
 
     lastModified = Column("last_modified", UTCDateTime6)

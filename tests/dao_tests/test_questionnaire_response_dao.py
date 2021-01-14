@@ -607,7 +607,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1022,7 +1022,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1098,7 +1098,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1179,7 +1179,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         # The participant summary should be updated with the new gender identity, but nothing else
@@ -1251,7 +1251,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         # The participant summary should be updated with the new gender identity, but nothing else

@@ -18,7 +18,7 @@ from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_works
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.offline import genomic_pipeline
+from rdr_service.offline import genomic_pipeline, retention_eligible_import
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.participant_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
@@ -316,4 +316,27 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
             bq_researcher_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
+        return '{"success": "true"}'
+
+
+class ImportRetentionEligibleFileTaskApi(Resource):
+    """
+    Cloud Task endpoint: Import Retention Eligible file
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Import Retention Eligible Metrics file: {data.get("filename")}')
+
+        # Set up file/JSON
+        task_data = {
+            "bucket": data["bucket_name"],
+            "upload_date": data["upload_date"],
+            "file_path": data["file_path"]
+        }
+
+        retention_eligible_import.import_retention_eligible_metrics_file(task_data)
+
+        logging.info('Complete.')
         return '{"success": "true"}'

@@ -51,6 +51,7 @@ from rdr_service.model.resource_search_results import ResourceSearchResults
 from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, QuestCovidAntibodyTestResult,\
     QuestCovidAntibodyTest
 from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImportRecord
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 
 RETRY_CONNECTION_LIMIT = 10
 
