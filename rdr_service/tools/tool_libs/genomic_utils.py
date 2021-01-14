@@ -974,9 +974,13 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
+                server_config = self.get_server_config()
+
                 with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
+
+                    controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
                     controller.run_reconciliation_to_genotyping_data()
 
             except Exception as e:   # pylint: disable=broad-except
@@ -985,9 +989,14 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if self.args.job == 'RECONCILE_SEQUENCING_DATA':
             try:
+                server_config = self.get_server_config()
+
                 with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
+
+                    controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
+
                     controller.run_reconciliation_to_sequencing_data()
 
             except Exception as e:   # pylint: disable=broad-except
