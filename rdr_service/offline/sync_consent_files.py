@@ -123,6 +123,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
         logging.info('only interacting with VA files')
     file_filter = kwargs.get('file_filter', 'pdf')
     for participant_data in _iter_participants_data(org_ids, **kwargs):
+        logging.info(f'Syncing files for {participant_data.participant_id}')
         source_bucket = SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))])
         source = "/{source_bucket}/Participant/P{participant_id}/"\
             .format(source_bucket=source_bucket,
@@ -232,9 +233,8 @@ def cloudstorage_copy_objects_task(source, destination, start_date: str = None, 
     Both source and destination use the following format: /bucket/prefix/
     """
     if start_date:
-        start_date = _datetime_to_gmt(start_date)
-    if end_date:
-        end_date = _datetime_to_gmt(end_date)
+        timezone = pytz.timezone('Etc/Greenwich')
+        start_date = timezone.localize(parse_date(start_date))
 
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
@@ -274,8 +274,3 @@ def _meets_date_requirements(source_blob, start_date):
 
 def _matches_file_filter(source_blob_name, file_filter):
     return file_filter is None or source_blob_name.endswith(file_filter)
-
-
-def _datetime_to_gmt(date_time):
-    timezone = pytz.timezone('Etc/Greenwich')
-    return timezone.localize(parse_date(date_time))
