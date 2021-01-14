@@ -245,7 +245,7 @@ def cloudstorage_copy_objects_task(source, destination, start_date: str = None, 
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
             destination_file_path = destination + source_file_path[len(source):]
             if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
-                    _meets_date_requirements(source_blob, start_date, end_date) and\
+                    _meets_date_requirements(source_blob, start_date) and\
                     _matches_file_filter(source_blob.name, file_filter):
                 files_found = True
                 move_file_function = _download_file if zip_files else copy_cloud_file
@@ -267,12 +267,9 @@ def _not_previously_copied(source_file_path, destination_file_path):
     return source_blob.etag != destination_blob.etag
 
 
-def _meets_date_requirements(source_blob, start_date, end_date):
-    return (
-        (start_date is None or source_blob.updated >= start_date)
-        and
-        (end_date is None or source_blob.updated <= end_date)
-    )
+def _meets_date_requirements(source_blob, start_date):
+    # Not filtering files by end_date in case we need to transfer files that have been re-uploaded
+    return start_date is None or source_blob.updated >= start_date
 
 
 def _matches_file_filter(source_blob_name, file_filter):

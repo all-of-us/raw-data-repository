@@ -114,7 +114,6 @@ class SyncConsentFilesTest(BaseTestCase):
     def test_sync_date_cutoff(self, mock_copy_cloud_file, mock_list_blobs):
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile(updated=datetime.datetime(2020, 2, 20)),
-            # Neither of the following files should try to be copied since they're outside the date range
             FakeConsentFile(updated=datetime.datetime(2019, 10, 20)),
             FakeConsentFile(updated=datetime.datetime(2020, 4, 20))
         ])
@@ -131,7 +130,8 @@ class SyncConsentFilesTest(BaseTestCase):
         org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
-        self.assertEqual(1, mock_copy_cloud_file.call_count, 'One file should be copied for one participant')
+        self.assertEqual(2, mock_copy_cloud_file.call_count,
+                         'Files later than the start date should be copied for one participant')
 
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
