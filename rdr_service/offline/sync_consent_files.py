@@ -138,7 +138,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
                                               site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
                                               p_id=participant_data.participant_id)
 
-        cloudstorage_copy_objects_task(source, destination, start_date=start_date, end_date=end_date,
+        cloudstorage_copy_objects_task(source, destination, start_date=start_date,
                                        file_filter=file_filter, zip_files=zip_files)
 
     if zip_files:
@@ -226,7 +226,7 @@ def _download_file(source, destination):
     download_cloud_file(source, destination)
 
 
-def cloudstorage_copy_objects_task(source, destination, start_date: str = None, end_date: str = None,
+def cloudstorage_copy_objects_task(source, destination, start_date: str = None,
                                    file_filter=None, zip_files=False):
     """
     Cloud Task: Copies all objects matching the source to the destination.
