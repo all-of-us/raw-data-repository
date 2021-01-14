@@ -13,7 +13,7 @@ import tempfile
 from zipfile import ZipFile
 
 from rdr_service import config
-from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs
+from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
 from rdr_service.services.gcp_utils import gcp_cp
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -107,15 +107,16 @@ def do_sync_recent_consent_files(all_va=False, zip_files=False):
 
 def do_sync_consent_files(zip_files=False, **kwargs):
     """
-  entrypoint
-  """
+    entrypoint
+    """
     logging.info('Syncing consent files.')
     org_buckets = get_org_data_map()
     org_ids = [org_id for org_id, org_data in org_buckets.items()]
     start_date = kwargs.get('start_date')
+    end_date = kwargs.get('end_date')
     all_va = kwargs.get('all_va')
-    if start_date:
-        logging.info(f'syncing consents from {start_date}')
+    if start_date or end_date:
+        logging.info(f'syncing consents from {start_date} to {end_date}')
     if zip_files:
         logging.info('zipping consent files')
     if all_va:
@@ -136,7 +137,7 @@ def do_sync_consent_files(zip_files=False, **kwargs):
                                               site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
                                               p_id=participant_data.participant_id)
 
-        cloudstorage_copy_objects_task(source, destination, date_limit=start_date,
+        cloudstorage_copy_objects_task(source, destination, start_date=start_date, end_date=end_date,
                                        file_filter=file_filter, zip_files=zip_files)
 
     if zip_files:
@@ -224,14 +225,17 @@ def _download_file(source, destination):
     download_cloud_file(source, destination)
 
 
-def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None, zip_files=False):
+def cloudstorage_copy_objects_task(source, destination, start_date: str = None, end_date: str = None,
+                                   file_filter=None, zip_files=False):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
     """
-    if date_limit:
-        timezone = pytz.timezone('Etc/Greenwich')
-        date_limit = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
+    if start_date:
+        start_date = _datetime_to_gmt(start_date)
+    if end_date:
+        end_date = _datetime_to_gmt(end_date)
+
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else prefix
@@ -241,7 +245,7 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
             destination_file_path = destination + source_file_path[len(source):]
             if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
-                    _after_date_limit(source_blob, date_limit) and\
+                    _meets_date_requirements(source_blob, start_date, end_date) and\
                     _matches_file_filter(source_blob.name, file_filter):
                 files_found = True
                 move_file_function = _download_file if zip_files else copy_cloud_file
@@ -263,9 +267,18 @@ def _not_previously_copied(source_file_path, destination_file_path):
     return source_blob.etag != destination_blob.etag
 
 
-def _after_date_limit(source_blob, date_limit):
-    return date_limit is None or source_blob.updated > date_limit
+def _meets_date_requirements(source_blob, start_date, end_date):
+    return (
+        (start_date is None or source_blob.updated >= start_date)
+        and
+        (end_date is None or source_blob.updated <= end_date)
+    )
 
 
 def _matches_file_filter(source_blob_name, file_filter):
     return file_filter is None or source_blob_name.endswith(file_filter)
+
+
+def _datetime_to_gmt(date_time):
+    timezone = pytz.timezone('Etc/Greenwich')
+    return timezone.localize(parse_date(date_time))
