@@ -163,6 +163,8 @@ class MailKitOrderApi(UpdatableApi):
             raise BadRequest("invalid order id")
         try:
             resource = request.get_json(force=True)
+            user_email = get_oauth_id()
+            resource['auth_user'] = user_email
         except BadRequest:
             raise BadRequest("missing FHIR order document")
 
