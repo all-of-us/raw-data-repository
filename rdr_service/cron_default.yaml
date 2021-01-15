@@ -89,11 +89,6 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
-- description: Genomic Reconciliation Array Data Workflow
-  url: /offline/GenomicArrayReconciliationWorkflow
-  timezone: America/New_York
-  schedule: every day 05:30
-  target: offline
 - description: Genomic GEM A1 Workflow
   url: /offline/GenomicGemA1Workflow
   timezone: America/New_York

@@ -104,22 +104,27 @@ class GenomicJobController:
         except AttributeError:
             raise AttributeError("upload_date, manifest_type, and file_path required")
 
-        file_to_insert = GenomicManifestFile(
-            created=now,
-            modified=now,
-            uploadDate=_uploadDate,
-            manifestTypeId=_manifest_type,
-            filePath=_file_path,
-            bucketName=_file_path.split('/')[0],
-            recordCount=0,  # Initializing with 0, counting records when processing file
-            rdrProcessingComplete=0,
-        )
+        manifest_file = self.manifest_file_dao.get_manifest_file_from_filepath(_file_path)
 
-        file = self.manifest_file_dao.insert(file_to_insert)
-        bq_genomic_manifest_file_update(file.id, self.bq_project_id)
-        genomic_manifest_file_update(file.id)
+        if manifest_file is None:
 
-        return file
+            file_to_insert = GenomicManifestFile(
+                created=now,
+                modified=now,
+                uploadDate=_uploadDate,
+                manifestTypeId=_manifest_type,
+                filePath=_file_path,
+                bucketName=_file_path.split('/')[0],
+                recordCount=0,  # Initializing with 0, counting records when processing file
+                rdrProcessingComplete=0,
+            )
+
+            manifest_file = self.manifest_file_dao.insert(file_to_insert)
+
+            bq_genomic_manifest_file_update(manifest_file.id, self.bq_project_id)
+            genomic_manifest_file_update(manifest_file.id)
+
+        return manifest_file
 
     def insert_genomic_manifest_feedback_record(self, manifest_file):
         """
@@ -131,20 +136,24 @@ class GenomicJobController:
         # Set attributes for GenomicManifestFile
         now = datetime.utcnow()
 
-        feedback_to_insert = GenomicManifestFeedback(
-            created=now,
-            modified=now,
-            inputManifestFileId=manifest_file.id,
-            feedbackRecordCount=0,
-            feedbackComplete=0,
-            ignore=0,
-        )
+        feedback_file = self.manifest_feedback_dao.get_feedback_record_from_manifest_id(manifest_file.id)
 
-        feedback = self.manifest_feedback_dao.insert(feedback_to_insert)
-        bq_genomic_manifest_feedback_update(feedback.id, self.bq_project_id)
-        genomic_manifest_feedback_update(feedback.id)
+        if feedback_file is None:
+            feedback_to_insert = GenomicManifestFeedback(
+                created=now,
+                modified=now,
+                inputManifestFileId=manifest_file.id,
+                feedbackRecordCount=0,
+                feedbackComplete=0,
+                ignore=0,
+            )
 
-        return feedback
+            feedback_file = self.manifest_feedback_dao.insert(feedback_to_insert)
+
+            bq_genomic_manifest_feedback_update(feedback_file.id, self.bq_project_id)
+            genomic_manifest_feedback_update(feedback_file.id)
+
+        return feedback_file
 
     def get_feedback_complete_records(self):
         """
