@@ -55,5 +55,12 @@
     3
   ],
   "ehr_status_bigquery_view_participant": [],
-  "ehr_status_bigquery_view_organization": []
+  "ehr_status_bigquery_view_organization": [],
+  "gc_name_to_id_mapping": {
+    "baylor_array": "jh",
+    "baylor_wgs": "bcm",
+    "broad": "bi",
+    "northwest": "uw",
+    "rdr": "rdr"
+  }
 }
