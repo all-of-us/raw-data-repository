@@ -8,6 +8,7 @@ from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
+from rdr_service.model.code import CodeType
 from rdr_service.code_constants import PPI_SYSTEM
 
 
@@ -49,9 +50,15 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # deprecated stored procedure sp_get_questionnaire_answers used to order its results
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id
+                   qr.participant_id, qh2.external_id, c.value module_id
             from questionnaire_response qr
-            where qr.participant_id = :p_id and questionnaire_id IN (
+            inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
+                       and qh2.version = qr.questionnaire_version
+                       and qh2.semantic_version = qr.questionnaire_semantic_version
+            inner join questionnaire_concept qc2 on qc2.questionnaire_id = qr.questionnaire_id
+                       and qc2.questionnaire_version = qr.questionnaire_version
+            inner join code c on qc2.code_id = c.code_id and c.code_type = :module_code_type
+            where qr.participant_id = :p_id and qr.questionnaire_id IN (
                 select q.questionnaire_id from questionnaire q
                 inner join questionnaire_history qh on q.version = qh.version
                        and qh.questionnaire_id = q.questionnaire_id
@@ -113,7 +120,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
             responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
-                                                                            'system': PPI_SYSTEM})
+                                                                            'system': PPI_SYSTEM,
+                                                                            'module_code_type': int(CodeType.MODULE)})
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
@@ -162,7 +170,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'authored',
                         'language',
                         'participant_id',
-                        'questionnaire_response_id'
+                        'questionnaire_response_id',
+                        'questionnaire_id',
+                        'external_id',
+                        'module_id'
                     ):
                         continue
 
