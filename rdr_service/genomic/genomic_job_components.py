@@ -1554,7 +1554,12 @@ class GenomicReconciler:
         :return: file name with highest revision number
         """
         filenames = [name for name in self.file_list if re.search(expression, name)]
-        filenames.sort(reverse=True)
+
+        # Naturally sort the list in descending order of revisions
+        # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
+        filenames.sort(reverse=True,
+                       key=lambda name: int(name.split('.')[0].split('_')[-1]))
+
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
