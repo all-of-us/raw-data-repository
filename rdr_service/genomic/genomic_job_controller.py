@@ -60,6 +60,7 @@ class GenomicJobController:
         self.archive_folder_name = archive_folder_name
         self.bq_project_id = bq_project_id
         self.task_data = task_data
+        self.bypass_record_count = False
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -162,6 +163,33 @@ class GenomicJobController:
         :return: list of GenomicManifestFeedback
         """
         return self.manifest_feedback_dao.get_feedback_equals_record_count()
+
+    def ingest_aw1_data_for_member(self, file_path, member):
+        """
+        Executed from genomic tools. Ingests data for a single GenomicSetMember
+        :param file_path:
+        :param member:
+        :return:
+        """
+        print(f"Ingesting member ID {member.id} data for file: {file_path}")
+
+        # Get max file-processed ID for filename
+        file_processed = self.file_processed_dao.get_max_file_processed_for_filepath(file_path)
+
+        if file_processed is not None:
+            # Use ingester to ingest 1 row from file
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                _controller=self,
+                                                target_file=file_path[1:])  # strip leading "/"
+
+            self.ingester.file_obj = file_processed
+
+            self.ingester.ingest_single_aw1_row_for_member(member)
+
+            self.job_result = GenomicSubProcessResult.SUCCESS
+        else:
+            print(f'No file processed IDs for {file_path}')
 
     def ingest_gc_metrics(self):
         """

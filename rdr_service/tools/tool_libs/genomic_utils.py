@@ -1473,6 +1473,7 @@ class IngestionClass(GenomicManifestBase):
     """
     def run(self):
 
+        # Validate arguments
         if not self.args.csv and not self.args.member_ids:
             _logger.error('Either --csv or --samples must be provided.')
             return 1
@@ -1501,6 +1502,10 @@ class IngestionClass(GenomicManifestBase):
                     member_ids.append(line.strip())
 
         if len(member_ids) > 0:
+            # Activate the SQL Proxy
+            self.gcp_env.activate_sql_proxy()
+            self.dao = GenomicSetMemberDao()
+
             manifest_data_types = ('AW1', 'AW2')
 
             bucket_name = None
@@ -1511,7 +1516,6 @@ class IngestionClass(GenomicManifestBase):
 
                 # Get bucket and filename from argument
                 bucket_name = self.args.manifest_file.split('/')[0]
-                file_name = self.args.manifest_file.replace(bucket_name + '/', '')
 
             if self.args.data_type.lower() == "aw1":
                 # Run AW1 ingestion on sample list
@@ -1519,14 +1523,17 @@ class IngestionClass(GenomicManifestBase):
 
                 # TODO: look up AW1 file for sample if none supplied
 
-                if bucket_name and file_name:
+                if bucket_name:
                     # ingest AW1 data using controller
                     with GenomicJobController(GenomicJob.AW1_MANIFEST,
                                               storage_provider=self.gscp,
                                               bq_project_id=self.gcp_env.project) as controller:
 
+                        controller.bypass_record_count = self.args.bypass_record_count
+
                         for member_id in member_ids:
-                            self.ingest_aw1_data_for_member_id(controller, member_id, bucket_name, file_name)
+                            self.run_ingestion_for_member_id(controller, member_id, bucket_name)
+
 
 
             elif self.args.data_type.lower() == "aw2":
@@ -1541,14 +1548,16 @@ class IngestionClass(GenomicManifestBase):
 
         return 0
 
-    def run_ingestion_for_member_id(self, controller, member_id, bucket_name, file_name):
+    def run_ingestion_for_member_id(self, controller, member_id, bucket_name):
         # Use a Controller to run the job
         try:
 
             controller.bucket_name = bucket_name
 
+            member = self.dao.get(member_id)
+
             if controller.job_id == GenomicJob.AW1_MANIFEST:
-                controller.ingest_aw1_data_for_member_id(file_name, member_id)
+                controller.ingest_aw1_data_for_member(f"/{self.args.manifest_file}", member)
 
             if controller.job_id == GenomicJob.METRICS_INGESTION:
                 pass
@@ -1662,12 +1671,12 @@ def run():
                                help="a comma-separated list of genomic_set_member IDs to resend",
                                default=None,
                                required=False)  # noqa
-
     sample_ingestion_parser.add_argument("--data-type", help="The manifest data type to ingest: AW1 or AW2",
                                          default=None, required=True)  # noqa
-
     sample_ingestion_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
                                          default=None, required=False)  # noqa
+    sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
+                                         default=False, required=False, action="store_true")  # noqa
 
     args = parser.parse_args()
 

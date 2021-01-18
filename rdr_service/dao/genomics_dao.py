@@ -722,6 +722,17 @@ class GenomicFileProcessedDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
+    def get_max_file_processed_for_filepath(self, filepath):
+        """
+        Looks up the latest GenomicFileProcessed object associated to the filepath
+        :param filepath:
+        :return: GenomicFileProcessed object
+        """
+        with self.session() as session:
+            return session.query(GenomicFileProcessed).filter(
+                GenomicFileProcessed.filePath == filepath
+            ).order_by(GenomicFileProcessed.id.desc()).first()
+
     def get_files_for_run(self, run_id):
         """
         Returns the list of GenomicFileProcessed objects for a run ID.

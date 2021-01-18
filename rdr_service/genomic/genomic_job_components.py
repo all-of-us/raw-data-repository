@@ -275,14 +275,9 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.NO_FILES
         return GenomicSubProcessResult.ERROR
 
-    def _ingest_gc_manifest(self, data, _site):
-        """
-        Updates the GenomicSetMember with GC Manifest data
-        :param data:
-        :param _site: gc_site ID
-        :return: result code
-        """
-        gc_manifest_column_mappings = {
+    @staticmethod
+    def get_aw1_manifest_column_mappings():
+        return {
             'packageId': 'packageid',
             'sampleId': 'sampleid',
             'gcManifestBoxStorageUnitId': 'boxstorageunitid',
@@ -306,6 +301,15 @@ class GenomicFileIngester:
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
         }
+
+    def _ingest_gc_manifest(self, data, _site):
+        """
+        Updates the GenomicSetMember with GC Manifest data
+        :param data:
+        :param _site: gc_site ID
+        :return: result code
+        """
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
         try:
             count = 0
 
@@ -423,6 +427,60 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+    def ingest_single_aw1_row_for_member(self, member):
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['Biobank Id'] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                       for key in row], row.values()))
+
+        ingested_before = member.reconcileGCManifestJobRunId is not None
+
+        # Write AW1 data to genomic_set_member table
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
+
+        # Set attributes from file
+        for key in gc_manifest_column_mappings.keys():
+            try:
+                member.__setattr__(key, row[gc_manifest_column_mappings[key]])
+            except KeyError:
+                member.__setattr__(key, None)
+
+        # Set other fields not in AW1 file
+        member.reconcileGCManifestJobRunId = self.job_run_id
+        member.aw1FileProcessedId = self.file_obj.id
+        member.gcSite = self._get_site_from_aw1()
+
+        # Only update the member's state if it was AW0
+        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
+            member.genomicWorkflowState = GenomicWorkflowState.AW1
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest record count
+        if not ingested_before and not self.controller.bypass_record_count:
+            self.increment_manifest_file_record_count_from_id()
+
+    def increment_manifest_file_record_count_from_id(self):
+        """
+        Increments the manifest record count by 1
+        """
+
+        manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
+        manifest_file.recordCount += 1
+
+        with self.manifest_dao.session() as s:
+            s.merge(manifest_file)
+
+        # Todo: enable after ignore_flag update is deployed to prod
+        # bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+        # genomic_manifest_file_update(manifest_file.id)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """
