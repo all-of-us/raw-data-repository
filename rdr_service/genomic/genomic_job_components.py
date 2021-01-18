@@ -467,6 +467,73 @@ class GenomicFileIngester:
         if not ingested_before and not self.controller.bypass_record_count:
             self.increment_manifest_file_record_count_from_id()
 
+    def ingest_single_aw2_row_for_member(self, member):
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['Biobank ID'] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                            for key in row], row.values()))
+
+        row['member_id'] = member.id
+        row['file_id'] = self.file_obj.id
+
+        # Truncate call rate
+        try:
+            row['callrate'] = row['callrate'][:10]
+        except KeyError:
+            pass
+
+        # Set contamination field to fload
+        row['contamination'] = float(row['contamination'])
+
+        # Percentages shouldn't be less than 0
+        if row['contamination'] < 0:
+            row['contamination'] = 0
+
+        # check whether metrics object exists for that member
+        existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+        if existing_metrics_obj is not None:
+            metric_id = existing_metrics_obj.id
+        else:
+            metric_id = None
+
+        # Calculate contamination_category
+        contamination_value = float(row['contamination'])
+        category = self.calculate_contamination_category(member.collectionTubeId,
+                                                         contamination_value, member)
+        row['contamination_category'] = category
+
+        upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
+
+        # Update GC Metrics for PDR
+        if upserted_obj:
+            bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
+            genomic_gc_validation_metrics_update(upserted_obj.id)
+
+        # Update the member oject's aw2fileProcessedId
+        member.aw2FileProcessedId = self.file_obj.id
+
+        # Only update the member's state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest feedback record count
+        if existing_metrics_obj is None and not self.controller.bypass_record_count:
+            # For feedback manifest loop
+            # Get the genomic_manifest_file
+            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+            if manifest_file is not None:
+                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
+                                                           _project_id=self.controller.bq_project_id)
+
     def increment_manifest_file_record_count_from_id(self):
         """
         Increments the manifest record count by 1
@@ -478,9 +545,8 @@ class GenomicFileIngester:
         with self.manifest_dao.session() as s:
             s.merge(manifest_file)
 
-        # Todo: enable after ignore_flag update is deployed to prod
-        # bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
-        # genomic_manifest_file_update(manifest_file.id)
+        bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+        genomic_manifest_file_update(manifest_file.id)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """

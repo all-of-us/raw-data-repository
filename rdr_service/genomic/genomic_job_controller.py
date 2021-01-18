@@ -164,9 +164,10 @@ class GenomicJobController:
         """
         return self.manifest_feedback_dao.get_feedback_equals_record_count()
 
-    def ingest_aw1_data_for_member(self, file_path, member):
+    def ingest_awn_data_for_member(self, file_path, member):
         """
         Executed from genomic tools. Ingests data for a single GenomicSetMember
+        Currently supports AW1 and AW2
         :param file_path:
         :param member:
         :return:
@@ -185,7 +186,11 @@ class GenomicJobController:
 
             self.ingester.file_obj = file_processed
 
-            self.ingester.ingest_single_aw1_row_for_member(member)
+            if self.job_id == GenomicJob.AW1_MANIFEST:
+                self.ingester.ingest_single_aw1_row_for_member(member)
+
+            if self.job_id == GenomicJob.METRICS_INGESTION:
+                self.ingester.ingest_single_aw2_row_for_member(member)
 
             self.job_result = GenomicSubProcessResult.SUCCESS
         else:

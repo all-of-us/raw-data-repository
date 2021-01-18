@@ -1509,7 +1509,6 @@ class IngestionClass(GenomicManifestBase):
             manifest_data_types = ('AW1', 'AW2')
 
             bucket_name = None
-            file_name = None
 
             if self.args.manifest_file:
                 _logger.info(f'Manifest file supplied: {self.args.manifest_file}')
@@ -1521,7 +1520,8 @@ class IngestionClass(GenomicManifestBase):
                 # Run AW1 ingestion on sample list
                 _logger.info("Ingesting AW1 data for ids.")
 
-                # TODO: look up AW1 file for sample if none supplied
+                # TODO: Future enhancements:
+                #  look up AW1 file for sample if none supplied
 
                 if bucket_name:
                     # ingest AW1 data using controller
@@ -1534,12 +1534,20 @@ class IngestionClass(GenomicManifestBase):
                         for member_id in member_ids:
                             self.run_ingestion_for_member_id(controller, member_id, bucket_name)
 
-
-
             elif self.args.data_type.lower() == "aw2":
                 # Run AW2 ingestion on sample list
                 _logger.info("Ingesting AW2 data for ids.")
-                pass
+
+                if bucket_name:
+                    # ingest AW1 data using controller
+                    with GenomicJobController(GenomicJob.METRICS_INGESTION,
+                                              storage_provider=self.gscp,
+                                              bq_project_id=self.gcp_env.project) as controller:
+
+                        controller.bypass_record_count = self.args.bypass_record_count
+
+                        for member_id in member_ids:
+                            self.run_ingestion_for_member_id(controller, member_id, bucket_name)
 
             else:
                 _logger.error(
@@ -1556,11 +1564,7 @@ class IngestionClass(GenomicManifestBase):
 
             member = self.dao.get(member_id)
 
-            if controller.job_id == GenomicJob.AW1_MANIFEST:
-                controller.ingest_aw1_data_for_member(f"/{self.args.manifest_file}", member)
-
-            if controller.job_id == GenomicJob.METRICS_INGESTION:
-                pass
+            controller.ingest_awn_data_for_member(f"/{self.args.manifest_file}", member)
 
             return 0
 
