@@ -7,7 +7,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
 from rdr_service.code_constants import PPI_SYSTEM
 
 
@@ -96,7 +96,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             'COPE': BQPDRCOPEMay,
             'cope_nov': BQPDRCOPENov,
             'cope_dec': BQPDRCOPEDec,
-            'cope_jan': BQPDRCOPEJan
+            'cope_feb': BQPDRCOPEFeb
         }
         table = table_map.get(module_id, None)
         if table is None:

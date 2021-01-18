@@ -596,24 +596,24 @@ class BQPDRCOPEDecView(BQView):
 
 
 #
-# COPE Jan Survey
+# COPE Feb Survey
 #
-class BQPDRCOPEJanSchema(_BQModuleSchema):
-    """ COPE Jan Module """
-    _module = 'cope_jan'  # Lowercase on purpose.
+class BQPDRCOPEFebSchema(_BQModuleSchema):
+    """ COPE Feb Module """
+    _module = 'cope_feb'  # Lowercase on purpose.
     _excluded_fields = ()
 
 
-class BQPDRCOPEJan(BQTable):
-    """ COPE Jan BigQuery Table """
-    __tablename__ = 'pdr_mod_cope_jan'
-    __schema__ = BQPDRCOPEJanSchema
+class BQPDRCOPEFeb(BQTable):
+    """ COPE Feb BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_feb'
+    __schema__ = BQPDRCOPEFebSchema
 
 
-class BQPDRCOPEJanView(BQView):
-    """ PDR COPE Jan BiqQuery View """
-    __viewname__ = 'v_pdr_mod_cope_jan'
-    __viewdescr__ = 'PDR COPE Jan Module View'
-    __table__ = BQPDRCOPEJan
+class BQPDRCOPEFebView(BQView):
+    """ PDR COPE Feb BiqQuery View """
+    __viewname__ = 'v_pdr_mod_cope_feb'
+    __viewdescr__ = 'PDR COPE Feb Module View'
+    __table__ = BQPDRCOPEFeb
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
