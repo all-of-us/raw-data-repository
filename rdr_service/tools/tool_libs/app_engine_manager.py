@@ -234,6 +234,16 @@ class DeployAppClass(object):
 
         return comment
 
+    @staticmethod
+    def find_prod_release_date(run_date: datetime):
+        num_days_since_end_of_sprint = run_date.weekday() - 3  # results in negative value with run_date before Thursday
+        if num_days_since_end_of_sprint < -2:
+            # run_date is likely Monday after the end of the sprint,
+            # should still target releasing the Thursday following the end of the sprint
+            num_days_since_end_of_sprint += 7  # Back to a positive number in order to target Thursday of the same week
+        num_days_to_release_thursday = 7 - num_days_since_end_of_sprint
+        return (run_date + datetime.timedelta(num_days_to_release_thursday)).strftime('%b %d, %Y')
+
     def create_jira_roc_ticket(self):
         """
         Create a reminder JIRA ROC ticket
@@ -249,11 +259,8 @@ class DeployAppClass(object):
             _logger.warning(f'Hotfix release {version}, skipping adding ROC ticket.')
             return
 
-        # Make the release date Thursday of next week.
         today = datetime.date.today()
-        # TODO: Make this calculate the next Thursday correctly if today is not Thursday.
-        push_date = (today + datetime.timedelta(((3 - today.weekday()) % 7) + 7)).strftime('%b %d, %Y')
-        summary = f'Deploy RDR v{version} to production on {push_date}.'
+        summary = f'Deploy RDR v{version} to production on {self.find_prod_release_date(today)}.'
 
         ticket = self.create_jira_ticket(summary, summary, 'ROC')
 
