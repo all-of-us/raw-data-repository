@@ -455,7 +455,7 @@ class GenomicFileIngester:
         member.aw1FileProcessedId = self.file_obj.id
         member.gcSite = self._get_site_from_aw1()
 
-        # Only update the member's state if it was AW0
+        # Only update the member's genomicWorkflowState if it was AW0
         if member.genomicWorkflowState == GenomicWorkflowState.AW0:
             member.genomicWorkflowState = GenomicWorkflowState.AW1
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
@@ -467,7 +467,9 @@ class GenomicFileIngester:
         if not ingested_before and not self.controller.bypass_record_count:
             self.increment_manifest_file_record_count_from_id()
 
-    def ingest_single_aw2_row_for_member(self, member):
+        return GenomicSubProcessResult.SUCCESS
+
+    def ingest_single_aw2_row_for_member(self, member: GenomicSetMember) -> GenomicSubProcessResult:
         # Open file and pull row based on member.biobankId
         with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
             reader = csv.DictReader(aw1_file, delimiter=',')
@@ -477,21 +479,11 @@ class GenomicFileIngester:
             row = dict(zip([key.lower().replace(' ', '').replace('_', '')
                             for key in row], row.values()))
 
-        row['member_id'] = member.id
-        row['file_id'] = self.file_obj.id
+        # Beging prep aw2 row
+        row = self.prep_aw2_row_attributes(row, member)
 
-        # Truncate call rate
-        try:
-            row['callrate'] = row['callrate'][:10]
-        except KeyError:
-            pass
-
-        # Set contamination field to fload
-        row['contamination'] = float(row['contamination'])
-
-        # Percentages shouldn't be less than 0
-        if row['contamination'] < 0:
-            row['contamination'] = 0
+        if row == GenomicSubProcessResult.ERROR:
+            return GenomicSubProcessResult.ERROR
 
         # check whether metrics object exists for that member
         existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
@@ -501,12 +493,6 @@ class GenomicFileIngester:
         else:
             metric_id = None
 
-        # Calculate contamination_category
-        contamination_value = float(row['contamination'])
-        category = self.calculate_contamination_category(member.collectionTubeId,
-                                                         contamination_value, member)
-        row['contamination_category'] = category
-
         upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
 
         # Update GC Metrics for PDR
@@ -514,13 +500,7 @@ class GenomicFileIngester:
             bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
             genomic_gc_validation_metrics_update(upserted_obj.id)
 
-        # Update the member oject's aw2fileProcessedId
-        member.aw2FileProcessedId = self.file_obj.id
-
-        # Only update the member's state if it was AW1
-        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-            member.genomicWorkflowState = GenomicWorkflowState.AW2
-            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+        self.update_member_for_aw2(member)
 
         # Update member in DB
         self.member_dao.update(member)
@@ -533,6 +513,8 @@ class GenomicFileIngester:
             if manifest_file is not None:
                 self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
                                                            _project_id=self.controller.bq_project_id)
+
+        return GenomicSubProcessResult.SUCCESS
 
     def increment_manifest_file_record_count_from_id(self):
         """
@@ -547,6 +529,60 @@ class GenomicFileIngester:
 
         bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
         genomic_manifest_file_update(manifest_file.id)
+
+    def prep_aw2_row_attributes(self, row: dict, member: GenomicSetMember):
+        """
+        Set contamination, contamination category,
+        call rate, member_id, and file_id on AW2 row dictionary
+        :param member:
+        :param row:
+        :return: row dictionary or ERROR code
+        """
+
+        row['member_id'] = member.id
+        row['file_id'] = self.file_obj.id
+
+        # Truncate call rate
+        try:
+            row['callrate'] = row['callrate'][:10]
+        except KeyError:
+            pass
+
+        # Validate and clean contamination data
+        try:
+            row['contamination'] = float(row['contamination'])
+
+            # Percentages shouldn't be less than 0
+            if row['contamination'] < 0:
+                row['contamination'] = 0
+
+        except ValueError:
+            logging.error(f'contamination must be a number for sample_id: {row["sampleid"]}')
+            return GenomicSubProcessResult.ERROR
+
+        # Calculate contamination_category
+        contamination_value = float(row['contamination'])
+        category = self.calculate_contamination_category(member.collectionTubeId,
+                                                         contamination_value, member)
+        row['contamination_category'] = category
+
+        return row
+
+    def update_member_for_aw2(self, member: GenomicSetMember):
+        """
+        Updates the aw2FileProcessedId and possibly the genomicWorkflowState
+        of a GenomicSetMember after AW2 data has been ingested
+        :param member:
+        """
+
+        member.aw2FileProcessedId = self.file_obj.id
+
+        # Only update the state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        self.member_dao.update(member)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """
@@ -704,34 +740,13 @@ class GenomicFileIngester:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row],
                                 row.values()))
-            row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['sampleid']
-
-            try:
-                row_copy['callrate'] = row_copy['callrate'][:10]
-            except KeyError:
-                pass
-
-            # Validate and clean contamination data
-            try:
-                row_copy['contamination'] = float(row_copy['contamination'])
-
-                # Percentages shouldn't be less than 0
-                if row_copy['contamination'] < 0:
-                    row_copy['contamination'] = 0
-
-            except ValueError:
-                logging.error(f'contamination must be a number for sample_id: {sample_id}')
-                return GenomicSubProcessResult.ERROR
-
-            except KeyError:
-                pass
 
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(sample_id),
-                                                               genome_type,)
+            member = self.member_dao.get_member_from_sample_id(int(row_copy['sampleid']),
+                                                               genome_type, )
+
             if member is not None:
-                row_copy['member_id'] = member.id
+                row_copy = self.prep_aw2_row_attributes(row_copy, member)
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
@@ -740,16 +755,6 @@ class GenomicFileIngester:
                 else:
                     metric_id = None
 
-                # Calculate contamination_category if contamination supplied
-                try:
-                    contamination_value = float(row_copy['contamination'])
-                    category = self.calculate_contamination_category(member.collectionTubeId,
-                                                                     contamination_value, member)
-                    row_copy['contamination_category'] = category
-
-                except (KeyError, ValueError):
-                    logging.error('Sample supplied without contamination.')
-
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
                 # Update GC Metrics for PDR
@@ -757,14 +762,7 @@ class GenomicFileIngester:
                     bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
                     genomic_gc_validation_metrics_update(upserted_obj.id)
 
-                member.aw2FileProcessedId = self.file_obj.id
-
-                # Only update the state if it was AW1
-                if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-                    member.genomicWorkflowState = GenomicWorkflowState.AW2
-
-                with self.member_dao.session() as session:
-                    session.merge(member)
+                self.update_member_for_aw2(member)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -774,7 +772,8 @@ class GenomicFileIngester:
                                                                _project_id=self.controller.bq_project_id)
 
             else:
-                logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                logging.error(f"No genomic set member for bid,sample_id: "
+                              f"{row_copy['biobankid']}, {row_copy['sampleid']}")
                 return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS

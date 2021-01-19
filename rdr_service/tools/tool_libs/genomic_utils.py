@@ -1475,11 +1475,11 @@ class IngestionClass(GenomicManifestBase):
 
         # Validate arguments
         if not self.args.csv and not self.args.member_ids:
-            _logger.error('Either --csv or --samples must be provided.')
+            _logger.error('Either --csv or --member_ids must be provided.')
             return 1
 
         if self.args.csv and self.args.member_ids:
-            _logger.error('Arguments --csv and --samples may not be used together.')
+            _logger.error('Arguments --csv and --member_ids may not be used together.')
             return 1
 
         if self.args.csv:

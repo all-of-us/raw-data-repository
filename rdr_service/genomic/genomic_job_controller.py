@@ -185,14 +185,14 @@ class GenomicJobController:
                                                 target_file=file_path[1:])  # strip leading "/"
 
             self.ingester.file_obj = file_processed
+            self.job_result = GenomicSubProcessResult.SUCCESS
 
             if self.job_id == GenomicJob.AW1_MANIFEST:
-                self.ingester.ingest_single_aw1_row_for_member(member)
+                self.job_result = self.ingester.ingest_single_aw1_row_for_member(member)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
-                self.ingester.ingest_single_aw2_row_for_member(member)
+                self.job_result = self.ingester.ingest_single_aw2_row_for_member(member)
 
-            self.job_result = GenomicSubProcessResult.SUCCESS
         else:
             print(f'No file processed IDs for {file_path}')
 
