@@ -1,0 +1,21 @@
+displayName: Errors in AppEngine Logs
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 120s
+    filter: metric.type="logging.googleapis.com/user/GAE_Errors" project="pmi-drc-api-test"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Metric Threshold on Log Metrics
+documentation:
+  content: Errors in AppEngine logs above 2 QPS.
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/pmi-drc-api-test/notificationChannels/18149436000963793595
+- projects/pmi-drc-api-test/notificationChannels/7271756574530877070

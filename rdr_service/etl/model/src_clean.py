@@ -41,3 +41,7 @@ class SrcClean(Base):
     unit_id = Column(String(50))
     filter = Column(SmallInteger)
     __table_args__ = (Index('idx_src_clean_participant_id', participant_id), )
+
+
+QuestionnaireAnswersByModule.__table__.schema = 'cdm'
+SrcClean.__table__.schema = 'cdm'

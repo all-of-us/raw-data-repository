@@ -9,7 +9,7 @@ from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
-from rdr_service.api_util import EXPORTER
+from rdr_service.api_util import EXPORTER, RDR
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.model.requests_log import RequestsLog
@@ -107,29 +107,19 @@ def recalculate_public_metrics():
 
 
 @app_util.auth_required_cron
-#@_alert_on_exceptions
-def import_biobank_samples():
+def run_biobank_samples_pipeline():
     # Note that crons always have a 10 minute deadline instead of the normal 60s; additionally our
     # offline service uses basic scaling with has no deadline.
     logging.info("Starting samples import.")
-    written, _ = biobank_samples_pipeline.upsert_from_latest_csv()
+    written, timestamp = biobank_samples_pipeline.upsert_from_latest_csv()
     logging.info("Import complete %(written)d, generating report.", written)
-    return json.dumps({"written": written})
 
-
-@app_util.auth_required_cron
-#@_alert_on_exceptions
-def biobank_daily_reconciliation_report():
-    # TODO: setup to only run after import_biobank_samples completion instead of 1hr after start.
-    sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=False)
-    logging.info(f"Generating reconciliation report from {sample_file_path}, {sample_file}")
     # iterate new list and write reports
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
     return '{"success": "true"}'
 
 @app_util.auth_required_cron
-#@_alert_on_exceptions
 def biobank_monthly_reconciliation_report():
     # make sure this cron job is executed after import_biobank_samples
     sample_file_path, sample_file, timestamp = biobank_samples_pipeline.get_last_biobank_sample_file_info(monthly=True)
@@ -217,6 +207,21 @@ def exclude_ghosts():
 @_alert_on_exceptions
 def run_sync_consent_files():
     sync_consent_files.do_sync_recent_consent_files()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required(RDR)
+def manually_trigger_consent_sync():
+    request_json = request.json
+
+    # do_sync_consent_files will filter by any kwargs passed to it, even if they're None.
+    # So if something like start_date is passed in as None, it will try to filter by comparing to a start_date of none.
+    parameters = {}
+    for field_name in ['all_va', 'start_date', 'end_date']:
+        if field_name in request_json:
+            parameters[field_name] = request_json.get(field_name)
+
+    sync_consent_files.do_sync_consent_files(zip_files=request.json.get('zip_files'), **parameters)
     return '{"success": "true"}'
 
 
@@ -488,18 +493,12 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "BiobankSamplesImport",
-        endpoint="biobankSamplesImport",
-        view_func=import_biobank_samples,
+        OFFLINE_PREFIX + "BiobankSamplesPipeline",
+        endpoint="biobankSamplesPipeline",
+        view_func=run_biobank_samples_pipeline,
         methods=["GET"],
     )
 
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "DailyReconciliationReport",
-        endpoint="dailyReconciliationReport",
-        view_func=biobank_daily_reconciliation_report,
-        methods=["GET"],
-    )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "MonthlyReconciliationReport",
         endpoint="monthlyReconciliationReport",
@@ -553,6 +552,13 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "MarkGhostParticipants", endpoint="exclude_ghosts", view_func=exclude_ghosts, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ManuallySyncConsentFiles",
+        endpoint="manually_sync_consent_files",
+        view_func=manually_trigger_consent_sync,
+        methods=["POST"]
     )
 
     offline_app.add_url_rule(

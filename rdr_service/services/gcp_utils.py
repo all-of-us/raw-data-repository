@@ -197,7 +197,6 @@ def gcp_gcloud_command(group, args, flags=None):
 
     prog = which("gcloud")
     p_args = shlex.split("{0} {1} {2} {3}".format(prog, group, args, flags if flags else ""))
-
     return run_external_program(p_args)
 
 
@@ -889,3 +888,88 @@ def gcp_sql_export_csv(project, sql, destination, replica=True, database=None):
     if exit_code != 0:
         _logger.error(error)
         _logger.error(f'Failed to run sql export to {destination}. Gcloud gave exit code {exit_code}.')
+
+
+def gcp_monitoring_create_policy(project, policy_file):
+    if not policy_file:
+        _logger.error("please specify the policy file for creating")
+        return False
+
+    args = 'create --policy-from-file {0}'.format(policy_file)
+
+    if project:
+        args += ' --project {0}'.format(project)
+
+    pcode, so, se = gcp_gcloud_command('alpha monitoring policies', args, '')
+
+    if pcode != 0:
+        _logger.error("failed to create monitoring policies. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.info(so)
+    _logger.info(se)
+
+    return True
+
+
+def gcp_monitoring_update_policy(project, policy_file, policy_name):
+    if not policy_file or not policy_name:
+        _logger.error("please specify the policy name and policy file for updating")
+        return False
+
+    args = 'update {0} --policy-from-file {1}'.format(policy_name, policy_file)
+
+    if project:
+        args += ' --project {0}'.format(project)
+
+    pcode, so, se = gcp_gcloud_command('alpha monitoring policies', args, '')
+
+    if pcode != 0:
+        _logger.error("failed to update monitoring policies. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.info(so)
+    _logger.info('policy [{0}] has been updated.'.format(policy_name))
+
+    return True
+
+
+def gcp_monitoring_delete_policy(project, policy_name):
+    if not policy_name:
+        _logger.error("please specify the policy name for deleting")
+        return False
+
+    confirm = input('Are you about to delete policy [{0}] (y/n)? : '.format(policy_name))
+    if confirm and confirm.lower().strip() != 'y':
+        return False
+
+    args = 'delete {0} {1}'.format(policy_name, '--quiet')
+    if project:
+        args += ' --project {0}'.format(project)
+
+    pcode, so, se = gcp_gcloud_command('alpha monitoring policies', args, '')
+
+    if pcode != 0:
+        _logger.error("failed to delete monitoring policies. ({0}: {1}).".format(pcode, se))
+        return False
+
+    _logger.info(so)
+    _logger.info(se)
+
+    return True
+
+
+def gcp_monitoring_list_policy(project, policy_name=None):
+    args = 'list'
+    if policy_name:
+        args = 'describe {0}'.format(policy_name)
+    if project:
+        args += ' --project {0}'.format(project)
+    pcode, so, se = gcp_gcloud_command('alpha monitoring policies', args, '')
+
+    if pcode != 0:
+        _logger.error("failed to list monitoring policies. ({0}: {1}).".format(pcode, se))
+        return False
+    _logger.info(so)
+
+    return True

@@ -163,9 +163,11 @@ def _initialize_database(with_data=True, with_consent_codes=False):
         if initialize:
             engine.execute("DROP DATABASE IF EXISTS rdr")
             engine.execute("DROP DATABASE IF EXISTS metrics")
+            engine.execute("DROP DATABASE IF EXISTS cdm")
             # Keep in sync with tools/setup_local_database.sh.
             engine.execute("CREATE DATABASE rdr CHARACTER SET utf8 COLLATE utf8_general_ci")
             engine.execute("CREATE DATABASE metrics CHARACTER SET utf8 COLLATE utf8_general_ci")
+            engine.execute("CREATE DATABASE cdm CHARACTER SET utf8 COLLATE utf8_general_ci")
 
             engine.execute("USE metrics")
             database.create_metrics_schema()

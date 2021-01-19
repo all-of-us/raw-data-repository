@@ -1,17 +1,12 @@
 cron:
 - description: Daily Biobank sample import and order reconciliation
-  url: /offline/BiobankSamplesImport
+  url: /offline/BiobankSamplesPipeline
   schedule: every day 02:30
   timezone: America/New_York
   target: offline
 - description: Skew duplicate last modified
   url: /offline/SkewDuplicates
   schedule: every day 01:30
-  timezone: America/New_York
-  target: offline
-- description: Daily reconciliation report
-  url: /offline/DailyReconciliationReport
-  schedule: every day 03:00
   timezone: America/New_York
   target: offline
 - description: Monthly reconciliation report
@@ -84,11 +79,6 @@ cron:
   timezone: America/New_York
   schedule: every day 06:00
   target: offline
-- description: Genomic Feedback Manifest Workflow
-  url: /offline/GenomicFeedbackManifestWorkflow
-  timezone: America/New_York
-  schedule: every thursday 06:00
-  target: offline
 - description: Genomic AW1C (CVL) Workflow (Manual)
   url: /offline/GenomicAW1CManifestWorkflow
   timezone: America/New_York
@@ -107,7 +97,12 @@ cron:
 - description: Genomic Reconciliation WGS Data Workflow
   url: /offline/GenomicWGSReconciliationWorkflow
   timezone: America/New_York
-  schedule: every day 06:00
+  schedule: every day 20:30
+  target: offline
+- description: Genomic GEM A1 Workflow
+  url: /offline/GenomicGemA1Workflow
+  timezone: America/New_York
+  schedule: every tuesday 00:00
   target: offline
 - description: Genomic GEM A2 Workflow
   url: /offline/GenomicGemA2Workflow

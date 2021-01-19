@@ -1,7 +1,6 @@
 """
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
-import csv
 import logging
 from datetime import datetime
 
@@ -9,7 +8,7 @@ import pytz
 from sendgrid import sendgrid
 
 from rdr_service import clock, config
-from rdr_service.api_util import list_blobs, open_cloud_file
+from rdr_service.api_util import list_blobs
 
 from rdr_service.config import (
     GENOMIC_GC_METRICS_BUCKET_NAME,
@@ -61,6 +60,7 @@ class GenomicJobController:
         self.archive_folder_name = archive_folder_name
         self.bq_project_id = bq_project_id
         self.task_data = task_data
+        self.bypass_record_count = False
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -105,29 +105,27 @@ class GenomicJobController:
         except AttributeError:
             raise AttributeError("upload_date, manifest_type, and file_path required")
 
-        try:
-            with open_cloud_file(_file_path) as csv_file:
-                csv_reader = csv.DictReader(csv_file, delimiter=",")
-                count = len(list(csv_reader))
-        except FileNotFoundError:
-            raise
+        manifest_file = self.manifest_file_dao.get_manifest_file_from_filepath(_file_path)
 
-        file_to_insert = GenomicManifestFile(
-            created=now,
-            modified=now,
-            uploadDate=_uploadDate,
-            manifestTypeId=_manifest_type,
-            filePath=_file_path,
-            bucketName=_file_path.split('/')[0],
-            recordCount=count,
-            rdrProcessingComplete=0,
-        )
+        if manifest_file is None:
 
-        file = self.manifest_file_dao.insert(file_to_insert)
-        bq_genomic_manifest_file_update(file.id, self.bq_project_id)
-        genomic_manifest_file_update(file.id)
+            file_to_insert = GenomicManifestFile(
+                created=now,
+                modified=now,
+                uploadDate=_uploadDate,
+                manifestTypeId=_manifest_type,
+                filePath=_file_path,
+                bucketName=_file_path.split('/')[0],
+                recordCount=0,  # Initializing with 0, counting records when processing file
+                rdrProcessingComplete=0,
+            )
 
-        return file
+            manifest_file = self.manifest_file_dao.insert(file_to_insert)
+
+            bq_genomic_manifest_file_update(manifest_file.id, self.bq_project_id)
+            genomic_manifest_file_update(manifest_file.id)
+
+        return manifest_file
 
     def insert_genomic_manifest_feedback_record(self, manifest_file):
         """
@@ -139,20 +137,24 @@ class GenomicJobController:
         # Set attributes for GenomicManifestFile
         now = datetime.utcnow()
 
-        feedback_to_insert = GenomicManifestFeedback(
-            created=now,
-            modified=now,
-            inputManifestFileId=manifest_file.id,
-            feedbackRecordCount=0,
-            feedbackComplete=0,
-            ignore=0,
-        )
+        feedback_file = self.manifest_feedback_dao.get_feedback_record_from_manifest_id(manifest_file.id)
 
-        feedback = self.manifest_feedback_dao.insert(feedback_to_insert)
-        bq_genomic_manifest_feedback_update(feedback.id, self.bq_project_id)
-        genomic_manifest_feedback_update(feedback.id)
+        if feedback_file is None:
+            feedback_to_insert = GenomicManifestFeedback(
+                created=now,
+                modified=now,
+                inputManifestFileId=manifest_file.id,
+                feedbackRecordCount=0,
+                feedbackComplete=0,
+                ignore=0,
+            )
 
-        return feedback
+            feedback_file = self.manifest_feedback_dao.insert(feedback_to_insert)
+
+            bq_genomic_manifest_feedback_update(feedback_file.id, self.bq_project_id)
+            genomic_manifest_feedback_update(feedback_file.id)
+
+        return feedback_file
 
     def get_feedback_complete_records(self):
         """
@@ -161,6 +163,38 @@ class GenomicJobController:
         :return: list of GenomicManifestFeedback
         """
         return self.manifest_feedback_dao.get_feedback_equals_record_count()
+
+    def ingest_awn_data_for_member(self, file_path, member):
+        """
+        Executed from genomic tools. Ingests data for a single GenomicSetMember
+        Currently supports AW1 and AW2
+        :param file_path:
+        :param member:
+        :return:
+        """
+        print(f"Ingesting member ID {member.id} data for file: {file_path}")
+
+        # Get max file-processed ID for filename
+        file_processed = self.file_processed_dao.get_max_file_processed_for_filepath(file_path)
+
+        if file_processed is not None:
+            # Use ingester to ingest 1 row from file
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                _controller=self,
+                                                target_file=file_path[1:])  # strip leading "/"
+
+            self.ingester.file_obj = file_processed
+            self.job_result = GenomicSubProcessResult.SUCCESS
+
+            if self.job_id == GenomicJob.AW1_MANIFEST:
+                self.job_result = self.ingester.ingest_single_aw1_row_for_member(member)
+
+            if self.job_id == GenomicJob.METRICS_INGESTION:
+                self.job_result = self.ingester.ingest_single_aw2_row_for_member(member)
+
+        else:
+            print(f'No file processed IDs for {file_path}')
 
     def ingest_gc_metrics(self):
         """
@@ -209,7 +243,25 @@ class GenomicJobController:
                                             storage_provider=self.storage_provider,
                                             controller=self)
         try:
-            self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data()
+            # Set reconciler's bucket and filter queries on gc_site_id for each bucket
+            for bucket_name in self.bucket_name_list:
+                self.reconciler.bucket_name = bucket_name
+                site_id_mapping = config.getSettingJson("gc_name_to_id_mapping")
+
+                gc_site_id = 'rdr'
+
+                if 'baylor' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['baylor_array']
+
+                if 'broad' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['broad']
+
+                if 'northwest' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['northwest']
+
+                # Run the reconciliation by GC
+                self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data(_gc_site_id=gc_site_id)
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -221,7 +273,24 @@ class GenomicJobController:
                                             storage_provider=self.storage_provider,
                                             controller=self)
         try:
-            self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data()
+            # Set reconciler's bucket and filter queries on gc_site_id for each bucket
+            for bucket_name in self.bucket_name_list:
+                self.reconciler.bucket_name = bucket_name
+                site_id_mapping = config.getSettingJson("gc_name_to_id_mapping")
+
+                gc_site_id = 'rdr'
+
+                if 'baylor' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['baylor_wgs']
+
+                if 'broad' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['broad']
+
+                if 'northwest' in bucket_name.lower():
+                    gc_site_id = site_id_mapping['northwest']
+
+                self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data(_gc_site_id=gc_site_id)
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

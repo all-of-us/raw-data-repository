@@ -1,0 +1,19 @@
+displayName: slow_sql_alert
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 0s
+    filter: metric.type="logging.googleapis.com/user/slow_sql" resource.type="cloudsql_database"
+    trigger:
+      count: 1
+  displayName: logging/user/slow_sql
+documentation:
+  content: Slow SQL query found on pmi-drc-api-test
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/pmi-drc-api-test/notificationChannels/7271756574530877070

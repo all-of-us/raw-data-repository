@@ -1,0 +1,27 @@
+displayName: API 5xx error threshold exceeded
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      crossSeriesReducer: REDUCE_SUM
+      groupByFields:
+      - project
+      - resource.label.module_id
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="appengine.googleapis.com/http/server/response_count" resource.type="gae_app"
+      metric.label."response_code">="500" metric.label."response_code"<"600" project="all-of-us-rdr-prod"
+      resource.label."module_id"="default"
+    thresholdValue: 0.08
+    trigger:
+      count: 1
+  displayName: Metric Threshold on GAE Service default
+documentation:
+  content: '[playbook](https://docs.google.com/document/d/1FkzFyc_neXn4gAQfdaCoe91mogD4frIAOFtXDeDM-sU)'
+  mimeType: text/markdown
+enabled: true
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/16467119957251669490
+- projects/all-of-us-rdr-prod/notificationChannels/2257914988710686784

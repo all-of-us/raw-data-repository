@@ -148,8 +148,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
-            # calculate test participant status
-            summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
+            # calculate test participant status (if it was not already set by _prep_participant() )
+            # TODO:  If a backfill for the DA-1800 Participant.isTestParticipant field is done, we may be able to
+            # remove this call/method entirely and rely solely on value assigned by _prep_participant()
+            if summary['test_participant'] == 0:
+                summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 

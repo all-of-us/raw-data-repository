@@ -245,24 +245,8 @@ class MailKitOrderApi(UpdatableApi):
         if not p_id:
             raise BadRequest("Request must include participant id")
 
-        merged_resource = None
-        # Note: PUT tracking status should only be 'delivered'. POST should be either 'enroute/in_transit'.
-        if (
-            tracking_status in ["in_transit", "enroute", "delivered"]
-            and self._to_mayo(fhir)
-            and not dvo.biobankOrderId
-        ):
-            # Send to mayolink and create internal biobank order
-            response = self.dao.send_order(resource, p_id)
-            merged_resource = merge_dicts(response, resource)
-            merged_resource["id"] = _id
-            merged_resource["orderOrigin"] = get_account_origin_id()
-            logging.info(f"Sending salivary order to biobank for participant: {p_id}")
-            self.dao.insert_biobank_order(p_id, merged_resource)
-            self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
-
         response = super(MailKitOrderApi, self).put(
-            bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
+            bo_id, participant_id=p_id, skip_etag=True, resource=resource
         )
         return response
 

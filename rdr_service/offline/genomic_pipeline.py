@@ -161,17 +161,19 @@ def reconcile_metrics_vs_genotyping_data(provider=None):
     Genotyping Files (Array) vs Listed in Manifest.
     """
     with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
-                              storage_provider=provider) as controller:
+                              storage_provider=provider,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_genotyping_data()
 
 
 def reconcile_metrics_vs_sequencing_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Sequencing Files (Array) vs Listed in Manifest.
+    Sequencing Files (WGS) vs Listed in Manifest.
     """
     with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA,
-                              storage_provider=provider) as controller:
+                              storage_provider=provider,
+                              bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_sequencing_data()
 
 
@@ -307,7 +309,6 @@ def scan_and_complete_feedback_records():
 
 
 def create_aw2f_manifest(feedback_record):
-    # TODO: Get Genome Type from file name (subfolder)
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
                               ) as controller:
@@ -316,10 +317,11 @@ def create_aw2f_manifest(feedback_record):
                                      feedback_record=feedback_record)
 
 
-def execute_genomic_manifest_file_pipeline(_task_data: dict):
+def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines
     Sets up the genomic manifest file record and begin pipeline
+    :param project_id:
     :param _task_data: dictionary of metadata needed by the controller
     """
     task_data = JSONObject(_task_data)
@@ -334,7 +336,7 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict):
         raise AttributeError("file_data is required to execute manifest file pipeline")
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
-                              task_data=task_data) as controller:
+                              task_data=task_data, bq_project_id=project_id) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
 
         if task_data.file_data.create_feedback_record:
@@ -345,6 +347,9 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict):
     if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
+
+    else:
+        return manifest_file
 
 
 def dispatch_genomic_job_from_task(_task_data: JSONObject):

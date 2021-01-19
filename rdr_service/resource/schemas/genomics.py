@@ -176,7 +176,7 @@ class GenomicManifestFileSchema(Schema):
     record_count = fields.Int32()
     rdr_processing_complete = fields.Int16()
     rdr_processing_complete_date = fields.DateTime()
-    ignore = fields.Int16()
+    ignore_flag = fields.Int16()
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_file
@@ -194,7 +194,7 @@ class GenomicManifestFeedbackSchema(Schema):
     feedback_record_count = fields.Int32()
     feedback_complete = fields.Int16()
     feedback_complete_date = fields.DateTime()
-    ignore = fields.Int16()
+    ignore_flag = fields.Int16()
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_feedback

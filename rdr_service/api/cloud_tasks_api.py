@@ -13,6 +13,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_manifest_feedback_batch_update
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
+from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
+    bq_institutional_affiliations_batch_update, bq_researcher_batch_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
@@ -288,4 +290,30 @@ class RebuildGenomicTableRecordsApi(Resource):
 
         logging.info(f'Rebuild complete.')
 
+        return '{"success": "true"}'
+
+
+class RebuildResearchWorkbenchTableRecordsApi(Resource):
+    """
+    Cloud Task endpoint: Rebuild Research Workbench table records for Resource/BigQuery.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        table = data['table']
+        batch = data['ids']
+
+        logging.info(f'Rebuilding {len(batch)} records for table {table}.')
+
+        if table == 'workspace':
+            bq_workspace_batch_update(batch)
+        elif table == 'workspace_user':
+            bq_workspace_user_batch_update(batch)
+        elif table == 'institutional_affiliations':
+            bq_institutional_affiliations_batch_update(batch)
+        elif table == 'researcher':
+            bq_researcher_batch_update(batch)
+
+        logging.info(f'Rebuild complete.')
         return '{"success": "true"}'

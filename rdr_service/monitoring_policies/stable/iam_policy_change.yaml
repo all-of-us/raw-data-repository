@@ -1,0 +1,19 @@
+displayName: iam-policy-change
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: project="all-of-us-rdr-stable" AND metric.type="logging.googleapis.com/user/iam-policy-change"
+    trigger:
+      count: 1
+  displayName: Metric Threshold on Log Metrics
+documentation:
+  content: Observed IAM policy change on project all-of-us-rdr-stable
+  mimeType: text/markdown
+enabled: false
+notificationChannels:
+- projects/all-of-us-rdr-stable/notificationChannels/2853306498431928004

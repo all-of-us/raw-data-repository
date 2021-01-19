@@ -32,7 +32,7 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
         ro_dao = BigQuerySyncDao(backup=True)
         with ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_workspace_snapshot where workspace_source_id = :id'),
+                text('select * from rdr.workbench_workspace_snapshot where id = :id'),
                     {'id': src_pk_id}).first()
             data = ro_dao.to_dict(row)
 
@@ -76,6 +76,37 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
             return BQRecord(schema=BQRWBWorkspaceSchema, data=data, convert_to_enum=convert_to_enum)
 
 
+def bq_workspace_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate Workspace record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQRWBWorkspaceGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQRWBWorkspaceGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBWorkspace, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_workspace_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQRWBWorkspaceGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_workspace_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
 class BQRWBWorkspaceUsersGenerator(BigQueryGenerator):
     """
     Generate a Research Workbench Workspace BQRecord object
@@ -93,15 +124,52 @@ class BQRWBWorkspaceUsersGenerator(BigQueryGenerator):
             row = ro_session.execute(
                 text('select * from rdr.workbench_workspace_user_history where id = :id order by modified desc'),
                         {'id': pk_id}).first()
+            # Fall back to workbench_workspace_user, it looks like there are missing records in the history table.
+            if not row:
+                row = ro_session.execute(
+                    text('select * from rdr.workbench_workspace_user where id = :id order by modified desc'),
+                        {'id': pk_id}).first()
             data = ro_dao.to_dict(row)
 
-            data['role'] = str(WorkbenchWorkspaceUserRole(row.role))
-            data['role_id'] = int(WorkbenchWorkspaceUserRole(row.role))
+            if row.role:
+                data['role'] = str(WorkbenchWorkspaceUserRole(row.role))
+                data['role_id'] = int(WorkbenchWorkspaceUserRole(row.role))
 
             data['status'] = str(WorkbenchWorkspaceStatus(row.status))
             data['status_id'] = int(WorkbenchWorkspaceStatus(row.status))
 
             return BQRecord(schema=BQRWBWorkspaceUsersSchema, data=data, convert_to_enum=convert_to_enum)
+
+
+def bq_workspace_user_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate Workspace Users record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQRWBWorkspaceUsersGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQRWBWorkspaceUsersGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBWorkspaceUsers, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_workspace_user_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQRWBWorkspaceUsersGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_workspace_user_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
 
 
 class BQRWBResearcherGenerator(BigQueryGenerator):
@@ -119,7 +187,7 @@ class BQRWBResearcherGenerator(BigQueryGenerator):
         ro_dao = BigQuerySyncDao(backup=True)
         with ro_dao.session() as ro_session:
             row = ro_session.execute(
-                text('select * from rdr.workbench_researcher where user_source_id = :id'), {'id': src_pk_id}).first()
+                text('select * from rdr.workbench_researcher where id = :id'), {'id': src_pk_id}).first()
             if not row:
                 return None
             data = ro_dao.to_dict(row)
@@ -156,6 +224,37 @@ class BQRWBResearcherGenerator(BigQueryGenerator):
             return BQRecord(schema=BQRWBResearcherSchema, data=data, convert_to_enum=convert_to_enum)
 
 
+def bq_researcher_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate Researcher record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQRWBResearcherGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQRWBResearcherGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBResearcher, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_researcher_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQRWBResearcherGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_researcher_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
 class BQRWBInstitutionalAffiliationsGenerator(BigQueryGenerator):
     """
     Generate a Research Workbench Workspace BQRecord object
@@ -180,6 +279,37 @@ class BQRWBInstitutionalAffiliationsGenerator(BigQueryGenerator):
             return BQRecord(schema=BQRWBInstitutionalAffiliationsSchema, data=data, convert_to_enum=convert_to_enum)
 
 
+def bq_institutional_affiliations_update(_id, project_id=None, gen=None, w_dao=None):
+    """
+    Generate Institutional Affiliations record for BQ.
+    :param _id: Primary Key
+    :param project_id: Override the project_id
+    :param gen: BQRWBInstitutionalAffiliationsGenerator object
+    :param w_dao: writeable dao object.
+    """
+    if not gen:
+        gen = BQRWBInstitutionalAffiliationsGenerator()
+    if not w_dao:
+        w_dao = BigQuerySyncDao()
+
+    bqr = gen.make_bqrecord(_id)
+    with w_dao.session() as w_session:
+        gen.save_bqrecord(_id, bqr, bqtable=BQRWBInstitutionalAffiliations, w_dao=w_dao,
+                          w_session=w_session, project_id=project_id)
+
+
+def bq_institutional_affiliations_batch_update(_ids, project_id=None):
+    """
+    Update a batch of ids.
+    :param _ids: list of ids
+    :param project_id: Override the project_id
+    """
+    gen = BQRWBInstitutionalAffiliationsGenerator()
+    w_dao = BigQuerySyncDao()
+    for _id in _ids:
+        bq_institutional_affiliations_update(_id, project_id=project_id, gen=gen, w_dao=w_dao)
+
+
 def rebuild_bq_workpaces(workspaces):
     """
     Rebuild BQ workbench workspaces.
@@ -194,7 +324,7 @@ def rebuild_bq_workpaces(workspaces):
     with w_dao.session() as w_session:
 
         for workspace in workspaces:
-            bqws_rec = workspace_gen.make_bqrecord(workspace.workspaceSourceId)
+            bqws_rec = workspace_gen.make_bqrecord(workspace.id)
             workspace_gen.save_bqrecord(workspace.workspaceSourceId, bqws_rec, BQRWBWorkspace, w_dao, w_session)
 
             if workspace.workbenchWorkspaceUser:
@@ -217,7 +347,7 @@ def rebuild_bq_wb_researchers(researchers):
     with w_dao.session() as w_session:
 
         for obj in researchers:
-            wb_bqr = researcher_gen.make_bqrecord(obj.userSourceId)
+            wb_bqr = researcher_gen.make_bqrecord(obj.id)
             if not wb_bqr:
                 continue
             researcher_gen.save_bqrecord(obj.userSourceId, wb_bqr, BQRWBResearcher, w_dao, w_session)

@@ -11,8 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, \
-    bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -33,8 +32,7 @@ from rdr_service.participant_enums import (
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_set_member_update, \
-    genomic_manifest_feedback_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -724,6 +722,17 @@ class GenomicFileProcessedDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
+    def get_max_file_processed_for_filepath(self, filepath):
+        """
+        Looks up the latest GenomicFileProcessed object associated to the filepath
+        :param filepath:
+        :return: GenomicFileProcessed object
+        """
+        with self.session() as session:
+            return session.query(GenomicFileProcessed).filter(
+                GenomicFileProcessed.filePath == filepath
+            ).order_by(GenomicFileProcessed.id.desc()).first()
+
     def get_files_for_run(self, run_id):
         """
         Returns the list of GenomicFileProcessed objects for a run ID.
@@ -885,10 +894,11 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_gen_files(self, _date):
+    def get_with_missing_gen_files(self, _date, _gc_site_id):
         """
-        Retrieves all gc metrics with missing genotyping files
+        Retrieves all gc metrics with missing genotyping files for a gc
         :param: _date: last run time
+        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -901,6 +911,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGCValidationMetrics.modified > _date,
@@ -917,10 +928,11 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_seq_files(self, _date):
+    def get_with_missing_seq_files(self, _date, _gc_site_id):
         """
         Retrieves all gc metrics with missing sequencing files
         :param: _date: last run time
+        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -935,6 +947,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGCValidationMetrics.modified > _date,
@@ -1196,6 +1209,13 @@ class GenomicManifestFileDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_manifest_file_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(GenomicManifestFile).filter(
+                GenomicManifestFile.filePath == filepath,
+                GenomicManifestFile.ignore_flag == 0
+            ).one_or_none()
+
 
 class GenomicManifestFeedbackDao(BaseDao):
     def __init__(self):
@@ -1217,12 +1237,13 @@ class GenomicManifestFeedbackDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicManifestFeedback).filter(
                 GenomicManifestFeedback.inputManifestFileId == manifest_id,
-                GenomicManifestFeedback.ignore == False
+                GenomicManifestFeedback.ignoreFlag == 0
             ).one_or_none()
 
-    def increment_feedback_count(self, manifest_id):
+    def increment_feedback_count(self, manifest_id, _project_id):
         """
         Update the manifest feedback record's count
+        :param _project_id:
         :param manifest_id:
         :return:
         """
@@ -1235,7 +1256,7 @@ class GenomicManifestFeedbackDao(BaseDao):
             with self.session() as session:
                 session.merge(fb)
 
-            bq_genomic_manifest_feedback_update(fb.id)
+            bq_genomic_manifest_feedback_update(fb.id, project_id=_project_id)
             genomic_manifest_feedback_update(fb.id)
         else:
             raise ValueError(f'No feedback record for manifest id {manifest_id}')
@@ -1251,7 +1272,7 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFile,
                 GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
             ).filter(
-                GenomicManifestFeedback.ignore == 0,
+                GenomicManifestFeedback.ignoreFlag == 0,
                 GenomicManifestFeedback.feedbackRecordCount == GenomicManifestFile.recordCount,
                 GenomicManifestFeedback.feedbackManifestFileId == None,
             ).all()

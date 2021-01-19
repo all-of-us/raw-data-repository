@@ -276,7 +276,7 @@ class BQGenomicManifestFileSchema(BQSchema):
     rdr_processing_complete = BQField('rdr_processing_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     rdr_processing_complete_date = BQField('rdr_processing_complete_date', BQFieldTypeEnum.DATETIME,
                                            BQFieldModeEnum.NULLABLE)
-    ignore = BQField('ignore', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
 
 
 class BQGenomicManifestFile(BQTable):
@@ -304,7 +304,7 @@ class BQGenomicManifestFeedbackSchema(BQSchema):
     feedback_record_count = BQField('feedback_record_count', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     feedback_complete = BQField('feedback_complete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     feedback_complete_date = BQField('feedback_complete_date', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-    ignore = BQField('ignore', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
 
 
 class BQGenomicManifestFeedback(BQTable):

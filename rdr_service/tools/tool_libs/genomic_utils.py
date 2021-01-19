@@ -28,7 +28,9 @@ from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed
+from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
+    GenomicManifestFeedback
+from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -36,6 +38,9 @@ from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStora
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
     GenomicWorkflowState, GenomicSetMemberStatus
+from rdr_service.tools.tool_libs._tool_base import ToolBase
+
+from rdr_service.services.system_utils import JSONObject
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -48,15 +53,15 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
-class GenomicManifestBase(object):
+class GenomicManifestBase(ToolBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         # Tool_lib attributes
-        self.args = args
-        self.gcp_env = gcp_env
+        super().__init__(args, gcp_env)
+
         self.dao = None
         self.gscp = GoogleCloudStorageProvider()
         self.lsp = LocalFilesystemStorageProvider()
@@ -969,9 +974,13 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if self.args.job == 'RECONCILE_GENOTYPING_DATA':
             try:
+                server_config = self.get_server_config()
+
                 with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
+
+                    controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
                     controller.run_reconciliation_to_genotyping_data()
 
             except Exception as e:   # pylint: disable=broad-except
@@ -980,9 +989,14 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if self.args.job == 'RECONCILE_SEQUENCING_DATA':
             try:
+                server_config = self.get_server_config()
+
                 with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
+
+                    controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
+
                     controller.run_reconciliation_to_sequencing_data()
 
             except Exception as e:   # pylint: disable=broad-except
@@ -1014,6 +1028,36 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
+        if self.args.job == 'AW2F_MANIFEST':
+            try:
+                if not self.args.csv:
+                    _logger.info('--csv of genomic_manifest_feedback ids record required for this job.')
+
+                else:
+                    _logger.info(f'Feedback record list specified: {self.args.csv}')
+
+                    # Validate csv file exists
+                    if not os.path.exists(self.args.csv):
+                        _logger.error(f'File {self.args.csv} was not found.')
+                        return 1
+
+                    # Open list of feedback records and process AW2F for each
+                    with open(self.args.csv, encoding='utf-8-sig') as f:
+                        csvreader = csv.reader(f)
+
+                        # Run the AW2 manifest ingestion on each file
+                        for l in csvreader:
+                            feedback_id = l[0]
+
+                            result = self.run_aw2f_manifest(feedback_id)
+
+                            if result != 0:
+                                return 1
+
+            except Exception as e:   # pylint: disable=broad-except
+                _logger.error(e)
+                return 1
+
         return 0
 
     def run_aw1_manifest(self):
@@ -1021,10 +1065,34 @@ class GenomicProcessRunner(GenomicManifestBase):
         bucket_name = self.args.file.split('/')[0]
         file_name = self.args.file.replace(bucket_name + '/', '')
 
+        # Get blob for file from gcs
+        _blob = self.gscp.get_blob(bucket_name, file_name)
+
+        # Set up file/JSON
+        task_data = {
+            "bucket": bucket_name,
+            "job": False,
+            "manifest_file": None,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": _blob.updated,
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": self.args.file,
+            }
+        }
+
+        # Call pipeline function
+        mf = genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data, project_id=self.gcp_env.project)
+
+        task_data['manifest_file'] = mf
+
+        _task_data = JSONObject(task_data)
+
         # Use a Controller to run the job
         try:
             with GenomicJobController(GenomicJob.AW1_MANIFEST,
                                       storage_provider=self.gscp,
+                                      task_data=_task_data,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
                 controller.ingest_specific_aw1_manifest(file_name)
@@ -1068,6 +1136,39 @@ class GenomicProcessRunner(GenomicManifestBase):
                     return 1
 
         return 0
+
+    def run_aw2f_manifest(self, feedback_id):
+        """
+        Runs the AW2f manifest generation workflow for a feedback ID
+        :param feedback_id:
+        :return:
+        """
+        try:
+
+            server_config = self.get_server_config()
+
+            # Get the feedback record for the ID
+            with self.dao.session() as s:
+                feedback_record = s.query(
+                    GenomicManifestFeedback
+                ).filter(GenomicManifestFeedback.id == feedback_id).one_or_none()
+
+            # Run the AW2F Workflow
+            with GenomicJobController(GenomicJob.AW2F_MANIFEST,
+                                      bq_project_id=self.gcp_env.project
+                                      ) as controller:
+
+                controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
+
+                controller.generate_manifest(GenomicManifestTypes.AW2F,
+                                             _genome_type=config.GENOME_TYPE_ARRAY,
+                                             feedback_record=feedback_record)
+
+            return 0
+
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.error(e)
+            return 1
 
 
 class FileUploadDateClass(GenomicManifestBase):
@@ -1374,6 +1475,113 @@ class CalculateContaminationCategoryClass(GenomicManifestBase):
         return 0
 
 
+class IngestionClass(GenomicManifestBase):
+    """
+    Perform a targeted ingestion of AW1 or AW2 data
+    for an arbitrary set of participants based on genomic_set_member.id
+    """
+    def run(self):
+
+        # Validate arguments
+        if not self.args.csv and not self.args.member_ids:
+            _logger.error('Either --csv or --member_ids must be provided.')
+            return 1
+
+        if self.args.csv and self.args.member_ids:
+            _logger.error('Arguments --csv and --member_ids may not be used together.')
+            return 1
+
+        if self.args.csv:
+            # Validate csv file exists
+            if not os.path.exists(self.args.csv):
+                _logger.error(f'File {self.args.csv} was not found.')
+                return 1
+
+        # Make list of member_ids from CSV or argument
+        member_ids = list()
+
+        if self.args.member_ids:
+            for member_id in self.args.member_ids.split(','):
+                member_ids.append(member_id.strip())
+
+        else:
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    member_ids.append(line.strip())
+
+        if len(member_ids) > 0:
+            # Activate the SQL Proxy
+            self.gcp_env.activate_sql_proxy()
+            self.dao = GenomicSetMemberDao()
+
+            manifest_data_types = ('AW1', 'AW2')
+
+            bucket_name = None
+
+            if self.args.manifest_file:
+                _logger.info(f'Manifest file supplied: {self.args.manifest_file}')
+
+                # Get bucket and filename from argument
+                bucket_name = self.args.manifest_file.split('/')[0]
+
+            if self.args.data_type.lower() == "aw1":
+                # Run AW1 ingestion on sample list
+                _logger.info("Ingesting AW1 data for ids.")
+
+                # TODO: Future enhancements:
+                #  look up AW1 file for sample if none supplied
+
+                if bucket_name:
+                    # ingest AW1 data using controller
+                    with GenomicJobController(GenomicJob.AW1_MANIFEST,
+                                              storage_provider=self.gscp,
+                                              bq_project_id=self.gcp_env.project) as controller:
+
+                        controller.bypass_record_count = self.args.bypass_record_count
+
+                        for member_id in member_ids:
+                            self.run_ingestion_for_member_id(controller, member_id, bucket_name)
+
+            elif self.args.data_type.lower() == "aw2":
+                # Run AW2 ingestion on sample list
+                _logger.info("Ingesting AW2 data for ids.")
+
+                if bucket_name:
+                    # ingest AW1 data using controller
+                    with GenomicJobController(GenomicJob.METRICS_INGESTION,
+                                              storage_provider=self.gscp,
+                                              bq_project_id=self.gcp_env.project) as controller:
+
+                        controller.bypass_record_count = self.args.bypass_record_count
+
+                        for member_id in member_ids:
+                            self.run_ingestion_for_member_id(controller, member_id, bucket_name)
+
+            else:
+                _logger.error(
+                    f'Invalid argument for --data-type. Must be in {manifest_data_types}')
+                return 1
+
+        return 0
+
+    def run_ingestion_for_member_id(self, controller, member_id, bucket_name):
+        # Use a Controller to run the job
+        try:
+
+            controller.bucket_name = bucket_name
+
+            member = self.dao.get(member_id)
+
+            controller.ingest_awn_data_for_member(f"/{self.args.manifest_file}", member)
+
+            return 0
+
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.error(e)
+            return 1
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -1468,6 +1676,21 @@ def run():
                                                help="Use a cloud task",
                                                default=False, action="store_true")  # noqa
 
+    # Targeted ingestion of AW1 or AW2 data for a member ID
+    sample_ingestion_parser = subparser.add_parser("sample-ingestion")
+    sample_ingestion_parser.add_argument("--csv", help="A CSV file of genomic_st_member IDs",
+                                         default=None, required=False)  # noqa
+    sample_ingestion_parser.add_argument("--member-ids",
+                               help="a comma-separated list of genomic_set_member IDs to resend",
+                               default=None,
+                               required=False)  # noqa
+    sample_ingestion_parser.add_argument("--data-type", help="The manifest data type to ingest: AW1 or AW2",
+                                         default=None, required=True)  # noqa
+    sample_ingestion_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
+                                         default=None, required=False)  # noqa
+    sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
+                                         default=False, required=False, action="store_true")  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1517,6 +1740,10 @@ def run():
 
         elif args.util == 'contamination-category':
             process = CalculateContaminationCategoryClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'sample-ingestion':
+            process = IngestionClass(args, gcp_env)
             exit_code = process.run()
 
         else:

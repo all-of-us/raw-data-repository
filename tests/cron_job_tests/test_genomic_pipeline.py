@@ -3,6 +3,7 @@ import datetime
 import time
 import os
 import mock
+import operator
 
 import pytz
 from dateutil.parser import parse
@@ -73,6 +74,7 @@ _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'baylor_fake_genomic_center_bucket'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
 _FAKE_GENOTYPING_FOLDER = 'AW1_genotyping_sample_manifests'
 _FAKE_SEQUENCING_FOLDER = 'AW1_wgs_sample_manifests'
@@ -95,9 +97,11 @@ class GenomicPipelineTest(BaseTestCase):
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, [_FAKE_BUCKET_FOLDER])
         config.override_setting(config.GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME, [_FAKE_BUCKET_RESULT_FOLDER])
         config.override_setting(config.GENOMIC_CENTER_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                                    _FAKE_GENOMIC_CENTER_BUCKET_B])
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_B,
+                                                                    _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR])
         config.override_setting(config.GENOMIC_CENTER_DATA_BUCKET_NAME, [_FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                                         _FAKE_GENOMIC_CENTER_BUCKET_B])
+                                                                         _FAKE_GENOMIC_CENTER_BUCKET_B,
+                                                                         _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR])
         config.override_setting(config.GENOMIC_CVL_BUCKET_NAME, [_FAKE_BUCKET])
 
         config.override_setting(config.GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME,
@@ -341,6 +345,8 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=(1, 2),
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        self._update_test_sample_ids()
 
         # Setup Test file
         aw2_manifest_file = test_data.open_genomic_set_file("RDR_AoU_GEN_TestDataManifest.csv")
@@ -759,6 +765,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
+                                                genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
@@ -777,13 +784,20 @@ class GenomicPipelineTest(BaseTestCase):
         manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
-        sequencing_test_files = (
+        # Upload files for RDR sample
+        sequencing_test_files_1 = (
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
             f'test_data_folder/10001_R01C01_Red.idat',
             f'test_data_folder/10001_R01C01_Grn.idat',
             f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+        )
+        for f in sequencing_test_files_1:
+            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        # Upload files for JH sample
+        sequencing_test_files = (
             f'test_data_folder/10002_R01C02.vcf.gz',
             f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
@@ -793,7 +807,14 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
         )
         for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+            self._write_cloud_csv(f, 'attagc', bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR)
+
+        # change member 2 gc_site_id
+        member = self.member_dao.get(2)
+        member.gcSiteId = 'jh'
+
+        with self.member_dao.session() as s:
+            s.merge(member)
 
         genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
 
@@ -808,12 +829,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.idatRedMd5Received)
         self.assertEqual(0, gc_record.idatGreenMd5Received)
 
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.vcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.vcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.vcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.idatRedPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.idatGreenPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[5]}", gc_record.idatRedMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[0]}", gc_record.vcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[1]}", gc_record.vcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[2]}", gc_record.vcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[3]}", gc_record.idatRedPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[4]}", gc_record.idatGreenPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[5]}", gc_record.idatRedMd5Path)
 
         gc_record = self.metrics_dao.get(2)
 
@@ -856,7 +877,7 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.return_value = 1
 
         # Create the fake ingested data
-        self._create_fake_datasets_for_gc_tests(3, genomic_workflow_state=GenomicWorkflowState.AW1)
+        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
                                          bucket_name,
@@ -879,9 +900,9 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_2.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_2.cram',
+            f'test_data_folder/RDR_2_1002_10002_2.cram.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -1127,6 +1148,8 @@ class GenomicPipelineTest(BaseTestCase):
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
+
+            rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
 
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
@@ -1756,15 +1779,25 @@ class GenomicPipelineTest(BaseTestCase):
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
 
-        # Use the Controller to run the job
-        with GenomicJobController(GenomicJob.AW1_MANIFEST) as controller:
-            controller.bucket_name = bucket_name
-            controller.ingest_specific_aw1_manifest(file_name)
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Test the data was ingested OK
         for member in self.member_dao.get_all():
             if member.id in [1, 2]:
-                self.assertEqual(1, member.reconcileGCManifestJobRunId)
+                self.assertEqual(2, member.reconcileGCManifestJobRunId)
                 self.assertEqual('rdr', member.gcSiteId)
                 self.assertEqual("aou_array", member.gcManifestTestName)
 
@@ -1774,24 +1807,53 @@ class GenomicPipelineTest(BaseTestCase):
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
 
+        # Check record count for manifest record
+        manifest_record = self.manifest_file_dao.get(1)
+
+        self.assertEqual(2, manifest_record.recordCount)
+
         # Test the end result code is recorded
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
     def test_aw1f_ingestion_workflow(self):
         # Setup test data: 1 aou_array, 1 aou_wgs
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
                                                 array_participants=[1],
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
-
-        # Setup Test AW1 file
+        # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-2.csv")
+
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            gc_manifest_file,
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_GENOTYPING_FOLDER,
-        )
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        with clock.FakeClock(test_date):
+            self._write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
+
+        # Get bucket, subfolder, and filename from argument
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Setup Test AW1F file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-AW1F-Workflow-Test-1.csv")
@@ -1802,9 +1864,6 @@ class GenomicPipelineTest(BaseTestCase):
             bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
             folder=_FAKE_FAILURE_FOLDER,
         )
-
-        # Ingest AW1
-        genomic_pipeline.genomic_centers_manifest_workflow()
 
         # Ingest AW1F
         genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
@@ -1878,7 +1937,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
-                                                genome_center='JH',
+                                                genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         # Set starting RoR authored
@@ -1888,7 +1947,7 @@ class GenomicPipelineTest(BaseTestCase):
             p.consentForGenomicsRORAuthored = ror_start
             self.summary_dao.update(p)
 
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
@@ -2154,6 +2213,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 recon_gc_man_id=1,
+                                                genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -2367,10 +2427,10 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
-                                                genome_center='JH',
+                                                genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
@@ -2489,7 +2549,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 recon_gc_man_id=1,
-                                                genome_center='JH',
+                                                genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
@@ -2600,6 +2660,14 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(4)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw3_no_records(self):
+        genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 1
+
+        # Test run record result is success if no records
+        run_obj = self.job_run_dao.get(1)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw1c_manifest_ingestion(self):
         # Need W3 Manifest Job Run: run_id = 1
@@ -2881,7 +2949,7 @@ class GenomicPipelineTest(BaseTestCase):
         # manifest_file
         self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
         self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
-        self.assertEqual(2, manifest_record.recordCount)
+        self.assertEqual(0, manifest_record.recordCount)
         self.assertEqual(bucket_name, manifest_record.bucketName)
         self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
 
