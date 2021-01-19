@@ -40,8 +40,13 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
     # they're using more than 250 megabytes
     memory_threshold_kilobytes = 256000  # 250 megabytes (250 x 1024)
     if memory_used_kilobytes > memory_threshold_kilobytes:
-        # This is copied from Gunicorn's code for closing out a sync worker after reaching the max_requests limit
-        worker.alive = False
+        # This will safely start shutting down a worker: letting it continue with the request it is
+        # currently processing, but closing it off from further requests (as was seen with thread workers when we
+        # set alive to False).
+        # WARNING: As of now the parameters sig and frame aren't used by the thread worker (our current default). If
+        # we change to another worker type, or if Gunicorn updates the handle_quit code to do something with them,
+        # then we may need to pass something in.
+        worker.handle_quit(None, None)
 
         memory_used_megabytes = round(memory_used_kilobytes / 1024, 2)
         # Logs from the worker appear beside the normal app logs, but without log levels attached to them.
