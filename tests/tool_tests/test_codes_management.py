@@ -4,7 +4,7 @@ import os
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
-from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
 from rdr_service.tools.tool_libs._tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
@@ -118,12 +118,14 @@ class CodesManagementTest(BaseTestCase):
         for question_index, survey_question in enumerate(survey.questions):
             if question_index == 0:
                 self.assertEqual('Participant ID', survey_question.display)
+                self.assertEqual(SurveyQuestionType.TEXT, survey_question.questionType)
                 self.assertCodeHasExpectedData(survey_question.code, {
                     'value': 'participant_id',
                     'type': CodeType.QUESTION
                 })
             elif question_index == 1:
                 self.assertEqual('This is a single-select, multiple choice question', survey_question.display)
+                self.assertEqual(SurveyQuestionType.RADIO, survey_question.questionType)
                 self.assertCodeHasExpectedData(survey_question.code, {
                     'value': 'radio',
                     'type': CodeType.QUESTION

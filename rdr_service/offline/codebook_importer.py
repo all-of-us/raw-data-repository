@@ -3,10 +3,10 @@ import re
 
 from rdr_service.clock import CLOCK
 from rdr_service.model.code import Code, CodeType
-from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
 
 CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
-CODE_TYPES_WITH_OPTIONS = ['radio', 'dropdown', 'checkbox']
+CODE_TYPES_WITH_OPTIONS = [SurveyQuestionType.RADIO, SurveyQuestionType.DROPDOWN, SurveyQuestionType.CHECKBOX]
 
 
 class CodebookImporter:
@@ -77,17 +77,19 @@ class CodebookImporter:
 
     def parse_question(self, field_name, description, field_type, item_json):
         question_code = self.initialize_code(field_name, description, CodeType.QUESTION)
+        question_type = field_type.upper()
         survey_question = SurveyQuestion(
             survey=self.survey,
             code=question_code,
-            display=description
+            display=description,
+            questionType=SurveyQuestionType(question_type)
         )
         self.session.add(survey_question)
 
         option_string = item_json['select_choices_or_calculations']
         if option_string:
             self.parse_options(option_string, survey_question)
-        elif field_type in CODE_TYPES_WITH_OPTIONS:
+        elif question_type in CODE_TYPES_WITH_OPTIONS:
             # The answers string was empty, but this is a type we'd expect to have options
             self.questions_missing_options.append(field_name)
 
