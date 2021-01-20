@@ -53,7 +53,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             from questionnaire_response qr
             inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
                        and qh2.version = qr.questionnaire_version
-                       and qh2.semantic_version = qr.questionnaire_semantic_version
             where qr.participant_id = :p_id and qr.questionnaire_id IN (
                 select q.questionnaire_id from questionnaire q
                 inner join questionnaire_history qh on q.version = qh.version
