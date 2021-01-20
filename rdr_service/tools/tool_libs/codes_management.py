@@ -5,6 +5,7 @@ from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code, CodeType
 from rdr_service.offline.codebook_importer import CodebookImporter
@@ -132,21 +133,20 @@ class CodesSyncClass(ToolBase):
             code_csv_writer.writerow([
                 'Code Value',
                 'Display',
-                'Parent Value',
-                'Module Value'
+                'Parent Values',
+                'Module Values'
             ])
             codes = session.query(Code).order_by(Code.value).all()
             for code in codes:
                 row_data = [code.value, code.display]
-                if code.parent:
-                    row_data.append(code.parent.value)
 
-                    possible_module_code = code.parent
-                    while possible_module_code and possible_module_code.codeType != CodeType.MODULE:
-                        possible_module_code = possible_module_code.parent
+                code_parents = CodeDao.get_parent_codes(code, session)
+                if code_parents:
+                    row_data.append(','.join([parent.value for parent in code_parents]))
 
-                    if possible_module_code:
-                        row_data.append(possible_module_code.value)
+                    module_codes = CodeDao.get_module_codes(code, session)
+                    if module_codes:
+                        row_data.append(','.join([module_code.value for module_code in module_codes]))
                 code_csv_writer.writerow(row_data)
 
     def run_process(self):

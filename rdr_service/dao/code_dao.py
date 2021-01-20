@@ -1,11 +1,12 @@
 import logging
-
+from typing import List, Set
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.cache_all_dao import CacheAllDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
+from rdr_service.model.survey import SurveyQuestion, SurveyQuestionOption
 from rdr_service.singletons import CODE_CACHE_INDEX
 
 _CODE_TYPE_MAP = {
@@ -225,6 +226,47 @@ class CodeDao(CacheAllDao):
             )
         else:
             return result_map
+
+    @staticmethod
+    def get_parent_codes(code: Code, session) -> List[Code]:
+        if code.codeType == CodeType.ANSWER:
+            # TODO: do codes cross types (answer codes used for questions)?
+            # Get all the question options that use this code, then the questions that use those options,
+            # then return the codes for the questions
+            survey_question_options: List[SurveyQuestionOption] = session.query(SurveyQuestionOption).filter(
+                SurveyQuestionOption.code == code
+            ).all()
+            return [question_option.question.code for question_option in survey_question_options]
+        elif code.codeType == CodeType.QUESTION:
+            # Get all the questions that use this code, then the modules that use those questions,
+            # then return the module codes
+            survey_questions: List[SurveyQuestion] = session.query(SurveyQuestion).filter(
+                SurveyQuestion.code == code
+            ).all()
+            return [question.survey.code for question in survey_questions]
+        else:
+            # Module codes don't have parents
+            return []
+
+    @staticmethod
+    def get_module_codes(code: Code, session) -> Set[Code]:
+        module_codes = set()
+
+        # Find all modules where this code is used as an answer option
+        survey_question_options: List[SurveyQuestionOption] = session.query(SurveyQuestionOption).filter(
+            SurveyQuestionOption.code == code
+        ).all()
+        for question_option in survey_question_options:
+            module_codes.add(question_option.question.survey.code)
+
+        # Find all modules where this code is used as a question
+        survey_questions: List[SurveyQuestion] = session.query(SurveyQuestion).filter(
+            SurveyQuestion.code == code
+        ).all()
+        for question in survey_questions:
+            module_codes.add(question.survey.code)
+
+        return module_codes
 
 
 class CodeHistoryDao(BaseDao):

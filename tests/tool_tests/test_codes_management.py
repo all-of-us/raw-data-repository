@@ -338,7 +338,7 @@ class CodesManagementTest(BaseTestCase):
         ])
 
         mock_csv_writerow.assert_has_calls([
-            mock.call(['Code Value', 'Display', 'Parent Value', 'Module Value']),
+            mock.call(['Code Value', 'Display', 'Parent Values', 'Module Values']),
             mock.call(['A1', 'One', 'radio', 'TestQuestionnaire']),
             mock.call(['A2', 'Two', 'radio', 'TestQuestionnaire']),
             mock.call(['A3', 'Three', 'radio', 'TestQuestionnaire']),
