@@ -2755,6 +2755,7 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicGCValidationMetrics.ignoreFlag == 0) &
                     (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
