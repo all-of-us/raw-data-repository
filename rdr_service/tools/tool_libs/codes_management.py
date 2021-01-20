@@ -173,7 +173,6 @@ class CodesSyncClass(ToolBase):
             project_api_key = self.parse_values_from_config(self.args.redcap_project)
 
             if not self.args.export_only:
-                code_importer = CodebookImporter(self.args.dry_run, session, self.codes_allowed_for_reuse, logger)
 
                 if not self.args.dry_run:
                     logger.info(f'Importing codes for {self.gcp_env.project}')
@@ -184,6 +183,10 @@ class CodesSyncClass(ToolBase):
                 # Get the data-dictionary and process codes
                 redcap = RedcapClient()
                 dictionary_json = redcap.get_data_dictionary(project_api_key)
+                project_json = redcap.get_project_info(project_api_key)
+
+                code_importer = CodebookImporter(project_json, self.args.dry_run, session,
+                                                 self.codes_allowed_for_reuse, logger)
                 for item_json in dictionary_json:
                     code_importer.import_data_dictionary_item(item_json)
 
@@ -196,7 +199,7 @@ class CodesSyncClass(ToolBase):
                     exit_code = 1
 
                 # Don't save anything if no module code was found
-                if code_importer.module_code is None:
+                if code_importer.survey is None or code_importer.survey.code is None:
                     logger.error('No module code found, canceling import')
                     exit_code = 1
 

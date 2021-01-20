@@ -1,31 +1,34 @@
+from datetime import datetime
 import re
 
 from rdr_service.clock import CLOCK
 from rdr_service.model.code import Code, CodeType
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 
 CODE_SYSTEM = 'http://terminology.pmi-ops.org/CodeSystem/ppi'
 CODE_TYPES_WITH_OPTIONS = ['radio', 'dropdown', 'checkbox']
 
 
 class CodebookImporter:
-    def __init__(self, dry_run, session, codes_allowed_for_reuse, logger):
+    def __init__(self, project_json, dry_run, session, codes_allowed_for_reuse, logger):
         self.dry_run = dry_run
         self.session = session
-        self.codes_allowed_for_reuse = codes_allowed_for_reuse
+        self.logger = logger
 
+        self.codes_allowed_for_reuse = codes_allowed_for_reuse
         self.code_reuse_found = False
-        self.module_code = None
         self.invalid_codes_found = []
         self.questions_missing_options = []
 
-        self.logger = logger
+        self.survey = None
+        self.project_json = project_json
 
-    def initialize_code(self, value, display, parent=None, code_type=None):
+    def initialize_code(self, value, display, code_type=None):
         new_code = Code(
             codeType=code_type,
             value=value,
             shortValue=value[:50],
-            display=display,
+            display=display,  # TODO: curation uses display, eventually refactor it so we can not have display on code
             system=CODE_SYSTEM,
             mapped=True,
             created=CLOCK.now()
@@ -48,18 +51,9 @@ class CodebookImporter:
         elif self.dry_run:
             self.logger.info(f'Found new "{code_type}" type code, value: {value}')
         elif not self.code_reuse_found and not self.dry_run:
-            # Associating a code with a parent adds it to the session too,
-            # so it should only happen when we intend to save it.
-            # (But the parent here could be empty, so we make sure the code gets to the session)
-            new_code.parent = parent
             self.session.add(new_code)
 
         return new_code
-
-    def import_answer_code(self, answer_text, question_code):
-        # There may be multiple commas in the display string, we want to split on the first to get the code
-        code, display = (part.strip() for part in answer_text.split(',', 1))
-        self.initialize_code(code, display, question_code, CodeType.ANSWER)
 
     @staticmethod
     def is_code_value_valid(code_value):
@@ -67,30 +61,61 @@ class CodebookImporter:
         invalid_matches = not_allowed_chars_regex.search(code_value)
         return invalid_matches is None
 
-    def import_data_dictionary_item(self, code_json):
-        code_value = code_json['field_name']
-        code_description = code_json['field_label']
+    def parse_options(self, options_string, survey_question: SurveyQuestion):
+        for option_text in options_string.split('|'):
+            # There may be multiple commas in the display string, we want to split on the first to get the code
+            code, display = (part.strip() for part in option_text.split(',', 1))
+            option_code = self.initialize_code(code, display, CodeType.ANSWER)
+            survey_question_option = SurveyQuestionOption(
+                question=survey_question,
+                code=option_code,
+                display=display
+            )
+            # TODO: display should be on the questions/options now, not on the codes
 
-        if code_value != 'record_id':  # Ignore the code Redcap automatically inserts into each project
-            if not self.is_code_value_valid(code_value):
-                self.invalid_codes_found.append(code_value)
+            self.session.add(survey_question_option)
+
+    def parse_question(self, field_name, description, field_type, item_json):
+        question_code = self.initialize_code(field_name, description, CodeType.QUESTION)
+        survey_question = SurveyQuestion(
+            survey=self.survey,
+            code=question_code,
+            display=description
+        )
+        self.session.add(survey_question)
+
+        option_string = item_json['select_choices_or_calculations']
+        if option_string:
+            self.parse_options(option_string, survey_question)
+        elif field_type in CODE_TYPES_WITH_OPTIONS:
+            # The answers string was empty, but this is a type we'd expect to have options
+            self.questions_missing_options.append(field_name)
+
+    def parse_first_descriptive(self, field_name, description):
+        module_code = self.initialize_code(field_name, description, CodeType.MODULE)
+        # TODO: allow for module code sharing between two imports of the the same redcap project
+        self.survey = Survey(
+            redcapProjectId=self.project_json['project_id'],
+            redcapProjectTitle=self.project_json['project_title'],
+            code=module_code,
+            importTime=datetime.utcnow()
+        )
+        self.session.add(self.survey)
+
+    def import_data_dictionary_item(self, item_json):
+        field_name = item_json['field_name']
+        description = item_json['field_label']
+        field_type = item_json['field_type']
+
+        if field_name != 'record_id':  # Ignore the field Redcap automatically inserts into each project
+            if not self.is_code_value_valid(field_name):
+                self.invalid_codes_found.append(field_name)
             else:
-                if code_json['field_type'] == 'descriptive':
+                if field_type == 'descriptive':
                     # Only catch the first 'descriptive' field we see. That's the module code.
-                    # Descriptive fields other than the first are considered to be readonly, display text.
+                    # Descriptive fields other than the first are considered to be readonly display text.
                     # So we don't want to save codes for them
-                    if not self.module_code:
-                        new_code = self.initialize_code(code_value, code_description,
-                                                        self.module_code, CodeType.MODULE)
-                        self.module_code = new_code
+                    if self.survey is None:
+                        self.parse_first_descriptive(field_name, description)
                 else:
-                    new_code = self.initialize_code(code_value, code_description,
-                                                    self.module_code, CodeType.QUESTION)
-
-                    answers_string = code_json['select_choices_or_calculations']
-                    if answers_string:
-                        for answer_text in answers_string.split('|'):
-                            self.import_answer_code(answer_text.strip(), new_code)
-                    elif code_json['field_type'] in CODE_TYPES_WITH_OPTIONS:
-                        # The answers string was empty, but this is a type we'd expect to have options
-                        self.questions_missing_options.append(code_value)
+                    self.parse_question(field_name, description, field_type, item_json)

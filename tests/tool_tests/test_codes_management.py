@@ -4,6 +4,7 @@ import os
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.tools.tool_libs._tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
@@ -38,7 +39,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(redcap_data_dictionary, reuse_codes=[], dry_run=False, export_only=False):
+    def run_tool(project_info, redcap_data_dictionary, reuse_codes=[], dry_run=False, export_only=False):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -68,29 +69,24 @@ class CodesManagementTest(BaseTestCase):
 
             mock_redcap_instance = mock_redcap_class.return_value
             mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
+            mock_redcap_instance.get_project_info.return_value = project_info
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
             sync_codes_tool = CodesSyncClass(args, gcp_env)
             return sync_codes_tool.run_process(), mock_redcap_instance, mock_csv_writerow
 
-    def _load_code_with_value(self, code_value) -> Code:
-        return self.session.query(Code).filter(Code.value == code_value).one()
-
-    def assertCodeExists(self, code_value, display_text, code_type, parent_code: Code = None):
-        code = self._load_code_with_value(code_value)
-        self.assertEqual(display_text, code.display)
-        self.assertEqual(code_type, code.codeType)
-
-        if parent_code:
-            self.assertEqual(parent_code.codeId, code.parentId)
-        else:
-            self.assertIsNone(code.parentId)
-
-        return code
+    def assertCodeHasExpectedData(self, code: Code, expected_data):
+        self.assertEqual(expected_data['type'], code.codeType)
+        self.assertEqual(expected_data['value'], code.value)
 
     def test_question_and_answer_codes(self):
-        self.run_tool([
+        test_survey_project_id = 123
+        test_survey_project_title = 'Survey Structure Test'
+        self.run_tool({
+            'project_id': test_survey_project_id,
+            'project_title': test_survey_project_title
+        }, [
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'record_id',
@@ -111,18 +107,42 @@ class CodesManagementTest(BaseTestCase):
         ])
         self.assertEqual(7, self.session.query(Code).count(), '7 codes should have been created')
 
-        module_code = self.assertCodeExists('module_code', 'Test Questionnaire Module', CodeType.MODULE)
-        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
-        radio_code = self.assertCodeExists(
-            'radio',
-            'This is a single-select, multiple choice question',
-            CodeType.QUESTION,
-            module_code
-        )
-        self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER, radio_code)
+        survey: Survey = self.session.query(Survey).filter(Survey.redcapProjectId == test_survey_project_id).one()
+        self.assertEqual(test_survey_project_title, survey.redcapProjectTitle)
+        self.assertCodeHasExpectedData(survey.code, {
+            'value': 'module_code',
+            'type': CodeType.MODULE
+        })
+
+        self.assertEqual(2, len(survey.questions))
+        for question_index, survey_question in enumerate(survey.questions):
+            if question_index == 0:
+                self.assertEqual('Participant ID', survey_question.display)
+                self.assertCodeHasExpectedData(survey_question.code, {
+                    'value': 'participant_id',
+                    'type': CodeType.QUESTION
+                })
+            elif question_index == 1:
+                self.assertEqual('This is a single-select, multiple choice question', survey_question.display)
+                self.assertCodeHasExpectedData(survey_question.code, {
+                    'value': 'radio',
+                    'type': CodeType.QUESTION
+                })
+
+                expected_option_data_list = [
+                    {'value': 'A1', 'display': 'Choice One'},
+                    {'value': 'A2', 'display': 'Choice Two'},
+                    {'value': 'A3', 'display': 'Choice Three'},
+                    {'value': 'A4', 'display': 'Etc.'}
+                ]
+                self.assertEqual(len(expected_option_data_list), len(survey_question.options))
+                for option_index, survey_question_option in enumerate(survey_question.options):
+                    expected_option_data = expected_option_data_list[option_index]
+                    self.assertEqual(expected_option_data['display'], survey_question_option.display)
+                    self.assertCodeHasExpectedData(survey_question_option.code, {
+                        'value': expected_option_data['value'],
+                        'type': CodeType.ANSWER
+                    })
 
     def test_detection_of_module_code(self):
         self.run_tool([
