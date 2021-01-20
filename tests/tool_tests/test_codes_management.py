@@ -39,7 +39,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(project_info, redcap_data_dictionary, reuse_codes=[], dry_run=False, export_only=False):
+    def run_tool(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -61,6 +61,12 @@ class CodesManagementTest(BaseTestCase):
         args.reuse_codes = ','.join(reuse_codes)
         args.export_only = export_only
 
+        if project_info is None:
+            project_info = {
+                'project_id': 1,
+                'project_title': 'Test'
+            }
+
         with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.open'),\
@@ -80,13 +86,14 @@ class CodesManagementTest(BaseTestCase):
         self.assertEqual(expected_data['type'], code.codeType)
         self.assertEqual(expected_data['value'], code.value)
 
+    def assertCodeExists(self, value, code_type: CodeType):
+        code = self.session.query(Code).filter(Code.value == value).one()
+        self.assertEqual(code_type, code.codeType)
+
     def test_question_and_answer_codes(self):
         test_survey_project_id = 123
         test_survey_project_title = 'Survey Structure Test'
-        self.run_tool({
-            'project_id': test_survey_project_id,
-            'project_title': test_survey_project_title
-        }, [
+        self.run_tool([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'record_id',
@@ -104,7 +111,10 @@ class CodesManagementTest(BaseTestCase):
                 'radio',
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
-        ])
+        ], project_info={
+            'project_id': test_survey_project_id,
+            'project_title': test_survey_project_title
+        })
         self.assertEqual(7, self.session.query(Code).count(), '7 codes should have been created')
 
         survey: Survey = self.session.query(Survey).filter(Survey.redcapProjectId == test_survey_project_id).one()
@@ -164,10 +174,12 @@ class CodesManagementTest(BaseTestCase):
                 'descriptive'
             )
         ])
-        self.assertEqual(2, self.session.query(Code).count(), '2 codes should have been created')
-
-        module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
-        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
+        self.assertEqual(
+            1,
+            self.session.query(Code).filter(Code.codeType == CodeType.MODULE).count(),
+            'Only 1 module code should have been created'
+        )
+        self.assertCodeExists('TestQuestionnaire', CodeType.MODULE)
 
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_failure_on_question_code_reuse(self, mock_logger):
@@ -196,6 +208,9 @@ class CodesManagementTest(BaseTestCase):
             )
         ])
         self.assertEqual(1, self.session.query(Code).count(), 'No codes should be created when running the tool')
+        self.assertEqual(0, self.session.query(Survey).count(), 'No survey objects should be created')
+        self.assertEqual(0, self.session.query(SurveyQuestion).count(), 'No survey objects should be created')
+
         mock_logger.error.assert_any_call('Code "old_code" is already in use')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
 
@@ -266,6 +281,11 @@ class CodesManagementTest(BaseTestCase):
             )
         ], dry_run=True)
         self.assertEqual(0, self.session.query(Code).count(), 'No codes should be created during a dry run')
+        self.assertEqual(0, self.session.query(Survey).count(), 'No survey objects should be created during a dry run')
+        self.assertEqual(0, self.session.query(SurveyQuestion).count(),
+                         'No survey objects should be created during a dry run')
+        self.assertEqual(0, self.session.query(SurveyQuestionOption).count(),
+                         'No survey objects should be created during a dry run')
 
         mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
         mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: participant_id')

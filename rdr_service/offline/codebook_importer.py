@@ -23,6 +23,10 @@ class CodebookImporter:
         self.survey = None
         self.project_json = project_json
 
+    def _save_database_object(self, obj):
+        if not self.dry_run:
+            self.session.add(obj)
+
     def initialize_code(self, value, display, code_type=None):
         new_code = Code(
             codeType=code_type,
@@ -45,13 +49,14 @@ class CodebookImporter:
                 # Let the script continue so that any other duplications can be caught.
                 self.code_reuse_found = True
                 self.logger.error(f'Code "{value}" is already in use')
+                return None
             else:
                 # Allows for reused codes to be a child (or parent) of other codes being imported
                 return existing_code_with_value
         elif self.dry_run:
             self.logger.info(f'Found new "{code_type}" type code, value: {value}')
-        elif not self.code_reuse_found and not self.dry_run:
-            self.session.add(new_code)
+        elif not self.code_reuse_found:
+            self._save_database_object(new_code)
 
         return new_code
 
@@ -73,25 +78,26 @@ class CodebookImporter:
             )
             # TODO: display should be on the questions/options now, not on the codes
 
-            self.session.add(survey_question_option)
+            self._save_database_object(survey_question_option)
 
     def parse_question(self, field_name, description, field_type, item_json):
         question_code = self.initialize_code(field_name, description, CodeType.QUESTION)
-        question_type = field_type.upper()
-        survey_question = SurveyQuestion(
-            survey=self.survey,
-            code=question_code,
-            display=description,
-            questionType=SurveyQuestionType(question_type)
-        )
-        self.session.add(survey_question)
+        if question_code is not None:
+            question_type = SurveyQuestionType(field_type.upper())
+            survey_question = SurveyQuestion(
+                survey=self.survey,
+                code=question_code,
+                display=description,
+                questionType=question_type
+            )
+            self._save_database_object(survey_question)
 
-        option_string = item_json['select_choices_or_calculations']
-        if option_string:
-            self.parse_options(option_string, survey_question)
-        elif question_type in CODE_TYPES_WITH_OPTIONS:
-            # The answers string was empty, but this is a type we'd expect to have options
-            self.questions_missing_options.append(field_name)
+            option_string = item_json['select_choices_or_calculations']
+            if option_string:
+                self.parse_options(option_string, survey_question)
+            elif question_type in CODE_TYPES_WITH_OPTIONS:
+                # The answers string was empty, but this is a type we'd expect to have options
+                self.questions_missing_options.append(field_name)
 
     def parse_first_descriptive(self, field_name, description):
         module_code = self.initialize_code(field_name, description, CodeType.MODULE)
@@ -102,7 +108,7 @@ class CodebookImporter:
             code=module_code,
             importTime=datetime.utcnow()
         )
-        self.session.add(self.survey)
+        self._save_database_object(self.survey)
 
     def import_data_dictionary_item(self, item_json):
         field_name = item_json['field_name']
