@@ -67,13 +67,19 @@ class _BQModuleSchema(BQSchema):
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append(
             {'name': 'modified', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.REQUIRED.name})
+        # Fields which apply to all module responses
         fields.append(
             {'name': 'authored', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'language', 'type': BQFieldTypeEnum.STRING.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'participant_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.REQUIRED.name})
+                       'mode': BQFieldModeEnum.REQUIRED.name}),
+        fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
+                       'mode': BQFieldModeEnum.REQUIRED.name}),
+        fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name})
+
 
         dao = BigQuerySyncDao(backup=True)
 

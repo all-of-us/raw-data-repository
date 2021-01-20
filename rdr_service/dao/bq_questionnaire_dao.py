@@ -49,9 +49,12 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # deprecated stored procedure sp_get_questionnaire_answers used to order its results
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id
+                   qr.participant_id, qh2.external_id
             from questionnaire_response qr
-            where qr.participant_id = :p_id and questionnaire_id IN (
+            inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
+                       and qh2.version = qr.questionnaire_version
+                       and qh2.semantic_version = qr.questionnaire_semantic_version
+            where qr.participant_id = :p_id and qr.questionnaire_id IN (
                 select q.questionnaire_id from questionnaire q
                 inner join questionnaire_history qh on q.version = qh.version
                        and qh.questionnaire_id = q.questionnaire_id
@@ -162,7 +165,9 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'authored',
                         'language',
                         'participant_id',
-                        'questionnaire_response_id'
+                        'questionnaire_response_id',
+                        'questionnaire_id',
+                        'external_id'
                     ):
                         continue
 

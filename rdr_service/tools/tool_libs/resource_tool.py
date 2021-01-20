@@ -89,6 +89,7 @@ class ParticipantResourceClass(object):
 
             for module in modules:
                 mod = module()
+
                 table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
                 if not table:
                     continue
@@ -97,7 +98,7 @@ class ParticipantResourceClass(object):
                 with w_dao.session() as w_session:
                     for mod_bqr in mod_bqrs:
                         mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                               w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
+                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
