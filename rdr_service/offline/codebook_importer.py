@@ -100,15 +100,22 @@ class CodebookImporter:
                 self.questions_missing_options.append(field_name)
 
     def parse_first_descriptive(self, field_name, description):
+        project_id = self.project_json['project_id']
         module_code = self.initialize_code(field_name, description, CodeType.MODULE)
+        import_time = datetime.utcnow()
         # TODO: allow for module code sharing between two imports of the the same redcap project
         self.survey = Survey(
-            redcapProjectId=self.project_json['project_id'],
+            redcapProjectId=project_id,
             redcapProjectTitle=self.project_json['project_title'],
             code=module_code,
-            importTime=datetime.utcnow()
+            importTime=import_time
         )
         self._save_database_object(self.survey)
+
+        # Set replaced time on all previous Survey objects for the project
+        self.session.query(Survey).filter(Survey.redcapProjectId == project_id).update({
+            Survey.replacedTime: import_time
+        })
 
     def import_data_dictionary_item(self, item_json):
         field_name = item_json['field_name']

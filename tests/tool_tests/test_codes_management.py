@@ -1,6 +1,7 @@
 import json
 import mock
 import os
+from typing import List
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
@@ -410,5 +411,31 @@ class CodesManagementTest(BaseTestCase):
                                           '"radio_code", "dropdown_code", "checkbox_code"')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
 
-    def test_reimporting_project_sets_previous_record_as_obsolete(self):
-        """Older Survey objects that have """
+    def test_reimporting_survey_sets_previous_record_as_obsolete(self):
+        """Older Survey objects that have the same project id should be updated when the survey is imported again"""
+        project_id = 1498
+        self.data_generator.create_database_survey(
+            redcapProjectId=project_id,
+            replacedTime=None
+        )
+        self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive')
+        ], project_info={
+            'project_id': project_id,
+            'project_title': 'Test project'
+        })
+
+        surveys: List[Survey] = self.session.query(Survey).filter(
+            Survey.redcapProjectId == project_id
+        ).order_by(Survey.id).all()
+        self.assertEqual(2, len(surveys), 'There should be two surveys with the project id')
+
+        older_survey = surveys[0]  # They're ordered by id, so the first in the db should be the oldest one
+        newer_survey = surveys[1]
+        self.assertEqual(newer_survey.importTime, older_survey.replacedTime)
+
+
+        # TODO: what should happen with code reuse?
+        #  module codes should need to be explicit if not for the same project
+        #  should question and answer codes need to be explicitly allowed?
+        #  should have some sort of type validation (warning if using differently)
