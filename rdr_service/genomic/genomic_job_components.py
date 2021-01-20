@@ -1399,13 +1399,13 @@ class GenomicReconciler:
 
         self.sequencing_file_types = (("hfVcfReceived", ".hard-filtered.vcf.gz", "hfVcfPath"),
                                       ("hfVcfTbiReceived", ".hard-filtered.vcf.gz.tbi", "hfVcfTbiPath"),
-                                      ("hfVcfMd5Received", ".hard-filtered.vcf.md5sum", "hfVcfMd5Path"),
+                                      ("hfVcfMd5Received", ".hard-filtered.vcf.gz.md5sum", "hfVcfMd5Path"),
                                       ("rawVcfReceived", ".vcf.gz", "rawVcfPath"),
                                       ("rawVcfTbiReceived", ".vcf.gz.tbi", "rawVcfTbiPath"),
-                                      ("rawVcfMd5Received", ".vcf.md5sum", "rawVcfMd5Path"),
+                                      ("rawVcfMd5Received", ".vcf.gz.md5sum", "rawVcfMd5Path"),
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
-                                      ("craiReceived", ".crai", "craiPath"))
+                                      ("craiReceived", ".cram.crai", "craiPath"))
 
     def reconcile_metrics_to_genotyping_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
