@@ -78,8 +78,6 @@ class _BQModuleSchema(BQSchema):
         fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name}),
         fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
-                       'mode': BQFieldModeEnum.NULLABLE.name}),
-        fields.append({'name': 'module_id', 'type': BQFieldTypeEnum.STRING.name,
                        'mode': BQFieldModeEnum.NULLABLE.name})
 
 
