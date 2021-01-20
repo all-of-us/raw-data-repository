@@ -275,14 +275,9 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.NO_FILES
         return GenomicSubProcessResult.ERROR
 
-    def _ingest_gc_manifest(self, data, _site):
-        """
-        Updates the GenomicSetMember with GC Manifest data
-        :param data:
-        :param _site: gc_site ID
-        :return: result code
-        """
-        gc_manifest_column_mappings = {
+    @staticmethod
+    def get_aw1_manifest_column_mappings():
+        return {
             'packageId': 'packageid',
             'sampleId': 'sampleid',
             'gcManifestBoxStorageUnitId': 'boxstorageunitid',
@@ -306,6 +301,15 @@ class GenomicFileIngester:
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
         }
+
+    def _ingest_gc_manifest(self, data, _site):
+        """
+        Updates the GenomicSetMember with GC Manifest data
+        :param data:
+        :param _site: gc_site ID
+        :return: result code
+        """
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
         try:
             count = 0
 
@@ -423,6 +427,162 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.SUCCESS
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
+
+    def ingest_single_aw1_row_for_member(self, member):
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['Biobank Id'] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                       for key in row], row.values()))
+
+        ingested_before = member.reconcileGCManifestJobRunId is not None
+
+        # Write AW1 data to genomic_set_member table
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
+
+        # Set attributes from file
+        for key in gc_manifest_column_mappings.keys():
+            try:
+                member.__setattr__(key, row[gc_manifest_column_mappings[key]])
+            except KeyError:
+                member.__setattr__(key, None)
+
+        # Set other fields not in AW1 file
+        member.reconcileGCManifestJobRunId = self.job_run_id
+        member.aw1FileProcessedId = self.file_obj.id
+        member.gcSite = self._get_site_from_aw1()
+
+        # Only update the member's genomicWorkflowState if it was AW0
+        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
+            member.genomicWorkflowState = GenomicWorkflowState.AW1
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest record count
+        if not ingested_before and not self.controller.bypass_record_count:
+            self.increment_manifest_file_record_count_from_id()
+
+        return GenomicSubProcessResult.SUCCESS
+
+    def ingest_single_aw2_row_for_member(self, member: GenomicSetMember) -> GenomicSubProcessResult:
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['Biobank ID'] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                            for key in row], row.values()))
+
+        # Beging prep aw2 row
+        row = self.prep_aw2_row_attributes(row, member)
+
+        if row == GenomicSubProcessResult.ERROR:
+            return GenomicSubProcessResult.ERROR
+
+        # check whether metrics object exists for that member
+        existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+        if existing_metrics_obj is not None:
+            metric_id = existing_metrics_obj.id
+        else:
+            metric_id = None
+
+        upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
+
+        # Update GC Metrics for PDR
+        if upserted_obj:
+            bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
+            genomic_gc_validation_metrics_update(upserted_obj.id)
+
+        self.update_member_for_aw2(member)
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest feedback record count
+        if existing_metrics_obj is None and not self.controller.bypass_record_count:
+            # For feedback manifest loop
+            # Get the genomic_manifest_file
+            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+            if manifest_file is not None:
+                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
+                                                           _project_id=self.controller.bq_project_id)
+
+        return GenomicSubProcessResult.SUCCESS
+
+    def increment_manifest_file_record_count_from_id(self):
+        """
+        Increments the manifest record count by 1
+        """
+
+        manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
+        manifest_file.recordCount += 1
+
+        with self.manifest_dao.session() as s:
+            s.merge(manifest_file)
+
+        bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+        genomic_manifest_file_update(manifest_file.id)
+
+    def prep_aw2_row_attributes(self, row: dict, member: GenomicSetMember):
+        """
+        Set contamination, contamination category,
+        call rate, member_id, and file_id on AW2 row dictionary
+        :param member:
+        :param row:
+        :return: row dictionary or ERROR code
+        """
+
+        row['member_id'] = member.id
+        row['file_id'] = self.file_obj.id
+
+        # Truncate call rate
+        try:
+            row['callrate'] = row['callrate'][:10]
+        except KeyError:
+            pass
+
+        # Validate and clean contamination data
+        try:
+            row['contamination'] = float(row['contamination'])
+
+            # Percentages shouldn't be less than 0
+            if row['contamination'] < 0:
+                row['contamination'] = 0
+
+        except ValueError:
+            logging.error(f'contamination must be a number for sample_id: {row["sampleid"]}')
+            return GenomicSubProcessResult.ERROR
+
+        # Calculate contamination_category
+        contamination_value = float(row['contamination'])
+        category = self.calculate_contamination_category(member.collectionTubeId,
+                                                         contamination_value, member)
+        row['contamination_category'] = category
+
+        return row
+
+    def update_member_for_aw2(self, member: GenomicSetMember):
+        """
+        Updates the aw2FileProcessedId and possibly the genomicWorkflowState
+        of a GenomicSetMember after AW2 data has been ingested
+        :param member:
+        """
+
+        member.aw2FileProcessedId = self.file_obj.id
+
+        # Only update the state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        self.member_dao.update(member)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """
@@ -580,34 +740,13 @@ class GenomicFileIngester:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row],
                                 row.values()))
-            row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['sampleid']
-
-            try:
-                row_copy['callrate'] = row_copy['callrate'][:10]
-            except KeyError:
-                pass
-
-            # Validate and clean contamination data
-            try:
-                row_copy['contamination'] = float(row_copy['contamination'])
-
-                # Percentages shouldn't be less than 0
-                if row_copy['contamination'] < 0:
-                    row_copy['contamination'] = 0
-
-            except ValueError:
-                logging.error(f'contamination must be a number for sample_id: {sample_id}')
-                return GenomicSubProcessResult.ERROR
-
-            except KeyError:
-                pass
 
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(sample_id),
-                                                               genome_type,)
+            member = self.member_dao.get_member_from_sample_id(int(row_copy['sampleid']),
+                                                               genome_type, )
+
             if member is not None:
-                row_copy['member_id'] = member.id
+                row_copy = self.prep_aw2_row_attributes(row_copy, member)
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
@@ -616,16 +755,6 @@ class GenomicFileIngester:
                 else:
                     metric_id = None
 
-                # Calculate contamination_category if contamination supplied
-                try:
-                    contamination_value = float(row_copy['contamination'])
-                    category = self.calculate_contamination_category(member.collectionTubeId,
-                                                                     contamination_value, member)
-                    row_copy['contamination_category'] = category
-
-                except (KeyError, ValueError):
-                    logging.error('Sample supplied without contamination.')
-
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
                 # Update GC Metrics for PDR
@@ -633,14 +762,7 @@ class GenomicFileIngester:
                     bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
                     genomic_gc_validation_metrics_update(upserted_obj.id)
 
-                member.aw2FileProcessedId = self.file_obj.id
-
-                # Only update the state if it was AW1
-                if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-                    member.genomicWorkflowState = GenomicWorkflowState.AW2
-
-                with self.member_dao.session() as session:
-                    session.merge(member)
+                self.update_member_for_aw2(member)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -650,7 +772,8 @@ class GenomicFileIngester:
                                                                _project_id=self.controller.bq_project_id)
 
             else:
-                logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
+                logging.error(f"No genomic set member for bid,sample_id: "
+                              f"{row_copy['biobankid']}, {row_copy['sampleid']}")
                 return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
@@ -1251,6 +1374,7 @@ class GenomicReconciler:
         self.bucket_name = bucket_name
         self.archive_folder = archive_folder
         self.cvl_file_name = None
+        self.file_list = None
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
@@ -1283,53 +1407,69 @@ class GenomicReconciler:
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
                                       ("craiReceived", ".crai", "craiPath"))
 
-    def reconcile_metrics_to_genotyping_data(self):
+    def reconcile_metrics_to_genotyping_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time)
+        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time, _gc_site_id)
 
         total_missing_data = []
 
-        # Iterate over metrics, searching the bucket for filenames
+        # Get list of files in GC data bucket
+        if self.storage_provider:
+            # Use the storage provider if it was set by tool
+            files = self.storage_provider.list(self.bucket_name, prefix=None)
+
+        else:
+            files = list_blobs('/' + self.bucket_name)
+
+        self.file_list = [f.name for f in files]
+
+        # Iterate over metrics, searching the bucket for filenames where *_received = 0
         for metric in metrics:
             member = self.member_dao.get(metric.genomicSetMemberId)
 
-            file = self.file_dao.get(metric.genomicFileProcessedId)
             missing_data_files = []
+
+            metric_touched = False
 
             for file_type in self.genotyping_file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
-                    file_exists = self._get_full_filename(file.bucketName, filename)
+                    file_exists = self._get_full_filename(filename)
 
                     if file_exists != 0:
                         setattr(metric, file_type[0], 1)
-                        setattr(metric, file_type[2], f'gs://{file.bucketName}/{file_exists}')
+                        setattr(metric, file_type[2], f'gs://{self.bucket_name}/{file_exists}')
+                        metric_touched = True
 
                     if not file_exists:
-                        setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.upsert(metric)
+            if metric_touched:
+                # Only upsert the metric if changed
+                inserted_metrics_obj = self.metrics_dao.upsert(metric)
 
-            # Update GC Metrics for PDR
-            if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                        project_id=self.controller.bq_project_id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                # Update GC Metrics for PDR
+                if inserted_metrics_obj:
+                    bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                            project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
+
+                # Update Job Run ID on member
+                self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                         project_id=self.controller.bq_project_id)
+            else:
+                next_state = None
 
             # Update state for missing files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((file.fileName, missing_data_files))
-
-            # Update Job Run ID on member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                     project_id=self.controller.bq_project_id)
+                total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
 
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
@@ -1349,62 +1489,87 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def reconcile_metrics_to_sequencing_data(self):
+    def reconcile_metrics_to_sequencing_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
+        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time, _gc_site_id)
 
-        # TODO: this number may change in the future, currently all files have 1 as the revision number
-        # Will need to follow up with GCs on what this number represents
-        local_revision_id = "1"
+        # Get list of files in GC data bucket
+        if self.storage_provider:
+            # Use the storage provider if it was set by tool
+            files = self.storage_provider.list(self.bucket_name, prefix=None)
+
+        else:
+            files = list_blobs('/' + self.bucket_name)
+
+        self.file_list = [f.name for f in files]
 
         total_missing_data = []
+
+        metric_touched = False
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
 
-            file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-            gc_prefix = file.fileName.split('_')[0]
+            gc_prefix = _gc_site_id.upper()
 
             missing_data_files = []
             for file_type in self.sequencing_file_types:
 
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
-                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
-                               f"{metric.GenomicGCValidationMetrics.limsId}_{local_revision_id}{file_type[1]}"
-                    file_exists = self._get_full_filename(file.bucketName, filename)
+
+                    # Default filename in case the file is missing (used in alert)
+                    default_filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
+                                       f"{metric.GenomicGCValidationMetrics.limsId}_1{file_type[1]}"
+
+                    file_type_expression = file_type[1].replace('.', '\.')
+
+                    # Naming rule for WGS files:
+                    filename_exp = rf"{gc_prefix}_([A-Z]?){metric.biobankId}_{metric.sampleId}" \
+                                   rf"_{metric.GenomicGCValidationMetrics.limsId}_(\d+){file_type_expression}$"
+
+                    file_exists = self._get_full_filename_with_expression(filename_exp)
 
                     if file_exists != 0:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], 1)
                         setattr(metric.GenomicGCValidationMetrics, file_type[2],
-                                f'gs://{file.bucketName}/{file_exists}')
+                                f'gs://{self.bucket_name}/{file_exists}')
+                        metric_touched = True
 
                     if not file_exists:
-                        setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
-                        missing_data_files.append(filename)
+                        missing_data_files.append(default_filename)
 
-            inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
+            if metric_touched:
+                # Only upsert the metric if changed
+                inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
 
-            # Update GC Metrics for PDR
-            if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                        project_id=self.controller.bq_project_id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                # Update GC Metrics for PDR
+                if inserted_metrics_obj:
+                    bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                            project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+
+                self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                         project_id=self.controller.bq_project_id)
+
+            else:
+                next_state = None
 
             # Handle for missing data files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((file.fileName, missing_data_files))
+                total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
+                                           missing_data_files))
 
             # Update Member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                     project_id=self.controller.bq_project_id)
-            self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
+            if next_state is not None and next_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
@@ -1420,15 +1585,16 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _compile_missing_data_alert(self, _filename, _missing_data):
+    def _compile_missing_data_alert(self, _file_processed_id, _missing_data):
         """
         Compiles the description to include in a GenomicAlert
-        :param _filename:
+        :param _file_processed_id:
         :param _missing_data: list of files
         :return: summary, description
         """
+        file = self.file_dao.get(_file_processed_id)
 
-        description = f"\n\tManifest File: {_filename}"
+        description = f"\n\tManifest File: {file.fileName}"
         description += f"\n\tMissing Genotype Data: {_missing_data}"
 
         return description
@@ -1497,13 +1663,26 @@ class GenomicReconciler:
         filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
 
-    def _get_full_filename(self, bucket_name, filename):
-        # Use the storage provider if it was set by tool
-        if self.storage_provider:
-            files = self.storage_provider.list(bucket_name, prefix=None)
-        else:
-            files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.lower().endswith(filename.lower())]
+    def _get_full_filename(self, filename):
+        """ Searches file_list for names ending in filename
+        :param filename: file name to match
+        :return: first filename in list
+        """
+        filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
+        return filenames[0] if len(filenames) > 0 else 0
+
+    def _get_full_filename_with_expression(self, expression):
+        """ Searches file_list for names that match the expression
+        :param expression: pattern to match
+        :return: file name with highest revision number
+        """
+        filenames = [name for name in self.file_list if re.search(expression, name)]
+
+        # Naturally sort the list in descending order of revisions
+        # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
+        filenames.sort(reverse=True,
+                       key=lambda name: int(name.split('.')[0].split('_')[-1]))
+
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):

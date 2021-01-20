@@ -113,7 +113,9 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_sync_date_cutoff(self, mock_copy_cloud_file, mock_list_blobs):
         self._mock_files_for_participants(mock_list_blobs, [
-            FakeConsentFile(updated=datetime.datetime(2020, 2, 20))
+            FakeConsentFile(updated=datetime.datetime(2020, 2, 20)),
+            FakeConsentFile(updated=datetime.datetime(2019, 10, 20)),
+            FakeConsentFile(updated=datetime.datetime(2020, 4, 20))
         ])
 
         self._create_participant(1, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 1, 12),
@@ -128,7 +130,35 @@ class SyncConsentFilesTest(BaseTestCase):
         org_bucket_name = self.org_buckets[self.org1.externalId]
         mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
                                               f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
-        self.assertEqual(1, mock_copy_cloud_file.call_count, 'Files should be copied for one participant')
+        self.assertEqual(2, mock_copy_cloud_file.call_count,
+                         'Files later than the start date should be copied for one participant')
+
+    @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_sync_from_manual_trigger(self, mock_copy_cloud_file, mock_list_blobs):
+        # Set up test data
+        self._mock_files_for_participants(mock_list_blobs, [
+            FakeConsentFile(updated=datetime.datetime(2020, 1, 12))
+        ])
+        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 1, 12),
+                                 consents=True)
+
+        # Call manual sync endpoint in offline app
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+        self.send_post(
+            'ManuallySyncConsentFiles',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            request_data={
+                'start_date': '2020-01-01'
+            }
+        )
+
+        org_bucket_name = self.org_buckets[self.org1.externalId]
+        self.assertEqual(1, mock_copy_cloud_file.call_count, 'File should be copied for the participant')
+        mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P1/consent.pdf',
+                                              f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P1/consent.pdf')
 
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
