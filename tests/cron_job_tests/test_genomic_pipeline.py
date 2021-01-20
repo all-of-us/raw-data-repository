@@ -4,6 +4,7 @@ import time
 import os
 import mock
 import operator
+from copy import deepcopy
 
 import pytz
 from dateutil.parser import parse
@@ -3011,8 +3012,20 @@ class GenomicPipelineTest(BaseTestCase):
             (2, 1002)
         ])
 
-        # TODO: implement manifest_file record for AW2
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
+
+        # Set up test for ignored gc_metrics records
+        metrics_record_2 = self.metrics_dao.get(2)
+
+        new_record = deepcopy(metrics_record_2)
+        metrics_record_2.ignoreFlag = 1
+
+        new_record.id = 3
+        new_record.contamination = '0.1346'
+
+        with self.metrics_dao.session() as session:
+            session.add(new_record)
+            session.merge(metrics_record_2)
 
         # Test feedback count
         fb = self.manifest_feedback_dao.get(1)
@@ -3115,6 +3128,7 @@ class GenomicPipelineTest(BaseTestCase):
                     self.assertEqual("extract wgs", r['CONTAMINATION_CATEGORY'])
                 if r['BIOBANK_ID'] == '2':
                     self.assertEqual("extract both", r['CONTAMINATION_CATEGORY'])
+                    self.assertEqual('0.1346', r['CONTAMINATION'])
             # Test run record is success
             run_obj = self.job_run_dao.get(5)
 
