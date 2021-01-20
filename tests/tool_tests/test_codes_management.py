@@ -409,3 +409,6 @@ class CodesManagementTest(BaseTestCase):
         mock_logger.error.assert_any_call('The following question codes are missing answer options: '
                                           '"radio_code", "dropdown_code", "checkbox_code"')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
+
+    def test_reimporting_project_sets_previous_record_as_obsolete(self):
+        """Older Survey objects that have """

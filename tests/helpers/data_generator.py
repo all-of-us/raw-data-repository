@@ -16,6 +16,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
+from rdr_service.model.survey import Survey
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import (
     DeceasedNotification,
@@ -468,3 +469,11 @@ class DataGenerator:
         if 'status' not in kwargs:
             kwargs['status'] = DeceasedReportStatus.PENDING
         return DeceasedReport(**kwargs)
+
+    def create_database_survey(self, **kwargs):
+        survey = self._survey(**kwargs)
+        self._commit_to_database(survey)
+        return survey
+
+    def _survey(self, **kwargs):
+        return Survey(**kwargs)
