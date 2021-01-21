@@ -434,8 +434,35 @@ class CodesManagementTest(BaseTestCase):
         newer_survey = surveys[1]
         self.assertEqual(newer_survey.importTime, older_survey.replacedTime)
 
+    def test_reimporting_survey_automatically_allows_reuse_of_survey_codes(self):
+        """Updating a survey should automatically allow reuse of the codes that were already in the survey"""
+        project_id = 1498
+        project_title = 'Update Test'
+        data_dictionary = [
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text')
+        ]
+
+        # Run the first time to import the survey
+        self.run_tool(data_dictionary, project_info={
+            'project_id': project_id,
+            'project_title': project_title
+        })
+
+        # Run again to see if it will allow code reuse without explicitly saying they should be reusable
+        update_exit_code, *_ = self.run_tool(data_dictionary, project_info={
+            'project_id': project_id,
+            'project_title': project_title
+        })
+
+        self.assertEqual(0, update_exit_code, 'Running the tool to update the survey should have exited successfully')
+
+        surveys: List[Survey] = self.session.query(Survey).filter(
+            Survey.redcapProjectId == project_id
+        ).order_by(Survey.id).all()
+        self.assertEqual(2, len(surveys), 'There should be two surveys with the project id')
+
 
         # TODO: what should happen with code reuse?
-        #  module codes should need to be explicit if not for the same project
-        #  should question and answer codes need to be explicitly allowed?
         #  should have some sort of type validation (warning if using differently)
+        #  need to save validation
