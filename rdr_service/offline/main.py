@@ -402,6 +402,11 @@ def genomic_aw3_array_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_aw3_wgs_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
     genomic_pipeline.aw3_wgs_manifest_workflow()
     return '{"success": "true"}'
 
