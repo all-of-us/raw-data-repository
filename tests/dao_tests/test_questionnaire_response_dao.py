@@ -825,7 +825,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._setup_participant()
         num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
 
-        self._create_cope_questionnaire(identifier='JanCope')
+        self._create_cope_questionnaire(identifier='FEB_FORM')
 
         self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2021, 2, 17))
 
