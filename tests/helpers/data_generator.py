@@ -476,4 +476,7 @@ class DataGenerator:
         return survey
 
     def _survey(self, **kwargs):
+        if 'code' not in kwargs and 'codeId' not in kwargs:
+            module_code = self.create_database_code()
+            kwargs['codeId'] = module_code.codeId
         return Survey(**kwargs)
