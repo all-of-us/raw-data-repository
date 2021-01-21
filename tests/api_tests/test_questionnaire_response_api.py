@@ -22,7 +22,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
-    ParticipantCohort, ParticipantCohortPilotFlag
+    QuestionnaireStatus, ParticipantCohort, ParticipantCohortPilotFlag
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values
 from tests.test_data import data_path
@@ -69,6 +69,21 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # created should remain the same as the first submission.
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+    def test_consent_submission_requires_signature(self):
+        """Consent questionnaire responses should only mark a participant as consented if they have consented"""
+        participant_id = self.create_participant()
+        self.send_consent(participant_id, authored=datetime.datetime.now(), string_answers=[
+            ('firstName', 'Bob'),
+            ('lastName', 'Smith'),
+            ('email', 'email@example.com')
+            # Does not include a signature
+        ])
+
+        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
+        self.assertEqual(str(QuestionnaireStatus.UNSET), summary["consentForStudyEnrollment"])
+        self.assertIsNone(parse(summary["consentForStudyEnrollmentTime"]))
+        self.assertIsNone(parse(summary["consentForStudyEnrollmentAuthored"]))
 
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()
