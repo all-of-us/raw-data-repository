@@ -18,7 +18,6 @@ class Survey(Base):
 
     importTime = Column('import_time', UTCDateTime)
     replacedTime = Column('replaced_time', UTCDateTime)
-    # TODO: test replace/update of survey
 
     redcapProjectId = Column('redcap_project_id', Integer)
     redcapProjectTitle = Column('redcap_project_title', String(1024))
@@ -53,6 +52,8 @@ class SurveyQuestion(Base):
 
     questionType = Column('question_type', EnumZeroBased(SurveyQuestionType))
     validation = Column(String(256))
+    validation_min = Column(String(256))
+    validation_max = Column(String(256))
     display = Column(String(2048))
 
     options: List['SurveyQuestionOption'] = relationship('SurveyQuestionOption', back_populates='question')

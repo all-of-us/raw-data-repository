@@ -17,7 +17,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 class CodesManagementTest(BaseTestCase):
 
     @staticmethod
-    def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
+    def _get_mock_dictionary_item(code_value, description, field_type, answers='',
+                                  validation='', validation_min='', validation_max=''):
         return {
             "field_name": code_value,
             "form_name": "survey",
@@ -26,9 +27,9 @@ class CodesManagementTest(BaseTestCase):
             "field_label": description,
             "select_choices_or_calculations": answers,
             "field_note": "",
-            "text_validation_type_or_show_slider_number": "",
-            "text_validation_min": "",
-            "text_validation_max": "",
+            "text_validation_type_or_show_slider_number": validation,
+            "text_validation_min": validation_min,
+            "text_validation_max": validation_max,
             "identifier": "",
             "branching_logic": "",
             "required_field": "",
@@ -462,7 +463,22 @@ class CodesManagementTest(BaseTestCase):
         ).order_by(Survey.id).all()
         self.assertEqual(2, len(surveys), 'There should be two surveys with the project id')
 
+    def test_answer_validation_text_is_saved(self):
+        expected_validation = 'date_mdy'
+        expected_min = '1900-01-01'
+        expected_max = '2010-01-01'
+        self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('dob', 'When is your Birthday?', 'text', validation=expected_validation,
+                                           validation_min=expected_min, validation_max=expected_max)
+        ], project_info={
+            'project_id': 1234,
+            'project_title': 'Test'
+        })
 
-        # TODO: what should happen with code reuse?
-        #  should have some sort of type validation (warning if using differently)
-        #  need to save validation
+        survey_question: SurveyQuestion = self.session.query(SurveyQuestion).filter(
+            SurveyQuestion.code.has(Code.value == 'dob')
+        ).one()
+        self.assertEqual(expected_validation, survey_question.validation)
+        self.assertEqual(expected_min, survey_question.validation_min)
+        self.assertEqual(expected_max, survey_question.validation_max)

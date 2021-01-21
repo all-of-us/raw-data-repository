@@ -7,7 +7,7 @@ import os
 
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
-from rdr_service.model.code import Code, CodeType
+from rdr_service.model.code import Code
 from rdr_service.offline.codebook_importer import CodebookImporter
 from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.services.redcap_client import RedcapClient

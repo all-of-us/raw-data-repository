@@ -68,7 +68,7 @@ class CodebookImporter:
             codeType=code_type,
             value=value,
             shortValue=value[:50],
-            display=display,  # TODO: curation uses display, eventually refactor it so we can not have display on code
+            display=display,  # TODO: curation uses display, eventually refactor the etl so we can remove display here
             system=CODE_SYSTEM,
             mapped=True,
             created=CLOCK.now()
@@ -111,7 +111,6 @@ class CodebookImporter:
                 code=option_code,
                 display=display
             )
-            # TODO: display should be on the questions/options now, not on the codes
 
             self._save_database_object(survey_question_option)
 
@@ -123,7 +122,10 @@ class CodebookImporter:
                 survey=self.survey,
                 code=question_code,
                 display=description,
-                questionType=question_type
+                questionType=question_type,
+                validation=item_json['text_validation_type_or_show_slider_number'],
+                validation_min=item_json['text_validation_min'],
+                validation_max=item_json['text_validation_max']
             )
             self._save_database_object(survey_question)
 
