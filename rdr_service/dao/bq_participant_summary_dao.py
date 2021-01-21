@@ -56,7 +56,7 @@ _consent_module_question_map = {
     'COPE': 'section_participation',
     'cope_nov': 'section_participation',
     'cope_dec': 'section_participation',
-    'cope_jan': 'section_participation',
+    'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
@@ -71,7 +71,7 @@ _consent_expired_question_map = {
     'COPE': None,
     'cope_nov': None,
     'cope_dec': None,
-    'cope_jan': None,
+    'cope_feb': None,
     'GeneticAncestry': None
 }
 

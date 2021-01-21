@@ -817,7 +817,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeDec)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
-    def test_january_cope_survey(self):
+    def test_february_cope_survey(self):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)
         self.participant_dao.insert(p)
@@ -825,12 +825,12 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         self._setup_participant()
         num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
 
-        self._create_cope_questionnaire(identifier='JanCope')
+        self._create_cope_questionnaire(identifier='FEB_FORM')
 
-        self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2021, 1, 17))
+        self._submit_questionnaire_response(self.cope_consent_yes, authored_datetime=datetime.datetime(2021, 2, 17))
 
         participant_summary = self.participant_summary_dao.get(1)
-        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeJan)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeFeb)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
     def test_ppi_questionnaire_count_field_not_found(self):
