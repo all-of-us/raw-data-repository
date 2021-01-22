@@ -1,5 +1,5 @@
 import logging
-from typing import List, Set
+from typing import Set
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
@@ -232,14 +232,13 @@ class CodeDao(CacheAllDao):
         parent_codes = set()
 
         # Add the codes for the questions that use this code as an answer
-        query = session.query(Code).join(
+        question_codes = session.query(Code).join(
             SurveyQuestion
         ).join(
             SurveyQuestionOption
         ).filter(
             SurveyQuestionOption.code == code
-        )
-        question_codes = query.all()
+        ).all()
         parent_codes.update(question_codes)
 
         # Add the codes for the surveys that use this code as a question
@@ -258,19 +257,25 @@ class CodeDao(CacheAllDao):
     def get_module_codes(code: Code, session) -> Set[Code]:
         module_codes = set()
 
+        survey_codes_joined_with_questions = session.query(Code).join(
+            Survey
+        ).join(
+            SurveyQuestion
+        )
+
         # Find all modules where this code is used as an answer option
-        survey_question_options: List[SurveyQuestionOption] = session.query(SurveyQuestionOption).filter(
+        module_codes_where_is_answer = survey_codes_joined_with_questions.join(
+            SurveyQuestionOption
+        ).filter(
             SurveyQuestionOption.code == code
         ).all()
-        for question_option in survey_question_options:
-            module_codes.add(question_option.question.survey.code)
+        module_codes.update(module_codes_where_is_answer)
 
         # Find all modules where this code is used as a question
-        survey_questions: List[SurveyQuestion] = session.query(SurveyQuestion).filter(
+        module_codes_where_is_question = survey_codes_joined_with_questions.filter(
             SurveyQuestion.code == code
         ).all()
-        for question in survey_questions:
-            module_codes.add(question.survey.code)
+        module_codes.update(module_codes_where_is_question)
 
         return module_codes
 
