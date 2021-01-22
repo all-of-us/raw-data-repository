@@ -110,7 +110,7 @@ class CodesSyncClass(ToolBase):
         global exporter_service_account_name
         exporter_service_account_name = server_config[EXPORT_SERVICE_ACCOUNT_NAME]
 
-        if self.args.key:
+        if self.args.redcap_key:
             return self.args.redcap_key
         elif not self.args.export_only:
             if REDCAP_PROJECT_KEYS not in server_config:
@@ -140,13 +140,13 @@ class CodesSyncClass(ToolBase):
             for code in codes:
                 row_data = [code.value, code.display]
 
-                code_parents = CodeDao.get_parent_codes(code, session)
-                if code_parents:
-                    row_data.append(','.join([parent.value for parent in code_parents]))
+                parent_codes = CodeDao.get_parent_codes(code, session)
+                if parent_codes:
+                    row_data.append('|'.join([parent.value for parent in parent_codes]))
 
                     module_codes = CodeDao.get_module_codes(code, session)
                     if module_codes:
-                        row_data.append(','.join([module_code.value for module_code in module_codes]))
+                        row_data.append('|'.join([module_code.value for module_code in module_codes]))
                 code_csv_writer.writerow(row_data)
 
     def run_process(self):

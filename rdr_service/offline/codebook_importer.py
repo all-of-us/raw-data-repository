@@ -140,6 +140,15 @@ class CodebookImporter:
         module_code = self.initialize_code(field_name, description, CodeType.MODULE)
         import_time = datetime.utcnow()
 
+        if not self.dry_run:
+            # Set replaced time on all previous Survey objects for the project
+            self.session.query(Survey).filter(
+                Survey.redcapProjectId == self.project_id,
+                Survey.replacedTime.is_(None)
+            ).update({
+                Survey.replacedTime: import_time
+            })
+
         self.survey = Survey(
             redcapProjectId=self.project_id,
             redcapProjectTitle=self.project_title,
@@ -147,11 +156,6 @@ class CodebookImporter:
             importTime=import_time
         )
         self._save_database_object(self.survey)
-
-        # Set replaced time on all previous Survey objects for the project
-        self.session.query(Survey).filter(Survey.redcapProjectId == self.project_id).update({
-            Survey.replacedTime: import_time
-        })
 
     def import_data_dictionary_item(self, item_json):
         field_name = item_json['field_name']

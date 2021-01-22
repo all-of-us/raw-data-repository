@@ -434,6 +434,7 @@ class CodesManagementTest(BaseTestCase):
         older_survey = surveys[0]  # They're ordered by id, so the first in the db should be the oldest one
         newer_survey = surveys[1]
         self.assertEqual(newer_survey.importTime, older_survey.replacedTime)
+        self.assertIsNone(newer_survey.replacedTime)
 
     def test_reimporting_survey_automatically_allows_reuse_of_survey_codes(self):
         """Updating a survey should automatically allow reuse of the codes that were already in the survey"""
