@@ -760,7 +760,7 @@ def gcp_delete_versions(service_name: str, version_names: List[str]):
     """
 
     version_list_str = ' '.join(version_names)
-    args = f'versions delete --service={service_name} {version_list_str}'
+    args = f'versions delete --service={service_name} {version_list_str} --quiet'
 
     exit_code, _, error = gcp_gcloud_command('app', args)
     if exit_code != 0:
