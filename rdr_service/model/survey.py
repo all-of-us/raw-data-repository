@@ -71,6 +71,3 @@ class SurveyQuestionOption(Base):
     code = relationship(Code)
 
     display = Column(String(2048))
-
-
-event.listen(Survey, 'before_insert', model_insert_listener)

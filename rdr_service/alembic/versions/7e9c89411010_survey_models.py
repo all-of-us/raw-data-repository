@@ -1,8 +1,8 @@
 """survey models
 
-Revision ID: ee6e75d3e41b
-Revises: 50d9eeb498c3
-Create Date: 2020-12-31 13:42:52.538559
+Revision ID: 7e9c89411010
+Revises: 942d61446bfa
+Create Date: 2021-01-22 08:47:00.953538
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'ee6e75d3e41b'
-down_revision = '50d9eeb498c3'
+revision = '7e9c89411010'
+down_revision = '942d61446bfa'
 branch_labels = None
 depends_on = None
 
@@ -43,26 +43,28 @@ def upgrade_rdr():
     sa.Column('import_time', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('replaced_time', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('redcap_project_id', sa.Integer(), nullable=True),
-    sa.Column('redcap_project_title', sa.String(length=200), nullable=True),
+    sa.Column('redcap_project_title', sa.String(length=1024), nullable=True),
     sa.ForeignKeyConstraint(['code_id'], ['code.code_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('survey_question',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('code_id', sa.Integer(), nullable=True),
     sa.Column('survey_id', sa.Integer(), nullable=True),
-    sa.Column('type', sa.String(length=200), nullable=True),
-    sa.Column('validation', sa.String(length=200), nullable=True),
-    sa.Column('display', sa.String(length=200), nullable=True),
+    sa.Column('code_id', sa.Integer(), nullable=True),
+    sa.Column('question_type', rdr_service.model.utils.Enum(SurveyQuestionType), nullable=True),
+    sa.Column('validation', sa.String(length=256), nullable=True),
+    sa.Column('validation_min', sa.String(length=256), nullable=True),
+    sa.Column('validation_max', sa.String(length=256), nullable=True),
+    sa.Column('display', sa.String(length=2048), nullable=True),
     sa.ForeignKeyConstraint(['code_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['survey_id'], ['survey.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('survey_question_option',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('code_id', sa.Integer(), nullable=True),
     sa.Column('question_id', sa.Integer(), nullable=True),
-    sa.Column('display', sa.String(length=200), nullable=True),
+    sa.Column('code_id', sa.Integer(), nullable=True),
+    sa.Column('display', sa.String(length=2048), nullable=True),
     sa.ForeignKeyConstraint(['code_id'], ['code.code_id'], ),
     sa.ForeignKeyConstraint(['question_id'], ['survey_question.id'], ),
     sa.PrimaryKeyConstraint('id')

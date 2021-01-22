@@ -6,7 +6,7 @@ from rdr_service import clock
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.cache_all_dao import CacheAllDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
-from rdr_service.model.survey import SurveyQuestion, SurveyQuestionOption
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.singletons import CODE_CACHE_INDEX
 
 _CODE_TYPE_MAP = {
@@ -228,25 +228,31 @@ class CodeDao(CacheAllDao):
             return result_map
 
     @staticmethod
-    def get_parent_codes(code: Code, session) -> List[Code]:
-        if code.codeType == CodeType.ANSWER:
-            # TODO: do codes cross types (answer codes used for questions)?
-            # Get all the question options that use this code, then the questions that use those options,
-            # then return the codes for the questions
-            survey_question_options: List[SurveyQuestionOption] = session.query(SurveyQuestionOption).filter(
-                SurveyQuestionOption.code == code
-            ).all()
-            return [question_option.question.code for question_option in survey_question_options]
-        elif code.codeType == CodeType.QUESTION:
-            # Get all the questions that use this code, then the modules that use those questions,
-            # then return the module codes
-            survey_questions: List[SurveyQuestion] = session.query(SurveyQuestion).filter(
-                SurveyQuestion.code == code
-            ).all()
-            return [question.survey.code for question in survey_questions]
-        else:
-            # Module codes don't have parents
-            return []
+    def get_parent_codes(code: Code, session) -> Set[Code]:
+        parent_codes = set()
+
+        # Add the codes for the questions that use this code as an answer
+        query = session.query(Code).join(
+            SurveyQuestion
+        ).join(
+            SurveyQuestionOption
+        ).filter(
+            SurveyQuestionOption.code == code
+        )
+        question_codes = query.all()
+        parent_codes.update(question_codes)
+
+        # Add the codes for the surveys that use this code as a question
+        module_codes = session.query(Code).join(
+            Survey
+        ).join(
+            SurveyQuestion
+        ).filter(
+            SurveyQuestion.code == code
+        ).all()
+        parent_codes.update(module_codes)
+
+        return parent_codes
 
     @staticmethod
     def get_module_codes(code: Code, session) -> Set[Code]:
