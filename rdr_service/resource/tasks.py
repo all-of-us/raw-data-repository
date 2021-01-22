@@ -10,7 +10,7 @@ from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGener
 from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
 from rdr_service.resource.generators import ParticipantSummaryGenerator
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
@@ -59,7 +59,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
             BQPDRCOPEMay,
             BQPDRCOPENov,
             BQPDRCOPEDec,
-            BQPDRCOPEJan
+            BQPDRCOPEFeb
         )
         for module in modules:
             mod = module()

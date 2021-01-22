@@ -38,7 +38,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
@@ -427,7 +427,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
             QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
-            QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
+            QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
+                code_id_query). \
+            join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
         # sql = self.ro_dao.query_to_text(query)
@@ -458,7 +460,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'module_created': row.created,
                     'language': row.language,
                     'status': module_status.name,
-                    'status_id': module_status.value
+                    'status_id': module_status.value,
+                    'external_id': row.externalId
                 }
 
                 # check if this is a module with consents.
@@ -485,6 +488,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
                             'consent_module_created': row.created,
+                            'consent_module_external_id': row.externalId
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given

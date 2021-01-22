@@ -67,13 +67,19 @@ class _BQModuleSchema(BQSchema):
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append(
             {'name': 'modified', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.REQUIRED.name})
+        # Fields which apply to all module responses
         fields.append(
             {'name': 'authored', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'language', 'type': BQFieldTypeEnum.STRING.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'participant_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.REQUIRED.name})
+                       'mode': BQFieldModeEnum.REQUIRED.name}),
+        fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
+                       'mode': BQFieldModeEnum.REQUIRED.name}),
+        fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name})
+
 
         dao = BigQuerySyncDao(backup=True)
 
@@ -596,24 +602,24 @@ class BQPDRCOPEDecView(BQView):
 
 
 #
-# COPE Jan Survey
+# COPE Feb Survey
 #
-class BQPDRCOPEJanSchema(_BQModuleSchema):
-    """ COPE Jan Module """
-    _module = 'cope_jan'  # Lowercase on purpose.
+class BQPDRCOPEFebSchema(_BQModuleSchema):
+    """ COPE Feb Module """
+    _module = 'cope_feb'  # Lowercase on purpose.
     _excluded_fields = ()
 
 
-class BQPDRCOPEJan(BQTable):
-    """ COPE Jan BigQuery Table """
-    __tablename__ = 'pdr_mod_cope_jan'
-    __schema__ = BQPDRCOPEJanSchema
+class BQPDRCOPEFeb(BQTable):
+    """ COPE Feb BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_feb'
+    __schema__ = BQPDRCOPEFebSchema
 
 
-class BQPDRCOPEJanView(BQView):
-    """ PDR COPE Jan BiqQuery View """
-    __viewname__ = 'v_pdr_mod_cope_jan'
-    __viewdescr__ = 'PDR COPE Jan Module View'
-    __table__ = BQPDRCOPEJan
+class BQPDRCOPEFebView(BQView):
+    """ PDR COPE Feb BiqQuery View """
+    __viewname__ = 'v_pdr_mod_cope_feb'
+    __viewdescr__ = 'PDR COPE Feb Module View'
+    __table__ = BQPDRCOPEFeb
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True

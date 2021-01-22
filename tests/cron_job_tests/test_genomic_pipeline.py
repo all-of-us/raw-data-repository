@@ -4,6 +4,7 @@ import time
 import os
 import mock
 import operator
+from copy import deepcopy
 
 import pytz
 from dateutil.parser import parse
@@ -897,10 +898,10 @@ class GenomicPipelineTest(BaseTestCase):
         sequencing_test_files = (
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_2.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_2.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_2.cram',
             f'test_data_folder/RDR_2_1002_10002_2.cram.md5sum',
         )
@@ -941,7 +942,7 @@ class GenomicPipelineTest(BaseTestCase):
         description = "The following AW2 manifests are missing data files."
         description += "\nGenomic Job Run ID: 2"
         description += f"\n\tManifest File: {manifest_file.fileName}"
-        description += "\n\tMissing Genotype Data: ['RDR_2_1002_10002_1.crai']"
+        description += "\n\tMissing Genotype Data: ['RDR_2_1002_10002_1.cram.crai']"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
@@ -2230,14 +2231,13 @@ class GenomicPipelineTest(BaseTestCase):
         sequencing_test_files = (
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.cram',
-            f'test_data_folder/RDR_2_1002_10002_1.crai',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
             f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.crai.md5sum',
         )
 
         for f in sequencing_test_files:
@@ -2568,13 +2568,13 @@ class GenomicPipelineTest(BaseTestCase):
         sequencing_test_files = (
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.cram',
             f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.crai',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
 
         )
         for f in sequencing_test_files:
@@ -3011,8 +3011,20 @@ class GenomicPipelineTest(BaseTestCase):
             (2, 1002)
         ])
 
-        # TODO: implement manifest_file record for AW2
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
+
+        # Set up test for ignored gc_metrics records
+        metrics_record_2 = self.metrics_dao.get(2)
+
+        new_record = deepcopy(metrics_record_2)
+        metrics_record_2.ignoreFlag = 1
+
+        new_record.id = 3
+        new_record.contamination = '0.1346'
+
+        with self.metrics_dao.session() as session:
+            session.add(new_record)
+            session.merge(metrics_record_2)
 
         # Test feedback count
         fb = self.manifest_feedback_dao.get(1)
@@ -3115,6 +3127,7 @@ class GenomicPipelineTest(BaseTestCase):
                     self.assertEqual("extract wgs", r['CONTAMINATION_CATEGORY'])
                 if r['BIOBANK_ID'] == '2':
                     self.assertEqual("extract both", r['CONTAMINATION_CATEGORY'])
+                    self.assertEqual('0.1346', r['CONTAMINATION'])
             # Test run record is success
             run_obj = self.job_run_dao.get(5)
 

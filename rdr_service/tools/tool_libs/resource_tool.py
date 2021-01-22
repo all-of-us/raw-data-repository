@@ -24,7 +24,7 @@ from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_u
     bq_institutional_affiliations_update, bq_researcher_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
@@ -84,11 +84,12 @@ class ParticipantResourceClass(object):
                 BQPDRCOPEMay,
                 BQPDRCOPENov,
                 BQPDRCOPEDec,
-                BQPDRCOPEJan
+                BQPDRCOPEFeb
             )
 
             for module in modules:
                 mod = module()
+
                 table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
                 if not table:
                     continue
@@ -97,7 +98,7 @@ class ParticipantResourceClass(object):
                 with w_dao.session() as w_session:
                     for mod_bqr in mod_bqrs:
                         mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                               w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
+                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0

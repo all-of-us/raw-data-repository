@@ -37,7 +37,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
@@ -56,7 +56,7 @@ _consent_module_question_map = {
     'COPE': 'section_participation',
     'cope_nov': 'section_participation',
     'cope_dec': 'section_participation',
-    'cope_jan': 'section_participation',
+    'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
@@ -71,7 +71,7 @@ _consent_expired_question_map = {
     'COPE': None,
     'cope_nov': None,
     'cope_dec': None,
-    'cope_jan': None,
+    'cope_feb': None,
     'GeneticAncestry': None
 }
 
@@ -427,7 +427,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
             QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
-            QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
+            QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
+                 code_id_query). \
+            join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
         # sql = self.ro_dao.query_to_text(query)
@@ -459,7 +461,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'mod_created': row.created,
                     'mod_language': row.language,
                     'mod_status': module_status.name,
-                    'mod_status_id': module_status.value
+                    'mod_status_id': module_status.value,
+                    'mod_external_id': row.externalId
                 }
 
                 # check if this is a module with consents.
@@ -486,6 +489,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
                             'consent_module_created': row.created,
+                            'consent_module_external_id': row.externalId,
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
@@ -1355,7 +1359,6 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
 
     w_dao = BigQuerySyncDao()
-
 
     with w_dao.session() as w_session:
         # save the participant summary record if this is a full rebuild.

@@ -394,8 +394,19 @@ def genomic_cvl_w3_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_aw3_workflow():
+def genomic_aw3_array_workflow():
     genomic_pipeline.aw3_array_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_aw3_wgs_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
     genomic_pipeline.aw3_wgs_manifest_workflow()
     return '{"success": "true"}'
 
@@ -672,9 +683,14 @@ def _build_pipeline_app():
         view_func=genomic_cvl_w3_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW3Workflow",
-        endpoint="genomic_aw3_workflow",
-        view_func=genomic_aw3_workflow, methods=["GET"]
+        OFFLINE_PREFIX + "GenomicAW3ArrayWorkflow",
+        endpoint="genomic_aw3_array_workflow",
+        view_func=genomic_aw3_array_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
+        endpoint="genomic_aw3_wgs_workflow",
+        view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW4Workflow",
