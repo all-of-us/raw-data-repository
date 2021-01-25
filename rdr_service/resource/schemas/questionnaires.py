@@ -158,7 +158,7 @@ class _QuestionnaireSchema:
                 # flag duplicate fields.
                 found = False
                 for fld in _schema:
-                    if fld['name'] == name:
+                    if fld['name'].lower() == name.lower():
                         found = True
                         break
 
