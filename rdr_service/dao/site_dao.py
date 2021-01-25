@@ -57,8 +57,10 @@ class SiteDao(CacheAllDao):
     def get_id(self, obj):
         return obj.siteId
 
-    def get_by_google_group(self, google_group: str):
-        return self._get_cache().index_maps["googleGroup"].get(google_group.lower())
+    def get_by_google_group(self, google_group):
+        if isinstance(google_group, str):
+            google_group = google_group.lower()
+        return self._get_cache().index_maps["googleGroup"].get(google_group)
 
     @staticmethod
     def _to_json(model):
