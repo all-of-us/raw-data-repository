@@ -242,7 +242,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": "LESS_THAN_HIGH_SCHOOL",
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
         self.assertIn({'workspaceId': 1, 'snapshotId': 2, 'name': 'workspace name str 2',
@@ -298,7 +299,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": None,
                            "incomeLevel": None,
                            "others": None
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
         # test audit review
@@ -388,7 +390,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": "LESS_THAN_HIGH_SCHOOL",
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
 
@@ -452,7 +455,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": "LESS_THAN_HIGH_SCHOOL",
                            "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                            "others": "string"
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
 
@@ -531,7 +535,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": None,
                            "incomeLevel": None,
                            "others": None
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
 
@@ -1364,7 +1369,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            "educationLevel": None,
                            "incomeLevel": None,
                            "others": None
-                       }
+                       },
+                       'cdrVersion': None
                        },
                       result['data'])
         # update researcher to add verified institution
