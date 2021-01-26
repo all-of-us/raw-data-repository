@@ -20,7 +20,7 @@ commands:
       - checkout
       - run:
           name: Install pylint
-          command: pip install pylint
+          command: sudo pip install pylint
       - run:
           name: Code static analysis checks
           command: ci/full_static_analysis.sh
