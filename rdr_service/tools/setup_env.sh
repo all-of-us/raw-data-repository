@@ -46,19 +46,18 @@ rm -rf htmlcov/
 
 echo "Configuring Git hooks..."
 HOOKS_DIR=../.git/hooks
-HOOKS_FILE=$HOOKS_DIR/pre-push
+HOOKS_FILE=$HOOKS_DIR/pre-commit
 if [ -f $HOOKS_FILE ]
 then
   echo Hooks file $HOOKS_FILE already exists.
+  echo Please add git-hooks/pre-commit to $HOOKS_FILE
 else
   mkdir -p $HOOKS_DIR
   echo Creating $HOOKS_FILE, edit to add/enable additional checks.
   # Add default hooks (linting) and tools scripts to optionally run as hooks.
   cat > $HOOKS_FILE <<EOF
 #!/bin/bash -e
-git-hooks/pre-push
-#rest-api/tools/check_uncommitted.sh
-#rest-api/tools/remove_trailing_whitespace.sh -y
+git-hooks/pre-commit
 EOF
   chmod +x $HOOKS_FILE
 fi
