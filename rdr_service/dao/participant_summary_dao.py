@@ -54,9 +54,7 @@ from rdr_service.participant_enums import (
     SampleStatus,
     SuspensionStatus,
     WithdrawalStatus,
-    get_bucketed_age,
-    RetentionStatus,
-    RetentionType
+    get_bucketed_age
 )
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
