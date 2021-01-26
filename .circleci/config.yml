@@ -20,7 +20,7 @@ commands:
       - checkout
       - run:
           name: Code static analysis checks
-          command: ./ci/full_file_static_analysis.sh
+          command: ci/full_static_analysis.sh
       - run:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
