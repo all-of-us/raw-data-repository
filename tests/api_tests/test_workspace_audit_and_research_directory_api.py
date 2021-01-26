@@ -916,6 +916,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.send_post('workbench/directory/researchers', request_data=researchers_json)
 
         # create workspace
+        cdr_version = 'irving'
         request_json = [
             {
                 "workspaceId": 0,
@@ -970,7 +971,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "educationLevel": "LESS_THAN_HIGH_SCHOOL",
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
-                }
+                },
+                "cdrVersion": cdr_version
             },
             {
                 "workspaceId": 1,
@@ -1006,7 +1008,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "otherPurpose": False,
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
-                "findingsFromStudy": 'findingsFromStudy string2'
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "cdrVersion": cdr_version
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
@@ -1049,7 +1052,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                            'disabilityStatus': 'DISABILITY', 'accessToCare': 'NOT_EASILY_ACCESS_CARE',
                            'educationLevel': 'LESS_THAN_HIGH_SCHOOL',
                            'incomeLevel': 'BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT',
-                           'others': 'string'}
+                           'others': 'string'},
+                       'cdrVersion': cdr_version
                        }, result)
         self.assertIn({'snapshotId': 2, 'workspaceId': 1, 'name': 'workspace name str 2',
                        'creationTime': '2019-11-25T17:43:41.085000', 'modifiedTime': '2019-11-25T17:43:41.085000',
@@ -1087,7 +1091,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
-                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None}
+                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
+                       'cdrVersion': cdr_version
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
@@ -1128,7 +1133,8 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
-                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None}
+                           'accessToCare': None, 'educationLevel': None, 'incomeLevel': None, 'others': None},
+                       'cdrVersion': cdr_version
                        }, result)
 
         result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=2')
