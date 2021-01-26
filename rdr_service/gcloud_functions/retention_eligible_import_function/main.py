@@ -62,10 +62,10 @@ def get_deploy_args(gcp_env):
         cloud_resource = 'ptsc-retention-all-of-us-rdr-sandbox'
 
     if _project_suffix == 'stable':
-        cloud_resource = 'ptsc-retention-all-of-us-rdr-stable'
+        cloud_resource = 'ptsc-metrics-all-of-us-rdr-stable'
 
     if _project_suffix == 'prod':
-        cloud_resource = 'ptsc-retention-all-of-us-rdr-prod'
+        cloud_resource = 'ptsc-metrics-all-of-us-rdr-prod'
 
     args = [function_name]
     for arg in deploy_args:
