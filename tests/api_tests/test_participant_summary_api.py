@@ -7,7 +7,7 @@ import unittest
 from urllib.parse import urlencode
 
 from rdr_service import config
-from rdr_service import main, clock
+from rdr_service import main
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,

@@ -16,8 +16,7 @@ from rdr_service.participant_enums import (
     UNSET_HPO_ID,
     WithdrawalStatus,
     make_primary_provider_link_for_id,
-    make_primary_provider_link_for_name,
-    RetentionStatus
+    make_primary_provider_link_for_name
 )
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, PITT_SITE_ID, random_ids
