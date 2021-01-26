@@ -4,7 +4,7 @@ set -e
 
 echo "Grepping for checked-in credentials..."
 set +e  # OK if grep does not find any matches.
-KEY_FILES=`git grep -il "BEGIN PRIVATE KEY" . | grep -v $0 | grep -v oauth2client`
+KEY_FILES=`git grep -il "BEGIN PRIVATE KEY" . | grep -v $0 | grep -v oauth2client | grep -v test_pre_commit`
 set -e
 if [ "${KEY_FILES}" ]
 then
