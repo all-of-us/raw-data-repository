@@ -56,21 +56,21 @@ class UpdateCohortGroup(ToolBase):
                         'participant_id': obj.participantId,
                         'ptsc_consent_number': item.get('assignment'),
                         'rdr_consent_number': obj.consentCohort.number,
-                        'consent_first_yes_authored': 
+                        'consent_first_yes_authored':
                             obj.consentForStudyEnrollmentFirstYesAuthored.strftime("%b %d %Y %H:%M:%S"),
                         'ptsc_designated_pilot': 'True' if item.get('assignment') == 2.1 else 'False'
                     })
 
     def output_csv(self):
         print('Found {} number of descripancies'.format(len(self.import_file_descripancies)))
-        fields = ['participant_id', 
-                  'ptsc_consent_number', 
-                  'rdr_consent_number', 
-                  'consent_first_yes_authored', 
+        fields = ['participant_id',
+                  'ptsc_consent_number',
+                  'rdr_consent_number',
+                  'consent_first_yes_authored',
                   'ptsc_designated_pilot']
         filename = "descripancies_in_ptsc_cohort_file_rdr_data.csv"
         with open(filename, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fields)  
+            writer = csv.DictWriter(csvfile, fieldnames=fields)
             writer.writeheader()
             writer.writerows(self.import_file_descripancies)
         print('csv write finished')
