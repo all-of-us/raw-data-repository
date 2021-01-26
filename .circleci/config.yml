@@ -19,6 +19,9 @@ commands:
     steps:
       - checkout
       - run:
+          name: Install pylint
+          command: pip install pylint
+      - run:
           name: Code static analysis checks
           command: ci/full_static_analysis.sh
       - run:
