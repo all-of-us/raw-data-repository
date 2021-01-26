@@ -23,9 +23,8 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             return None, None
 
     def upsert_all_with_session(self, session, retention_eligible_metrics_records):
-        records = list(retention_eligible_metrics_records)
         upsert_count = 0
-        for record in records:
+        for record in retention_eligible_metrics_records:
             dup_id, need_update = self._find_dup_with_session(session, record)
             if dup_id and not need_update:
                 continue
