@@ -1,5 +1,4 @@
 #!/bin/bash
-# Run tests which are fast enough to be run before very push.
 set -e
 
 echo "Grepping for checked-in credentials..."
@@ -17,6 +16,7 @@ echo "No private keys found, continuing."
 # More options are set in rest-api/pylintrc.
 # On CircleCI, increasing parallelism with `-j 0` (or the `parallel` command)
 # reduces performance significantly (10s becomes about 1m).
+source venv/bin/activate
 PYLINT_VERSION=`pylint --version | head -1 | sed 's/pylint \([0-9.]*\),/\1/g'`
 echo "`date -u` Linting with pylint ${PYLINT_VERSION}..."
 ENABLE_FOR_TESTS="\
