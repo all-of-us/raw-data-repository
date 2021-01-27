@@ -19,14 +19,11 @@ commands:
     steps:
       - checkout
       - run:
-          name: Install pylint
-          command: sudo pip install pylint
+          name: Setup Python Environment
+          command: ./ci/setup_python_env.sh
       - run:
           name: Code static analysis checks
           command: ci/full_static_analysis.sh
-      - run:
-          name: Setup Python Environment
-          command: ./ci/setup_python_env.sh
       - run:
           name: Check Licenses
           command : |
