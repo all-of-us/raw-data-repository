@@ -22,6 +22,9 @@ commands:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
       - run:
+          name: Code static analysis checks
+          command: ci/full_static_analysis.sh
+      - run:
           name: Check Licenses
           command : |
             export PYTHONPATH=$PYTHONPATH:`pwd`
