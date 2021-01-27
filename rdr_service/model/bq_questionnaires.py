@@ -67,13 +67,19 @@ class _BQModuleSchema(BQSchema):
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append(
             {'name': 'modified', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.REQUIRED.name})
+        # Fields which apply to all module responses
         fields.append(
             {'name': 'authored', 'type': BQFieldTypeEnum.DATETIME.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'language', 'type': BQFieldTypeEnum.STRING.name, 'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'participant_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.REQUIRED.name})
+                       'mode': BQFieldModeEnum.REQUIRED.name}),
+        fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name}),
+        fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name})
+
 
         dao = BigQuerySyncDao(backup=True)
 
@@ -101,10 +107,11 @@ class _BQModuleSchema(BQSchema):
                 from questionnaire_question qq where qq.questionnaire_id in (
                     select qc.questionnaire_id from questionnaire_concept qc
                             where qc.code_id = (
-                                select code_id from code c2 where c2.value = :module_id and system = :system
+                                select code_id from code c2 where c2.value = :module_id and c2.system = :system
                             )
                 )
             ) qq2 on qq2.code_id = c.code_id
+            where c.system = :system
             order by c.code_id
         """
         with dao.session() as session:
@@ -175,7 +182,7 @@ class _BQModuleSchema(BQSchema):
                 # flag duplicate fields.
                 found = False
                 for fld in fields:
-                    if fld['name'] == name:
+                    if fld['name'].lower() == name.lower():
                         found = True
                         break
 
@@ -596,24 +603,24 @@ class BQPDRCOPEDecView(BQView):
 
 
 #
-# COPE Jan Survey
+# COPE Feb Survey
 #
-class BQPDRCOPEJanSchema(_BQModuleSchema):
-    """ COPE Jan Module """
-    _module = 'cope_jan'  # Lowercase on purpose.
+class BQPDRCOPEFebSchema(_BQModuleSchema):
+    """ COPE Feb Module """
+    _module = 'cope_feb'  # Lowercase on purpose.
     _excluded_fields = ()
 
 
-class BQPDRCOPEJan(BQTable):
-    """ COPE Jan BigQuery Table """
-    __tablename__ = 'pdr_mod_cope_jan'
-    __schema__ = BQPDRCOPEJanSchema
+class BQPDRCOPEFeb(BQTable):
+    """ COPE Feb BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_feb'
+    __schema__ = BQPDRCOPEFebSchema
 
 
-class BQPDRCOPEJanView(BQView):
-    """ PDR COPE Jan BiqQuery View """
-    __viewname__ = 'v_pdr_mod_cope_jan'
-    __viewdescr__ = 'PDR COPE Jan Module View'
-    __table__ = BQPDRCOPEJan
+class BQPDRCOPEFebView(BQView):
+    """ PDR COPE Feb BiqQuery View """
+    __viewname__ = 'v_pdr_mod_cope_feb'
+    __viewdescr__ = 'PDR COPE Feb Module View'
+    __table__ = BQPDRCOPEFeb
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True

@@ -49,6 +49,7 @@ class ModuleStatusSchema(Schema):
     language = fields.String(validate=validate.Length(max=2))
     status = fields.EnumString(enum=QuestionnaireStatus)
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
+    external_id = fields.String(validate=validate.Length(max=120))
 
     class Meta:
         schema_id = SchemaID.participant_modules
@@ -67,6 +68,7 @@ class ConsentSchema(Schema):
     consent_module_authored = fields.DateTime()
     consent_module_created = fields.DateTime()
     consent_expired = fields.String(validate=validate.Length(max=80))
+    consent_module_external_id = fields.String(validate=validate.Length(max=120))
 
     class Meta:
         schema_id = SchemaID.participant_consents

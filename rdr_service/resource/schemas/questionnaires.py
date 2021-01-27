@@ -99,6 +99,7 @@ class _QuestionnaireSchema:
                              )
                  )
              ) qq2 on qq2.code_id = c.code_id
+             where c.system = :system
              order by c.code_id;
          """
         with dao.session() as session:
@@ -157,7 +158,7 @@ class _QuestionnaireSchema:
                 # flag duplicate fields.
                 found = False
                 for fld in _schema:
-                    if fld['name'] == name:
+                    if fld['name'].lower() == name.lower():
                         found = True
                         break
 
@@ -387,9 +388,9 @@ class BQPDRCOPEDecSchema(_QuestionnaireSchema):
     _excluded_fields = ()
 
 #
-#  COPE Dec Survey
+#  COPE Feb Survey
 #
-class BQPDRCOPEJanSchema(_QuestionnaireSchema):
+class BQPDRCOPEFebSchema(_QuestionnaireSchema):
     """ COPE Module """
-    _module = 'cope_jan'
+    _module = 'cope_feb'
     _excluded_fields = ()

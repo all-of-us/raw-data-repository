@@ -269,10 +269,28 @@ class BQMigration(object):
                 rs_json = self.get_table_schema(project_id, dataset_id, table_id)
 
                 if not rs_json:
-                    self.create_table(bq_table, project_id, dataset_id, table_id)
+                    if self.args.check_schemas:
+                        _logger.info('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
+                        continue
+                    else:
+                        self.create_table(bq_table, project_id, dataset_id, table_id)
+
                 else:
                     try:
                         rs_obj = BQSchema(json.loads(rs_json))
+
+                        # The --check-schemas argument does a cursory check that the local schema contains the same
+                        # fields as the existing BigQuery table. If a mismatch is found and the BigQuery table has a
+                        # field the local schema does not, the BigQuery table will need to be deleted and recreated
+                        # rather than updated, when adding new fields.
+                        if self.args.check_schemas:
+                            _logger.info(f'Checking {project_id}:{dataset_id}.{table_id} schema...')
+                            for attr in dir(rs_obj):
+                                if attr.startswith('_'):
+                                    continue
+                                if not hasattr(ls_obj, attr):
+                                    _logger.error(f'\t{attr} missing from local {table_id} schema ')
+                            continue
                     except ValueError:
                         # Something is there in BigQuery for this schema, but it is bad.
                         # If this happens, the table can be reset by deleting it
@@ -286,6 +304,9 @@ class BQMigration(object):
                                 format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'unchanged'))
                     else:
                         self.modify_table(bq_table, project_id, dataset_id, table_id)
+
+        if self.args.check_schemas:
+            return 0
 
         # Loop through view schemas
         for path, var_name in BQ_VIEWS:
@@ -341,6 +362,8 @@ def run():
     parser.add_argument('--service-account', help='gcp iam service account', required=False)  # noqa
     parser.add_argument('--delete', help="delete schemas from BigQuery", default=False, action='store_true')  # noqa
     parser.add_argument('--show-schemas', help='print schemas to stdout', default=False, action='store_true')  # noqa
+    parser.add_argument('--check-schemas', help='Check if local schema is incompatible with existing BQ table schema',
+                        default=False, action='store_true')  # noqa
     parser.add_argument('--names', help="a comma delimited list of table/view names.",
                         default='all', metavar='[TABLE|VIEW]')  # noqa
     args = parser.parse_args()

@@ -371,7 +371,9 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
         # This verifies the module submitted status from the participant generator data for each of the GROR modules
+        # Also checks that an external id key/value pair exists (but value likely None for test data modules)
         gror_modules = self.get_modules_by_name('GROR', ps_json['modules'])
+        self.assertIn('mod_external_id', gror_modules[0])
         self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
 
@@ -404,10 +406,12 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         ps_json = gen.make_bqrecord(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_json['enrollment_status'])
 
-        # This verifies the module submitted status from the participant generator data for each of the zrjt modules
-        gror_modules = self.get_modules_by_name('EHRConsentPII', ps_json['modules'])
-        self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
-        self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
+        # This verifies the module submitted status from the participant generator data for ehr modules
+        # Also checks that an external id key/value pair exists (but value likely None for test data modules)
+        ehr_modules = self.get_modules_by_name('EHRConsentPII', ps_json['modules'])
+        self.assertIn('mod_external_id',ehr_modules[0])
+        self.assertEqual('SUBMITTED', ehr_modules[0]['mod_status'])
+        self.assertEqual('SUBMITTED_NO_CONSENT', ehr_modules[1]['mod_status'])
 
     def test_no_on_ehr_overrides_yes_on_dv(self):
         # Scenario: a participant has had DV_EHR yes, but previously had a no on EHR.
