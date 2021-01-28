@@ -76,7 +76,7 @@ class _BQModuleSchema(BQSchema):
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name}),
         fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.REQUIRED.name}),
+                       'mode': BQFieldModeEnum.NULLABLE.name}),
         fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
                        'mode': BQFieldModeEnum.NULLABLE.name})
 
@@ -107,10 +107,11 @@ class _BQModuleSchema(BQSchema):
                 from questionnaire_question qq where qq.questionnaire_id in (
                     select qc.questionnaire_id from questionnaire_concept qc
                             where qc.code_id = (
-                                select code_id from code c2 where c2.value = :module_id and system = :system
+                                select code_id from code c2 where c2.value = :module_id and c2.system = :system
                             )
                 )
             ) qq2 on qq2.code_id = c.code_id
+            where c.system = :system
             order by c.code_id
         """
         with dao.session() as session:
@@ -181,7 +182,7 @@ class _BQModuleSchema(BQSchema):
                 # flag duplicate fields.
                 found = False
                 for fld in fields:
-                    if fld['name'] == name:
+                    if fld['name'].lower() == name.lower():
                         found = True
                         break
 
