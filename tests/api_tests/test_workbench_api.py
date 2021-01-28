@@ -353,7 +353,8 @@ class WorkbenchApiTest(BaseTestCase):
                     "educationLevel": "LESS_THAN_HIGH_SCHOOL",
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
-                }
+                },
+                "cdrVersion": "irving"
             }
         ]
 
@@ -381,6 +382,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].intendToStudy, 'string')
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual('irving', results[0].cdrVersion)
 
         # test update workspace
         update_json = [
