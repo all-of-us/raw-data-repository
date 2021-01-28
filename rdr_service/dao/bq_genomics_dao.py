@@ -106,6 +106,13 @@ class BQGenomicSetMemberSchemaGenerator(BigQueryGenerator):
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _id}).first()
             data = self.ro_dao.to_dict(row)
 
+            # Set biobank_id_str and delete biobank_id
+            try:
+                data['biobank_id_str'] = data['biobank_id']
+                del data['biobank_id']
+            except KeyError:
+                pass
+
             # PDR-149:  Preserve id values from RDR
             data['orig_id'] = data['id']
             data['orig_created'] = data['created']
