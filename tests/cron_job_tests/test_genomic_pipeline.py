@@ -1816,6 +1816,60 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
+    def test_control_sample_insert(self):
+        # Create member record for base control sample
+        genomic_set = self.set_dao.insert(GenomicSet(
+                genomicSetName=".",
+                genomicSetCriteria=".",
+                genomicSetVersion=1
+            ))
+
+        self.member_dao.insert(GenomicSetMember(
+            genomicSetId=genomic_set.id,
+            sampleId='10001',
+            participantId=0,
+            genomeType='aou_wgs',
+            validationStatus=0,
+            genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE
+        ))
+
+        # Ingest an AW1 with control sample as parent_sample_id
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("AW1-Control-Sample-Test.csv")
+
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        # Get bucket, subfolder, and filename from argument
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        # Test member was created
+        new_member = self.member_dao.get_member_from_collection_tube(1194523886, 'aou_wgs')
+
+        self.assertEqual('HG-002', new_member.biobankId)
+
     def test_aw1f_ingestion_workflow(self):
         # Setup test data: 1 aou_array, 1 aou_wgs
         self._create_fake_datasets_for_gc_tests(2, arr_override=True,
