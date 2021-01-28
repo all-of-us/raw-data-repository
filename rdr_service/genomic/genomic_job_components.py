@@ -362,12 +362,18 @@ class GenomicFileIngester:
 
             # Since not a control sample, check if collection tube was swapped by Biobank
             if member is None:
-                member = self.member_dao.get_member_from_biobank_id_in_state(row_copy['biobankid'],
+                bid = row_copy['biobankid']
+
+                # Strip biobank prefix if it's there
+                if bid[0].isalpha():
+                    bid = bid[1:]
+
+                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
                                                                              row_copy['testname'], _state)
 
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
-                    if self._validate_collection_tube_id(row_copy['collectiontubeid'], row_copy['biobankid']):
+                    if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
                         with self.member_dao.session() as session:
                             self._record_sample_as_contaminated(session, member.collectionTubeId)
 
@@ -772,13 +778,18 @@ class GenomicFileIngester:
         # Set the GC site ID (sourced from file-name)
         member.gcSiteId = aw1_data['site_id']
 
-        # Only update the state if it was AW0
+        # Only update the state if it was AW0 or AW1 (if in failure manifest workflow
+        state_to_update = GenomicWorkflowState.AW0
+
+        if self.controller.job_id == GenomicJob.AW1F_MANIFEST:
+            state_to_update = GenomicWorkflowState.AW1
+
         # We do not want to regress a state for reingested data
-        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
+        if member.genomicWorkflowState == state_to_update:
             _signal = "aw1-reconciled"
 
             # Set the signal for a failed sample
-            if member.gcManifestFailureMode is not None and member.gcManifestFailureMode != '':
+            if aw1_data['failuremode'] is not None and aw1_data['failuremode'] != '':
                 _signal = 'aw1-failed'
 
             member.genomicWorkflowState = GenomicStateHandler.get_new_state(
@@ -982,18 +993,20 @@ class GenomicFileIngester:
     def create_new_member_from_aw1_control_sample(self, aw1_data: dict) -> GenomicSetMember:
 
         # Writing new genomic_set_member based on AW1 data
-        max_set_id = self.member_dao.get_collection_tube_max_set_id()
+        max_set_id = self.member_dao.get_collection_tube_max_set_id()[0]
         # Insert new member with sample ID, parent sample ID, and collection tube
         new_member_obj = GenomicSetMember(
             genomicSetId=max_set_id,
             participantId=0,
+            biobankId=aw1_data['biobankid'],
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=aw1_data['testname'],
             genomicWorkflowState=GenomicWorkflowState.AW1
         )
 
-        # Set other member attribures from AW1
+        # Set member attribures from AW1
         new_member_obj = self._set_member_attributes_from_aw1(aw1_data, new_member_obj)
+        new_member_obj = self._set_rdr_member_attributes_for_aw1(aw1_data, new_member_obj)
 
         return self.member_dao.insert(new_member_obj)
 
