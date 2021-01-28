@@ -668,6 +668,14 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         for i in range(0, len(list_a)):
             self.assertEqual(list_a[i].asdict(), list_b[i].asdict())
 
+    def assertEmpty(self, obj: list):
+        """Assert that a list is empty"""
+        self.assertFalse(obj, "List is not empty")
+
+    def assertNotEmpty(self, obj: list):
+        """Assert than a list is not empty"""
+        self.assertTrue(obj, "List is empty")
+
     @staticmethod
     def get_restore_or_cancel_info(reason=None, author=None, site=None, status=None):
         """get a patch request to cancel or restore a PM order,

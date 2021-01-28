@@ -6,6 +6,7 @@ from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STRE
 from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
+from rdr_service.participant_enums import QuestionnaireResponseStatus
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -38,13 +39,15 @@ class CurationEtlTest(BaseTestCase):
         self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire)
 
     def _setup_questionnaire_response(self, participant, questionnaire, authored=datetime(2020, 3, 15),
-                                     created=datetime(2020, 3, 15), indexed_answers=None):
+                                      created=datetime(2020, 3, 15), indexed_answers=None,
+                                      status=QuestionnaireResponseStatus.COMPLETED):
         questionnaire_response = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
             authored=authored,
-            created=created
+            created=created,
+            status=status
         )
 
         if indexed_answers is None:
@@ -235,3 +238,50 @@ class CurationEtlTest(BaseTestCase):
             'The updated street address should overwrite the previous answers for line 1 and 2 of the address'
         )
         self.assertEqual(expected_final_address, address_answers[0].value_string)
+
+    def test_in_progress_responses_are_filtered_out_of_export(self):
+        """
+        We will filter in-progress questionnaire responses out during the ETL process until the curation team is
+        ready to start receiving them.
+        """
+
+        # Create an in-progress questionnaire response that should not appear in src_clean
+        participant = self.data_generator.create_database_participant()
+        self._setup_questionnaire_response(
+            participant,
+            self.questionnaire,
+            status=QuestionnaireResponseStatus.IN_PROGRESS
+        )
+        self.run_tool()
+
+        # Check that src_clean doesn't have any records for the in-progress questionnaire response
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.participant_id == participant.participantId
+        ).all()
+        self.assertEmpty(src_clean_answers)
+
+    def test_later_in_progress_response_not_used(self):
+        """
+        Make sure later, in-progress responses don't make us filter out full and valid responses that should be used
+        """
+
+        # Create a questionnaire response that might be used instead of the default for the test suite
+        in_progress_response = self._setup_questionnaire_response(
+            self.participant,
+            self.questionnaire,
+            authored=datetime(2020, 5, 10),
+            created=datetime(2020, 5, 10),
+            status=QuestionnaireResponseStatus.IN_PROGRESS
+        )
+        self.run_tool()
+
+        # Make sure src_clean only has data from the full response
+        in_progress_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == in_progress_response.questionnaireResponseId
+        ).all()
+        self.assertEmpty(in_progress_answers)
+
+        complete_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == self.questionnaire_response.questionnaireResponseId
+        ).all()
+        self.assertNotEmpty(complete_answers)
