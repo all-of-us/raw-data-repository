@@ -1,9 +1,11 @@
 import json
 import mock
 import os
+from typing import List
 
 import rdr_service
 from rdr_service.model.code import Code, CodeType
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
 from rdr_service.tools.tool_libs._tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
@@ -15,7 +17,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 class CodesManagementTest(BaseTestCase):
 
     @staticmethod
-    def _get_mock_dictionary_item(code_value, description, field_type, answers=''):
+    def _get_mock_dictionary_item(code_value, description, field_type, answers='',
+                                  validation='', validation_min='', validation_max=''):
         return {
             "field_name": code_value,
             "form_name": "survey",
@@ -24,9 +27,9 @@ class CodesManagementTest(BaseTestCase):
             "field_label": description,
             "select_choices_or_calculations": answers,
             "field_note": "",
-            "text_validation_type_or_show_slider_number": "",
-            "text_validation_min": "",
-            "text_validation_max": "",
+            "text_validation_type_or_show_slider_number": validation,
+            "text_validation_min": validation_min,
+            "text_validation_max": validation_max,
             "identifier": "",
             "branching_logic": "",
             "required_field": "",
@@ -38,7 +41,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(redcap_data_dictionary, reuse_codes=[], dry_run=False, export_only=False):
+    def run_tool(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False):
         def get_server_config(*_):
             config = {
                 REDCAP_PROJECT_KEYS: {
@@ -60,6 +63,12 @@ class CodesManagementTest(BaseTestCase):
         args.reuse_codes = ','.join(reuse_codes)
         args.export_only = export_only
 
+        if project_info is None:
+            project_info = {
+                'project_id': 1,
+                'project_title': 'Test'
+            }
+
         with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.open'),\
@@ -68,28 +77,24 @@ class CodesManagementTest(BaseTestCase):
 
             mock_redcap_instance = mock_redcap_class.return_value
             mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
+            mock_redcap_instance.get_project_info.return_value = project_info
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
             sync_codes_tool = CodesSyncClass(args, gcp_env)
             return sync_codes_tool.run_process(), mock_redcap_instance, mock_csv_writerow
 
-    def _load_code_with_value(self, code_value) -> Code:
-        return self.session.query(Code).filter(Code.value == code_value).one()
+    def assertCodeHasExpectedData(self, code: Code, expected_data):
+        self.assertEqual(expected_data['type'], code.codeType)
+        self.assertEqual(expected_data['value'], code.value)
 
-    def assertCodeExists(self, code_value, display_text, code_type, parent_code: Code = None):
-        code = self._load_code_with_value(code_value)
-        self.assertEqual(display_text, code.display)
+    def assertCodeExists(self, value, code_type: CodeType):
+        code = self.session.query(Code).filter(Code.value == value).one()
         self.assertEqual(code_type, code.codeType)
 
-        if parent_code:
-            self.assertEqual(parent_code.codeId, code.parentId)
-        else:
-            self.assertIsNone(code.parentId)
-
-        return code
-
     def test_question_and_answer_codes(self):
+        test_survey_project_id = 123
+        test_survey_project_title = 'Survey Structure Test'
         self.run_tool([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
@@ -108,21 +113,50 @@ class CodesManagementTest(BaseTestCase):
                 'radio',
                 answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
             )
-        ])
+        ], project_info={
+            'project_id': test_survey_project_id,
+            'project_title': test_survey_project_title
+        })
         self.assertEqual(7, self.session.query(Code).count(), '7 codes should have been created')
 
-        module_code = self.assertCodeExists('module_code', 'Test Questionnaire Module', CodeType.MODULE)
-        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
-        radio_code = self.assertCodeExists(
-            'radio',
-            'This is a single-select, multiple choice question',
-            CodeType.QUESTION,
-            module_code
-        )
-        self.assertCodeExists('A1', 'Choice One', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A2', 'Choice Two', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A3', 'Choice Three', CodeType.ANSWER, radio_code)
-        self.assertCodeExists('A4', 'Etc.', CodeType.ANSWER, radio_code)
+        survey: Survey = self.session.query(Survey).filter(Survey.redcapProjectId == test_survey_project_id).one()
+        self.assertEqual(test_survey_project_title, survey.redcapProjectTitle)
+        self.assertCodeHasExpectedData(survey.code, {
+            'value': 'module_code',
+            'type': CodeType.MODULE
+        })
+
+        self.assertEqual(2, len(survey.questions))
+        for question_index, survey_question in enumerate(survey.questions):
+            if question_index == 0:
+                self.assertEqual('Participant ID', survey_question.display)
+                self.assertEqual(SurveyQuestionType.TEXT, survey_question.questionType)
+                self.assertCodeHasExpectedData(survey_question.code, {
+                    'value': 'participant_id',
+                    'type': CodeType.QUESTION
+                })
+            elif question_index == 1:
+                self.assertEqual('This is a single-select, multiple choice question', survey_question.display)
+                self.assertEqual(SurveyQuestionType.RADIO, survey_question.questionType)
+                self.assertCodeHasExpectedData(survey_question.code, {
+                    'value': 'radio',
+                    'type': CodeType.QUESTION
+                })
+
+                expected_option_data_list = [
+                    {'value': 'A1', 'display': 'Choice One'},
+                    {'value': 'A2', 'display': 'Choice Two'},
+                    {'value': 'A3', 'display': 'Choice Three'},
+                    {'value': 'A4', 'display': 'Etc.'}
+                ]
+                self.assertEqual(len(expected_option_data_list), len(survey_question.options))
+                for option_index, survey_question_option in enumerate(survey_question.options):
+                    expected_option_data = expected_option_data_list[option_index]
+                    self.assertEqual(expected_option_data['display'], survey_question_option.display)
+                    self.assertCodeHasExpectedData(survey_question_option.code, {
+                        'value': expected_option_data['value'],
+                        'type': CodeType.ANSWER
+                    })
 
     def test_detection_of_module_code(self):
         self.run_tool([
@@ -142,10 +176,12 @@ class CodesManagementTest(BaseTestCase):
                 'descriptive'
             )
         ])
-        self.assertEqual(2, self.session.query(Code).count(), '2 codes should have been created')
-
-        module_code = self.assertCodeExists('TestQuestionnaire', 'Test Questionnaire Module', CodeType.MODULE)
-        self.assertCodeExists('participant_id', 'Participant ID', CodeType.QUESTION, module_code)
+        self.assertEqual(
+            1,
+            self.session.query(Code).filter(Code.codeType == CodeType.MODULE).count(),
+            'Only 1 module code should have been created'
+        )
+        self.assertCodeExists('TestQuestionnaire', CodeType.MODULE)
 
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_failure_on_question_code_reuse(self, mock_logger):
@@ -174,6 +210,9 @@ class CodesManagementTest(BaseTestCase):
             )
         ])
         self.assertEqual(1, self.session.query(Code).count(), 'No codes should be created when running the tool')
+        self.assertEqual(0, self.session.query(Survey).count(), 'No survey objects should be created')
+        self.assertEqual(0, self.session.query(SurveyQuestion).count(), 'No survey objects should be created')
+
         mock_logger.error.assert_any_call('Code "old_code" is already in use')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
 
@@ -244,6 +283,11 @@ class CodesManagementTest(BaseTestCase):
             )
         ], dry_run=True)
         self.assertEqual(0, self.session.query(Code).count(), 'No codes should be created during a dry run')
+        self.assertEqual(0, self.session.query(Survey).count(), 'No survey objects should be created during a dry run')
+        self.assertEqual(0, self.session.query(SurveyQuestion).count(),
+                         'No survey objects should be created during a dry run')
+        self.assertEqual(0, self.session.query(SurveyQuestionOption).count(),
+                         'No survey objects should be created during a dry run')
 
         mock_logger.info.assert_any_call('Found new "MODULE" type code, value: TestQuestionnaire')
         mock_logger.info.assert_any_call('Found new "QUESTION" type code, value: participant_id')
@@ -316,7 +360,7 @@ class CodesManagementTest(BaseTestCase):
         ])
 
         mock_csv_writerow.assert_has_calls([
-            mock.call(['Code Value', 'Display', 'Parent Value', 'Module Value']),
+            mock.call(['Code Value', 'Display', 'Parent Values', 'Module Values']),
             mock.call(['A1', 'One', 'radio', 'TestQuestionnaire']),
             mock.call(['A2', 'Two', 'radio', 'TestQuestionnaire']),
             mock.call(['A3', 'Three', 'radio', 'TestQuestionnaire']),
@@ -367,3 +411,75 @@ class CodesManagementTest(BaseTestCase):
         mock_logger.error.assert_any_call('The following question codes are missing answer options: '
                                           '"radio_code", "dropdown_code", "checkbox_code"')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
+
+    def test_reimporting_survey_sets_previous_record_as_obsolete(self):
+        """Older Survey objects that have the same project id should be updated when the survey is imported again"""
+        project_id = 1498
+        self.data_generator.create_database_survey(
+            redcapProjectId=project_id,
+            replacedTime=None
+        )
+        self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive')
+        ], project_info={
+            'project_id': project_id,
+            'project_title': 'Test project'
+        })
+
+        surveys: List[Survey] = self.session.query(Survey).filter(
+            Survey.redcapProjectId == project_id
+        ).order_by(Survey.id).all()
+        self.assertEqual(2, len(surveys), 'There should be two surveys with the project id')
+
+        older_survey = surveys[0]  # They're ordered by id, so the first in the db should be the oldest one
+        newer_survey = surveys[1]
+        self.assertEqual(newer_survey.importTime, older_survey.replacedTime)
+        self.assertIsNone(newer_survey.replacedTime)
+
+    def test_reimporting_survey_automatically_allows_reuse_of_survey_codes(self):
+        """Updating a survey should automatically allow reuse of the codes that were already in the survey"""
+        project_id = 1498
+        project_title = 'Update Test'
+        data_dictionary = [
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text')
+        ]
+
+        # Run the first time to import the survey
+        self.run_tool(data_dictionary, project_info={
+            'project_id': project_id,
+            'project_title': project_title
+        })
+
+        # Run again to see if it will allow code reuse without explicitly saying they should be reusable
+        update_exit_code, *_ = self.run_tool(data_dictionary, project_info={
+            'project_id': project_id,
+            'project_title': project_title
+        })
+
+        self.assertEqual(0, update_exit_code, 'Running the tool to update the survey should have exited successfully')
+
+        surveys: List[Survey] = self.session.query(Survey).filter(
+            Survey.redcapProjectId == project_id
+        ).order_by(Survey.id).all()
+        self.assertEqual(2, len(surveys), 'There should be two surveys with the project id')
+
+    def test_answer_validation_text_is_saved(self):
+        expected_validation = 'date_mdy'
+        expected_min = '1900-01-01'
+        expected_max = '2010-01-01'
+        self.run_tool([
+            self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
+            self._get_mock_dictionary_item('dob', 'When is your Birthday?', 'text', validation=expected_validation,
+                                           validation_min=expected_min, validation_max=expected_max)
+        ], project_info={
+            'project_id': 1234,
+            'project_title': 'Test'
+        })
+
+        survey_question: SurveyQuestion = self.session.query(SurveyQuestion).filter(
+            SurveyQuestion.code.has(Code.value == 'dob')
+        ).one()
+        self.assertEqual(expected_validation, survey_question.validation)
+        self.assertEqual(expected_min, survey_question.validation_min)
+        self.assertEqual(expected_max, survey_question.validation_max)

@@ -32,6 +32,9 @@ class RedcapClient:
     def get_data_dictionary(self, project_api_token):
         return self.send_request(project_api_token, 'metadata')
 
+    def get_project_info(self, project_api_token):
+        return self.send_request(project_api_token, 'project')
+
     def get_records(self, project_api_token, datetime_range_begin: datetime = None):
         """
         Get REDCap records (responses to the REDCap survey)
