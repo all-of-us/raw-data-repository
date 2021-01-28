@@ -1,11 +1,12 @@
 import logging
-
+from typing import Set
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.cache_all_dao import CacheAllDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.singletons import CODE_CACHE_INDEX
 
 _CODE_TYPE_MAP = {
@@ -225,6 +226,58 @@ class CodeDao(CacheAllDao):
             )
         else:
             return result_map
+
+    @staticmethod
+    def get_parent_codes(code: Code, session) -> Set[Code]:
+        parent_codes = set()
+
+        # Add the codes for the questions that use this code as an answer
+        question_codes = session.query(Code).join(
+            SurveyQuestion
+        ).join(
+            SurveyQuestionOption
+        ).filter(
+            SurveyQuestionOption.code == code
+        ).all()
+        parent_codes.update(question_codes)
+
+        # Add the codes for the surveys that use this code as a question
+        module_codes = session.query(Code).join(
+            Survey
+        ).join(
+            SurveyQuestion
+        ).filter(
+            SurveyQuestion.code == code
+        ).all()
+        parent_codes.update(module_codes)
+
+        return parent_codes
+
+    @staticmethod
+    def get_module_codes(code: Code, session) -> Set[Code]:
+        module_codes = set()
+
+        survey_codes_joined_with_questions = session.query(Code).join(
+            Survey
+        ).join(
+            SurveyQuestion
+        )
+
+        # Find all modules where this code is used as an answer option
+        module_codes_where_is_answer = survey_codes_joined_with_questions.join(
+            SurveyQuestionOption
+        ).filter(
+            SurveyQuestionOption.code == code
+        ).all()
+        module_codes.update(module_codes_where_is_answer)
+
+        # Find all modules where this code is used as a question
+        module_codes_where_is_question = survey_codes_joined_with_questions.filter(
+            SurveyQuestion.code == code
+        ).all()
+        module_codes.update(module_codes_where_is_question)
+
+        return module_codes
 
 
 class CodeHistoryDao(BaseDao):
