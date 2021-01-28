@@ -270,7 +270,7 @@ class BQMigration(object):
 
                 if not rs_json:
                     if self.args.check_schemas:
-                        _logger.info('{0}: {1}.{2} does not exist'.format(project_id, dataset_id,table_id))
+                        _logger.info('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
                         continue
                     else:
                         self.create_table(bq_table, project_id, dataset_id, table_id)

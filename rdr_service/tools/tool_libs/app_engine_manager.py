@@ -19,7 +19,7 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n, git_cur
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
-    gcp_application_default_creds_exist, gcp_restart_instances
+    gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
@@ -355,6 +355,24 @@ class DeployAppClass(object):
 
         return 0 if result else 1
 
+    @staticmethod
+    def manage_cloud_version_numbers():
+        _logger.info('Getting version list for services...')
+        max_versions = 200  # GAE allows a max of 210 versions
+        num_to_trim = 10  # Number of versions to delete each time we hit our max_versions count
+
+        # Order lists with oldest versions first
+        version_lists_by_service = gcp_get_app_versions(sort_by=['LAST_DEPLOYED'])
+        for service_name, version_list in version_lists_by_service.items():
+            version_count = len(version_list)
+            if version_count > max_versions:
+                _logger.warning(f'{version_count} versions found on {service_name.upper()}, deleting the following:')
+
+                versions_to_delete = [version_data['version'] for version_data in version_list[:num_to_trim]]
+                _logger.warning(versions_to_delete)
+
+                gcp_delete_versions(service_name, versions_to_delete)
+
     def tag_people(self):
 
         # Note: Tagging people is broken because the JIRA python library is making an invalid
@@ -449,6 +467,7 @@ class DeployAppClass(object):
                 return 1
 
         result = self.deploy_app()
+        self.manage_cloud_version_numbers()
 
         git_checkout_branch(self._current_git_branch)
         _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)

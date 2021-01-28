@@ -1,3 +1,0 @@
-#!/bin/bash -e
-# Runs repository-default git pre-push hooks.
-ci/test_pre_push.sh
