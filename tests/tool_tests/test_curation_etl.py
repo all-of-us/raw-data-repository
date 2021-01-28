@@ -259,3 +259,30 @@ class CurationEtlTest(BaseTestCase):
             SrcClean.participant_id == participant.participantId
         ).all()
         self.assertEmpty(src_clean_answers)
+
+    def test_later_in_progress_response_not_used(self):
+        """
+        Make sure later, in-progress responses don't make us filter out full and volid responses that should be used
+        """
+
+        # Create a questionnaire response that might be used instead of the default for the test suite
+        in_progress_response = self._setup_questionnaire_response(
+            self.participant,
+            self.questionnaire,
+            authored=datetime(2020, 5, 10),
+            created=datetime(2020, 5, 10),
+            status=QuestionnaireResponseStatus.IN_PROGRESS
+        )
+
+        self.run_tool()
+
+        # Make sure src_clean only has data from the full response
+        in_progress_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == in_progress_response.questionnaireResponseId
+        ).all()
+        self.assertEmpty(in_progress_answers)
+
+        complete_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == self.questionnaire_response.questionnaireResponseId
+        ).all()
+        self.assertNotEmpty(complete_answers)
