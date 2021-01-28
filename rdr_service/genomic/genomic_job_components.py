@@ -358,32 +358,30 @@ class GenomicFileIngester:
 
                 else:
                     # Not a control sample, continue with next check
-                    pass
+                    # Since not a control sample, check if collection tube id was swapped by Biobank
+                    if member is None:
+                        bid = row_copy['biobankid']
 
-            # Since not a control sample, check if collection tube id was swapped by Biobank
-            if member is None:
-                bid = row_copy['biobankid']
+                        # Strip biobank prefix if it's there
+                        if bid[0].isalpha():
+                            bid = bid[1:]
 
-                # Strip biobank prefix if it's there
-                if bid[0].isalpha():
-                    bid = bid[1:]
+                        member = self.member_dao.get_member_from_biobank_id_in_state(bid,
+                                                                                     row_copy['testname'], _state)
 
-                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
-                                                                             row_copy['testname'], _state)
+                        # If member found, validate new collection tube ID, set collection tube ID
+                        if member:
+                            if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
+                                with self.member_dao.session() as session:
+                                    self._record_sample_as_contaminated(session, member.collectionTubeId)
 
-                # If member found, validate new collection tube ID, set collection tube ID
-                if member:
-                    if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                        with self.member_dao.session() as session:
-                            self._record_sample_as_contaminated(session, member.collectionTubeId)
+                                member.collectionTubeId = row_copy['collectiontubeid']
 
-                        member.collectionTubeId = row_copy['collectiontubeid']
-
-                else:
-                    # Couldn't find genomic set member based on either biobank ID or collection tube
-                    raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
-                                     f"biobank id: {row_copy['biobankid']}, "
-                                     f"genome type: {row_copy['testname']}")
+                        else:
+                            # Couldn't find genomic set member based on either biobank ID or collection tube
+                            raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
+                                             f"biobank id: {row_copy['biobankid']}, "
+                                             f"genome type: {row_copy['testname']}")
 
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)

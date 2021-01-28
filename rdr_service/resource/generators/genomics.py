@@ -92,8 +92,9 @@ class GenomicSetMemberSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_set_member where id = :id'), {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
 
-            # Delete biobank_id key since we send to biobank_id_str
+            # Set biobank_id_str and delete biobank_id
             try:
+                data['biobank_id_str'] = data['biobank_id']
                 del data['biobank_id']
             except KeyError:
                 pass
