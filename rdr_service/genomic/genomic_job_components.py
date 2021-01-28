@@ -327,7 +327,7 @@ class GenomicFileIngester:
             # except ValueError:
             #     parent_sample_id = 0
 
-            # Skip rows if biobank is an empty string (row is empty well)
+            # Skip rows if biobank_id is an empty string (row is empty well)
             if row_copy['biobankid'] == "":
                 continue
 
@@ -338,8 +338,8 @@ class GenomicFileIngester:
                                                                      row_copy['testname'])
 
             # If member not found, check if:
-            #  collection tube was changed by Biobank
-            #  or if this is a control sample
+            #  this is a control sample
+            #  or if collection tube was changed by Biobank
             if member is None:
                 # Check if this is a new control sample and make new member from it
                 if self._check_if_control_sample(int(row_copy['parentsampleid'])) is not None:
@@ -360,7 +360,7 @@ class GenomicFileIngester:
                     # Not a control sample, continue with next check
                     pass
 
-            # Since not a control sample, check if collection tube was swapped by Biobank
+            # Since not a control sample, check if collection tube id was swapped by Biobank
             if member is None:
                 bid = row_copy['biobankid']
 
@@ -380,6 +380,7 @@ class GenomicFileIngester:
                         member.collectionTubeId = row_copy['collectiontubeid']
 
                 else:
+                    # Couldn't find genomic set member based on either biobank ID or collection tube
                     raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
                                      f"biobank id: {row_copy['biobankid']}, "
                                      f"genome type: {row_copy['testname']}")
@@ -778,13 +779,13 @@ class GenomicFileIngester:
         # Set the GC site ID (sourced from file-name)
         member.gcSiteId = aw1_data['site_id']
 
-        # Only update the state if it was AW0 or AW1 (if in failure manifest workflow
+        # Only update the state if it was AW0 or AW1 (if in failure manifest workflow)
+        # We do not want to regress a state for reingested data
         state_to_update = GenomicWorkflowState.AW0
 
         if self.controller.job_id == GenomicJob.AW1F_MANIFEST:
             state_to_update = GenomicWorkflowState.AW1
 
-        # We do not want to regress a state for reingested data
         if member.genomicWorkflowState == state_to_update:
             _signal = "aw1-reconciled"
 
@@ -845,9 +846,7 @@ class GenomicFileIngester:
             else:
                 logging.error(f"No genomic set member for bid,sample_id: "
                               f"{row_copy['biobankid']}, {row_copy['sampleid']}")
-                # TODO: handle control samples
-                if "HG" in row_copy['biobankid']:
-                    continue
+
                 return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
@@ -991,14 +990,21 @@ class GenomicFileIngester:
             return GenomicQcStatus.UNSET
 
     def create_new_member_from_aw1_control_sample(self, aw1_data: dict) -> GenomicSetMember:
+        """
+        Creates a new control sample GenomicSetMember in RDR based on AW1 data
+        These will look like regular GenomicSetMember samples
+        :param aw1_data: dict from aw1 row
+        :return:  GenomicSetMember
+        """
 
         # Writing new genomic_set_member based on AW1 data
         max_set_id = self.member_dao.get_collection_tube_max_set_id()[0]
-        # Insert new member with sample ID, parent sample ID, and collection tube
+        # Insert new member with biobank_id and collection tube ID from AW1
         new_member_obj = GenomicSetMember(
             genomicSetId=max_set_id,
             participantId=0,
             biobankId=aw1_data['biobankid'],
+            collectionTubeId=aw1_data['collectiontubeid'],
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=aw1_data['testname'],
             genomicWorkflowState=GenomicWorkflowState.AW1
