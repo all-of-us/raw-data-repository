@@ -216,16 +216,17 @@ class JiraTicketHandler:
         self._jira_connection.add_issues_to_sprint(sprint.id, [ticket.key])
         return ticket
 
-    def get_release_notes_since_tag(self, git_tag):
+    def get_release_notes_since_tag(self, deployed_tag, target_tag):
         """
-        Formats release notes for JIRA from commit messages, from the given tag to HEAD.
-        :param git_tag: get messages after given git tag.
+        Formats release notes for JIRA from commit messages, from the deployed tag to target tag.
+        :param deployed_tag: deploy tag version
+        :param target_tag: target tag version
         """
         #args = ['git', 'log', f'{git_tag}..', '--pretty=format:"%h||%aN, %ad||%s"']
         # They want pretty, we'll give them pretty !
-        args = ['git', 'log', f'{git_tag}..', "--graph --decorate \
-                --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) \
-                %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' "]
+        args = ['git', 'log', f'{deployed_tag}..{target_tag}', '--graph', '--decorate',
+                "--format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) "
+                "%C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)'"]
         # pylint: disable=unused-variable
         code, so, se = run_external_program(args=args)
 
