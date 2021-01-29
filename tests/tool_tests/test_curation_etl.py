@@ -1,5 +1,4 @@
 from datetime import datetime
-import mock
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
     STREET_ADDRESS2_QUESTION_CODE
