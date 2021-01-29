@@ -6,7 +6,7 @@ from typing import List
 import rdr_service
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
-from rdr_service.tools.tool_libs._tool_base import ToolBase
+from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
