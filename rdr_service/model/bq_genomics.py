@@ -171,7 +171,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw2f_file_processed_id = BQField('aw2f_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    biobank_id_str = BQField('biobank_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
