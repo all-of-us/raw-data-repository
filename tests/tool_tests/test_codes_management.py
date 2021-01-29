@@ -1,4 +1,3 @@
-import json
 import mock
 import os
 from typing import List
@@ -6,15 +5,15 @@ from typing import List
 import rdr_service
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
-from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.tool_test_mixin import ToolTestMixin
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
-class CodesManagementTest(BaseTestCase):
+class CodesManagementTest(ToolTestMixin, BaseTestCase):
 
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers='',
@@ -41,28 +40,7 @@ class CodesManagementTest(BaseTestCase):
         }
 
     @staticmethod
-    def run_tool(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False):
-        def get_server_config(*_):
-            config = {
-                REDCAP_PROJECT_KEYS: {
-                    'project_one': '1234ABC'
-                },
-                DRIVE_EXPORT_FOLDER_ID: '1a789',
-                EXPORT_SERVICE_ACCOUNT_NAME: 'exporter@example.com'
-            }
-            return json.dumps(config), 'test-file-name'
-
-        gcp_env = mock.MagicMock()
-        gcp_env.project = 'localhost'
-        gcp_env.git_project = PROJECT_ROOT
-        gcp_env.get_latest_config_from_bucket = get_server_config
-
-        args = mock.MagicMock()
-        args.redcap_project = 'project_one'
-        args.dry_run = dry_run
-        args.reuse_codes = ','.join(reuse_codes)
-        args.export_only = export_only
-
+    def run_code_import(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False):
         if project_info is None:
             project_info = {
                 'project_id': 1,
@@ -71,18 +49,26 @@ class CodesManagementTest(BaseTestCase):
 
         with mock.patch('rdr_service.tools.tool_libs.codes_management.RedcapClient') as mock_redcap_class,\
                 mock.patch('rdr_service.tools.tool_libs.codes_management.csv') as mock_csv,\
-                mock.patch('rdr_service.tools.tool_libs.codes_management.open'),\
-                mock.patch.object(ToolBase, 'initialize_process_context') as mock_init_env:
-            mock_init_env.return_value.__enter__.return_value = gcp_env
-
+                mock.patch('rdr_service.tools.tool_libs.codes_management.open'):
             mock_redcap_instance = mock_redcap_class.return_value
             mock_redcap_instance.get_data_dictionary.return_value = redcap_data_dictionary
             mock_redcap_instance.get_project_info.return_value = project_info
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
-            sync_codes_tool = CodesSyncClass(args, gcp_env)
-            return sync_codes_tool.run_process(), mock_redcap_instance, mock_csv_writerow
+            tool_run_result = CodesManagementTest.run_tool(CodesSyncClass, tool_args={
+                'redcap_project': 'project_one',
+                'dry_run': dry_run,
+                'reuse_codes': ','.join(reuse_codes),
+                'export_only': export_only
+            }, server_config={
+                REDCAP_PROJECT_KEYS: {
+                    'project_one': '1234ABC'
+                },
+                DRIVE_EXPORT_FOLDER_ID: '1a789',
+                EXPORT_SERVICE_ACCOUNT_NAME: 'exporter@example.com'
+            })
+            return tool_run_result, mock_redcap_instance, mock_csv_writerow
 
     def assertCodeHasExpectedData(self, code: Code, expected_data):
         self.assertEqual(expected_data['type'], code.codeType)
@@ -95,7 +81,7 @@ class CodesManagementTest(BaseTestCase):
     def test_question_and_answer_codes(self):
         test_survey_project_id = 123
         test_survey_project_title = 'Survey Structure Test'
-        self.run_tool([
+        self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'record_id',
@@ -159,7 +145,7 @@ class CodesManagementTest(BaseTestCase):
                     })
 
     def test_detection_of_module_code(self):
-        self.run_tool([
+        self.run_code_import([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -187,7 +173,7 @@ class CodesManagementTest(BaseTestCase):
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
 
-        return_val, _, _ = self.run_tool([
+        return_val, _, _ = self.run_code_import([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -219,7 +205,7 @@ class CodesManagementTest(BaseTestCase):
     def test_auto_ignore_answer_code_reuse(self):
         self.data_generator.create_database_code(value='A1')
 
-        return_val, _, _ = self.run_tool([
+        return_val, _, _ = self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item(
                 'radio',
@@ -235,7 +221,7 @@ class CodesManagementTest(BaseTestCase):
         self.data_generator.create_database_code(value='TestQuestionnaire')
         self.data_generator.create_database_code(value='old_code')
 
-        return_val, _, _ = self.run_tool([
+        return_val, _, _ = self.run_code_import([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -264,7 +250,7 @@ class CodesManagementTest(BaseTestCase):
 
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_dry_run(self, mock_logger):
-        self.run_tool([
+        self.run_code_import([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -303,7 +289,7 @@ class CodesManagementTest(BaseTestCase):
         self.data_generator.create_database_code(value='accidental_reuse')
         self.data_generator.create_database_code(value='A2')  # Reuse should go through, but no logs should print
 
-        _, _, mock_csv_writerow = self.run_tool([
+        _, _, mock_csv_writerow = self.run_code_import([
             self._get_mock_dictionary_item(
                 'TestQuestionnaire',
                 'Test Questionnaire Module',
@@ -341,7 +327,7 @@ class CodesManagementTest(BaseTestCase):
         mock_csv_writerow.assert_not_called()
 
     def test_no_import_on_export_only(self):
-        _, mock_redcap_instance, _ = self.run_tool([
+        _, mock_redcap_instance, _ = self.run_code_import([
             self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text')
         ], export_only=True)
 
@@ -352,7 +338,7 @@ class CodesManagementTest(BaseTestCase):
     def test_export_file_creation(self):
         self.data_generator.create_database_code(value='old_code', display='Code we already had')
         self.data_generator.create_database_code(value='another', display='Code we already had')
-        _, _, mock_csv_writerow = self.run_tool([
+        _, _, mock_csv_writerow = self.run_code_import([
             self._get_mock_dictionary_item('TestQuestionnaire', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text'),
             self._get_mock_dictionary_item('radio', 'multi-select', 'radio',
@@ -374,7 +360,7 @@ class CodesManagementTest(BaseTestCase):
 
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_module_code_is_required(self, mock_logger):
-        return_val, *_ = self.run_tool([
+        return_val, *_ = self.run_code_import([
             self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text'
             )
         ])
@@ -386,7 +372,7 @@ class CodesManagementTest(BaseTestCase):
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_invalid_codes_are_rejected(self, mock_logger):
         """Code values should only have alphanumeric or underscore characters"""
-        return_val, *_ = self.run_tool([
+        return_val, *_ = self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item('valid_code', 'Participant ID', 'text'),
             self._get_mock_dictionary_item("invalid'code", 'quote character not allowed', 'text'),
@@ -400,7 +386,7 @@ class CodesManagementTest(BaseTestCase):
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_missing_options_fail_import(self, mock_logger):
         """Questions that are single or multi select should have options associated with them"""
-        return_val, *_ = self.run_tool([
+        return_val, *_ = self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item('radio_code', 'single-select', 'radio'),
             self._get_mock_dictionary_item('dropdown_code', 'dropdown', 'dropdown'),
@@ -419,7 +405,7 @@ class CodesManagementTest(BaseTestCase):
             redcapProjectId=project_id,
             replacedTime=None
         )
-        self.run_tool([
+        self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive')
         ], project_info={
             'project_id': project_id,
@@ -446,13 +432,13 @@ class CodesManagementTest(BaseTestCase):
         ]
 
         # Run the first time to import the survey
-        self.run_tool(data_dictionary, project_info={
+        self.run_code_import(data_dictionary, project_info={
             'project_id': project_id,
             'project_title': project_title
         })
 
         # Run again to see if it will allow code reuse without explicitly saying they should be reusable
-        update_exit_code, *_ = self.run_tool(data_dictionary, project_info={
+        update_exit_code, *_ = self.run_code_import(data_dictionary, project_info={
             'project_id': project_id,
             'project_title': project_title
         })
@@ -468,7 +454,7 @@ class CodesManagementTest(BaseTestCase):
         expected_validation = 'date_mdy'
         expected_min = '1900-01-01'
         expected_max = '2010-01-01'
-        self.run_tool([
+        self.run_code_import([
             self._get_mock_dictionary_item('module_code', 'Test Questionnaire Module', 'descriptive'),
             self._get_mock_dictionary_item('dob', 'When is your Birthday?', 'text', validation=expected_validation,
                                            validation_min=expected_min, validation_max=expected_max)
