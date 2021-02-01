@@ -22,7 +22,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 

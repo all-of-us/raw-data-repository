@@ -10,13 +10,14 @@ from rdr_service import config
 from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.tools.tool_libs.sync_consent import SyncConsentClass
 from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.tool_test_mixin import ToolTestMixin
 
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
 
 @mock.patch('rdr_service.storage.GoogleCloudStorageProvider.upload_from_file')
 @mock.patch("rdr_service.offline.sync_consent_files.gcp_cp")
-class SyncConsentTest(BaseTestCase):
+class SyncConsentTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super().setUp()
 
@@ -43,29 +44,22 @@ class SyncConsentTest(BaseTestCase):
     @staticmethod
     def run_sync(date_limit='2020-05-01', end_date=None, org_id='test_org', destination_bucket=None,
                  all_files=False, zip_files=False, dry_run=None, consent_files=[], all_va=False):
-        environment = mock.MagicMock()
-        environment.project = 'unit_test'
-
-        args = mock.MagicMock()
-        args.date_limit = date_limit
-        args.end_date = end_date
-        args.org_id = None if all_va else org_id
-        args.destination_bucket = destination_bucket
-        args.all_files = all_files
-        args.zip_files = zip_files
-        args.dry_run = dry_run
-        args.all_va = all_va
-        args.pid_file = None
-
-        # Patching things to keep tool from trying to call GAE and to provide test data
         with mock.patch.dict('rdr_service.tools.tool_libs.sync_consent.SOURCE_BUCKET', {
                     'example': "gs://uploads_bucket/Participant/P{p_id}/*{file_ext}"
                 }),\
                 mock.patch('rdr_service.tools.tool_libs.sync_consent.GoogleCloudStorageProvider.list',
                            return_value=consent_files):
-
-            sync_consent_tool = SyncConsentClass(args, environment)
-            sync_consent_tool.run()
+            SyncConsentTest.run_tool(SyncConsentClass, tool_args={
+                'date_limit': date_limit,
+                'end_date': end_date,
+                'org_id': None if all_va else org_id,
+                'destination_bucket': destination_bucket,
+                'all_files': all_files,
+                'zip_files': zip_files,
+                'dry_run': dry_run,
+                'all_va': all_va,
+                'pid_file': None
+            })
 
     @staticmethod
     def _fake_file(participant, file_name):

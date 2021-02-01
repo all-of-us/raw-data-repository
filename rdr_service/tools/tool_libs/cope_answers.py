@@ -6,7 +6,7 @@
 import json
 
 from rdr_service import config
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'

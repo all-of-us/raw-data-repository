@@ -1,7 +1,7 @@
 from dateutil import parser
 
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'deceased-sync'
 tool_desc = 'Sync deceased reports from Redcap to an environment'
