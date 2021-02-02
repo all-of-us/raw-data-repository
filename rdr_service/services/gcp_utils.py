@@ -14,6 +14,7 @@ import shlex
 import subprocess
 from collections import OrderedDict
 from random import choice
+from typing import List
 
 from .gcp_config import GCP_INSTANCES, GCP_PROJECTS, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
 from .system_utils import run_external_program, which
@@ -702,14 +703,17 @@ def gcp_mv(src, dest, args=None, flags=None):
     return True
 
 
-def gcp_get_app_versions(running_only: bool = False):
+def gcp_get_app_versions(running_only: bool = False, sort_by: List[str] = None):
     """
     Get the list of current App Engine services and versions.
     :param running_only: Only showing running versions if True.
+    :param sort_by: List of strings specifying what the list of versions should be sorted by
     :return: dict(service_name: dict(version, split, deployed, status))
     """
 
     args = "versions list"
+    if sort_by:
+        args += f" --sort-by={','.join(sort_by)}"
     pcode, so, se = gcp_gcloud_command("app", args)
 
     if pcode != 0 or not so:
@@ -745,6 +749,23 @@ def gcp_get_app_versions(running_only: bool = False):
             })
 
     return services
+
+
+def gcp_delete_versions(service_name: str, version_names: List[str]):
+    """
+    Delete the versions from the specified service
+
+    :param service_name: Specifies the service to delete the versions from
+    :param version_names: Names of the versions to delete
+    """
+
+    version_list_str = ' '.join(version_names)
+    args = f'versions delete --service={service_name} {version_list_str} --quiet'
+
+    exit_code, _, error = gcp_gcloud_command('app', args)
+    if exit_code != 0:
+        _logger.error(error)
+        _logger.error('Failed to delete the versions.')
 
 
 def gcp_app_services_split_traffic(service: str, versions: list, split_by: str = 'random'):

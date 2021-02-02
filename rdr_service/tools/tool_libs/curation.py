@@ -20,9 +20,9 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import WithdrawalStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -246,6 +246,8 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             QuestionnaireQuestion
+        ).filter(
+            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -346,7 +348,8 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueDate.isnot(None),
                 QuestionnaireResponseAnswer.valueDateTime.isnot(None),
                 QuestionnaireResponseAnswer.valueString.isnot(None)
-            )
+            ),
+            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code

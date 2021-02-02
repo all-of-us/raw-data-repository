@@ -225,6 +225,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
+                cdrVersion=item.get('cdrVersion'),
                 resource=json.dumps(item)
             )
 
@@ -407,7 +408,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
                         if workspace.incomeLevel else None,
                         "others": workspace.others
-                    }
+                    },
+                    "cdrVersion": workspace.cdrVersion
                 }
                 results.append(record)
 
@@ -601,7 +603,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
                         if workspace.incomeLevel else None,
                         "others": workspace.others
-                    }
+                    },
+                    "cdrVersion": workspace.cdrVersion
                 }
                 results.append(record)
 

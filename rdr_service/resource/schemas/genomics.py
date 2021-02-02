@@ -115,6 +115,7 @@ class GenomicSetMemberSchema(Schema):
     aw1_file_processed_id = fields.Int32()
     aw2_file_processed_id = fields.Int32()
     aw2f_file_processed_id = fields.Int32()
+    biobank_id_str = fields.String(validate=validate.Length(max=128))
 
     class Meta:
         schema_id = SchemaID.genomic_set_member

@@ -3,7 +3,7 @@ import logging
 from rdr_service.offline.update_ehr_status import make_update_participant_summaries_job,\
     update_participant_summaries_from_job
 from rdr_service.services.system_utils import setup_logging
-from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 tool_cmd = 'update-participant-ehr'
 tool_desc = 'Sync deceased reports from Redcap to an environment'

@@ -58,6 +58,8 @@ class SiteDao(CacheAllDao):
         return obj.siteId
 
     def get_by_google_group(self, google_group):
+        if isinstance(google_group, str):
+            google_group = google_group.lower()
         return self._get_cache().index_maps["googleGroup"].get(google_group)
 
     @staticmethod

@@ -1,5 +1,5 @@
 import logging
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 from rdr_service.services.gcp_utils import gcp_monitoring_list_policy, gcp_monitoring_create_policy, \
     gcp_monitoring_update_policy, gcp_monitoring_delete_policy
 
