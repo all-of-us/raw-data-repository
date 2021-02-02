@@ -1000,7 +1000,7 @@ class GenomicPipelineTest(BaseTestCase):
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
                                consentCohort=3,
-                               participantOrigin='example' if bid != 100009 else 'careevolution')
+                               participantOrigin='careevolution' if bid == 100009 else 'example')
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
