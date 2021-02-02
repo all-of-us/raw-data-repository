@@ -975,7 +975,7 @@ class GenomicPipelineTest(BaseTestCase):
     def test_new_participant_workflow(self):
         # Test for Cohort 3 workflow
         # create test samples
-        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008)
+        test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
         # update the sites' States for the state test (NY or AZ)
@@ -999,7 +999,8 @@ class GenomicPipelineTest(BaseTestCase):
                                sampleStatus1SAL2=0 if bid == 100005 else 1,
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
-                               consentCohort=3)
+                               consentCohort=3,
+                               participantOrigin='example' if bid != 100009 else 'careevolution')
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
