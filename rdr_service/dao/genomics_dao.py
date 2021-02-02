@@ -72,6 +72,10 @@ class GenomicSetDao(UpdatableDao):
         else:
             return 1
 
+    def get_max_set(self):
+        with self.session() as s:
+            return s.query(functions.max(GenomicSet.id)).one()[0]
+
     def iter_validation_data_for_genomic_set_id(self, genomic_set_id):
         """
     Iterate over validation data rows.

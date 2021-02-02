@@ -160,7 +160,7 @@ def create_and_upload_genomic_biobank_manifest_file(genomic_set_id, timestamp=No
       ORDER BY id
     """
     query_params = {"genomic_set_id": genomic_set_id,
-                    "prefix": BIOBANK_ID_PREFIX,
+                    "prefix": "A",
                     "aw0_ready_state": int(GenomicWorkflowState.AW0_READY),}
     exporter.run_export(result_filename, export_sql, query_params)
 
