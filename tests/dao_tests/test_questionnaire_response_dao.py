@@ -22,7 +22,7 @@ from rdr_service.dao.questionnaire_response_dao import (
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
     RetentionStatus
 from tests import test_data
@@ -176,7 +176,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
     def check_response(self, expected_qr):
         qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
-        self.assertEqual(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
+        self.assertResponseDictEquals(expected_qr.asdict(follow=ANSWERS), qr.asdict(follow=ANSWERS))
 
     def _names_and_email_answers(self):
         return [self.FN_ANSWER, self.LN_ANSWER, self.EMAIL_ANSWER]
@@ -201,7 +201,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_participant_not_found(self):
         self.insert_codes()
@@ -219,7 +219,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.extend(self._names_and_email_answers())
         # Answers are there but the participant is not.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_participant_not_found2(self):
         self.insert_codes()
@@ -236,7 +236,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         qr.answers.extend(self._names_and_email_answers())
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_participant_withdrawn(self):
         self.insert_codes()
@@ -253,7 +253,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         qr.answers.extend(self._names_and_email_answers())
         with self.assertRaises(Forbidden):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_not_name_answers(self):
         self.insert_codes()
@@ -279,7 +279,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         # Both first and last name are required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_first_name_only(self):
         self.insert_codes()
@@ -296,7 +296,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         qr.answers.append(self.FN_ANSWER)
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_last_name_only(self):
         self.insert_codes()
@@ -314,7 +314,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(self.LN_ANSWER)
         # Both first and last name are required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_names_only(self):
         self.insert_codes()
@@ -333,7 +333,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(self.LN_ANSWER)
         # Email is required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_email_only(self):
         self.insert_codes()
@@ -351,7 +351,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(self.EMAIL_ANSWER)
         # First and last name are required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_login_phone_number_only(self):
         self.insert_codes()
@@ -369,7 +369,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
         # First and last name are required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_both_email_and_login_phone_number_without_names(self):
         self.insert_codes()
@@ -388,7 +388,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
         # First and last name are required.
         with self.assertRaises(BadRequest):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def test_insert_both_names_and_login_phone_number(self):
         self.insert_codes()
@@ -407,7 +407,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         time = datetime.datetime(2016, 1, 1)
         with FakeClock(time):
             qr.authored = time
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -420,8 +420,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             authored=time,
         )
         expected_qr.answers.extend(self._names_and_login_phone_number_answers())
+        self._add_consent_extension_to_response(expected_qr)
         qr2 = self.questionnaire_response_dao.get(1)
-        self.assertEqual(expected_qr.asdict(), qr2.asdict())
+        self.assertResponseDictEquals(expected_qr.asdict(), qr2.asdict())
         self.check_response(expected_qr)
 
     def test_insert_both_names_and_email(self):
@@ -441,7 +442,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         time = datetime.datetime(2016, 1, 1)
         with FakeClock(time):
             qr.authored = time
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -453,9 +454,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             created=time,
             authored=time,
         )
+        self._add_consent_extension_to_response(expected_qr)
         expected_qr.answers.extend(self._names_and_email_answers())
         qr2 = self.questionnaire_response_dao.get(1)
-        self.assertEqual(expected_qr.asdict(), qr2.asdict())
+        self.assertResponseDictEquals(expected_qr.asdict(), qr2.asdict())
         self.check_response(expected_qr)
 
     def test_insert_both_names_and_email_and_login_phone_number(self):
@@ -478,7 +480,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         time = datetime.datetime(2016, 1, 1)
         with FakeClock(time):
             qr.authored = time
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -494,8 +496,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr.answers.append(self.LN_ANSWER)
         expected_qr.answers.append(self.EMAIL_ANSWER)
         expected_qr.answers.append(self.LOGIN_PHONE_NUMBER_ANSWER)
+        self._add_consent_extension_to_response(expected_qr)
         qr2 = self.questionnaire_response_dao.get(1)
-        self.assertEqual(expected_qr.asdict(), qr2.asdict())
+        self.assertResponseDictEquals(expected_qr.asdict(), qr2.asdict())
         self.check_response(expected_qr)
 
     def test_insert_duplicate(self):
@@ -512,7 +515,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
-        self.questionnaire_response_dao.insert(qr)
+        self._insert_questionnaire_response(qr)
         qr2 = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
             questionnaireId=1,
@@ -531,7 +534,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             )
         )
         with self.assertRaises(IntegrityError):
-            self.questionnaire_response_dao.insert(qr2)
+            self._insert_questionnaire_response(qr2)
 
     def test_insert_skip_codes(self):
         self.insert_codes()
@@ -565,7 +568,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.extend(self._names_and_email_answers())
 
         with FakeClock(TIME_2):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -577,9 +580,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             created=TIME_2,
             authored=TIME_2,
         )
+        self._add_consent_extension_to_response(expected_qr)
 
         qr2 = self.questionnaire_response_dao.get(1)
-        self.assertEqual(expected_qr.asdict(), qr2.asdict())
+        self.assertResponseDictEquals(expected_qr.asdict(), qr2.asdict())
 
         expected_qr.answers.extend([answer_1, answer_2])
         expected_qr.answers.extend(self._names_and_email_answers())
@@ -612,6 +616,33 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
 
+    def assertResponseDictEquals(self, expected_response: dict, actual_response: dict):
+        expected_resource_json = json.loads(expected_response['resource'])
+        del expected_response['resource']
+
+        actual_resource_json = json.loads(actual_response['resource'])
+        del actual_response['resource']
+
+        self.assertEqual(expected_response, actual_response, 'QuestionnaireResponses dicts do not match')
+        self.assertEqual(expected_resource_json, actual_resource_json, 'Response resource strings do not match')
+
+    @staticmethod
+    def _add_consent_extension_to_response(response: QuestionnaireResponse):
+        # Add necessary consent file extension to resource json
+        resource_json = json.loads(response.resource)
+        resource_json['extension'] = [{
+            "url": "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf",
+            "valueString": "Participant/nonexistent/test_consent_file_name.pdf"
+        }]
+        response.resource = json.dumps(resource_json)
+
+    def _insert_questionnaire_response(self, response):
+        self._add_consent_extension_to_response(response)
+
+        # Send the consent, making it look like any necessary cloud files exist (for primary consent)
+        with mock.patch('rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing', return_value=True):
+            self.questionnaire_response_dao.insert(response)
+
     def _setup_participant(self):
         self._setup_questionnaire()
         qr = self.data_generator._questionnaire_response(
@@ -639,8 +670,10 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(answer_2)
         names_and_email_answers = self._names_and_email_answers()
         qr.answers.extend(names_and_email_answers)
+
+        # Send the consent, making it look like any necessary cloud files exist (for primary consent)
         with FakeClock(TIME_2):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
     def _create_questionnaire(self, created_date, question_code_id=None, identifier='1'):
         questionnaire = Questionnaire(resource=QUESTIONNAIRE_RESOURCE, externalId=identifier)
@@ -676,7 +709,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
             qr.answers.extend([answer])
 
-        self.questionnaire_response_dao.insert(qr)
+        self._insert_questionnaire_response(qr)
 
     def test_cope_updates_num_completed(self):
         self.insert_codes()
@@ -917,7 +950,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         resource = self.make_questionnaire_response_json(p_id, q_id, string_answers=string_answers)
         qr = self.questionnaire_response_dao.from_client_json(resource, participant_id=int(p_id[1:]))
         with self.questionnaire_response_answer_dao.session() as session:
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
             all_strings_query = session.query(QuestionnaireResponseAnswer.valueString).all()
             all_strings = [obj.valueString for obj in all_strings_query]
             self.assertTrue(string in all_strings)
@@ -943,7 +976,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             resource=QUESTIONNAIRE_RESPONSE_RESOURCE
         )
         qr.answers.extend(self._names_and_email_answers())
-        self.questionnaire_response_dao.insert(qr)
+        self._insert_questionnaire_response(qr)
         p.withdrawalStatus = WithdrawalStatus.NO_USE
         self.participant_dao.update(p)
         with self.assertRaises(Forbidden):
@@ -981,7 +1014,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         names_and_email_answers = self._names_and_email_answers()
         qr.answers.extend(names_and_email_answers)
         with FakeClock(TIME_2):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -993,8 +1026,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             created=TIME_2,
             authored=TIME_2,
         )
+        self._add_consent_extension_to_response(expected_qr)
         qr2 = self.questionnaire_response_dao.get(1)
-        self.assertEqual(expected_qr.asdict(), qr2.asdict())
+        self.assertResponseDictEquals(expected_qr.asdict(), qr2.asdict())
 
         expected_qr.answers.append(answer_1)
         expected_qr.answers.append(answer_2)
@@ -1075,7 +1109,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(answer_2)
         qr.answers.extend(self._names_and_email_answers())
         with FakeClock(TIME_2):
-            self.questionnaire_response_dao.insert(qr)
+            self._insert_questionnaire_response(qr)
 
         expected_ps = self.data_generator._participant_summary_with_defaults(
             participantId=1,
@@ -1124,7 +1158,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr2.answers.append(answer_3)
         with FakeClock(TIME_3):
             qr2.authored = TIME_3
-            self.questionnaire_response_dao.insert(qr2)
+            self._insert_questionnaire_response(qr2)
 
         expected_qr = self.data_generator._questionnaire_response(
             questionnaireResponseId=1,
@@ -1142,6 +1176,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         expected_qr.answers.append(answer_1)
         expected_qr.answers.append(answer_2)
         expected_qr.answers.extend(self._names_and_email_answers())
+        self._add_consent_extension_to_response(expected_qr)
         self.check_response(expected_qr)
 
         # The new questionnaire response should be there, too.
@@ -1156,6 +1191,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             authored=TIME_3,
         )
         expected_qr2.answers.append(answer_3)
+        self._add_consent_extension_to_response(expected_qr2)
         self.check_response(expected_qr2)
 
         expected_ps2 = self.data_generator._participant_summary_with_defaults(
@@ -1207,7 +1243,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr3.answers.append(answer_4)
         with FakeClock(TIME_4):
             qr3.authored = TIME_4
-            self.questionnaire_response_dao.insert(qr3)
+            self._insert_questionnaire_response(qr3)
 
         # The first questionnaire response hasn't changed.
         self.check_response(expected_qr)
@@ -1228,6 +1264,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             authored=TIME_4
         )
         expected_qr3.answers.append(answer_4)
+        self._add_consent_extension_to_response(expected_qr3)
         self.check_response(expected_qr3)
 
         expected_ps3 = self.data_generator._participant_summary_with_defaults(

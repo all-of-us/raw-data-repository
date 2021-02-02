@@ -77,8 +77,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             ('firstName', 'Bob'),
             ('lastName', 'Smith'),
             ('email', 'email@example.com')
-            # Does not include an extension to the signature file
-        ], expected_status=400)
+        ], expected_status=400, send_consent_file_extension=False)
 
         summary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == from_client_participant_id(participant_id)
