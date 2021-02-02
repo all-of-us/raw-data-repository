@@ -2012,7 +2012,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
-        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_2.csv',
                                          bucket_name,
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
