@@ -1995,8 +1995,8 @@ class GenomicPipelineTest(BaseTestCase):
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
 
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
-                                                array_participants=range(1, 4),
+        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
+                                                array_participants=range(1, 5),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
@@ -2006,6 +2006,8 @@ class GenomicPipelineTest(BaseTestCase):
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
             p.consentForGenomicsRORAuthored = ror_start
+            if p.biobankId == 3:
+                p.participantOrigin = 'careevolution'
             self.summary_dao.update(p)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
@@ -2018,7 +2020,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_stored_samples([
             (1, 1001),
-            (2, 1002)
+            (2, 1002),
+            (3, 1003)
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
@@ -2039,6 +2042,13 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10002_R01C02_grn.idat',
             f'test_data_folder/10002_R01C02_red.idat.md5sum',
             f'test_data_folder/10002_R01C02_grn.idat.md5sum',
+            f'test_data_folder/10003_R01C03.vcf.gz',
+            f'test_data_folder/10003_R01C03.vcf.gz.tbi',
+            f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
+            f'test_data_folder/10003_R01C03_red.idat',
+            f'test_data_folder/10003_R01C03_grn.idat',
+            f'test_data_folder/10003_R01C03_red.idat.md5sum',
+            f'test_data_folder/10003_R01C03_grn.idat.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)

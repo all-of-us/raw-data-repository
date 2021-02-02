@@ -2860,7 +2860,6 @@ class ManifestDefinitionProvider:
                     (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
-
         return query_sql
 
     def _get_manifest_columns(self, manifest_type):
