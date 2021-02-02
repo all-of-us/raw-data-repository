@@ -22,7 +22,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
-    QuestionnaireStatus, ParticipantCohort, ParticipantCohortPilotFlag
+    ParticipantCohort, ParticipantCohortPilotFlag
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values
 from tests.test_data import data_path
@@ -77,13 +77,13 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             ('firstName', 'Bob'),
             ('lastName', 'Smith'),
             ('email', 'email@example.com')
-            # Does not include a signature
-        ])
+            # Does not include an extension to the signature file
+        ], expected_status=400)
 
-        summary = self.send_get("Participant/{0}/Summary".format(participant_id))
-        self.assertEqual(str(QuestionnaireStatus.UNSET), summary["consentForStudyEnrollment"])
-        self.assertIsNone(parse(summary["consentForStudyEnrollmentTime"]))
-        self.assertIsNone(parse(summary["consentForStudyEnrollmentAuthored"]))
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one_or_none()
+        self.assertIsNone(summary)
 
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()

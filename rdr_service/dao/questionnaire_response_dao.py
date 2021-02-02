@@ -132,7 +132,6 @@ class QuestionnaireResponseDao(BaseDao):
             return result
 
     def _validate_model(self, session, obj):  # pylint: disable=unused-argument
-        _validate_consent_pdfs(json.loads(obj.resource))
         if not obj.questionnaireId:
             raise BadRequest("QuestionnaireResponse.questionnaireId is required.")
         if not obj.questionnaireVersion:
@@ -330,6 +329,10 @@ class QuestionnaireResponseDao(BaseDao):
             if not consent_code.codeId in code_ids:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
+                )
+            if not _validate_consent_pdfs(resource_json):
+                raise BadRequest(
+                    f"Unable to find signed consent-for-enrollment file for participant"
                 )
             raise_if_withdrawn(participant)
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
@@ -799,6 +802,7 @@ def _validate_consent_pdfs(resource):
     except AttributeError:
         pass
 
+    found_pdf = False
     for extension in resource.get("extension", []):
         if extension["url"] != _SIGNED_CONSENT_EXTENSION:
             continue
@@ -809,7 +813,11 @@ def _validate_consent_pdfs(resource):
         # Treat the value as a bucket-relative path, allowing a leading slash or not.
         if not local_pdf_path.startswith("/"):
             local_pdf_path = "/" + local_pdf_path
+
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
+        found_pdf = True
+
+    return found_pdf
 
 
 def _raise_if_gcloud_file_missing(path):
