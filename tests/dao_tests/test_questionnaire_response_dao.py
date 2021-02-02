@@ -670,8 +670,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         qr.answers.append(answer_2)
         names_and_email_answers = self._names_and_email_answers()
         qr.answers.extend(names_and_email_answers)
-
-        # Send the consent, making it look like any necessary cloud files exist (for primary consent)
         with FakeClock(TIME_2):
             self._insert_questionnaire_response(qr)
 
