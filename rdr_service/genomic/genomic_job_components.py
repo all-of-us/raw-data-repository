@@ -2145,6 +2145,7 @@ class GenomicBiobankSamplesCoupler:
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
+            AND ps.participant_origin != 'careevolution'
             AND m.id IS NULL
         """
         params = {
@@ -2158,6 +2159,7 @@ class GenomicBiobankSamplesCoupler:
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
+
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
 
@@ -2747,7 +2749,8 @@ class ManifestDefinitionProvider:
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                    (ParticipantSummary.participantOrigin != 'careevolution')
                 ).group_by(
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
