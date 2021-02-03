@@ -86,10 +86,9 @@ class _BQModuleSchema(BQSchema):
         # DEPRECATED after RDR 1.85.2:  Load module field data from the code table if available, using stored proc
         # results = dao.call_proc('sp_get_code_module_items', args=[self._module])
 
-        # This query replaces the sp_get_code_module_items stored procedure, which does not support the
-        # DRC-managed codebooks where codes may be shared between modules. Columns are returned in the
-        # same order as the stored procedure returned them (as a debug aid for comparing results).
-        _question_codes_sql = """
+        # Set up to return fields that match what the deprecated sp_get_code_module_items stored proc returned
+        # This part of the raw SQL statement is the same regardless of which query logic it is concatenated with
+        select_clause_sql = """
             select c.code_id,
                    c.parent_id,
                    c.topic,
@@ -101,6 +100,12 @@ class _BQModuleSchema(BQSchema):
                    c.created,
                    c.code_book_id,
                    c.short_value
+        """
+        # This query logic was used before DA-1884, and compiled known question codes from QuestionnaireResponse
+        # payloads previously posted to RDR.  (This sometimes resulted in gaps where question codes that had not yet
+        # been included in the received responses were not included in the get_fields() results )
+        _existing_question_codes_sql = select_clause_sql + """
+
             from code c
             inner join (
                 select distinct qq.code_id
@@ -114,8 +119,30 @@ class _BQModuleSchema(BQSchema):
             where c.system = :system
             order by c.code_id
         """
+
+        # With DA-1844, question codes can be determined from codebook survey data imported from REDCap
+        # (if it exists in the new RDR survey tables)
+        _survey_question_codes_sql = select_clause_sql + """
+
+            from survey_question sq
+            inner join code c on c.code_id = sq.code_id
+            inner join survey s on s.id = sq.survey_id
+            inner join code mc on mc.code_id = s.code_id
+            where s.code_id = (
+                 select code_id
+                 from code ct
+                 where ct.value = :module_id and ct.system = :system
+            )
+            order by c.code_id
+        """
+
         with dao.session() as session:
-            results = session.execute(_question_codes_sql, {'module_id': self._module, 'system': PPI_SYSTEM})
+            # Look for question codes via the survey tables from DA-1884 first, but fall back to the old logic
+            # if the survey data from a REDCap import can't be found yet
+            for sql in [_survey_question_codes_sql, _existing_question_codes_sql]:
+                results = session.execute(sql, {'module_id': self._module, 'system': PPI_SYSTEM})
+                if results and results.rowcount:
+                    break
 
             if results:
                 for row in results:
@@ -127,7 +154,7 @@ class _BQModuleSchema(BQSchema):
                             logging.warning(msg)
                         continue
 
-                    if name in self._excluded_fields:
+                    if name.lower() in [x.lower() for x in self._excluded_fields]:
                         continue
 
                     field = dict()
@@ -169,7 +196,7 @@ class _BQModuleSchema(BQSchema):
                     continue
 
                 name = qn['concept'][0]['code']
-                if name in self._excluded_fields:
+                if name.lower() in [x.lower() for x in self._excluded_fields]:
                     continue
 
                 # Verify field name meets BigQuery requirements.
