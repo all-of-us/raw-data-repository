@@ -1,5 +1,4 @@
 from datetime import datetime
-import mock
 
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
     STREET_ADDRESS2_QUESTION_CODE
@@ -9,9 +8,10 @@ from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import QuestionnaireResponseStatus
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.tool_test_mixin import ToolTestMixin
 
 
-class CurationEtlTest(BaseTestCase):
+class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super(CurationEtlTest, self).setUp(with_consent_codes=True)
         self._setup_data()
@@ -68,14 +68,10 @@ class CurationEtlTest(BaseTestCase):
         return questionnaire_response
 
     @staticmethod
-    def run_tool():
-        gcp_env = mock.MagicMock()
-
-        args = mock.MagicMock()
-        args.command = 'cdm-data'
-
-        cope_answer_tool = CurationExportClass(args, gcp_env)
-        cope_answer_tool.run()
+    def run_cdm_data_generation():
+        CurationEtlTest.run_tool(CurationExportClass, tool_args={
+            'command': 'cdm-data'
+        })
 
     def test_locking(self):
         """Make sure that building the CDM tables doesn't take exclusive locks"""
@@ -86,7 +82,7 @@ class CurationEtlTest(BaseTestCase):
         ).with_for_update().one()
 
         # This will time out if the tool tries to take an exclusive lock on the participant
-        self.run_tool()
+        self.run_cdm_data_generation()
 
     def _src_clean_record_found_for_response(self, questionnaire_response_id):
         response_record = self.session.query(SrcClean).filter(
@@ -111,7 +107,7 @@ class CurationEtlTest(BaseTestCase):
         )
 
         # Check that we are only be seeing the answers from the latest questionnaire response
-        self.run_tool()
+        self.run_cdm_data_generation()
         for question_index, question in enumerate(self.questionnaire.questions):
             expected_answer = None
             if question_index == 1:
@@ -176,7 +172,7 @@ class CurationEtlTest(BaseTestCase):
         )
 
         # Check that the newest answer is in the src_clean, even if it wasn't from the latest response
-        self.run_tool()
+        self.run_cdm_data_generation()
         for question_index, question in enumerate(consent_questionnaire.questions):
             expected_answer = 'test answer'
             if question_index == 1:
@@ -222,7 +218,7 @@ class CurationEtlTest(BaseTestCase):
 
         # Check that the only address answer in src_clean is the updated line 1 for the street address (which will
         # also replace line 2 for the the first response)
-        self.run_tool()
+        self.run_cdm_data_generation()
 
         # Load all src_clean rows for lines 1 and 2 of the address
         address_answers = self.session.query(SrcClean).join(
@@ -252,7 +248,7 @@ class CurationEtlTest(BaseTestCase):
             self.questionnaire,
             status=QuestionnaireResponseStatus.IN_PROGRESS
         )
-        self.run_tool()
+        self.run_cdm_data_generation()
 
         # Check that src_clean doesn't have any records for the in-progress questionnaire response
         src_clean_answers = self.session.query(SrcClean).filter(
@@ -273,7 +269,7 @@ class CurationEtlTest(BaseTestCase):
             created=datetime(2020, 5, 10),
             status=QuestionnaireResponseStatus.IN_PROGRESS
         )
-        self.run_tool()
+        self.run_cdm_data_generation()
 
         # Make sure src_clean only has data from the full response
         in_progress_answers = self.session.query(SrcClean).filter(

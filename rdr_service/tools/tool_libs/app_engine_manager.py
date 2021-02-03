@@ -186,14 +186,40 @@ class DeployAppClass(object):
             deployed_version = resp.get('version_id', 'unknown').replace('-', '.')
 
         if not descr:
-            notes = self._jira_handler.get_release_notes_since_tag(deployed_version)
-
+            notes = self._jira_handler.get_release_notes_since_tag(deployed_version, self.args.git_target)
             descr = "h1. Release Notes for {0}\nh2.deployed to {1}, listing changes since {2}:\n{3}".format(
                 self.args.git_target,
                 self.gcp_env.project,
                 deployed_version,
                 notes
             )
+
+            circle_ci_url = '<CircleCI URL>'
+            if 'CIRCLE_BUILD_URL' in os.environ:
+                circle_ci_url = os.environ.get('CIRCLE_BUILD_URL')
+
+            descr = descr + """
+            \nh3. Change Management Description
+            \nSystem: All of Us DRC, Raw Data Repository (RDR)
+            \nDevelopers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
+            \nNeeded By Date/Event: <target release date>
+            \nPriority: <Low, Medium, High>
+            \nConfiguration/Change Manager: Katie Worley
+            \n
+            \nAnticipated Impact: <None, Low, Medium, High>
+            \nSoftware Impact: <Software Impact>
+            \nTraining Impact: <Training Impact>
+            \nData Impact: <Data Impact>
+            \n
+            \nTesting
+            \nTester: Yu Wang, Robert Abram, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
+            \nDate Test Was Completed: <today's date>
+            \nImplementation/Deployment Date: Ongoing
+            \n
+            \nSecurity Impact: <None, Low, Medium, High>
+            \n
+            \nCircleCI Output: {}
+            """.format(circle_ci_url)
 
         if not board_id:
             board_id = self.jira_board

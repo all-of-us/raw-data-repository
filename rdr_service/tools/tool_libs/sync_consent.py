@@ -8,7 +8,7 @@ from rdr_service.offline.sync_consent_files import get_org_data_map, build_parti
     DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
 from rdr_service.services.system_utils import print_progress_bar
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 logger = logging.getLogger("rdr_logger")
 

@@ -11,7 +11,7 @@ from rdr_service.model.code import Code
 from rdr_service.offline.codebook_importer import CodebookImporter
 from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.services.redcap_client import RedcapClient
-from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
