@@ -384,14 +384,14 @@ class DeployAppClass(object):
     @staticmethod
     def manage_cloud_version_numbers():
         _logger.info('Getting version list for services...')
-        max_versions = 200  # GAE allows a max of 210 versions
-        num_to_trim = 10  # Number of versions to delete each time we hit our max_versions count
+        version_lists_by_service = gcp_get_app_versions(sort_by=['LAST_DEPLOYED'])  # ordered with oldest versions first
 
-        # Order lists with oldest versions first
-        version_lists_by_service = gcp_get_app_versions(sort_by=['LAST_DEPLOYED'])
+        # GAE allows a max of 210 versions across all services
+        max_versions_per_service = 200 // len(version_lists_by_service)  # max version count for each service
+        num_to_trim = 10  # Number of versions to delete each time we hit our max_versions count
         for service_name, version_list in version_lists_by_service.items():
             version_count = len(version_list)
-            if version_count > max_versions:
+            if version_count > max_versions_per_service:
                 _logger.warning(f'{version_count} versions found on {service_name.upper()}, deleting the following:')
 
                 versions_to_delete = [version_data['version'] for version_data in version_list[:num_to_trim]]
