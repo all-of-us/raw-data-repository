@@ -67,6 +67,15 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         return questionnaire_response
 
+    def _setup_duplicate_questionnaire_response(self, questionnaire_response, duplicate=1, removed=0):
+        duplicate_qr = self.data_generator.create_database_duplicate_temp_questionnaire_response(
+            questionnaire_response,
+            duplicate=duplicate,
+            removed=removed
+        )
+
+        return duplicate_qr
+
     @staticmethod
     def run_cdm_data_generation():
         CurationEtlTest.run_tool(CurationExportClass, tool_args={
@@ -281,3 +290,31 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             SrcClean.questionnaire_response_id == self.questionnaire_response.questionnaireResponseId
         ).all()
         self.assertNotEmpty(complete_answers)
+
+    def test_duplicate_record_in_temp_questionnaire_response_filtered_out(self):
+        """
+        Test that duplicate record in cdm.tmp_questionnaire_response is not included in export
+        """
+
+        # Create a new questionnaire response
+        participant = self.data_generator.create_database_participant()
+        self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+
+        questionnaire_response_dup = self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+
+        self._setup_duplicate_questionnaire_response(questionnaire_response_dup)
+
+        self.run_cdm_data_generation()
+
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.participant_id == participant.participantId
+        ).all()
+
+        self.assertEqual(4, len(src_clean_answers))
+

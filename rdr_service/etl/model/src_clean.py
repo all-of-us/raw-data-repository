@@ -1,7 +1,8 @@
-from sqlalchemy import BigInteger, Column, DateTime, Index, String, SmallInteger
+from sqlalchemy import BigInteger, Column, DateTime, Index, String, SmallInteger, ForeignKey, Integer
 from sqlalchemy.dialects.mysql import DECIMAL, TINYINT
 
 from rdr_service.model.base import Base
+from rdr_service.model.utils import UTCDateTime
 
 
 class QuestionnaireAnswersByModule(Base):
@@ -43,5 +44,20 @@ class SrcClean(Base):
     __table_args__ = (Index('idx_src_clean_participant_id', participant_id), )
 
 
+class TemporaryQuestionnaireResponse(Base):
+    """"A temporary table to store duplicated QuestionnaireResponses."""
+
+    __tablename__ = "tmp_questionnaire_response"
+    questionnaireResponseId = Column("questionnaire_response_id", Integer, primary_key=True, autoincrement=False)
+    participantId = Column("participant_id", Integer, nullable=True)
+    questionnaireId = Column("questionnaire_id", Integer, nullable=True)
+    created = Column("created", UTCDateTime, nullable=True)
+    authored = Column("authored", UTCDateTime, nullable=True)
+    identifier = Column("identifier", String(50), nullable=True)
+    duplicate = Column("duplicate", Integer, nullable=True)
+    removed = Column("removed", Integer, nullable=True)
+
+
+TemporaryQuestionnaireResponse.__table__.schema = 'cdm'
 QuestionnaireAnswersByModule.__table__.schema = 'cdm'
 SrcClean.__table__.schema = 'cdm'
