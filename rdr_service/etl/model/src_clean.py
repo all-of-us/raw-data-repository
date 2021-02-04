@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Column, DateTime, Index, String, SmallInteger, ForeignKey, Integer
+from sqlalchemy import BigInteger, Column, DateTime, Index, String, SmallInteger, Integer
 from sqlalchemy.dialects.mysql import DECIMAL, TINYINT
 
 from rdr_service.model.base import Base
