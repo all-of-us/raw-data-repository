@@ -251,7 +251,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate == None,
+            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
                 TemporaryQuestionnaireResponse.duplicate == 0)
         )
 
@@ -358,7 +358,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate == None,
+            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
                 TemporaryQuestionnaireResponse.duplicate == 0)
         )
 
