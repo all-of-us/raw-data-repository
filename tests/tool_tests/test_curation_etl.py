@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
-    STREET_ADDRESS2_QUESTION_CODE
+from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
+    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
@@ -19,7 +19,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
 
-        module_code = self.data_generator.create_database_code(value='src_clean_test')
+        self.module_code = self.data_generator.create_database_code(value='src_clean_test')
 
         self.questionnaire = self.data_generator.create_database_questionnaire_history()
         for question_index in range(4):
@@ -33,7 +33,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.data_generator.create_database_questionnaire_concept(
             questionnaireId=self.questionnaire.questionnaireId,
             questionnaireVersion=self.questionnaire.version,
-            codeId=module_code.codeId
+            codeId=self.module_code.codeId
         )
 
         self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire)
@@ -326,3 +326,59 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
         self.assertEqual(4, len(src_clean_answers))
 
+    def test_zip_code_maps_to_string_field(self):
+        """
+        There are some questionnaire responses that have the zip code transmitted to us in the valueInteger
+        field. Curation is expecting zip codes to be exported to them as strings. This checks to make sure that
+        they're mapped correctly.
+        """
+
+        # Two codes have used value_integer for transmitting the value
+        employment_zipcode_code = self.data_generator.create_database_code(value=EMPLOYMENT_ZIPCODE_QUESTION_CODE)
+        address_zipcode_code = self.data_generator.create_database_code(value=ZIPCODE_QUESTION_CODE)
+        skip_code = self.data_generator.create_database_code(value=PMI_SKIP_CODE)
+
+        # Create a questionnaire with zip code questions
+        zip_code_questionnaire = self.data_generator.create_database_questionnaire_history()
+        for index in range(2):  # Creating four questions to test PMI_SKIP and when the value_string is correctly used
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=zip_code_questionnaire.questionnaireId,
+                questionnaireVersion=zip_code_questionnaire.version,
+                codeId=employment_zipcode_code.codeId
+            )
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=zip_code_questionnaire.questionnaireId,
+                questionnaireVersion=zip_code_questionnaire.version,
+                codeId=address_zipcode_code.codeId
+            )
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=zip_code_questionnaire.questionnaireId,
+            questionnaireVersion=self.questionnaire.version,
+            codeId=self.module_code.codeId
+        )
+
+        # Set up a response with zip code values transmitted in various ways
+        expected_zip_code_answers = [
+            (0, 'valueInteger', '90210'),
+            (1, 'valueInteger', '12345'),
+            (2, 'valueString', '12121'),
+            (3, 'valueCodeId', skip_code.codeId),
+        ]
+        zip_code_response = self._setup_questionnaire_response(
+            self.participant,
+            zip_code_questionnaire,
+            indexed_answers=expected_zip_code_answers
+        )
+
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == zip_code_response.questionnaireResponseId
+        ).all()
+
+        for index, answer_field, expected_value in expected_zip_code_answers:
+            src_cln: SrcClean = src_clean_answers[index]
+            if answer_field == 'valueCodeId':  # An answer of skipping the zip code
+                self.assertEqual(expected_value, src_cln.value_code_id)
+            else:
+                self.assertEqual(expected_value, src_cln.value_string)
+                self.assertIsNone(src_cln.value_number)
