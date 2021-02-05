@@ -8,7 +8,7 @@ from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi, \
-    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi
+    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, CalculateRecordCountTaskApi
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
@@ -57,6 +57,10 @@ def _build_resource_app():
     # Ingest AW2 manifest
     _api.add_resource(IngestAW2ManifestTaskApi, TASK_PREFIX + "IngestAW2ManifestTaskApi",
                       endpoint="ingest_aw2_manifest_task", methods=["POST"])
+
+    # Calculate manifest file record count
+    _api.add_resource(CalculateRecordCountTaskApi, TASK_PREFIX + "CalculateRecordCountTaskApi",
+                      endpoint="calculate_record_count_task", methods=["POST"])
 
     # Calculate Contamination Category
     _api.add_resource(CalculateContaminationCategoryApi, TASK_PREFIX + "CalculateContaminationCategoryApi",

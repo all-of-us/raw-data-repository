@@ -7,6 +7,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
+from rdr_service.model.genomics import GenomicManifestFile
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -480,3 +481,11 @@ class DataGenerator:
             module_code = self.create_database_code()
             kwargs['codeId'] = module_code.codeId
         return Survey(**kwargs)
+
+    def create_database_genomic_manifest_file(self, **kwargs):
+        manifest = self._genomic_manifest_file(**kwargs)
+        self._commit_to_database(manifest)
+        return manifest
+
+    def _genomic_manifest_file(self, **kwargs):
+        return GenomicManifestFile(**kwargs)

@@ -15,7 +15,7 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
     bq_institutional_affiliations_batch_update, bq_researcher_batch_update
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicManifestFileDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
@@ -217,7 +217,7 @@ class IngestAW2ManifestTaskApi(Resource):
 
 class CalculateRecordCountTaskApi(Resource):
     """
-    Cloud Task endpoint: Ingest AW1 Manifest.
+    Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
     """
     @task_auth_required
     def post(self):
@@ -226,18 +226,28 @@ class CalculateRecordCountTaskApi(Resource):
         # from cloud function
         data = request.get_json(force=True)
 
-        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
+        mid = data.get("manifest_file_id")
 
-        # Set up file/JSON
-        task_data = {
-            "job": GenomicJob.CALCULATE_RECORD_COUNTS_AW1,
-            "manifest_file_path": data["manifest_file_path"]
-        }
+        logging.info(f'Calculating record count for manifest file ID: {mid}')
 
-        task_data = JSONObject(task_data)
+        manifest_file_dao = GenomicManifestFileDao()
 
-        # Call pipeline function
-        genomic_pipeline.dispatch_genomic_job_from_task(task_data)
+        manifest_file_obj = manifest_file_dao.get(mid)
+
+        if manifest_file_obj is None:
+            raise NotFound(f"Manifest ID {mid} not found.")
+
+        else:
+            # Set up task JSON
+            task_data = {
+                "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
+                "manifest_file": manifest_file_obj
+            }
+
+            task_data = JSONObject(task_data)
+
+            # Call pipeline function
+            genomic_pipeline.dispatch_genomic_job_from_task(task_data)
 
         logging.info('Complete.')
         return '{"success": "true"}'
