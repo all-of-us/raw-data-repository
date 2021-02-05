@@ -264,7 +264,9 @@ class CurationExportClass(ToolBase):
         question_code = aliased(Code)
         answer_code = aliased(Code)
 
+        # TODO: when the responses with these answers in the valueInteger field are cleaned up, we can remove this
         zipcode_question_codes_to_remap = [EMPLOYMENT_ZIPCODE_QUESTION_CODE, ZIPCODE_QUESTION_CODE]
+
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
