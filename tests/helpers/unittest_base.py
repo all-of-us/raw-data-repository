@@ -7,6 +7,7 @@ import http.client
 import io
 import json
 import logging
+import mock
 import os
 import random
 import shutil
@@ -88,7 +89,6 @@ class QuestionnaireTestMixin:
             for sub_structure in structure:
                 self._save_codes(sub_structure, CodeType.QUESTION)
 
-
     def create_questionnaire(self, filename):
         with open(data_path(filename)) as f:
             questionnaire = json.load(f)
@@ -111,7 +111,8 @@ class QuestionnaireTestMixin:
         language=None,
         authored=None,
         create_codes=True,
-        status='completed'
+        status='completed',
+        extensions: list = None
     ):
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -153,18 +154,16 @@ class QuestionnaireTestMixin:
             "group": {"question": results},
         }
         if language is not None:
-            response_json.update(
-                {
-                    "extension": [
-                        {
-                            "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
-                            "valueCode": "{}".format(language),
-                        }
-                    ]
-                }
-            )
+            if extensions is None:
+                extensions = []
+            extensions.append({
+                "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+                "valueCode": "{}".format(language),
+            })
         if authored is not None:
             response_json.update({"authored": authored.isoformat()})
+        if extensions is not None:
+            response_json['extension'] = extensions
         return response_json
 
 
@@ -534,12 +533,12 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return self.send_request("GET", *args, **kwargs)
 
     def send_request(self, method, local_path, request_data=None, query_string=None,
-        expected_status=http.client.OK,
-        headers=None,
-        expected_response_headers=None,
-        test_client=None,
-        prefix=main.API_PREFIX
-    ):
+                     expected_status=http.client.OK,
+                     headers=None,
+                     expected_response_headers=None,
+                     test_client=None,
+                     prefix=main.API_PREFIX
+                     ):
         """Makes a JSON API call against the test client and returns its response data.
 
     Args:
@@ -571,7 +570,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         return response
 
     def send_consent(self, participant_id, email=None, language=None, code_values=None, string_answers=None,
-                     extra_string_values=[], authored=None, expected_status=200):
+                     extra_string_values=[], authored=None, expected_status=200, send_consent_file_extension=True):
 
         if isinstance(participant_id, int):
             participant_id = f'P{participant_id}'
@@ -595,6 +594,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 ("streetAddress2", self.streetAddress2),
             ]
 
+        extensions = None
+        if send_consent_file_extension:
+            extensions = [{
+                "url": "http://terminology.pmi-ops.org/StructureDefinition/consent-form-signed-pdf",
+                "valueString": "Participant/nonexistent/test_consent_file_name.pdf"
+            }]
+
         qr_json = self.make_questionnaire_response_json(
             participant_id,
             self._consent_questionnaire_id,
@@ -602,9 +608,15 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             language=language,
             code_answers=code_values,
             authored=authored,
+            extensions=extensions
         )
 
-        return self.send_post(self.questionnaire_response_url(participant_id), qr_json, expected_status=expected_status)
+        # Send the consent, making it look like any necessary cloud files exist (for primary consent)
+        with mock.patch('rdr_service.dao.questionnaire_response_dao._raise_if_gcloud_file_missing', return_value=True):
+            return self.send_post(
+                self.questionnaire_response_url(participant_id), qr_json,
+                expected_status=expected_status
+            )
 
     def assertJsonResponseMatches(self, obj_a, obj_b, strip_tz=True):
         self.assertMultiLineEqual(self._clean_and_format_response_json(obj_a, strip_tz=strip_tz),
@@ -700,7 +712,6 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
             },
             "status": status,
         }
-
 
     @staticmethod
     def cancel_biobank_order():
@@ -826,4 +837,3 @@ def read_dev_config(*files):
         with open(filename) as file:
             data.update(json.load(file))
     return data
-

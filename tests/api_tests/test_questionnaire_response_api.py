@@ -70,6 +70,20 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
 
+    def test_consent_submission_requires_signature(self):
+        """Consent questionnaire responses should only mark a participant as consented if they have consented"""
+        participant_id = self.create_participant()
+        self.send_consent(participant_id, authored=datetime.datetime.now(), string_answers=[
+            ('firstName', 'Bob'),
+            ('lastName', 'Smith'),
+            ('email', 'email@example.com')
+        ], expected_status=400, send_consent_file_extension=False)
+
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one_or_none()
+        self.assertIsNone(summary)
+
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()
         with FakeClock(TIME_1):
