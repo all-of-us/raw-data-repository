@@ -53,16 +53,16 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         if indexed_answers is None:
             # If no answers were specified then answer all questions with 'test answer'
             indexed_answers = [
-                (question_index, 'test answer')
+                (question_index, 'valueString', 'test answer')
                 for question_index in range(len(questionnaire.questions))
             ]
 
-        for question_index, answer_string in indexed_answers:
+        for question_index, answer_field_name, answer_string in indexed_answers:
             question = questionnaire.questions[question_index]
             self.data_generator.create_database_questionnaire_response_answer(
                 questionnaireResponseId=questionnaire_response.questionnaireResponseId,
                 questionId=question.questionnaireQuestionId,
-                valueString=answer_string
+                **{answer_field_name: answer_string}
             )
 
         return questionnaire_response
@@ -108,8 +108,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             self.participant,
             self.questionnaire,
             indexed_answers=[
-                (1, 'update'),
-                (3, 'final answer')
+                (1, 'valueString', 'update'),
+                (3, 'valueString', 'final answer')
             ],
             authored=datetime(2020, 5, 10),
             created=datetime(2020, 5, 10)
@@ -170,13 +170,19 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(1, 'NewLastName'), (3, 'new-email')],
+            indexed_answers=[
+                (1, 'valueString', 'NewLastName'),
+                (3, 'valueString', 'new-email')
+            ],
             authored=datetime(2020, 5, 1)
         )
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(2, 'updated address'), (3, 'corrected-email')],
+            indexed_answers=[
+                (2, 'valueString', 'updated address'),
+                (3, 'valueString', 'corrected-email')
+            ],
             authored=datetime(2020, 8, 1)
         )
 
@@ -221,7 +227,9 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(4, expected_final_address)],  # Assuming the 4th question is the first line of the address
+            indexed_answers=[
+                (4, 'valueString', expected_final_address)  # Assuming the 4th question is the first line of the address
+            ],
             authored=datetime(2020, 8, 1)
         )
 
