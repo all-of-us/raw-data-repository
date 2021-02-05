@@ -646,7 +646,7 @@ class GenomicJob(messages.Enum):
     RECALCULATE_CONTAMINATION_CATEGORY = 31
 
     CALCULATE_RECORD_COUNT_AW1 = 32
-    CALCULATE_RECORD_COUNT_AW2 = 33
+    CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
 
 
 class GenomicWorkflowState(messages.Enum):

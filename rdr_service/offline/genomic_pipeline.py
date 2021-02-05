@@ -376,7 +376,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:
-            # Create task to count records
+            # count records for AW1 manifest in new job
             _task_data.job = GenomicJob.CALCULATE_RECORD_COUNT_AW1
             dispatch_genomic_job_from_task(_task_data)
 
@@ -393,7 +393,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.manifest_file_dao.update_record_count(
                 _task_data.manifest_file,
-                rec_count
+                rec_count,
+                project_id=project_id
             )
 
     else:

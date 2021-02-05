@@ -11,7 +11,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
+    bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -1244,11 +1245,14 @@ class GenomicManifestFileDao(BaseDao):
                     GenomicManifestFile.id == manifest_file_obj.id
                 ).one_or_none()
 
-    def update_record_count(self, manifest_file_obj, new_rec_count):
+    def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
 
         with self.session() as session:
             manifest_file_obj.recordCount = new_rec_count
             session.merge(manifest_file_obj)
+
+            bq_genomic_manifest_file_update(manifest_file_obj.id, project_id=project_id)
+            genomic_manifest_file_update(manifest_file_obj.id)
 
 
 class GenomicManifestFeedbackDao(BaseDao):

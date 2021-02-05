@@ -42,7 +42,3 @@ class GenomicProcessRunnerTest(GenomicUtilsTestBase):
 
         self.assertEqual(manifest.id, called_json_obj.manifest_file.id)
         self.assertEqual(GenomicJob.CALCULATE_RECORD_COUNT_AW1, called_json_obj.job)
-
-
-
-
