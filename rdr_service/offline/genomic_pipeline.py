@@ -352,10 +352,11 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
         return manifest_file
 
 
-def dispatch_genomic_job_from_task(_task_data: JSONObject):
+def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines
     Sets up the genomic manifest file record and begin pipeline
+    :param project_id:
     :param _task_data: dictionary of metadata needed by the controller
     """
     if _task_data.job in (
@@ -366,7 +367,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject):
 
         # Ingestion Job
         with GenomicJobController(_task_data.job,
-                                  task_data=_task_data) as controller:
+                                  task_data=_task_data,
+                                  bq_project_id=project_id) as controller:
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
@@ -381,9 +383,9 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject):
     if _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
         # Calculate manifest record counts job
         with GenomicJobController(_task_data.job,
-                                  task_data=_task_data) as controller:
+                                  bq_project_id=project_id) as controller:
 
-            logging.info("Calculating record count for new AW1 manifest...")
+            logging.info("Calculating record count for AW1 manifest...")
 
             rec_count = controller.manifest_file_dao.count_records_for_manifest_file(
                 _task_data.manifest_file
