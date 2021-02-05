@@ -94,9 +94,9 @@ def run():
             if self._args.enable_replica:
                 instances += gcp_format_sql_instance("all-of-us-rdr-stable", 9915, True) + ","
 
-            instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9920) + ","
-            if self._args.enable_replica:
-                instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9925, True) + ","
+            #instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9920) + ","
+            #if self._args.enable_replica:
+                #instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9925, True) + ","
 
             if self._args.enable_sandbox is True:
                 instances += gcp_format_sql_instance("all-of-us-rdr-sandbox", 9930) + ","
