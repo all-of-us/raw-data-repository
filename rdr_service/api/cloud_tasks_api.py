@@ -159,18 +159,20 @@ class IngestAW1ManifestTaskApi(Resource):
         # Set manifest_type and job
         job = GenomicJob.AW1_MANIFEST
         manifest_type = GenomicManifestTypes.BIOBANK_GC
+        create_fb = True
 
         # Write a different manifest type and JOB ID if an AW1F
         if "FAILURE" in data["file_path"]:
             job = GenomicJob.AW1F_MANIFEST
             manifest_type = GenomicManifestTypes.AW1F
+            create_fb = False
 
         # Set up file/JSON
         task_data = {
             "job": job,
             "bucket": data["bucket_name"],
             "file_data": {
-                "create_feedback_record": True,
+                "create_feedback_record": create_fb,
                 "upload_date": data["upload_date"],
                 "manifest_type": manifest_type,
                 "file_path": data["file_path"],

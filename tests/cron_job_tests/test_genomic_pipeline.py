@@ -1924,19 +1924,41 @@ class GenomicPipelineTest(BaseTestCase):
             bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
             folder=_FAKE_FAILURE_FOLDER,
         )
+        failure_file_name = _FAKE_FAILURE_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1F_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.AW1F,
+                "file_path": f"{bucket_name}/{failure_file_name}"
+            }
+        }
 
         # Ingest AW1F
-        genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
 
         # Test db updated
         members = sorted(self.member_dao.get_all(), key=lambda x: x.id)
         self.assertEqual(members[1].gcManifestFailureMode, 'damaged')
         self.assertEqual(members[1].gcManifestFailureDescription, 'Arrived and damaged')
         self.assertEqual(members[1].genomicWorkflowState, GenomicWorkflowState.AW1F_POST)
+        self.assertEqual(members[1].aw1FileProcessedId, 1)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
         self.assertEqual(len(files_processed), 2)
+
+        # Test AW1F manifest file record inserted correctly
+        aw1f_mf = self.manifest_file_dao.get(2)
+        self.assertEqual(GenomicManifestTypes.AW1F, aw1f_mf.manifestTypeId)
+
+        # Test AW1 record count
+        aw1_mf = self.manifest_file_dao.get(1)
+        self.assertEqual(2, aw1_mf.recordCount)
 
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
