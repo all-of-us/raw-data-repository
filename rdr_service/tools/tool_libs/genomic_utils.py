@@ -1653,14 +1653,13 @@ class CompareIngestionAW2Class(GenomicManifestBase):
 
 
     def output_csv(self):
-        fields = [k for k in self.data_objs[0]]
         filename = 'aw2_comparisons_file_data_{}_{}_{}.csv'.format(
             self.args.gc_site_id,
             self.args.genome_type,
             self.nowf,
         )
         with open(filename, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fields)
+            writer = csv.DictWriter(csvfile, fieldnames=[k for k in self.data_objs[0]])
             writer.writeheader()
             writer.writerows(self.data_objs)
 
