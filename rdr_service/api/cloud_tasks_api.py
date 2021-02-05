@@ -27,6 +27,7 @@ from rdr_service.resource.generators.genomics import genomic_set_batch_update, g
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.tasks import batch_rebuild_participants_task
+from rdr_service.services.system_utils import JSONObject
 
 
 def log_task_headers():
@@ -155,14 +156,23 @@ class IngestAW1ManifestTaskApi(Resource):
 
         logging.info(f'Ingesting AW1 File: {data.get("filename")}')
 
+        # Set manifest_type and job
+        job = GenomicJob.AW1_MANIFEST
+        manifest_type = GenomicManifestTypes.BIOBANK_GC
+
+        # Write a different manifest type and JOB ID if an AW1F
+        if "FAILURE" in data["file_path"]:
+            job = GenomicJob.AW1F_MANIFEST
+            manifest_type = GenomicManifestTypes.AW1F
+
         # Set up file/JSON
         task_data = {
-            "job": GenomicJob.AW1_MANIFEST,
+            "job": job,
             "bucket": data["bucket_name"],
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": data["upload_date"],
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": manifest_type,
                 "file_path": data["file_path"],
             }
         }
@@ -198,6 +208,34 @@ class IngestAW2ManifestTaskApi(Resource):
 
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class CalculateRecordCountTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ingest AW1 Manifest.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+
+        # from cloud function
+        data = request.get_json(force=True)
+
+        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.CALCULATE_RECORD_COUNTS_AW1,
+            "manifest_file_path": data["manifest_file_path"]
+        }
+
+        task_data = JSONObject(task_data)
+
+        # Call pipeline function
+        genomic_pipeline.dispatch_genomic_job_from_task(task_data)
 
         logging.info('Complete.')
         return '{"success": "true"}'

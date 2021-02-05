@@ -3260,6 +3260,9 @@ class GenomicPipelineTest(BaseTestCase):
             GenomicSampleContamination.sampleId == contaminated_sample.biobankStoredSampleId
         ).one()  # There should be a contamination record for the sample
 
+    def test_manifest_record_count_reconciliation(self):
+        pass
+
     def _create_stored_samples(self, stored_sample_date):
         for biobank_id, stored_sample_id in stored_sample_date:
             # Create the participant and summary if needed

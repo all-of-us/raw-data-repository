@@ -28,7 +28,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-)
+    GenomicManifestTypes)
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -1227,6 +1227,28 @@ class GenomicManifestFileDao(BaseDao):
                 GenomicManifestFile.filePath == filepath,
                 GenomicManifestFile.ignore_flag == 0
             ).one_or_none()
+
+    def count_records_for_manifest_file(self, manifest_file_obj):
+
+        with self.session() as session:
+            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.BIOBANK_GC:
+                return session.query(
+                    functions.count(GenomicSetMember.id)
+                ).join(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+                ).join(
+                    GenomicManifestFile,
+                    GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
+                ).filter(
+                    GenomicManifestFile.id == manifest_file_obj.id
+                ).one_or_none()
+
+    def update_record_count(self, manifest_file_obj, new_rec_count):
+
+        with self.session() as session:
+            manifest_file_obj.recordCount = new_rec_count
+            session.merge(manifest_file_obj)
 
 
 class GenomicManifestFeedbackDao(BaseDao):
