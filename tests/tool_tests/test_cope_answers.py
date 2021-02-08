@@ -7,13 +7,14 @@ import rdr_service
 from rdr_service import config
 from rdr_service.tools.tool_libs.cope_answers import CopeAnswersClass
 from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.tool_test_mixin import ToolTestMixin
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
 
-class CopeAnswerTest(BaseTestCase):
+class CopeAnswerTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super().setUp()
 
@@ -47,30 +48,17 @@ class CopeAnswerTest(BaseTestCase):
             )
 
     @staticmethod
-    def run_tool(cope_month='June'):
-        def get_server_config(*_):
-            server_config = {
+    def aggregate_cope_answers(cope_month='June'):
+        with mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
+            CopeAnswerTest.run_tool(CopeAnswersClass, tool_args={
+                'cope_month': cope_month,
+                'codes': 'ipaq_1, ipaq_3, ipaq_5, ipaq_7'
+            }, server_config={
                 config.COPE_FORM_ID_MAP: {
                     'may_cope': 'May',
                     'june_cope': 'June'
                 }
-            }
-            return json.dumps(server_config), 'test-file-name'
-
-        gcp_env = mock.MagicMock()
-        gcp_env.project = 'localhost'
-        gcp_env.git_project = PROJECT_ROOT
-        gcp_env.get_latest_config_from_bucket = get_server_config
-
-        args = mock.MagicMock(spec=['cope_month', 'codes'])
-        args.cope_month = cope_month
-        args.codes = 'ipaq_1, ipaq_3, ipaq_5, ipaq_7'
-
-        # Patching things to keep tool from trying to call GAE and to get result data
-        with mock.patch('rdr_service.tools.tool_libs.cope_answers.open') as mock_open:
-
-            cope_answer_tool = CopeAnswersClass(args, gcp_env)
-            cope_answer_tool.run()
+            })
 
             # Return data written to file as JSON
             mock_file_write = mock_open.return_value.__enter__.return_value.write
@@ -97,7 +85,7 @@ class CopeAnswerTest(BaseTestCase):
             {'question': 'ipaq_3', 'answer': 'a3'},
             {'question': 'ipaq_7', 'answer': 'a1'}
         ])
-        result = self.run_tool()
+        result = self.aggregate_cope_answers()
         self.assertEqual({
             'ipaq_1': {'total_answers': 3,
                        'answers': {'a1': {'total_answers': 3}}},
@@ -131,7 +119,7 @@ class CopeAnswerTest(BaseTestCase):
             {'question': 'ipaq_3', 'answer': 'a3'}
         ])
 
-        result = self.run_tool()
+        result = self.aggregate_cope_answers()
         self.assertEqual({
             'ipaq_1': {'total_answers': 2,
                        'answers': {'a1': {'total_answers': 2}}},

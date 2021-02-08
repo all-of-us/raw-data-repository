@@ -80,7 +80,7 @@ class GenomicSetMember(Base):
     # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
 
-    biobankId = Column("biobank_id", Integer, nullable=True, index=True)
+    biobankId = Column("biobank_id", String(128), nullable=True, index=True)
 
     packageId = Column("package_id", String(250), nullable=True)
 

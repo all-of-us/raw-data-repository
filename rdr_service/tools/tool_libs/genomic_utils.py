@@ -38,7 +38,7 @@ from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStora
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
     GenomicWorkflowState, GenomicSetMemberStatus
-from rdr_service.tools.tool_libs._tool_base import ToolBase
+from rdr_service.tools.tool_libs.tool_base import ToolBase
 
 from rdr_service.services.system_utils import JSONObject
 
@@ -1237,7 +1237,7 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
         with self.dao.session() as session:
             # Lookup AW1 file_processed_id from package ID
             sql = """
-            SELECT m.id as member_id                    
+            SELECT m.id as member_id
                 , max(f.id) as aw1_id
             FROM genomic_set_member m
                 JOIN genomic_manifest_file mf ON (
@@ -1254,7 +1254,7 @@ class BackfillGenomicSetMemberFileProcessedID(GenomicManifestBase):
                 JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
                     and f.file_result = 1
                     and f.file_status = 1
-            where true 
+            where true
                 and reconcile_gc_manifest_job_run_id is not null
                 and m.package_id is not null
                 and m.package_id = :pkg_id

@@ -110,6 +110,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
     Generate a Participant Summary BQRecord object
     """
+    # Temporary
+    cdm_db_exists = False
+
     ro_dao = None
     # Retrieve module and sample test lists from config.
     _baseline_modules = [mod.replace('questionnaireOn', '')
@@ -128,6 +131,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             self.ro_dao = BigQuerySyncDao(backup=True)
 
         with self.ro_dao.session() as ro_session:
+            # Temporary
+            self.cdm_db_exists = self._test_cdm_db_exists(ro_session)
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep additional participant profile info
@@ -191,6 +196,20 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(rec.resource),
                                 convert_to_enum=False)
         return None
+
+    def _test_cdm_db_exists(self, ro_session):
+        """
+        Temporary function to detect if the 'cdm' database and 'tmp_questionnaire_response' table exists.
+        :param ro_session: Readonly DAO session object
+        :return: True if 'cdm' database exists otherwise False.
+        """
+        sql = "SELECT * FROM cdm.tmp_questionnaire_response LIMIT 1"
+        try:
+            ro_session.execute(sql)
+            return True
+        except exc.ProgrammingError:
+            pass
+        return False
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -374,7 +393,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param p_id: participant id
         :return: dict
         """
-        qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id)
+        qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, cdm_db_exists=self.cdm_db_exists)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
@@ -479,7 +498,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         data['consent_cohort'] = cohort.name
                         data['consent_cohort_id'] = cohort.value
 
-                    qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
+                    qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId,
+                                                    cdm_db_exists=self.cdm_db_exists)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)
                         consent = {
@@ -1197,7 +1217,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return data
 
     @staticmethod
-    def get_module_answers(ro_dao, module, p_id, qr_id=None):
+    def get_module_answers(ro_dao, module, p_id, qr_id=None, cdm_db_exists=False):
         """
         Retrieve the questionnaire module answers for the given participant id.  This retrieves all responses to
         the module and applies/layers the answers from each response to the final data dict returned.
@@ -1205,6 +1225,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param module: Module name
         :param p_id: participant id.
         :param qr_id: questionnaire response id
+        :param cdm_db_exists: Temporary arg.
         :return: dict
         """
         _module_info_sql = """
@@ -1218,9 +1239,21 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             FROM questionnaire_response qr
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-            ORDER BY qr.created;
         """
+        # Temporary
+        if cdm_db_exists:
+            _module_info_sql += """
+                LEFT OUTER JOIN cdm.tmp_questionnaire_response tqr
+                    ON qr.questionnaire_response_id = tqr.questionnaire_response_id
+                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod) AND
+                   (tqr.duplicate is null or tqr.duplicate = 0)
+                ORDER BY qr.created;
+            """
+        else:
+            _module_info_sql += """
+                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+                ORDER BY qr.created;
+            """
 
         _answers_sql = """
             SELECT qr.questionnaire_id,

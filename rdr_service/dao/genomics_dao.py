@@ -465,6 +465,18 @@ class GenomicSetMemberDao(UpdatableDao):
 
         return min([d for d in withdraw_dates if d is not None])
 
+    def get_collection_tube_max_set_id(self):
+        """
+        Retrieves the maximum genomic_set_id for a control sample
+        :return: integer
+        """
+        with self.session() as s:
+            return s.query(
+                functions.max(GenomicSetMember.genomicSetId)
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE
+            ).one()
+
     def update_report_consent_removal_date(self, member, date):
         """
         Updates the reportConsentRemovalDate on the genomic set member

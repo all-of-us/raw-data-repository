@@ -121,7 +121,7 @@ class GemApiTest(GenomicApiTestBase):
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/GEM/P1")
-        self.assertEqual(p1_pii['biobank_id'], 1)
+        self.assertEqual(p1_pii['biobank_id'], '1')
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
         self.assertEqual(p1_pii['sex_at_birth'], 'F')
@@ -151,7 +151,7 @@ class RhpApiTest(GenomicApiTestBase):
 
     def test_get_pii_valid_pid(self):
         p1_pii = self.send_get("GenomicPII/RHP/P1")
-        self.assertEqual(p1_pii['biobank_id'], 1)
+        self.assertEqual(p1_pii['biobank_id'], '1')
         self.assertEqual(p1_pii['first_name'], 'TestFN')
         self.assertEqual(p1_pii['last_name'], 'TestLN')
         self.assertEqual(p1_pii['date_of_birth'], '2000-01-01')

@@ -30,7 +30,6 @@ google-cloud-storage
 google-cloud-bigquery
 google-cloud-datastore
 google-cloud-firestore
-google-python-cloud-debugger
 google-cloud-logging
 google-cloud-tasks
 googlemaps   # Used in tools/import_organizations.py
