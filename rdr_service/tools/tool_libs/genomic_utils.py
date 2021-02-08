@@ -22,7 +22,7 @@ from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
-    GenomicGCValidationMetricsDao, GenomicFileProcessedDao
+    GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
@@ -1058,6 +1058,26 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
+        if self.args.job == 'CALCULATE_RECORD_COUNT_AW1':
+            self.dao = GenomicManifestFileDao()
+
+            if not self.args.id:
+                _logger.error("--id as comma-separated list of genomic_manifest_file.id required for record count")
+                return 1
+
+            id_list = [i.strip() for i in self.args.id.split(',')]
+
+            while len(id_list) > 0:
+                mid = id_list.pop(0)
+
+                try:
+                    int(mid)
+                except ValueError:
+                    _logger.error('ID must be an integer.')
+                    return 1
+
+                self.run_calculate_record_counts_aw1(mid)
+
         return 0
 
     def run_aw1_manifest(self):
@@ -1169,6 +1189,23 @@ class GenomicProcessRunner(GenomicManifestBase):
         except Exception as e:  # pylint: disable=broad-except
             _logger.error(e)
             return 1
+
+    def run_calculate_record_counts_aw1(self, manifest_id):
+        _logger.info(f"Calculating record count for manifest_id: {manifest_id}")
+
+        manifest = self.dao.get(manifest_id)
+
+        task_data = {
+            "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
+            "manifest_file": manifest
+        }
+
+        task_data = JSONObject(task_data)
+
+        genomic_pipeline.dispatch_genomic_job_from_task(
+            task_data,
+            project_id=self.gcp_env.project
+        )
 
 
 class FileUploadDateClass(GenomicManifestBase):
@@ -1651,6 +1688,8 @@ def run():
     process_runner_parser.add_argument("--file", help="The full 'bucket/subfolder/file.ext to process",
                                        default=None, required=False)
     process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
+                                       default=None, required=False)
+    process_runner_parser.add_argument("--id", help="A comma-separated list of ids",
                                        default=None, required=False)
 
     # Backfill GenomicFileProcessed UploadDate

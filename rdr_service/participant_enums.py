@@ -645,6 +645,9 @@ class GenomicJob(messages.Enum):
     FEEDBACK_SCAN = 30
     RECALCULATE_CONTAMINATION_CATEGORY = 31
 
+    CALCULATE_RECORD_COUNT_AW1 = 32
+    CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -723,6 +726,7 @@ class GenomicManifestTypes(messages.Enum):
     GEM_A2 = 11
     AW4_ARRAY = 12
     AW4_WGS = 13
+    AW1F = 14
 
 
 class GenomicContaminationCategory(messages.Enum):
