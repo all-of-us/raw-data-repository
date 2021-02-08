@@ -1649,8 +1649,7 @@ class CompareIngestionAW2Class(GenomicManifestBase):
 
     def get_row_count_file(self, file):
         _logger.info('Getting row count for file...')
-        return sum(1 for l in self.gscp.open(file, 'r'))
-
+        return (sum(1 for l in self.gscp.open(file, 'r')) - 1) # accounting for header row
 
     def output_csv(self):
         filename = 'aw2_comparisons_file_data_{}_{}_{}.csv'.format(
