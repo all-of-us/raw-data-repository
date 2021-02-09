@@ -2350,7 +2350,7 @@ class GenomicBiobankSamplesCoupler:
     def _get_remaining_saliva_participants(self, config):
 
         _saliva_sql = self.query.remaining_saliva_participants(config)
-        import ipdb; ipdb.set_trace()
+
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,

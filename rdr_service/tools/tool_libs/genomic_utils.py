@@ -240,7 +240,6 @@ class GenerateManifestClass(GenomicManifestBase):
         Main program process
         :return: Exit code value
         """
-
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetDao()
@@ -265,8 +264,8 @@ class GenerateManifestClass(GenomicManifestBase):
             if args.saliva:
                 _logger.info('Running saliva samples workflow')
                 s_dict = {
-                    'origin': args.saliva_origin or None,
-                    'ror': args.saliva_ror or None
+                    'origin': args.saliva_origin if args.saliva_origin and args.saliva_origin >= 0 else None,
+                    'ror': args.saliva_ror if args.saliva_ror and args.saliva_ror >= 0 else None
                 }
                 return self.generate_local_saliva_manifest(s_dict)
 
@@ -1656,7 +1655,7 @@ def run():
     new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None, required=True)  # noqa
     new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None, required=False)  # noqa
     new_manifest_parser.add_argument("--saliva",
-                    help="Bool for denoting if manifest is saliva only",
+                    help="bool for denoting if manifest is saliva only",
                     default=None,
                     required=False
         ) # noqa
@@ -1664,13 +1663,15 @@ def run():
                     help="origin for saliva manifest config",
                     choices=[1, 2],
                     default=None,
-                    required=False
+                    required=False,
+                    type=int
         ) # noqa
     new_manifest_parser.add_argument("--saliva-ror",
                     help="origin for saliva manifest config",
                     choices=list(QuestionnaireStatus.numbers()),
                     default=None,
-                    required=False
+                    required=False,
+                    type=int
         ) # noq
 
     # Set GenomicWorkflowState to provided state for provided member IDs

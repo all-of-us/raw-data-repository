@@ -73,10 +73,8 @@ class GenomicQueryClass:
 
     @staticmethod
     def remaining_saliva_participants(config):
-        import ipdb; ipdb.set_trace()
-        # SampleCollectionMethod
-        # MAIL_KIT = 1
-        # ON_SITE = 2
+
+        is_ror = ""
         originated = {
             1: {
                 'sql': 'JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id'
@@ -86,10 +84,9 @@ class GenomicQueryClass:
             }
         }
 
-        is_ror = ""
-        if config['ror']:
+        if config['ror'] >= 0:
             is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror']) \
-                if config['origin'] and config['origin'] > 0 \
+                if config['ror'] and config['ror'] > 0 \
                 else \
                     """ AND (ps.consent_for_genomics_ror = {}  \
                     OR ps.consent_for_genomics_ror IS NULL) """.format(config['origin'])
@@ -97,10 +94,10 @@ class GenomicQueryClass:
         is_clinic_id_null = "AND mk.id IS NULL" \
             if config['origin'] and config['origin'] == 2 else ""
 
-        is_home_or_clinic = originated[config['origin']] \
+        is_home_or_clinic = originated[config['origin']]['sql'] \
             if config['origin'] else ""
 
-        # Base query for only saliva samples in RDR w/options passed in #
+        # Base query for only saliva samples in RDR w/options passed in
         return """
         SELECT DISTINCT
               ps.biobank_id,
