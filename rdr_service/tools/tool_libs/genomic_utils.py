@@ -7,7 +7,6 @@ import argparse
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
-import datetime
 import logging
 import math
 import sys
@@ -33,6 +32,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
+from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -185,7 +185,7 @@ class ResendSamplesClass(GenomicManifestBase):
         # Check Manifest Type
         if self.args.manifest not in [m.name for m in GenomicManifestTypes]:
             _logger.error('Please choose a valid manifest type:')
-            _logger.error(f'    {[m.name for m in GenomicManifestTypes]}')
+            _logger.error(f'{[m.name for m in GenomicManifestTypes]}')
             return 1
 
         if self.args.csv:
@@ -244,31 +244,32 @@ class GenerateManifestClass(GenomicManifestBase):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetDao()
-
-        # Check Args
-        if not self.args.manifest:
-            _logger.error('--manifest must be provided.')
-            return 1
+        args = self.args
 
         # Check Manifest Type
-        if self.args.manifest not in [m.name for m in GenomicManifestTypes]:
-            _logger.error('Please choose a valid manifest type:')
-            _logger.error(f'    {[m.name for m in GenomicManifestTypes]}')
+        if args.manifest not in [m.name for m in GenomicManifestTypes]:
+            _logger.error('Please choose a valid manifest type: {}'.format([m.name for m in GenomicManifestTypes]))
             return 1
 
         # AW0 Manifest
-        if self.args.manifest == "DRC_BIOBANK":
-            if self.args.cohort not in ['1', '2', '3']:
-                _logger.error('--cohort [1, 2, 3] must be provided when generating DRC_BIOBANK manifest')
+        if args.manifest == "DRC_BIOBANK":
+            if args.cohort not in ParticipantCohort.numbers() and not args.saliva:
+                _logger.error('--cohort {} must be provided when generating DRC_BIOBANK manifest' \
+                .format(list(ParticipantCohort.numbers())))
                 return 1
 
-            if int(self.args.cohort) == 2:
+            if args.cohort and int(args.cohort) == 2:
                 _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_remainder_manifest()
 
-            if int(self.args.cohort) == 1:
-                _logger.info('Running Cohort 1 workflow')
-                return self.generate_local_c1_manifest()
+            if args.saliva:
+                _logger.info('Running saliva samples workflow')
+                s_dict = {
+                    'origin': args.saliva_origin or None,
+                    'ror': args.saliva_ror or None
+                }
+                return self.generate_local_saliva_manifest(s_dict)
+
 
     def generate_local_c2_remainder_manifest(self):
         """
@@ -280,14 +281,28 @@ class GenerateManifestClass(GenomicManifestBase):
                                   bq_project_id=self.gcp_env.project) as controller:
             biobank_coupler = GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller)
             biobank_coupler.create_c2_genomic_participants(local=True)
-
             new_set_id = self.dao.get_max_set()
-
-            self.export_c2_manifest_to_local_file(new_set_id)
+            self.export_manifest_to_local_file(new_set_id, str_type='c2')
 
         return 0
 
-    def export_c2_manifest_to_local_file(self, set_id):
+
+    def generate_local_saliva_manifest(self, s_dict):
+        """
+        # to do
+        """
+
+        with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW,
+                                  bq_project_id=self.gcp_env.project) as controller:
+            biobank_coupler = GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller)
+            biobank_coupler.create_saliva_genomic_participants(local=True, config=s_dict)
+            new_set_id = self.dao.get_max_set()
+            self.export_manifest_to_local_file(new_set_id, str_type='saliva')
+
+        return 0
+
+
+    def export_manifest_to_local_file(self, set_id, str_type=None):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
         :param set_id:
@@ -300,10 +315,15 @@ class GenerateManifestClass(GenomicManifestBase):
 
         # creates local file
         _logger.info(f"Exporting samples to manifest...")
-        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}_C2-{str(set_id)}.CSV'
+        output_str_type = '_{}'.format(str_type) if str_type else ""
+        _filename = f'{folder_name}/{self.DRC_BIOBANK_PREFIX}-{self.nowf}{output_str_type}-{str(set_id)}.csv'
 
-        create_and_upload_genomic_biobank_manifest_file(set_id, self.nowts,
-                                                        bucket_name=bucket_name, filename=_filename)
+        create_and_upload_genomic_biobank_manifest_file(
+                set_id,
+                self.nowts,
+                bucket_name=bucket_name,
+                filename=_filename
+            )
 
         # Handle Genomic States for manifests
         member_dao = GenomicSetMemberDao()
@@ -1633,8 +1653,25 @@ def run():
     new_manifest_parser = subparser.add_parser("generate-manifest")
     manifest_type_list = [m.name for m in GenomicManifestTypes]
     new_manifest_help = f"which manifest type to generate: {manifest_type_list}"
-    new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None)  # noqa
-    new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None)  # noqa
+    new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None, required=True)  # noqa
+    new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None, required=False)  # noqa
+    new_manifest_parser.add_argument("--saliva",
+                    help="Bool for denoting if manifest is saliva only",
+                    default=None,
+                    required=False
+        ) # noqa
+    new_manifest_parser.add_argument("--saliva-origin",
+                    help="origin for saliva manifest config",
+                    choices=[1, 2],
+                    default=None,
+                    required=False
+        ) # noqa
+    new_manifest_parser.add_argument("--saliva-ror",
+                    help="origin for saliva manifest config",
+                    choices=list(QuestionnaireStatus.numbers()),
+                    default=None,
+                    required=False
+        ) # noq
 
     # Set GenomicWorkflowState to provided state for provided member IDs
     member_state_parser = subparser.add_parser("member-state")
