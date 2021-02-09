@@ -614,14 +614,26 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return status_map[fhir_response.status]
 
-    @staticmethod
-    def extension_models_from_fhir_objects(fhir_extensions):
+    @classmethod
+    def _extension_from_fhir_object(cls, fhir_extension):
+        # Get the non-empty values from the FHIR extension object for the url field and
+        # any field with a name that starts with "value"
+        fhir_fields = fhir_extension.__dict__
+        filtered_values = {}
+        for name, value in fhir_fields.items():
+            if value is not None and (name == 'url' or name.startswith('value')):
+                filtered_values[name] = value
+
+        return QuestionnaireResponseExtension(**filtered_values)
+
+    @classmethod
+    def extension_models_from_fhir_objects(cls, fhir_extensions):
         if fhir_extensions:
-            return [QuestionnaireResponseExtension(
-                url=extension.url,
-                valueCode=extension.valueCode,
-                valueString=extension.valueString
-            ) for extension in fhir_extensions]
+            try:
+                return [cls._extension_from_fhir_object(extension) for extension in fhir_extensions]
+            except TypeError:
+                logging.warning('Unexpected extension value', exc_info=True)
+                return []
         else:
             return []
 

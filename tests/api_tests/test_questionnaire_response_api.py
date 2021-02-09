@@ -1075,6 +1075,39 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # Make sure logs have been called for each issue
         mock_logging.error.assert_any_call('Questionnaire response contains invalid link ID "invalid_link"')
 
+    def test_unexpected_extension_field_succeeds(self):
+        """
+        Not all extension fields were implemented in the RDR's Extension model, valueUri is one of them.
+        This tests to be sure that a QuestionnaireResponse won't be rejected (or crash) if it contains an extension
+        field we're not prepared to handle.
+        """
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        # Check that POST doesn't fail on unknown extension fields
+        with open(data_path("questionnaire_response3.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        resource['extension'] = [{
+            'url': 'test-unknown',
+            'valueUri': 'testing'
+        }]
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Double check that the extension wasn't made (if it was then this test may need to be updated)
+        response_id = response['id']
+        extension_query = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.questionnaireResponseId == response_id
+        )
+        self.assertEqual(0, extension_query.count(),
+                         'The extension was created, but the valueUri field is expected to be unrecognized')
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
