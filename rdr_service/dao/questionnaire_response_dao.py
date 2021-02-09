@@ -616,11 +616,14 @@ class QuestionnaireResponseDao(BaseDao):
 
     @staticmethod
     def extension_models_from_fhir_objects(fhir_extensions):
-        return [QuestionnaireResponseExtension(
-            url=extension.url,
-            valueCode=extension.valueCode,
-            valueString=extension.valueString
-        ) for extension in fhir_extensions]
+        if fhir_extensions:
+            return [QuestionnaireResponseExtension(
+                url=extension.url,
+                valueCode=extension.valueCode,
+                valueString=extension.valueString
+            ) for extension in fhir_extensions]
+        else:
+            return []
 
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
