@@ -614,7 +614,8 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return status_map[fhir_response.status]
 
-    def extension_models_from_fhir_objects(self, fhir_extensions):
+    @staticmethod
+    def extension_models_from_fhir_objects(fhir_extensions):
         return [QuestionnaireResponseExtension(
             url=extension.url,
             valueCode=extension.valueCode,
