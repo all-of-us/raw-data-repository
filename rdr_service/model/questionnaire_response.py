@@ -41,6 +41,8 @@ class QuestionnaireResponse(Base):
         server_default=text(str(int(QuestionnaireResponseStatus.COMPLETED)))
     )
     answers = relationship("QuestionnaireResponseAnswer", cascade="all, delete-orphan")
+    extensions = relationship('QuestionnaireResponseExtension')
+
     __table_args__ = (
         ForeignKeyConstraint(
             ["questionnaire_id", "questionnaire_version"],
@@ -102,9 +104,8 @@ class QuestionnaireResponseExtension(Base):
         "questionnaire_response_id",
         Integer,
         ForeignKey(QuestionnaireResponse.questionnaireResponseId),
-        nullable=False,
+        nullable=False
     )
-    relationship(QuestionnaireResponse)
 
     url = Column(String(1024))
     valueCode = Column('value_code', String(512))

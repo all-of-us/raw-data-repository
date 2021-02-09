@@ -18,7 +18,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
@@ -301,6 +302,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # The resource gets rewritten to include the version
         resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
         self.assertJsonResponseMatches(resource, response)
+
+        # Check that the extensions were saved
+        questionnaire_response_id = response['id']
+        test_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'extension-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('test string', test_extension.valueString)
+        code_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'code-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('code_value', code_extension.valueCode)
 
         #  sending an update response with history reference
         with open(data_path('questionnaire_response4.json')) as fd:

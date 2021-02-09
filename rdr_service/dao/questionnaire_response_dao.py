@@ -57,7 +57,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -613,6 +614,13 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return status_map[fhir_response.status]
 
+    def extension_models_from_fhir_objects(self, fhir_extensions):
+        return [QuestionnaireResponseExtension(
+            url=extension.url,
+            valueCode=extension.valueCode,
+            valueString=extension.valueString
+        ) for extension in fhir_extensions]
+
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
         # Parse the questionnaire response, but preserve the original response when persisting
@@ -662,6 +670,7 @@ class QuestionnaireResponseDao(BaseDao):
             # Now add the child answers, using the IDs in code_id_map
             self._add_answers(qr, code_id_map, answers)
 
+        qr.extensions = self.extension_models_from_fhir_objects(fhir_qr.extension)
         return qr
 
     @staticmethod

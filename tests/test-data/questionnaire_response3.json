@@ -11,6 +11,16 @@
     "reference": "http://hl7.org/fhir/Practitioner/example"
   },
   "authored": "2013-02-19T14:15:00+10:00",
+  "extension": [
+    {
+      "url": "code-url",
+      "valueCode": "code_value"
+    },
+    {
+      "url": "extension-url",
+      "valueString": "test string"
+    }
+  ],
   "group": {
     "linkId": "PHR",
     "title": "NSW Government My Personal Health Record, january 2013",
