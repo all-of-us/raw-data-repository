@@ -270,6 +270,9 @@ class GenomicFileIngester:
             if self.job_id in [GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST]:
                 return self._ingest_aw1c_manifest(data_to_ingest)
 
+            if self.job_id in [GenomicJob.AW5_ARRAY_MANIFEST, GenomicJob.AW5_WGS_MANIFEST]:
+                return self._ingest_aw5_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -892,6 +895,41 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _ingest_aw5_manifest(self, file_data):
+        try:
+            for row in file_data['rows']:
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                biobank_id = row_copy['biobankid']
+                biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
+                sample_id = row_copy['sampleid']
+
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
+                                                                                  self.file_validator.genome_type)
+                if not member:
+                    logging.warning(f'can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skip this one')
+                    continue
+
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    logging.warning(f'can not find metrics record for member id: '
+                                    f'{member.id}, skip this one')
+                    continue
+
+                updated_obj = self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy,
+                                                                                                    metric_id)
+
+                # Update GC Metrics for PDR
+                if updated_obj:
+                    bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(updated_obj.id)
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     def _ingest_aw1c_manifest(self, file_data):
         """
         Processes the CVL AW1C manifest file data
@@ -1217,6 +1255,42 @@ class GenomicFileValidator:
             "qcstatus",
         )
 
+        self.AW5_WGS_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "vcfhf",
+            "vcfhfindex",
+            "vcfhfmd5",
+            "vcfraw",
+            "vcfrawindex",
+            "vcfrawmd5",
+            "cram",
+            "crammd5",
+            "crai",
+            "gvcf",
+            "gvcfmd5",
+        }
+
+        self.AW5_ARRAY_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "redidat",
+            "redidatmd5",
+            "greenidat",
+            "greenidatmd5",
+            "vcf",
+            "vcfindex",
+            "vcfmd5",
+        }
+
     def validate_ingestion_file(self, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
@@ -1360,6 +1434,14 @@ class GenomicFileValidator:
                 filename_components[2] == 'seq'
             )
 
+        def aw5_wgs_manifest_name_rule(fn):
+            # TODO - add this rule after get the name convention
+            return True
+
+        def aw5_array_manifest_name_rule(fn):
+            # TODO - add this rule after get the name convention
+            return True
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
@@ -1372,6 +1454,8 @@ class GenomicFileValidator:
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
+            GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
+            GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -1429,6 +1513,14 @@ class GenomicFileValidator:
 
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
                 return self.GC_MANIFEST_SCHEMA
+
+            if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
+                return self.AW5_WGS_SCHEMA
+
+            if self.job_id == GenomicJob.AW5_ARRAY_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['gen']
+                return self.AW5_ARRAY_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME

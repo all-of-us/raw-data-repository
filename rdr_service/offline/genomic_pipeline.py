@@ -358,7 +358,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject):
     Sets up the genomic manifest file record and begin pipeline
     :param _task_data: dictionary of metadata needed by the controller
     """
-    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION):
+    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION, GenomicJob.AW5_ARRAY_MANIFEST,
+                          GenomicJob.AW5_WGS_MANIFEST):
 
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data) as controller:

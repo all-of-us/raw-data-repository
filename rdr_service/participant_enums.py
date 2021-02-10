@@ -645,6 +645,9 @@ class GenomicJob(messages.Enum):
     FEEDBACK_SCAN = 30
     RECALCULATE_CONTAMINATION_CATEGORY = 31
 
+    AW5_ARRAY_MANIFEST = 32
+    AW5_WGS_MANIFEST = 33
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -723,6 +726,8 @@ class GenomicManifestTypes(messages.Enum):
     GEM_A2 = 11
     AW4_ARRAY = 12
     AW4_WGS = 13
+    AW5_ARRAY = 14
+    AW5_WGS = 15
 
 
 class GenomicContaminationCategory(messages.Enum):

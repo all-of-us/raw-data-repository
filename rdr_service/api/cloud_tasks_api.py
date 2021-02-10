@@ -4,6 +4,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
+from rdr_service.config import getSetting, GENOMIC_AW5_WGS_SUBFOLDERS, GENOMIC_AW5_ARRAY_SUBFOLDERS
 from rdr_service.api.data_gen_api import generate_samples_task
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
@@ -192,6 +193,45 @@ class IngestAW2ManifestTaskApi(Resource):
                 "create_feedback_record": False,
                 "upload_date": data["upload_date"],
                 "manifest_type": GenomicManifestTypes.GC_DRC,
+                "file_path": data["file_path"],
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class IngestAW5ManifestTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ingest AW5 Manifest.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ingesting AW5 File: {data.get("filename")}')
+
+        if getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in data["file_path"]:
+            job_id = GenomicJob.AW5_WGS_MANIFEST
+            manifest_type = GenomicManifestTypes.AW5_WGS
+        elif getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in data["file_path"]:
+            job_id = GenomicJob.AW5_ARRAY_MANIFEST
+            manifest_type = GenomicManifestTypes.AW5_ARRAY
+        else:
+            logging.error(f'can not determine manifest type from file_path: {data["file_path"]}')
+            return '{"success": "false"}'
+
+        # Set up file/JSON
+        task_data = {
+            "job": job_id,
+            "bucket": data["bucket_name"],
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": data["upload_date"],
+                "manifest_type": manifest_type,
                 "file_path": data["file_path"],
             }
         }
