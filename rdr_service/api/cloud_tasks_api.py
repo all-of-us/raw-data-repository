@@ -15,7 +15,7 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
     bq_institutional_affiliations_batch_update, bq_researcher_batch_update
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicManifestFileDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
@@ -27,6 +27,7 @@ from rdr_service.resource.generators.genomics import genomic_set_batch_update, g
     genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.tasks import batch_rebuild_participants_task
+from rdr_service.services.system_utils import JSONObject
 
 
 def log_task_headers():
@@ -155,14 +156,25 @@ class IngestAW1ManifestTaskApi(Resource):
 
         logging.info(f'Ingesting AW1 File: {data.get("filename")}')
 
+        # Set manifest_type and job
+        job = GenomicJob.AW1_MANIFEST
+        manifest_type = GenomicManifestTypes.BIOBANK_GC
+        create_fb = True
+
+        # Write a different manifest type and JOB ID if an AW1F
+        if "FAILURE" in data["file_path"]:
+            job = GenomicJob.AW1F_MANIFEST
+            manifest_type = GenomicManifestTypes.AW1F
+            create_fb = False
+
         # Set up file/JSON
         task_data = {
-            "job": GenomicJob.AW1_MANIFEST,
+            "job": job,
             "bucket": data["bucket_name"],
             "file_data": {
-                "create_feedback_record": True,
+                "create_feedback_record": create_fb,
                 "upload_date": data["upload_date"],
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": manifest_type,
                 "file_path": data["file_path"],
             }
         }
@@ -198,6 +210,44 @@ class IngestAW2ManifestTaskApi(Resource):
 
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class CalculateRecordCountTaskApi(Resource):
+    """
+    Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+
+        # from cloud function
+        data = request.get_json(force=True)
+
+        mid = data.get("manifest_file_id")
+
+        logging.info(f'Calculating record count for manifest file ID: {mid}')
+
+        manifest_file_dao = GenomicManifestFileDao()
+
+        manifest_file_obj = manifest_file_dao.get(mid)
+
+        if manifest_file_obj is None:
+            raise NotFound(f"Manifest ID {mid} not found.")
+
+        else:
+            # Set up task JSON
+            task_data = {
+                "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
+                "manifest_file": manifest_file_obj
+            }
+
+            task_data = JSONObject(task_data)
+
+            # Call pipeline function
+            genomic_pipeline.dispatch_genomic_job_from_task(task_data)
 
         logging.info('Complete.')
         return '{"success": "true"}'
