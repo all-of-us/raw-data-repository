@@ -61,7 +61,7 @@ class SyncConsentFilesTest(BaseTestCase):
         if consents:
             summary_data.update(consentForElectronicHealthRecords=1,
                                 consentForStudyEnrollment=1,
-                                consentForStudyEnrollmentTime=consent_time)
+                                consentForStudyEnrollmentAuthored=consent_time)
         if email:
             summary.email = email
             summary_data['email'] = email
@@ -339,11 +339,11 @@ class SyncConsentFilesTest(BaseTestCase):
         self._create_participant(5, self.org1.organizationId, None, consents=True, email="foo@example.com")
         self._create_participant(6, org2.organizationId, site2.siteId, consents=True)
         participant_data_list = list(sync_consent_files._iter_participants_data(['test_one', 'test_two']))
-        participant_ids = [d.participant_id for d in participant_data_list]
+        participant_ids = [d.participantId for d in participant_data_list]
         self.assertEqual(len(participant_ids), 3, "finds correct number of results")
         self.assertEqual(participant_ids, [1, 3, 6], "finds valid participants")
-        self.assertEqual(participant_data_list[0].google_group, "group1", "Includes google group")
-        self.assertEqual(participant_data_list[1].google_group, None, "allows None for google group")
+        self.assertEqual(participant_data_list[0].googleGroup, "group1", "Includes google group")
+        self.assertEqual(participant_data_list[1].googleGroup, None, "allows None for google group")
 
     @mock.patch("rdr_service.offline.sync_consent_files.list_blobs")
     @mock.patch("rdr_service.offline.sync_consent_files.copy_cloud_file")

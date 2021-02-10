@@ -4,7 +4,6 @@ import logging
 import pytz
 
 from rdr_service.config import CONSENT_SYNC_BUCKETS
-from rdr_service.dao import database_factory
 from rdr_service.offline.sync_consent_files import build_participant_query, \
     DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
 from rdr_service.services.system_utils import print_progress_bar
@@ -87,15 +86,13 @@ class SyncConsentClass(ToolBase):
             else:
                 query_args['all_va'] = True
 
-            participant_sql, params = build_participant_query(org_ids, **query_args)
-            count_sql = self._get_count_sql(participant_sql)
-            with database_factory.make_server_cursor_database().session() as session:
-                total_participants = session.execute(count_sql, params).scalar() if not filter_pids \
-                                            else len(filter_pids)
+            with self.get_session() as session:
+                participant_query = build_participant_query(session, org_ids, **query_args)
+                total_participants = participant_query.count() if not filter_pids else len(filter_pids)
 
                 logger.info("transferring files to destinations...")
                 count = 0
-                for rec in session.execute(participant_sql, params):
+                for rec in participant_query:
                     if filter_pids and rec[0] not in filter_pids:
                         continue
                     if not self.args.debug:
@@ -104,10 +101,8 @@ class SyncConsentClass(ToolBase):
                             suffix="complete"
                         )
 
-                    p_id = rec[0]
-                    origin_id = rec[1]
-                    site = rec[2]
-                    org_id = rec[3]
+                    site = rec.googleGroup
+                    org_id = rec.externalId
                     if self.args.destination_bucket is not None:
                         # override destination bucket lookup (the lookup table is incomplete)
                         bucket = self.args.destination_bucket
@@ -124,9 +119,9 @@ class SyncConsentClass(ToolBase):
                     if self.args.all_files:
                         self.file_filter = ""
 
-                    src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
+                    src_bucket = SOURCE_BUCKET.get(rec.participantOrigin, SOURCE_BUCKET[
                         next(iter(SOURCE_BUCKET))
-                    ]).format(p_id=p_id, file_ext=self.file_filter)
+                    ]).format(p_id=rec.participantId, file_ext=self.file_filter)
 
                     destination = get_consent_destination(
                         add_protocol=True,
@@ -134,19 +129,25 @@ class SyncConsentClass(ToolBase):
                         bucket_name=bucket,
                         org_external_id=org_id,
                         site_name=site if site else DEFAULT_GOOGLE_GROUP,
-                        p_id=p_id
+                        p_id=rec.participantId
                     )
                     if self.args.date_limit:
                         # only copy files newer than date limit
                         files_in_range = self._get_files_updated_in_range(
                             date_limit=self.args.date_limit,
-                            source_bucket=src_bucket, p_id=p_id)
+                            source_bucket=src_bucket, p_id=rec.participantId)
                         if not files_in_range or len(files_in_range) == 0:
                             logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            copy_file(f, destination, p_id, dry_run=self.args.dry_run, zip_files=self.args.zip_files)
+                            copy_file(
+                                f,
+                                destination,
+                                rec.participantId,
+                                dry_run=self.args.dry_run,
+                                zip_files=self.args.zip_files
+                            )
                     else:
-                        copy_file(src_bucket, destination, p_id,
+                        copy_file(src_bucket, destination, rec.participantId,
                                   dry_run=self.args.dry_run, zip_files=self.args.zip_files)
 
                     count += 1
