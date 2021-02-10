@@ -20,7 +20,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics,
-    GenomicManifestFile, GenomicManifestFeedback)
+    GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw)
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -1319,4 +1319,16 @@ class GenomicManifestFeedbackDao(BaseDao):
         return list(results)
 
     def get_feedback_records_for_aw2f(self):
+        pass
+
+
+class GenomicAW1RawDao(BaseDao):
+    def __init__(self):
+        super(GenomicAW1RawDao, self).__init__(
+            GenomicAW1Raw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
         pass

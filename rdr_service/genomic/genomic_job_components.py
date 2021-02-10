@@ -36,7 +36,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicFileProcessed)
+    GenomicFileProcessed, GenomicAW1Raw)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -58,7 +58,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao, GenomicManifestFileDao)
+    GenomicManifestFeedbackDao, GenomicManifestFileDao, GenomicAW1RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -302,6 +302,40 @@ class GenomicFileIngester:
             'gcManifestFailureDescription': 'failuremodedesc',
         }
 
+    @staticmethod
+    def get_aw1_raw_column_mappings():
+        return {
+            "package_id": "packageid",
+            "biobankid_sample_id": "biobankidsampleid",
+            "box_storageunit_id": "boxstorageunitid",
+            "box_id_plate_id": "boxid/plateid",
+            "well_position": "wellposition",
+            "sample_id": "sampleid",
+            "parent_sample_id": "parentsampleid",
+            "collection_tube_id": "collectiontubeid",
+            "matrix_id": "matrixid",
+            "collection_date": "collectiondate",
+            "biobank_id": "biobankid",
+            "sex_at_birth": "sexatbirth",
+            "age": "age",
+            "ny_state": "nystate(y/n)",
+            "sample_type": "sampletype",
+            "treatments": "treatments",
+            "quantity": "quantity(ul)",
+            "total_concentration": "totalconcentration(ng/ul)",
+            "total_dna": "totaldna(ng)",
+            "visit_description": "visitdescription",
+            "sample_source": "samplesource",
+            "study": "study",
+            "tracking_number": "trackingnumber",
+            "contact": "contact",
+            "email": "email",
+            "study_pi": "studypi",
+            "test_name": "testname",
+            "failure_mode": "failuremode",
+            "failure_mode_desc": "failuremodedesc",
+        }
+
     def _ingest_aw1_manifest(self, data, _site):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
@@ -390,6 +424,47 @@ class GenomicFileIngester:
                 genomic_set_member_update(member.id)
 
         return GenomicSubProcessResult.SUCCESS
+
+    def load_raw_aw1_file(self):
+        """
+        Loads genomic_aw1_raw with raw data from aw1 file
+        :return:
+        """
+        file_data = self._retrieve_data_from_path(self.target_file)
+
+        aw1_dao = GenomicAW1RawDao()
+
+        # Processing raw AW1 data in batches
+        batch_size = 100
+        item_count = 0
+        batch = list()
+
+        for row in file_data['rows']:
+            # Standardize fields to lower, no underscores or spaces
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                            for key in row], row.values()))
+
+            row_obj = self._set_raw_aw1_attributes(row, GenomicAW1Raw())
+
+            batch.append(row_obj)
+            item_count += 1
+
+            if item_count == batch_size:
+                # Insert batch into DB
+                with aw1_dao.session() as session:
+                    session.bulk_save_objects(batch)
+
+                # Reset batch
+                item_count = 0
+                batch = list()
+
+        if item_count:
+            # insert last batch if needed
+            with aw1_dao.session() as session:
+                session.bulk_save_objects(batch)
+
+        return GenomicSubProcessResult.SUCCESS
+
 
     def ingest_single_aw1_row_for_member(self, member):
         # Open file and pull row based on member.biobankId
@@ -776,6 +851,24 @@ class GenomicFileIngester:
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         return member
+
+    def _set_raw_aw1_attributes(self, aw1_data, aw1_row_obj):
+        """
+        Loads GenomicAW1Raw attributes from aw1_data
+        :param aw1_data: dict
+        :param aw1_row_obj: GenomicAW1Raw object
+        :return: GenomicAW1Raw
+        """
+        aw1_column_mappings = self.get_aw1_raw_column_mappings()
+
+        aw1_row_obj.file_path = self.target_file
+        aw1_row_obj.created = clock.CLOCK.now()
+        aw1_row_obj.modified = clock.CLOCK.now()
+
+        for key in aw1_column_mappings.keys():
+            aw1_row_obj.__setattr__(key, aw1_data.get(aw1_column_mappings[key]))
+
+        return aw1_row_obj
 
     def _process_gc_metrics_data_for_insert(self, data_to_ingest):
         """ Since input files vary in column names,
