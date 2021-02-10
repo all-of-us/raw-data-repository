@@ -76,21 +76,27 @@ class GenomicQueryClass:
 
         is_ror = ""
         originated = {
+            # at home
             1: {
                 'sql': 'JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id'
             },
+            # in clinic
             2: {
                 'sql': 'LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id'
             }
         }
 
         if config['ror'] >= 0:
+            # unset = 0
+            # submitted = 1
+            # submitted_not_consent = 2
             is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror']) \
                 if config['ror'] and config['ror'] > 0 \
                 else \
                     """ AND (ps.consent_for_genomics_ror = {}  \
                     OR ps.consent_for_genomics_ror IS NULL) """.format(config['origin'])
 
+        # in clinic
         is_clinic_id_null = "AND mk.id IS NULL" \
             if config['origin'] and config['origin'] == 2 else ""
 

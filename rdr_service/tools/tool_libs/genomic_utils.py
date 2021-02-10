@@ -32,7 +32,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
+from rdr_service.participant_enums import ParticipantCohort
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -1668,7 +1668,7 @@ def run():
         ) # noqa
     new_manifest_parser.add_argument("--saliva-ror",
                     help="origin for saliva manifest config",
-                    choices=list(QuestionnaireStatus.numbers()),
+                    choices=[0, 1, 2],
                     default=None,
                     required=False,
                     type=int
