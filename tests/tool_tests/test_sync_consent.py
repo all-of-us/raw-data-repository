@@ -21,10 +21,6 @@ class SyncConsentTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super().setUp()
 
-        config.override_setting(config.CONSENT_SYNC_BUCKETS, {
-            'test_org': 'test_dest_bucket'
-        })
-
         site = self.data_generator.create_database_site(googleGroup='test_site_google_group')
         org = self.data_generator.create_database_organization(externalId='test_org')
         self.participant = self.data_generator.create_database_participant(organizationId=org.organizationId, siteId=site.siteId)
@@ -41,15 +37,15 @@ class SyncConsentTest(ToolTestMixin, BaseTestCase):
                 Path(os.path.join(destination, Path(source).name)).touch()
         mock_gcp_cp.side_effect = create_local_file
 
-    @staticmethod
-    def run_sync(date_limit='2020-05-01', end_date=None, org_id='test_org', destination_bucket=None,
+    @classmethod
+    def run_sync(cls, date_limit='2020-05-01', end_date=None, org_id='test_org', destination_bucket=None,
                  all_files=False, zip_files=False, dry_run=None, consent_files=[], all_va=False):
         with mock.patch.dict('rdr_service.tools.tool_libs.sync_consent.SOURCE_BUCKET', {
                     'example': "gs://uploads_bucket/Participant/P{p_id}/*{file_ext}"
                 }),\
                 mock.patch('rdr_service.tools.tool_libs.sync_consent.GoogleCloudStorageProvider.list',
                            return_value=consent_files):
-            SyncConsentTest.run_tool(SyncConsentClass, tool_args={
+            cls.run_tool(SyncConsentClass, tool_args={
                 'date_limit': date_limit,
                 'end_date': end_date,
                 'org_id': None if all_va else org_id,
@@ -59,6 +55,10 @@ class SyncConsentTest(ToolTestMixin, BaseTestCase):
                 'dry_run': dry_run,
                 'all_va': all_va,
                 'pid_file': None
+            }, server_config={
+                config.CONSENT_SYNC_BUCKETS: {
+                    'test_org': 'test_dest_bucket'
+                }
             })
 
     @staticmethod

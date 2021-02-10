@@ -3,8 +3,9 @@ import MySQLdb
 import logging
 import pytz
 
+from rdr_service.config import CONSENT_SYNC_BUCKETS
 from rdr_service.dao import database_factory
-from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query, \
+from rdr_service.offline.sync_consent_files import build_participant_query, \
     DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
 from rdr_service.services.system_utils import print_progress_bar
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -64,7 +65,8 @@ class SyncConsentClass(ToolBase):
             filter_pids = open(self.args.pid_file).read().strip().split('\n')
             filter_pids = [int(x) for x in filter_pids]
 
-        org_buckets = get_org_data_map()
+        server_config = self.get_server_config()
+        org_buckets = server_config[CONSENT_SYNC_BUCKETS]
 
         try:
             logger.info("retrieving participant information...")
