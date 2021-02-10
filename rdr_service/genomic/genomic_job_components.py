@@ -2081,7 +2081,6 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
 
             blood_sample_data = None
-
             if not saliva:
                 blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
                                                               bid=_bid)
@@ -2362,7 +2361,7 @@ class GenomicBiobankSamplesCoupler:
         }
 
         with self.samples_dao.session() as session:
-            result = session.execute(_saliva_sql, params).first()
+            result = session.execute(_saliva_sql, params).fetchall()
 
         return result
 

@@ -264,8 +264,10 @@ class GenerateManifestClass(GenomicManifestBase):
             if args.saliva:
                 _logger.info('Running saliva samples workflow')
                 s_dict = {
-                    'origin': args.saliva_origin if args.saliva_origin and args.saliva_origin >= 0 else None,
-                    'ror': args.saliva_ror if args.saliva_ror and args.saliva_ror >= 0 else None
+                    'origin': args.saliva_origin if args.saliva_origin is not None \
+                         and args.saliva_origin >= 0 else None,
+                    'ror': args.saliva_ror if args.saliva_ror is not None \
+                        and args.saliva_ror >= 0 else None
                 }
                 return self.generate_local_saliva_manifest(s_dict)
 

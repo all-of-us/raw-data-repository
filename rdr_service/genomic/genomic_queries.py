@@ -78,11 +78,11 @@ class GenomicQueryClass:
         originated = {
             # at home
             1: {
-                'sql': 'JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id'
+                'sql': 'JOIN biobank_mail_kit_order mk ON mk.participant_id = ps.participant_id'
             },
             # in clinic
             2: {
-                'sql': 'LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id'
+                'sql': 'LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = ps.participant_id'
             }
         }
 
@@ -90,11 +90,11 @@ class GenomicQueryClass:
             # unset = 0
             # submitted = 1
             # submitted_not_consent = 2
-            is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror']) \
-                if config['ror'] and config['ror'] > 0 \
-                else \
-                    """ AND (ps.consent_for_genomics_ror = {}  \
-                    OR ps.consent_for_genomics_ror IS NULL) """.format(config['origin'])
+            if config['ror'] == 0:
+                is_ror = """AND (ps.consent_for_genomics_ror = {}  \
+                    OR ps.consent_for_genomics_ror IS NULL) """.format(config['ror'])
+            else:
+                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror'])
 
         # in clinic
         is_clinic_id_null = "AND mk.id IS NULL" \
@@ -151,8 +151,7 @@ class GenomicQueryClass:
             WHERE TRUE
                 AND ps.sample_status_1ed04 = 0
                 AND ps.sample_status_1ed10 = 0
-                AND ps.sample_status_1sa12 = 1
-                AND ps.questionnaire_on_dna_program_authored > :from_date_param
+                AND ps.sample_status_1sal2 = 1
                 AND ps.questionnaire_on_dna_program = :general_consent_param
                 AND m.id IS NULL
                 {is_ror}
