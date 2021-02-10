@@ -47,7 +47,11 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
             "upload_date": self.event.timeCreated,
         }
 
-        _logger.info("Pushing cloud task...")
+        _logger.info("Pushing cloud tasks...")
+
+        # Load into raw table
+        _task = GCPCloudTask()
+        _task.execute('/resource/task/LoadRawAW1ManifestDataAPI', payload=data, queue=task_queue)
 
         _task = GCPCloudTask()
         _task.execute('/resource/task/IngestAW1ManifestTaskApi', payload=data, queue=task_queue)

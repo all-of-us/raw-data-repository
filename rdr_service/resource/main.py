@@ -8,7 +8,8 @@ from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi, \
-    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, CalculateRecordCountTaskApi
+    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, CalculateRecordCountTaskApi, \
+    LoadRawAW1ManifestDataAPI
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
@@ -49,6 +50,10 @@ def _build_resource_app():
     #
     # Begin Genomic Cloud Task API Endpoints
     #
+
+    # Ingest AW1 manifest
+    _api.add_resource(LoadRawAW1ManifestDataAPI, TASK_PREFIX + "LoadRawAW1ManifestDataAPI",
+                      endpoint="load_aw1_raw_data_task", methods=["POST"])
 
     # Ingest AW1 manifest
     _api.add_resource(IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
