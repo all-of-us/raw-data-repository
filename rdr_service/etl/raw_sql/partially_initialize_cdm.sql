@@ -574,7 +574,7 @@ from rdr.questionnaire_response qr
 inner join cdm.tmp_questionnaire_response tqr on tqr.questionnaire_response_id = qr.questionnaire_response_id
 inner join rdr.questionnaire_response_answer qra on qra.questionnaire_response_id = qr.questionnaire_response_id
 group by qr.questionnaire_response_id, qr.participant_id, tqr.identifier;
-create index idx_answer_hash_qr_id on answer_hash_values on answer_hash_values (questionnaire_response_id);
+create index idx_answer_hash_qr_id on cdm.answer_hash_values (questionnaire_response_id);
 UPDATE cdm.tmp_questionnaire_response tqr
 INNER JOIN cdm.answer_hash_values ahv on tqr.questionnaire_response_id = ahv.questionnaire_response_id
 SET tqr.answers_hash = ahv.answers_hash
