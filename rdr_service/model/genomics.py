@@ -307,7 +307,7 @@ class GenomicManifestFile(Base):
     modified = Column("modified", UTCDateTime, nullable=False)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
     manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
-    filePath = Column('file_path', String(255), nullable=True)
+    filePath = Column('file_path', String(255), nullable=True, index=True)
     bucketName = Column('bucket_name', String(128), nullable=True)
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
@@ -359,6 +359,59 @@ class GenomicManifestFeedback(Base):
 
 event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
 event.listen(GenomicManifestFeedback, 'before_update', model_update_listener)
+
+
+class GenomicAW1Raw(Base):
+    """
+    Raw text data from AW1 files
+    """
+    __tablename__ = 'genomic_aw1_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    # Raw AW1 data
+    package_id = Column("package_id", String(255), nullable=True)
+    biobankid_sample_id = Column("biobankid_sample_id", String(255), nullable=True)
+    box_storageunit_id = Column("box_storageunit_id", String(255), nullable=True)
+    box_id_plate_id = Column("box_id_plate_id", String(255), nullable=True)
+    well_position = Column("well_position", String(255), nullable=True)
+    sample_id = Column("sample_id", String(255), nullable=True)
+    parent_sample_id = Column("parent_sample_id", String(255), nullable=True)
+    collection_tube_id = Column("collection_tube_id", String(255), nullable=True)
+    matrix_id = Column("matrix_id", String(255), nullable=True)
+    collection_date = Column("collection_date", String(255), nullable=True)
+    biobank_id = Column("biobank_id", String(255), nullable=True)
+    sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
+    age = Column("age", String(255), nullable=True)
+    ny_state = Column("ny_state", String(255), nullable=True)
+    sample_type = Column("sample_type", String(255), nullable=True)
+    treatments = Column("treatments", String(255), nullable=True)
+    quantity = Column("quantity", String(255), nullable=True)
+    total_concentration = Column("total_concentration", String(255), nullable=True)
+    total_dna = Column("total_dna", String(255), nullable=True)
+    visit_description = Column("visit_description", String(255), nullable=True)
+    sample_source = Column("sample_source", String(255), nullable=True)
+    study = Column("study", String(255), nullable=True)
+    tracking_number = Column("tracking_number", String(255), nullable=True)
+    contact = Column("contact", String(255), nullable=True)
+    email = Column("email", String(255), nullable=True)
+    study_pi = Column("study_pi", String(255), nullable=True)
+    test_name = Column("test_name", String(255), nullable=True)
+    failure_mode = Column("failure_mode", String(255), nullable=True)
+    failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
+
+
+event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW1Raw, 'before_update', model_update_listener)
 
 
 class GenomicGCValidationMetrics(Base):

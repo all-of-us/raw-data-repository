@@ -1,7 +1,7 @@
 from unittest import mock
 
 from rdr_service.participant_enums import GenomicJob
-from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner
+from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -42,3 +42,24 @@ class GenomicProcessRunnerTest(GenomicUtilsTestBase):
 
         self.assertEqual(manifest.id, called_json_obj.manifest_file.id)
         self.assertEqual(GenomicJob.CALCULATE_RECORD_COUNT_AW1, called_json_obj.job)
+
+
+class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
+    def setUp(self):
+        super(GenomicUtilsGeneralTest, self).setUp()
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
+    def test_load_aw1_manifest_into_raw_table(self, load_job_mock):
+
+        test_file = "test-bucket/test_folder/test_manifest_file.csv"
+
+        GenomicUtilsGeneralTest.run_tool(LoadRawManifest, tool_args={
+            'command': 'load-raw-manifest',
+            'manifest_file': test_file,
+        })
+
+        for call in load_job_mock.call_args_list:
+            _, kwargs = call
+
+            self.assertEqual(test_file, kwargs['file_path'])
+
