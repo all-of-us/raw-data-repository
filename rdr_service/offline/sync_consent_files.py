@@ -159,21 +159,15 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
         Site.googleGroup,
         Organization.externalId
     ).join(
-        Organization,
-        Organization.organizationId == Participant.organizationId,
-        isouter=True
+        Organization, Organization.organizationId == Participant.organizationId, isouter=True
     ).join(
-        Site,
-        Site.siteId == Participant.siteId,
-        isouter=True
+        Site, Site.siteId == Participant.siteId, isouter=True
     ).join(
-        ParticipantSummary,
-        Participant.participantSummary,
-        isouter=True
+        ParticipantSummary, Participant.participantSummary, isouter=True
     ).filter(
         Participant.isGhostId.isnot(True),
         Participant.isTestParticipant.isnot(True),
-        ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+        ParticipantSummary.consentForStudyEnrollment == int(QuestionnaireStatus.SUBMITTED),
         or_(
             ParticipantSummary.email.is_(None),
             ParticipantSummary.email.notlike('%@example.com')
@@ -203,13 +197,9 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
         )
 
     if all_va:
-        participant_query = participant_query.filter(
-            Organization.externalId.like('VA_%')
-        )
+        participant_query = participant_query.filter(Organization.externalId.like('VA_%'))
     else:
-        participant_query = participant_query.filter(
-            Organization.externalId.in_(org_ids)
-        )
+        participant_query = participant_query.filter(Organization.externalId.in_(org_ids))
 
     return participant_query
 
