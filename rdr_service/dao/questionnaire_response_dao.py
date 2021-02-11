@@ -57,7 +57,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -613,6 +614,29 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return status_map[fhir_response.status]
 
+    @classmethod
+    def _extension_from_fhir_object(cls, fhir_extension):
+        # Get the non-empty values from the FHIR extension object for the url field and
+        # any field with a name that starts with "value"
+        fhir_fields = fhir_extension.__dict__
+        filtered_values = {}
+        for name, value in fhir_fields.items():
+            if value is not None and (name == 'url' or name.startswith('value')):
+                filtered_values[name] = value
+
+        return QuestionnaireResponseExtension(**filtered_values)
+
+    @classmethod
+    def extension_models_from_fhir_objects(cls, fhir_extensions):
+        if fhir_extensions:
+            try:
+                return [cls._extension_from_fhir_object(extension) for extension in fhir_extensions]
+            except TypeError:
+                logging.warning('Unexpected extension value', exc_info=True)
+                return []
+        else:
+            return []
+
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
         # Parse the questionnaire response, but preserve the original response when persisting
@@ -662,6 +686,7 @@ class QuestionnaireResponseDao(BaseDao):
             # Now add the child answers, using the IDs in code_id_map
             self._add_answers(qr, code_id_map, answers)
 
+        qr.extensions = self.extension_models_from_fhir_objects(fhir_qr.extension)
         return qr
 
     @staticmethod
