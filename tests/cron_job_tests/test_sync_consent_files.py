@@ -1,5 +1,5 @@
 from collections import namedtuple
-import datetime
+from datetime import datetime, timedelta
 import mock
 import os
 from pathlib import Path
@@ -53,7 +53,7 @@ class SyncConsentFilesTest(BaseTestCase):
         super(SyncConsentFilesTest, self).tearDown()
 
     def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None, null_email=False,
-                            consent_time=None):
+                            consent_time=None, ehr_consent_time=None):
         participant = self.data_generator.create_database_participant(participantId=id_, organizationId=org_id,
                                                                       siteId=site_id, isGhostId=ghost)
         summary_data = {'participant': participant}
@@ -61,7 +61,8 @@ class SyncConsentFilesTest(BaseTestCase):
         if consents:
             summary_data.update(consentForElectronicHealthRecords=1,
                                 consentForStudyEnrollment=1,
-                                consentForStudyEnrollmentAuthored=consent_time)
+                                consentForStudyEnrollmentAuthored=consent_time,
+                                consentForElectronicHealthRecordsAuthored=ehr_consent_time)
         if email:
             summary.email = email
             summary_data['email'] = email
@@ -73,7 +74,7 @@ class SyncConsentFilesTest(BaseTestCase):
     @staticmethod
     def _make_blob(name, bucket=None, updated=None):
         if updated is None:
-            updated = datetime.datetime(2020, 1, 1)
+            updated = datetime(2020, 1, 1)
 
         blob = Blob(name, bucket=bucket)
         blob._properties['updated'] = updated.isoformat() + '.000Z'
@@ -113,17 +114,20 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_sync_date_cutoff(self, mock_copy_cloud_file, mock_list_blobs):
         self._mock_files_for_participants(mock_list_blobs, [
-            FakeConsentFile(updated=datetime.datetime(2020, 2, 20)),
-            FakeConsentFile(updated=datetime.datetime(2019, 10, 20)),
-            FakeConsentFile(updated=datetime.datetime(2020, 4, 20))
+            FakeConsentFile(updated=datetime(2020, 2, 20)),
+            FakeConsentFile(updated=datetime(2019, 10, 20)),
+            FakeConsentFile(updated=datetime(2020, 4, 20))
         ])
 
-        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 1, 12),
+        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime(2020, 1, 12),
                                  consents=True)
         self._create_participant(2, self.org1.organizationId, self.site1.siteId,
-                                 consent_time=datetime.datetime(2020, 2, 3), consents=True)
-        self._create_participant(3, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 3, 10),
+                                 consent_time=datetime(2020, 2, 3), consents=True)
+        self._create_participant(3, self.org1.organizationId, None, consent_time=datetime(2020, 3, 10),
                                  consents=True)
+        # Make sure a participant is required to have one of the dates between the start and end dates
+        self._create_participant(4, self.org1.organizationId, None, consents=True,
+                                 consent_time=datetime(2020, 1, 1), ehr_consent_time=datetime(2020, 5, 1))
 
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01', end_date='2020-03-01')
 
@@ -138,9 +142,9 @@ class SyncConsentFilesTest(BaseTestCase):
     def test_sync_from_manual_trigger(self, mock_copy_cloud_file, mock_list_blobs):
         # Set up test data
         self._mock_files_for_participants(mock_list_blobs, [
-            FakeConsentFile(updated=datetime.datetime(2020, 1, 12))
+            FakeConsentFile(updated=datetime(2020, 1, 12))
         ])
-        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime.datetime(2020, 1, 12),
+        self._create_participant(1, self.org1.organizationId, None, consent_time=datetime(2020, 1, 12),
                                  consents=True)
 
         # Call manual sync endpoint in offline app
@@ -164,12 +168,12 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_file_date_check(self, mock_copy_cloud_file, mock_list_blobs):
         self._mock_files_for_participants(mock_list_blobs, [
-            FakeConsentFile(updated=datetime.datetime(2020, 1, 13)),
-            FakeConsentFile(updated=datetime.datetime(2020, 2, 27))
+            FakeConsentFile(updated=datetime(2020, 1, 13)),
+            FakeConsentFile(updated=datetime(2020, 2, 27))
         ])
 
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
-                                 consent_time=datetime.datetime(2020, 2, 3))
+                                 consent_time=datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01')
 
         org_bucket_name = self.org_buckets[self.org1.externalId]
@@ -180,14 +184,14 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_default_time_frame(self, mock_copy_cloud_file, mock_list_blobs):
-        today = datetime.datetime.today()
-        today_without_timestamp = datetime.datetime(today.year, today.month, today.day)
+        today = datetime.today()
+        today_without_timestamp = datetime(today.year, today.month, today.day)
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile(updated=today_without_timestamp)
         ])
 
-        days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
-        more_than_a_month_ago = datetime.datetime.now() - datetime.timedelta(days=82)
+        days_ago = datetime.now() - timedelta(days=7)
+        more_than_a_month_ago = datetime.now() - timedelta(days=82)
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
                                  consent_time=more_than_a_month_ago)
         self._create_participant(2, self.org1.organizationId, self.site1.siteId, consents=True,
@@ -210,7 +214,7 @@ class SyncConsentFilesTest(BaseTestCase):
         ])
 
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
-                                 consent_time=datetime.datetime(2020, 2, 3))
+                                 consent_time=datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files()
 
         org_bucket_name = self.org_buckets[self.org1.externalId]
@@ -228,7 +232,7 @@ class SyncConsentFilesTest(BaseTestCase):
         ])
 
         self._create_participant(1, self.org1.organizationId, self.site1.siteId, consents=True,
-                                 consent_time=datetime.datetime(2020, 2, 3))
+                                 consent_time=datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files(file_filter=None)
 
         pattern_args = {
@@ -249,15 +253,15 @@ class SyncConsentFilesTest(BaseTestCase):
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_all_file_filter(self, mock_copy_cloud_file, mock_list_blobs):
-        today = datetime.datetime.today()
-        today_without_timestamp = datetime.datetime(today.year, today.month, today.day)
+        today = datetime.today()
+        today_without_timestamp = datetime(today.year, today.month, today.day)
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile(updated=today_without_timestamp)
         ])
 
         va_org = self.data_generator.create_database_organization(externalId='VA_TEST')
         self._create_participant(1, va_org.organizationId, self.site1.siteId, consents=True,
-                                 consent_time=datetime.datetime(2020, 2, 3))
+                                 consent_time=datetime(2020, 2, 3))
         sync_consent_files.do_sync_consent_files(all_va=True)
 
         pattern_args = {
