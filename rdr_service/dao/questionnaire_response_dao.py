@@ -842,7 +842,11 @@ def _validate_consent_pdfs(resource):
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
         found_pdf = True
 
-    return found_pdf
+    if config.GAE_PROJECT == 'localhost':
+        # Pretend we found a valid consent if we're running on a development machine
+        return True
+    else:
+        return found_pdf
 
 
 def _raise_if_gcloud_file_missing(path):

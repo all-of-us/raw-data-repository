@@ -97,13 +97,13 @@ class GenomicSetMember(Base):
     sampleType = Column('sample_type', String(50), nullable=True)
 
     sequencingFileName = Column('sequencing_file_name',
-                                String(128), nullable=True)
+                                String(255), nullable=True)
 
     gcSiteId = Column('gc_site_id', String(11), nullable=True)
 
     # BBGC Manifest Columns; ingested from GC manifest
-    gcManifestBoxStorageUnitId = Column('gc_manifest_box_storage_unit_id', String(50), nullable=True)
-    gcManifestBoxPlateId = Column('gc_manifest_box_plate_id', String(50), nullable=True)
+    gcManifestBoxStorageUnitId = Column('gc_manifest_box_storage_unit_id', String(255), nullable=True)
+    gcManifestBoxPlateId = Column('gc_manifest_box_plate_id', String(255), nullable=True)
     gcManifestWellPosition = Column('gc_manifest_well_position', String(10), nullable=True)
     gcManifestParentSampleId = Column('gc_manifest_parent_sample_id', String(20), nullable=True)
     gcManifestMatrixId = Column('gc_manifest_matrix_id', String(20), nullable=True)
@@ -113,14 +113,14 @@ class GenomicSetMember(Base):
     gcManifestTotalDNA_ng = Column('gc_manifest_total_dna_ng', Integer, nullable=True)
     gcManifestVisitDescription = Column('gc_manifest_visit_description', String(128), nullable=True)
     gcManifestSampleSource = Column('gc_manifest_sample_source', String(20), nullable=True)
-    gcManifestStudy = Column('gc_manifest_study', String(50), nullable=True)
-    gcManifestTrackingNumber = Column('gc_manifest_tracking_number', String(50), nullable=True)
-    gcManifestContact = Column('gc_manifest_contact', String(50), nullable=True)
-    gcManifestEmail = Column('gc_manifest_email', String(50), nullable=True)
-    gcManifestStudyPI = Column('gc_manifest_study_pi', String(50), nullable=True)
-    gcManifestTestName = Column('gc_manifest_test_name', String(50), nullable=True)
+    gcManifestStudy = Column('gc_manifest_study', String(255), nullable=True)
+    gcManifestTrackingNumber = Column('gc_manifest_tracking_number', String(255), nullable=True)
+    gcManifestContact = Column('gc_manifest_contact', String(255), nullable=True)
+    gcManifestEmail = Column('gc_manifest_email', String(255), nullable=True)
+    gcManifestStudyPI = Column('gc_manifest_study_pi', String(255), nullable=True)
+    gcManifestTestName = Column('gc_manifest_test_name', String(255), nullable=True)
     gcManifestFailureMode = Column('gc_manifest_failure_mode', String(128), nullable=True)
-    gcManifestFailureDescription = Column('gc_manifest_failure_description', String(128), nullable=True)
+    gcManifestFailureDescription = Column('gc_manifest_failure_description', String(255), nullable=True)
 
     # File Processed IDs
     aw1FileProcessedId = Column('aw1_file_processed_id',

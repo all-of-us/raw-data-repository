@@ -11,7 +11,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
+    bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -28,11 +29,12 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-)
+    GenomicManifestTypes)
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
+    genomic_manifest_file_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -1227,6 +1229,31 @@ class GenomicManifestFileDao(BaseDao):
                 GenomicManifestFile.filePath == filepath,
                 GenomicManifestFile.ignore_flag == 0
             ).one_or_none()
+
+    def count_records_for_manifest_file(self, manifest_file_obj):
+
+        with self.session() as session:
+            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.BIOBANK_GC:
+                return session.query(
+                    functions.count(GenomicSetMember.id)
+                ).join(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+                ).join(
+                    GenomicManifestFile,
+                    GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
+                ).filter(
+                    GenomicManifestFile.id == manifest_file_obj.id
+                ).one_or_none()
+
+    def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
+
+        with self.session() as session:
+            manifest_file_obj.recordCount = new_rec_count
+            session.merge(manifest_file_obj)
+
+            bq_genomic_manifest_file_update(manifest_file_obj.id, project_id=project_id)
+            genomic_manifest_file_update(manifest_file_obj.id)
 
 
 class GenomicManifestFeedbackDao(BaseDao):

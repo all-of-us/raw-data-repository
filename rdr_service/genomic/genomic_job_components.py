@@ -311,7 +311,6 @@ class GenomicFileIngester:
         :param _site: gc_site ID
         :return: result code
         """
-        count = 0
         _state = GenomicWorkflowState.AW0
 
         for row in data['rows']:
@@ -346,9 +345,6 @@ class GenomicFileIngester:
                     logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
 
                     member = self.create_new_member_from_aw1_control_sample(row_copy)
-
-                    # Increment record count for manifest file
-                    count += 1
 
                     # Update member for PDR
                     bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
@@ -389,29 +385,9 @@ class GenomicFileIngester:
             if member_changed:
                 self.member_dao.update(member)
 
-                # Increment record count for manifest file
-                count += 1
-
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
-
-        # Update the record count with the number of ingested records.
-        manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
-
-        # TODO: AW1F files won't have a manifest record,
-        #  this will be added in a follow-up PR
-        if manifest_file is not None and count > 0:
-            # We want to add the record count to the existing record count for that manifest record
-            manifest_file.recordCount += count
-            manifest_file.processingComplete = 1
-            manifest_file.processingCompleteDate = clock.CLOCK.now()
-
-            with self.manifest_dao.session() as s:
-                s.merge(manifest_file)
-
-                bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
-                genomic_manifest_file_update(manifest_file.id)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -772,7 +748,10 @@ class GenomicFileIngester:
         """
         # Set job run and file processed IDs
         member.reconcileGCManifestJobRunId = self.job_run_id
-        member.aw1FileProcessedId = self.file_obj.id
+
+        # Don't overwrite aw1_file_processed_id when ingesting an AW1F
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            member.aw1FileProcessedId = self.file_obj.id
 
         # Set the GC site ID (sourced from file-name)
         member.gcSiteId = aw1_data['site_id']
