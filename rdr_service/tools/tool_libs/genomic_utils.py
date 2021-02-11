@@ -1723,7 +1723,8 @@ class LoadRawManifest(GenomicManifestBase):
         if self.args.manifest_file:
             genomic_pipeline.load_aw1_manifest_into_raw_table(
                 file_path=self.args.manifest_file,
-                project_id=self.gcp_env.project
+                project_id=self.gcp_env.project,
+                provider=self.gscp
             )
 
         return 0
@@ -1840,7 +1841,7 @@ def run():
     sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
                                          default=False, required=False, action="store_true")  # noqa
 
-    # Targeted ingestion of AW1 or AW2 data for a member ID
+    # Load Raw AW1 Manifest into genomic_aw1_raw
     load_raw_manifest = subparser.add_parser("load-raw-manifest")
     load_raw_manifest.add_argument(
         "--manifest-file",

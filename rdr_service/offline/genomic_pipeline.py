@@ -1,7 +1,7 @@
 import logging
 from rdr_service.services.system_utils import JSONObject
 
-from rdr_service.dao.genomics_dao import GenomicSetDao
+from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicAW1RawDao
 from rdr_service.genomic import (
     genomic_biobank_manifest_handler,
     genomic_set_file_handler,
@@ -401,9 +401,10 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         logging.error(f'No task for {_task_data.job}')
 
 
-def load_aw1_manifest_into_raw_table(file_path, project_id=None):
+def load_aw1_manifest_into_raw_table(file_path, project_id=None, provider=None):
 
     with GenomicJobController(GenomicJob.LOAD_AW1_TO_RAW_TABLE,
-                              bq_project_id=project_id) as controller:
+                              bq_project_id=project_id,
+                              storage_provider=provider) as controller:
 
         controller.load_raw_aw1_data_from_filepath(file_path)

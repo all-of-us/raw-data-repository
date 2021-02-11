@@ -430,9 +430,20 @@ class GenomicFileIngester:
         Loads genomic_aw1_raw with raw data from aw1 file
         :return:
         """
+        aw1_dao = GenomicAW1RawDao()
+
+        # look up if any rows exist already for the file
+        aw1_records = aw1_dao.get_from_filepath(self.target_file)
+
+        if aw1_records:
+            logging.warning(f'File already in AW1 raw table: {self.target_file}')
+            return GenomicSubProcessResult.SUCCESS
+
         file_data = self._retrieve_data_from_path(self.target_file)
 
-        aw1_dao = GenomicAW1RawDao()
+        # Return the error status if there is an error in file_data
+        if not isinstance(file_data, dict):
+            return file_data
 
         # Processing raw AW1 data in batches
         batch_size = 100

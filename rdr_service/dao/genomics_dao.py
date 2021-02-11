@@ -1332,3 +1332,11 @@ class GenomicAW1RawDao(BaseDao):
 
     def from_client_json(self):
         pass
+
+    def get_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicAW1Raw
+            ).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).all()

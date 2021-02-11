@@ -629,8 +629,7 @@ class GenomicJobController:
                                             target_file=file_path,
                                             _controller=self)
 
-        self.ingester.load_raw_aw1_file()
-
+        self.job_result = self.ingester.load_raw_aw1_file()
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
