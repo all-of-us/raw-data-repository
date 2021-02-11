@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'a41c2f2266cb'
-down_revision = '785e306d2950'
+down_revision = '2580fc55edb9'
 branch_labels = None
 depends_on = None
 

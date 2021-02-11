@@ -51,7 +51,7 @@ def _build_resource_app():
     # Begin Genomic Cloud Task API Endpoints
     #
 
-    # Ingest AW1 manifest
+    # Load AW1 raw manifest
     _api.add_resource(LoadRawAW1ManifestDataAPI, TASK_PREFIX + "LoadRawAW1ManifestDataAPI",
                       endpoint="load_aw1_raw_data_task", methods=["POST"])
 
