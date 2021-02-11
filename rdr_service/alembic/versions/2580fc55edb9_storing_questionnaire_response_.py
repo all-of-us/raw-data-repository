@@ -1,7 +1,7 @@
 """storing questionnaire response extensions
 
 Revision ID: 2580fc55edb9
-Revises: 785e306d2950
+Revises: d772959915d5
 Create Date: 2021-02-09 10:48:48.424580
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '2580fc55edb9'
-down_revision = '785e306d2950'
+down_revision = 'd772959915d5'
 branch_labels = None
 depends_on = None
 
