@@ -373,7 +373,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
     def test_load_aw1_raw_data_task_api(self, load_raw_aw1_data_mock):
 
-        # Payload for caculate record count task endpoint
+        # Payload for loading AW1 raw data
         test_file_path = "test-bucket-name/test_aw1_file.csv"
         data = {"file_path": test_file_path}
 
