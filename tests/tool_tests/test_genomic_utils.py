@@ -49,7 +49,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         super(GenomicUtilsGeneralTest, self).setUp()
 
     @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
-    def test_calculate_aw1_record_count(self, load_job_mock):
+    def test_load_aw1_manifest_into_raw_table(self, load_job_mock):
 
         test_file = "test-bucket/test_folder/test_manifest_file.csv"
 
@@ -58,4 +58,8 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             'manifest_file': test_file,
         })
 
-        load_job_mock.assert_called_with(file_path=test_file, project_id='localhost')
+        for call in load_job_mock.call_args_list:
+            _, kwargs = call
+
+            self.assertEqual(test_file, kwargs['file_path'])
+
