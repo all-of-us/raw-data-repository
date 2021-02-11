@@ -1702,6 +1702,33 @@ class CompareIngestionAW2Class(GenomicManifestBase):
         _logger.info('Outputting csv: {}/{}'.format(os.getcwd(), filename))
 
 
+class LoadRawManifest(GenomicManifestBase):
+    """
+    Loads a manifest in GCS to the raw manifest table
+    currently only supports AW1 manifests
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(LoadRawManifest, self).__init__(args, gcp_env)
+
+    def run(self):
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        if not self.args.manifest_file and not self.args.csv:
+            _logger.error("--csv or --manifest-file is required")
+            return 1
+
+        if self.args.manifest_file:
+            genomic_pipeline.load_aw1_manifest_into_raw_table(
+                file_path=self.args.manifest_file,
+                project_id=self.gcp_env.project
+            )
+
+        return 0
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -1813,6 +1840,21 @@ def run():
     sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
                                          default=False, required=False, action="store_true")  # noqa
 
+    # Targeted ingestion of AW1 or AW2 data for a member ID
+    load_raw_manifest = subparser.add_parser("load-raw-manifest")
+    load_raw_manifest.add_argument(
+        "--manifest-file",
+        help="The full 'bucket/subfolder/file.ext to process'",
+        default=None, required=False
+    )  # noqa
+
+    load_raw_manifest.add_argument(
+        "--csv",
+        help="A CSV file of manifest file paths: "
+             "[bucket/subfolder/file.ext to process]",
+        default=None,
+        required=False
+    )  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")
@@ -1828,7 +1870,6 @@ def run():
         default=None,
         required=True
     )
-
 
     args = parser.parse_args()
 
@@ -1887,6 +1928,10 @@ def run():
 
         elif args.util == 'compare-ingestion':
             process = CompareIngestionAW2Class(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'load-raw-manifest':
+            process = LoadRawManifest(args, gcp_env)
             exit_code = process.run()
 
         else:
