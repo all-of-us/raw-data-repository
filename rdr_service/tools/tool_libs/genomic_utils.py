@@ -15,9 +15,11 @@ import os
 import csv
 import pytz
 from sqlalchemy import text
+from sqlalchemy.sql import functions
 
 from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.code_constants import GENOME_TYPE, GC_SITE_IDs
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
@@ -1619,6 +1621,114 @@ class IngestionClass(GenomicManifestBase):
             return 1
 
 
+class CompareIngestionAW2Class(GenomicManifestBase):
+    """
+    Performs a comparison on AW2 file counts and counts in database
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(CompareIngestionAW2Class, self).__init__(args, gcp_env)
+        self.data_objs = []
+
+    def run(self):
+        if self.args.genome_type and self.args.genome_type not in GENOME_TYPE:
+            _logger.error('Valid genome type must be provided - {}'.format(GENOME_TYPE))
+            return 1
+
+        if self.args.gc_site_id and self.args.gc_site_id not in GC_SITE_IDs:
+            _logger.error('Valid gc site id type must be provided - {}'.format(GC_SITE_IDs))
+            return 1
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+
+        _logger.info('Getting file comparison data...')
+        return self.get_file_comparison_data()
+
+    def get_file_comparison_data(self):
+        ignore_flag = 0
+        work_state = 33
+
+        with self.dao.session() as s:
+            records = s.query(
+                functions.count(GenomicSetMember.id).label('rdr_count'),
+                GenomicFileProcessed.filePath
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicGCValidationMetrics.genomicFileProcessedId
+            ).filter(
+                GenomicSetMember.gcSiteId == self.args.gc_site_id,
+                GenomicSetMember.genomeType == self.args.genome_type,
+                GenomicGCValidationMetrics.ignoreFlag == ignore_flag,
+                GenomicWorkflowState != work_state,
+            ).group_by(
+                GenomicFileProcessed.filePath
+            ).all()
+
+            if not records:
+                _logger.info('No records found.')
+                return 1
+
+            _logger.info('{} records found'.format(len(records)))
+
+            for r in records:
+                row_count = self.get_row_count_file(r.filePath)
+                self.data_objs.append({
+                    'rows_in_file': row_count,
+                    'rdr_count': r.rdr_count,
+                    'delta': row_count - r.rdr_count,
+                    'path': r.filePath,
+                })
+            self.output_csv()
+
+    def get_row_count_file(self, file):
+        _logger.info('Getting row count for file...')
+        return (sum(1 for l in self.gscp.open(file, 'r')) - 1) # accounting for header row
+
+    def output_csv(self):
+        filename = 'aw2_comparisons_file_data_{}_{}_{}.csv'.format(
+            self.args.gc_site_id,
+            self.args.genome_type,
+            self.nowf,
+        )
+        with open(filename, 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=[k for k in self.data_objs[0]])
+            writer.writeheader()
+            writer.writerows(self.data_objs)
+
+        _logger.info('Outputting csv: {}/{}'.format(os.getcwd(), filename))
+
+
+class LoadRawManifest(GenomicManifestBase):
+    """
+    Loads a manifest in GCS to the raw manifest table
+    currently only supports AW1 manifests
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(LoadRawManifest, self).__init__(args, gcp_env)
+
+    def run(self):
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicJobRunDao()
+
+        if not self.args.manifest_file and not self.args.csv:
+            _logger.error("--csv or --manifest-file is required")
+            return 1
+
+        if self.args.manifest_file:
+            genomic_pipeline.load_aw1_manifest_into_raw_table(
+                file_path=self.args.manifest_file,
+                project_id=self.gcp_env.project
+            )
+
+        return 0
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -1730,6 +1840,37 @@ def run():
     sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
                                          default=False, required=False, action="store_true")  # noqa
 
+    # Targeted ingestion of AW1 or AW2 data for a member ID
+    load_raw_manifest = subparser.add_parser("load-raw-manifest")
+    load_raw_manifest.add_argument(
+        "--manifest-file",
+        help="The full 'bucket/subfolder/file.ext to process'",
+        default=None, required=False
+    )  # noqa
+
+    load_raw_manifest.add_argument(
+        "--csv",
+        help="A CSV file of manifest file paths: "
+             "[bucket/subfolder/file.ext to process]",
+        default=None,
+        required=False
+    )  # noqa
+
+    # Tool for calculate descripancies in AW2 ingestion and AW2 files
+    compare_ingestion_parser = subparser.add_parser("compare-ingestion")
+    compare_ingestion_parser.add_argument(
+        "--genome-type",
+        help="genome type choice decleration, choose one: [array, wgs]",
+        default=None,
+        required=True
+    )
+    compare_ingestion_parser.add_argument(
+        "--gc-site-id",
+        help="genomic center site id, choose one: [rdr, bcm, jh, bi, uw]",
+        default=None,
+        required=True
+    )
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1785,9 +1926,18 @@ def run():
             process = IngestionClass(args, gcp_env)
             exit_code = process.run()
 
+        elif args.util == 'compare-ingestion':
+            process = CompareIngestionAW2Class(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.util == 'load-raw-manifest':
+            process = LoadRawManifest(args, gcp_env)
+            exit_code = process.run()
+
         else:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')
             exit_code = 1
+
         return exit_code
 
 
