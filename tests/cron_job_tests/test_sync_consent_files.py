@@ -61,8 +61,8 @@ class SyncConsentFilesTest(BaseTestCase):
         if consents:
             summary_data.update(consentForElectronicHealthRecords=1,
                                 consentForStudyEnrollment=1,
-                                consentForStudyEnrollmentAuthored=consent_time,
-                                consentForElectronicHealthRecordsAuthored=ehr_consent_time)
+                                consentForStudyEnrollmentTime=consent_time,
+                                consentForElectronicHealthRecordsTime=ehr_consent_time)
         if email:
             summary.email = email
             summary_data['email'] = email

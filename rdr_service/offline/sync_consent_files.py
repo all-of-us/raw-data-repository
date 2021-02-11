@@ -183,22 +183,22 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
     if start_date and end_date:
         participant_query = participant_query.filter(
             or_(
-                ParticipantSummary.consentForStudyEnrollmentAuthored.between(start_date, end_date),
-                ParticipantSummary.consentForElectronicHealthRecordsAuthored.between(start_date, end_date)
+                ParticipantSummary.consentForStudyEnrollmentTime.between(start_date, end_date),
+                ParticipantSummary.consentForElectronicHealthRecordsTime.between(start_date, end_date)
             )
         )
     elif start_date:
         participant_query = participant_query.filter(
             or_(
-                ParticipantSummary.consentForStudyEnrollmentAuthored > start_date,
-                ParticipantSummary.consentForElectronicHealthRecordsAuthored > start_date
+                ParticipantSummary.consentForStudyEnrollmentTime > start_date,
+                ParticipantSummary.consentForElectronicHealthRecordsTime > start_date
             )
         )
     elif end_date:
         participant_query = participant_query.filter(
             or_(
-                ParticipantSummary.consentForStudyEnrollmentAuthored < end_date,
-                ParticipantSummary.consentForElectronicHealthRecordsAuthored < end_date
+                ParticipantSummary.consentForStudyEnrollmentTime < end_date,
+                ParticipantSummary.consentForElectronicHealthRecordsTime < end_date
             )
         )
 
