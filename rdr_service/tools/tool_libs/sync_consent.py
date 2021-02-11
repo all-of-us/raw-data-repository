@@ -5,7 +5,7 @@ import pytz
 
 from rdr_service.config import CONSENT_SYNC_BUCKETS
 from rdr_service.offline.sync_consent_files import build_participant_query, \
-    DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
+    DEFAULT_GOOGLE_GROUP, get_consent_destination, copy_file
 from rdr_service.services.system_utils import print_progress_bar
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -125,7 +125,6 @@ class SyncConsentClass(ToolBase):
 
                     destination = get_consent_destination(
                         add_protocol=True,
-                        zipping=self.args.zip_files,
                         bucket_name=bucket,
                         org_external_id=org_id,
                         site_name=site if site else DEFAULT_GOOGLE_GROUP,
@@ -143,12 +142,10 @@ class SyncConsentClass(ToolBase):
                                 f,
                                 destination,
                                 rec.participantId,
-                                dry_run=self.args.dry_run,
-                                zip_files=self.args.zip_files
+                                dry_run=self.args.dry_run
                             )
                     else:
-                        copy_file(src_bucket, destination, rec.participantId,
-                                  dry_run=self.args.dry_run, zip_files=self.args.zip_files)
+                        copy_file(src_bucket, destination, rec.participantId, dry_run=self.args.dry_run)
 
                     count += 1
 
@@ -157,9 +154,6 @@ class SyncConsentClass(ToolBase):
                 print_progress_bar(
                     count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
                 )
-
-            if self.args.zip_files and count > 0:
-                archive_and_upload_consents(dry_run=self.args.dry_run)
 
         except MySQLdb.OperationalError as e:
             logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
@@ -171,16 +165,14 @@ def add_additional_arguments(parser):
     parser.add_argument("--org-id", help="organization id", default=None)
     parser.add_argument("--destination-bucket", default=None,
                         help="Override the destination bucket lookup for the given organization.")
-    parser.add_argument("--zip-files", action="store_true",
-                        help="Zip the consent files by site rather than uploading them individually")
-    parser.add_argument("--all-va", action="store_true", help="Zip consents for all VA organizations")
+    parser.add_argument("--all-va", action="store_true", help="Sync consents for all VA organizations")
     parser.add_argument("--date-limit", help="Limit consents to sync to those created after the date", default=None)
     parser.add_argument("--end-date", help="Limit consents to sync to those created before the date", default=None)
     parser.add_argument("--all-files", help="Transfer all file types, default is only PDF.",
                         default=False, action="store_true")
     parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)
 
-    # todo: add functionality for specific PIDs
+    # todo: add functionality for using the server to zip consent files
 
 
 def run():
