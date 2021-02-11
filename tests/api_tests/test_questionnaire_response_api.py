@@ -72,6 +72,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
     def test_consent_submission_requires_signature(self):
         """Consent questionnaire responses should only mark a participant as consented if they have consented"""
+        # Set the config up to imitate a server environment enough for the dao to check for consent files
+        previous_config_project_setting = config.GAE_PROJECT
+        config.GAE_PROJECT = 'test-environment'
+
         participant_id = self.create_participant()
         self.send_consent(participant_id, authored=datetime.datetime.now(), string_answers=[
             ('firstName', 'Bob'),
@@ -83,6 +87,9 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             ParticipantSummary.participantId == from_client_participant_id(participant_id)
         ).one_or_none()
         self.assertIsNone(summary)
+
+        # Set the config back so that the rest of the tests are ok
+        config.GAE_PROJECT = previous_config_project_setting
 
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()

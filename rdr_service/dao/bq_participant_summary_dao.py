@@ -209,6 +209,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return True
         except exc.ProgrammingError:
             pass
+        except exc.OperationalError:
+            logging.warning('Unexpected error found when checking for tmp_questionnaire_response table', exc_info=True)
         return False
 
     def _prep_participant(self, p_id, ro_session):

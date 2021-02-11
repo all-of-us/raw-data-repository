@@ -48,7 +48,7 @@ greenlet==0.4.15          # via gevent
 grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
 grpcio==1.29.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gunicorn==20.0.4          # via -r requirements.in
-httplib2==0.18.1          # via google-api-python-client, google-auth-httplib2, oauth2client
+httplib2==0.19.0          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==2.9                 # via requests
 imagesize==1.2.0          # via sphinx
 isodate==0.6.0            # via fhirclient

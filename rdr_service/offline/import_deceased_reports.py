@@ -149,3 +149,5 @@ class DeceasedReportImporter:
                     logging.error(f'Record for {participant_id} encountered a database error', exc_info=True)
                 except (HTTPException, KeyError, ValueError):
                     logging.error(f'Record for {participant_id} encountered an error', exc_info=True)
+
+        logging.info('Deceased report import complete')
