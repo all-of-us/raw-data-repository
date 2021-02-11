@@ -1928,7 +1928,7 @@ class GenomicBiobankSamplesCoupler:
         participants = self._get_remaining_saliva_participants(config)
 
         if len(participants) > 0:
-            return self.create_matrix_and_process_samples(participants, saliva=True, local=local)
+            return self.create_matrix_and_process_samples(participants, cohort=None, local=local, saliva=True)
 
         else:
             logging.info(
@@ -1936,7 +1936,7 @@ class GenomicBiobankSamplesCoupler:
             return GenomicSubProcessResult.NO_FILES
 
 
-    def create_c2_genomic_participants(self, local=False):
+    def create_c2_genomic_participants(self, from_date, local=False):
         """
         Creates Cohort 2 Participants in the genomic system using reconsent.
         Validation is handled in the query that retrieves the newly consented
@@ -1949,7 +1949,7 @@ class GenomicBiobankSamplesCoupler:
         :return: result
         """
 
-        participants = self._get_remaining_c2_participants()
+        participants = self._get_new_c2_participants(from_date)
 
         if len(participants) > 0:
             return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_2_ID, local=local)
@@ -1977,7 +1977,7 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def process_samples_into_manifest(self, samples_meta, cohort, saliva, local=False):
+    def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples_meta:
@@ -2067,7 +2067,7 @@ class GenomicBiobankSamplesCoupler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def create_matrix_and_process_samples(self, participants, cohort, saliva, local):
+    def create_matrix_and_process_samples(self, participants, cohort, local, saliva=False):
         """
         Wrapper method for processing participants for C1 and C2 manifests
         :param cohort:
