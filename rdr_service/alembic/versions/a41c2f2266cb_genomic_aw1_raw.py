@@ -1,7 +1,7 @@
 """genomic_aw1_raw
 
 Revision ID: a41c2f2266cb
-Revises: 785e306d2950
+Revises: 2580fc55edb9
 Create Date: 2021-02-09 14:55:38.483257
 
 """
