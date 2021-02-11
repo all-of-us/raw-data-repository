@@ -158,12 +158,12 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
         Participant.participantOrigin,
         Site.googleGroup,
         Organization.externalId
-    ).join(
-        Organization, Organization.organizationId == Participant.organizationId, isouter=True
-    ).join(
-        Site, Site.siteId == Participant.siteId, isouter=True
-    ).join(
-        ParticipantSummary, Participant.participantSummary, isouter=True
+    ).outerjoin(
+        Organization, Organization.organizationId == Participant.organizationId
+    ).outerjoin(
+        Site, Site.siteId == Participant.siteId
+    ).outerjoin(
+        ParticipantSummary, Participant.participantSummary
     ).filter(
         Participant.isGhostId.isnot(True),
         Participant.isTestParticipant.isnot(True),

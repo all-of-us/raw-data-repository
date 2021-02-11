@@ -92,8 +92,8 @@ class SyncConsentClass(ToolBase):
 
                 logger.info("transferring files to destinations...")
                 count = 0
-                for rec in participant_query:
-                    if filter_pids and rec[0] not in filter_pids:
+                for participant_id, origin, site_google_group, org_external_id in participant_query:
+                    if filter_pids and participant_id not in filter_pids:
                         continue
                     if not self.args.debug:
                         print_progress_bar(
@@ -101,17 +101,15 @@ class SyncConsentClass(ToolBase):
                             suffix="complete"
                         )
 
-                    site = rec.googleGroup
-                    org_id = rec.externalId
                     if self.args.destination_bucket is not None:
                         # override destination bucket lookup (the lookup table is incomplete)
                         bucket = self.args.destination_bucket
                     elif self.args.all_va:
                         bucket = 'aou179'
                     else:
-                        bucket = org_buckets.get(org_id, None)
+                        bucket = org_buckets.get(org_external_id, None)
                     if not bucket:
-                        logger.warning("\nno bucket name found for [{0}].".format(site))
+                        logger.warning("\nno bucket name found for [{0}].".format(site_google_group))
                         count += 1
                         continue
 
@@ -119,33 +117,28 @@ class SyncConsentClass(ToolBase):
                     if self.args.all_files:
                         self.file_filter = ""
 
-                    src_bucket = SOURCE_BUCKET.get(rec.participantOrigin, SOURCE_BUCKET[
+                    src_bucket = SOURCE_BUCKET.get(origin, SOURCE_BUCKET[
                         next(iter(SOURCE_BUCKET))
-                    ]).format(p_id=rec.participantId, file_ext=self.file_filter)
+                    ]).format(p_id=participant_id, file_ext=self.file_filter)
 
                     destination = get_consent_destination(
                         add_protocol=True,
                         bucket_name=bucket,
-                        org_external_id=org_id,
-                        site_name=site if site else DEFAULT_GOOGLE_GROUP,
-                        p_id=rec.participantId
+                        org_external_id=org_external_id,
+                        site_name=site_google_group if site_google_group else DEFAULT_GOOGLE_GROUP,
+                        p_id=participant_id
                     )
                     if self.args.date_limit:
                         # only copy files newer than date limit
                         files_in_range = self._get_files_updated_in_range(
                             date_limit=self.args.date_limit,
-                            source_bucket=src_bucket, p_id=rec.participantId)
+                            source_bucket=src_bucket, p_id=participant_id)
                         if not files_in_range or len(files_in_range) == 0:
                             logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            copy_file(
-                                f,
-                                destination,
-                                rec.participantId,
-                                dry_run=self.args.dry_run
-                            )
+                            copy_file(f, destination, participant_id, dry_run=self.args.dry_run)
                     else:
-                        copy_file(src_bucket, destination, rec.participantId, dry_run=self.args.dry_run)
+                        copy_file(src_bucket, destination, participant_id, dry_run=self.args.dry_run)
 
                     count += 1
 
