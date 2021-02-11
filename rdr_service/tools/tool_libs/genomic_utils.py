@@ -1716,9 +1716,7 @@ class LoadRawManifest(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicJobRunDao()
 
-        if not self.args.manifest_file and not self.args.csv:
-            _logger.error("--csv or --manifest-file is required")
-            return 1
+        # TODO: Implement execution for a list of AW1 files
 
         if self.args.manifest_file:
             genomic_pipeline.load_aw1_manifest_into_raw_table(
@@ -1846,16 +1844,17 @@ def run():
     load_raw_manifest.add_argument(
         "--manifest-file",
         help="The full 'bucket/subfolder/file.ext to process'",
-        default=None, required=False
+        default=None, required=True
     )  # noqa
 
-    load_raw_manifest.add_argument(
-        "--csv",
-        help="A CSV file of manifest file paths: "
-             "[bucket/subfolder/file.ext to process]",
-        default=None,
-        required=False
-    )  # noqa
+    # TODO: Implement execution for a list of AW1 files
+    # load_raw_manifest.add_argument(
+    #     "--csv",
+    #     help="A CSV file of manifest file paths: "
+    #          "[bucket/subfolder/file.ext to process]",
+    #     default=None,
+    #     required=False
+    # )  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")

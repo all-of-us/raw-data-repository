@@ -1,7 +1,7 @@
 import logging
 from rdr_service.services.system_utils import JSONObject
 
-from rdr_service.dao.genomics_dao import GenomicSetDao, GenomicAW1RawDao
+from rdr_service.dao.genomics_dao import GenomicSetDao
 from rdr_service.genomic import (
     genomic_biobank_manifest_handler,
     genomic_set_file_handler,
