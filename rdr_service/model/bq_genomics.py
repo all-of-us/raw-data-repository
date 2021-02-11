@@ -291,6 +291,17 @@ class BQGenomicManifestFileView(BQView):
     __viewdescr__ = 'Genomic Manifest File View'
     __pk_id__ = 'id'
     __table__ = BQGenomicManifestFile
+    __sql__ = """
+    SELECT gmf.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_manifest_file
+      ) gmf
+    WHERE gmf.rn = 1 and gmf.ignore_flag = 0
+    """
+
+
 
 
 class BQGenomicManifestFeedbackSchema(BQSchema):
@@ -319,6 +330,15 @@ class BQGenomicManifestFeedbackView(BQView):
     __viewdescr__ = 'Genomic Manifest Feedback View'
     __pk_id__ = 'id'
     __table__ = BQGenomicManifestFeedback
+    __sql__ = """
+    SELECT gmf.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_manifest_feedback
+      ) gmf
+    WHERE gmf.rn = 1 and gmf.ignore_flag = 0
+    """
 
 
 class BQGenomicGCValidationMetricsSchema(BQSchema):
@@ -390,8 +410,18 @@ class BQGenomicGCValidationMetrics(BQTable):
     __schema__ = BQGenomicGCValidationMetricsSchema
 
 
+
 class BQGenomicGCValidationMetricsView(BQView):
     __viewname__ = 'v_genomic_gc_validation_metrics'
     __viewdescr__ = 'Genomic GC Validation Metrics View'
     __pk_id__ = 'id'
     __table__ = BQGenomicGCValidationMetrics
+    __sql__ = """
+    SELECT gcvm.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_gc_validation_metrics
+      ) gcvm
+    WHERE gcvm.rn = 1 and gcvm.ignore_flag = 0
+    """
