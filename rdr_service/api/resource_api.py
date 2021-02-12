@@ -143,7 +143,7 @@ class ResourceRequestApi(Resource):
         elif resource.suffix == '_search':
             raise BadRequest('Not Implemented Yet')
         elif resource.suffix == '_batch':
-            BadRequest('Batch request are not allowed with GET method.')
+            BadRequest('Batch requests are not allowed with GET method.')
         else:
             resp = self._get_resource(resource)
 
