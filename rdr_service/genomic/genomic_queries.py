@@ -106,63 +106,57 @@ class GenomicQueryClass:
         # Base query for only saliva samples in RDR w/options passed in
         return """
         SELECT DISTINCT
-              ps.biobank_id,
-              ps.participant_id,
-              0 AS biobank_order_id,
-              0 AS collected_site_id,
-              NULL as state_id,
-              0 AS biobank_stored_sample_id,
-              CASE
-                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-              END as valid_withdrawal_status,
-              CASE
-                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
-              END as valid_suspension_status,
-              CASE
-                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-              END as general_consent_given,
-              CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-              END AS valid_age,
-              CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
-              END as sab,
-              CASE
-                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
-              END AS gror_consent,
-              CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
+            ps.biobank_id,
+            ps.participant_id,
+            0 AS biobank_order_id,
+            0 AS collected_site_id,
+            NULL as state_id,
+            0 AS biobank_stored_sample_id,
+            CASE
+            WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
+            END as valid_withdrawal_status,
+            CASE
+            WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
+            END as valid_suspension_status,
+            CASE
+            WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
+            END as general_consent_given,
+            CASE
+            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
+            END AS valid_age,
+            CASE
+            WHEN c.value = "SexAtBirth_Male" THEN "M"
+            WHEN c.value = "SexAtBirth_Female" THEN "F"
+            ELSE "NA"
+            END as sab,
+            CASE
+            WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
+            END AS gror_consent,
+            CASE
+                WHEN native.participant_id IS NULL THEN 1 ELSE 0
+            END AS valid_ai_an
 
-            FROM
-                participant_summary ps
-                JOIN code c ON c.code_id = ps.sex_id
-                LEFT JOIN (
-                  SELECT ra.participant_id
-                  FROM participant_race_answers ra
-                      JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-                ) native ON native.participant_id = ps.participant_id
-                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-                {is_home_or_clinic}
-            WHERE TRUE
-                AND ps.sample_status_1ed04 = 0
-                AND ps.sample_status_1ed10 = 0
-                AND ps.sample_status_1sal2 = 1
-                AND ps.questionnaire_on_dna_program = :general_consent_param
-                AND m.id IS NULL
-                {is_ror}
-                {is_clinic_id_null}
-            HAVING TRUE
-                AND valid_ai_an = 1
-                AND valid_age = 1
-                AND general_consent_given = 1
-                AND valid_suspension_status = 1
-                AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id
+        FROM
+            participant_summary ps
+            JOIN code c ON c.code_id = ps.sex_id
+            LEFT JOIN (
+                SELECT ra.participant_id
+                FROM participant_race_answers ra
+                    JOIN code cr ON cr.code_id = ra.code_id
+                        AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
+            ) native ON native.participant_id = ps.participant_id
+            {is_home_or_clinic}
+        WHERE TRUE
+            AND ps.sample_status_1sal2 = 1
+            {is_ror}
+            {is_clinic_id_null}
+        HAVING TRUE
+            AND valid_ai_an = 1
+            AND valid_age = 1
+            AND general_consent_given = 1
+            AND valid_suspension_status = 1
+            AND valid_withdrawal_status = 1
+        ORDER BY ps.biobank_id
         """.format(
             is_ror=is_ror,
             is_clinic_id_null=is_clinic_id_null,
