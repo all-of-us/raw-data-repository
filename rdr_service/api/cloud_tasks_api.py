@@ -143,6 +143,27 @@ class GenerateBiobankSamplesTaskApi(Resource):
         return '{"success": "true"}'
 
 
+class LoadRawAW1ManifestDataAPI(Resource):
+    """
+    Cloud Task endpoint: Load raw AW1 Manifest to genomic_aw1_raw.
+    """
+
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+
+        # from cloud function
+        data = request.get_json(force=True)
+
+        logging.info(f'Loading AW1 Raw Data: {data.get("filename")}')
+
+        # Call pipeline function
+        genomic_pipeline.load_aw1_manifest_into_raw_table(data["file_path"])
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
 class IngestAW1ManifestTaskApi(Resource):
     """
     Cloud Task endpoint: Ingest AW1 Manifest.

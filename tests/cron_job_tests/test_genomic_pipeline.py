@@ -22,7 +22,9 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicFileProcessedDao,
     GenomicGCValidationMetricsDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao)
+    GenomicManifestFileDao,
+    GenomicManifestFeedbackDao,
+    GenomicAW1RawDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -3309,3 +3311,71 @@ class GenomicPipelineTest(BaseTestCase):
                 test='1SAL2'
             )
 
+    def test_aw1_load_manifest_to_raw_table(self):
+        # Set up test AW1 manifest
+
+        # Setup Test file
+        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
+
+        aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            aw1_manifest_filename,
+            aw1_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
+        # Run load job
+        genomic_pipeline.load_aw1_manifest_into_raw_table(test_file_path)
+
+        # Expected columns in table
+        expected_columns = [
+            "package_id",
+            "biobankid_sample_id",
+            "box_storageunit_id",
+            "box_id_plate_id",
+            "well_position",
+            "sample_id",
+            "parent_sample_id",
+            "collection_tube_id",
+            "matrix_id",
+            "collection_date",
+            "biobank_id",
+            "sex_at_birth",
+            "age",
+            "ny_state",
+            "sample_type",
+            "treatments",
+            "quantity",
+            "total_concentration",
+            "total_dna",
+            "visit_description",
+            "sample_source",
+            "study",
+            "tracking_number",
+            "contact",
+            "email",
+            "study_pi",
+            "test_name",
+            "failure_mode",
+            "failure_mode_desc",
+        ]
+
+        aw1_raw_dao = GenomicAW1RawDao()
+
+        aw1_raw_records = aw1_raw_dao.get_all()
+        aw1_raw_records.sort(key=lambda x: x.id)
+
+        # compare rows in DB to rows in manifest
+        for i, aw1_file_row in enumerate(aw1_manifest_file.split("\n")):
+
+            if i == 0 or aw1_file_row == "":
+                # skip header row and trailing empty rows
+                continue
+
+            for j, aw1_file_column in enumerate(aw1_file_row.split(',')):
+                aw1_file_column = aw1_file_column.strip('"')
+
+                self.assertEqual(aw1_file_column, getattr(aw1_raw_records[i-1], expected_columns[j]))

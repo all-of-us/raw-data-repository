@@ -370,3 +370,20 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             expected_payload.job,
             called_json_obj.job)
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
+    def test_load_aw1_raw_data_task_api(self, load_raw_aw1_data_mock):
+
+        # Payload for loading AW1 raw data
+        test_file_path = "test-bucket-name/test_aw1_file.csv"
+        data = {"file_path": test_file_path}
+
+        from rdr_service.resource import main as resource_main
+        resource_main.app.testing = True
+        self.send_post(
+            local_path='LoadRawAW1ManifestDataAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        load_raw_aw1_data_mock.assert_called_with(test_file_path)

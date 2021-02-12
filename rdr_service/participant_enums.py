@@ -648,6 +648,8 @@ class GenomicJob(messages.Enum):
     CALCULATE_RECORD_COUNT_AW1 = 32
     CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
 
+    LOAD_AW1_TO_RAW_TABLE = 34
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """

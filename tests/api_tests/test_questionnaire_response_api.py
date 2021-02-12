@@ -18,7 +18,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
@@ -308,6 +309,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # The resource gets rewritten to include the version
         resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
         self.assertJsonResponseMatches(resource, response)
+
+        # Check that the extensions were saved
+        questionnaire_response_id = response['id']
+        test_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'extension-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('test string', test_extension.valueString)
+        code_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'code-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('code_value', code_extension.valueCode)
 
         #  sending an update response with history reference
         with open(data_path('questionnaire_response4.json')) as fd:
@@ -791,48 +805,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
-    def test_gender_plus_skip_equals_gender(self):
-        with FakeClock(TIME_1):
-            participant_id = self.create_participant()
-            self.send_consent(participant_id)
-
-        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-        resource["group"]["question"][2]["answer"][1]["valueCoding"]["code"] = "PMI_Skip"
-
-        with FakeClock(TIME_2):
-            resource["authored"] = TIME_2.isoformat()
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
-
-        participant = self.send_get("Participant/%s" % participant_id)
-        summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = dict(participant_summary_default_values)
-        expected.update({
-            "genderIdentity": "GenderIdentity_Man",
-            "firstName": self.first_name,
-            "lastName": self.last_name,
-            "email": self.email,
-            "streetAddress": self.streetAddress,
-            "streetAddress2": self.streetAddress2,
-            "biobankId": participant["biobankId"],
-            "participantId": participant_id,
-            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
-            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
-            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
-            "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
-            "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
-            "signUpTime": TIME_1.isoformat(),
-        })
-        self.assertJsonResponseMatches(expected, summary)
-
     def test_gender_prefer_not_answer(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -1109,6 +1081,39 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         # Make sure logs have been called for each issue
         mock_logging.error.assert_any_call('Questionnaire response contains invalid link ID "invalid_link"')
+
+    def test_unexpected_extension_field_succeeds(self):
+        """
+        Not all extension fields were implemented in the RDR's Extension model, valueUri is one of them.
+        This tests to be sure that a QuestionnaireResponse won't be rejected (or crash) if it contains an extension
+        field we're not prepared to handle.
+        """
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        # Check that POST doesn't fail on unknown extension fields
+        with open(data_path("questionnaire_response3.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        resource['extension'] = [{
+            'url': 'test-unknown',
+            'valueUri': 'testing'
+        }]
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Double check that the extension wasn't made (if it was then this test may need to be updated)
+        response_id = response['id']
+        extension_query = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.questionnaireResponseId == response_id
+        )
+        self.assertEqual(0, extension_query.count(),
+                         'The extension was created, but the valueUri field is expected to be unrecognized')
 
 def _add_code_answer(code_answers, link_id, code):
     if code:
