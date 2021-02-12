@@ -35,8 +35,8 @@ class ToolTestMixin:
 
         return args_obj
 
-    @staticmethod
-    def run_tool(tool_class: Type[ToolBase], tool_args: dict = None, server_config: dict = None):
+    @classmethod
+    def run_tool(cls, tool_class: Type[ToolBase], tool_args: dict = None, server_config: dict = None):
         gcp_env = ToolTestMixin._build_env(server_config)
         tool_args = ToolTestMixin._build_args(tool_args)
 
