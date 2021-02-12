@@ -79,7 +79,7 @@ def _build_resource_app():
     # Primary Resource API endpoint
     #
     _api.add_resource(ResourceRequestApi, RESOURCE_PREFIX + "<path:path>",
-                      endpoint="resource_request", methods=["GET"])
+                      endpoint="resource_request", methods=["GET", "POST"])
     #
     # End primary Resource API endpoint
     #
