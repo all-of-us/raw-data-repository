@@ -2157,6 +2157,7 @@ class GenomicBiobankSamplesCoupler:
         :param local:
         :return:
         """
+
         participant_matrix = self.GenomicSampleMeta(*participants)
 
         for i, _bid in enumerate(participant_matrix.bids):
@@ -2392,7 +2393,7 @@ class GenomicBiobankSamplesCoupler:
         with self.samples_dao.session() as session:
             result = session.execute(_saliva_sql, params).fetchall()
 
-        return result
+        return list([list(r) for r in zip(*result)])
 
 
     def _create_new_genomic_set(self):
