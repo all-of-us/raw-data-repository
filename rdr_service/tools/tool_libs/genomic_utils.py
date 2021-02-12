@@ -1660,6 +1660,57 @@ class CompareIngestionAW2Class(GenomicManifestBase):
         _logger.info('Outputting csv: {}/{}'.format(os.getcwd(), filename))
 
 
+def get_process_for_run(args, gcp_env):
+
+    util = args.util
+
+    process_config = {
+        'resend': {
+            'process': ResendSamplesClass(args, gcp_env)
+        },
+        'generate-manifest': {
+            'process': GenerateManifestClass(args, gcp_env)
+        },
+        'member-state': {
+            'process': UpdateGenomicMembersState(args, gcp_env)
+        },
+        'control-sample': {
+            'process': ControlSampleClass(args, gcp_env)
+        },
+        'manual-sample': {
+            'process': ManualSampleClass(args, gcp_env)
+        },
+        'job-run-result': {
+            'process': JobRunResult(args, gcp_env)
+        },
+        'update-gc-metrics': {
+            'process': UpdateGcMetricsClass(args, gcp_env)
+        },
+        'process-runner': {
+            'process': GenomicProcessRunner(args, gcp_env)
+        },
+        'backfill-upload-date': {
+            'process': FileUploadDateClass(args, gcp_env)
+        },
+        'collection-tube': {
+            'process': ChangeCollectionTube(args, gcp_env)
+        },
+        'file-processed-id-backfill': {
+            'process': BackfillGenomicSetMemberFileProcessedID(args, gcp_env)
+        },
+        'contamination-category': {
+            'process': CalculateContaminationCategoryClass(args, gcp_env)
+        },
+        'sample-ingestion': {
+            'process': IngestionClass(args, gcp_env)
+        },
+        'compare-ingestion': {
+            'process': CompareIngestionAW2Class(args, gcp_env)
+        },
+    }
+
+    return process_config[util]['process']
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -1810,63 +1861,11 @@ def run():
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        if args.util == 'resend':
-            process = ResendSamplesClass(args, gcp_env)
-            exit_code = process.run()
 
-        elif args.util == 'generate-manifest':
-            process = GenerateManifestClass(args, gcp_env)
+        try:
+            process = get_process_for_run(args, gcp_env)
             exit_code = process.run()
-
-        elif args.util == 'member-state':
-            process = UpdateGenomicMembersState(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'control-sample':
-            process = ControlSampleClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'manual-sample':
-            process = ManualSampleClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'job-run-result':
-            process = JobRunResult(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'update-gc-metrics':
-            process = UpdateGcMetricsClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'process-runner':
-            process = GenomicProcessRunner(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'backfill-upload-date':
-            process = FileUploadDateClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'collection-tube':
-            process = ChangeCollectionTube(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'file-processed-id-backfill':
-            process = BackfillGenomicSetMemberFileProcessedID(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'contamination-category':
-            process = CalculateContaminationCategoryClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'sample-ingestion':
-            process = IngestionClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.util == 'compare-ingestion':
-            process = CompareIngestionAW2Class(args, gcp_env)
-            exit_code = process.run()
-
-        else:
+        except KeyError:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')
             exit_code = 1
 
