@@ -1865,7 +1865,10 @@ def run():
         try:
             process = get_process_for_run(args, gcp_env)
             exit_code = process.run()
-        except KeyError:
+        except Exception as e:
+            _logger.info('Error has occured, {}. For help use "genomic --help".').format(e.message)
+            exit_code = 1
+        else:
             _logger.info('Please select a utility option to run. For help use "genomic --help".')
             exit_code = 1
 
