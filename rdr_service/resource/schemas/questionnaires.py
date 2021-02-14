@@ -66,7 +66,10 @@ class _QuestionnaireSchema:
             'authored': fields.DateTime(),
             'language': fields.String(validate=validate.Length(max=2)),
             'participant_id': fields.String(validate=validate.Length(max=10), required=True),
-            'questionnaire_response_id': fields.Int32(required=True)
+            'questionnaire_response_id': fields.Int32(required=True),
+            'questionnaire_id': fields.Int32(required=True),
+            'external_id': fields.String(validate=validate.Length(max=100)),
+            'status': fields.String(validate=validate.Length(max=50))
         }
 
         dao = ResourceDataDao(backup=True)

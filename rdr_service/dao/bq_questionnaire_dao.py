@@ -9,6 +9,7 @@ from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII,
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
 from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.participant_enums import QuestionnaireResponseStatus
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -49,7 +50,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # deprecated stored procedure sp_get_questionnaire_answers used to order its results
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id, qh2.external_id
+                   qr.participant_id, qh2.external_id, qr.status
             from questionnaire_response qr
             inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
                        and qh2.version = qr.questionnaire_version
@@ -119,6 +120,11 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
+                # PDR-235:  Adding response status enum values (IN_PROGRESS, COMPLETED, ...)  to the response metadata
+                # dict.  Providing both string and integer key/value pairs, per the PDR BigQuery schema conventions
+                if data['status']:
+                    data['status_id'] = int(QuestionnaireResponseStatus(data['status']))
+                    data['status'] = str(QuestionnaireResponseStatus(data['status']))
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
@@ -182,6 +188,12 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     # Truncate zip codes to 3 digits
                     if fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and len(fld_value) > 2:
                         setattr(bqr, fld_name, fld_value[:3])
+
+                    # PDR-235: Adding status enum values (IN_PROGRESS, COMPLETED, ...)
+                    # Provide both string and integer enum fields, per the PDR BigQuery schema conventions
+                    if fld_name == 'status':
+                        setattr(bqr, fld_name, str(QuestionnaireResponseStatus(fld_value)))
+                        setattr(bqr, 'status_id', int(QuestionnaireResponseStatus(fld_value)))
 
                 bqrs.append(bqr)
                 if latest:

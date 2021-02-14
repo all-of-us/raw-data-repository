@@ -68,6 +68,8 @@ class BQModuleStatusSchema(BQSchema):
     mod_status_id = BQField('mod_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                             fld_enum=BQModuleStatusEnum)
     mod_external_id = BQField('mod_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_response_status = BQField('mod_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_response_status_id = BQField('mod_response_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
@@ -84,7 +86,8 @@ class BQConsentSchema(BQSchema):
     consent_module_created = BQField('consent_module_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     consent_expired = BQField('consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_module_external_id = BQField('consent_module_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-
+    consent_response_status = BQField('consent_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    consent_response_status_id = BQField('consent_response_status_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 class BQRaceSchema(BQSchema):
     """
