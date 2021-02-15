@@ -191,12 +191,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     if fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and len(fld_value) > 2:
                         setattr(bqr, fld_name, fld_value[:3])
 
-                    # PDR-235: Adding status enum values (IN_PROGRESS, COMPLETED, ...)
-                    # Provide both string and integer enum fields, per the PDR BigQuery schema conventions
-                    if fld_name == 'status':
-                        setattr(bqr, fld_name, str(QuestionnaireResponseStatus(fld_value)))
-                        setattr(bqr, 'status_id', int(QuestionnaireResponseStatus(fld_value)))
-
                 bqrs.append(bqr)
                 if latest:
                     break
