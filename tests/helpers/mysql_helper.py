@@ -175,6 +175,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             initialize = False
         else:
             session = database.make_session()
+            session.execute('USE rdr')
             _clear_data(session)
             session.commit()
             session.close()
