@@ -45,7 +45,11 @@ from tests.helpers import temporary_sys_path
 from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
 
 BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
-MYSQL_PORT = 9306
+MYSQL_HOST = "127.0.0.1"  # Do not use 'localhost', we want to force using an IP socket.
+MYSQL_PORT = os.getenv('RDR_UNITTEST_SQL_SERVER_PORT', 10010)
+
+db_conn_str = f'mysql+mysqldb://root@{MYSQL_HOST}:{MYSQL_PORT}/?charset=utf8'
+config.override_setting('unittest_db_connection_string', db_conn_str)
 
 
 def start_mysql_instance():
@@ -54,8 +58,6 @@ def start_mysql_instance():
     already one running, do nothing.
     """
     # Check for a running instance of mysqld
-    # pids = get_process_pids(['/mysqld', '--port=9306', '--basedir={0}'.format(BASE_PATH)])
-    # if len(pids) == 0:
     pid_file = os.path.join(BASE_PATH, 'mysqld.pid')
     if os.path.exists(pid_file):
         with open(pid_file, 'r') as handle:
@@ -147,13 +149,6 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     """
     # Set this so the database factory knows to use the unittest connection string from the config.
     os.environ["UNITTEST_FLAG"] = "1"
-    mysql_host = "127.0.0.1"  # Do not use 'localhost', we want to force using an IP socket.
-
-    if "CIRCLECI" in os.environ:
-        # Default no-pw login, according to https://circleci.com/docs/1.0/manually/#databases .
-        mysql_login = "root"
-    else:
-        mysql_login = "root"
 
     database = database_factory.get_database(db_name=None)
     engine = database.get_engine()
@@ -185,11 +180,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
             session.close()
 
     engine.dispose()
-    database = None
     singletons.reset_for_tests()
-
-    db_conn_str = "mysql+mysqldb://{0}@{1}:{2}/rdr?charset=utf8".format(mysql_login, mysql_host, MYSQL_PORT)
-    config.override_setting('unittest_db_connection_string', db_conn_str)
 
     if with_data:
         _setup_hpos()
