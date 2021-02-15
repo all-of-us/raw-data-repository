@@ -333,14 +333,14 @@ class GenomicQueryClass:
                 and sssal.biobank_id = :bid_param
                 and sssal.status < 13
                 and sssal.test = "1SAL2"
-                and sal2.collected = (
-                    SELECT MAX(os.collected)
-                    FROM biobank_ordered_sample os
-                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                    WHERE os.test = "1SAL2"
-                            AND o.participant_id = :pid_param
-                        GROUP BY o.participant_id
-                    )
+                and osal.finalized_time = (
+                     SELECT MAX(o.finalized_time)
+                     FROM biobank_ordered_sample os
+                         JOIN biobank_order o ON o.biobank_order_id = os.order_id
+                     WHERE os.test = "1SAL2"
+                             AND o.participant_id = :pid_param
+                         GROUP BY o.participant_id
+                   )
             """
 
     @staticmethod
