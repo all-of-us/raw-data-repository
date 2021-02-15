@@ -22,10 +22,8 @@ _UTC = pytz.utc
 OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
 _MANIFEST_FILE_NAME_PREFIX = "Genomic-Manifest-AoU"
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
-
 # sample suffix: -v12019-04-05-00-30-10.csv
 _RESULT_CSV_FILE_SUFFIX_LENGTH = 26
-
 BIOBANK_ID_PREFIX = "A" if config.GAE_PROJECT == "all-of-us-rdr-prod" else "T"
 
 
@@ -133,7 +131,8 @@ def create_and_upload_genomic_biobank_manifest_file(
         bucket_name=None,
         cohort_id=None,
         saliva=False,
-        filename=None
+        filename=None,
+        prefix=None,
     ):
     result_filename = filename if filename is not None \
         else _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id, saliva)
@@ -165,9 +164,11 @@ def create_and_upload_genomic_biobank_manifest_file(
         AND genomic_workflow_state=:aw0_ready_state
       ORDER BY id
     """
+
     query_params = {"genomic_set_id": genomic_set_id,
-                    "prefix": BIOBANK_ID_PREFIX,
+                    "prefix": prefix or BIOBANK_ID_PREFIX,
                     "aw0_ready_state": int(GenomicWorkflowState.AW0_READY),}
+
     exporter.run_export(result_filename, export_sql, query_params)
 
 
