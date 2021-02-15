@@ -25,6 +25,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.unittests:
+        # pylint: disable=unused-import
+        import tests.helpers.mysql_helper  # need to execute file to set unittest db connection string
         os.environ["UNITTEST_FLAG"] = "1"
     env = dict(os.environ)
 
