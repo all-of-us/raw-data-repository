@@ -1220,7 +1220,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    q.version,
                    qr.authored,
                    qr.language,
-                   qr.participant_id
+                   qr.participant_id,
+                   qr.status
             FROM questionnaire_response qr
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id

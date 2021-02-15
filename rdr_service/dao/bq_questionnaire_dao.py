@@ -122,7 +122,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 data = self.ro_dao.to_dict(qr, result_proxy=responses)
                 # PDR-235:  Adding response status enum values (IN_PROGRESS, COMPLETED, ...)  to the response metadata
                 # dict.  Providing both string and integer key/value pairs, per the PDR BigQuery schema conventions
-                if data['status']:
+                if isinstance(data['status'], int):
                     data['status_id'] = int(QuestionnaireResponseStatus(data['status']))
                     data['status'] = str(QuestionnaireResponseStatus(data['status']))
 
@@ -172,7 +172,9 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'participant_id',
                         'questionnaire_response_id',
                         'questionnaire_id',
-                        'external_id'
+                        'external_id',
+                        'status',
+                        'status_id'
                     ):
                         continue
 
