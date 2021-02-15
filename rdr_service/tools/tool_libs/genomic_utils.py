@@ -1578,6 +1578,7 @@ class IngestionClass(GenomicManifestBase):
                                               bq_project_id=self.gcp_env.project) as controller:
 
                         controller.bypass_record_count = self.args.bypass_record_count
+                        controller.skip_updates = True
 
                         for member_id in member_ids:
                             self.run_ingestion_for_member_id(controller, member_id, bucket_name)
