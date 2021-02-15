@@ -372,7 +372,6 @@ class GenomicFileIngester:
 
             if control_sample_parent:
                 logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
-                # print(f"Control sample found: {row_copy['parentsampleid']}")
 
                 # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
                 # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
@@ -402,7 +401,8 @@ class GenomicFileIngester:
             member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
                                                                      row_copy['testname'])
 
-            # Since not a control sample, check if collection tube id was swapped by Biobank
+            # Since member not found, and not a control sample,
+            # check if collection tube id was swapped by Biobank
             if member is None:
                 bid = row_copy['biobankid']
 
@@ -427,6 +427,8 @@ class GenomicFileIngester:
                     raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
                                      f"biobank id: {row_copy['biobankid']}, "
                                      f"genome type: {row_copy['testname']}")
+
+                    # TODO: write to logging table
 
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
@@ -917,9 +919,13 @@ class GenomicFileIngester:
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
                 if existing_metrics_obj is not None:
+
                     if self.controller.skip_updates:
+                        # when running tool, updates can be skipped
                         continue
+
                     else:
                         metric_id = existing_metrics_obj.id
                 else:
@@ -944,10 +950,10 @@ class GenomicFileIngester:
             else:
                 logging.error(f"No genomic set member for bid,sample_id: "
                               f"{row_copy['biobankid']}, {row_copy['sampleid']}")
-                print(f"No genomic set member for bid,sample_id: "
-                              f"{row_copy['biobankid']}, {row_copy['sampleid']}")
 
-                #return GenomicSubProcessResult.ERROR
+                # TODO: insert into logging table
+
+                return GenomicSubProcessResult.ERROR
 
         return GenomicSubProcessResult.SUCCESS
 
