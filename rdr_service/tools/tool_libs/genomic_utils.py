@@ -312,6 +312,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
         project_config = self.gcp_env.get_app_config()
         bucket_name = project_config.get(config.BIOBANK_SAMPLES_BUCKET_NAME)[0]
+        prefix = project_config.get(config.BIOBANK_ID_PREFIX)[0]
         folder_name = "genomic_samples_manifests"
 
         # creates local file
@@ -323,7 +324,8 @@ class GenerateManifestClass(GenomicManifestBase):
                 set_id,
                 self.nowts,
                 bucket_name=bucket_name,
-                filename=_filename
+                filename=_filename,
+                prefix=prefix,
             )
 
         # Handle Genomic States for manifests
