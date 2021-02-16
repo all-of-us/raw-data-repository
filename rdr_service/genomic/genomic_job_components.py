@@ -2073,6 +2073,7 @@ class GenomicBiobankSamplesCoupler:
 
         # Create genomic set members
         for i, bid in enumerate(samples_meta.bids):
+
             # Don't write participant to table if no sample
             if samples_meta.sample_ids[i] == 0:
                 continue
@@ -2096,6 +2097,10 @@ class GenomicBiobankSamplesCoupler:
             # Get NY flag for mail-kit
             elif samples_meta.state_ids[i]:
                 _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
+
+            # default ny flag if no state id
+            elif not samples_meta.state_ids[i]:
+                _ny_flag = 0
 
             else:
                 logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
