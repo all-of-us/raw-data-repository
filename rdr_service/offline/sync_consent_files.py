@@ -152,7 +152,7 @@ def get_org_data_map():
     return config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
 
-def build_participant_query(session, org_ids, start_date=None, end_date=None, all_va=False, ids: list=None):
+def build_participant_query(session, org_ids, start_date=None, end_date=None, all_va=False, ids: list = None):
     participant_query = session.query(
         Participant.participantId,
         Participant.participantOrigin,
