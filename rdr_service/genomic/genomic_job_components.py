@@ -2022,7 +2022,12 @@ class GenomicBiobankSamplesCoupler:
 
     def create_saliva_genomic_participants(self, local=False, config=None):
         """
-        # to do
+        This method determines which samples to enter into
+        the genomic system that are saliva only, via the
+        config obj passed in the argument.
+
+        :param: config : options for ror consent type and denoting if sample was generated in-home or in-clinic
+        :return: result
         """
         participants = self._get_remaining_saliva_participants(config)
 
