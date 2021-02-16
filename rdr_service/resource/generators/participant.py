@@ -42,7 +42,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -426,9 +426,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Responses are sorted by authored date ascending and then created date descending
         # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
-            QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
-            QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
-                code_id_query). \
+                QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
+                QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
+                QuestionnaireResponse.status, code_id_query). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
@@ -461,7 +461,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'language': row.language,
                     'status': module_status.name,
                     'status_id': module_status.value,
-                    'external_id': row.externalId
+                    'external_id': row.externalId,
+                    'response_status': str(QuestionnaireResponseStatus(row.status)),
+                    'response_status_id': int(QuestionnaireResponseStatus(row.status))
                 }
 
                 # check if this is a module with consents.
@@ -488,7 +490,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
                             'consent_module_created': row.created,
-                            'consent_module_external_id': row.externalId
+                            'consent_module_external_id': row.externalId,
+                            'consent_response_status': str(QuestionnaireResponseStatus(row.status)),
+                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status))
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
@@ -1216,7 +1220,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    q.version,
                    qr.authored,
                    qr.language,
-                   qr.participant_id
+                   qr.participant_id,
+                   qr.status
             FROM questionnaire_response qr
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id

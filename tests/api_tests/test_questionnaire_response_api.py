@@ -24,6 +24,10 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
+# For testing PDR generator content
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values
 from tests.test_data import data_path
@@ -1052,6 +1056,35 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         ).one()
         self.assertIsNone(participant_summary.questionnaireOnTheBasics)
 
+        # PDR- 235 Add checks of the PDR generator data for module
+        # response status of the "in progress" TheBasics test response
+        ps_rsrc_gen = ParticipantSummaryGenerator()
+        ps_bqs_gen = BQParticipantSummaryGenerator()
+
+        ps_rsrc_data = ps_rsrc_gen.make_resource(participant_summary.participantId).get_data()
+        ps_bqs_data = ps_bqs_gen.make_bqrecord(participant_summary.participantId).to_dict(serialize=True)
+
+        # Check data from the resource generator
+        pdr_module_dict = _get_pdr_module_dict(ps_rsrc_data, 'TheBasics', key_name='module')
+        self.assertEqual(pdr_module_dict.get('response_status'), 'IN_PROGRESS')
+        self.assertEqual(pdr_module_dict.get('response_status_id'), 0)
+
+        # Check data from the bigquery_sync participant summary DAO / generator
+        pdr_module_dict = _get_pdr_module_dict(ps_bqs_data, 'TheBasics', key_name='mod_module')
+        self.assertEqual(pdr_module_dict.get('mod_response_status'), 'IN_PROGRESS')
+        self.assertEqual(pdr_module_dict.get('mod_response_status_id'), 0)
+
+        # Check the bigquery_sync questionnaire response DAO / generator
+        # TODO:  Validate Resource generator data for questionnaire response when implemented
+        qr_gen = BQPDRQuestionnaireResponseGenerator()
+        table, bqrs = qr_gen.make_bqrecord(participant_summary.participantId, 'TheBasics', latest=True)
+
+        self.assertIsNotNone(table)
+        # bqrs is a list of BQRecord types
+        self.assertEqual(len(bqrs), 1)
+        self.assertEqual(bqrs[0].status, 'IN_PROGRESS')
+        self.assertEqual(bqrs[0].status_id, 0)
+
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_link_id_validation(self, mock_logging):
         # Get a participant set up for the test
@@ -1118,3 +1151,18 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
+
+def _get_pdr_module_dict(ps_data, module_id, key_name=None):
+    """
+      Returns the first occurrence of a module entry from PDR participant data for the specified module_id
+      :param ps_data: A participant data dictionary (assumed to contain a 'modules' key/list of dict values)
+      :param module_id: The name / string of the module to search for
+      :param key_name:  The key name to extract the value from to match to the supplied module_id string
+    """
+    if isinstance(key_name, str):
+        for mod in ps_data.get('modules'):
+            if mod.get(key_name).lower() == module_id.lower():
+                return mod
+
+    return None
+

@@ -1846,18 +1846,19 @@ class GenomicPipelineTest(BaseTestCase):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("AW1-Control-Sample-Test.csv")
 
-        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+        fake_filenames = ("RDR_AoU_GEN_PKG-1908-218051.csv", "JH_AoU_GEN_PKG-1908-218051.csv")
 
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            gc_manifest_file,
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_GENOTYPING_FOLDER,
-        )
+        for gc_manifest_filename in fake_filenames:
+            self._write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
 
         # Get bucket, subfolder, and filename from argument
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + fake_filenames[0]
 
         # Set up file/JSON
         task_data = {
@@ -1878,6 +1879,23 @@ class GenomicPipelineTest(BaseTestCase):
         new_member = self.member_dao.get_member_from_collection_tube(1, 'aou_wgs')
 
         self.assertEqual('HG-002', new_member.biobankId)
+
+        # Test new control sample inserted again for different GC
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + fake_filenames[1]
+        task_data['file_data']['file_path'] = f"{bucket_name}/{file_name}"
+
+        # Call pipeline function twice
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 3 & 4
+
+        # No new GenomicSetMembers should be inserted in this run
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 5 & 6
+
+        members = self.member_dao.get_all()
+        members.sort(key=lambda x: x.id)
+
+        self.assertEqual(3, len(members))
+        self.assertEqual('rdr', members[1].gcSiteId)
+        self.assertEqual('jh', members[2].gcSiteId)
 
     def test_aw1f_ingestion_workflow(self):
         # Setup test data: 1 aou_array, 1 aou_wgs

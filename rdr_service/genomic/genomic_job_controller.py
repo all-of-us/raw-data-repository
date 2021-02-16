@@ -61,6 +61,7 @@ class GenomicJobController:
         self.bq_project_id = bq_project_id
         self.task_data = task_data
         self.bypass_record_count = False
+        self.skip_updates = False
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET

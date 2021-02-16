@@ -37,6 +37,7 @@ class SurveyQuestionType(messages.Enum):
     TRUEFALSE = 7
     FILE = 8
     SLIDER = 9
+    UNKNOWN = 10
 
 
 class SurveyQuestion(Base):

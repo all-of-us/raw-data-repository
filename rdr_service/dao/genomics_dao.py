@@ -640,9 +640,10 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
-    def get_control_sample(self, sample_id):
+    def get_control_sample_parent(self, genome_type, sample_id):
         """
-        Returns the GenomicSetMember record for a control sample
+        Returns the GenomicSetMember parent record for a control sample
+        :param genome_type:
         :param sample_id:
         :return: GenomicSetMember
         """
@@ -651,8 +652,33 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember
             ).filter(
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
-                GenomicSetMember.sampleId == sample_id
-            ).first()
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type
+            ).one_or_none()
+
+    def get_control_sample_for_gc_and_genome_type(self, _site, genome_type, biobank_id,
+                                                  collection_tube_id, sample_id):
+        """
+        Returns the GenomicSetMember record for a control sample based on
+        GC site, genome type, biobank ID, and collection tube ID.
+
+        :param collection_tube_id:
+        :param biobank_id:
+        :param genome_type:
+        :param sample_id:
+        :return: GenomicSetMember
+        """
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember
+            ).filter(
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.gcSiteId == _site,
+                GenomicSetMember.biobankId == biobank_id,
+                GenomicSetMember.collectionTubeId == collection_tube_id,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+            ).one_or_none()
 
 
 class GenomicJobRunDao(UpdatableDao):

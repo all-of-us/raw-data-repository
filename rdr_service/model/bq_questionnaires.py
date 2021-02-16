@@ -74,10 +74,14 @@ class _BQModuleSchema(BQSchema):
         fields.append({'name': 'participant_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'questionnaire_response_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.REQUIRED.name}),
+                       'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'questionnaire_id', 'type': BQFieldTypeEnum.INTEGER.name,
-                       'mode': BQFieldModeEnum.NULLABLE.name}),
+                       'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'external_id', 'type': BQFieldTypeEnum.STRING.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name})
+        fields.append({'name': 'status', 'type': BQFieldTypeEnum.STRING.name,
+                       'mode': BQFieldModeEnum.NULLABLE.name})
+        fields.append({'name': 'status_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.NULLABLE.name})
 
 

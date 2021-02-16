@@ -365,54 +365,71 @@ class GenomicFileIngester:
             if row_copy['biobankid'] == "":
                 continue
 
-            # Find the existing GenomicSetMember
-            # Set the member based on collection tube ID
-            # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
-            member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
-                                                                     row_copy['testname'])
+            # Check if this sample has a control sample parent tube
+            control_sample_parent = self.member_dao.get_control_sample_parent(
+                row_copy['testname'],
+                int(row_copy['parentsampleid'])
+            )
 
-            # If member not found, check if:
-            #  this is a control sample
-            #  or if collection tube was changed by Biobank
-            if member is None:
-                # Check if this is a new control sample and make new member from it
-                if self._check_if_control_sample(int(row_copy['parentsampleid'])) is not None:
-                    logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
+            if control_sample_parent:
+                logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
 
+                # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
+                # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
+                cntrl_sample_member = self.member_dao.get_control_sample_for_gc_and_genome_type(
+                    _site,
+                    row_copy['testname'],
+                    row_copy['biobankid'],
+                    row_copy['collectiontubeid'],
+                    row_copy['sampleid']
+                )
+
+                if not cntrl_sample_member:
+                    # Insert new GenomicSetMember record if none exists
+                    # for this control sample, genome type, and gc site
                     member = self.create_new_member_from_aw1_control_sample(row_copy)
 
                     # Update member for PDR
                     bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                     genomic_set_member_update(member.id)
 
-                    continue
+                # Skip rest of iteration and go to next row
+                continue
+
+            # Find the existing GenomicSetMember
+            # Set the member based on collection tube ID
+            # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
+            member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
+                                                                     row_copy['testname'])
+
+            # Since member not found, and not a control sample,
+            # check if collection tube id was swapped by Biobank
+            if member is None:
+                bid = row_copy['biobankid']
+
+                # Strip biobank prefix if it's there
+                if bid[0].isalpha():
+                    bid = bid[1:]
+
+                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
+                                                                             row_copy['testname'],
+                                                                             _state)
+
+                # If member found, validate new collection tube ID, set collection tube ID
+                if member:
+                    if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
+                        with self.member_dao.session() as session:
+                            self._record_sample_as_contaminated(session, member.collectionTubeId)
+
+                        member.collectionTubeId = row_copy['collectiontubeid']
 
                 else:
-                    # Not a control sample, continue with next check
-                    # Since not a control sample, check if collection tube id was swapped by Biobank
-                    if member is None:
-                        bid = row_copy['biobankid']
+                    # Couldn't find genomic set member based on either biobank ID or collection tube
+                    raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
+                                     f"biobank id: {row_copy['biobankid']}, "
+                                     f"genome type: {row_copy['testname']}")
 
-                        # Strip biobank prefix if it's there
-                        if bid[0].isalpha():
-                            bid = bid[1:]
-
-                        member = self.member_dao.get_member_from_biobank_id_in_state(bid,
-                                                                                     row_copy['testname'], _state)
-
-                        # If member found, validate new collection tube ID, set collection tube ID
-                        if member:
-                            if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                                with self.member_dao.session() as session:
-                                    self._record_sample_as_contaminated(session, member.collectionTubeId)
-
-                                member.collectionTubeId = row_copy['collectiontubeid']
-
-                        else:
-                            # Couldn't find genomic set member based on either biobank ID or collection tube
-                            raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
-                                             f"biobank id: {row_copy['biobankid']}, "
-                                             f"genome type: {row_copy['testname']}")
+                    # TODO: write to logging table
 
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
@@ -481,7 +498,7 @@ class GenomicFileIngester:
         # Open file and pull row based on member.biobankId
         with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
             reader = csv.DictReader(aw1_file, delimiter=',')
-            row = [r for r in reader if r['Biobank Id'] == str(member.biobankId)][0]
+            row = [r for r in reader if r['BIOBANK_ID'][1:] == str(member.biobankId)][0]
 
             # Alter field names to remove spaces and change to lower case
             row = dict(zip([key.lower().replace(' ', '').replace('_', '')
@@ -903,8 +920,15 @@ class GenomicFileIngester:
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
                 if existing_metrics_obj is not None:
-                    metric_id = existing_metrics_obj.id
+
+                    if self.controller.skip_updates:
+                        # when running tool, updates can be skipped
+                        continue
+
+                    else:
+                        metric_id = existing_metrics_obj.id
                 else:
                     metric_id = None
 
@@ -927,6 +951,8 @@ class GenomicFileIngester:
             else:
                 logging.error(f"No genomic set member for bid,sample_id: "
                               f"{row_copy['biobankid']}, {row_copy['sampleid']}")
+
+                # TODO: insert into logging table
 
                 return GenomicSubProcessResult.ERROR
 
@@ -1031,15 +1057,6 @@ class GenomicFileIngester:
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
 
-    def _check_if_control_sample(self, sample_id):
-        """
-        Checks a sample against the list of control samples
-        In genomic_set_member
-        :param sample_id:
-        :return: True if sample exists, else false.
-        """
-
-        return self.member_dao.get_control_sample(sample_id)
 
     def _validate_collection_tube_id(self, collection_tube_id, bid):
         """
