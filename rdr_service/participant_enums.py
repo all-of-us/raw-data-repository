@@ -649,7 +649,7 @@ class GenomicJob(messages.Enum):
     CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
 
     LOAD_AW1_TO_RAW_TABLE = 34
-    
+
     AW5_ARRAY_MANIFEST = 35
     AW5_WGS_MANIFEST = 36
 
