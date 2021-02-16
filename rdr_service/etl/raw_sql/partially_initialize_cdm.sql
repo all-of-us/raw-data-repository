@@ -555,6 +555,7 @@ create temporary table cdm.answer_hash_values (
       answers_hash VARCHAR(80)
 );
 
+set session group_concat_max_len=10000;
 insert into cdm.answer_hash_values (questionnaire_response_id, answers_hash)
 select qr.questionnaire_response_id , SHA2(CONCAT(
 	CAST(qr.participant_id AS CHAR),
