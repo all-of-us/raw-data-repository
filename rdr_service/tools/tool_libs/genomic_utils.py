@@ -1720,7 +1720,7 @@ class LoadRawManifest(GenomicManifestBase):
         # TODO: Implement execution for a list of AW1 files
 
         if self.args.manifest_file:
-            genomic_pipeline.load_aw1_manifest_into_raw_table(
+            genomic_pipeline.load_awn_manifest_into_raw_table(
                 file_path=self.args.manifest_file,
                 project_id=self.gcp_env.project,
                 provider=self.gscp

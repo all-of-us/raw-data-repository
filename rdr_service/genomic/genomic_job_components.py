@@ -36,7 +36,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicFileProcessed, GenomicAW1Raw)
+    GenomicFileProcessed, GenomicAW1Raw, GenomicAW2Raw)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -58,7 +58,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao, GenomicManifestFileDao, GenomicAW1RawDao)
+    GenomicManifestFeedbackDao, GenomicManifestFileDao, GenomicAW1RawDao, GenomicAW2RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -336,6 +336,27 @@ class GenomicFileIngester:
             "failure_mode_desc": "failuremodedesc",
         }
 
+    @staticmethod
+    def get_aw2_raw_column_mappings():
+        return {
+            "biobank_id": "biobankid",
+            "sample_id": "sampleid",
+            "biobankidsampleid": "biobankidsampleid",
+            "lims_id": "limsid",
+            "mean_coverage": "meancoverage",
+            "genome_coverage": "genomecoverage",
+            "aouhdr_coverage": "aouhdrcoverage",
+            "contamination": "contamination",
+            "sex_concordance": "sexconcordance",
+            "sex_ploidy": "sexploidy",
+            "aligned_q30_bases": "alignedq30bases",
+            "array_concordance": "arrayconcordance",
+            "processing_status": "processingstatus",
+            "notes": "notes",
+            "chipwellbarcode": "chipwellbarcode",
+            "call_rate": "callrate",
+        }
+
     def _ingest_aw1_manifest(self, data, _site):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
@@ -442,18 +463,32 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def load_raw_aw1_file(self):
+    def load_raw_awn_file(self):
         """
-        Loads genomic_aw1_raw with raw data from aw1 file
+        Loads genomic_aw1_raw/genomic_aw2_raw
+        with raw data from aw1/aw2 file
         :return:
         """
-        aw1_dao = GenomicAW1RawDao()
+        # Set manifest-specific variables
+        if self.controller.job_id == GenomicJob.LOAD_AW1_TO_RAW_TABLE:
+            dao = GenomicAW1RawDao()
+            awn_model = GenomicAW1Raw
+            columns = self.get_aw1_raw_column_mappings()
+
+        elif self.controller.job_id == GenomicJob.LOAD_AW2_TO_RAW_TABLE:
+            dao = GenomicAW2RawDao()
+            awn_model = GenomicAW2Raw
+            columns = self.get_aw2_raw_column_mappings()
+
+        else:
+            logging.error("Job ID not LOAD_AW1_TO_RAW_TABLE or LOAD_AW2_TO_RAW_TABLE")
+            return GenomicSubProcessResult.ERROR
 
         # look up if any rows exist already for the file
-        aw1_records = aw1_dao.get_from_filepath(self.target_file)
+        records = dao.get_from_filepath(self.target_file)
 
-        if aw1_records:
-            logging.warning(f'File already in AW1 raw table: {self.target_file}')
+        if records:
+            logging.warning(f'File already exists in raw table: {self.target_file}')
             return GenomicSubProcessResult.SUCCESS
 
         file_data = self._retrieve_data_from_path(self.target_file)
@@ -462,7 +497,7 @@ class GenomicFileIngester:
         if not isinstance(file_data, dict):
             return file_data
 
-        # Processing raw AW1 data in batches
+        # Processing raw data in batches
         batch_size = 100
         item_count = 0
         batch = list()
@@ -472,14 +507,14 @@ class GenomicFileIngester:
             row = dict(zip([key.lower().replace(' ', '').replace('_', '')
                             for key in row], row.values()))
 
-            row_obj = self._set_raw_aw1_attributes(row, GenomicAW1Raw())
+            row_obj = self._set_raw_awn_attributes(row, awn_model(), columns)
 
             batch.append(row_obj)
             item_count += 1
 
             if item_count == batch_size:
                 # Insert batch into DB
-                with aw1_dao.session() as session:
+                with dao.session() as session:
                     session.bulk_save_objects(batch)
 
                 # Reset batch
@@ -488,7 +523,7 @@ class GenomicFileIngester:
 
         if item_count:
             # insert last batch if needed
-            with aw1_dao.session() as session:
+            with dao.session() as session:
                 session.bulk_save_objects(batch)
 
         return GenomicSubProcessResult.SUCCESS
@@ -879,23 +914,23 @@ class GenomicFileIngester:
 
         return member
 
-    def _set_raw_aw1_attributes(self, aw1_data, aw1_row_obj):
+    def _set_raw_awn_attributes(self, awn_data, awn_row_obj, columns):
         """
-        Loads GenomicAW1Raw attributes from aw1_data
-        :param aw1_data: dict
-        :param aw1_row_obj: GenomicAW1Raw object
-        :return: GenomicAW1Raw
+        Loads GenomicAW1Raw and GenomicAW2Raw attributes from awn_data
+        :param awn_data: dict
+        :param awn_row_obj: GenomicAW1Raw/GenomicAW2Raw object
+        :param mapping_function: function that returns column mappings
+        :return: GenomicAW1Raw or GenomicAW2Raw
         """
-        aw1_column_mappings = self.get_aw1_raw_column_mappings()
 
-        aw1_row_obj.file_path = self.target_file
-        aw1_row_obj.created = clock.CLOCK.now()
-        aw1_row_obj.modified = clock.CLOCK.now()
+        awn_row_obj.file_path = self.target_file
+        awn_row_obj.created = clock.CLOCK.now()
+        awn_row_obj.modified = clock.CLOCK.now()
 
-        for key in aw1_column_mappings.keys():
-            aw1_row_obj.__setattr__(key, aw1_data.get(aw1_column_mappings[key]))
+        for key in columns.keys():
+            awn_row_obj.__setattr__(key, awn_data.get(columns[key]))
 
-        return aw1_row_obj
+        return awn_row_obj
 
     def _process_gc_metrics_data_for_insert(self, data_to_ingest):
         """ Since input files vary in column names,

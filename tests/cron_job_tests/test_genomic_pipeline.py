@@ -24,7 +24,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicManifestFileDao,
     GenomicManifestFeedbackDao,
-    GenomicAW1RawDao)
+    GenomicAW1RawDao, GenomicAW2RawDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -69,6 +69,7 @@ from rdr_service.participant_enums import (
     GenomicQcStatus, GenomicManifestTypes, GenomicContaminationCategory)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
+from tests.test_data import data_path
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
@@ -3346,7 +3347,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
         # Run load job
-        genomic_pipeline.load_aw1_manifest_into_raw_table(test_file_path)
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
 
         # Expected columns in table
         expected_columns = [
@@ -3397,3 +3398,40 @@ class GenomicPipelineTest(BaseTestCase):
                 aw1_file_column = aw1_file_column.strip('"')
 
                 self.assertEqual(aw1_file_column, getattr(aw1_raw_records[i-1], expected_columns[j]))
+
+    def test_aw2_load_manifest_to_raw_table(self):
+        # Set up test AW2 manifest
+        test_manifest = 'RDR_AoU_SEQ_TestDataManifest.csv'
+
+        # Setup Test file
+        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                          folder=_FAKE_BUCKET_FOLDER)
+
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
+
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+
+        aw2_raw_dao = GenomicAW2RawDao()
+
+        aw2_raw_record = aw2_raw_dao.get(1)
+
+        with open(data_path(test_manifest)) as f:
+            csv_reader = csv.DictReader(f)
+
+            for row in csv_reader:
+                self.assertEqual(row["Biobank ID"], aw2_raw_record.biobank_id)
+                self.assertEqual(row["Sample ID"], aw2_raw_record.sample_id)
+                self.assertEqual(row["BiobankidSampleid"], aw2_raw_record.biobankidsampleid)
+                self.assertEqual(row["LIMS ID"], aw2_raw_record.lims_id)
+                self.assertEqual(row["Mean Coverage"], aw2_raw_record.mean_coverage)
+                self.assertEqual(row["Genome Coverage"], aw2_raw_record.genome_coverage)
+                self.assertEqual(row["AoU HDR Coverage"], aw2_raw_record.aouhdr_coverage)
+                self.assertEqual(row["Sex Concordance"], aw2_raw_record.sex_concordance)
+                self.assertEqual(row["Contamination"], aw2_raw_record.contamination)
+                self.assertEqual(row["Sex Ploidy"], aw2_raw_record.sex_ploidy)
+                self.assertEqual(row["Aligned Q30 Bases"], aw2_raw_record.aligned_q30_bases)
+                self.assertEqual(row["Array Concordance"], aw2_raw_record.array_concordance)
+                self.assertEqual(row["Processing Status"], aw2_raw_record.processing_status)
+                self.assertEqual(row["Notes"], aw2_raw_record.notes)

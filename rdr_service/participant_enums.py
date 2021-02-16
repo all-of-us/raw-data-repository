@@ -649,6 +649,7 @@ class GenomicJob(messages.Enum):
     CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
 
     LOAD_AW1_TO_RAW_TABLE = 34
+    LOAD_AW2_TO_RAW_TABLE = 35
 
 
 class GenomicWorkflowState(messages.Enum):
