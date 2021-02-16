@@ -270,7 +270,7 @@ class IngestAW5ManifestTaskApi(Resource):
         }
 
         # Call pipeline function
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)   
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         logging.info('Complete.')
         return '{"success": "true"}'
