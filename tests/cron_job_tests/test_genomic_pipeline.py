@@ -418,9 +418,9 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([(1, 1001), (2, 1002), (3, 1003), (4, 1004)])
 
         with clock.FakeClock(test_date):
-            test_file_name_seq = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest_2.csv',
+            test_file_name_seq = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest_for_aw5.csv',
                                                                   bucket_name, folder=subfolder)
-            test_file_name_gen = self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_2.csv',
+            test_file_name_gen = self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_for_aw5.csv',
                                                                   bucket_name, folder=subfolder)
 
         task_data_seq = {
