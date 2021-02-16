@@ -1435,12 +1435,12 @@ class GenomicFileValidator:
             )
 
         def aw5_wgs_manifest_name_rule(fn):
-            # TODO - add this rule after get the name convention
-            return True
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
 
         def aw5_array_manifest_name_rule(fn):
-            # TODO - add this rule after get the name convention
-            return True
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
 
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,

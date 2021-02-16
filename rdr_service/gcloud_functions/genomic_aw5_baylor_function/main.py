@@ -33,7 +33,6 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
     def created(self):
         """ Handle storage object created event. """
         # Verify this is a file that we want to process.
-        # TODO - modify this when get the file name convention
         if 'aw5' not in self.event.name.lower():
             _logger.info(f'Skipping file {self.event.name}, name does not match Data Manifest file.')
             return
