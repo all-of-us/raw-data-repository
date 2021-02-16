@@ -152,7 +152,7 @@ def get_org_data_map():
     return config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
 
-def build_participant_query(session, org_ids, start_date=None, end_date=None, all_va=False):
+def build_participant_query(session, org_ids, start_date=None, end_date=None, all_va=False, ids: list=None):
     participant_query = session.query(
         Participant.participantId,
         Participant.participantOrigin,
@@ -200,6 +200,9 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
         participant_query = participant_query.filter(Organization.externalId.like('VA_%'))
     else:
         participant_query = participant_query.filter(Organization.externalId.in_(org_ids))
+
+    if ids:
+        participant_query = participant_query.filter(Participant.participantId.in_(ids))
 
     return participant_query
 
