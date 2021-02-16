@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
-    STREET_ADDRESS2_QUESTION_CODE
+from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
+    STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
@@ -19,7 +19,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
 
-        module_code = self.data_generator.create_database_code(value='src_clean_test')
+        self.module_code = self.data_generator.create_database_code(value='src_clean_test')
 
         self.questionnaire = self.data_generator.create_database_questionnaire_history()
         for question_index in range(4):
@@ -33,7 +33,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.data_generator.create_database_questionnaire_concept(
             questionnaireId=self.questionnaire.questionnaireId,
             questionnaireVersion=self.questionnaire.version,
-            codeId=module_code.codeId
+            codeId=self.module_code.codeId
         )
 
         self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire)
@@ -53,19 +53,28 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         if indexed_answers is None:
             # If no answers were specified then answer all questions with 'test answer'
             indexed_answers = [
-                (question_index, 'test answer')
+                (question_index, 'valueString', 'test answer')
                 for question_index in range(len(questionnaire.questions))
             ]
 
-        for question_index, answer_string in indexed_answers:
+        for question_index, answer_field_name, answer_string in indexed_answers:
             question = questionnaire.questions[question_index]
             self.data_generator.create_database_questionnaire_response_answer(
                 questionnaireResponseId=questionnaire_response.questionnaireResponseId,
                 questionId=question.questionnaireQuestionId,
-                valueString=answer_string
+                **{answer_field_name: answer_string}
             )
 
         return questionnaire_response
+
+    def _setup_duplicate_questionnaire_response(self, questionnaire_response, duplicate=1, removed=0):
+        duplicate_qr = self.data_generator.create_database_duplicate_temp_questionnaire_response(
+            questionnaire_response,
+            duplicate=duplicate,
+            removed=removed
+        )
+
+        return duplicate_qr
 
     @staticmethod
     def run_cdm_data_generation():
@@ -99,8 +108,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             self.participant,
             self.questionnaire,
             indexed_answers=[
-                (1, 'update'),
-                (3, 'final answer')
+                (1, 'valueString', 'update'),
+                (3, 'valueString', 'final answer')
             ],
             authored=datetime(2020, 5, 10),
             created=datetime(2020, 5, 10)
@@ -161,13 +170,19 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(1, 'NewLastName'), (3, 'new-email')],
+            indexed_answers=[
+                (1, 'valueString', 'NewLastName'),
+                (3, 'valueString', 'new-email')
+            ],
             authored=datetime(2020, 5, 1)
         )
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(2, 'updated address'), (3, 'corrected-email')],
+            indexed_answers=[
+                (2, 'valueString', 'updated address'),
+                (3, 'valueString', 'corrected-email')
+            ],
             authored=datetime(2020, 8, 1)
         )
 
@@ -212,7 +227,9 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self._setup_questionnaire_response(
             self.participant,
             consent_questionnaire,
-            indexed_answers=[(4, expected_final_address)],  # Assuming the 4th question is the first line of the address
+            indexed_answers=[
+                (4, 'valueString', expected_final_address)  # Assuming the 4th question is the first line of the address
+            ],
             authored=datetime(2020, 8, 1)
         )
 
@@ -281,3 +298,87 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             SrcClean.questionnaire_response_id == self.questionnaire_response.questionnaireResponseId
         ).all()
         self.assertNotEmpty(complete_answers)
+
+    def test_duplicate_record_in_temp_questionnaire_response_filtered_out(self):
+        """
+        Test that duplicate record in cdm.tmp_questionnaire_response is not included in export
+        """
+
+        # Create a new questionnaire response
+        participant = self.data_generator.create_database_participant()
+        self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+
+        questionnaire_response_dup = self._setup_questionnaire_response(
+            participant,
+            self.questionnaire
+        )
+
+        self._setup_duplicate_questionnaire_response(questionnaire_response_dup)
+
+        self.run_cdm_data_generation()
+
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.participant_id == participant.participantId
+        ).all()
+
+        self.assertEqual(4, len(src_clean_answers))
+
+    def test_zip_code_maps_to_string_field(self):
+        """
+        There are some questionnaire responses that have the zip code transmitted to us in the valueInteger
+        field. Curation is expecting zip codes to be exported to them as strings. This checks to make sure that
+        they're mapped correctly.
+        """
+
+        # Two codes have used value_integer for transmitting the value
+        employment_zipcode_code = self.data_generator.create_database_code(value=EMPLOYMENT_ZIPCODE_QUESTION_CODE)
+        address_zipcode_code = self.data_generator.create_database_code(value=ZIPCODE_QUESTION_CODE)
+        skip_code = self.data_generator.create_database_code(value=PMI_SKIP_CODE)
+
+        # Create a questionnaire with zip code questions
+        zip_code_questionnaire = self.data_generator.create_database_questionnaire_history()
+        for index in range(2):  # Creating four questions to test PMI_SKIP and when the value_string is correctly used
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=zip_code_questionnaire.questionnaireId,
+                questionnaireVersion=zip_code_questionnaire.version,
+                codeId=employment_zipcode_code.codeId
+            )
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=zip_code_questionnaire.questionnaireId,
+                questionnaireVersion=zip_code_questionnaire.version,
+                codeId=address_zipcode_code.codeId
+            )
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=zip_code_questionnaire.questionnaireId,
+            questionnaireVersion=self.questionnaire.version,
+            codeId=self.module_code.codeId
+        )
+
+        # Set up a response with zip code values transmitted in various ways
+        expected_zip_code_answers = [
+            (0, 'valueInteger', '90210'),
+            (1, 'valueInteger', '12345'),
+            (2, 'valueString', '12121'),
+            (3, 'valueCodeId', skip_code.codeId),
+        ]
+        zip_code_response = self._setup_questionnaire_response(
+            self.participant,
+            zip_code_questionnaire,
+            indexed_answers=expected_zip_code_answers
+        )
+
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == zip_code_response.questionnaireResponseId
+        ).all()
+
+        for index, answer_field, expected_value in expected_zip_code_answers:
+            src_cln: SrcClean = src_clean_answers[index]
+            if answer_field == 'valueCodeId':  # An answer of skipping the zip code
+                self.assertEqual(expected_value, src_cln.value_code_id)
+            else:
+                self.assertEqual(expected_value, src_cln.value_string)
+                self.assertIsNone(src_cln.value_number)

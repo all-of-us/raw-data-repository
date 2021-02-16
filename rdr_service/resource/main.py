@@ -8,7 +8,9 @@ from rdr_service import app_util
 from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
     CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
     RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi, \
-    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, IngestAW5ManifestTaskApi
+    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, CalculateRecordCountTaskApi, \
+    LoadRawAW1ManifestDataAPI, IngestAW5ManifestTaskApi
+
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
@@ -50,6 +52,10 @@ def _build_resource_app():
     # Begin Genomic Cloud Task API Endpoints
     #
 
+    # Load AW1 raw manifest
+    _api.add_resource(LoadRawAW1ManifestDataAPI, TASK_PREFIX + "LoadRawAW1ManifestDataAPI",
+                      endpoint="load_aw1_raw_data_task", methods=["POST"])
+
     # Ingest AW1 manifest
     _api.add_resource(IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
                       endpoint="ingest_aw1_manifest_task", methods=["POST"])
@@ -61,6 +67,10 @@ def _build_resource_app():
     # Ingest AW5 manifest
     _api.add_resource(IngestAW5ManifestTaskApi, TASK_PREFIX + "IngestAW5ManifestTaskApi",
                       endpoint="ingest_aw5_manifest_task", methods=["POST"])
+
+    # Calculate manifest file record count
+    _api.add_resource(CalculateRecordCountTaskApi, TASK_PREFIX + "CalculateRecordCountTaskApi",
+                      endpoint="calculate_record_count_task", methods=["POST"])
 
     # Calculate Contamination Category
     _api.add_resource(CalculateContaminationCategoryApi, TASK_PREFIX + "CalculateContaminationCategoryApi",
@@ -74,7 +84,7 @@ def _build_resource_app():
     # Primary Resource API endpoint
     #
     _api.add_resource(ResourceRequestApi, RESOURCE_PREFIX + "<path:path>",
-                      endpoint="resource_request", methods=["GET"])
+                      endpoint="resource_request", methods=["GET", "POST"])
     #
     # End primary Resource API endpoint
     #

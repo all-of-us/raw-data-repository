@@ -132,7 +132,7 @@ class ResourceRequestApi(Resource):
         """
         Handle GET requests
         :param path: URI request path
-        :return:
+        :return: response
         """
         resource = RequestResource()
 
@@ -143,7 +143,7 @@ class ResourceRequestApi(Resource):
         elif resource.suffix == '_search':
             raise BadRequest('Not Implemented Yet')
         elif resource.suffix == '_batch':
-            resp = self._get_batch(resource)
+            BadRequest('Batch requests are not allowed with GET method.')
         else:
             resp = self._get_resource(resource)
 
@@ -151,6 +151,20 @@ class ResourceRequestApi(Resource):
         # TODO: Handle awardee filtering (probably very last todo item).
 
         return resp
+
+    @auth_required(RESOURCE)
+    def post(self, path):  # pylint: disable=unused-argument
+        """
+        Handle POST batch requests.
+        :param path: URI request path
+        :return: batch response.
+        """
+        resource = RequestResource()
+        if resource.suffix == '_batch':
+            resp = self._get_batch(resource)
+            return resp
+
+        raise BadRequest('Resource POST requests other than batch requests are not allowed.')
 
     def _add_arg_filters(self, resource, query):
         """
@@ -213,20 +227,24 @@ class ResourceRequestApi(Resource):
         :param resource:
         :return:
         """
-        pk_id_lookup = False
+        if not resource.batch_ids:
+            return []
+
+        pk_id_lookup = True
         resource.batch_ids = resource.batch_ids[:1000]  # Restrict maximum number of resource ids in batch to 1,000.
         with self.dao.session() as session:
 
             # Determine if we are going to use ResourceData.pk_id or Resource.pk_alt_id for lookups.
             # See if we can convert a resource id to an integer.
-            _tmp_pk = re.sub('\D', '', resource.batch_ids[0])
-            if _tmp_pk:
-                query = session.query(ResourceData.id).filter(ResourceData.resourcePKID == int(_tmp_pk))
-                pk_id_lookup = query.first() is not None
-
-            # If we are using pk_id, convert all resource ids to int.
-            if pk_id_lookup:
-                resource.batch_ids = [int(re.sub('\D', '', x)) for x in resource.batch_ids]
+            if isinstance(resource.batch_ids[0], str):
+                pk_id_lookup = False
+                _tmp_pk = re.sub('\D', '', resource.batch_ids[0])
+                if _tmp_pk:
+                    query = session.query(ResourceData.id).filter(ResourceData.resourcePKID == int(_tmp_pk))
+                    pk_id_lookup = query.first() is not None
+                # If we are using pk_id, convert all resource ids to int.
+                if pk_id_lookup:
+                    resource.batch_ids = [int(re.sub('\D', '', x)) for x in resource.batch_ids]
 
             query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified, ResourceData.resource)
             if pk_id_lookup:

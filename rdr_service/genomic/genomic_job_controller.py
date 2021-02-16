@@ -61,6 +61,7 @@ class GenomicJobController:
         self.bq_project_id = bq_project_id
         self.task_data = task_data
         self.bypass_record_count = False
+        self.skip_updates = False
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -615,6 +616,21 @@ class GenomicJobController:
             self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
+
+    def load_raw_aw1_data_from_filepath(self, file_path):
+        """
+        Loads raw AW1 data to genomic_aw1_raw
+        :param file_path: "bucket/folder/manifest_file.csv"
+        :return:
+        """
+        logging.info(f"Loading manifest: {file_path}")
+
+        self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                            job_run_id=self.job_run.id,
+                                            target_file=file_path,
+                                            _controller=self)
+
+        self.job_result = self.ingester.load_raw_aw1_file()
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""

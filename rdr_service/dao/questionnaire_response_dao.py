@@ -57,7 +57,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -132,7 +133,6 @@ class QuestionnaireResponseDao(BaseDao):
             return result
 
     def _validate_model(self, session, obj):  # pylint: disable=unused-argument
-        _validate_consent_pdfs(json.loads(obj.resource))
         if not obj.questionnaireId:
             raise BadRequest("QuestionnaireResponse.questionnaireId is required.")
         if not obj.questionnaireVersion:
@@ -330,6 +330,10 @@ class QuestionnaireResponseDao(BaseDao):
             if not consent_code.codeId in code_ids:
                 raise BadRequest(
                     f"Can't submit order for participant {questionnaire_response.participantId} without consent"
+                )
+            if not _validate_consent_pdfs(resource_json):
+                raise BadRequest(
+                    f"Unable to find signed consent-for-enrollment file for participant"
                 )
             raise_if_withdrawn(participant)
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
@@ -610,6 +614,29 @@ class QuestionnaireResponseDao(BaseDao):
         else:
             return status_map[fhir_response.status]
 
+    @classmethod
+    def _extension_from_fhir_object(cls, fhir_extension):
+        # Get the non-empty values from the FHIR extension object for the url field and
+        # any field with a name that starts with "value"
+        fhir_fields = fhir_extension.__dict__
+        filtered_values = {}
+        for name, value in fhir_fields.items():
+            if value is not None and (name == 'url' or name.startswith('value')):
+                filtered_values[name] = value
+
+        return QuestionnaireResponseExtension(**filtered_values)
+
+    @classmethod
+    def extension_models_from_fhir_objects(cls, fhir_extensions):
+        if fhir_extensions:
+            try:
+                return [cls._extension_from_fhir_object(extension) for extension in fhir_extensions]
+            except TypeError:
+                logging.warning('Unexpected extension value', exc_info=True)
+                return []
+        else:
+            return []
+
     def from_client_json(self, resource_json, participant_id=None, client_id=None):
         # pylint: disable=unused-argument
         # Parse the questionnaire response, but preserve the original response when persisting
@@ -659,6 +686,7 @@ class QuestionnaireResponseDao(BaseDao):
             # Now add the child answers, using the IDs in code_id_map
             self._add_answers(qr, code_id_map, answers)
 
+        qr.extensions = self.extension_models_from_fhir_objects(fhir_qr.extension)
         return qr
 
     @staticmethod
@@ -799,6 +827,7 @@ def _validate_consent_pdfs(resource):
     except AttributeError:
         pass
 
+    found_pdf = False
     for extension in resource.get("extension", []):
         if extension["url"] != _SIGNED_CONSENT_EXTENSION:
             continue
@@ -809,7 +838,15 @@ def _validate_consent_pdfs(resource):
         # Treat the value as a bucket-relative path, allowing a leading slash or not.
         if not local_pdf_path.startswith("/"):
             local_pdf_path = "/" + local_pdf_path
+
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
+        found_pdf = True
+
+    if config.GAE_PROJECT == 'localhost':
+        # Pretend we found a valid consent if we're running on a development machine
+        return True
+    else:
+        return found_pdf
 
 
 def _raise_if_gcloud_file_missing(path):

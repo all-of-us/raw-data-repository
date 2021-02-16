@@ -1,5 +1,6 @@
 import datetime
 from flask import Flask
+import requests
 import unittest
 
 import mock
@@ -331,6 +332,36 @@ class AppUtilTest(BaseTestCase):
         with Flask('test').test_request_context(headers={'Authorization': 'Bearer token123'}),\
                 self.assertRaises(Unauthorized):
             app_util.get_oauth_id()
+
+    @mock.patch('rdr_service.app_util.GAE_PROJECT', 'definitely_the_server')
+    @mock.patch('rdr_service.app_util.requests')
+    def test_auth_request_connection_error_retry(self, mock_requests):
+        """
+        Make sure the authentication logic tries again if there's a connection error
+        (we're seeing an occasional bad response from google)
+        """
+
+        call_count = 0
+        expected_user_email = 'test@me.com'
+
+        def mock_response(_):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise requests.exceptions.ConnectionError(
+                    "Auth retry loop should be able to handle a pair of errors and keep going"
+                )
+            else:
+                response = mock.MagicMock()
+                response.status_code = 200
+                response.json.return_value = {'email': expected_user_email}
+
+                return response
+        mock_requests.get.side_effect = mock_response
+
+        # Need a request context for app_util to get a token from
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
+            self.assertEqual(expected_user_email, app_util.get_oauth_id())
 
 
 

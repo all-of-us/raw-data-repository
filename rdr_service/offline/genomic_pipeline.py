@@ -352,22 +352,57 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
         return manifest_file
 
 
-def dispatch_genomic_job_from_task(_task_data: JSONObject):
+def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     """
     Entrypoint for new genomic manifest file pipelines
     Sets up the genomic manifest file record and begin pipeline
+    :param project_id:
     :param _task_data: dictionary of metadata needed by the controller
     """
-    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION, GenomicJob.AW5_ARRAY_MANIFEST,
-                          GenomicJob.AW5_WGS_MANIFEST):
 
+    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION, GenomicJob.AW5_ARRAY_MANIFEST,
+                          GenomicJob.AW5_WGS_MANIFEST, GenomicJob.AW1F_MANIFEST):
+
+        # Ingestion Job
         with GenomicJobController(_task_data.job,
-                                  task_data=_task_data) as controller:
+                                  task_data=_task_data,
+                                  bq_project_id=project_id) as controller:
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
 
             controller.ingest_specific_manifest(file_name)
 
+        if _task_data.job == GenomicJob.AW1_MANIFEST:
+            # count records for AW1 manifest in new job
+            _task_data.job = GenomicJob.CALCULATE_RECORD_COUNT_AW1
+            dispatch_genomic_job_from_task(_task_data)
+
+    if _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
+        # Calculate manifest record counts job
+        with GenomicJobController(_task_data.job,
+                                  bq_project_id=project_id) as controller:
+
+            logging.info("Calculating record count for AW1 manifest...")
+
+            rec_count = controller.manifest_file_dao.count_records_for_manifest_file(
+                _task_data.manifest_file
+            )
+
+            controller.manifest_file_dao.update_record_count(
+                _task_data.manifest_file,
+                rec_count,
+                project_id=project_id
+            )
+
     else:
         logging.error(f'No task for {_task_data.job}')
+
+
+def load_aw1_manifest_into_raw_table(file_path, project_id=None, provider=None):
+
+    with GenomicJobController(GenomicJob.LOAD_AW1_TO_RAW_TABLE,
+                              bq_project_id=project_id,
+                              storage_provider=provider) as controller:
+
+        controller.load_raw_aw1_data_from_filepath(file_path)

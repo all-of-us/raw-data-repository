@@ -1,8 +1,10 @@
 import datetime
+from unittest import mock
 
 import pytz
 from dateutil import parser
 
+from rdr_service.services.system_utils import JSONObject
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service import clock
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -12,7 +14,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetMemberDao,
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
-)
+    GenomicManifestFileDao)
 from rdr_service.model.participant import Participant
 
 from rdr_service.model.genomics import (
@@ -326,3 +328,62 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 
         self.send_post(local_path, request_data=payload, expected_status=404)
 
+
+class GenomicCloudTasksApiTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicCloudTasksApiTest, self).setUp()
+
+        self.manifest_file_dao = GenomicManifestFileDao()
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
+    def test_calculate_record_count_task_api(self, dispatch_job_mock):
+
+        manifest = self.data_generator.create_database_genomic_manifest_file()
+
+        # Payload for caculate record count task endpoint
+        data = {"manifest_file_id": manifest.id}
+
+        from rdr_service.resource import main as resource_main
+        resource_main.app.testing = True
+        self.send_post(
+            local_path='CalculateRecordCountTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        # Expected payload from task API to dispatch_genomic_job_from_task
+        expected_payload = {
+            "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
+            "manifest_file": manifest
+        }
+
+        expected_payload = JSONObject(expected_payload)
+
+        called_json_obj = dispatch_job_mock.call_args[0][0]
+
+        self.assertEqual(
+            expected_payload.manifest_file.id,
+            called_json_obj.manifest_file.id
+        )
+        self.assertEqual(
+            expected_payload.job,
+            called_json_obj.job)
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
+    def test_load_aw1_raw_data_task_api(self, load_raw_aw1_data_mock):
+
+        # Payload for loading AW1 raw data
+        test_file_path = "test-bucket-name/test_aw1_file.csv"
+        data = {"file_path": test_file_path}
+
+        from rdr_service.resource import main as resource_main
+        resource_main.app.testing = True
+        self.send_post(
+            local_path='LoadRawAW1ManifestDataAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        load_raw_aw1_data_mock.assert_called_with(test_file_path)

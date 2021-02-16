@@ -41,6 +41,8 @@ class QuestionnaireResponse(Base):
         server_default=text(str(int(QuestionnaireResponseStatus.COMPLETED)))
     )
     answers = relationship("QuestionnaireResponseAnswer", cascade="all, delete-orphan")
+    extensions = relationship('QuestionnaireResponseExtension')
+
     __table_args__ = (
         ForeignKeyConstraint(
             ["questionnaire_id", "questionnaire_version"],
@@ -90,3 +92,21 @@ class QuestionnaireResponseAnswer(Base):
     valueDate = Column("value_date", Date)
     valueDateTime = Column("value_datetime", UTCDateTime)
     valueUri = Column("value_uri", String(1024))
+
+
+class QuestionnaireResponseExtension(Base):
+    """
+    Extension object provided with a questionnaire response payload, fields derived from the FHIR 1.0.6 standard
+    """
+    __tablename__ = "questionnaire_response_extension"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    questionnaireResponseId = Column(
+        "questionnaire_response_id",
+        Integer,
+        ForeignKey(QuestionnaireResponse.questionnaireResponseId),
+        nullable=False
+    )
+
+    url = Column(String(1024))
+    valueCode = Column('value_code', String(512))
+    valueString = Column('value_string', String(512))

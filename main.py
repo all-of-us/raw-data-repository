@@ -8,13 +8,6 @@ import subprocess
 import os
 
 
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    try:
-        import googleclouddebugger
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
-
 def print_service_list():
     print("Possible services are --flask, --gunicorn and --service.")
 
@@ -32,6 +25,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.unittests:
+        from tests.helpers.mysql_helper import configure_unittest_connection_string
+        configure_unittest_connection_string()
         os.environ["UNITTEST_FLAG"] = "1"
     env = dict(os.environ)
 

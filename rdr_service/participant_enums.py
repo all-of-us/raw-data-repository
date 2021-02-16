@@ -645,8 +645,13 @@ class GenomicJob(messages.Enum):
     FEEDBACK_SCAN = 30
     RECALCULATE_CONTAMINATION_CATEGORY = 31
 
-    AW5_ARRAY_MANIFEST = 32
-    AW5_WGS_MANIFEST = 33
+    CALCULATE_RECORD_COUNT_AW1 = 32
+    CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
+
+    LOAD_AW1_TO_RAW_TABLE = 34
+    
+    AW5_ARRAY_MANIFEST = 35
+    AW5_WGS_MANIFEST = 36
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -726,8 +731,9 @@ class GenomicManifestTypes(messages.Enum):
     GEM_A2 = 11
     AW4_ARRAY = 12
     AW4_WGS = 13
-    AW5_ARRAY = 14
-    AW5_WGS = 15
+    AW1F = 14
+    AW5_ARRAY = 15
+    AW5_WGS = 16
 
 
 class GenomicContaminationCategory(messages.Enum):

@@ -1,5 +1,6 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.etl.model.src_clean import TemporaryQuestionnaireResponse
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
     BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
@@ -7,6 +8,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
+from rdr_service.model.genomics import GenomicManifestFile
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -100,6 +102,11 @@ class DataGenerator:
         self._commit_to_database(questionnaire_response)
         return questionnaire_response
 
+    def create_database_duplicate_temp_questionnaire_response(self, questionnaire_response, **kwargs):
+        tmp_questionnaire_response = self._tmp_questionnaire_response(questionnaire_response, **kwargs)
+        self._commit_to_database(tmp_questionnaire_response)
+        return tmp_questionnaire_response
+
     def _questionnaire_response(self, **kwargs):
         for field, default in [('created', datetime.now()),
                                ('resource', 'test'),
@@ -112,6 +119,19 @@ class DataGenerator:
             kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
 
         return QuestionnaireResponse(**kwargs)
+
+    def _tmp_questionnaire_response(self, questionnaire_response, **kwargs):
+        for field, default in [('created', datetime.now()),
+                               ('duplicate', 1),
+                               ('removed', None),
+                               ('identifier', 'test-id')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'questionnaireResponseId' not in kwargs:
+            kwargs['questionnaireResponseId'] = questionnaire_response.questionnaireResponseId
+
+        return TemporaryQuestionnaireResponse(**kwargs)
 
     def create_database_questionnaire_question(self, **kwargs):
         questionnaire_question = self._questionnaire_question(**kwargs)
@@ -480,3 +500,11 @@ class DataGenerator:
             module_code = self.create_database_code()
             kwargs['codeId'] = module_code.codeId
         return Survey(**kwargs)
+
+    def create_database_genomic_manifest_file(self, **kwargs):
+        manifest = self._genomic_manifest_file(**kwargs)
+        self._commit_to_database(manifest)
+        return manifest
+
+    def _genomic_manifest_file(self, **kwargs):
+        return GenomicManifestFile(**kwargs)
