@@ -48,8 +48,10 @@ BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
 MYSQL_HOST = "127.0.0.1"  # Do not use 'localhost', we want to force using an IP socket.
 MYSQL_PORT = os.getenv('RDR_UNITTEST_SQL_SERVER_PORT', 10010)
 
-db_conn_str = f'mysql+mysqldb://root@{MYSQL_HOST}:{MYSQL_PORT}/?charset=utf8'
-config.override_setting('unittest_db_connection_string', db_conn_str)
+
+def configure_unittest_connection_string():
+    db_conn_str = f'mysql+mysqldb://root@{MYSQL_HOST}:{MYSQL_PORT}/?charset=utf8'
+    config.override_setting('unittest_db_connection_string', db_conn_str)
 
 
 def start_mysql_instance():
@@ -147,8 +149,10 @@ def _initialize_database(with_data=True, with_consent_codes=False):
     :param with_data: Populate with basic data
     :param with_consent_codes: Populate with consent codes.
     """
-    # Set this so the database factory knows to use the unittest connection string from the config.
+
+    # Set these so the database factory knows to connect to the unittest mysql server instance.
     os.environ["UNITTEST_FLAG"] = "1"
+    configure_unittest_connection_string()
 
     database = database_factory.get_database(db_name=None)
     engine = database.get_engine()
