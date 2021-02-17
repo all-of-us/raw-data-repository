@@ -1,0 +1,3 @@
+biobank_id,sample_id,biobankidsampleid,sex_at_birth,site_id,aw2_filename,vcf_hf,vcf_hf_index,vcf_hf_md5,vcf_raw,vcf_raw_index,vcf_raw_md5,cram,cram_md5,crai,gvcf,gvcf_md5
+T1,1001,,,,,D,D,D,D,D,D,D,D,D,,
+T2,1002,,,,,D,ND,D,D,ND,D,D,ND,D,,

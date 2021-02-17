@@ -74,6 +74,10 @@ class GenomicSetDao(UpdatableDao):
         else:
             return 1
 
+    def get_max_set(self):
+        with self.session() as s:
+            return s.query(functions.max(GenomicSet.id)).one()[0]
+
     def iter_validation_data_for_genomic_set_id(self, genomic_set_id):
         """
     Iterate over validation data rows.
@@ -334,6 +338,22 @@ class GenomicSetMemberDao(UpdatableDao):
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
+                GenomicSetMember.genomeType == genome_type,
+            ).first()
+        return member
+
+    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id, genome_type):
+        """
+        Retrieves a genomic set member record matching the biobank Id
+        :param biobank_id:
+        :param sample_id:
+        :param genome_type:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId == biobank_id,
+                GenomicSetMember.sampleId == sample_id,
                 GenomicSetMember.genomeType == genome_type,
             ).first()
         return member
@@ -898,6 +918,25 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         }
         # The mapping between the columns in the DB and the data to ingest
 
+        self.deleted_flag_mappings = {
+            'idatRedDeleted': 'redidat',
+            'idatRedMd5Deleted': 'redidatmd5',
+            'idatGreenDeleted': 'greenidat',
+            'idatGreenMd5Deleted': 'greenidatmd5',
+            'vcfDeleted': 'vcf',
+            'vcfTbiDeleted': 'vcfindex',
+            'vcfMd5Deleted': 'vcfmd5',
+            'hfVcfDeleted': 'vcfhf',
+            'hfVcfTbiDeleted': 'vcfhfindex',
+            'hfVcfMd5Deleted': 'vcfhfmd5',
+            'rawVcfDeleted': 'vcfraw',
+            'rawVcfTbiDeleted': 'vcfrawindex',
+            'rawVcfMd5Deleted': 'vcfrawmd5',
+            'cramDeleted': 'cram',
+            'cramMd5Deleted': 'crammd5',
+            'craiDeleted': 'crai',
+        }
+
     def get_id(self, obj):
         return obj.id
 
@@ -917,6 +956,27 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 gc_metrics_obj.__setattr__(key, None)
 
         logging.info(f'Inserting GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
+        upserted_metrics_obj = self.upsert(gc_metrics_obj)
+
+        return upserted_metrics_obj
+
+    def update_gc_validation_metrics_deleted_flags_from_dict(self, data_to_upsert, existing_id):
+        """
+        Upsert a GC validation metrics object
+        :param data_to_upsert: dictionary of row-data from AW2 file to insert
+        :param existing_id: an existing metrics ID
+        :return: upserted metrics object
+        """
+        gc_metrics_obj = GenomicGCValidationMetrics()
+        gc_metrics_obj.id = existing_id
+        for key in self.deleted_flag_mappings.keys():
+            try:
+                gc_metrics_obj.__setattr__(key, 1 if data_to_upsert[self.deleted_flag_mappings[key]] == 'D' else 0)
+            except KeyError:
+                # if the key is not in the file, do nothing
+                pass
+
+        logging.info(f'Updating deletion flag of GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
         upserted_metrics_obj = self.upsert(gc_metrics_obj)
 
         return upserted_metrics_obj

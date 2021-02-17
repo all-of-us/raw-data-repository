@@ -15,6 +15,7 @@ import sqlalchemy
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
     bq_genomic_set_update, bq_genomic_file_processed_update, bq_genomic_manifest_file_update
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.genomic.genomic_queries import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 
 from rdr_service import clock
@@ -269,6 +270,9 @@ class GenomicFileIngester:
 
             if self.job_id in [GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST]:
                 return self._ingest_aw1c_manifest(data_to_ingest)
+
+            if self.job_id in [GenomicJob.AW5_ARRAY_MANIFEST, GenomicJob.AW5_WGS_MANIFEST]:
+                return self._ingest_aw5_manifest(data_to_ingest)
 
         else:
             logging.info("No data to ingest.")
@@ -1035,6 +1039,41 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _ingest_aw5_manifest(self, file_data):
+        try:
+            for row in file_data['rows']:
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                biobank_id = row_copy['biobankid']
+                biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
+                sample_id = row_copy['sampleid']
+
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
+                                                                                  self.file_validator.genome_type)
+                if not member:
+                    logging.warning(f'can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skip this one')
+                    continue
+
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    logging.warning(f'can not find metrics record for member id: '
+                                    f'{member.id}, skip this one')
+                    continue
+
+                updated_obj = self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy,
+                                                                                                    metric_id)
+
+                # Update GC Metrics for PDR
+                if updated_obj:
+                    bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(updated_obj.id)
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     def _ingest_aw1c_manifest(self, file_data):
         """
         Processes the CVL AW1C manifest file data
@@ -1351,6 +1390,42 @@ class GenomicFileValidator:
             "qcstatus",
         )
 
+        self.AW5_WGS_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "vcfhf",
+            "vcfhfindex",
+            "vcfhfmd5",
+            "vcfraw",
+            "vcfrawindex",
+            "vcfrawmd5",
+            "cram",
+            "crammd5",
+            "crai",
+            "gvcf",
+            "gvcfmd5",
+        }
+
+        self.AW5_ARRAY_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "redidat",
+            "redidatmd5",
+            "greenidat",
+            "greenidatmd5",
+            "vcf",
+            "vcfindex",
+            "vcfmd5",
+        }
+
     def validate_ingestion_file(self, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
@@ -1494,6 +1569,14 @@ class GenomicFileValidator:
                 filename_components[2] == 'seq'
             )
 
+        def aw5_wgs_manifest_name_rule(fn):
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
+
+        def aw5_array_manifest_name_rule(fn):
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
@@ -1506,6 +1589,8 @@ class GenomicFileValidator:
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
+            GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
+            GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -1563,6 +1648,14 @@ class GenomicFileValidator:
 
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
                 return self.GC_MANIFEST_SCHEMA
+
+            if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
+                return self.AW5_WGS_SCHEMA
+
+            if self.job_id == GenomicJob.AW5_ARRAY_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['gen']
+                return self.AW5_ARRAY_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
@@ -2033,6 +2126,7 @@ class GenomicBiobankSamplesCoupler:
         self.code_dao = CodeDao()
         self.run_id = run_id
         self.controller = controller
+        self.query = GenomicQueryClass()
 
     def create_new_genomic_participants(self, from_date):
         """
@@ -2052,6 +2146,26 @@ class GenomicBiobankSamplesCoupler:
         else:
             logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
+
+    def create_saliva_genomic_participants(self, local=False, config=None):
+        """
+        This method determines which samples to enter into
+        the genomic system that are saliva only, via the
+        config obj passed in the argument.
+
+        :param: config : options for ror consent type and denoting if sample was generated in-home or in-clinic
+        :return: result
+        """
+        participants = self._get_remaining_saliva_participants(config)
+
+        if len(participants) > 0:
+            return self.create_matrix_and_process_samples(participants, cohort=None, local=local, saliva=True)
+
+        else:
+            logging.info(
+                f'Saliva Participant Workflow: No participants to process.')
+            return GenomicSubProcessResult.NO_FILES
+
 
     def create_c2_genomic_participants(self, from_date, local=False):
         """
@@ -2094,7 +2208,7 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def process_samples_into_manifest(self, samples_meta, cohort, local=False):
+    def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples_meta:
@@ -2108,6 +2222,7 @@ class GenomicBiobankSamplesCoupler:
 
         # Create genomic set members
         for i, bid in enumerate(samples_meta.bids):
+
             # Don't write participant to table if no sample
             if samples_meta.sample_ids[i] == 0:
                 continue
@@ -2131,6 +2246,10 @@ class GenomicBiobankSamplesCoupler:
             # Get NY flag for mail-kit
             elif samples_meta.state_ids[i]:
                 _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
+
+            # default ny flag if no state id
+            elif not samples_meta.state_ids[i]:
+                _ny_flag = 0
 
             else:
                 logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
@@ -2168,7 +2287,8 @@ class GenomicBiobankSamplesCoupler:
                 return new_genomic_set.id
             else:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                                cohort_id=cohort)
+                                                                cohort_id=cohort,
+                                                                saliva=saliva)
 
             # Handle Genomic States for manifests
             for member in self.member_dao.get_members_from_set_id(new_genomic_set.id):
@@ -2183,7 +2303,7 @@ class GenomicBiobankSamplesCoupler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def create_matrix_and_process_samples(self, participants, cohort, local):
+    def create_matrix_and_process_samples(self, participants, cohort, local, saliva=False):
         """
         Wrapper method for processing participants for C1 and C2 manifests
         :param cohort:
@@ -2191,11 +2311,15 @@ class GenomicBiobankSamplesCoupler:
         :param local:
         :return:
         """
+
         participant_matrix = self.GenomicSampleMeta(*participants)
 
         for i, _bid in enumerate(participant_matrix.bids):
             logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
-            blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
+
+            blood_sample_data = None
+            if not saliva:
+                blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
                                                               bid=_bid)
 
             saliva_sample_data = self._get_usable_saliva_sample(pid=participant_matrix.pids[i],
@@ -2214,7 +2338,12 @@ class GenomicBiobankSamplesCoupler:
                 logging.info(f'No valid samples for pid {participant_matrix.pids[i]}.')
 
         # insert new members and make the manifest
-        return self.process_samples_into_manifest(participant_matrix, cohort=cohort, local=local)
+        return self.process_samples_into_manifest(
+            participant_matrix,
+            cohort=cohort,
+            saliva=saliva,
+            local=local
+        )
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -2226,62 +2355,8 @@ class GenomicBiobankSamplesCoupler:
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
 
-        _new_samples_sql = """
-        SELECT DISTINCT
-          ss.biobank_id,
-          p.participant_id,
-          o.biobank_order_id,
-          o.collected_site_id,
-          mk.state_id,
-          ss.biobank_stored_sample_id,
-          CASE
-            WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-          END as valid_withdrawal_status,
-          CASE
-            WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
-          END as valid_suspension_status,
-          CASE
-            WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-          END as general_consent_given,
-          CASE
-            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-          END AS valid_age,
-          CASE
-            WHEN c.value = "SexAtBirth_Male" THEN "M"
-            WHEN c.value = "SexAtBirth_Female" THEN "F"
-            ELSE "NA"
-          END as sab,
-          CASE
-            WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
-          END AS gror_consent,
-          CASE
-              WHEN native.participant_id IS NULL THEN 1 ELSE 0
-          END AS valid_ai_an,
-          ss.status,
-          ss.test
-        FROM
-            biobank_stored_sample ss
-            JOIN participant p ON ss.biobank_id = p.biobank_id
-            JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
-            JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
-            JOIN participant_summary ps ON ps.participant_id = p.participant_id
-            JOIN code c ON c.code_id = ps.sex_id
-            LEFT JOIN (
-              SELECT ra.participant_id
-              FROM participant_race_answers ra
-                  JOIN code cr ON cr.code_id = ra.code_id
-                      AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-            ) native ON native.participant_id = p.participant_id
-            LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-            LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
-        WHERE TRUE
-            AND ss.test in ('1ED04', '1ED10', '1SAL2')
-            AND ss.rdr_created > :from_date_param
-            AND ps.consent_cohort = :cohort_3_param
-            AND ps.participant_origin != 'careevolution'
-            AND m.id IS NULL
-        """
+        _new_samples_sql = self.query.new_biobank_samples()
+
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
@@ -2298,6 +2373,7 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_new_samples_sql, params).fetchall()
 
         result = self._prioritize_samples_by_participant(result)
+
         return list(zip(*result))[:-2]  # Slicing to remove the last two columns retrieved for prioritization
 
     def _prioritize_samples_by_participant(self, sample_results):
@@ -2344,7 +2420,6 @@ class GenomicBiobankSamplesCoupler:
         logging.error(f'Should have been able to select between '
                       f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
 
-
     def _get_new_c2_participants(self, from_date):
         """
         Retrieves C2 participants and validation data.
@@ -2352,67 +2427,7 @@ class GenomicBiobankSamplesCoupler:
         :param from_date:
         :return:
         """
-        _c2_participant_sql = """
-            SELECT DISTINCT
-              ps.biobank_id,
-              ps.participant_id,
-              0 AS biobank_order_id,
-              0 AS collected_site_id,
-              NULL as state_id,
-              0 AS biobank_stored_sample_id,
-              CASE
-                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-              END as valid_withdrawal_status,
-              CASE
-                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
-              END as valid_suspension_status,
-              CASE
-                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-              END as general_consent_given,
-              CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-              END AS valid_age,
-              CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
-              END as sab,
-              CASE
-                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
-              END AS gror_consent,
-              CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
-            FROM
-                participant_summary ps
-                JOIN code c ON c.code_id = ps.sex_id
-                LEFT JOIN (
-                  SELECT ra.participant_id
-                  FROM participant_race_answers ra
-                      JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-                ) native ON native.participant_id = ps.participant_id
-                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-            WHERE TRUE
-                AND (
-                        ps.sample_status_1ed04 = :sample_status_param
-                        OR
-                        ps.sample_status_1sal2 = :sample_status_param
-                    )
-                AND ps.consent_cohort = :cohort_2_param
-                AND ps.questionnaire_on_dna_program_authored > :from_date_param
-                AND ps.questionnaire_on_dna_program = :general_consent_param
-                AND m.id IS NULL
-            HAVING TRUE
-                # Validations for Cohort 2
-                AND valid_ai_an = 1
-                AND valid_age = 1
-                AND general_consent_given = 1
-                AND valid_suspension_status = 1
-                AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id
-        """
+        _c2_participant_sql = self.query.new_c2_participants()
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -2431,78 +2446,33 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
+    def _get_remaining_c2_participants(self):
+
+        _c2_participant_sql = self.query.remaining_c2_participants()
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
+        }
+
+        with self.ps_dao.session() as session:
+            result = session.execute(_c2_participant_sql, params).fetchall()
+
+        return list([list(r) for r in zip(*result)])
+
     def _get_new_c1_participants(self, from_date):
         """
         Retrieves C1 participants and validation data.
         :param from_date:
         :return:
         """
-        _c1_participant_sql = """
-            SELECT DISTINCT
-              ps.biobank_id,
-              ps.participant_id,
-              0 AS biobank_order_id,
-              0 AS collected_site_id,
-              NULL as state_id,
-              0 AS biobank_stored_sample_id,
-              CASE
-                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-              END as valid_withdrawal_status,
-              CASE
-                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
-              END as valid_suspension_status,
-              CASE
-                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-              END as general_consent_given,
-              CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-              END AS valid_age,
-              CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
-              END as sab,
-              CASE
-                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
-              END AS gror_consent,
-              CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
-            FROM
-                participant_summary ps
-                JOIN code c ON c.code_id = ps.sex_id
-                LEFT JOIN (
-                  SELECT ra.participant_id
-                  FROM participant_race_answers ra
-                      JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-                ) native ON native.participant_id = ps.participant_id
-                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-                JOIN questionnaire_response qr
-                    ON qr.participant_id = ps.participant_id
-                JOIN questionnaire_response_answer qra
-                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
-                JOIN code recon ON recon.code_id = qra.value_code_id
-                    AND recon.value = :c1_reconsent_param
-            WHERE TRUE
-                AND (
-                        ps.sample_status_1ed04 = :sample_status_param
-                        OR
-                        ps.sample_status_1sal2 = :sample_status_param
-                    )
-                AND ps.consent_cohort = :cohort_1_param
-                AND qr.authored > :from_date_param
-                AND m.id IS NULL
-            HAVING TRUE
-                # Validations for Cohort 1
-                AND valid_ai_an = 1
-                AND valid_age = 1
-                AND general_consent_given = 1
-                AND valid_suspension_status = 1
-                AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id
-        """
+        _c1_participant_sql = self.query.new_c1_participants()
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -2529,23 +2499,7 @@ class GenomicBiobankSamplesCoupler:
         :param bid: biobank_id
         :return: tuple(blood_collected date, blood sample, blood site, blood order)
         """
-        _samples_sql = """
-            # Latest 1ED04 or 1ED10 Sample
-            SELECT ssed.biobank_stored_sample_id AS blood_sample
-                , oed.collected_site_id AS blood_site
-                , oed.biobank_order_id AS blood_order
-                , ssed.test, ssed.status
-            FROM biobank_stored_sample ssed
-                JOIN biobank_order_identifier edid ON edid.value = ssed.biobank_order_identifier
-                JOIN biobank_order oed ON oed.biobank_order_id = edid.biobank_order_id
-                JOIN biobank_ordered_sample oeds ON oed.biobank_order_id = oeds.order_id
-                    AND ssed.test = oeds.test
-            WHERE TRUE
-                and ssed.biobank_id = :bid_param
-                and ssed.test in ("1ED04", "1ED10")
-                and ssed.status < 13
-            ORDER BY oeds.collected DESC
-            """
+        _samples_sql = self.query.usable_blood_sample()
 
         params = {
             "pid_param": pid,
@@ -2564,30 +2518,7 @@ class GenomicBiobankSamplesCoupler:
         :param bid: biobank_id
         :return: tuple(saliva date, saliva sample, saliva site, saliva order)
         """
-        _samples_sql = """
-            # Max 1SAL2 Sample
-            select sssal.biobank_stored_sample_id AS saliva_sample
-                , osal.collected_site_id AS saliva_site
-                , osal.biobank_order_id AS saliva_order
-                , sssal.test, sssal.status
-            FROM biobank_order osal
-                JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
-                JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
-                    AND sal2.test = "1SAL2"
-                JOIN biobank_stored_sample sssal ON salid.value = sssal.biobank_order_identifier
-            WHERE TRUE
-                and sssal.biobank_id = :bid_param
-                and sssal.status < 13
-                and sssal.test = "1SAL2"
-                and sal2.collected = (
-                    SELECT MAX(os.collected)
-                    FROM biobank_ordered_sample os
-                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                    WHERE os.test = "1SAL2"
-                            AND o.participant_id = :pid_param
-                        GROUP BY o.participant_id
-                    )
-            """
+        _samples_sql = self.query.usable_saliva_sample()
 
         params = {
             "pid_param": pid,
@@ -2598,6 +2529,26 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_samples_sql, params).first()
 
         return result
+
+    def _get_remaining_saliva_participants(self, config):
+
+        _saliva_sql = self.query.remaining_saliva_participants(config)
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
+        }
+
+        with self.samples_dao.session() as session:
+            result = session.execute(_saliva_sql, params).fetchall()
+
+        return list([list(r) for r in zip(*result)])
+
 
     def _create_new_genomic_set(self):
         """Inserts a new genomic set for this run"""
