@@ -1662,10 +1662,11 @@ class CompareIngestionAW2Class(GenomicManifestBase):
 
         _logger.info('Outputting csv: {}/{}'.format(os.getcwd(), filename))
 
+
 class LoadRawManifest(GenomicManifestBase):
     """
     Loads a manifest in GCS to the raw manifest table
-    currently only supports AW1 manifests
+    currently only supports AW1/AW2 manifests
     """
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(LoadRawManifest, self).__init__(args, gcp_env)
@@ -1676,16 +1677,41 @@ class LoadRawManifest(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicJobRunDao()
 
-        # TODO: Implement execution for a list of AW1 files
+        manifest_list = []
+
+        if not self.args.manifest_file and not self.args.csv:
+            _logger.error('Either --manifest-file or --csv required')
+            return 1
+
+        if self.args.manifest_file and self.args.csv:
+            _logger.error('--manifest-file and --csv required cannot be used together')
+            return 1
 
         if self.args.manifest_file:
-            genomic_pipeline.load_aw1_manifest_into_raw_table(
-                file_path=self.args.manifest_file,
-                project_id=self.gcp_env.project,
-                provider=self.gscp
-            )
+            manifest_list.append(self.args.manifest_file)
+
+        else:
+            # Validate csv file exists
+            if not os.path.exists(self.args.csv):
+                _logger.error(f'File {self.args.csv} was not found.')
+                return 1
+
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    manifest_list.append(line.strip())
+
+        if manifest_list:
+            for manifest_path in manifest_list:
+                genomic_pipeline.load_awn_manifest_into_raw_table(
+                    manifest_type=self.args.manifest_type.lower(),
+                    file_path=manifest_path,
+                    project_id=self.gcp_env.project,
+                    provider=self.gscp
+                )
 
         return 0
+
 
 def get_process_for_run(args, gcp_env):
 
@@ -1877,17 +1903,22 @@ def run():
     load_raw_manifest.add_argument(
         "--manifest-file",
         help="The full 'bucket/subfolder/file.ext to process'",
+        default=None, required=False
+    )  # noqa
+
+    load_raw_manifest.add_argument(
+        "--manifest-type",
+        help="The manifest type to load [aw1, aw2]",
         default=None, required=True
     )  # noqa
 
-    # TODO: Implement execution for a list of AW1 files
-    # load_raw_manifest.add_argument(
-    #     "--csv",
-    #     help="A CSV file of manifest file paths: "
-    #          "[bucket/subfolder/file.ext to process]",
-    #     default=None,
-    #     required=False
-    # )  # noqa
+    load_raw_manifest.add_argument(
+        "--csv",
+        help="A CSV file of manifest file paths: "
+             "[bucket/subfolder/file.ext to process]",
+        default=None,
+        required=False
+    )  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")

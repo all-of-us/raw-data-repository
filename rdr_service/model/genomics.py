@@ -414,6 +414,46 @@ event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW1Raw, 'before_update', model_update_listener)
 
 
+class GenomicAW2Raw(Base):
+    """
+    Raw text data from AW2 files
+    """
+    __tablename__ = 'genomic_aw2_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    # Raw AW2 Data
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    biobankidsampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    genome_coverage = Column(String(255), nullable=True)
+    aouhdr_coverage = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    aligned_q30_bases = Column(String(255), nullable=True)
+    array_concordance = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    notes = Column(String(255), nullable=True)
+    chipwellbarcode = Column(String(255), nullable=True)
+    call_rate = Column(String(255), nullable=True)
+
+
+event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW2Raw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from

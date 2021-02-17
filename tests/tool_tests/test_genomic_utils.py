@@ -48,18 +48,20 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
     def setUp(self):
         super(GenomicUtilsGeneralTest, self).setUp()
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_aw1_manifest_into_raw_table')
-    def test_load_aw1_manifest_into_raw_table(self, load_job_mock):
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
+    def test_load_manifest_into_raw_table(self, load_job_mock):
 
         test_file = "test-bucket/test_folder/test_manifest_file.csv"
 
         GenomicUtilsGeneralTest.run_tool(LoadRawManifest, tool_args={
             'command': 'load-raw-manifest',
             'manifest_file': test_file,
+            'manifest_type': 'aw1',
         })
 
         for call in load_job_mock.call_args_list:
             _, kwargs = call
 
             self.assertEqual(test_file, kwargs['file_path'])
+            self.assertEqual("aw1", kwargs['manifest_type'])
 

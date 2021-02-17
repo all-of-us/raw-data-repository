@@ -399,10 +399,15 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         logging.error(f'No task for {_task_data.job}')
 
 
-def load_aw1_manifest_into_raw_table(file_path, project_id=None, provider=None):
+def load_awn_manifest_into_raw_table(file_path, manifest_type, project_id=None, provider=None):
 
-    with GenomicJobController(GenomicJob.LOAD_AW1_TO_RAW_TABLE,
+    jobs = {
+        "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
+        "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
+    }
+
+    with GenomicJobController(jobs[manifest_type],
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
 
-        controller.load_raw_aw1_data_from_filepath(file_path)
+        controller.load_raw_awn_data_from_filepath(file_path)

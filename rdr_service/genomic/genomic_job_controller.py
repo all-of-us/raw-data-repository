@@ -617,9 +617,10 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def load_raw_aw1_data_from_filepath(self, file_path):
+    def load_raw_awn_data_from_filepath(self, file_path):
         """
-        Loads raw AW1 data to genomic_aw1_raw
+        Loads raw AW1/AW2 data to genomic_aw1_raw/genomic_aw2_raw
+
         :param file_path: "bucket/folder/manifest_file.csv"
         :return:
         """
@@ -630,7 +631,7 @@ class GenomicJobController:
                                             target_file=file_path,
                                             _controller=self)
 
-        self.job_result = self.ingester.load_raw_aw1_file()
+        self.job_result = self.ingester.load_raw_awn_file()
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
