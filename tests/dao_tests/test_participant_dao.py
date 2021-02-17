@@ -599,7 +599,7 @@ class ParticipantDaoTest(BaseTestCase):
 
         # Use the error logging to know when the lock timout was triggered,
         # unlock the participant table after the first failure
-        mock_logging.error.side_effect = lambda *_, **__: self.session.commit()
+        mock_logging.warning.side_effect = lambda *_, **__: self.session.commit()
 
         test_client_id = 'lock_wait_test'  # Something unique to use to pull this specific participant from the db
         participant = self.data_generator._participant_with_defaults(
