@@ -77,6 +77,7 @@ from rdr_service.config import (
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
+    GENOME_TYPE_CVL,
     GENOME_TYPE_WGS,
     GAE_PROJECT,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
@@ -2760,23 +2761,32 @@ class ManifestDefinitionProvider:
         # CVL W1 Manifest
         if manifest_type == GenomicManifestTypes.CVL_W1:
             query_sql = (
+                # here
                 sqlalchemy.select(
                     [
-                        GenomicSet.genomicSetName,
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
                         GenomicSetMember.sexAtBirth,
                         GenomicSetMember.nyFlag,
                         GenomicGCValidationMetrics.siteId,
-                        sqlalchemy.bindparam('secondary_validation', None),
-                        sqlalchemy.bindparam('date_submitted', None),
-                        sqlalchemy.bindparam('test_name', 'aou_wgs'),
+                        ParticipantSummary.consentForGenomicsROR,
+                        sqlalchemy.bindparam('test_name', GENOME_TYPE_CVL),
+                        sqlalchemy.bindparam('informing_loop_hdr', "Y"),
+                        sqlalchemy.bindparam('informing_loop_pgx', "N"),
+                        GenomicGCValidationMetrics.aouHdrCoverage,
+                        GenomicGCValidationMetrics.contamination,
                     ]
                 ).select_from(
                     sqlalchemy.join(
-                        sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id),
+                        GenomicSet,
+                        GenomicSetMember,
+                        GenomicSetMember.genomicSetId == GenomicSet.id
+                    ).join(
                         GenomicGCValidationMetrics,
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ).join(
+                        ParticipantSummary,
+                        GenomicSetMember.participantId == ParticipantSummary.participantId
                     )
                 ).where(
                     (GenomicGCValidationMetrics.processingStatus == 'pass') &
@@ -2970,15 +2980,17 @@ class ManifestDefinitionProvider:
         columns = tuple()
         if manifest_type == GenomicManifestTypes.CVL_W1:
             columns = (
-                "genomic_set_name",
                 "biobank_id",
                 "sample_id",
                 "sex_at_birth",
                 "ny_flag",
                 "site_id",
-                "secondary_validation",
-                "date_submitted",
+                "consent_here_gror",
                 "test_name",
+                "informing_loop_hdr",
+                "informing_loop_pgx",
+                "aou_hdr_coverage",
+                "contamination",
             )
         elif manifest_type == GenomicManifestTypes.GEM_A1:
             columns = (
@@ -3208,7 +3220,9 @@ class ManifestCompiler:
             "record_count": integer
         """
         self.def_provider = ManifestDefinitionProvider(
-            job_run_id=self.run_id, bucket_name=self.bucket_name, kwargs=kwargs
+            job_run_id=self.run_id,
+            bucket_name=self.bucket_name,
+            kwargs=kwargs
         )
 
         self.manifest_def = self.def_provider.get_def(manifest_type)
