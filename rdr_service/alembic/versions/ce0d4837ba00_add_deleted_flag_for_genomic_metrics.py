@@ -1,8 +1,8 @@
-"""add deleted flag for genomic metrics table
+"""add deleted flag for genomic metrics
 
-Revision ID: 52cb853449f8
-Revises: 785e306d2950
-Create Date: 2021-02-03 12:18:46.433121
+Revision ID: ce0d4837ba00
+Revises: a41c2f2266cb
+Create Date: 2021-02-17 13:31:28.006077
 
 """
 from alembic import op
@@ -20,8 +20,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = '52cb853449f8'
-down_revision = '785e306d2950'
+revision = 'ce0d4837ba00'
+down_revision = 'a41c2f2266cb'
 branch_labels = None
 depends_on = None
 
