@@ -650,6 +650,9 @@ class GenomicJob(messages.Enum):
 
     LOAD_AW1_TO_RAW_TABLE = 34
 
+    AW5_ARRAY_MANIFEST = 35
+    AW5_WGS_MANIFEST = 36
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -729,6 +732,8 @@ class GenomicManifestTypes(messages.Enum):
     AW4_ARRAY = 12
     AW4_WGS = 13
     AW1F = 14
+    AW5_ARRAY = 15
+    AW5_WGS = 16
 
 
 class GenomicContaminationCategory(messages.Enum):

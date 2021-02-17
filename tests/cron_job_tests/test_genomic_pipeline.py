@@ -407,6 +407,136 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
 
+    def test_ingest_aw5_file(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(2, genomic_workflow_state=GenomicWorkflowState.AW1)
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True, id_start_from=2, array_participants=[3, 4],
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+        self._update_test_sample_ids()
+        self._create_stored_samples([(1, 1001), (2, 1002), (3, 1003), (4, 1004)])
+
+        with clock.FakeClock(test_date):
+            test_file_name_seq = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest_for_aw5.csv',
+                                                                  bucket_name, folder=subfolder)
+            test_file_name_gen = self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_for_aw5.csv',
+                                                                  bucket_name, folder=subfolder)
+
+        task_data_seq = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_seq}"
+            }
+        }
+
+        task_data_gen = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_gen}"
+            }
+        }
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_seq)
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_gen)
+
+        # ingest AW5 files
+        with clock.FakeClock(test_date):
+            test_file_name_aw5_array = self._create_ingestion_test_file('aw5_deletion_array.csv',
+                                                                        bucket_name, folder=subfolder)
+            test_file_name_aw5_wgs = self._create_ingestion_test_file('aw5_deletion_wgs.csv',
+                                                                      bucket_name, folder=subfolder)
+        task_data_aw5_wgs = {
+            "job": GenomicJob.AW5_WGS_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.AW5_WGS,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_aw5_wgs}"
+            }
+        }
+
+        task_data_aw5_array = {
+            "job": GenomicJob.AW5_ARRAY_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": test_date.isoformat(),
+                "manifest_type": GenomicManifestTypes.AW5_ARRAY,
+                "file_path": f"{bucket_name}/{subfolder}/{test_file_name_aw5_array}"
+            }
+        }
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
+
+        # Test the fields against the DB
+        gc_metrics = self.metrics_dao.get_all()
+
+        self.assertEqual(len(gc_metrics), 4)
+        for metrics_record in gc_metrics:
+            self.assertIn(metrics_record.limsId, ['10001', '10002', '10003', '10004'])
+            if metrics_record.limsId == '10001':
+                self.assertEqual(metrics_record.hfVcfDeleted, 1)
+                self.assertEqual(metrics_record.hfVcfTbiDeleted, 1)
+                self.assertEqual(metrics_record.hfVcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.rawVcfDeleted, 1)
+                self.assertEqual(metrics_record.rawVcfTbiDeleted, 1)
+                self.assertEqual(metrics_record.rawVcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.cramDeleted, 1)
+                self.assertEqual(metrics_record.cramMd5Deleted, 1)
+                self.assertEqual(metrics_record.craiDeleted, 1)
+            elif metrics_record.limsId == '10002':
+                self.assertEqual(metrics_record.hfVcfDeleted, 1)
+                self.assertEqual(metrics_record.hfVcfTbiDeleted, 0)
+                self.assertEqual(metrics_record.hfVcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.rawVcfDeleted, 1)
+                self.assertEqual(metrics_record.rawVcfTbiDeleted, 0)
+                self.assertEqual(metrics_record.rawVcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.cramDeleted, 1)
+                self.assertEqual(metrics_record.cramMd5Deleted, 0)
+                self.assertEqual(metrics_record.craiDeleted, 1)
+            elif metrics_record.limsId == '10003':
+                self.assertEqual(metrics_record.idatRedDeleted, 1)
+                self.assertEqual(metrics_record.idatGreenDeleted, 1)
+                self.assertEqual(metrics_record.idatRedMd5Deleted, 1)
+                self.assertEqual(metrics_record.idatGreenMd5Deleted, 1)
+                self.assertEqual(metrics_record.vcfDeleted, 1)
+                self.assertEqual(metrics_record.vcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.vcfTbiDeleted, 1)
+            elif metrics_record.limsId == '10004':
+                self.assertEqual(metrics_record.idatRedDeleted, 1)
+                self.assertEqual(metrics_record.idatGreenDeleted, 1)
+                self.assertEqual(metrics_record.idatRedMd5Deleted, 0)
+                self.assertEqual(metrics_record.idatGreenMd5Deleted, 1)
+                self.assertEqual(metrics_record.vcfDeleted, 0)
+                self.assertEqual(metrics_record.vcfMd5Deleted, 1)
+                self.assertEqual(metrics_record.vcfTbiDeleted, 1)
+
+        # Test file processing queue
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(len(files_processed), 4)
+        self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(files_processed[0].uploadDate))
+
+        # Test the end-to-end result code
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(3).runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(4).runResult)
 
     def _update_test_sample_ids(self):
         # update sample ID (mock AW1 manifest)
@@ -687,16 +817,15 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_set_filename="genomic-test-set-cell-line.csv"
         )
         # make necessary fake participant data
-        for p in range(1, count + 1):
+        id_start_from = kwargs.get('id_start_from', 0)
+        for p in range(1+id_start_from, count + 1 + id_start_from):
             participant = self._make_participant()
             self._make_summary(participant)
-            biobank_order = self._make_biobank_order(
-                participantId=participant.participantId,
-                biobankOrderId=p,
-                identifiers=[BiobankOrderIdentifier(
-                    system=u'c', value=u'e{}'.format(
-                        participant.participantId))]
-            )
+            self._make_biobank_order(participantId=participant.participantId,
+                                     biobankOrderId=p,
+                                     identifiers=[BiobankOrderIdentifier(
+                                         system=u'c', value=u'e{}'.format(
+                                             participant.participantId))])
             sample_args = {
                 'test': '1SAL2',
                 'confirmed': clock.CLOCK.now(),

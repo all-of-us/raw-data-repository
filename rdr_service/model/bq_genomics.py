@@ -402,7 +402,22 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     contamination_category = BQField('contamination_category', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     contamination_category_id = BQField('contamination_category_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                                         fld_enum=GenomicContaminationCategoryEnum)
-
+    idat_green_deleted = BQField('idat_green_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_red_deleted = BQField('idat_red_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_deleted = BQField('vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    crai_deleted = BQField('crai_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cram_md5_deleted = BQField('cram_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cram_deleted = BQField('cram_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_md5_deleted = BQField('hf_vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_deleted = BQField('hf_vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_tbi_deleted = BQField('hf_vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_md5_deleted = BQField('raw_vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_deleted = BQField('raw_vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_tbi_deleted = BQField('raw_vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_green_md5_deleted = BQField('idat_green_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_red_md5_deleted = BQField('idat_red_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_md5_deleted = BQField('vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_tbi_deleted = BQField('vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """

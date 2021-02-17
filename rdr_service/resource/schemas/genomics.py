@@ -260,6 +260,22 @@ class GenomicGCValidationMetricsSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
     contamination_category = fields.EnumString(enum=GenomicContaminationCategory)
     contamination_category_id = fields.EnumInteger(enum=GenomicContaminationCategory)
+    idat_green_deleted = fields.Int16()
+    idat_red_deleted = fields.Int16()
+    vcf_deleted = fields.Int16()
+    crai_deleted = fields.Int16()
+    cram_md5_deleted = fields.Int16()
+    cram_deleted = fields.Int16()
+    hf_vcf_md5_deleted = fields.Int16()
+    hf_vcf_deleted = fields.Int16()
+    hf_vcf_tbi_deleted = fields.Int16()
+    raw_vcf_md5_deleted = fields.Int16()
+    raw_vcf_deleted = fields.Int16()
+    raw_vcf_tbi_deleted = fields.Int16()
+    idat_green_md5_deleted = fields.Int16()
+    idat_red_md5_deleted = fields.Int16()
+    vcf_md5_deleted = fields.Int16()
+    vcf_tbi_deleted = fields.Int16()
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics
