@@ -367,11 +367,6 @@ def genomic_gem_a3_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_cvl_w1_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.create_cvl_w1_manifest()
     return '{"success": "true"}'
 
