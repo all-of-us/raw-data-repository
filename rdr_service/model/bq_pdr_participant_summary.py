@@ -159,6 +159,11 @@ class BQPDRParticipantSummarySchema(BQSchema):
     # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
+    # PDR-178:  CABoR details.  This is part of ConsentPII, but for various reasons the easiest way to align with
+    # RDR CABoR tracking is to surface the appropriate authored date here.  Presence of a date (vs. null/None also
+    # acts as the true/false flag equivalent to RDR participant_summary.consent_for_cabor field
+    cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """

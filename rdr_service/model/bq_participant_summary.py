@@ -292,6 +292,9 @@ class BQParticipantSummarySchema(BQSchema):
     # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
+    # PDR-178:  Add cabor_authored to align with RDR consent_for_cabor / consent_for_cabor_authored
+    cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQParticipantSummary(BQTable):
     """ Participant Summary BigQuery Table """

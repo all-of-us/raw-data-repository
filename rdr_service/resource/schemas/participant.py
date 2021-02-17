@@ -270,6 +270,9 @@ class ParticipantSchema(Schema):
 
     patient_statuses = fields.Nested(PatientStatusSchema)
 
+    # PDR-178:  Add CABoR authored to participant top-level schema
+    cabor_authored = fields.DateTime()
+
     class Meta:
         schema_id = SchemaID.participant
         resource_uri = 'Participant'
