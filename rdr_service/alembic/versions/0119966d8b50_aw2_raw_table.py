@@ -1,7 +1,7 @@
 """aw2_raw_table
 
 Revision ID: 0119966d8b50
-Revises: a41c2f2266cb
+Revises: ce0d4837ba00
 Create Date: 2021-02-16 15:49:37.008608
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '0119966d8b50'
-down_revision = 'a41c2f2266cb'
+down_revision = 'ce0d4837ba00'
 branch_labels = None
 depends_on = None
 
