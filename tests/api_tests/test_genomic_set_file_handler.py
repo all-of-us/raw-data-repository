@@ -379,7 +379,7 @@ class GenomicSetFileHandlerTest(BaseTestCase):
 
             ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
 
-        expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-" + now_cdt_str + "-1.CSV"
+        expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-" + now_cdt_str + "-1.csv"
         path = "/" + bucket_name + "/" + expected_result_filename
         with open_cloud_file(path) as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=",")

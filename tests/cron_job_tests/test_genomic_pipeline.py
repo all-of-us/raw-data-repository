@@ -177,20 +177,21 @@ class GenomicPipelineTest(BaseTestCase):
         participant_id = kwargs["participantId"]
 
         for k, default_value in (
-            ("biobankOrderId", "1"),
-            ("created", clock.CLOCK.now()),
-            ("sourceSiteId", 1),
-            ("sourceUsername", "fred@pmi-ops.org"),
-            ("collectedSiteId", 1),
-            ("collectedUsername", "joe@pmi-ops.org"),
-            ("processedSiteId", 1),
-            ("processedUsername", "sue@pmi-ops.org"),
-            ("finalizedSiteId", 2),
-            ("finalizedUsername", "bob@pmi-ops.org"),
-            ("version", 1),
-            ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
-            ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
-            ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, version=1)]),
+                ("biobankOrderId", "1"),
+                ("created", clock.CLOCK.now()),
+                ("sourceSiteId", 1),
+                ("sourceUsername", "fred@pmi-ops.org"),
+                ("collectedSiteId", 1),
+                ("collectedUsername", "joe@pmi-ops.org"),
+                ("processedSiteId", 1),
+                ("processedUsername", "sue@pmi-ops.org"),
+                ("finalizedSiteId", 2),
+                ("finalizedUsername", "bob@pmi-ops.org"),
+                ("finalizedTime",  clock.CLOCK.now()),
+                ("version", 1),
+                ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
+                ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
+                ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, version=1)]),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
