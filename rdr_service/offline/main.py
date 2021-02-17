@@ -225,7 +225,7 @@ def manually_trigger_consent_sync():
     # do_sync_consent_files will filter by any kwargs passed to it, even if they're None.
     # So if something like start_date is passed in as None, it will try to filter by comparing to a start_date of none.
     parameters = {}
-    for field_name in ['all_va', 'start_date', 'end_date']:
+    for field_name in ['all_va', 'start_date', 'end_date', 'ids']:
         if field_name in request_json:
             parameters[field_name] = request_json.get(field_name)
 

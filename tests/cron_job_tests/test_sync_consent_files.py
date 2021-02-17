@@ -166,6 +166,47 @@ class SyncConsentFilesTest(BaseTestCase):
 
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_manual_trigger_with_specific_participant_ids(self, mock_copy_cloud_file, mock_list_blobs):
+        # Set up test data
+        self._mock_files_for_participants(mock_list_blobs, [
+            FakeConsentFile(updated=datetime(2020, 1, 12))
+        ])
+        self._create_participant(1, self.org1.organizationId, self.site1.siteId, consent_time=datetime(2020, 1, 12),
+                                 consents=True)
+        self._create_participant(2, self.org1.organizationId, self.site1.siteId, consent_time=datetime(1990, 1, 12),
+                                 consents=True)
+        self._create_participant(3, self.org1.organizationId, self.site1.siteId, consent_time=datetime(2023, 10, 12),
+                                 consents=True)
+
+        # Call manual sync endpoint in offline app
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+        self.send_post(
+            'ManuallySyncConsentFiles',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            request_data={
+                'ids': [2, 3]
+            }
+        )
+
+        # Make sure the files have been copied for participants 2 and 3.
+        self.assertEqual(2, mock_copy_cloud_file.call_count, 'File should be copied for only the two participants')
+        pattern_args = {
+            'org_bucket_name': self.org_buckets[self.org1.externalId],
+            'org_id': self.org1.externalId,
+            'site_name': self.site1.googleGroup,
+            'file_name': 'consent.pdf'
+        }
+        mock_copy_cloud_file.assert_has_calls([
+            mock.call(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
+                      EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, participant_id=2)),
+            mock.call(f'/{self.source_consent_bucket}/Participant/P3/consent.pdf',
+                      EXPECTED_CLOUD_DESTINATION_PATTERN.format(**pattern_args, participant_id=3))
+        ])
+
+    @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
     def test_file_date_check(self, mock_copy_cloud_file, mock_list_blobs):
         self._mock_files_for_participants(mock_list_blobs, [
             FakeConsentFile(updated=datetime(2020, 1, 13)),
