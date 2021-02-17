@@ -51,7 +51,7 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
     retention_eligible = int(row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE]) \
         if row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE] != '' else None
     eligible_time = parse(row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME]) \
-        if row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME] != '' else None
+        if row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME] not in ('', 'NULL') else None
     actively_retained = int(row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED]) \
         if row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED] != '' else None
     passively_retained = int(row[RetentionEligibleMetricCsvColumns.PASSIVELY_RETAINED]) \
@@ -84,7 +84,7 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
 class RetentionEligibleMetricCsvColumns(object):
     PARTICIPANT_ID = "participant_id"
     RETENTION_ELIGIBLE = "retention_eligible"
-    RETENTION_ELIGIBLE_TIME = "retention_eligible_time"
+    RETENTION_ELIGIBLE_TIME = "retention_eligible_date"
     ACTIVELY_RETAINED = "actively_retained"
     PASSIVELY_RETAINED = "passively_retained"
 
