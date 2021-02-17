@@ -45,9 +45,14 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
             "file_path": cloud_file_path,
             "bucket_name": self.event.bucket,
             "upload_date": self.event.timeCreated,
+            "file_type": "aw2",
         }
 
-        _logger.info("Pushing cloud task...")
+        _logger.info("Pushing cloud tasks...")
+
+        # Load into raw table
+        _task = GCPCloudTask()
+        _task.execute('/resource/task/LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
 
         _task = GCPCloudTask()
         _task.execute('/resource/task/IngestAW2ManifestTaskApi', payload=data, queue=task_queue)
