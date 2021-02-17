@@ -13,7 +13,7 @@ from rdr_service import clock, config, storage
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import (
     BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
-from rdr_service.config import GENOMIC_GEM_A3_MANIFEST_SUBFOLDER
+from rdr_service.config import GENOMIC_GEM_A3_MANIFEST_SUBFOLDER, GENOME_TYPE_CVL
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.genomics_dao import (
@@ -2372,15 +2372,17 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the manifest file contents
         expected_w1_columns = (
-            "genomic_set_name",
             "biobank_id",
             "sample_id",
             "sex_at_birth",
             "ny_flag",
             "site_id",
-            "secondary_validation",
-            "date_submitted",
-            "test_name"
+            "consent_here_gror",
+            "test_name",
+            "informing_loop_hdr",
+            "informing_loop_pgx",
+            "aou_hdr_coverage",
+            "contamination",
         )
 
         sub_folder = config.CVL_W1_MANIFEST_SUBFOLDER
@@ -2396,7 +2398,8 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(1, len(rows))
             self.assertEqual(member.biobankId, rows[0]['biobank_id'])
             self.assertEqual(member.sampleId, rows[0]['sample_id'])
-            self.assertEqual("", rows[0]['secondary_validation'])
+            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
+            self.assertEqual(GENOME_TYPE_CVL, rows[0]['test_name'])
 
         # Test file processed is recorded
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
