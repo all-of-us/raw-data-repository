@@ -21,7 +21,9 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_YES,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
-    CONSENT_COPE_DEFERRED_CODE
+    CONSENT_COPE_DEFERRED_CODE,
+    CABOR_SIGNATURE_QUESTION_CODE,
+    PMI_SKIP_CODE
 )
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
@@ -440,12 +442,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # "signature" in a ConsentPII, it sets the participant_summary.consent_for_cabor / consent_for_cabor_authored
         # fields and will never update them based on subsequent ConsentPII payloads.  To match RDR in determining
         # the CABoR consent authored date, we can't rely on "layered" answers returned by get_module_answers().
-        # Instead we'll go back through the raw response dict of dicts; top level key is a questionnaire_response_id,
-        # its value is a dict of key/value pairs (metadata fields and answers) associated with that response
+        # Instead we'll go back through the raw responses dict of dicts; top level key is a questionnaire_response_id,
+        # its value is a dict of key/value pairs (metadata and question codes/answers) associated with the response
         # Search for the first response with a signed CABoR (if one exists) and use that response's authored date
         for response_id_key in responses:
             fields = responses.get(response_id_key)
-            if fields.get('ExtraConsent_CABoRSignature', None):
+            if fields.get(CABOR_SIGNATURE_QUESTION_CODE, PMI_SKIP_CODE) != PMI_SKIP_CODE:
                 data['cabor_authored'] = fields.get('authored')
                 break
 
