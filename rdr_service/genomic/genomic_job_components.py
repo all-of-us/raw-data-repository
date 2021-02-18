@@ -2248,7 +2248,7 @@ class GenomicBiobankSamplesCoupler:
                 processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
                 count += 1
 
-                if count % 2 == 0:
+                if count % 1000 == 0:
                     session.bulk_save_objects(processed_array_wgs)
                     session.commit()
                     members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
