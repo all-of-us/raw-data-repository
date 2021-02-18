@@ -2187,8 +2187,7 @@ class GenomicBiobankSamplesCoupler:
 
         processed_array_wgs = []
         count = 0
-        last_id_inserted = None
-
+        bids = []
         # Create genomic set members
         with self.member_dao.session() as session:
             for i, bid in enumerate(samples_meta.bids):
@@ -2245,30 +2244,25 @@ class GenomicBiobankSamplesCoupler:
                 new_wgs_member_obj = deepcopy(new_array_member_obj)
                 new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
 
+                bids.append(bid)
                 processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
                 count += 1
 
-                if count % 1000 == 0:
+                if count % 2 == 0:
                     session.bulk_save_objects(processed_array_wgs)
                     session.commit()
-                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                    if last_id_inserted:
-                        member_ids = [m.id for m in members if m.id > last_id_inserted]
-                    else:
-                        member_ids = [m.id for m in members]
-                    last_id_inserted = members[-1].id
+                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                    member_ids = [m.id for m in members]
                     bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
                     genomic_set_member_batch_update(member_ids)
                     processed_array_wgs.clear()
+                    bids.clear()
 
             if count and processed_array_wgs:
                 session.bulk_save_objects(processed_array_wgs)
                 session.commit()
-                members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                if last_id_inserted:
-                    member_ids = [m.id for m in members if m.id > last_id_inserted]
-                else:
-                    member_ids = [m.id for m in members]
+                members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                member_ids = [m.id for m in members]
                 bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
                 genomic_set_member_batch_update(member_ids)
 
