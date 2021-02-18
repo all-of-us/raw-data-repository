@@ -115,7 +115,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                     existing_entity.resourceId = entity.resourceId
                     self.hpo_dao.update_with_session(session, existing_entity)
             else:
-                entity.hpoId = len(existing_map)
+                hpo_id_list = [item.hpoId for item in self.hpo_dao.get_all()]
+                entity.hpoId = max(hpo_id_list) + 1 if len(hpo_id_list) > 0 else 0
                 hpo_id = entity.hpoId
                 self.hpo_dao.insert_with_session(session, entity)
         bq_hpo_update_by_id(hpo_id)
