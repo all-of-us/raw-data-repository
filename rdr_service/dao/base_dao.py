@@ -9,8 +9,6 @@ from contextlib import closing
 
 import sqlparse
 
-from sqlalchemy.exc import OperationalError
-
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
@@ -492,7 +490,7 @@ class BaseDao(object):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         all_tried_ids = []
-        for _ in range(0, MAX_INSERT_ATTEMPTS):
+        for attempt_number in range(0, MAX_INSERT_ATTEMPTS):
             tried_ids = {}
             for field in fields:
                 if field == 'researchId':
@@ -510,7 +508,10 @@ class BaseDao(object):
                 if result:
                     return result
             except OperationalError:
-                logging.error('Failed insert with operational error', exc_info=True)
+                logging.warning('Failed insert with operational error', exc_info=True)
+                if attempt_number == MAX_INSERT_ATTEMPTS - 1:
+                    # Raise the error out if we're on the last retry attempt
+                    raise
         # We were unable to insert a participant (unlucky). Throw an error.
         logging.warning(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts, tried {all_tried_ids}.")
         raise ServiceUnavailable(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts.")
