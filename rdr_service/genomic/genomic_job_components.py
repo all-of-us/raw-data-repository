@@ -2234,8 +2234,11 @@ class GenomicBiobankSamplesCoupler:
                     validationFlags=valid_flags,
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
                     genomeType=self._ARRAY_GENOME_TYPE,
-                    genomicWorkflowState=GenomicWorkflowState.AW0_READY
+                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    created=clock.CLOCK.now(),
+                    modified=clock.CLOCK.now(),
                 )
+
                 # Also create a WGS member
                 new_wgs_member_obj = deepcopy(new_array_member_obj)
                 new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
@@ -2245,16 +2248,20 @@ class GenomicBiobankSamplesCoupler:
 
                 if count % 1000 == 0:
                     session.bulk_save_objects(processed_array_wgs)
-                    bulk_ids = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                    bq_genomic_set_member_batch_update(bulk_ids, project_id=self.controller.bq_project_id)
-                    genomic_set_member_batch_update(bulk_ids)
+                    session.commit()
+                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
+                    member_ids = [m.id for m in members]
+                    bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                    genomic_set_member_batch_update(member_ids)
                     processed_array_wgs.clear()
 
             if count and processed_array_wgs:
                 session.bulk_save_objects(processed_array_wgs)
-                bulk_ids = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                bq_genomic_set_member_batch_update(bulk_ids, project_id=self.controller.bq_project_id)
-                genomic_set_member_batch_update(bulk_ids)
+                session.commit()
+                members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
+                member_ids = [m.id for m in members]
+                bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                genomic_set_member_batch_update(member_ids)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:

@@ -1221,12 +1221,16 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(12, len(new_genomic_members))
 
+
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
         # 100005 : Excluded, no DNA sample
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
+
+            self.assertIsNotNone(member.created)
+            self.assertIsNotNone(member.modified)
 
             if member.biobankId == 100002:
                 # 100002 : Included, Valid
@@ -1411,6 +1415,9 @@ class GenomicPipelineTest(BaseTestCase):
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
 
+            self.assertIsNotNone(member.created)
+            self.assertIsNotNone(member.modified)
+
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
@@ -1516,6 +1523,9 @@ class GenomicPipelineTest(BaseTestCase):
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
+
+            self.assertIsNotNone(member.created)
+            self.assertIsNotNone(member.modified)
 
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
