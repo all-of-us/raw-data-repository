@@ -2187,6 +2187,8 @@ class GenomicBiobankSamplesCoupler:
 
         processed_array_wgs = []
         count = 0
+        last_id_inserted = None
+
         # Create genomic set members
         with self.member_dao.session() as session:
             for i, bid in enumerate(samples_meta.bids):
@@ -2250,7 +2252,11 @@ class GenomicBiobankSamplesCoupler:
                     session.bulk_save_objects(processed_array_wgs)
                     session.commit()
                     members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                    member_ids = [m.id for m in members]
+                    if last_id_inserted:
+                        member_ids = [m.id for m in members if m.id > last_id_inserted]
+                    else:
+                        member_ids = [m.id for m in members]
+                    last_id_inserted = members[-1].id
                     bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
                     genomic_set_member_batch_update(member_ids)
                     processed_array_wgs.clear()
@@ -2259,7 +2265,10 @@ class GenomicBiobankSamplesCoupler:
                 session.bulk_save_objects(processed_array_wgs)
                 session.commit()
                 members = self.member_dao.get_members_from_set_id(new_genomic_set.id)
-                member_ids = [m.id for m in members]
+                if last_id_inserted:
+                    member_ids = [m.id for m in members if m.id > last_id_inserted]
+                else:
+                    member_ids = [m.id for m in members]
                 bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
                 genomic_set_member_batch_update(member_ids)
 
