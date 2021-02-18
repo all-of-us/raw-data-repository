@@ -745,11 +745,22 @@ class GenomicContaminationCategory(messages.Enum):
     TERMINAL_NO_EXTRACT = 4
 
 
-
 class GenomicQcStatus(messages.Enum):
     UNSET = 0
     PASS = 1
     FAIL = 2
+
+
+class GenomicIncidentCode(messages.Enum):
+    UNSET = 0
+    UNKNOWN = 1
+    UNABLE_TO_FIND_MEMBER = 2
+
+
+class GenomicIncidentStatus(messages.Enum):
+    OPEN = 0
+    RESOLVED = 1
+    UNABLE_TO_RESOLVE = 2
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

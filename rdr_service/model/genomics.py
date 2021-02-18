@@ -18,7 +18,7 @@ from rdr_service.participant_enums import (
     GenomicWorkflowState,
     GenomicQcStatus,
     GenomicManifestTypes,
-    GenomicContaminationCategory)
+    GenomicContaminationCategory, GenomicIncidentCode, GenomicIncidentStatus)
 
 
 class GenomicSet(Base):
@@ -589,3 +589,39 @@ class GenomicSampleContamination(Base):
 
 event.listen(GenomicSampleContamination, 'before_insert', model_insert_listener)
 event.listen(GenomicSampleContamination, 'before_update', model_update_listener)
+
+
+class GenomicIncident(Base):
+    """
+    An incident occuring during processing of genomic records
+    """
+    __tablename__ = 'genomic_incident'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    created = Column('created', DateTime)
+    modified = Column('modified', DateTime)
+
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255))
+
+    code = Column(String(80), default=GenomicIncidentCode.UNSET.name)
+    message = Column(String(255))
+    status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
+
+    source_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+    source_file_processed_id = Column(Integer, ForeignKey("genomic_file_processed.id"))
+    audit_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+    repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
+    gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
+
+    biobank_id = Column(String(128), index=True)
+    sample_id = Column(String(80), index=True)
+    collection_tube_id = Column(String(80), index=True)
+
+
+event.listen(GenomicIncident, 'before_insert', model_insert_listener)
+event.listen(GenomicIncident, 'before_update', model_update_listener)
