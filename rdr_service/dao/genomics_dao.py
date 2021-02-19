@@ -20,7 +20,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics,
-    GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw)
+    GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw, GenomicIncident)
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -1446,3 +1446,15 @@ class GenomicAW2RawDao(BaseDao):
             ).filter(
                 GenomicAW2Raw.file_path == filepath
             ).all()
+
+
+class GenomicIncidentDao(UpdatableDao):
+    def __init__(self):
+        super(GenomicIncidentDao, self).__init__(
+            GenomicIncident, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass

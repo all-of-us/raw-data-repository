@@ -18,7 +18,7 @@ from rdr_service.config import (
     MissingConfigException)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
-from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback
+from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
@@ -32,7 +32,7 @@ from rdr_service.genomic.genomic_job_components import (
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao)
+    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
 
@@ -73,6 +73,7 @@ class GenomicJobController:
         self.file_processed_dao = GenomicFileProcessedDao()
         self.manifest_file_dao = GenomicManifestFileDao()
         self.manifest_feedback_dao = GenomicManifestFeedbackDao()
+        self.incident_dao = GenomicIncidentDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -632,6 +633,15 @@ class GenomicJobController:
                                             _controller=self)
 
         self.job_result = self.ingester.load_raw_awn_file()
+
+    def create_incident(self, **kwargs):
+        """
+        Creates an
+        :return: GenomicIncident
+        """
+        with self.incident_dao.session() as session:
+            return session.add(GenomicIncident(**kwargs))
+
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""

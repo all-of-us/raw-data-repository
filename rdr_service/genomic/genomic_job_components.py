@@ -52,7 +52,7 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory)
+    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory, GenomicIncidentCode)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
@@ -432,7 +432,7 @@ class GenomicFileIngester:
                 bid = row_copy['biobankid']
 
                 # Strip biobank prefix if it's there
-                if bid[0].isalpha():
+                if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
 
                 member = self.member_dao.get_member_from_biobank_id_in_state(bid,
@@ -449,11 +449,23 @@ class GenomicFileIngester:
 
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
-                    raise ValueError(f"Invalid collection tube ID: {row_copy['collectiontubeid']}, "
-                                     f"biobank id: {row_copy['biobankid']}, "
-                                     f"genome type: {row_copy['testname']}")
+                    _message = f"Cannot find genomic set member: " \
+                               f"collection_tube_id: {row_copy['collectiontubeid']}, "\
+                               f"biobank id: {bid}, "\
+                               f"genome type: {row_copy['testname']}"
 
-                    # TODO: write to logging table
+                    self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                                    source_file_processed_id=self.file_obj.id,
+                                                    code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                                                    message=_message,
+                                                    biobank_id=bid,
+                                                    collection_tube_id=row_copy['collectiontubeid'],
+                                                    sample_id=row_copy['sampleid'],
+                                                    )
+                    logging.error(_message)
+
+                    # Skip rest of iteration and continue processing file
+                    continue
 
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
@@ -987,12 +999,24 @@ class GenomicFileIngester:
                                                                _project_id=self.controller.bq_project_id)
 
             else:
-                logging.error(f"No genomic set member for bid,sample_id: "
-                              f"{row_copy['biobankid']}, {row_copy['sampleid']}")
 
-                # TODO: insert into logging table
+                bid = row_copy['biobankid']
 
-                return GenomicSubProcessResult.ERROR
+                if bid[0] in [get_biobank_id_prefix(), 'T']:
+                    bid = bid[1:]
+
+                # Couldn't find genomic set member based on either biobank ID or sample ID
+                _message = f"Cannot find genomic set member for bid, sample_id: "\
+                           f"{row_copy['biobankid']}, {row_copy['sampleid']}"
+
+                self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                                source_file_processed_id=self.file_obj.id,
+                                                code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                                                message=_message,
+                                                biobank_id=bid,
+                                                sample_id=row_copy['sampleid'],
+                                                )
+                logging.error(_message)
 
         return GenomicSubProcessResult.SUCCESS
 
