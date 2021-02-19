@@ -642,7 +642,6 @@ class GenomicJobController:
         with self.incident_dao.session() as session:
             return session.add(GenomicIncident(**kwargs))
 
-
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
@@ -650,6 +649,15 @@ class GenomicJobController:
         # Update run for PDR
         bq_genomic_job_run_update(self.job_run.id, self.bq_project_id)
         genomic_job_run_update(self.job_run.id)
+
+        # Insert incident if job isn't successful
+        if self.job_result.number > 2:
+            # TODO: implement speficic codes for each job result
+            self.create_incident(
+                code="UNKNOWN",
+                message=self.job_result.name,
+                source_job_run_id=self.job_run.id
+            )
 
     def _aggregate_run_results(self):
         """
