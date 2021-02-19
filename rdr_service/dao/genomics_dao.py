@@ -444,17 +444,23 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_members_from_set_id(self, set_id):
+    def get_members_from_set_id(self, set_id, bids=None):
         """
         Retrieves all genomic set member records matching the set_id
         :param set_id
+        :param bids
         :return: result set of GenomicSetMembers
         """
         with self.session() as session:
-            return session.query(GenomicSetMember).filter(
+            members_query = session.query(GenomicSetMember).filter(
                 GenomicSetMember.genomicSetId == set_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-            ).all()
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+            )
+            if bids:
+                members_query = members_query.filter(
+                    GenomicSetMember.biobankId.in_(bids)
+                )
+            return members_query.all()
 
     def get_gem_consent_removal_date(self, member):
         """

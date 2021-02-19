@@ -12,19 +12,19 @@ from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
 
+from rdr_service import clock
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update, bq_genomic_file_processed_update, bq_genomic_manifest_file_update
+    bq_genomic_set_update, bq_genomic_file_processed_update, \
+    bq_genomic_manifest_file_update, bq_genomic_set_member_batch_update
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_queries import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-
-from rdr_service import clock
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -2220,66 +2220,86 @@ class GenomicBiobankSamplesCoupler:
         logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
         new_genomic_set = self._create_new_genomic_set()
 
+        processed_array_wgs = []
+        count = 0
+        bids = []
         # Create genomic set members
-        for i, bid in enumerate(samples_meta.bids):
+        with self.member_dao.session() as session:
+            for i, bid in enumerate(samples_meta.bids):
+                # Don't write participant to table if no sample
+                if samples_meta.sample_ids[i] == 0:
+                    continue
 
-            # Don't write participant to table if no sample
-            if samples_meta.sample_ids[i] == 0:
-                continue
+                logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
+                validation_criteria = (
+                    samples_meta.valid_withdrawal_status[i],
+                    samples_meta.valid_suspension_status[i],
+                    samples_meta.gen_consents[i],
+                    samples_meta.valid_ages[i],
+                    samples_meta.valid_ai_ans[i],
+                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+                )
+                valid_flags = self._calculate_validation_flags(validation_criteria)
+                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
 
-            logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
-            validation_criteria = (
-                samples_meta.valid_withdrawal_status[i],
-                samples_meta.valid_suspension_status[i],
-                samples_meta.gen_consents[i],
-                samples_meta.valid_ages[i],
-                samples_meta.valid_ai_ans[i],
-                samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
-            )
-            valid_flags = self._calculate_validation_flags(validation_criteria)
-            logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+                # Get NY flag for collected-site
+                if samples_meta.site_ids[i]:
+                    _ny_flag = self._get_new_york_flag_from_site(samples_meta.site_ids[i])
 
-            # Get NY flag for collected-site
-            if samples_meta.site_ids[i]:
-                _ny_flag = self._get_new_york_flag_from_site(samples_meta.site_ids[i])
+                # Get NY flag for mail-kit
+                elif samples_meta.state_ids[i]:
+                    _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
 
-            # Get NY flag for mail-kit
-            elif samples_meta.state_ids[i]:
-                _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
+                # default ny flag if no state id
+                elif not samples_meta.state_ids[i]:
+                    _ny_flag = 0
 
-            # default ny flag if no state id
-            elif not samples_meta.state_ids[i]:
-                _ny_flag = 0
+                else:
+                    logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
+                    continue
 
-            else:
-                logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
-                continue
+                new_array_member_obj = GenomicSetMember(
+                    biobankId=bid,
+                    genomicSetId=new_genomic_set.id,
+                    participantId=samples_meta.pids[i],
+                    nyFlag=_ny_flag,
+                    sexAtBirth=samples_meta.sabs[i],
+                    collectionTubeId=samples_meta.sample_ids[i],
+                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                      else GenomicSetMemberStatus.VALID),
+                    validationFlags=valid_flags,
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                    genomeType=self._ARRAY_GENOME_TYPE,
+                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    created=clock.CLOCK.now(),
+                    modified=clock.CLOCK.now(),
+                )
 
-            new_array_member_obj = GenomicSetMember(
-                biobankId=bid,
-                genomicSetId=new_genomic_set.id,
-                participantId=samples_meta.pids[i],
-                nyFlag=_ny_flag,
-                sexAtBirth=samples_meta.sabs[i],
-                collectionTubeId=samples_meta.sample_ids[i],
-                validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
-                                  else GenomicSetMemberStatus.VALID),
-                validationFlags=valid_flags,
-                ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                genomeType=self._ARRAY_GENOME_TYPE,
-                genomicWorkflowState=GenomicWorkflowState.AW0_READY
-            )
-            # Also create a WGS member
-            new_wgs_member_obj = deepcopy(new_array_member_obj)
-            new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+                # Also create a WGS member
+                new_wgs_member_obj = deepcopy(new_array_member_obj)
+                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
 
-            inserted_array_member = self.member_dao.insert(new_array_member_obj)
-            inserted_wgs_member = self.member_dao.insert(new_wgs_member_obj)
+                bids.append(bid)
+                processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
+                count += 1
 
-            # Add member to PDR
-            for mid in (inserted_array_member.id, inserted_wgs_member.id):
-                bq_genomic_set_member_update(mid, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(mid)
+                if count % 1000 == 0:
+                    session.bulk_save_objects(processed_array_wgs)
+                    session.commit()
+                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                    member_ids = [m.id for m in members]
+                    bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                    genomic_set_member_batch_update(member_ids)
+                    processed_array_wgs.clear()
+                    bids.clear()
+
+            if count and processed_array_wgs:
+                session.bulk_save_objects(processed_array_wgs)
+                session.commit()
+                members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                member_ids = [m.id for m in members]
+                bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                genomic_set_member_batch_update(member_ids)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
