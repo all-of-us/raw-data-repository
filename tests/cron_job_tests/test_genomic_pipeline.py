@@ -24,7 +24,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicManifestFileDao,
     GenomicManifestFeedbackDao,
-    GenomicAW1RawDao, GenomicAW2RawDao)
+    GenomicAW1RawDao, GenomicAW2RawDao, GenomicIncidentDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -289,7 +289,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.GC_DRC,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
             }
         }
@@ -3575,3 +3575,98 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Array Concordance"], aw2_raw_record.array_concordance)
                 self.assertEqual(row["Processing Status"], aw2_raw_record.processing_status)
                 self.assertEqual(row["Notes"], aw2_raw_record.notes)
+
+    def test_aw1_genomic_incident_inserted(self):
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
+
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        incident_dao = GenomicIncidentDao()
+
+        incidents = incident_dao.get_all()
+
+        self.assertEqual(2, len(incidents))
+
+        self.assertEqual("1", incidents[0].biobank_id)
+        self.assertEqual("1001", incidents[0].sample_id)
+        self.assertEqual("1", incidents[0].collection_tube_id)
+        self.assertEqual(2, incidents[0].source_job_run_id)
+        self.assertEqual(1, incidents[0].source_file_processed_id)
+        self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[0].code)
+
+        self.assertEqual("2", incidents[1].biobank_id)
+        self.assertEqual("1002", incidents[1].sample_id)
+        self.assertEqual("100002", incidents[1].collection_tube_id)
+        self.assertEqual(2, incidents[1].source_job_run_id)
+        self.assertEqual(1, incidents[1].source_file_processed_id)
+        self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[1].code)
+
+    def test_aw2_genomic_incident_inserted(self):
+        # set up test file
+        test_file = 'RDR_AoU_GEN_TestDataManifest.csv'
+
+        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+
+        test_file_name = self._create_ingestion_test_file(test_file,
+                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                          folder=subfolder,
+                                                          include_sub_num=True)
+
+        # run the GC Metrics Ingestion workflow via cloud task
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{subfolder}/{test_file_name}"
+            }
+        }
+
+        # Execute from cloud task
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        incident_dao = GenomicIncidentDao()
+
+        incidents = incident_dao.get_all()
+
+        self.assertEqual(2, len(incidents))
+
+        self.assertEqual("1", incidents[0].biobank_id)
+        self.assertEqual("1001", incidents[0].sample_id)
+        self.assertEqual(2, incidents[0].source_job_run_id)
+        self.assertEqual(1, incidents[0].source_file_processed_id)
+        self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[0].code)
+
+        self.assertEqual("2", incidents[1].biobank_id)
+        self.assertEqual("1002", incidents[1].sample_id)
+        self.assertEqual(2, incidents[1].source_job_run_id)
+        self.assertEqual(1, incidents[1].source_file_processed_id)
+        self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[1].code)
