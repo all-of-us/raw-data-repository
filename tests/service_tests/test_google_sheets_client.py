@@ -21,7 +21,6 @@ class GoogleSheetsApiTest(BaseTestCase):
         # Get sheets api service mock so that the tests can check calls to the google api
         service_patcher = mock.patch('rdr_service.services.google_sheets_client.discovery')
         self.patchers.append(service_patcher)
-
         mock_discovery = service_patcher.start()
         self.mock_spreadsheets_return = mock_discovery.build.return_value.spreadsheets.return_value
 
@@ -38,11 +37,19 @@ class GoogleSheetsApiTest(BaseTestCase):
         for patcher in self.patchers:
             patcher.stop()
 
+    @classmethod
+    def _mock_cell(cls, value):
+        cell_dict = {}
+        if value:
+            cell_dict['formattedValue'] = value
+
+        return cell_dict
+
     def test_spreadsheet_downloads_values_from_drive(self):
         """Check that the spreadsheet initializes with the values currently in the spreadsheet on drive"""
 
         # Mock a spreadsheet with three tabs on google drive
-        # The test spreadsheet looks like this:
+        # The test spreadsheet looks like this (underscores represent a cell that will be blank):
         # Tab title: 'first_tab'
         # _ _ '7' _ '9'
         # _ '5'
@@ -112,7 +119,7 @@ class GoogleSheetsApiTest(BaseTestCase):
             self.assertEqual(expected_third_tab_values, sheet.get_tab_values(third_tab_title))
 
     def test_modifying_sheet_values(self):
-        # Construct a sheet that appears as follows (underscores represent a cell that will be blank):
+        # Construct a sheet that appears as follows:
         # Tab title: first_tab
         # _ _ 3
         # 4
@@ -143,7 +150,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         Test that the values sent to the API construct a matrix that will fill in the google spreadsheet as expected
         """
 
-        # Construct a sheet that appears as follows (underscores represent a cell that will be blank):
+        # Construct a sheet that appears as follows:
         # Tab title: first_tab
         # _ _ 3
         # 4
@@ -175,14 +182,6 @@ class GoogleSheetsApiTest(BaseTestCase):
             ['', '5'],
             ['7']
         ], second_uploaded_tab_data['values'])
-
-    @classmethod
-    def _mock_cell(cls, value):
-        cell_dict = {}
-        if value:
-            cell_dict['formattedValue'] = value
-
-        return cell_dict
 
     def test_values_are_only_mutable_through_object_interface(self):
         """

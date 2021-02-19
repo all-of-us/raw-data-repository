@@ -8,8 +8,8 @@ class GoogleSheetsClient:
     """
     Allows for interacting with a spreadsheet in google drive. This class is designed to be used as a context manager
     and requires that:
-        - A service account (with a json keyfile) is being used
-        - and the service account has the correct permissions to edit the google spreadsheet
+        - A service account (with a json keyfile) is authenticated
+        - The service account has the correct permissions to edit the google spreadsheet
 
     Please carefully verify that this works for your purpose if you re-use this. There are some things that don't
     currently work (such as formula manipulation and making new tabs).
@@ -17,7 +17,7 @@ class GoogleSheetsClient:
 
     def __init__(self, spreadsheet_id, service_key_id):
         """
-        :param spreadsheet_id: Google Drive id of the spreadsheet file.
+        :param spreadsheet_id: Google Drive id of the spreadsheet.
         :param service_key_id: Key id for the service account used.
         """
 
@@ -29,9 +29,9 @@ class GoogleSheetsClient:
         self._service = discovery.build('sheets', 'v4', credentials=credentials)
         self._spreadsheet_id = spreadsheet_id
 
-        # Initialize grid for storing values
+        # Initialize internal fields
         self._default_tab_id = None
-        self._tabs = {}
+        self._tabs = None
         self._empty_cell_value = ''
 
     def __enter__(self):
@@ -48,6 +48,8 @@ class GoogleSheetsClient:
 
         :return: None
         """
+        self._tabs = {}
+
         # API call documented at https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/get
         request = self._service.spreadsheets().get(spreadsheetId=self._spreadsheet_id, includeGridData=True)
         response = request.execute()
@@ -55,20 +57,20 @@ class GoogleSheetsClient:
         # Parse the retrieved spreadsheet
         tab_data = response['sheets']
         for tab in tab_data:
-            tab_grid_data = tab['data'][0]['rowData']
             tab_id = tab['properties'].get('title')
 
             # Set the default tab to the first tab
             if self._default_tab_id is None:
                 self._default_tab_id = tab_id
 
-            # Initialize the tab and parse the values from the response
+            # Initialize the internal tab structure and parse the values from the response
             self._tabs[tab_id] = self._initialize_empty_tab()
-            for row_number, row in enumerate(tab_grid_data):
-                row_values = row.get('values')
+            tab_grid_data = tab['data'][0]['rowData']
+            for row_number, row_data in enumerate(tab_grid_data):
+                row_values = row_data.get('values')
                 if row_values:
-                    for col_number, cell in enumerate(row_values):
-                        cell_value = cell.get('formattedValue', self._empty_cell_value)
+                    for col_number, cell_data in enumerate(row_values):
+                        cell_value = cell_data.get('formattedValue', self._empty_cell_value)
                         self.update_cell(row_number, col_number, cell_value, tab_id)
 
     @classmethod
@@ -77,7 +79,8 @@ class GoogleSheetsClient:
 
     def set_current_tab(self, tab_id):
         """
-        Change the default tab.
+        Change the default tab. Used to make updating multiple fields on one tab cleaner
+        (so the tab id doesn't need to be given with the location for each cell value).
 
         :param tab_id: Name of the tab to use as the default.
         :return: None
@@ -87,13 +90,13 @@ class GoogleSheetsClient:
     def update_cell(self, row: int, col: int, value: str, tab_id=None):
         """
         Change the value of a cell.
-        Any changes made will be stored locally until the next call to `upload_values`.
+        Any changes made will be stored locally until the next call to `upload_values`
+        (or when the context ends).
 
         :param row: row number of the cell, starting from 0 at the top of the spreadsheet
         :param col: column number of the cell, starting from 0 at the left of the spreadsheet
         :param value: value to store
-        :param tab_id: Name of the tab to modify. Will default to the current tab
-            (set by `set_current_tab`, or the first tab if none was set) if not provided.
+        :param tab_id: Name of the tab to modify. The default tab is used if this parameter isn't provided.
         :return: None
         """
 
@@ -106,14 +109,14 @@ class GoogleSheetsClient:
         while row >= len(values_grid):
             values_grid.append([self._empty_cell_value])
 
-        update_row = values_grid[row]
+        row_for_update = values_grid[row]
 
         # Increase the number of columns we have in the row if the caller is setting a
         # cell on a cell father out than what is initialized in the row
-        while col >= len(update_row):
-            update_row.append(self._empty_cell_value)
+        while col >= len(row_for_update):
+            row_for_update.append(self._empty_cell_value)
 
-        update_row[col] = value
+        row_for_update[col] = value
 
     def upload_values(self):
         """
