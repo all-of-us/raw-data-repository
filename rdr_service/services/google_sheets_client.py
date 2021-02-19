@@ -4,7 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 
 
-class GoogleSheetApi:
+class GoogleSheetsClient:
     """
     Allows for interacting with a spreadsheet in google drive. This class is designed to be used as a context manager
     and requires that:

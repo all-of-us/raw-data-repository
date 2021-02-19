@@ -1,6 +1,6 @@
 import mock
 
-from rdr_service.services.google_sheet_api import GoogleSheetApi
+from rdr_service.services.google_sheets_client import GoogleSheetsClient
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -11,15 +11,15 @@ class GoogleSheetsApiTest(BaseTestCase):
         # Patch system calls that the sheets api uses
         self.patchers = []  # We'll need to stop the patchers when the tests are done
         for module_to_patch in [
-            'rdr_service.services.google_sheet_api.gcp_get_iam_service_key_info',
-            'rdr_service.services.google_sheet_api.ServiceAccountCredentials'
+            'rdr_service.services.google_sheets_client.gcp_get_iam_service_key_info',
+            'rdr_service.services.google_sheets_client.ServiceAccountCredentials'
         ]:
             patcher = mock.patch(module_to_patch)
             patcher.start()
             self.patchers.append(patcher)
 
         # Get sheets api service mock so that the tests can check calls to the google api
-        service_patcher = mock.patch('rdr_service.services.google_sheet_api.discovery')
+        service_patcher = mock.patch('rdr_service.services.google_sheets_client.discovery')
         self.patchers.append(service_patcher)
 
         mock_discovery = service_patcher.start()
@@ -106,7 +106,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         expected_third_tab_values = [
             ['test']
         ]
-        with GoogleSheetApi('', '') as sheet:
+        with GoogleSheetsClient('', '') as sheet:
             self.assertEqual(expected_first_tab_values, sheet.get_tab_values())
             self.assertEqual(expected_second_tab_values, sheet.get_tab_values(second_tab_title))
             self.assertEqual(expected_third_tab_values, sheet.get_tab_values(third_tab_title))
@@ -120,7 +120,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         # _
         # _ 5
         # 7
-        with GoogleSheetApi('', '') as sheet:
+        with GoogleSheetsClient('', '') as sheet:
             sheet.update_cell(0, 2, '3')  # Set 3 on first tab
             sheet.update_cell(2, 0, '7', self.default_tab_names[1])  # Set 7 on second tab
             sheet.set_current_tab(self.default_tab_names[1])
@@ -151,7 +151,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         # _
         # _ 5
         # 7
-        with GoogleSheetApi('', '') as sheet:
+        with GoogleSheetsClient('', '') as sheet:
             sheet.update_cell(0, 2, '3')  # Set 3 on first tab
             sheet.update_cell(1, 0, '4')  # Set 4 on first tab
             sheet.set_current_tab(self.default_tab_names[1])
@@ -194,7 +194,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         # 1
         # _
         # _ _ _ 8
-        with GoogleSheetApi('', '') as sheet:
+        with GoogleSheetsClient('', '') as sheet:
             sheet.update_cell(0, 0, '1')
             sheet.update_cell(2, 3, '8')
 
