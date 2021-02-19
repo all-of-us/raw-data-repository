@@ -1854,7 +1854,7 @@ class GenomicReconciler:
 
                     # Naming rule for WGS files:
                     filename_exp = rf"{gc_prefix}_([A-Z]?){metric.biobankId}_{metric.sampleId}" \
-                                   rf"_{metric.GenomicGCValidationMetrics.limsId}_(\d+){file_type_expression}$"
+                                   rf"_{metric.GenomicGCValidationMetrics.limsId}_(\w*)(\d+){file_type_expression}$"
 
                     file_exists = self._get_full_filename_with_expression(filename_exp)
 
@@ -2003,10 +2003,17 @@ class GenomicReconciler:
         """
         filenames = [name for name in self.file_list if re.search(expression, name)]
 
+        def sort_filenames(name):
+            version = name.split('.')[0].split('_')[-1]
+
+            if version[0].isalpha():
+                version = version[1:]
+
+            return int(version)
+
         # Naturally sort the list in descending order of revisions
         # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
-        filenames.sort(reverse=True,
-                       key=lambda name: int(name.split('.')[0].split('_')[-1]))
+        filenames.sort(reverse=True, key=sort_filenames)
 
         return filenames[0] if len(filenames) > 0 else 0
 
