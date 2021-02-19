@@ -972,7 +972,7 @@ class GenomicPipelineTest(BaseTestCase):
         with self.member_dao.session() as s:
             s.merge(member)
 
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
 
         gc_record = self.metrics_dao.get(1)
 
@@ -1063,7 +1063,7 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 2
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
 
         gc_record = self.metrics_dao.get(1)
 
@@ -2236,7 +2236,7 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
@@ -2496,7 +2496,7 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
         # Run the W1 manifest workflow
         fake_dt = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
@@ -2718,7 +2718,7 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_genotyping_data()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
@@ -2833,7 +2833,7 @@ class GenomicPipelineTest(BaseTestCase):
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
 
-        genomic_pipeline.reconcile_metrics_vs_sequencing_data()  # run_id = 3
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)

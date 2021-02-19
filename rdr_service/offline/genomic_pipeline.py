@@ -155,26 +155,28 @@ def ingest_genomic_centers_metrics_files(provider=None):
         controller.ingest_gc_metrics()
 
 
-def reconcile_metrics_vs_genotyping_data(provider=None):
+def reconcile_metrics_vs_array_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Genotyping Files (Array) vs Listed in Manifest.
+    Array Files vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+    with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_genotyping_data()
+        genome_type = 'array'
+        controller.run_reconciliation_to_data(genome_type)
 
 
-def reconcile_metrics_vs_sequencing_data(provider=None):
+def reconcile_metrics_vs_wgs_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Sequencing Files (WGS) vs Listed in Manifest.
+    WGS Files vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA,
+    with GenomicJobController(GenomicJob.RECONCILE_WGS_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_sequencing_data()
+        genome_type = 'wgs'
+        controller.run_reconciliation_to_data(genome_type)
 
 
 def aw3_array_manifest_workflow():
