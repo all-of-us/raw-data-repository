@@ -240,12 +240,11 @@ class BQMigration(object):
             mod = importlib.import_module(path, var_name)
             mod_class = getattr(mod, var_name)
             bq_table = mod_class()
-            ls_obj = bq_table.get_schema()
-
             # See if we need to skip this table
             if not migrate_all and bq_table.get_name().lower() not in migrate_list:
                 continue
 
+            ls_obj = bq_table.get_schema()
             if self.args.show_schemas:
                 print('Schema: {0}\n'.format(bq_table.get_name()))
                 print(ls_obj.to_json())
@@ -270,7 +269,7 @@ class BQMigration(object):
 
                 if not rs_json:
                     if self.args.check_schemas:
-                        _logger.info('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
+                        _logger.warning('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
                         continue
                     else:
                         self.create_table(bq_table, project_id, dataset_id, table_id)
@@ -286,15 +285,20 @@ class BQMigration(object):
                         if self.args.check_schemas:
                             _logger.info(f'Checking {project_id}:{dataset_id}.{table_id} schema...')
                             for attr in dir(rs_obj):
-                                if attr.startswith('_'):
+                                if attr.startswith('_') or callable(getattr(rs_obj, attr)):
                                     continue
                                 if not hasattr(ls_obj, attr):
-                                    _logger.error(f'\t{attr} missing from local {table_id} schema ')
+                                    _logger.error(f'\tField {attr} missing from local {table_id} schema ')
+                            for attr in dir(ls_obj):
+                                if attr.startswith('_') or callable(getattr(ls_obj, attr)):
+                                    continue
+                                if not hasattr(rs_obj, attr):
+                                    _logger.warning(f'\tNew field {attr} defined in local {table_id} schema ')
                             continue
                     except ValueError:
                         # Something is there in BigQuery for this schema, but it is bad.
                         # If this happens, the table can be reset by deleting it
-                        # and then creating again it using this tool.
+                        # and then creating again it using this tool
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
                                 format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), '!!! corrupt !!!'))
                         continue
