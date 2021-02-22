@@ -1018,7 +1018,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId is not None,
+                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) |
                      (GenomicGCValidationMetrics.ignoreFlag is not None)),
@@ -1053,7 +1053,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId is not None,
+                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
                             GenomicGCValidationMetrics.ignoreFlag is not None)),
