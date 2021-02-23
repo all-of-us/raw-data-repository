@@ -820,6 +820,10 @@ class ParticipantSummaryDao(UpdatableDao):
                  model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
                 (model.questionnaireOnCopeMayAuthored and
                  model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeDecAuthored and
+                 model.questionnaireOnCopeDecAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeFebAuthored and
+                 model.questionnaireOnCopeFebAuthored > eighteen_month_ago) or \
                 (model.consentCohort == ParticipantCohort.COHORT_1 and
                  model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
                  model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
@@ -1016,6 +1020,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                 ParticipantSummary.questionnaireOnCopeJulyAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeJuneAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeMayAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeDecAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeFebAuthored > eighteen_month_ago,
                 and_(
                     ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
                     ParticipantSummary.consentForStudyEnrollmentAuthored !=
@@ -1059,6 +1065,14 @@ class RetentionTypeFieldFilter(FieldFilter):
                 or_(
                     ParticipantSummary.questionnaireOnCopeMayAuthored == None,
                     ParticipantSummary.questionnaireOnCopeMayAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeDecAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeDecAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeFebAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeFebAuthored <= eighteen_month_ago
                 ),
                 or_(
                     ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,

@@ -3106,7 +3106,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         in_eighteen_month = clock.CLOCK.now() - datetime.timedelta(days=20)
         attrs = {
-            'questionnaireOnHealthcareAccessAuthored': in_eighteen_month
+            'questionnaireOnCopeFebAuthored': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
         ps = self.send_get("Participant/%s/Summary" % participant_id)
@@ -3125,7 +3125,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(ps['entry']), 0)
 
         attrs = {
-            'questionnaireOnHealthcareAccessAuthored': None,
+            'questionnaireOnCopeFebAuthored': None,
             'ehrUpdateTime': in_eighteen_month
         }
         self._make_participant_retention_eligible(participant_id[1:], **attrs)
