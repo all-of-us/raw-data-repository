@@ -18,11 +18,16 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
+    QuestionnaireResponseExtension
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
+# For testing PDR generator content
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
+from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values
 from tests.test_data import data_path
@@ -69,6 +74,27 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # created should remain the same as the first submission.
         self.assertEqual(parse(summary["consentForStudyEnrollmentTime"]), created.replace(tzinfo=None))
         self.assertEqual(parse(summary["consentForStudyEnrollmentAuthored"]), authored_1.replace(tzinfo=None))
+
+    def test_consent_submission_requires_signature(self):
+        """Consent questionnaire responses should only mark a participant as consented if they have consented"""
+        # Set the config up to imitate a server environment enough for the dao to check for consent files
+        previous_config_project_setting = config.GAE_PROJECT
+        config.GAE_PROJECT = 'test-environment'
+
+        participant_id = self.create_participant()
+        self.send_consent(participant_id, authored=datetime.datetime.now(), string_answers=[
+            ('firstName', 'Bob'),
+            ('lastName', 'Smith'),
+            ('email', 'email@example.com')
+        ], expected_status=400, send_consent_file_extension=False)
+
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == from_client_participant_id(participant_id)
+        ).one_or_none()
+        self.assertIsNone(summary)
+
+        # Set the config back so that the rest of the tests are ok
+        config.GAE_PROJECT = previous_config_project_setting
 
     def test_update_baseline_questionnaires_first_complete_authored(self):
         participant_id = self.create_participant()
@@ -287,6 +313,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # The resource gets rewritten to include the version
         resource['questionnaire']['reference'] = 'Questionnaire/%s/_history/aaa' % questionnaire_id
         self.assertJsonResponseMatches(resource, response)
+
+        # Check that the extensions were saved
+        questionnaire_response_id = response['id']
+        test_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'extension-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('test string', test_extension.valueString)
+        code_extension: QuestionnaireResponseExtension = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.url == 'code-url',
+            QuestionnaireResponseExtension.questionnaireResponseId == questionnaire_response_id
+        ).one()
+        self.assertEqual('code_value', code_extension.valueCode)
 
         #  sending an update response with history reference
         with open(data_path('questionnaire_response4.json')) as fd:
@@ -770,48 +809,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
-    def test_gender_plus_skip_equals_gender(self):
-        with FakeClock(TIME_1):
-            participant_id = self.create_participant()
-            self.send_consent(participant_id)
-
-        questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-        resource["group"]["question"][2]["answer"][1]["valueCoding"]["code"] = "PMI_Skip"
-
-        with FakeClock(TIME_2):
-            resource["authored"] = TIME_2.isoformat()
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
-
-        participant = self.send_get("Participant/%s" % participant_id)
-        summary = self.send_get("Participant/%s/Summary" % participant_id)
-        expected = dict(participant_summary_default_values)
-        expected.update({
-            "genderIdentity": "GenderIdentity_Man",
-            "firstName": self.first_name,
-            "lastName": self.last_name,
-            "email": self.email,
-            "streetAddress": self.streetAddress,
-            "streetAddress2": self.streetAddress2,
-            "biobankId": participant["biobankId"],
-            "participantId": participant_id,
-            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
-            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
-            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
-            "questionnaireOnTheBasicsTime": TIME_2.isoformat(),
-            "questionnaireOnTheBasicsAuthored": TIME_2.isoformat(),
-            "signUpTime": TIME_1.isoformat(),
-        })
-        self.assertJsonResponseMatches(expected, summary)
-
     def test_gender_prefer_not_answer(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -1059,6 +1056,35 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         ).one()
         self.assertIsNone(participant_summary.questionnaireOnTheBasics)
 
+        # PDR- 235 Add checks of the PDR generator data for module
+        # response status of the "in progress" TheBasics test response
+        ps_rsrc_gen = ParticipantSummaryGenerator()
+        ps_bqs_gen = BQParticipantSummaryGenerator()
+
+        ps_rsrc_data = ps_rsrc_gen.make_resource(participant_summary.participantId).get_data()
+        ps_bqs_data = ps_bqs_gen.make_bqrecord(participant_summary.participantId).to_dict(serialize=True)
+
+        # Check data from the resource generator
+        pdr_module_dict = _get_pdr_module_dict(ps_rsrc_data, 'TheBasics', key_name='module')
+        self.assertEqual(pdr_module_dict.get('response_status'), 'IN_PROGRESS')
+        self.assertEqual(pdr_module_dict.get('response_status_id'), 0)
+
+        # Check data from the bigquery_sync participant summary DAO / generator
+        pdr_module_dict = _get_pdr_module_dict(ps_bqs_data, 'TheBasics', key_name='mod_module')
+        self.assertEqual(pdr_module_dict.get('mod_response_status'), 'IN_PROGRESS')
+        self.assertEqual(pdr_module_dict.get('mod_response_status_id'), 0)
+
+        # Check the bigquery_sync questionnaire response DAO / generator
+        # TODO:  Validate Resource generator data for questionnaire response when implemented
+        qr_gen = BQPDRQuestionnaireResponseGenerator()
+        table, bqrs = qr_gen.make_bqrecord(participant_summary.participantId, 'TheBasics', latest=True)
+
+        self.assertIsNotNone(table)
+        # bqrs is a list of BQRecord types
+        self.assertEqual(len(bqrs), 1)
+        self.assertEqual(bqrs[0].status, 'IN_PROGRESS')
+        self.assertEqual(bqrs[0].status_id, 0)
+
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_link_id_validation(self, mock_logging):
         # Get a participant set up for the test
@@ -1089,6 +1115,54 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # Make sure logs have been called for each issue
         mock_logging.error.assert_any_call('Questionnaire response contains invalid link ID "invalid_link"')
 
+    def test_unexpected_extension_field_succeeds(self):
+        """
+        Not all extension fields were implemented in the RDR's Extension model, valueUri is one of them.
+        This tests to be sure that a QuestionnaireResponse won't be rejected (or crash) if it contains an extension
+        field we're not prepared to handle.
+        """
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant_id = self.create_participant()
+        self.send_consent(participant_id)
+
+        # Check that POST doesn't fail on unknown extension fields
+        with open(data_path("questionnaire_response3.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        resource['extension'] = [{
+            'url': 'test-unknown',
+            'valueUri': 'testing'
+        }]
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        # Double check that the extension wasn't made (if it was then this test may need to be updated)
+        response_id = response['id']
+        extension_query = self.session.query(QuestionnaireResponseExtension).filter(
+            QuestionnaireResponseExtension.questionnaireResponseId == response_id
+        )
+        self.assertEqual(0, extension_query.count(),
+                         'The extension was created, but the valueUri field is expected to be unrecognized')
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
+
+def _get_pdr_module_dict(ps_data, module_id, key_name=None):
+    """
+      Returns the first occurrence of a module entry from PDR participant data for the specified module_id
+      :param ps_data: A participant data dictionary (assumed to contain a 'modules' key/list of dict values)
+      :param module_id: The name / string of the module to search for
+      :param key_name:  The key name to extract the value from to match to the supplied module_id string
+    """
+    if isinstance(key_name, str):
+        for mod in ps_data.get('modules'):
+            if mod.get(key_name).lower() == module_id.lower():
+                return mod
+
+    return None
+

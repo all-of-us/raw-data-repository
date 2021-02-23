@@ -14,6 +14,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
     OrganizationType,
     SuspensionStatus,
@@ -189,6 +190,29 @@ class ParticipantApiTest(BaseTestCase):
         path = "Participant/%s" % participant_id
         update_awardee = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
         self.assertEqual(participant["awardee"], update_awardee["awardee"])
+
+    def test_pairing_is_case_insensitive(self):
+        # Set the participant up
+        participant = self.send_post('Participant', self.participant)
+
+        # Change the site pairing information
+        participant_site_code_sent = 'hpo-site-Monroeville'
+        del participant['providerLink']
+        participant['site'] = participant_site_code_sent
+
+        # Re-pair using API
+        participant_id = from_client_participant_id(participant["participantId"])
+        self.send_put(f'Participant/P{participant_id}', participant, headers={"If-Match": 'W/"1"'})
+
+        # Verify that the participant is paired correctly
+        participant_site: Site = self.session.query(Site).join(
+            Participant,
+            Participant.siteId == Site.siteId
+        ).filter(
+            Participant.participantId == participant_id
+        ).one_or_none()
+        self.assertEqual(participant_site_code_sent.lower(), participant_site.googleGroup,
+                         "Expecting the participant to be paired to Monroeville")
 
     def test_change_pairing_for_org_then_site(self):
         participant = self.send_post("Participant", self.participant)

@@ -12,17 +12,17 @@ from sqlalchemy.sql.functions import coalesce, concat
 from typing import Type
 
 from rdr_service import config
-from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, STREET_ADDRESS_QUESTION_CODE,\
-    STREET_ADDRESS2_QUESTION_CODE
-from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
+    EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
+from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, TemporaryQuestionnaireResponse
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.participant_enums import WithdrawalStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -232,6 +232,9 @@ class CurationExportClass(ToolBase):
                 QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
                 QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
             )
+        ).outerjoin(
+            TemporaryQuestionnaireResponse,
+            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             Code,
             Code.codeId == QuestionnaireConcept.codeId
@@ -246,6 +249,10 @@ class CurationExportClass(ToolBase):
             QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             QuestionnaireQuestion
+        ).filter(
+            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
+            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
+                TemporaryQuestionnaireResponse.duplicate == 0)
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -257,6 +264,9 @@ class CurationExportClass(ToolBase):
         question_code = aliased(Code)
         answer_code = aliased(Code)
 
+        # TODO: when the responses with these answers in the valueInteger field are cleaned up, we can remove this
+        zipcode_question_codes_to_remap = [EMPLOYMENT_ZIPCODE_QUESTION_CODE, ZIPCODE_QUESTION_CODE]
+
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
@@ -267,10 +277,11 @@ class CurationExportClass(ToolBase):
             SrcClean.value_ppi_code: answer_code.shortValue,
             SrcClean.topic_value: answer_code.topic,
             SrcClean.value_code_id: QuestionnaireResponseAnswer.valueCodeId,
-            SrcClean.value_number: coalesce(
-                QuestionnaireResponseAnswer.valueDecimal,
-                QuestionnaireResponseAnswer.valueInteger
-            ),
+            SrcClean.value_number: case([(
+                # Only set value number if the question code is not one of the zip codes to re-map
+                question_code.value.notin_(zipcode_question_codes_to_remap),
+                coalesce(QuestionnaireResponseAnswer.valueDecimal, QuestionnaireResponseAnswer.valueInteger)
+            )]),
             SrcClean.value_boolean: QuestionnaireResponseAnswer.valueBoolean,
             SrcClean.value_date: coalesce(
                 QuestionnaireResponseAnswer.valueDate,
@@ -280,7 +291,11 @@ class CurationExportClass(ToolBase):
                 func.left(QuestionnaireResponseAnswer.valueString, 1024),
                 QuestionnaireResponseAnswer.valueDate,
                 QuestionnaireResponseAnswer.valueDateTime,
-                answer_code.display
+                answer_code.display,
+                case([  # Use valueInteger if the question code should be re-mapped
+                    (question_code.value.in_(zipcode_question_codes_to_remap),
+                     QuestionnaireResponseAnswer.valueInteger)
+                ])
             ),
             SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
             SrcClean.unit_id: concat(
@@ -306,6 +321,9 @@ class CurationExportClass(ToolBase):
             HPO
         ).join(
             QuestionnaireResponse
+        ).outerjoin(
+            TemporaryQuestionnaireResponse,
+            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             QuestionnaireConcept,
             and_(
@@ -346,7 +364,10 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueDate.isnot(None),
                 QuestionnaireResponseAnswer.valueDateTime.isnot(None),
                 QuestionnaireResponseAnswer.valueString.isnot(None)
-            )
+            ),
+            QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
+            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
+                TemporaryQuestionnaireResponse.duplicate == 0)
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code

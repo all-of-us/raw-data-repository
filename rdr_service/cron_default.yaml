@@ -59,16 +59,6 @@ cron:
   schedule: every day 02:45
   timezone: America/New_York
   target: offline
-- description: Genomic Pipeline AW0 (Cohort 1) Workflow
-  url: /offline/GenomicC1AW0Workflow
-  timezone: America/New_York
-  schedule: every monday 07:15
-  target: offline
-- description: Genomic Pipeline AW0 (Cohort 2) Workflow
-  url: /offline/GenomicC2AW0Workflow
-  schedule: every monday 07:00
-  timezone: America/New_York
-  target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
@@ -124,10 +114,15 @@ cron:
   timezone: America/New_York
   schedule: 1 of jan 12:00
   target: offline
-- description: Genomic AW3 Workflow
-  url: /offline/GenomicAW3Workflow
+- description: Genomic AW3 Array Workflow
+  url: /offline/GenomicAW3ArrayWorkflow
   timezone: America/New_York
   schedule: every monday 06:45
+  target: offline
+- description: Genomic AW3 WGS Workflow
+  url: /offline/GenomicAW3WGSWorkflow
+  timezone: America/New_York
+  schedule: 1 of jan 00:00
   target: offline
 - description: Genomic AW4 Workflow
   url: /offline/GenomicAW4Workflow

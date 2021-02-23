@@ -171,6 +171,7 @@ class BQGenomicSetMemberSchema(BQSchema):
     aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw2f_file_processed_id = BQField('aw2f_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
@@ -290,6 +291,17 @@ class BQGenomicManifestFileView(BQView):
     __viewdescr__ = 'Genomic Manifest File View'
     __pk_id__ = 'id'
     __table__ = BQGenomicManifestFile
+    __sql__ = """
+    SELECT gmf.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_manifest_file
+      ) gmf
+    WHERE gmf.rn = 1 and gmf.ignore_flag = 0
+    """
+
+
 
 
 class BQGenomicManifestFeedbackSchema(BQSchema):
@@ -318,6 +330,15 @@ class BQGenomicManifestFeedbackView(BQView):
     __viewdescr__ = 'Genomic Manifest Feedback View'
     __pk_id__ = 'id'
     __table__ = BQGenomicManifestFeedback
+    __sql__ = """
+    SELECT gmf.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_manifest_feedback
+      ) gmf
+    WHERE gmf.rn = 1 and gmf.ignore_flag = 0
+    """
 
 
 class BQGenomicGCValidationMetricsSchema(BQSchema):
@@ -381,7 +402,22 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     contamination_category = BQField('contamination_category', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     contamination_category_id = BQField('contamination_category_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                                         fld_enum=GenomicContaminationCategoryEnum)
-
+    idat_green_deleted = BQField('idat_green_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_red_deleted = BQField('idat_red_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_deleted = BQField('vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    crai_deleted = BQField('crai_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cram_md5_deleted = BQField('cram_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    cram_deleted = BQField('cram_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_md5_deleted = BQField('hf_vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_deleted = BQField('hf_vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    hf_vcf_tbi_deleted = BQField('hf_vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_md5_deleted = BQField('raw_vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_deleted = BQField('raw_vcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    raw_vcf_tbi_deleted = BQField('raw_vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_green_md5_deleted = BQField('idat_green_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    idat_red_md5_deleted = BQField('idat_red_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_md5_deleted = BQField('vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    vcf_tbi_deleted = BQField('vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
@@ -389,8 +425,18 @@ class BQGenomicGCValidationMetrics(BQTable):
     __schema__ = BQGenomicGCValidationMetricsSchema
 
 
+
 class BQGenomicGCValidationMetricsView(BQView):
     __viewname__ = 'v_genomic_gc_validation_metrics'
     __viewdescr__ = 'Genomic GC Validation Metrics View'
     __pk_id__ = 'id'
     __table__ = BQGenomicGCValidationMetrics
+    __sql__ = """
+    SELECT gcvm.*
+      FROM (
+         SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY orig_id ORDER BY modified desc) AS rn
+        FROM `{project}`.{dataset}.genomic_gc_validation_metrics
+      ) gcvm
+    WHERE gcvm.rn = 1 and gcvm.ignore_flag = 0
+    """

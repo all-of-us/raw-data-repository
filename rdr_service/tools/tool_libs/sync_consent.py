@@ -1,26 +1,16 @@
-#! /bin/env python
-#
-# Copy Consent EHR files to HPO buckets.
-#
-# Replaces older ehr_upload_for_organization.sh script.
-#
-import argparse
-import logging
-import os
-import sys
 from datetime import datetime
-
 import MySQLdb
+import logging
 import pytz
 
-from rdr_service.dao import database_factory
-from rdr_service.offline.sync_consent_files import get_org_data_map, build_participant_query, \
-    DEFAULT_GOOGLE_GROUP, get_consent_destination, archive_and_upload_consents, copy_file
-from rdr_service.services.system_utils import print_progress_bar, setup_logging, setup_i18n
+from rdr_service.config import CONSENT_SYNC_BUCKETS
+from rdr_service.offline.sync_consent_files import build_participant_query, \
+    DEFAULT_GOOGLE_GROUP, get_consent_destination, copy_file
+from rdr_service.services.system_utils import print_progress_bar
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.tools.tool_libs import GCPProcessContext
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
-_logger = logging.getLogger("rdr_logger")
+logger = logging.getLogger("rdr_logger")
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
@@ -33,11 +23,9 @@ SOURCE_BUCKET = {
 }
 
 
-class SyncConsentClass(object):
+class SyncConsentClass(ToolBase):
     def __init__(self, args, gcp_env):
-        self.args = args
-        self.gcp_env = gcp_env
-
+        super(SyncConsentClass, self).__init__(args, gcp_env)
         self.file_filter = "pdf"
 
     @staticmethod
@@ -69,23 +57,18 @@ class SyncConsentClass(object):
             return False
 
     def run(self):
-        """
-        Main program process
-        :return: Exit code value
-        """
-        proxy_pid = self.gcp_env.activate_sql_proxy()
-        if not proxy_pid:
-            return 1
+        super(SyncConsentClass, self).run()
 
         filter_pids = None
         if self.args.pid_file:
             filter_pids = open(self.args.pid_file).read().strip().split('\n')
             filter_pids = [int(x) for x in filter_pids]
 
-        org_buckets = get_org_data_map()
+        server_config = self.get_server_config()
+        org_buckets = server_config[CONSENT_SYNC_BUCKETS]
 
         try:
-            _logger.info("retrieving participant information...")
+            logger.info("retrieving participant information...")
             # get record count
             query_args = {}
             if self.args.date_limit:
@@ -103,16 +86,14 @@ class SyncConsentClass(object):
             else:
                 query_args['all_va'] = True
 
-            participant_sql, params = build_participant_query(org_ids, **query_args)
-            count_sql = self._get_count_sql(participant_sql)
-            with database_factory.make_server_cursor_database().session() as session:
-                total_participants = session.execute(count_sql, params).scalar() if not filter_pids \
-                                            else len(filter_pids)
+            with self.get_session() as session:
+                participant_query = build_participant_query(session, org_ids, **query_args)
+                total_participants = participant_query.count() if not filter_pids else len(filter_pids)
 
-                _logger.info("transferring files to destinations...")
+                logger.info("transferring files to destinations...")
                 count = 0
-                for rec in session.execute(participant_sql, params):
-                    if filter_pids and rec[0] not in filter_pids:
+                for participant_id, origin, site_google_group, org_external_id in participant_query:
+                    if filter_pids and participant_id not in filter_pids:
                         continue
                     if not self.args.debug:
                         print_progress_bar(
@@ -120,19 +101,15 @@ class SyncConsentClass(object):
                             suffix="complete"
                         )
 
-                    p_id = rec[0]
-                    origin_id = rec[1]
-                    site = rec[2]
-                    org_id = rec[3]
                     if self.args.destination_bucket is not None:
                         # override destination bucket lookup (the lookup table is incomplete)
                         bucket = self.args.destination_bucket
                     elif self.args.all_va:
                         bucket = 'aou179'
                     else:
-                        bucket = org_buckets.get(org_id, None)
+                        bucket = org_buckets.get(org_external_id, None)
                     if not bucket:
-                        _logger.warning("\nno bucket name found for [{0}].".format(site))
+                        logger.warning("\nno bucket name found for [{0}].".format(site_google_group))
                         count += 1
                         continue
 
@@ -140,30 +117,28 @@ class SyncConsentClass(object):
                     if self.args.all_files:
                         self.file_filter = ""
 
-                    src_bucket = SOURCE_BUCKET.get(origin_id, SOURCE_BUCKET[
+                    src_bucket = SOURCE_BUCKET.get(origin, SOURCE_BUCKET[
                         next(iter(SOURCE_BUCKET))
-                    ]).format(p_id=p_id, file_ext=self.file_filter)
+                    ]).format(p_id=participant_id, file_ext=self.file_filter)
 
                     destination = get_consent_destination(
                         add_protocol=True,
-                        zipping=self.args.zip_files,
                         bucket_name=bucket,
-                        org_external_id=org_id,
-                        site_name=site if site else DEFAULT_GOOGLE_GROUP,
-                        p_id=p_id
+                        org_external_id=org_external_id,
+                        site_name=site_google_group if site_google_group else DEFAULT_GOOGLE_GROUP,
+                        p_id=participant_id
                     )
                     if self.args.date_limit:
                         # only copy files newer than date limit
                         files_in_range = self._get_files_updated_in_range(
                             date_limit=self.args.date_limit,
-                            source_bucket=src_bucket, p_id=p_id)
+                            source_bucket=src_bucket, p_id=participant_id)
                         if not files_in_range or len(files_in_range) == 0:
-                            _logger.info(f'No files in bucket updated after {self.args.date_limit}')
+                            logger.info(f'No files in bucket updated after {self.args.date_limit}')
                         for f in files_in_range:
-                            copy_file(f, destination, p_id, dry_run=self.args.dry_run, zip_files=self.args.zip_files)
+                            copy_file(f, destination, participant_id, dry_run=self.args.dry_run)
                     else:
-                        copy_file(src_bucket, destination, p_id,
-                                  dry_run=self.args.dry_run, zip_files=self.args.zip_files)
+                        copy_file(src_bucket, destination, participant_id, dry_run=self.args.dry_run)
 
                     count += 1
 
@@ -173,66 +148,25 @@ class SyncConsentClass(object):
                     count, total_participants, prefix="{0}/{1}:".format(count, total_participants), suffix="complete"
                 )
 
-            if self.args.zip_files and count > 0:
-                archive_and_upload_consents(dry_run=self.args.dry_run)
-
         except MySQLdb.OperationalError as e:
-            _logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
+            logger.error("failed to connect to {0} mysql instance. [{1}]".format(self.gcp_env.project, e))
 
         return 0
 
 
+def add_additional_arguments(parser):
+    parser.add_argument("--org-id", help="organization id", default=None)
+    parser.add_argument("--destination-bucket", default=None,
+                        help="Override the destination bucket lookup for the given organization.")
+    parser.add_argument("--all-va", action="store_true", help="Sync consents for all VA organizations")
+    parser.add_argument("--date-limit", help="Limit consents to sync to those created after the date", default=None)
+    parser.add_argument("--end-date", help="Limit consents to sync to those created before the date", default=None)
+    parser.add_argument("--all-files", help="Transfer all file types, default is only PDF.",
+                        default=False, action="store_true")
+    parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)
+
+    # todo: add functionality for using the server to zip consent files
+
+
 def run():
-    # Set global debug value and setup application logging.
-    setup_logging(
-        _logger, tool_cmd, "--debug" in sys.argv, "{0}.log".format(tool_cmd) if "--log-file" in sys.argv else None
-    )
-    setup_i18n()
-
-    # Setup program arguments.
-    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
-    parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")  # noqa
-    parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
-    parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
-    parser.add_argument("--org-id", help="organization id", default=None)  # noqa
-    parser.add_argument(
-        "--destination-bucket", default=None, help="Override the destination bucket lookup for the given organization."
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
-    )
-    parser.add_argument(
-        "--zip-files", action="store_true", help="Zip the consent files by site rather than uploading them individually"
-    )
-    parser.add_argument(
-        "--all-va", action="store_true", help="Zip consents for all VA organizations"
-    )
-
-    parser.add_argument(
-        "--date-limit", help="Limit consents to sync to those created after the date", default=None)  # noqa
-
-    parser.add_argument(
-        "--end-date", help="Limit consents to sync to those created before the date", default=None)  # noqa
-
-    parser.add_argument(
-        "--all-files", help="Transfer all file types, default is only PDF.",
-        default=False, action="store_true")  # noqa
-    parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)  # noqa
-
-    args = parser.parse_args()
-
-    if args.pid_file and not os.path.exists(args.pid_file):
-        _logger.error(f'File "{args.pid_file}" does not exist.')
-        return 1
-
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = SyncConsentClass(args, gcp_env)
-        exit_code = process.run()
-        return exit_code
-
-
-# --- Main Program Call ---
-if __name__ == "__main__":
-    sys.exit(run())
+    cli_run(tool_cmd, tool_desc, SyncConsentClass, add_additional_arguments)

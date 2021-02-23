@@ -18,7 +18,7 @@ chardet==3.0.4            # via requests
 click==7.1.2              # via flask, pip-tools
 configargparse==1.2.3     # via locust
 coverage==5.1             # via -r requirements.in
-cryptography==3.2       # via oauthlib, pyopenssl, requests
+cryptography==3.3.2       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
 dictalchemy==0.1.2.7      # via -r requirements.in
 dnspython==1.16.0         # via -r requirements.in
@@ -41,7 +41,6 @@ google-cloud-firestore==1.7.0  # via -r requirements.in
 google-cloud-logging==1.15.0  # via -r requirements.in
 google-cloud-storage==1.28.1  # via -r requirements.in
 google-cloud-tasks==1.5.0  # via -r requirements.in
-google-python-cloud-debugger==2.14  # via -r requirements.in
 google-resumable-media==0.5.0  # via google-cloud-bigquery, google-cloud-storage
 googleapis-common-protos[grpc]==1.51.0  # via google-api-core, grpc-google-iam-v1
 googlemaps==4.4.1         # via -r requirements.in
@@ -49,7 +48,7 @@ greenlet==0.4.15          # via gevent
 grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
 grpcio==1.29.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gunicorn==20.0.4          # via -r requirements.in
-httplib2==0.18.1          # via google-api-python-client, google-auth-httplib2, oauth2client
+httplib2==0.19.0          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==2.9                 # via requests
 imagesize==1.2.0          # via sphinx
 isodate==0.6.0            # via fhirclient

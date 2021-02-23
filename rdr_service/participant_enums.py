@@ -645,6 +645,15 @@ class GenomicJob(messages.Enum):
     FEEDBACK_SCAN = 30
     RECALCULATE_CONTAMINATION_CATEGORY = 31
 
+    CALCULATE_RECORD_COUNT_AW1 = 32
+    CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
+
+    LOAD_AW1_TO_RAW_TABLE = 34
+    LOAD_AW2_TO_RAW_TABLE = 35
+
+    AW5_ARRAY_MANIFEST = 36
+    AW5_WGS_MANIFEST = 37
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -723,6 +732,9 @@ class GenomicManifestTypes(messages.Enum):
     GEM_A2 = 11
     AW4_ARRAY = 12
     AW4_WGS = 13
+    AW1F = 14
+    AW5_ARRAY = 15
+    AW5_WGS = 16
 
 
 class GenomicContaminationCategory(messages.Enum):
@@ -733,11 +745,22 @@ class GenomicContaminationCategory(messages.Enum):
     TERMINAL_NO_EXTRACT = 4
 
 
-
 class GenomicQcStatus(messages.Enum):
     UNSET = 0
     PASS = 1
     FAIL = 2
+
+
+class GenomicIncidentCode(messages.Enum):
+    UNSET = 0
+    UNKNOWN = 1
+    UNABLE_TO_FIND_MEMBER = 2
+
+
+class GenomicIncidentStatus(messages.Enum):
+    OPEN = 0
+    RESOLVED = 1
+    UNABLE_TO_RESOLVE = 2
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):

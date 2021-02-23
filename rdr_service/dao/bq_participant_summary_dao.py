@@ -21,7 +21,9 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_YES,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
-    CONSENT_COPE_DEFERRED_CODE
+    CONSENT_COPE_DEFERRED_CODE,
+    CABOR_SIGNATURE_QUESTION_CODE,
+    PMI_SKIP_CODE
 )
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
@@ -37,11 +39,11 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus
 from rdr_service.resource.helpers import DateCollection
 
 
@@ -56,7 +58,7 @@ _consent_module_question_map = {
     'COPE': 'section_participation',
     'cope_nov': 'section_participation',
     'cope_dec': 'section_participation',
-    'cope_jan': 'section_participation',
+    'cope_feb': 'section_participation',
     'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
 }
 
@@ -71,7 +73,7 @@ _consent_expired_question_map = {
     'COPE': None,
     'cope_nov': None,
     'cope_dec': None,
-    'cope_jan': None,
+    'cope_feb': None,
     'GeneticAncestry': None
 }
 
@@ -110,6 +112,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
     """
     Generate a Participant Summary BQRecord object
     """
+    # Temporary
+    cdm_db_exists = False
+
     ro_dao = None
     # Retrieve module and sample test lists from config.
     _baseline_modules = [mod.replace('questionnaireOn', '')
@@ -128,6 +133,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             self.ro_dao = BigQuerySyncDao(backup=True)
 
         with self.ro_dao.session() as ro_session:
+            # Temporary
+            self.cdm_db_exists = self._test_cdm_db_exists(ro_session)
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep additional participant profile info
@@ -191,6 +198,22 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 return BQRecord(schema=BQParticipantSummarySchema, data=json.loads(rec.resource),
                                 convert_to_enum=False)
         return None
+
+    def _test_cdm_db_exists(self, ro_session):
+        """
+        Temporary function to detect if the 'cdm' database and 'tmp_questionnaire_response' table exists.
+        :param ro_session: Readonly DAO session object
+        :return: True if 'cdm' database exists otherwise False.
+        """
+        sql = "SELECT * FROM cdm.tmp_questionnaire_response LIMIT 1"
+        try:
+            ro_session.execute(sql)
+            return True
+        except exc.ProgrammingError:
+            pass
+        except exc.OperationalError:
+            logging.warning('Unexpected error found when checking for tmp_questionnaire_response table', exc_info=True)
+        return False
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -374,10 +397,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param p_id: participant id
         :return: dict
         """
-        qnans = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id)
+
+        # PDR-178:  Retrieve both the processed (layered) answers result, and the raw responses. This allows us to
+        # do some extra processing of the ConsentPII data without having to query all over again.
+        qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True,
+                                        cdm_db_exists=self.cdm_db_exists)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
+
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
         try:
@@ -406,8 +434,22 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'addr_zip': qnan.get('StreetAddress_PIIZIP'),
                     'addr_country': 'US'
                 }
-            ]
+            ],
+            'cabor_authored': None
         }
+
+        # PDR-178:  RDR handles CABoR consents a little differently in that once it receives an initial CABoR
+        # "signature" in a ConsentPII, it sets the participant_summary.consent_for_cabor / consent_for_cabor_authored
+        # fields and will never update them based on subsequent ConsentPII payloads.  To match RDR in determining
+        # the CABoR consent authored date, we can't rely on "layered" answers returned by get_module_answers().
+        # Instead we'll go back through the raw responses dict of dicts; top level key is a questionnaire_response_id,
+        # its value is a dict of key/value pairs (metadata and question codes/answers) associated with the response
+        # Search for the first response with a signed CABoR (if one exists) and use that response's authored date
+        for response_id_key in responses:
+            fields = responses.get(response_id_key)
+            if fields.get(CABOR_SIGNATURE_QUESTION_CODE, PMI_SKIP_CODE) != PMI_SKIP_CODE:
+                data['cabor_authored'] = fields.get('authored')
+                break
 
         return data
 
@@ -419,19 +461,51 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: dict
         """
 
-        code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
-            filter(QuestionnaireResponse.questionnaireId ==
-                   QuestionnaireConcept.questionnaireId).label('codeId')
+        if not self.cdm_db_exists:
+            code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
+                filter(QuestionnaireResponse.questionnaireId ==
+                       QuestionnaireConcept.questionnaireId).label('codeId')
 
-        # Responses are sorted by authored date ascending and then created date descending
-        # This should result in a list where any replays of a response are adjacent (most recently created first)
-        query = ro_session.query(
-            QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
-            QuestionnaireResponse.created, QuestionnaireResponse.language, code_id_query). \
-            filter(QuestionnaireResponse.participantId == p_id). \
-            order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
-        # sql = self.ro_dao.query_to_text(query)
-        results = query.all()
+            # Responses are sorted by authored date ascending and then created date descending
+            # This should result in a list where any replays of a response are adjacent (most recently created first)
+            query = ro_session.query(
+                    QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
+                    QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
+                    QuestionnaireResponse.status, code_id_query). \
+                join(QuestionnaireHistory). \
+                filter(QuestionnaireResponse.participantId == p_id). \
+                order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
+            #sql = self.ro_dao.query_to_text(query)
+            results = query.all()
+
+        # Temporary: Use raw sql instead to facilitate joining across databases to the cdm.tmp_questionnaire_response
+        # table where we have flagged duplicate response payloads sent by PTSC for filtering out during PDR data
+        # rebuilds.  See:  ROC-825
+        else:
+            # This SQL statement is based off of the query_to_text() output for the SQLAlchemy query above, and then
+            # modified to add the additional filtering when joined with cdm.temp_questionnaire_response (and match
+            # expected column names to what the SQLAlchemy query also returns)
+            _raw_sql = """
+                SELECT qr.questionnaire_response_id questionnaireResponseId,
+                       qr.authored,
+                       qr.created,
+                       qr.language,
+                       qh.external_id externalId,
+                       qr.status,
+                  (SELECT max(questionnaire_concept.code_id) AS max_1
+                   FROM questionnaire_concept
+                   WHERE qr.questionnaire_id = questionnaire_concept.questionnaire_id) AS `codeId`
+                FROM questionnaire_response qr
+                INNER JOIN questionnaire_history qh
+                      ON qh.questionnaire_id = qr.questionnaire_id
+                      AND qh.version = qr.questionnaire_version
+                LEFT OUTER JOIN cdm.tmp_questionnaire_response tqr
+                      ON qr.questionnaire_response_id = tqr.questionnaire_response_id
+                WHERE qr.participant_id = :pid
+                      AND (tqr.duplicate is NULL or tqr.duplicate = 0)
+                ORDER BY qr.authored, qr.created DESC;
+            """
+            results = ro_session.execute(_raw_sql, {'pid': p_id})
 
         data = {
             'consent_cohort': BQConsentCohort.UNSET.name,
@@ -459,7 +533,10 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                     'mod_created': row.created,
                     'mod_language': row.language,
                     'mod_status': module_status.name,
-                    'mod_status_id': module_status.value
+                    'mod_status_id': module_status.value,
+                    'mod_external_id': row.externalId,
+                    'mod_response_status': str(QuestionnaireResponseStatus(row.status)),
+                    'mod_response_status_id': int(QuestionnaireResponseStatus(row.status))
                 }
 
                 # check if this is a module with consents.
@@ -476,7 +553,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                         data['consent_cohort'] = cohort.name
                         data['consent_cohort_id'] = cohort.value
 
-                    qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
+                    qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId,
+                                                    cdm_db_exists=self.cdm_db_exists)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)
                         consent = {
@@ -486,6 +564,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                             'consent_module': module_name,
                             'consent_module_authored': row.authored,
                             'consent_module_created': row.created,
+                            'consent_module_external_id': row.externalId,
+                            'consent_response_status': str(QuestionnaireResponseStatus(row.status)),
+                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status))
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
@@ -1193,7 +1274,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         return data
 
     @staticmethod
-    def get_module_answers(ro_dao, module, p_id, qr_id=None):
+    def get_module_answers(ro_dao, module, p_id, qr_id=None, return_responses=False, cdm_db_exists=False):
         """
         Retrieve the questionnaire module answers for the given participant id.  This retrieves all responses to
         the module and applies/layers the answers from each response to the final data dict returned.
@@ -1201,7 +1282,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param module: Module name
         :param p_id: participant id.
         :param qr_id: questionnaire response id
-        :return: dict
+        :param return_responses:  Return the responses (unlayered) in addition to the processed answer data
+        :param cdm_db_exists: Temporary arg.
+        :return: dicts
         """
         _module_info_sql = """
             SELECT DISTINCT qr.questionnaire_id,
@@ -1214,9 +1297,21 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             FROM questionnaire_response qr
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
-            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-            ORDER BY qr.created;
         """
+        # Temporary
+        if cdm_db_exists:
+            _module_info_sql += """
+                LEFT OUTER JOIN cdm.tmp_questionnaire_response tqr
+                    ON qr.questionnaire_response_id = tqr.questionnaire_response_id
+                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod) AND
+                   (tqr.duplicate is null or tqr.duplicate = 0)
+                ORDER BY qr.created;
+            """
+        else:
+            _module_info_sql += """
+                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+                ORDER BY qr.created;
+            """
 
         _answers_sql = """
             SELECT qr.questionnaire_id,
@@ -1290,7 +1385,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             if qr_id and qr_id == questionnaire_response_id:
                 break
 
-        return data if data else None
+        # Map empty data dict to a None return and return the unlayered raw responses if requested
+        # Returning the raw responses enables some additional special case logic in _prep_consentpii()
+        rtn_data = None
+        if bool(data):
+            rtn_data = data
+        if return_responses:
+            return rtn_data, answers
+        else:
+            return rtn_data
 
     @staticmethod
     def is_replay(prev_data_dict, data_dict, created_key=None):

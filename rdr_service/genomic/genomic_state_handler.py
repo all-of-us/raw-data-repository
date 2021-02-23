@@ -27,7 +27,7 @@ class ControlSampleState(GenomicStateBase):
      for example NIST samples.
     """
     def transition_function(self, signal):
-        return GenomicWorkflowState.IGNORE
+        return GenomicWorkflowState.CONTROL_SAMPLE
 
 
 class AW0ReadyState(GenomicStateBase):
@@ -39,6 +39,8 @@ class AW0ReadyState(GenomicStateBase):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.AW0
 
+        return GenomicWorkflowState.AW0_READY
+
 
 class AW0State(GenomicStateBase):
     """State representing the AW0 manifest state"""
@@ -46,13 +48,22 @@ class AW0State(GenomicStateBase):
         if signal == 'aw1-reconciled':
             return GenomicWorkflowState.AW1
 
+        elif signal == 'aw1-failed':
+            return GenomicWorkflowState.AW1F_PRE
+
+        return GenomicWorkflowState.AW0
+
 
 class AW1State(GenomicStateBase):
     """State representing the AW1 manifest state"""
     def transition_function(self, signal):
-        # TODO: this will be updated to appropriate states in a future PR
         if signal == 'aw1-failed':
             return GenomicWorkflowState.AW1F_POST
+
+        elif signal == 'aw2':
+            return GenomicWorkflowState.AW2
+
+        return GenomicWorkflowState.AW1
 
 
 class AW2State(GenomicStateBase):
@@ -70,6 +81,8 @@ class AW2State(GenomicStateBase):
         elif signal == 'gem-ready':
             return GenomicWorkflowState.GEM_READY
 
+        return GenomicWorkflowState.AW2
+
 
 class AW2MissingState(GenomicStateBase):
     """State representing the AW2 Missing Data state"""
@@ -84,12 +97,16 @@ class AW2MissingState(GenomicStateBase):
         elif signal == 'gem-ready':
             return GenomicWorkflowState.GEM_READY
 
+        return GenomicWorkflowState.AW2_MISSING
+
 
 class GEMReadyState(GenomicStateBase):
     """State representing the GEM_READY state"""
     def transition_function(self, signal):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.A1
+
+        return GenomicWorkflowState.GEM_READY
 
 
 class A1State(GenomicStateBase):
@@ -104,6 +121,8 @@ class A1State(GenomicStateBase):
         if signal == 'unconsented':
             return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
 
+        return GenomicWorkflowState.A1
+
 
 class A2PassState(GenomicStateBase):
     """State representing the A2 manifest state"""
@@ -114,6 +133,8 @@ class A2PassState(GenomicStateBase):
 
         if signal == 'unconsented':
             return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+        return GenomicWorkflowState.A2
 
 
 class A2FailState(GenomicStateBase):
@@ -126,6 +147,8 @@ class A2FailState(GenomicStateBase):
         if signal == 'unconsented':
             return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
 
+        return GenomicWorkflowState.A2F
+
 
 class A3State(GenomicStateBase):
     """State representing the A3 manifest; GEM Delete states"""
@@ -134,6 +157,8 @@ class A3State(GenomicStateBase):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.GEM_RPT_DELETED
 
+        return GenomicWorkflowState.A3
+
 
 class GEMReportReady(GenomicStateBase):
     """State representing the GEM Report"""
@@ -141,6 +166,8 @@ class GEMReportReady(GenomicStateBase):
     def transition_function(self, signal):
         if signal == 'unconsented':
             return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
+        return GenomicWorkflowState.GEM_RPT_READY
 
 
 class GEMReportPendingDelete(GenomicStateBase):
@@ -153,6 +180,8 @@ class GEMReportPendingDelete(GenomicStateBase):
         if signal == 'reconsented':
             return GenomicWorkflowState.GEM_READY
 
+        return GenomicWorkflowState.GEM_RPT_PENDING_DELETE
+
 
 class GEMReportDeleted(GenomicStateBase):
     """State representing when Consent revoked, input to A3 Manifest"""
@@ -164,12 +193,16 @@ class GEMReportDeleted(GenomicStateBase):
         if signal == 'reconsented':
             return GenomicWorkflowState.GEM_READY
 
+        return GenomicWorkflowState.GEM_RPT_DELETED
+
 
 class CVLReadyState(GenomicStateBase):
     """State representing the CVL_READY state"""
     def transition_function(self, signal):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.W1
+
+        return GenomicWorkflowState.CVL_READY
 
 
 class W1State(GenomicStateBase):

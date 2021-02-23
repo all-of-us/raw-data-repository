@@ -9,14 +9,12 @@ from contextlib import closing
 
 import sqlparse
 
-from sqlalchemy.exc import OperationalError
-
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainResource
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
 from sqlalchemy import and_, inspect, or_
 from sqlalchemy.engine.result import ResultProxy
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service import api_util
@@ -492,7 +490,7 @@ class BaseDao(object):
         """Attempts to insert an entity with randomly assigned ID(s) repeatedly until success
     or a maximum number of attempts are performed."""
         all_tried_ids = []
-        for _ in range(0, MAX_INSERT_ATTEMPTS):
+        for attempt_number in range(0, MAX_INSERT_ATTEMPTS):
             tried_ids = {}
             for field in fields:
                 if field == 'researchId':
@@ -509,16 +507,17 @@ class BaseDao(object):
                 result = self.handle_integrity_error(tried_ids, e, obj)
                 if result:
                     return result
+            except OperationalError:
+                logging.warning('Failed insert with operational error', exc_info=True)
+                if attempt_number == MAX_INSERT_ATTEMPTS - 1:
+                    # Raise the error out if we're on the last retry attempt
+                    raise
         # We were unable to insert a participant (unlucky). Throw an error.
         logging.warning(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts, tried {all_tried_ids}.")
         raise ServiceUnavailable(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts.")
 
-    def handle_integrity_error(self, tried_ids, e, obj):
-        # pylint: disable=unused-argument
-        # SQLite and MySQL variants of the error message, respectively.
-        if "UNIQUE constraint failed" in str(e) or "Duplicate entry" in str(e):
-            logging.warning(f"Failed insert with {tried_ids}: {str(e)}")
-            return None
+    def handle_integrity_error(self, tried_ids, e, _):
+        logging.warning(f"Failed insert with {tried_ids}: {str(e)}")
 
     def count(self):
         with self.session() as session:

@@ -1,4 +1,12 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
+import os
+if os.getenv('GAE_ENV', '').startswith('standard'):
+    try:
+        import googleclouddebugger
+        googleclouddebugger.enable()
+    except ImportError:
+        pass
+
 import json
 import logging
 import traceback
@@ -9,7 +17,7 @@ from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
-from rdr_service.api_util import EXPORTER, RDR, parse_date
+from rdr_service.api_util import EXPORTER, RDR
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.model.requests_log import RequestsLog
@@ -214,21 +222,14 @@ def run_sync_consent_files():
 def manually_trigger_consent_sync():
     request_json = request.json
 
-    all_va = request.json.get('all_va')
-    zip_files = request.json.get('zip_files')
+    # do_sync_consent_files will filter by any kwargs passed to it, even if they're None.
+    # So if something like start_date is passed in as None, it will try to filter by comparing to a start_date of none.
+    parameters = {}
+    for field_name in ['all_va', 'start_date', 'end_date', 'ids']:
+        if field_name in request_json:
+            parameters[field_name] = request_json.get(field_name)
 
-    start_date_str = request_json.get('start_date')
-    start_date = parse_date(start_date_str) if start_date_str else None
-
-    end_date_str = request_json.get('end_date')
-    end_date = parse_date(end_date_str) if end_date_str else None
-
-    sync_consent_files.do_sync_consent_files(
-        zip_files=zip_files,
-        all_va=all_va,
-        start_date=start_date,
-        end_date=end_date
-    )
+    sync_consent_files.do_sync_consent_files(zip_files=request.json.get('zip_files'), **parameters)
     return '{"success": "true"}'
 
 
@@ -401,8 +402,19 @@ def genomic_cvl_w3_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_aw3_workflow():
+def genomic_aw3_array_workflow():
     genomic_pipeline.aw3_array_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_aw3_wgs_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
     genomic_pipeline.aw3_wgs_manifest_workflow()
     return '{"success": "true"}'
 
@@ -679,9 +691,14 @@ def _build_pipeline_app():
         view_func=genomic_cvl_w3_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW3Workflow",
-        endpoint="genomic_aw3_workflow",
-        view_func=genomic_aw3_workflow, methods=["GET"]
+        OFFLINE_PREFIX + "GenomicAW3ArrayWorkflow",
+        endpoint="genomic_aw3_array_workflow",
+        view_func=genomic_aw3_array_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
+        endpoint="genomic_aw3_wgs_workflow",
+        view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW4Workflow",

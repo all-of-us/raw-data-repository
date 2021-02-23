@@ -1,7 +1,7 @@
 from dateutil import parser
 
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
-from rdr_service.tools.tool_libs._tool_base import cli_run, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'hpo-lite-pairing-sync'
 tool_desc = 'Sync hpo lite pairing data from Redcap to an environment'

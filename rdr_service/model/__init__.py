@@ -20,7 +20,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMay'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENov'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDec'),
-    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEJan'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFeb'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -71,7 +71,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEMayView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENovView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDecView'),
-    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEJanView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFebView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),

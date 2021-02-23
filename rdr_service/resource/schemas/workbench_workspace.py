@@ -80,6 +80,8 @@ class WorkbenchWorkspaceSchema(Schema):
     others = fields.String(validate=validate.Length(max=2000))
     is_reviewed = fields.Boolean()
 
+    cdr_version = fields.String(validate=validate.Length(max=200))
+
     class Meta:
         schema_id = SchemaID.workbench_workspace
         resource_uri = 'WorkbenchWorkspace'

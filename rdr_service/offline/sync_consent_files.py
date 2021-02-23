@@ -3,18 +3,23 @@ Sync Consent Files
 
 Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
-import collections
 from datetime import datetime, timedelta
 import logging
 import pytz
 import os
 import shutil
+from sqlalchemy import or_
 import tempfile
 from zipfile import ZipFile
 
 from rdr_service import config
-from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs
+from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
+from rdr_service.model.organization import Organization
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
+from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.services.gcp_utils import gcp_cp
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -24,8 +29,6 @@ SOURCE_BUCKET = {
 }
 DEFAULT_GOOGLE_GROUP = "no-site-assigned"
 TEMP_CONSENTS_PATH = os.path.join(tempfile.gettempdir(), "temp_consents")
-
-ParticipantData = collections.namedtuple("ParticipantData", ("participant_id", "origin_id", "google_group", "org_id"))
 
 
 def get_consent_destination(zipping=False, add_protocol=False, **kwargs):
@@ -107,36 +110,38 @@ def do_sync_recent_consent_files(all_va=False, zip_files=False):
 
 def do_sync_consent_files(zip_files=False, **kwargs):
     """
-  entrypoint
-  """
+    entrypoint
+    """
     logging.info('Syncing consent files.')
     org_buckets = get_org_data_map()
     org_ids = [org_id for org_id, org_data in org_buckets.items()]
     start_date = kwargs.get('start_date')
+    end_date = kwargs.get('end_date')
     all_va = kwargs.get('all_va')
-    if start_date:
-        logging.info(f'syncing consents from {start_date}')
+    if start_date or end_date:
+        logging.info(f'syncing consents from {start_date} to {end_date}')
     if zip_files:
         logging.info('zipping consent files')
     if all_va:
         logging.info('only interacting with VA files')
     file_filter = kwargs.get('file_filter', 'pdf')
-    for participant_data in _iter_participants_data(org_ids, **kwargs):
-        source_bucket = SOURCE_BUCKET.get(participant_data.origin_id, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))])
+    for participant_id, origin, site_google_group, org_external_id in _iter_participants_data(org_ids, **kwargs):
+        logging.info(f'Syncing files for {participant_id}')
+        source_bucket = SOURCE_BUCKET.get(origin, SOURCE_BUCKET[next(iter(SOURCE_BUCKET))])
         source = "/{source_bucket}/Participant/P{participant_id}/"\
             .format(source_bucket=source_bucket,
-                    participant_id=participant_data.participant_id)
+                    participant_id=participant_id)
         if all_va:
             destination_bucket = 'aou179'
         else:
-            destination_bucket = org_buckets[participant_data.org_id]
+            destination_bucket = org_buckets[org_external_id]
         destination = get_consent_destination(zip_files,
                                               bucket_name=destination_bucket,
-                                              org_external_id=participant_data.org_id,
-                                              site_name=participant_data.google_group or DEFAULT_GOOGLE_GROUP,
-                                              p_id=participant_data.participant_id)
+                                              org_external_id=org_external_id,
+                                              site_name=site_google_group or DEFAULT_GOOGLE_GROUP,
+                                              p_id=participant_id)
 
-        cloudstorage_copy_objects_task(source, destination, date_limit=start_date,
+        cloudstorage_copy_objects_task(source, destination, start_date=start_date,
                                        file_filter=file_filter, zip_files=zip_files)
 
     if zip_files:
@@ -147,76 +152,66 @@ def get_org_data_map():
     return config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
 
-PARTICIPANT_DATA_SQL = """
-select
-  participant.participant_id,
-  participant.participant_origin,
-  site.google_group,
-  organization.external_id
-from participant
-left join organization
-  on participant.organization_id = organization.organization_id
-left join site
-  on participant.site_id = site.site_id
-left join participant_summary summary
-  on participant.participant_id = summary.participant_id
-where participant.is_ghost_id is not true
-  and participant.is_test_participant is not true
-  and summary.consent_for_study_enrollment = 1
-  and (
-    summary.email is null
-    or summary.email not like '%@example.com'
-  )
-"""
+def build_participant_query(session, org_ids, start_date=None, end_date=None, all_va=False, ids: list = None):
+    participant_query = session.query(
+        Participant.participantId,
+        Participant.participantOrigin,
+        Site.googleGroup,
+        Organization.externalId
+    ).outerjoin(
+        Organization, Organization.organizationId == Participant.organizationId
+    ).outerjoin(
+        Site, Site.siteId == Participant.siteId
+    ).outerjoin(
+        ParticipantSummary, Participant.participantSummary
+    ).filter(
+        Participant.isGhostId.isnot(True),
+        Participant.isTestParticipant.isnot(True),
+        ParticipantSummary.consentForStudyEnrollment == int(QuestionnaireStatus.SUBMITTED),
+        or_(
+            ParticipantSummary.email.is_(None),
+            ParticipantSummary.email.notlike('%@example.com')
+        )
+    )
 
-participant_filters_sql = {
-    'start_date': """
-        and (
-            summary.consent_for_study_enrollment_time > :start_date
-            or
-            summary.consent_for_electronic_health_records_time > :start_date
+    if start_date and end_date:
+        participant_query = participant_query.filter(
+            or_(
+                ParticipantSummary.consentForStudyEnrollmentTime.between(start_date, end_date),
+                ParticipantSummary.consentForElectronicHealthRecordsTime.between(start_date, end_date)
             )
-        """,
-    'end_date': """
-        and (
-            summary.consent_for_study_enrollment_time < :end_date
-            or
-            summary.consent_for_electronic_health_records_time < :end_date
+        )
+    elif start_date:
+        participant_query = participant_query.filter(
+            or_(
+                ParticipantSummary.consentForStudyEnrollmentTime > start_date,
+                ParticipantSummary.consentForElectronicHealthRecordsTime > start_date
             )
-        """,
-    'org_ids': """
-        and organization.external_id in :org_ids
-    """,
-    'all_va': """
-        and organization.external_id like 'VA_%'
-    """
-}
+        )
+    elif end_date:
+        participant_query = participant_query.filter(
+            or_(
+                ParticipantSummary.consentForStudyEnrollmentTime < end_date,
+                ParticipantSummary.consentForElectronicHealthRecordsTime < end_date
+            )
+        )
 
-
-def build_participant_query(org_ids, **kwargs):
-    participant_sql = PARTICIPANT_DATA_SQL
-    parameters = {}
-
-    for filter_field in ['start_date', 'end_date']:
-        if filter_field in kwargs:
-            participant_sql += participant_filters_sql[filter_field]
-            parameters[filter_field] = kwargs[filter_field]
-
-    if kwargs.get('all_va'):
-        participant_sql += participant_filters_sql['all_va']
+    if all_va:
+        participant_query = participant_query.filter(Organization.externalId.like('VA_%'))
     else:
-        participant_sql += participant_filters_sql['org_ids']
-        parameters['org_ids'] = org_ids
+        participant_query = participant_query.filter(Organization.externalId.in_(org_ids))
 
-    return participant_sql, parameters
+    if ids:
+        participant_query = participant_query.filter(Participant.participantId.in_(ids))
+
+    return participant_query
 
 
 def _iter_participants_data(org_ids, **kwargs):
-    participant_sql, parameters = build_participant_query(org_ids, **kwargs)
-
     with database_factory.make_server_cursor_database().session() as session:
-        for row in session.execute(participant_sql, parameters):
-            yield ParticipantData(*row)
+        participant_query = build_participant_query(session, org_ids, **kwargs)
+        for participant_data in participant_query:
+            yield participant_data
 
 
 def _download_file(source, destination):
@@ -224,14 +219,16 @@ def _download_file(source, destination):
     download_cloud_file(source, destination)
 
 
-def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_filter=None, zip_files=False):
+def cloudstorage_copy_objects_task(source, destination, start_date: str = None,
+                                   file_filter=None, zip_files=False):
     """
     Cloud Task: Copies all objects matching the source to the destination.
     Both source and destination use the following format: /bucket/prefix/
     """
-    if date_limit:
+    if start_date:
         timezone = pytz.timezone('Etc/Greenwich')
-        date_limit = timezone.localize(datetime.strptime(date_limit, '%Y-%m-%d'))
+        start_date = timezone.localize(parse_date(start_date))
+
     path = source if source[0:1] != '/' else source[1:]
     bucket_name, _, prefix = path.partition('/')
     prefix = None if prefix == '' else prefix
@@ -241,7 +238,7 @@ def cloudstorage_copy_objects_task(source, destination, date_limit=None, file_fi
             source_file_path = os.path.normpath('/' + bucket_name + '/' + source_blob.name)
             destination_file_path = destination + source_file_path[len(source):]
             if (zip_files or _not_previously_copied(source_file_path, destination_file_path)) and\
-                    _after_date_limit(source_blob, date_limit) and\
+                    _meets_date_requirements(source_blob, start_date) and\
                     _matches_file_filter(source_blob.name, file_filter):
                 files_found = True
                 move_file_function = _download_file if zip_files else copy_cloud_file
@@ -263,8 +260,9 @@ def _not_previously_copied(source_file_path, destination_file_path):
     return source_blob.etag != destination_blob.etag
 
 
-def _after_date_limit(source_blob, date_limit):
-    return date_limit is None or source_blob.updated > date_limit
+def _meets_date_requirements(source_blob, start_date):
+    # Not filtering files by end_date in case we need to transfer files that have been re-uploaded
+    return start_date is None or source_blob.updated >= start_date
 
 
 def _matches_file_filter(source_blob_name, file_filter):

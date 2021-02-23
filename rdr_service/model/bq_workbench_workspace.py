@@ -79,6 +79,8 @@ class BQRWBWorkspaceSchema(BQSchema):
     review_requested = BQField('review_requested', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     is_reviewed = BQField('is_reviewed', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    cdr_version = BQField('cdr_version', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
 
 class BQRWBWorkspace(BQTable):
     """ Research Workbench Workspace BigQuery Table """
@@ -97,7 +99,7 @@ class BQRWBWorkspaceView(BQView):
                 %%FIELD_LIST%%
             FROM (
                 SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
-                  FROM `{project}`.{dataset}.rwb_workspace 
+                  FROM `{project}`.{dataset}.rwb_workspace
               ) t
               WHERE t.modified = t.max_timestamp
         """.replace('%%FIELD_LIST%%', BQRWBWorkspaceSchema.get_sql_field_names(
@@ -117,7 +119,7 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
-              FROM `{project}`.{dataset}.rwb_workspace 
+              FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(race_ethnicities) as nt
           WHERE t.modified = t.max_timestamp
     """
@@ -132,7 +134,7 @@ class BQRWBWorkspaceAgeView(BQView):
         SELECT t.id, t.created, t.modified, nt.*
           FROM (
             SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
-              FROM `{project}`.{dataset}.rwb_workspace 
+              FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(ages) as nt
           WHERE t.modified = t.max_timestamp
     """

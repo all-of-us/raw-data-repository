@@ -12,18 +12,19 @@ from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
 
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update, bq_genomic_file_processed_update, bq_genomic_manifest_file_update
-from rdr_service.dao.code_dao import CodeDao
-from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-
 from rdr_service import clock
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
+    bq_genomic_set_update, bq_genomic_file_processed_update, \
+    bq_genomic_manifest_file_update, bq_genomic_set_member_batch_update
+from rdr_service.dao.code_dao import CodeDao
+from rdr_service.genomic.genomic_queries import GenomicQueryClass
+from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -36,7 +37,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicFileProcessed)
+    GenomicFileProcessed, GenomicAW1Raw, GenomicAW2Raw)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -51,14 +52,14 @@ from rdr_service.participant_enums import (
     GenomicSetMemberStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory)
+    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory, GenomicIncidentCode)
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao, GenomicManifestFileDao)
+    GenomicManifestFeedbackDao, GenomicManifestFileDao, GenomicAW1RawDao, GenomicAW2RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -250,7 +251,7 @@ class GenomicFileIngester:
 
             if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
                 gc_site_id = self._get_site_from_aw1()
-                return self._ingest_gc_manifest(data_to_ingest, gc_site_id)
+                return self._ingest_aw1_manifest(data_to_ingest, gc_site_id)
 
             if self.job_id == GenomicJob.METRICS_INGESTION:
                 return self._process_gc_metrics_data_for_insert(data_to_ingest)
@@ -270,19 +271,17 @@ class GenomicFileIngester:
             if self.job_id in [GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST]:
                 return self._ingest_aw1c_manifest(data_to_ingest)
 
+            if self.job_id in [GenomicJob.AW5_ARRAY_MANIFEST, GenomicJob.AW5_WGS_MANIFEST]:
+                return self._ingest_aw5_manifest(data_to_ingest)
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
         return GenomicSubProcessResult.ERROR
 
-    def _ingest_gc_manifest(self, data, _site):
-        """
-        Updates the GenomicSetMember with GC Manifest data
-        :param data:
-        :param _site: gc_site ID
-        :return: result code
-        """
-        gc_manifest_column_mappings = {
+    @staticmethod
+    def get_aw1_manifest_column_mappings():
+        return {
             'packageId': 'packageid',
             'sampleId': 'sampleid',
             'gcManifestBoxStorageUnitId': 'boxstorageunitid',
@@ -306,123 +305,400 @@ class GenomicFileIngester:
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
         }
-        try:
-            count = 0
 
-            for row in data['rows']:
-                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                     for key in row], row.values()))
-                collection_tube_id = row_copy['collectiontubeid']
-                genome_type = row_copy['testname']
-                member = self.member_dao.get_member_from_collection_tube(collection_tube_id, genome_type)
+    @staticmethod
+    def get_aw1_raw_column_mappings():
+        return {
+            "package_id": "packageid",
+            "biobankid_sample_id": "biobankidsampleid",
+            "box_storageunit_id": "boxstorageunitid",
+            "box_id_plate_id": "boxid/plateid",
+            "well_position": "wellposition",
+            "sample_id": "sampleid",
+            "parent_sample_id": "parentsampleid",
+            "collection_tube_id": "collectiontubeid",
+            "matrix_id": "matrixid",
+            "collection_date": "collectiondate",
+            "biobank_id": "biobankid",
+            "sex_at_birth": "sexatbirth",
+            "age": "age",
+            "ny_state": "nystate(y/n)",
+            "sample_type": "sampletype",
+            "treatments": "treatments",
+            "quantity": "quantity(ul)",
+            "total_concentration": "totalconcentration(ng/ul)",
+            "total_dna": "totaldna(ng)",
+            "visit_description": "visitdescription",
+            "sample_source": "samplesource",
+            "study": "study",
+            "tracking_number": "trackingnumber",
+            "contact": "contact",
+            "email": "email",
+            "study_pi": "studypi",
+            "test_name": "testname",
+            "failure_mode": "failuremode",
+            "failure_mode_desc": "failuremodedesc",
+        }
 
-                if member is None:
-                    # check if we should update the collection tube ID
-                    try:
-                        bid = int(row_copy['biobankidsampleid'].split('_')[0][1:])
+    @staticmethod
+    def get_aw2_raw_column_mappings():
+        return {
+            "biobank_id": "biobankid",
+            "sample_id": "sampleid",
+            "biobankidsampleid": "biobankidsampleid",
+            "lims_id": "limsid",
+            "mean_coverage": "meancoverage",
+            "genome_coverage": "genomecoverage",
+            "aouhdr_coverage": "aouhdrcoverage",
+            "contamination": "contamination",
+            "sex_concordance": "sexconcordance",
+            "sex_ploidy": "sexploidy",
+            "aligned_q30_bases": "alignedq30bases",
+            "array_concordance": "arrayconcordance",
+            "processing_status": "processingstatus",
+            "notes": "notes",
+            "chipwellbarcode": "chipwellbarcode",
+            "call_rate": "callrate",
+        }
 
-                        # get the target member based on genome type, biobank ID, and state
-                        _state = GenomicWorkflowState.AW0
+    def _ingest_aw1_manifest(self, data, _site):
+        """
+        AW1 ingestion method: Updates the GenomicSetMember with AW1 data
+        If the row is determined to be a control sample,
+        insert a new GenomicSetMember with AW1 data
+        :param data:
+        :param _site: gc_site ID
+        :return: result code
+        """
+        _state = GenomicWorkflowState.AW0
 
-                        member = self.member_dao.get_member_from_biobank_id_in_state(bid,
-                                                                                     genome_type,
-                                                                                     _state)
-                        # Validate new collection tube ID, set collection tube ID
-                        if member and self._validate_collection_tube_id(collection_tube_id, bid):
-                            with self.member_dao.session() as session:
-                                self._record_sample_as_contaminated(session, member.collectionTubeId)
+        for row in data['rows']:
+            row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                 for key in row], row.values()))
+            row_copy['site_id'] = _site
 
-                            member.collectionTubeId = collection_tube_id
+            # TODO: Disabling this fix but leaving in
+            #  Until verified that this issue has been fixed in manifes
+            # Fix for invalid parent sample values
+            # try:
+            #     parent_sample_id = int(row_copy['parentsampleid'])
+            # except ValueError:
+            #     parent_sample_id = 0
 
-                        else:
-                            logging.error(f"Invalid collection tube ID: {collection_tube_id}, "
-                                          f"biobank id: {bid}, "
-                                          f"genome type: {genome_type}")
+            # Skip rows if biobank_id is an empty string (row is empty well)
+            if row_copy['biobankid'] == "":
+                continue
 
-                    except ValueError:
-                        pass
+            # Check if this sample has a control sample parent tube
+            control_sample_parent = self.member_dao.get_control_sample_parent(
+                row_copy['testname'],
+                int(row_copy['parentsampleid'])
+            )
 
-                    if member is None:
-                        # Check if Programmatic control
-                        # Fix for invalid parent sample values
-                        try:
-                            parent_sample_id = int(row_copy['parentsampleid'])
+            if control_sample_parent:
+                logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
 
-                        except ValueError:
-                            parent_sample_id = 0
+                # Check if the control sample member exists for this GC, BID, collection tube, and sample ID
+                # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
+                cntrl_sample_member = self.member_dao.get_control_sample_for_gc_and_genome_type(
+                    _site,
+                    row_copy['testname'],
+                    row_copy['biobankid'],
+                    row_copy['collectiontubeid'],
+                    row_copy['sampleid']
+                )
 
-                        if self._check_if_control_sample(parent_sample_id) is not None:
-                            logging.warning(f'Control sample found: {parent_sample_id}')
-                            # Ignoring control samples for now
-                            # RDR may need to do something with them in the future
+                if not cntrl_sample_member:
+                    # Insert new GenomicSetMember record if none exists
+                    # for this control sample, genome type, and gc site
+                    member = self.create_new_member_from_aw1_control_sample(row_copy)
 
-                        else:
-                            logging.error(f"Skipping collection tube ID: {collection_tube_id}, "
-                                          f"genome type: {genome_type}")
+                    # Update member for PDR
+                    bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
+                    genomic_set_member_update(member.id)
 
-                        continue
+                # Skip rest of iteration and go to next row
+                continue
 
-                # Skip already processed members if failure mode isn't defined in manifest
-                if member.reconcileGCManifestJobRunId is not None and row_copy['failuremode'] in (None, ''):
+            # Find the existing GenomicSetMember
+            # Set the member based on collection tube ID
+            # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
+            member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
+                                                                     row_copy['testname'])
+
+            # Since member not found, and not a control sample,
+            # check if collection tube id was swapped by Biobank
+            if member is None:
+                bid = row_copy['biobankid']
+
+                # Strip biobank prefix if it's there
+                if bid[0] in [get_biobank_id_prefix(), 'T']:
+                    bid = bid[1:]
+
+                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
+                                                                             row_copy['testname'],
+                                                                             _state)
+
+                # If member found, validate new collection tube ID, set collection tube ID
+                if member:
+                    if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
+                        with self.member_dao.session() as session:
+                            self._record_sample_as_contaminated(session, member.collectionTubeId)
+
+                        member.collectionTubeId = row_copy['collectiontubeid']
+
+                else:
+                    # Couldn't find genomic set member based on either biobank ID or collection tube
+                    _message = f"Cannot find genomic set member: " \
+                               f"collection_tube_id: {row_copy['collectiontubeid']}, "\
+                               f"biobank id: {bid}, "\
+                               f"genome type: {row_copy['testname']}"
+
+                    self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                                    source_file_processed_id=self.file_obj.id,
+                                                    code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                                                    message=_message,
+                                                    biobank_id=bid,
+                                                    collection_tube_id=row_copy['collectiontubeid'],
+                                                    sample_id=row_copy['sampleid'],
+                                                    )
+                    logging.error(_message)
+
+                    # Skip rest of iteration and continue processing file
                     continue
 
-                member.gcSiteId = _site
+            # Process the attribute data
+            member_changed, member = self._process_aw1_attribute_data(row_copy, member)
 
-                if member.validationStatus != GenomicSetMemberStatus.VALID:
-                    logging.warning(f'Invalidated member found BID: {member.biobankId}')
-
-                for key in gc_manifest_column_mappings.keys():
-                    try:
-                        member.__setattr__(key, row_copy[gc_manifest_column_mappings[key]])
-                    except KeyError:
-                        member.__setattr__(key, None)
-
-                member.reconcileGCManifestJobRunId = self.job_run_id
-                member.aw1FileProcessedId = self.file_obj.id
-
-                # Update genomic state for failures
-                _signal = "aw1-reconciled"
-
-                if member.gcManifestFailureMode is not None and \
-                    member.gcManifestFailureMode != '':
-                    _signal = 'aw1-failed'
-
-                # update state and state modifed time only if changed
-                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState, signal=_signal):
-                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                        member.genomicWorkflowState,
-                        signal=_signal)
-
-                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
+            if member_changed:
                 self.member_dao.update(member)
-                count += 1
 
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
 
-            # Update the record count with the number of ingested records.
-            manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
+        return GenomicSubProcessResult.SUCCESS
 
-            # TODO: AW1F files won't have a manifest record,
-            #  this will be added in a follow-up PR
-            if manifest_file is not None:
-                # We want to add the record count to the existing record count for that manifest record
-                manifest_file.recordCount += count
-                manifest_file.processingComplete = 1
-                manifest_file.processingCompleteDate = clock.CLOCK.now()
+    def load_raw_awn_file(self):
+        """
+        Loads genomic_aw1_raw/genomic_aw2_raw
+        with raw data from aw1/aw2 file
+        :return:
+        """
+        # Set manifest-specific variables
+        if self.controller.job_id == GenomicJob.LOAD_AW1_TO_RAW_TABLE:
+            dao = GenomicAW1RawDao()
+            awn_model = GenomicAW1Raw
+            columns = self.get_aw1_raw_column_mappings()
 
-                with self.manifest_dao.session() as s:
-                    s.merge(manifest_file)
+        elif self.controller.job_id == GenomicJob.LOAD_AW2_TO_RAW_TABLE:
+            dao = GenomicAW2RawDao()
+            awn_model = GenomicAW2Raw
+            columns = self.get_aw2_raw_column_mappings()
 
-                    bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
-                    genomic_manifest_file_update(manifest_file.id)
-
-            return GenomicSubProcessResult.SUCCESS
-        except RuntimeError:
+        else:
+            logging.error("Job ID not LOAD_AW1_TO_RAW_TABLE or LOAD_AW2_TO_RAW_TABLE")
             return GenomicSubProcessResult.ERROR
+
+        # look up if any rows exist already for the file
+        records = dao.get_from_filepath(self.target_file)
+
+        if records:
+            logging.warning(f'File already exists in raw table: {self.target_file}')
+            return GenomicSubProcessResult.SUCCESS
+
+        file_data = self._retrieve_data_from_path(self.target_file)
+
+        # Return the error status if there is an error in file_data
+        if not isinstance(file_data, dict):
+            return file_data
+
+        # Processing raw data in batches
+        batch_size = 100
+        item_count = 0
+        batch = list()
+
+        for row in file_data['rows']:
+            # Standardize fields to lower, no underscores or spaces
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                            for key in row], row.values()))
+
+            row_obj = self._set_raw_awn_attributes(row, awn_model(), columns)
+
+            batch.append(row_obj)
+            item_count += 1
+
+            if item_count == batch_size:
+                # Insert batch into DB
+                with dao.session() as session:
+                    session.bulk_save_objects(batch)
+
+                # Reset batch
+                item_count = 0
+                batch = list()
+
+        if item_count:
+            # insert last batch if needed
+            with dao.session() as session:
+                session.bulk_save_objects(batch)
+
+        return GenomicSubProcessResult.SUCCESS
+
+    def ingest_single_aw1_row_for_member(self, member):
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['BIOBANK_ID'][1:] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                       for key in row], row.values()))
+
+        ingested_before = member.reconcileGCManifestJobRunId is not None
+
+        # Write AW1 data to genomic_set_member table
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
+
+        # Set attributes from file
+        for key in gc_manifest_column_mappings.keys():
+            try:
+                member.__setattr__(key, row[gc_manifest_column_mappings[key]])
+            except KeyError:
+                member.__setattr__(key, None)
+
+        # Set other fields not in AW1 file
+        member.reconcileGCManifestJobRunId = self.job_run_id
+        member.aw1FileProcessedId = self.file_obj.id
+        member.gcSite = self._get_site_from_aw1()
+
+        # Only update the member's genomicWorkflowState if it was AW0
+        if member.genomicWorkflowState == GenomicWorkflowState.AW0:
+            member.genomicWorkflowState = GenomicWorkflowState.AW1
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest record count
+        if not ingested_before and not self.controller.bypass_record_count:
+            self.increment_manifest_file_record_count_from_id()
+
+        return GenomicSubProcessResult.SUCCESS
+
+    def ingest_single_aw2_row_for_member(self, member: GenomicSetMember) -> GenomicSubProcessResult:
+        # Open file and pull row based on member.biobankId
+        with self.controller.storage_provider.open(self.target_file, 'r') as aw1_file:
+            reader = csv.DictReader(aw1_file, delimiter=',')
+            row = [r for r in reader if r['Biobank ID'] == str(member.biobankId)][0]
+
+            # Alter field names to remove spaces and change to lower case
+            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                            for key in row], row.values()))
+
+        # Beging prep aw2 row
+        row = self.prep_aw2_row_attributes(row, member)
+
+        if row == GenomicSubProcessResult.ERROR:
+            return GenomicSubProcessResult.ERROR
+
+        # check whether metrics object exists for that member
+        existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+        if existing_metrics_obj is not None:
+            metric_id = existing_metrics_obj.id
+        else:
+            metric_id = None
+
+        upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
+
+        # Update GC Metrics for PDR
+        if upserted_obj:
+            bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
+            genomic_gc_validation_metrics_update(upserted_obj.id)
+
+        self.update_member_for_aw2(member)
+
+        # Update member in DB
+        self.member_dao.update(member)
+
+        # Update AW1 manifest feedback record count
+        if existing_metrics_obj is None and not self.controller.bypass_record_count:
+            # For feedback manifest loop
+            # Get the genomic_manifest_file
+            manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
+            if manifest_file is not None:
+                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
+                                                           _project_id=self.controller.bq_project_id)
+
+        return GenomicSubProcessResult.SUCCESS
+
+    def increment_manifest_file_record_count_from_id(self):
+        """
+        Increments the manifest record count by 1
+        """
+
+        manifest_file = self.manifest_dao.get(self.file_obj.genomicManifestFileId)
+        manifest_file.recordCount += 1
+
+        with self.manifest_dao.session() as s:
+            s.merge(manifest_file)
+
+        bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
+        genomic_manifest_file_update(manifest_file.id)
+
+    def prep_aw2_row_attributes(self, row: dict, member: GenomicSetMember):
+        """
+        Set contamination, contamination category,
+        call rate, member_id, and file_id on AW2 row dictionary
+        :param member:
+        :param row:
+        :return: row dictionary or ERROR code
+        """
+
+        row['member_id'] = member.id
+        row['file_id'] = self.file_obj.id
+
+        # Truncate call rate
+        try:
+            row['callrate'] = row['callrate'][:10]
+        except KeyError:
+            pass
+
+        # Validate and clean contamination data
+        try:
+            row['contamination'] = float(row['contamination'])
+
+            # Percentages shouldn't be less than 0
+            if row['contamination'] < 0:
+                row['contamination'] = 0
+
+        except ValueError:
+            logging.error(f'contamination must be a number for sample_id: {row["sampleid"]}')
+            return GenomicSubProcessResult.ERROR
+
+        # Calculate contamination_category
+        contamination_value = float(row['contamination'])
+        category = self.calculate_contamination_category(member.collectionTubeId,
+                                                         contamination_value, member)
+        row['contamination_category'] = category
+
+        return row
+
+    def update_member_for_aw2(self, member: GenomicSetMember):
+        """
+        Updates the aw2FileProcessedId and possibly the genomicWorkflowState
+        of a GenomicSetMember after AW2 data has been ingested
+        :param member:
+        """
+
+        member.aw2FileProcessedId = self.file_obj.id
+
+        # Only update the state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        self.member_dao.update(member)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """
@@ -568,6 +844,110 @@ class GenomicFileIngester:
             data_to_ingest['rows'].append(row)
         return data_to_ingest
 
+    def _process_aw1_attribute_data(self, aw1_data, member):
+        """
+        Checks a GenomicSetMember object for changes provided by AW1 data
+        And mutates the GenomicSetMember object if necessary
+        :param aw1_data: dict
+        :param member: GenomicSetMember
+        :return: (boolean, GenomicSetMember)
+        """
+        # Check if the member needs updating
+        if self._test_aw1_data_for_member_updates(aw1_data, member):
+            member = self._set_member_attributes_from_aw1(aw1_data, member)
+
+            member = self._set_rdr_member_attributes_for_aw1(aw1_data, member)
+            return True, member
+        return False, member
+
+    def _test_aw1_data_for_member_updates(self, aw1_data, member):
+        """
+        Checks each attribute provided by Biobank
+        for changes to GenomicSetMember Object
+        :param aw1_data: dict
+        :param member: GenomicSetMember
+        :return: boolean (true if member requires updating)
+        """
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
+        member_needs_updating = False
+
+        # Iterate each value and test whether the strings for each field correspond
+        for key in gc_manifest_column_mappings.keys():
+            if str(member.__getattribute__(key)) != str(aw1_data.get(gc_manifest_column_mappings[key])):
+                member_needs_updating = True
+
+        return member_needs_updating
+
+    def _set_member_attributes_from_aw1(self, aw1_data, member):
+        """
+        Mutates the GenomicSetMember attributes provided by the Biobank
+        :param aw1_data: dict
+        :param member: GenomicSetMember
+        :return: GenomicSetMember
+        """
+        gc_manifest_column_mappings = self.get_aw1_manifest_column_mappings()
+
+        for key in gc_manifest_column_mappings.keys():
+            member.__setattr__(key, aw1_data.get(gc_manifest_column_mappings[key]))
+
+        return member
+
+    def _set_rdr_member_attributes_for_aw1(self, aw1_data, member):
+        """
+        Mutates the GenomicSetMember RDR attributes not provided by the Biobank
+        :param aw1_data: dict
+        :param member: GenomicSetMember
+        :return: GenomicSetMember
+        """
+        # Set job run and file processed IDs
+        member.reconcileGCManifestJobRunId = self.job_run_id
+
+        # Don't overwrite aw1_file_processed_id when ingesting an AW1F
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            member.aw1FileProcessedId = self.file_obj.id
+
+        # Set the GC site ID (sourced from file-name)
+        member.gcSiteId = aw1_data['site_id']
+
+        # Only update the state if it was AW0 or AW1 (if in failure manifest workflow)
+        # We do not want to regress a state for reingested data
+        state_to_update = GenomicWorkflowState.AW0
+
+        if self.controller.job_id == GenomicJob.AW1F_MANIFEST:
+            state_to_update = GenomicWorkflowState.AW1
+
+        if member.genomicWorkflowState == state_to_update:
+            _signal = "aw1-reconciled"
+
+            # Set the signal for a failed sample
+            if aw1_data['failuremode'] is not None and aw1_data['failuremode'] != '':
+                _signal = 'aw1-failed'
+
+            member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                member.genomicWorkflowState,
+                signal=_signal)
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        return member
+
+    def _set_raw_awn_attributes(self, awn_data, awn_row_obj, columns):
+        """
+        Loads GenomicAW1Raw and GenomicAW2Raw attributes from awn_data
+        :param awn_data: dict
+        :param awn_row_obj: GenomicAW1Raw/GenomicAW2Raw object
+        :param mapping_function: function that returns column mappings
+        :return: GenomicAW1Raw or GenomicAW2Raw
+        """
+
+        awn_row_obj.file_path = self.target_file
+        awn_row_obj.created = clock.CLOCK.now()
+        awn_row_obj.modified = clock.CLOCK.now()
+
+        for key in columns.keys():
+            awn_row_obj.__setattr__(key, awn_data.get(columns[key]))
+
+        return awn_row_obj
+
     def _process_gc_metrics_data_for_insert(self, data_to_ingest):
         """ Since input files vary in column names,
         this standardizes the field-names before passing to the bulk inserter
@@ -580,51 +960,27 @@ class GenomicFileIngester:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row],
                                 row.values()))
-            row_copy['file_id'] = self.file_obj.id
-            sample_id = row_copy['sampleid']
-
-            try:
-                row_copy['callrate'] = row_copy['callrate'][:10]
-            except KeyError:
-                pass
-
-            # Validate and clean contamination data
-            try:
-                row_copy['contamination'] = float(row_copy['contamination'])
-
-                # Percentages shouldn't be less than 0
-                if row_copy['contamination'] < 0:
-                    row_copy['contamination'] = 0
-
-            except ValueError:
-                logging.error(f'contamination must be a number for sample_id: {sample_id}')
-                return GenomicSubProcessResult.ERROR
-
-            except KeyError:
-                pass
 
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(sample_id),
-                                                               genome_type,)
+            member = self.member_dao.get_member_from_sample_id(int(row_copy['sampleid']),
+                                                               genome_type, )
+
             if member is not None:
-                row_copy['member_id'] = member.id
+                row_copy = self.prep_aw2_row_attributes(row_copy, member)
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+
                 if existing_metrics_obj is not None:
-                    metric_id = existing_metrics_obj.id
+
+                    if self.controller.skip_updates:
+                        # when running tool, updates can be skipped
+                        continue
+
+                    else:
+                        metric_id = existing_metrics_obj.id
                 else:
                     metric_id = None
-
-                # Calculate contamination_category if contamination supplied
-                try:
-                    contamination_value = float(row_copy['contamination'])
-                    category = self.calculate_contamination_category(member.collectionTubeId,
-                                                                     contamination_value, member)
-                    row_copy['contamination_category'] = category
-
-                except (KeyError, ValueError):
-                    logging.error('Sample supplied without contamination.')
 
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
@@ -633,14 +989,7 @@ class GenomicFileIngester:
                     bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
                     genomic_gc_validation_metrics_update(upserted_obj.id)
 
-                member.aw2FileProcessedId = self.file_obj.id
-
-                # Only update the state if it was AW1
-                if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-                    member.genomicWorkflowState = GenomicWorkflowState.AW2
-
-                with self.member_dao.session() as session:
-                    session.merge(member)
+                self.update_member_for_aw2(member)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
@@ -650,8 +999,24 @@ class GenomicFileIngester:
                                                                _project_id=self.controller.bq_project_id)
 
             else:
-                logging.error(f"No genomic set member for bid,sample_id: {row_copy['biobankid']}, {sample_id}")
-                return GenomicSubProcessResult.ERROR
+
+                bid = row_copy['biobankid']
+
+                if bid[0] in [get_biobank_id_prefix(), 'T']:
+                    bid = bid[1:]
+
+                # Couldn't find genomic set member based on either biobank ID or sample ID
+                _message = f"Cannot find genomic set member for bid, sample_id: "\
+                           f"{row_copy['biobankid']}, {row_copy['sampleid']}"
+
+                self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                                source_file_processed_id=self.file_obj.id,
+                                                code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                                                message=_message,
+                                                biobank_id=bid,
+                                                sample_id=row_copy['sampleid'],
+                                                )
+                logging.error(_message)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -694,6 +1059,41 @@ class GenomicFileIngester:
                 genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_aw5_manifest(self, file_data):
+        try:
+            for row in file_data['rows']:
+                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
+                                     for key in row], row.values()))
+                biobank_id = row_copy['biobankid']
+                biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
+                sample_id = row_copy['sampleid']
+
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
+                                                                                  self.file_validator.genome_type)
+                if not member:
+                    logging.warning(f'can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skip this one')
+                    continue
+
+                existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
+                if existing_metrics_obj is not None:
+                    metric_id = existing_metrics_obj.id
+                else:
+                    logging.warning(f'can not find metrics record for member id: '
+                                    f'{member.id}, skip this one')
+                    continue
+
+                updated_obj = self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy,
+                                                                                                    metric_id)
+
+                # Update GC Metrics for PDR
+                if updated_obj:
+                    bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(updated_obj.id)
 
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -754,15 +1154,6 @@ class GenomicFileIngester:
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
 
-    def _check_if_control_sample(self, sample_id):
-        """
-        Checks a sample against the list of control samples
-        In genomic_set_member
-        :param sample_id:
-        :return: True if sample exists, else false.
-        """
-
-        return self.member_dao.get_control_sample(sample_id)
 
     def _validate_collection_tube_id(self, collection_tube_id, bid):
         """
@@ -792,6 +1183,33 @@ class GenomicFileIngester:
         else:
             logging.warning(f'Value from AW4 "{aw4_value}" is not PASS/FAIL.')
             return GenomicQcStatus.UNSET
+
+    def create_new_member_from_aw1_control_sample(self, aw1_data: dict) -> GenomicSetMember:
+        """
+        Creates a new control sample GenomicSetMember in RDR based on AW1 data
+        These will look like regular GenomicSetMember samples
+        :param aw1_data: dict from aw1 row
+        :return:  GenomicSetMember
+        """
+
+        # Writing new genomic_set_member based on AW1 data
+        max_set_id = self.member_dao.get_collection_tube_max_set_id()[0]
+        # Insert new member with biobank_id and collection tube ID from AW1
+        new_member_obj = GenomicSetMember(
+            genomicSetId=max_set_id,
+            participantId=0,
+            biobankId=aw1_data['biobankid'],
+            collectionTubeId=aw1_data['collectiontubeid'],
+            validationStatus=GenomicSetMemberStatus.VALID,
+            genomeType=aw1_data['testname'],
+            genomicWorkflowState=GenomicWorkflowState.AW1
+        )
+
+        # Set member attribures from AW1
+        new_member_obj = self._set_member_attributes_from_aw1(aw1_data, new_member_obj)
+        new_member_obj = self._set_rdr_member_attributes_for_aw1(aw1_data, new_member_obj)
+
+        return self.member_dao.insert(new_member_obj)
 
     @staticmethod
     def _participant_has_potentially_clean_samples(session, biobank_id):
@@ -996,6 +1414,42 @@ class GenomicFileValidator:
             "qcstatus",
         )
 
+        self.AW5_WGS_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "vcfhf",
+            "vcfhfindex",
+            "vcfhfmd5",
+            "vcfraw",
+            "vcfrawindex",
+            "vcfrawmd5",
+            "cram",
+            "crammd5",
+            "crai",
+            "gvcf",
+            "gvcfmd5",
+        }
+
+        self.AW5_ARRAY_SCHEMA = {
+            "biobankid",
+            "sampleid",
+            "biobankidsampleid",
+            "sexatbirth",
+            "siteid",
+            "aw2filename",
+            "redidat",
+            "redidatmd5",
+            "greenidat",
+            "greenidatmd5",
+            "vcf",
+            "vcfindex",
+            "vcfmd5",
+        }
+
     def validate_ingestion_file(self, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
@@ -1139,6 +1593,14 @@ class GenomicFileValidator:
                 filename_components[2] == 'seq'
             )
 
+        def aw5_wgs_manifest_name_rule(fn):
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
+
+        def aw5_array_manifest_name_rule(fn):
+            # don't have name convention right now, if have in the future, add here
+            return fn.lower().endswith('csv')
+
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
@@ -1151,6 +1613,8 @@ class GenomicFileValidator:
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
+            GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
+            GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
         return name_rules[self.job_id](filename)
@@ -1209,6 +1673,14 @@ class GenomicFileValidator:
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
                 return self.GC_MANIFEST_SCHEMA
 
+            if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
+                return self.AW5_WGS_SCHEMA
+
+            if self.job_id == GenomicJob.AW5_ARRAY_MANIFEST:
+                self.genome_type = self.GENOME_TYPE_MAPPINGS['gen']
+                return self.AW5_ARRAY_SCHEMA
+
         except (IndexError, KeyError):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
@@ -1251,6 +1723,7 @@ class GenomicReconciler:
         self.bucket_name = bucket_name
         self.archive_folder = archive_folder
         self.cvl_file_name = None
+        self.file_list = None
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
@@ -1275,61 +1748,77 @@ class GenomicReconciler:
 
         self.sequencing_file_types = (("hfVcfReceived", ".hard-filtered.vcf.gz", "hfVcfPath"),
                                       ("hfVcfTbiReceived", ".hard-filtered.vcf.gz.tbi", "hfVcfTbiPath"),
-                                      ("hfVcfMd5Received", ".hard-filtered.vcf.md5sum", "hfVcfMd5Path"),
+                                      ("hfVcfMd5Received", ".hard-filtered.vcf.gz.md5sum", "hfVcfMd5Path"),
                                       ("rawVcfReceived", ".vcf.gz", "rawVcfPath"),
                                       ("rawVcfTbiReceived", ".vcf.gz.tbi", "rawVcfTbiPath"),
-                                      ("rawVcfMd5Received", ".vcf.md5sum", "rawVcfMd5Path"),
+                                      ("rawVcfMd5Received", ".vcf.gz.md5sum", "rawVcfMd5Path"),
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
-                                      ("craiReceived", ".crai", "craiPath"))
+                                      ("craiReceived", ".cram.crai", "craiPath"))
 
-    def reconcile_metrics_to_genotyping_data(self):
+    def reconcile_metrics_to_genotyping_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time)
+        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time, _gc_site_id)
 
         total_missing_data = []
 
-        # Iterate over metrics, searching the bucket for filenames
+        # Get list of files in GC data bucket
+        if self.storage_provider:
+            # Use the storage provider if it was set by tool
+            files = self.storage_provider.list(self.bucket_name, prefix=None)
+
+        else:
+            files = list_blobs('/' + self.bucket_name)
+
+        self.file_list = [f.name for f in files]
+
+        # Iterate over metrics, searching the bucket for filenames where *_received = 0
         for metric in metrics:
             member = self.member_dao.get(metric.genomicSetMemberId)
 
-            file = self.file_dao.get(metric.genomicFileProcessedId)
             missing_data_files = []
+
+            metric_touched = False
 
             for file_type in self.genotyping_file_types:
                 if not getattr(metric, file_type[0]):
                     filename = f"{metric.chipwellbarcode}{file_type[1]}"
-                    file_exists = self._get_full_filename(file.bucketName, filename)
+                    file_exists = self._get_full_filename(filename)
 
                     if file_exists != 0:
                         setattr(metric, file_type[0], 1)
-                        setattr(metric, file_type[2], f'gs://{file.bucketName}/{file_exists}')
+                        setattr(metric, file_type[2], f'gs://{self.bucket_name}/{file_exists}')
+                        metric_touched = True
 
                     if not file_exists:
-                        setattr(metric, file_type[0], file_exists)
                         missing_data_files.append(filename)
 
-            inserted_metrics_obj = self.metrics_dao.upsert(metric)
+            if metric_touched:
+                # Only upsert the metric if changed
+                inserted_metrics_obj = self.metrics_dao.upsert(metric)
 
-            # Update GC Metrics for PDR
-            if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                        project_id=self.controller.bq_project_id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                # Update GC Metrics for PDR
+                if inserted_metrics_obj:
+                    bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                            project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='gem-ready')
+
+                # Update Job Run ID on member
+                self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                         project_id=self.controller.bq_project_id)
+            else:
+                next_state = None
 
             # Update state for missing files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((file.fileName, missing_data_files))
-
-            # Update Job Run ID on member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                     project_id=self.controller.bq_project_id)
+                total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
 
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
@@ -1349,62 +1838,87 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def reconcile_metrics_to_sequencing_data(self):
+    def reconcile_metrics_to_sequencing_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
+        :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time)
+        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time, _gc_site_id)
 
-        # TODO: this number may change in the future, currently all files have 1 as the revision number
-        # Will need to follow up with GCs on what this number represents
-        local_revision_id = "1"
+        # Get list of files in GC data bucket
+        if self.storage_provider:
+            # Use the storage provider if it was set by tool
+            files = self.storage_provider.list(self.bucket_name, prefix=None)
+
+        else:
+            files = list_blobs('/' + self.bucket_name)
+
+        self.file_list = [f.name for f in files]
 
         total_missing_data = []
+
+        metric_touched = False
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
 
-            file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-            gc_prefix = file.fileName.split('_')[0]
+            gc_prefix = _gc_site_id.upper()
 
             missing_data_files = []
             for file_type in self.sequencing_file_types:
 
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
-                    filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
-                               f"{metric.GenomicGCValidationMetrics.limsId}_{local_revision_id}{file_type[1]}"
-                    file_exists = self._get_full_filename(file.bucketName, filename)
+
+                    # Default filename in case the file is missing (used in alert)
+                    default_filename = f"{gc_prefix}_{metric.biobankId}_{metric.sampleId}_" \
+                                       f"{metric.GenomicGCValidationMetrics.limsId}_1{file_type[1]}"
+
+                    file_type_expression = file_type[1].replace('.', '\.')
+
+                    # Naming rule for WGS files:
+                    filename_exp = rf"{gc_prefix}_([A-Z]?){metric.biobankId}_{metric.sampleId}" \
+                                   rf"_{metric.GenomicGCValidationMetrics.limsId}_(\w*)(\d+){file_type_expression}$"
+
+                    file_exists = self._get_full_filename_with_expression(filename_exp)
 
                     if file_exists != 0:
                         setattr(metric.GenomicGCValidationMetrics, file_type[0], 1)
                         setattr(metric.GenomicGCValidationMetrics, file_type[2],
-                                f'gs://{file.bucketName}/{file_exists}')
+                                f'gs://{self.bucket_name}/{file_exists}')
+                        metric_touched = True
 
                     if not file_exists:
-                        setattr(metric.GenomicGCValidationMetrics, file_type[0], file_exists)
-                        missing_data_files.append(filename)
+                        missing_data_files.append(default_filename)
 
-            inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
+            if metric_touched:
+                # Only upsert the metric if changed
+                inserted_metrics_obj = self.metrics_dao.upsert(metric.GenomicGCValidationMetrics)
 
-            # Update GC Metrics for PDR
-            if inserted_metrics_obj:
-                bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                        project_id=self.controller.bq_project_id)
-                genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
+                # Update GC Metrics for PDR
+                if inserted_metrics_obj:
+                    bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
+                                                            project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
-            next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+                next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='cvl-ready')
+
+                self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
+                                                         project_id=self.controller.bq_project_id)
+
+            else:
+                next_state = None
 
             # Handle for missing data files
             if len(missing_data_files) > 0:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((file.fileName, missing_data_files))
+                total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
+                                           missing_data_files))
 
             # Update Member
-            self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                     project_id=self.controller.bq_project_id)
-            self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
+            if next_state is not None and next_state != member.genomicWorkflowState:
+                self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
         if len(total_missing_data) > 0:
@@ -1420,15 +1934,16 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _compile_missing_data_alert(self, _filename, _missing_data):
+    def _compile_missing_data_alert(self, _file_processed_id, _missing_data):
         """
         Compiles the description to include in a GenomicAlert
-        :param _filename:
+        :param _file_processed_id:
         :param _missing_data: list of files
         :return: summary, description
         """
+        file = self.file_dao.get(_file_processed_id)
 
-        description = f"\n\tManifest File: {_filename}"
+        description = f"\n\tManifest File: {file.fileName}"
         description += f"\n\tMissing Genotype Data: {_missing_data}"
 
         return description
@@ -1497,13 +2012,33 @@ class GenomicReconciler:
         filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
 
-    def _get_full_filename(self, bucket_name, filename):
-        # Use the storage provider if it was set by tool
-        if self.storage_provider:
-            files = self.storage_provider.list(bucket_name, prefix=None)
-        else:
-            files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.lower().endswith(filename.lower())]
+    def _get_full_filename(self, filename):
+        """ Searches file_list for names ending in filename
+        :param filename: file name to match
+        :return: first filename in list
+        """
+        filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
+        return filenames[0] if len(filenames) > 0 else 0
+
+    def _get_full_filename_with_expression(self, expression):
+        """ Searches file_list for names that match the expression
+        :param expression: pattern to match
+        :return: file name with highest revision number
+        """
+        filenames = [name for name in self.file_list if re.search(expression, name)]
+
+        def sort_filenames(name):
+            version = name.split('.')[0].split('_')[-1]
+
+            if version[0].isalpha():
+                version = version[1:]
+
+            return int(version)
+
+        # Naturally sort the list in descending order of revisions
+        # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
+        filenames.sort(reverse=True, key=sort_filenames)
+
         return filenames[0] if len(filenames) > 0 else 0
 
     def _get_sequence_files(self, bucket_name):
@@ -1622,6 +2157,7 @@ class GenomicBiobankSamplesCoupler:
         self.code_dao = CodeDao()
         self.run_id = run_id
         self.controller = controller
+        self.query = GenomicQueryClass()
 
     def create_new_genomic_participants(self, from_date):
         """
@@ -1641,6 +2177,26 @@ class GenomicBiobankSamplesCoupler:
         else:
             logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
+
+    def create_saliva_genomic_participants(self, local=False, config=None):
+        """
+        This method determines which samples to enter into
+        the genomic system that are saliva only, via the
+        config obj passed in the argument.
+
+        :param: config : options for ror consent type and denoting if sample was generated in-home or in-clinic
+        :return: result
+        """
+        participants = self._get_remaining_saliva_participants(config)
+
+        if len(participants) > 0:
+            return self.create_matrix_and_process_samples(participants, cohort=None, local=local, saliva=True)
+
+        else:
+            logging.info(
+                f'Saliva Participant Workflow: No participants to process.')
+            return GenomicSubProcessResult.NO_FILES
+
 
     def create_c2_genomic_participants(self, from_date, local=False):
         """
@@ -1683,7 +2239,7 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def process_samples_into_manifest(self, samples_meta, cohort, local=False):
+    def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples_meta:
@@ -1695,61 +2251,86 @@ class GenomicBiobankSamplesCoupler:
         logging.info(f'{self.__class__.__name__}: Processing new biobank_ids {samples_meta.bids}')
         new_genomic_set = self._create_new_genomic_set()
 
+        processed_array_wgs = []
+        count = 0
+        bids = []
         # Create genomic set members
-        for i, bid in enumerate(samples_meta.bids):
-            # Don't write participant to table if no sample
-            if samples_meta.sample_ids[i] == 0:
-                continue
+        with self.member_dao.session() as session:
+            for i, bid in enumerate(samples_meta.bids):
+                # Don't write participant to table if no sample
+                if samples_meta.sample_ids[i] == 0:
+                    continue
 
-            logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
-            validation_criteria = (
-                samples_meta.valid_withdrawal_status[i],
-                samples_meta.valid_suspension_status[i],
-                samples_meta.gen_consents[i],
-                samples_meta.valid_ages[i],
-                samples_meta.valid_ai_ans[i],
-                samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
-            )
-            valid_flags = self._calculate_validation_flags(validation_criteria)
-            logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
+                logging.info(f'Validating sample: {samples_meta.sample_ids[i]}')
+                validation_criteria = (
+                    samples_meta.valid_withdrawal_status[i],
+                    samples_meta.valid_suspension_status[i],
+                    samples_meta.gen_consents[i],
+                    samples_meta.valid_ages[i],
+                    samples_meta.valid_ai_ans[i],
+                    samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
+                )
+                valid_flags = self._calculate_validation_flags(validation_criteria)
+                logging.info(f'Creating genomic set members for PID: {samples_meta.pids[i]}')
 
-            # Get NY flag for collected-site
-            if samples_meta.site_ids[i]:
-                _ny_flag = self._get_new_york_flag_from_site(samples_meta.site_ids[i])
+                # Get NY flag for collected-site
+                if samples_meta.site_ids[i]:
+                    _ny_flag = self._get_new_york_flag_from_site(samples_meta.site_ids[i])
 
-            # Get NY flag for mail-kit
-            elif samples_meta.state_ids[i]:
-                _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
+                # Get NY flag for mail-kit
+                elif samples_meta.state_ids[i]:
+                    _ny_flag = self._get_new_york_flag_from_state_id(samples_meta.state_ids[i])
 
-            else:
-                logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
-                continue
+                # default ny flag if no state id
+                elif not samples_meta.state_ids[i]:
+                    _ny_flag = 0
 
-            new_array_member_obj = GenomicSetMember(
-                biobankId=bid,
-                genomicSetId=new_genomic_set.id,
-                participantId=samples_meta.pids[i],
-                nyFlag=_ny_flag,
-                sexAtBirth=samples_meta.sabs[i],
-                collectionTubeId=samples_meta.sample_ids[i],
-                validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
-                                  else GenomicSetMemberStatus.VALID),
-                validationFlags=valid_flags,
-                ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
-                genomeType=self._ARRAY_GENOME_TYPE,
-                genomicWorkflowState=GenomicWorkflowState.AW0_READY
-            )
-            # Also create a WGS member
-            new_wgs_member_obj = deepcopy(new_array_member_obj)
-            new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+                else:
+                    logging.warning(f'No collection site or mail kit state. Skipping biobank_id: {bid}')
+                    continue
 
-            inserted_array_member = self.member_dao.insert(new_array_member_obj)
-            inserted_wgs_member = self.member_dao.insert(new_wgs_member_obj)
+                new_array_member_obj = GenomicSetMember(
+                    biobankId=bid,
+                    genomicSetId=new_genomic_set.id,
+                    participantId=samples_meta.pids[i],
+                    nyFlag=_ny_flag,
+                    sexAtBirth=samples_meta.sabs[i],
+                    collectionTubeId=samples_meta.sample_ids[i],
+                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                                      else GenomicSetMemberStatus.VALID),
+                    validationFlags=valid_flags,
+                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                    genomeType=self._ARRAY_GENOME_TYPE,
+                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    created=clock.CLOCK.now(),
+                    modified=clock.CLOCK.now(),
+                )
 
-            # Add member to PDR
-            for mid in (inserted_array_member.id, inserted_wgs_member.id):
-                bq_genomic_set_member_update(mid, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(mid)
+                # Also create a WGS member
+                new_wgs_member_obj = deepcopy(new_array_member_obj)
+                new_wgs_member_obj.genomeType = self._WGS_GENOME_TYPE
+
+                bids.append(bid)
+                processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
+                count += 1
+
+                if count % 1000 == 0:
+                    session.bulk_save_objects(processed_array_wgs)
+                    session.commit()
+                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                    member_ids = [m.id for m in members]
+                    bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                    genomic_set_member_batch_update(member_ids)
+                    processed_array_wgs.clear()
+                    bids.clear()
+
+            if count and processed_array_wgs:
+                session.bulk_save_objects(processed_array_wgs)
+                session.commit()
+                members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
+                member_ids = [m.id for m in members]
+                bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+                genomic_set_member_batch_update(member_ids)
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
@@ -1757,7 +2338,8 @@ class GenomicBiobankSamplesCoupler:
                 return new_genomic_set.id
             else:
                 create_and_upload_genomic_biobank_manifest_file(new_genomic_set.id,
-                                                                cohort_id=cohort)
+                                                                cohort_id=cohort,
+                                                                saliva=saliva)
 
             # Handle Genomic States for manifests
             for member in self.member_dao.get_members_from_set_id(new_genomic_set.id):
@@ -1772,7 +2354,7 @@ class GenomicBiobankSamplesCoupler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-    def create_matrix_and_process_samples(self, participants, cohort, local):
+    def create_matrix_and_process_samples(self, participants, cohort, local, saliva=False):
         """
         Wrapper method for processing participants for C1 and C2 manifests
         :param cohort:
@@ -1780,11 +2362,15 @@ class GenomicBiobankSamplesCoupler:
         :param local:
         :return:
         """
+
         participant_matrix = self.GenomicSampleMeta(*participants)
 
         for i, _bid in enumerate(participant_matrix.bids):
             logging.info(f'Retrieving samples for PID: f{participant_matrix.pids[i]}')
-            blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
+
+            blood_sample_data = None
+            if not saliva:
+                blood_sample_data = self._get_usable_blood_sample(pid=participant_matrix.pids[i],
                                                               bid=_bid)
 
             saliva_sample_data = self._get_usable_saliva_sample(pid=participant_matrix.pids[i],
@@ -1803,7 +2389,12 @@ class GenomicBiobankSamplesCoupler:
                 logging.info(f'No valid samples for pid {participant_matrix.pids[i]}.')
 
         # insert new members and make the manifest
-        return self.process_samples_into_manifest(participant_matrix, cohort=cohort, local=local)
+        return self.process_samples_into_manifest(
+            participant_matrix,
+            cohort=cohort,
+            saliva=saliva,
+            local=local
+        )
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -1815,61 +2406,8 @@ class GenomicBiobankSamplesCoupler:
         :return: list of tuples (bid, pid, biobank_identifier.value, collected_site_id)
         """
 
-        _new_samples_sql = """
-        SELECT DISTINCT
-          ss.biobank_id,
-          p.participant_id,
-          o.biobank_order_id,
-          o.collected_site_id,
-          mk.state_id,
-          ss.biobank_stored_sample_id,
-          CASE
-            WHEN p.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-          END as valid_withdrawal_status,
-          CASE
-            WHEN p.suspension_status = :suspension_param THEN 1 ELSE 0
-          END as valid_suspension_status,
-          CASE
-            WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-          END as general_consent_given,
-          CASE
-            WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-          END AS valid_age,
-          CASE
-            WHEN c.value = "SexAtBirth_Male" THEN "M"
-            WHEN c.value = "SexAtBirth_Female" THEN "F"
-            ELSE "NA"
-          END as sab,
-          CASE
-            WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
-          END AS gror_consent,
-          CASE
-              WHEN native.participant_id IS NULL THEN 1 ELSE 0
-          END AS valid_ai_an,
-          ss.status,
-          ss.test
-        FROM
-            biobank_stored_sample ss
-            JOIN participant p ON ss.biobank_id = p.biobank_id
-            JOIN biobank_order_identifier oi ON ss.biobank_order_identifier = oi.value
-            JOIN biobank_order o ON oi.biobank_order_id = o.biobank_order_id
-            JOIN participant_summary ps ON ps.participant_id = p.participant_id
-            JOIN code c ON c.code_id = ps.sex_id
-            LEFT JOIN (
-              SELECT ra.participant_id
-              FROM participant_race_answers ra
-                  JOIN code cr ON cr.code_id = ra.code_id
-                      AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-            ) native ON native.participant_id = p.participant_id
-            LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-            LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
-        WHERE TRUE
-            AND ss.test in ('1ED04', '1ED10', '1SAL2')
-            AND ss.rdr_created > :from_date_param
-            AND ps.consent_cohort = :cohort_3_param
-            AND m.id IS NULL
-        """
+        _new_samples_sql = self.query.new_biobank_samples()
+
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
@@ -1881,10 +2419,12 @@ class GenomicBiobankSamplesCoupler:
             "cohort_3_param": ParticipantCohort.COHORT_3.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
+
         with self.samples_dao.session() as session:
             result = session.execute(_new_samples_sql, params).fetchall()
 
         result = self._prioritize_samples_by_participant(result)
+
         return list(zip(*result))[:-2]  # Slicing to remove the last two columns retrieved for prioritization
 
     def _prioritize_samples_by_participant(self, sample_results):
@@ -1931,7 +2471,6 @@ class GenomicBiobankSamplesCoupler:
         logging.error(f'Should have been able to select between '
                       f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
 
-
     def _get_new_c2_participants(self, from_date):
         """
         Retrieves C2 participants and validation data.
@@ -1939,67 +2478,7 @@ class GenomicBiobankSamplesCoupler:
         :param from_date:
         :return:
         """
-        _c2_participant_sql = """
-            SELECT DISTINCT
-              ps.biobank_id,
-              ps.participant_id,
-              0 AS biobank_order_id,
-              0 AS collected_site_id,
-              NULL as state_id,
-              0 AS biobank_stored_sample_id,
-              CASE
-                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-              END as valid_withdrawal_status,
-              CASE
-                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
-              END as valid_suspension_status,
-              CASE
-                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-              END as general_consent_given,
-              CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-              END AS valid_age,
-              CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
-              END as sab,
-              CASE
-                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
-              END AS gror_consent,
-              CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
-            FROM
-                participant_summary ps
-                JOIN code c ON c.code_id = ps.sex_id
-                LEFT JOIN (
-                  SELECT ra.participant_id
-                  FROM participant_race_answers ra
-                      JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-                ) native ON native.participant_id = ps.participant_id
-                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-            WHERE TRUE
-                AND (
-                        ps.sample_status_1ed04 = :sample_status_param
-                        OR
-                        ps.sample_status_1sal2 = :sample_status_param
-                    )
-                AND ps.consent_cohort = :cohort_2_param
-                AND ps.questionnaire_on_dna_program_authored > :from_date_param
-                AND ps.questionnaire_on_dna_program = :general_consent_param
-                AND m.id IS NULL
-            HAVING TRUE
-                # Validations for Cohort 2
-                AND valid_ai_an = 1
-                AND valid_age = 1
-                AND general_consent_given = 1
-                AND valid_suspension_status = 1
-                AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id
-        """
+        _c2_participant_sql = self.query.new_c2_participants()
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -2018,78 +2497,33 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
+    def _get_remaining_c2_participants(self):
+
+        _c2_participant_sql = self.query.remaining_c2_participants()
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
+        }
+
+        with self.ps_dao.session() as session:
+            result = session.execute(_c2_participant_sql, params).fetchall()
+
+        return list([list(r) for r in zip(*result)])
+
     def _get_new_c1_participants(self, from_date):
         """
         Retrieves C1 participants and validation data.
         :param from_date:
         :return:
         """
-        _c1_participant_sql = """
-            SELECT DISTINCT
-              ps.biobank_id,
-              ps.participant_id,
-              0 AS biobank_order_id,
-              0 AS collected_site_id,
-              NULL as state_id,
-              0 AS biobank_stored_sample_id,
-              CASE
-                WHEN ps.withdrawal_status = :withdrawal_param THEN 1 ELSE 0
-              END as valid_withdrawal_status,
-              CASE
-                WHEN ps.suspension_status = :suspension_param THEN 1 ELSE 0
-              END as valid_suspension_status,
-              CASE
-                WHEN ps.consent_for_study_enrollment = :general_consent_param THEN 1 ELSE 0
-              END as general_consent_given,
-              CASE
-                WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
-              END AS valid_age,
-              CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
-              END as sab,
-              CASE
-                WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
-              END AS gror_consent,
-              CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
-            FROM
-                participant_summary ps
-                JOIN code c ON c.code_id = ps.sex_id
-                LEFT JOIN (
-                  SELECT ra.participant_id
-                  FROM participant_race_answers ra
-                      JOIN code cr ON cr.code_id = ra.code_id
-                          AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
-                ) native ON native.participant_id = ps.participant_id
-                LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                    AND m.genomic_workflow_state <> :ignore_param
-                JOIN questionnaire_response qr
-                    ON qr.participant_id = ps.participant_id
-                JOIN questionnaire_response_answer qra
-                    ON qra.questionnaire_response_id = qr.questionnaire_response_id
-                JOIN code recon ON recon.code_id = qra.value_code_id
-                    AND recon.value = :c1_reconsent_param
-            WHERE TRUE
-                AND (
-                        ps.sample_status_1ed04 = :sample_status_param
-                        OR
-                        ps.sample_status_1sal2 = :sample_status_param
-                    )
-                AND ps.consent_cohort = :cohort_1_param
-                AND qr.authored > :from_date_param
-                AND m.id IS NULL
-            HAVING TRUE
-                # Validations for Cohort 1
-                AND valid_ai_an = 1
-                AND valid_age = 1
-                AND general_consent_given = 1
-                AND valid_suspension_status = 1
-                AND valid_withdrawal_status = 1
-            ORDER BY ps.biobank_id
-        """
+        _c1_participant_sql = self.query.new_c1_participants()
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -2116,23 +2550,7 @@ class GenomicBiobankSamplesCoupler:
         :param bid: biobank_id
         :return: tuple(blood_collected date, blood sample, blood site, blood order)
         """
-        _samples_sql = """
-            # Latest 1ED04 or 1ED10 Sample
-            SELECT ssed.biobank_stored_sample_id AS blood_sample
-                , oed.collected_site_id AS blood_site
-                , oed.biobank_order_id AS blood_order
-                , ssed.test, ssed.status
-            FROM biobank_stored_sample ssed
-                JOIN biobank_order_identifier edid ON edid.value = ssed.biobank_order_identifier
-                JOIN biobank_order oed ON oed.biobank_order_id = edid.biobank_order_id
-                JOIN biobank_ordered_sample oeds ON oed.biobank_order_id = oeds.order_id
-                    AND ssed.test = oeds.test
-            WHERE TRUE
-                and ssed.biobank_id = :bid_param
-                and ssed.test in ("1ED04", "1ED10")
-                and ssed.status < 13
-            ORDER BY oeds.collected DESC
-            """
+        _samples_sql = self.query.usable_blood_sample()
 
         params = {
             "pid_param": pid,
@@ -2151,30 +2569,7 @@ class GenomicBiobankSamplesCoupler:
         :param bid: biobank_id
         :return: tuple(saliva date, saliva sample, saliva site, saliva order)
         """
-        _samples_sql = """
-            # Max 1SAL2 Sample
-            select sssal.biobank_stored_sample_id AS saliva_sample
-                , osal.collected_site_id AS saliva_site
-                , osal.biobank_order_id AS saliva_order
-                , sssal.test, sssal.status
-            FROM biobank_order osal
-                JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
-                JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
-                    AND sal2.test = "1SAL2"
-                JOIN biobank_stored_sample sssal ON salid.value = sssal.biobank_order_identifier
-            WHERE TRUE
-                and sssal.biobank_id = :bid_param
-                and sssal.status < 13
-                and sssal.test = "1SAL2"
-                and sal2.collected = (
-                    SELECT MAX(os.collected)
-                    FROM biobank_ordered_sample os
-                        JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                    WHERE os.test = "1SAL2"
-                            AND o.participant_id = :pid_param
-                        GROUP BY o.participant_id
-                    )
-            """
+        _samples_sql = self.query.usable_saliva_sample()
 
         params = {
             "pid_param": pid,
@@ -2185,6 +2580,26 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_samples_sql, params).first()
 
         return result
+
+    def _get_remaining_saliva_participants(self, config):
+
+        _saliva_sql = self.query.remaining_saliva_participants(config)
+
+        params = {
+            "sample_status_param": SampleStatus.RECEIVED.__int__(),
+            "dob_param": GENOMIC_VALID_AGE,
+            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
+            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
+            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
+            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
+            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
+        }
+
+        with self.samples_dao.session() as session:
+            result = session.execute(_saliva_sql, params).fetchall()
+
+        return list([list(r) for r in zip(*result)])
+
 
     def _create_new_genomic_set(self):
         """Inserts a new genomic set for this run"""
@@ -2470,7 +2885,8 @@ class ManifestDefinitionProvider:
                     (GenomicSetMember.genomeType == "aou_array") &
                     (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                     (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+                    (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                    (ParticipantSummary.participantOrigin != 'careevolution')
                 ).group_by(
                         GenomicSetMember.biobankId,
                         GenomicSetMember.sampleId,
@@ -2576,10 +2992,10 @@ class ManifestDefinitionProvider:
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicGCValidationMetrics.ignoreFlag == 0) &
                     (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
-
         return query_sql
 
     def _get_manifest_columns(self, manifest_type):

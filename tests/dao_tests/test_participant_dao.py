@@ -1,5 +1,6 @@
 import datetime
-
+import mock
+from sqlalchemy.exc import OperationalError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service.clock import FakeClock
@@ -583,3 +584,49 @@ class ParticipantDaoTest(BaseTestCase):
         # ensure that p2 get paired with expected awardee and organization from update().
         self.assertEqual(ep.hpoId, p2.hpoId)
         self.assertEqual(ep.organizationId, p2.organizationId)
+
+    @mock.patch('rdr_service.dao.base_dao.logging')
+    def test_inserts_retry_after_lock_wait_timout(self, mock_logging):
+        """
+        Check to make sure inserts will retry when encountering a lock wait timeout error.
+        Any dao should be able to do this, but this test uses ParticipantDao
+        """
+
+        # Lock the participants table and set the lock_wait_timeout low so the test isn't slow
+        self.session.execute('set global innodb_lock_wait_timeout = 1')
+        self.session.query(Participant).with_for_update().all()
+
+        # Use the error logging to know when the lock timout was triggered,
+        # unlock the participant table after the first failure
+        mock_logging.warning.side_effect = lambda *_, **__: self.session.commit()
+
+        test_client_id = 'lock_wait_test'  # Something unique to use to pull this specific participant from the db
+        participant = self.data_generator._participant_with_defaults(
+            participantId=None,
+            biobankId=None,
+            clientId=test_client_id
+        )
+        self.dao.insert(participant)
+
+        # Verify that the participant was inserted
+        lock_wait_participant = self.session.query(Participant).filter(
+            Participant.clientId == test_client_id
+        ).one_or_none()
+        self.assertIsNotNone(lock_wait_participant)
+
+    def test_operational_error_messages_passed_out_after_retry_failure(self):
+        """
+        Check to make sure the retry loop doesn't hide operational error messages
+        that would be helpful in diagnosing issues with a request.
+        """
+
+        # Try to insert a participant and trigger an operational error on character set incompatibility
+        with self.assertRaises(OperationalError) as exc_wrapper:
+            new_participant = self.data_generator._participant_with_defaults(
+                participantId=None,
+                biobankId=None,
+                clientId='🐛'
+            )
+            self.dao.insert(new_participant)
+
+        self.assertIn('Incorrect string value', str(exc_wrapper.exception))

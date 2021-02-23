@@ -11,8 +11,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, \
-    bq_genomic_manifest_feedback_update
+from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
+    bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -20,7 +20,7 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics,
-    GenomicManifestFile, GenomicManifestFeedback)
+    GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw, GenomicIncident)
 from rdr_service.participant_enums import (
     GenomicSetStatus,
     GenomicSetMemberStatus,
@@ -29,12 +29,12 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus,
     GenomicWorkflowState,
-)
+    GenomicManifestTypes)
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_set_member_update, \
-    genomic_manifest_feedback_update
+from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
+    genomic_manifest_file_update
 
 
 class GenomicSetDao(UpdatableDao):
@@ -73,6 +73,10 @@ class GenomicSetDao(UpdatableDao):
             return genomic_sets[0].genomicSetVersion + 1
         else:
             return 1
+
+    def get_max_set(self):
+        with self.session() as s:
+            return s.query(functions.max(GenomicSet.id)).one()[0]
 
     def iter_validation_data_for_genomic_set_id(self, genomic_set_id):
         """
@@ -338,6 +342,22 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
+    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id, genome_type):
+        """
+        Retrieves a genomic set member record matching the biobank Id
+        :param biobank_id:
+        :param sample_id:
+        :param genome_type:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.biobankId == biobank_id,
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type,
+            ).first()
+        return member
+
     def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, state):
         """
         Retrieves a genomic set member record matching the biobank Id
@@ -424,17 +444,23 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_members_from_set_id(self, set_id):
+    def get_members_from_set_id(self, set_id, bids=None):
         """
         Retrieves all genomic set member records matching the set_id
         :param set_id
+        :param bids
         :return: result set of GenomicSetMembers
         """
         with self.session() as session:
-            return session.query(GenomicSetMember).filter(
+            members_query = session.query(GenomicSetMember).filter(
                 GenomicSetMember.genomicSetId == set_id,
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-            ).all()
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+            )
+            if bids:
+                members_query = members_query.filter(
+                    GenomicSetMember.biobankId.in_(bids)
+                )
+            return members_query.all()
 
     def get_gem_consent_removal_date(self, member):
         """
@@ -462,6 +488,18 @@ class GenomicSetMemberDao(UpdatableDao):
             withdraw_dates.append(consent_status.consentForStudyEnrollmentAuthored)
 
         return min([d for d in withdraw_dates if d is not None])
+
+    def get_collection_tube_max_set_id(self):
+        """
+        Retrieves the maximum genomic_set_id for a control sample
+        :return: integer
+        """
+        with self.session() as s:
+            return s.query(
+                functions.max(GenomicSetMember.genomicSetId)
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE
+            ).one()
 
     def update_report_consent_removal_date(self, member, date):
         """
@@ -624,9 +662,10 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
         return members
 
-    def get_control_sample(self, sample_id):
+    def get_control_sample_parent(self, genome_type, sample_id):
         """
-        Returns the GenomicSetMember record for a control sample
+        Returns the GenomicSetMember parent record for a control sample
+        :param genome_type:
         :param sample_id:
         :return: GenomicSetMember
         """
@@ -635,8 +674,33 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember
             ).filter(
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE,
-                GenomicSetMember.sampleId == sample_id
-            ).first()
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type
+            ).one_or_none()
+
+    def get_control_sample_for_gc_and_genome_type(self, _site, genome_type, biobank_id,
+                                                  collection_tube_id, sample_id):
+        """
+        Returns the GenomicSetMember record for a control sample based on
+        GC site, genome type, biobank ID, and collection tube ID.
+
+        :param collection_tube_id:
+        :param biobank_id:
+        :param genome_type:
+        :param sample_id:
+        :return: GenomicSetMember
+        """
+        with self.session() as session:
+            return session.query(
+                GenomicSetMember
+            ).filter(
+                GenomicSetMember.sampleId == sample_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.gcSiteId == _site,
+                GenomicSetMember.biobankId == biobank_id,
+                GenomicSetMember.collectionTubeId == collection_tube_id,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
+            ).one_or_none()
 
 
 class GenomicJobRunDao(UpdatableDao):
@@ -723,6 +787,17 @@ class GenomicFileProcessedDao(UpdatableDao):
 
     def get_id(self, obj):
         return obj.id
+
+    def get_max_file_processed_for_filepath(self, filepath):
+        """
+        Looks up the latest GenomicFileProcessed object associated to the filepath
+        :param filepath:
+        :return: GenomicFileProcessed object
+        """
+        with self.session() as session:
+            return session.query(GenomicFileProcessed).filter(
+                GenomicFileProcessed.filePath == filepath
+            ).order_by(GenomicFileProcessed.id.desc()).first()
 
     def get_files_for_run(self, run_id):
         """
@@ -849,6 +924,25 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         }
         # The mapping between the columns in the DB and the data to ingest
 
+        self.deleted_flag_mappings = {
+            'idatRedDeleted': 'redidat',
+            'idatRedMd5Deleted': 'redidatmd5',
+            'idatGreenDeleted': 'greenidat',
+            'idatGreenMd5Deleted': 'greenidatmd5',
+            'vcfDeleted': 'vcf',
+            'vcfTbiDeleted': 'vcfindex',
+            'vcfMd5Deleted': 'vcfmd5',
+            'hfVcfDeleted': 'vcfhf',
+            'hfVcfTbiDeleted': 'vcfhfindex',
+            'hfVcfMd5Deleted': 'vcfhfmd5',
+            'rawVcfDeleted': 'vcfraw',
+            'rawVcfTbiDeleted': 'vcfrawindex',
+            'rawVcfMd5Deleted': 'vcfrawmd5',
+            'cramDeleted': 'cram',
+            'cramMd5Deleted': 'crammd5',
+            'craiDeleted': 'crai',
+        }
+
     def get_id(self, obj):
         return obj.id
 
@@ -872,6 +966,27 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
 
         return upserted_metrics_obj
 
+    def update_gc_validation_metrics_deleted_flags_from_dict(self, data_to_upsert, existing_id):
+        """
+        Upsert a GC validation metrics object
+        :param data_to_upsert: dictionary of row-data from AW2 file to insert
+        :param existing_id: an existing metrics ID
+        :return: upserted metrics object
+        """
+        gc_metrics_obj = GenomicGCValidationMetrics()
+        gc_metrics_obj.id = existing_id
+        for key in self.deleted_flag_mappings.keys():
+            try:
+                gc_metrics_obj.__setattr__(key, 1 if data_to_upsert[self.deleted_flag_mappings[key]] == 'D' else 0)
+            except KeyError:
+                # if the key is not in the file, do nothing
+                pass
+
+        logging.info(f'Updating deletion flag of GC Metrics for member ID {gc_metrics_obj.genomicSetMemberId}.')
+        upserted_metrics_obj = self.upsert(gc_metrics_obj)
+
+        return upserted_metrics_obj
+
     def get_null_set_members(self):
         """
         Retrieves all gc metrics with a null genomic_set_member_id
@@ -885,10 +1000,11 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_gen_files(self, _date):
+    def get_with_missing_gen_files(self, _date, _gc_site_id):
         """
-        Retrieves all gc metrics with missing genotyping files
+        Retrieves all gc metrics with missing genotyping files for a gc
         :param: _date: last run time
+        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -901,6 +1017,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGCValidationMetrics.modified > _date,
@@ -917,10 +1034,11 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_seq_files(self, _date):
+    def get_with_missing_seq_files(self, _date, _gc_site_id):
         """
         Retrieves all gc metrics with missing sequencing files
         :param: _date: last run time
+        :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
@@ -935,6 +1053,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGCValidationMetrics.modified > _date,
@@ -1196,6 +1315,38 @@ class GenomicManifestFileDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def get_manifest_file_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(GenomicManifestFile).filter(
+                GenomicManifestFile.filePath == filepath,
+                GenomicManifestFile.ignore_flag == 0
+            ).one_or_none()
+
+    def count_records_for_manifest_file(self, manifest_file_obj):
+
+        with self.session() as session:
+            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.BIOBANK_GC:
+                return session.query(
+                    functions.count(GenomicSetMember.id)
+                ).join(
+                        GenomicFileProcessed,
+                        GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+                ).join(
+                    GenomicManifestFile,
+                    GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
+                ).filter(
+                    GenomicManifestFile.id == manifest_file_obj.id
+                ).one_or_none()
+
+    def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
+
+        with self.session() as session:
+            manifest_file_obj.recordCount = new_rec_count
+            session.merge(manifest_file_obj)
+
+            bq_genomic_manifest_file_update(manifest_file_obj.id, project_id=project_id)
+            genomic_manifest_file_update(manifest_file_obj.id)
+
 
 class GenomicManifestFeedbackDao(BaseDao):
     def __init__(self):
@@ -1260,4 +1411,56 @@ class GenomicManifestFeedbackDao(BaseDao):
         return list(results)
 
     def get_feedback_records_for_aw2f(self):
+        pass
+
+
+class GenomicAW1RawDao(BaseDao):
+    def __init__(self):
+        super(GenomicAW1RawDao, self).__init__(
+            GenomicAW1Raw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicAW1Raw
+            ).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).all()
+
+
+class GenomicAW2RawDao(BaseDao):
+    def __init__(self):
+        super(GenomicAW2RawDao, self).__init__(
+            GenomicAW2Raw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicAW2Raw
+            ).filter(
+                GenomicAW2Raw.file_path == filepath
+            ).all()
+
+
+class GenomicIncidentDao(UpdatableDao):
+    def __init__(self):
+        super(GenomicIncidentDao, self).__init__(
+            GenomicIncident, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
         pass

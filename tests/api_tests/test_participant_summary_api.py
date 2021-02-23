@@ -72,7 +72,7 @@ participant_summary_default_values = {
     "questionnaireOnCopeJuly": "UNSET",
     "questionnaireOnCopeNov": "UNSET",
     "questionnaireOnCopeDec": "UNSET",
-    "questionnaireOnCopeJan": "UNSET",
+    "questionnaireOnCopeFeb": "UNSET",
     "questionnaireOnDnaProgram": "UNSET",
     "biospecimenCollectedSite": "UNSET",
     "biospecimenFinalizedSite": "UNSET",

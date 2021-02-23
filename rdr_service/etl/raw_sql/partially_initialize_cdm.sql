@@ -522,3 +522,81 @@ CREATE TABLE cdm.dose_era
     PRIMARY KEY (dose_era_id),
     UNIQUE KEY (id)
 );
+
+-- -----------------------------------------------
+-- create and populate tmp_questionnaire_response
+-- -----------------------------------------------
+DROP TABLE IF EXISTS cdm.tmp_questionnaire_response;
+CREATE TABLE cdm.tmp_questionnaire_response (
+      questionnaire_response_id int(11),
+      participant_id int(11),
+      questionnaire_id int(11),
+      created DATETIME,
+      authored DATETIME,
+      identifier varchar(80),
+      answers_hash VARCHAR(80),
+      duplicate int(11),
+      removed int(11)
+);
+
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+INSERT INTO cdm.tmp_questionnaire_response (
+   questionnaire_response_id, participant_id, questionnaire_id, created, authored, identifier, duplicate, removed)
+SELECT questionnaire_response_id, participant_id, questionnaire_id, created, authored,
+       REPLACE((JSON_EXTRACT(CONVERT(resource USING utf8 ), '$.identifier.value')), '"', '') AS identifier,
+       0 AS duplicate, 0 AS removed
+FROM rdr.questionnaire_response qr;
+
+CREATE UNIQUE INDEX uidx_qr_lookup ON cdm.tmp_questionnaire_response (questionnaire_response_id);
+
+drop temporary table if exists cdm.answer_hash_values;
+create temporary table cdm.answer_hash_values (
+      questionnaire_response_id int(11),
+      answers_hash VARCHAR(80)
+);
+
+set session group_concat_max_len=10000;
+insert into cdm.answer_hash_values (questionnaire_response_id, answers_hash)
+select qr.questionnaire_response_id , SHA2(CONCAT(
+	CAST(qr.participant_id AS CHAR),
+	tqr.identifier,
+	GROUP_CONCAT(
+		CAST(COALESCE(
+			qra.value_code_id,
+			qra.value_integer,
+			qra.value_decimal,
+			qra.value_boolean,
+			qra.value_string,
+			qra.value_system,
+			qra.value_uri,
+			qra.value_date,
+			qra.value_datetime
+		) AS CHAR)
+	ORDER BY qr.created)
+), 256) as answer_hash
+from rdr.questionnaire_response qr
+inner join cdm.tmp_questionnaire_response tqr on tqr.questionnaire_response_id = qr.questionnaire_response_id
+inner join rdr.questionnaire_response_answer qra on qra.questionnaire_response_id = qr.questionnaire_response_id
+group by qr.questionnaire_response_id, qr.participant_id, tqr.identifier;
+
+create index idx_answer_hash_qr_id on cdm.answer_hash_values (questionnaire_response_id);
+
+UPDATE cdm.tmp_questionnaire_response tqr
+INNER JOIN cdm.answer_hash_values ahv on tqr.questionnaire_response_id = ahv.questionnaire_response_id
+SET tqr.answers_hash = ahv.answers_hash
+WHERE tqr.questionnaire_response_id = ahv.questionnaire_response_id;
+
+update cdm.tmp_questionnaire_response tqr
+inner join (
+	select participant_id, identifier, authored, answers_hash, max(created) as max_created, count(1) as total
+	from cdm.tmp_questionnaire_response
+	where identifier is not null and created between '2021-01-01' and '2021-02-20'
+	group by participant_id, identifier, authored, answers_hash
+	having total > 10
+) duplicate_response on
+	tqr.participant_id = duplicate_response.participant_id
+	and tqr.authored = duplicate_response.authored
+	and tqr.identifier = duplicate_response.identifier
+	and tqr.answers_hash = duplicate_response.answers_hash
+	and tqr.created != duplicate_response.max_created
+set duplicate = 1;

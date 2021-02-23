@@ -2,8 +2,9 @@ import calendar
 import datetime
 import email.utils
 import logging
-import urllib.parse
+from requests.exceptions import RequestException
 from time import sleep
+import urllib.parse
 
 import netaddr
 import pytz
@@ -120,30 +121,32 @@ def get_oauth_id():
             logging.info(f"Invalid Authorization Token: {e}")
             return None
         else:
-            response = get_token_info_response(token, use_tokeninfo=use_tokeninfo_endpoint)
-
-            if response.status_code == 200:
-                data = response.json()
-
-                if use_tokeninfo_endpoint:  # UserInfo doesn't return expiry info :(
-                    token_expiry_seconds = data.get('expires_in')
-                    logging.info(f'Token expiring in {token_expiry_seconds} seconds')
-
-                user_email = data.get('email')
-                if user_email is None:
-                    logging.error('UserInfo endpoint did not return the email')
-                    use_tokeninfo_endpoint = True
-                else:
-                    return user_email
+            try:
+                response = get_token_info_response(token, use_tokeninfo=use_tokeninfo_endpoint)
+            except RequestException as e:  # Catching any connection or decoding errors that could be thrown
+                logging.warning(f'Error validating token: {e}')
             else:
-                if not use_tokeninfo_endpoint:
-                    logging.error("UserInfo failed, falling back on Tokeninfo")
-                    use_tokeninfo_endpoint = True
+                if response.status_code == 200:
+                    data = response.json()
 
-                logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
+                    if use_tokeninfo_endpoint:  # UserInfo doesn't return expiry info :(
+                        token_expiry_seconds = data.get('expires_in')
+                        logging.info(f'Token expiring in {token_expiry_seconds} seconds')
 
-                if response.status_code in [400, 401]:  # tokeninfo returns 400
-                    raise Unauthorized
+                    user_email = data.get('email')
+                    if user_email is None:
+                        logging.error('UserInfo endpoint did not return the email')
+                        use_tokeninfo_endpoint = True
+                    else:
+                        return user_email
+                else:
+                    logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
+
+                    if response.status_code in [400, 401]:  # tokeninfo returns 400
+                        raise Unauthorized
+                    elif not use_tokeninfo_endpoint:
+                        logging.error("UserInfo failed, falling back on Tokeninfo")
+                        use_tokeninfo_endpoint = True
 
         sleep(0.25)
         logging.info('Retrying authentication call to Google after failure.')

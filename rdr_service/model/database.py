@@ -39,6 +39,7 @@ from rdr_service.model.genomics import GenomicSet, GenomicSetMember
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.requests_log import RequestsLog
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.model.workbench_workspace import WorkbenchWorkspaceApproved, WorkbenchWorkspaceSnapshot, \
     WorkbenchWorkspaceUser, WorkbenchWorkspaceUserHistory
 from rdr_service.model.workbench_researcher import WorkbenchResearcher, WorkbenchResearcherHistory, \

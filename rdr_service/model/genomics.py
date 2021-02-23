@@ -18,7 +18,7 @@ from rdr_service.participant_enums import (
     GenomicWorkflowState,
     GenomicQcStatus,
     GenomicManifestTypes,
-    GenomicContaminationCategory)
+    GenomicContaminationCategory, GenomicIncidentCode, GenomicIncidentStatus)
 
 
 class GenomicSet(Base):
@@ -80,7 +80,7 @@ class GenomicSetMember(Base):
     # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
 
-    biobankId = Column("biobank_id", Integer, nullable=True, index=True)
+    biobankId = Column("biobank_id", String(128), nullable=True, index=True)
 
     packageId = Column("package_id", String(250), nullable=True)
 
@@ -97,13 +97,13 @@ class GenomicSetMember(Base):
     sampleType = Column('sample_type', String(50), nullable=True)
 
     sequencingFileName = Column('sequencing_file_name',
-                                String(128), nullable=True)
+                                String(255), nullable=True)
 
     gcSiteId = Column('gc_site_id', String(11), nullable=True)
 
     # BBGC Manifest Columns; ingested from GC manifest
-    gcManifestBoxStorageUnitId = Column('gc_manifest_box_storage_unit_id', String(50), nullable=True)
-    gcManifestBoxPlateId = Column('gc_manifest_box_plate_id', String(50), nullable=True)
+    gcManifestBoxStorageUnitId = Column('gc_manifest_box_storage_unit_id', String(255), nullable=True)
+    gcManifestBoxPlateId = Column('gc_manifest_box_plate_id', String(255), nullable=True)
     gcManifestWellPosition = Column('gc_manifest_well_position', String(10), nullable=True)
     gcManifestParentSampleId = Column('gc_manifest_parent_sample_id', String(20), nullable=True)
     gcManifestMatrixId = Column('gc_manifest_matrix_id', String(20), nullable=True)
@@ -113,14 +113,14 @@ class GenomicSetMember(Base):
     gcManifestTotalDNA_ng = Column('gc_manifest_total_dna_ng', Integer, nullable=True)
     gcManifestVisitDescription = Column('gc_manifest_visit_description', String(128), nullable=True)
     gcManifestSampleSource = Column('gc_manifest_sample_source', String(20), nullable=True)
-    gcManifestStudy = Column('gc_manifest_study', String(50), nullable=True)
-    gcManifestTrackingNumber = Column('gc_manifest_tracking_number', String(50), nullable=True)
-    gcManifestContact = Column('gc_manifest_contact', String(50), nullable=True)
-    gcManifestEmail = Column('gc_manifest_email', String(50), nullable=True)
-    gcManifestStudyPI = Column('gc_manifest_study_pi', String(50), nullable=True)
-    gcManifestTestName = Column('gc_manifest_test_name', String(50), nullable=True)
+    gcManifestStudy = Column('gc_manifest_study', String(255), nullable=True)
+    gcManifestTrackingNumber = Column('gc_manifest_tracking_number', String(255), nullable=True)
+    gcManifestContact = Column('gc_manifest_contact', String(255), nullable=True)
+    gcManifestEmail = Column('gc_manifest_email', String(255), nullable=True)
+    gcManifestStudyPI = Column('gc_manifest_study_pi', String(255), nullable=True)
+    gcManifestTestName = Column('gc_manifest_test_name', String(255), nullable=True)
     gcManifestFailureMode = Column('gc_manifest_failure_mode', String(128), nullable=True)
-    gcManifestFailureDescription = Column('gc_manifest_failure_description', String(128), nullable=True)
+    gcManifestFailureDescription = Column('gc_manifest_failure_description', String(255), nullable=True)
 
     # File Processed IDs
     aw1FileProcessedId = Column('aw1_file_processed_id',
@@ -307,7 +307,7 @@ class GenomicManifestFile(Base):
     modified = Column("modified", UTCDateTime, nullable=False)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
     manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
-    filePath = Column('file_path', String(255), nullable=True)
+    filePath = Column('file_path', String(255), nullable=True, index=True)
     bucketName = Column('bucket_name', String(128), nullable=True)
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
@@ -361,6 +361,99 @@ event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
 event.listen(GenomicManifestFeedback, 'before_update', model_update_listener)
 
 
+class GenomicAW1Raw(Base):
+    """
+    Raw text data from AW1 files
+    """
+    __tablename__ = 'genomic_aw1_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    # Raw AW1 data
+    package_id = Column("package_id", String(255), nullable=True)
+    biobankid_sample_id = Column("biobankid_sample_id", String(255), nullable=True)
+    box_storageunit_id = Column("box_storageunit_id", String(255), nullable=True)
+    box_id_plate_id = Column("box_id_plate_id", String(255), nullable=True)
+    well_position = Column("well_position", String(255), nullable=True)
+    sample_id = Column("sample_id", String(255), nullable=True)
+    parent_sample_id = Column("parent_sample_id", String(255), nullable=True)
+    collection_tube_id = Column("collection_tube_id", String(255), nullable=True)
+    matrix_id = Column("matrix_id", String(255), nullable=True)
+    collection_date = Column("collection_date", String(255), nullable=True)
+    biobank_id = Column("biobank_id", String(255), nullable=True)
+    sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
+    age = Column("age", String(255), nullable=True)
+    ny_state = Column("ny_state", String(255), nullable=True)
+    sample_type = Column("sample_type", String(255), nullable=True)
+    treatments = Column("treatments", String(255), nullable=True)
+    quantity = Column("quantity", String(255), nullable=True)
+    total_concentration = Column("total_concentration", String(255), nullable=True)
+    total_dna = Column("total_dna", String(255), nullable=True)
+    visit_description = Column("visit_description", String(255), nullable=True)
+    sample_source = Column("sample_source", String(255), nullable=True)
+    study = Column("study", String(255), nullable=True)
+    tracking_number = Column("tracking_number", String(255), nullable=True)
+    contact = Column("contact", String(255), nullable=True)
+    email = Column("email", String(255), nullable=True)
+    study_pi = Column("study_pi", String(255), nullable=True)
+    test_name = Column("test_name", String(255), nullable=True)
+    failure_mode = Column("failure_mode", String(255), nullable=True)
+    failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
+
+
+event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW1Raw, 'before_update', model_update_listener)
+
+
+class GenomicAW2Raw(Base):
+    """
+    Raw text data from AW2 files
+    """
+    __tablename__ = 'genomic_aw2_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    # Raw AW2 Data
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    biobankidsampleid = Column(String(255), nullable=True)
+    lims_id = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    genome_coverage = Column(String(255), nullable=True)
+    aouhdr_coverage = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    aligned_q30_bases = Column(String(255), nullable=True)
+    array_concordance = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    notes = Column(String(255), nullable=True)
+    chipwellbarcode = Column(String(255), nullable=True)
+    call_rate = Column(String(255), nullable=True)
+
+
+event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW2Raw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
@@ -398,55 +491,71 @@ class GenomicGCValidationMetrics(Base):
 
     # Genotyping Data (Array) reconciliation
     idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
+    idatRedDeleted = Column('idat_red_deleted', SmallInteger, nullable=False, default=0)
     idatRedPath = Column('idat_red_path', String(255), nullable=True)
 
     idatGreenReceived = Column('idat_green_received', SmallInteger, nullable=False, default=0)
+    idatGreenDeleted = Column('idat_green_deleted', SmallInteger, nullable=False, default=0)
     idatGreenPath = Column('idat_green_path', String(255), nullable=True)
 
     idatRedMd5Received = Column('idat_red_md5_received', SmallInteger, nullable=False, default=0)
+    idatRedMd5Deleted = Column('idat_red_md5_deleted', SmallInteger, nullable=False, default=0)
     idatRedMd5Path = Column('idat_red_md5_path', String(255), nullable=True)
 
     idatGreenMd5Received = Column('idat_green_md5_received', SmallInteger, nullable=False, default=0)
+    idatGreenMd5Deleted = Column('idat_green_md5_deleted', SmallInteger, nullable=False, default=0)
     idatGreenMd5Path = Column('idat_green_md5_path', String(255), nullable=True)
 
     vcfReceived = Column('vcf_received', SmallInteger, nullable=False, default=0)
+    vcfDeleted = Column('vcf_deleted', SmallInteger, nullable=False, default=0)
     vcfPath = Column('vcf_path', String(255), nullable=True)
 
     vcfMd5Received = Column('vcf_md5_received', SmallInteger, nullable=False, default=0)
+    vcfMd5Deleted = Column('vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     vcfMd5Path = Column('vcf_md5_path', String(255), nullable=True)
 
     vcfTbiReceived = Column('vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    vcfTbiDeleted = Column('vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     vcfTbiPath = Column('vcf_tbi_path', String(255), nullable=True)
 
     # Sequencing Data (WGS) reconciliation
     # Single sample VCF: Hard - filtered for clinical purpose
     hfVcfReceived = Column('hf_vcf_received', SmallInteger, nullable=False, default=0)
+    hfVcfDeleted = Column('hf_vcf_deleted', SmallInteger, nullable=False, default=0)
     hfVcfPath = Column('hf_vcf_path', String(255), nullable=True)
 
     hfVcfTbiReceived = Column('hf_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    hfVcfTbiDeleted = Column('hf_vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     hfVcfTbiPath = Column('hf_vcf_tbi_path', String(255), nullable=True)
 
     hfVcfMd5Received = Column('hf_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    hfVcfMd5Deleted = Column('hf_vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     hfVcfMd5Path = Column('hf_vcf_md5_path', String(255), nullable=True)
 
     # Single sample VCF: Raw for research purpose
     rawVcfReceived = Column('raw_vcf_received', SmallInteger, nullable=False, default=0)
+    rawVcfDeleted = Column('raw_vcf_deleted', SmallInteger, nullable=False, default=0)
     rawVcfPath = Column('raw_vcf_path', String(255), nullable=True)
 
     rawVcfTbiReceived = Column('raw_vcf_tbi_received', SmallInteger, nullable=False, default=0)
+    rawVcfTbiDeleted = Column('raw_vcf_tbi_deleted', SmallInteger, nullable=False, default=0)
     rawVcfTbiPath = Column('raw_vcf_tbi_path', String(255), nullable=True)
 
     rawVcfMd5Received = Column('raw_vcf_md5_received', SmallInteger, nullable=False, default=0)
+    rawVcfMd5Deleted = Column('raw_vcf_md5_deleted', SmallInteger, nullable=False, default=0)
     rawVcfMd5Path = Column('raw_vcf_md5_path', String(255), nullable=True)
 
     # CRAMs and CRAIs
     cramReceived = Column('cram_received', SmallInteger, nullable=False, default=0)
+    cramDeleted = Column('cram_deleted', SmallInteger, nullable=False, default=0)
     cramPath = Column('cram_path', String(255), nullable=True)
 
     cramMd5Received = Column('cram_md5_received', SmallInteger, nullable=False, default=0)
+    cramMd5Deleted = Column('cram_md5_deleted', SmallInteger, nullable=False, default=0)
     cramMd5Path = Column('cram_md5_path', String(255), nullable=True)
 
     craiReceived = Column('crai_received', SmallInteger, nullable=False, default=0)
+    craiDeleted = Column('crai_deleted', SmallInteger, nullable=False, default=0)
     craiPath = Column('crai_path', String(255), nullable=True)
 
     # Ignore Record
@@ -480,3 +589,39 @@ class GenomicSampleContamination(Base):
 
 event.listen(GenomicSampleContamination, 'before_insert', model_insert_listener)
 event.listen(GenomicSampleContamination, 'before_update', model_update_listener)
+
+
+class GenomicIncident(Base):
+    """
+    An incident occuring during processing of genomic records
+    """
+    __tablename__ = 'genomic_incident'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    created = Column('created', DateTime)
+    modified = Column('modified', DateTime)
+
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255))
+
+    code = Column(String(80), default=GenomicIncidentCode.UNSET.name)
+    message = Column(String(255))
+    status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
+
+    source_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+    source_file_processed_id = Column(Integer, ForeignKey("genomic_file_processed.id"))
+    audit_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+    repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
+    gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
+
+    biobank_id = Column(String(128), index=True)
+    sample_id = Column(String(80), index=True)
+    collection_tube_id = Column(String(80), index=True)
+
+
+event.listen(GenomicIncident, 'before_insert', model_insert_listener)
+event.listen(GenomicIncident, 'before_update', model_update_listener)

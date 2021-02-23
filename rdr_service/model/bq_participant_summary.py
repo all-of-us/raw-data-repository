@@ -67,6 +67,9 @@ class BQModuleStatusSchema(BQSchema):
     mod_status = BQField('mod_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE, fld_enum=BQModuleStatusEnum)
     mod_status_id = BQField('mod_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                             fld_enum=BQModuleStatusEnum)
+    mod_external_id = BQField('mod_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_response_status = BQField('mod_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_response_status_id = BQField('mod_response_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
@@ -82,7 +85,9 @@ class BQConsentSchema(BQSchema):
     consent_module_authored = BQField('consent_module_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     consent_module_created = BQField('consent_module_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     consent_expired = BQField('consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-
+    consent_module_external_id = BQField('consent_module_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    consent_response_status = BQField('consent_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    consent_response_status_id = BQField('consent_response_status_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 class BQRaceSchema(BQSchema):
     """
@@ -286,6 +291,9 @@ class BQParticipantSummarySchema(BQSchema):
     deceased_status_id = BQField('deceased_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
+
+    # PDR-178:  Add cabor_authored to align with RDR consent_for_cabor / consent_for_cabor_authored
+    cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

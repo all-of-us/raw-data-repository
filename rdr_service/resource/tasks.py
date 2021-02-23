@@ -10,9 +10,10 @@ from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGener
 from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEJan
-from rdr_service.resource.generators import ParticipantSummaryGenerator
-from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
+# Temporarily comment out to improve performance when rebuilding participants.
+# from rdr_service.resource.generators import ParticipantSummaryGenerator
+# from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
 
 def batch_rebuild_participants_task(payload, project_id=None):
@@ -24,7 +25,8 @@ def batch_rebuild_participants_task(payload, project_id=None):
     :param payload: Dict object with list of participants to work on.
     """
     ps_bqgen = BQParticipantSummaryGenerator()
-    res_gen = ParticipantSummaryGenerator()
+    # Temporarily comment out to improve performance when rebuilding participants.
+    # res_gen = ParticipantSummaryGenerator()
 
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
     mod_bqgen = BQPDRQuestionnaireResponseGenerator()
@@ -40,7 +42,8 @@ def batch_rebuild_participants_task(payload, project_id=None):
         patch_data = item['patch'] if 'patch' in item else None
         count += 1
 
-        rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)
+        # Temporarily comment out to improve performance when rebuilding participants.
+        # rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)
 
         ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data,
                                         project_id=project_id)
@@ -59,7 +62,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
             BQPDRCOPEMay,
             BQPDRCOPENov,
             BQPDRCOPEDec,
-            BQPDRCOPEJan
+            BQPDRCOPEFeb
         )
         for module in modules:
             mod = module()

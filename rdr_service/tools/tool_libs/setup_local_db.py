@@ -102,7 +102,7 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
         return {
             "db_connection_string": self.db_connection_string,
             "backup_db_connection_string": self.db_connection_string,
-            "unittest_db_connection_string": "mysql+mysqldb://root@127.0.0.1:9306",
+            "unittest_db_connection_string": "<overridden in tests>",
             "db_password": self.rdr_password,
             "db_connection_name": "",
             "db_user": self.rdr_db_user,

@@ -5,12 +5,13 @@ from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
-from rdr_service.model.code import Code, CodeType
+from rdr_service.model.code import Code
 from rdr_service.offline.codebook_importer import CodebookImporter
 from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.services.redcap_client import RedcapClient
-from rdr_service.tools.tool_libs._tool_base import cli_run, logger, ToolBase
+from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
@@ -109,7 +110,7 @@ class CodesSyncClass(ToolBase):
         global exporter_service_account_name
         exporter_service_account_name = server_config[EXPORT_SERVICE_ACCOUNT_NAME]
 
-        if self.args.key:
+        if self.args.redcap_key:
             return self.args.redcap_key
         elif not self.args.export_only:
             if REDCAP_PROJECT_KEYS not in server_config:
@@ -132,21 +133,20 @@ class CodesSyncClass(ToolBase):
             code_csv_writer.writerow([
                 'Code Value',
                 'Display',
-                'Parent Value',
-                'Module Value'
+                'Parent Values',
+                'Module Values'
             ])
             codes = session.query(Code).order_by(Code.value).all()
             for code in codes:
                 row_data = [code.value, code.display]
-                if code.parent:
-                    row_data.append(code.parent.value)
 
-                    possible_module_code = code.parent
-                    while possible_module_code and possible_module_code.codeType != CodeType.MODULE:
-                        possible_module_code = possible_module_code.parent
+                parent_codes = CodeDao.get_parent_codes(code, session)
+                if parent_codes:
+                    row_data.append('|'.join([parent.value for parent in parent_codes]))
 
-                    if possible_module_code:
-                        row_data.append(possible_module_code.value)
+                    module_codes = CodeDao.get_module_codes(code, session)
+                    if module_codes:
+                        row_data.append('|'.join([module_code.value for module_code in module_codes]))
                 code_csv_writer.writerow(row_data)
 
     def run_process(self):
@@ -173,7 +173,6 @@ class CodesSyncClass(ToolBase):
             project_api_key = self.parse_values_from_config(self.args.redcap_project)
 
             if not self.args.export_only:
-                code_importer = CodebookImporter(self.args.dry_run, session, self.codes_allowed_for_reuse, logger)
 
                 if not self.args.dry_run:
                     logger.info(f'Importing codes for {self.gcp_env.project}')
@@ -184,6 +183,10 @@ class CodesSyncClass(ToolBase):
                 # Get the data-dictionary and process codes
                 redcap = RedcapClient()
                 dictionary_json = redcap.get_data_dictionary(project_api_key)
+                project_json = redcap.get_project_info(project_api_key)
+
+                code_importer = CodebookImporter(project_json, self.args.dry_run, session,
+                                                 self.codes_allowed_for_reuse, logger)
                 for item_json in dictionary_json:
                     code_importer.import_data_dictionary_item(item_json)
 
@@ -196,7 +199,7 @@ class CodesSyncClass(ToolBase):
                     exit_code = 1
 
                 # Don't save anything if no module code was found
-                if code_importer.module_code is None:
+                if code_importer.survey is None or code_importer.survey.code is None:
                     logger.error('No module code found, canceling import')
                     exit_code = 1
 

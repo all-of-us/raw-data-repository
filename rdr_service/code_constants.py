@@ -20,6 +20,7 @@ STATE_QUESTION_CODE = "StreetAddress_PIIState"
 STREET_ADDRESS_QUESTION_CODE = "PIIAddress_StreetAddress"
 STREET_ADDRESS2_QUESTION_CODE = "PIIAddress_StreetAddress2"
 CITY_QUESTION_CODE = "StreetAddress_PIICity"
+EMPLOYMENT_ZIPCODE_QUESTION_CODE = "EmploymentWorkAddress_ZipCode"
 PHONE_NUMBER_QUESTION_CODE = "PIIContactInformation_Phone"
 LOGIN_PHONE_NUMBER_QUESTION_CODE = "ConsentPII_VerifiedPrimaryPhoneNumber"
 EMAIL_QUESTION_CODE = "ConsentPII_EmailAddress"
@@ -153,6 +154,7 @@ LANGUAGE_OF_CONSENT = ["en", "es"]
 
 # genome type values
 GENOME_TYPE = ["aou_array", "aou_wgs"]
+GC_SITE_IDs = ['rdr', 'bcm', 'jh', 'bi', 'uw']
 
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']

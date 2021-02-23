@@ -690,8 +690,8 @@ class ParticipantSummary(Base):
     questionnaireOnCopeDec = Column(
         "questionnaire_on_cope_dec", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
-    questionnaireOnCopeJan = Column(
-        "questionnaire_on_cope_jan", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    questionnaireOnCopeFeb = Column(
+        "questionnaire_on_cope_feb", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
     """
     Indicates the status of a periodic questionnaire on COVID Participant Experience (COPE)
@@ -705,7 +705,7 @@ class ParticipantSummary(Base):
     questionnaireOnCopeJulyTime = Column("questionnaire_on_cope_july_time", UTCDateTime)
     questionnaireOnCopeNovTime = Column("questionnaire_on_cope_nov_time", UTCDateTime)
     questionnaireOnCopeDecTime = Column("questionnaire_on_cope_dec_time", UTCDateTime)
-    questionnaireOnCopeJanTime = Column("questionnaire_on_cope_jan_time", UTCDateTime)
+    questionnaireOnCopeFebTime = Column("questionnaire_on_cope_feb_time", UTCDateTime)
     "Indicates the time at which the RDR received notice of the specified COPE questionnaire."
 
     questionnaireOnCopeMayAuthored = Column("questionnaire_on_cope_may_authored", UTCDateTime)
@@ -713,7 +713,7 @@ class ParticipantSummary(Base):
     questionnaireOnCopeJulyAuthored = Column("questionnaire_on_cope_july_authored", UTCDateTime)
     questionnaireOnCopeNovAuthored = Column("questionnaire_on_cope_nov_authored", UTCDateTime)
     questionnaireOnCopeDecAuthored = Column("questionnaire_on_cope_dec_authored", UTCDateTime)
-    questionnaireOnCopeJanAuthored = Column("questionnaire_on_cope_jan_authored", UTCDateTime)
+    questionnaireOnCopeFebAuthored = Column("questionnaire_on_cope_feb_authored", UTCDateTime)
     "Indicates the time at which the participant completed the specified COPE questionnaire."
 
     questionnaireOnDnaProgram = Column(
