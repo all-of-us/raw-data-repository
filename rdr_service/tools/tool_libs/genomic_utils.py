@@ -1704,8 +1704,8 @@ class LoadRawManifest(GenomicManifestBase):
         if manifest_list:
             for manifest_path in manifest_list:
                 genomic_pipeline.load_awn_manifest_into_raw_table(
-                    manifest_type=self.args.manifest_type.lower(),
                     file_path=manifest_path,
+                    manifest_type=self.args.manifest_type.lower(),
                     project_id=self.gcp_env.project,
                     provider=self.gscp
                 )
@@ -1898,28 +1898,6 @@ def run():
     sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
                                          default=False, required=False, action="store_true")  # noqa
 
-    # Load Raw AW1 Manifest into genomic_aw1_raw
-    load_raw_manifest = subparser.add_parser("load-raw-manifest")
-    load_raw_manifest.add_argument(
-        "--manifest-file",
-        help="The full 'bucket/subfolder/file.ext to process'",
-        default=None, required=False
-    )  # noqa
-
-    load_raw_manifest.add_argument(
-        "--manifest-type",
-        help="The manifest type to load [aw1, aw2]",
-        default=None, required=True
-    )  # noqa
-
-    load_raw_manifest.add_argument(
-        "--csv",
-        help="A CSV file of manifest file paths: "
-             "[bucket/subfolder/file.ext to process]",
-        default=None,
-        required=False
-    )  # noqa
-
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")
     compare_ingestion_parser.add_argument(
@@ -1934,6 +1912,30 @@ def run():
         default=None,
         required=True
     )
+
+    # Load Raw AW1 Manifest into genomic_aw1_raw
+    load_raw_manifest = subparser.add_parser("load-raw-manifest")
+    load_raw_manifest.add_argument(
+        "--manifest-file",
+        help="The full 'bucket/subfolder/file.ext to process'",
+        default=None,
+        required=False
+    )  # noqa
+
+    load_raw_manifest.add_argument(
+        "--manifest-type",
+        help="The manifest type to load [aw1, aw2]",
+        default=None,
+        required=True
+    )  # noqa
+
+    load_raw_manifest.add_argument(
+        "--csv",
+        help="A CSV file of manifest file paths: "
+             "[bucket/subfolder/file.ext to process]",
+        default=None,
+        required=False
+    )  # noqa
 
     args = parser.parse_args()
 
