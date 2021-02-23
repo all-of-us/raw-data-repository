@@ -53,6 +53,7 @@ class Measurement(Base):
     # Note: measurementId will be physicalMeasurementsId * 100 + an index. (This way we don't have to
     # generate N random unique IDs.)
     measurementId = Column("measurement_id", BIGINT, primary_key=True, autoincrement=False)
+    """A unique identifier for each Measurement (definition from CDR)"""
     physicalMeasurementsId = Column(
         "physical_measurements_id",
         Integer,

@@ -77,8 +77,8 @@ class GenomicSetMember(Base):
     sexAtBirth = Column("sex_at_birth", String(20), nullable=True)
     genomeType = Column("genome_type", String(80), nullable=True)
 
-    # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
+    """Flag for if participant is American Indian/Alaska Native"""
 
     biobankId = Column("biobank_id", String(128), nullable=True, index=True)
 
@@ -96,8 +96,8 @@ class GenomicSetMember(Base):
     sampleId = Column('sample_id', String(80), nullable=True, index=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
-    sequencingFileName = Column('sequencing_file_name',
-                                String(255), nullable=True)
+    sequencingFileName = Column('sequencing_file_name', String(255), nullable=True)
+    """Name of the csv file being used for genomics sequencing"""
 
     gcSiteId = Column('gc_site_id', String(11), nullable=True)
 
@@ -391,6 +391,7 @@ class GenomicAW1Raw(Base):
     collection_date = Column("collection_date", String(255), nullable=True)
     biobank_id = Column("biobank_id", String(255), nullable=True)
     sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
+    """Assigned sex at birth"""
     age = Column("age", String(255), nullable=True)
     ny_state = Column("ny_state", String(255), nullable=True)
     sample_type = Column("sample_type", String(255), nullable=True)
