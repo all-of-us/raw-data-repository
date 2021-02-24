@@ -354,7 +354,7 @@ class WorkbenchApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersion": "irving"
+                "cdrVersionName": "irving"
             }
         ]
 

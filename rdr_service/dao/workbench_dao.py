@@ -225,7 +225,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
-                cdrVersion=item.get('cdrVersion'),
+                cdrVersion=item.get('cdrVersionName'),
                 resource=json.dumps(item)
             )
 
