@@ -8,7 +8,7 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from resource.schemas.participant import StreetAddressTypeEnum
+from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
 
 class PDRParticipantSummaryGenerator(generators.BaseGenerator):

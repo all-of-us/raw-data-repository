@@ -10,7 +10,7 @@ from rdr_service.participant_enums import ParticipantCohort, PhysicalMeasurement
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.schemas.participant import RaceSchema, GenderSchema, ModuleStatusSchema, ConsentSchema, \
     PatientStatusSchema, BiobankOrderSchema, EHRReceiptSchema
-from resource import SchemaID
+from rdr_service.resource.constants import SchemaID
 
 
 class PDRPhysicalMeasurementsSchema(Schema):
