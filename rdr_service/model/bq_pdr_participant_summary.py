@@ -163,6 +163,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
     # RDR CABoR tracking is to surface the appropriate authored date here.  Presence of a date (vs. null/None also
     # acts as the true/false flag equivalent to RDR participant_summary.consent_for_cabor field
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):
