@@ -1459,7 +1459,6 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
 
     w_dao = BigQuerySyncDao()
 
-
     with w_dao.session() as w_session:
         # save the participant summary record if this is a full rebuild.
         if not patch_data and isinstance(patch_data, dict):
