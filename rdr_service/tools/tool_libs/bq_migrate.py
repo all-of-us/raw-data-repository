@@ -268,8 +268,8 @@ class BQMigration(object):
                 rs_json = self.get_table_schema(project_id, dataset_id, table_id)
 
                 if not rs_json:
-                    if self.args.check_schemas:
-                        _logger.warning('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
+                    if self.args.dry_run:
+                        _logger.error('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
                         continue
                     else:
                         self.create_table(bq_table, project_id, dataset_id, table_id)
@@ -278,19 +278,18 @@ class BQMigration(object):
                     try:
                         rs_obj = BQSchema(json.loads(rs_json))
 
-                        # The --check-schemas argument does a cursory check that the local schema contains the same
+                        # The --dry-run argument does a cursory check that the local schema contains the same
                         # fields as the existing BigQuery table. If a mismatch is found and the BigQuery table has a
                         # field the local schema does not, the BigQuery table will need to be deleted and recreated
                         # rather than updated, when adding new fields.
-                        if self.args.check_schemas:
+                        if self.args.dry_run:
                             _logger.info(f'Checking {project_id}:{dataset_id}.{table_id} schema...')
                             for attr in dir(rs_obj):
-                                if attr.startswith('_') or callable(getattr(rs_obj, attr)):
-                                    continue
                                 if not hasattr(ls_obj, attr):
                                     _logger.error(f'\tField {attr} missing from local {table_id} schema ')
                             for attr in dir(ls_obj):
-                                if attr.startswith('_') or callable(getattr(ls_obj, attr)):
+                                if attr in ['_fields', '_module', '_excluded_fields'] or \
+                                callable(getattr(ls_obj, attr)):
                                     continue
                                 if not hasattr(rs_obj, attr):
                                     _logger.warning(f'\tNew field {attr} defined in local {table_id} schema ')
@@ -309,7 +308,7 @@ class BQMigration(object):
                     else:
                         self.modify_table(bq_table, project_id, dataset_id, table_id)
 
-        if self.args.check_schemas:
+        if self.args.dry_run:
             return 0
 
         # Loop through view schemas
@@ -366,7 +365,8 @@ def run():
     parser.add_argument('--service-account', help='gcp iam service account', required=False)  # noqa
     parser.add_argument('--delete', help="delete schemas from BigQuery", default=False, action='store_true')  # noqa
     parser.add_argument('--show-schemas', help='print schemas to stdout', default=False, action='store_true')  # noqa
-    parser.add_argument('--check-schemas', help='Check if local schema is incompatible with existing BQ table schema',
+    parser.add_argument('--dry-run',
+                        help='(tables only) Compare local schema to existing BigQuery table schema without migrating',
                         default=False, action='store_true')  # noqa
     parser.add_argument('--names', help="a comma delimited list of table/view names.",
                         default='all', metavar='[TABLE|VIEW]')  # noqa
