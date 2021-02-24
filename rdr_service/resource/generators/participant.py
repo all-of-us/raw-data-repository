@@ -164,7 +164,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
-            return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
+            return generators.ResourceRecordSet(schemas.ParticipantSummarySchema, summary)
 
     def patch_resource(self, p_id, data):
         """
@@ -215,7 +215,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         except exc.ProgrammingError:
             pass
         except exc.OperationalError:
-            logging.warning('Unexpected error found when checking for tmp_questionnaire_response table', exc_info=True)
+            msg = 'Unexpected error found when checking for tmp_questionnaire_response table'
+            logging.warning(msg, exc_info=False)
         return False
 
     def _prep_participant(self, p_id, ro_session):
@@ -358,9 +359,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # Brand new field as of RDR 1.83.1/DA-1781; convert boolean to integer for our BQ data dict
                 'is_ehr_data_available': int(ps.isEhrDataAvailable)
             }
-
             # Note:  None of the columns in the participant_ehr_receipt table are nullable
-            pehr_results = ro_session.query(ParticipantEhrReceipt.fileTimestamp,
+            pehr_results = ro_session.query(ParticipantEhrReceipt.id,
+                                            ParticipantEhrReceipt.fileTimestamp,
                                             ParticipantEhrReceipt.firstSeen,
                                             ParticipantEhrReceipt.lastSeen
                                             ) \
@@ -375,11 +376,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     data['ehr_receipt'] = min(row.fileTimestamp, data['ehr_receipt'] or datetime.datetime.max)
                     data['ehr_update'] = max(row.fileTimestamp, data['ehr_update'] or datetime.datetime.min)
 
-                    ehr_receipts.append(
-                        {'file_timestamp': row.fileTimestamp,
-                         'first_seen': row.firstSeen,
-                         'last_seen': row.lastSeen
-                         }
+                    ehr_receipts.append({
+                        'participant_ehr_receipt_id': row.id,
+                        'file_timestamp': row.fileTimestamp,
+                        'first_seen': row.firstSeen,
+                        'last_seen': row.lastSeen}
                     )
 
             # More field aliases for deprecated fields, as of RDR 1.83.1/DA-1781 (see tech design/DA-1780).
@@ -406,6 +407,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
+
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
         try:
@@ -606,8 +608,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         last_consent_processed = consent.copy()
 
                 # consent_added == True means we already know it wasn't a replayed consent
-                if consent_added or not self.is_replay(last_mod_processed, module_data,
-                                                        created_key='module_created'):
+                if consent_added or not self.is_replay(last_mod_processed, module_data, created_key='module_created'):
                     modules.append(module_data)
 
                 last_mod_processed = module_data.copy()
@@ -634,12 +635,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['TheBasics', p_id])
+        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, return_responses=False,
+                                        cdm_db_exists=self.cdm_db_exists)
         if not qnans or len(qnans) == 0:
             return {}
 
         # get race question answers
-        qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent questionnaire.
+        qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
         data = {}
         if qnan.get('Race_WhatRaceEthnicity'):
             rl = list()
@@ -820,7 +822,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order by biobank_order_id, test;
         """
 
-
         data = {}
         orders = list()
         # Find all biobank orders associated with this participant
@@ -962,7 +963,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ehr_consent_expired = False
         study_consent_date = datetime.date.max
         enrollment_member_time = datetime.datetime.max
-        # iterate over consents
+        # iterate over consents, sorted by 'consent_module_authored' descending.
         for consent in summary['consents']:
             response_value = consent['consent_value']
             response_date = consent['consent_date'] or datetime.date.max
@@ -970,23 +971,26 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 study_consent = True
                 study_consent_date = min(study_consent_date, response_date)
             elif consent['consent'] == EHR_CONSENT_QUESTION_CODE:
-                consents['EHRConsent'] = (response_value, response_date)
+                if not 'EHRConsent' in consents:  # We only want the most recent consent answer.
+                    consents['EHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
                 consents['EHRConsentExpired'] = (consent.get('consent_expired'), response_date)
                 ehr_consent_expired = consent.get('consent_expired') == EHR_CONSENT_EXPIRED_YES
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
-                consents['DVEHRConsent'] = (response_value, response_date)
+                if not 'DVEHRConsent' in consents:  # We only want the most recent consent answer.
+                    consents['DVEHRConsent'] = (response_value, response_date)
                 had_ehr_consent = had_ehr_consent or response_value == DVEHRSHARING_CONSENT_CODE_YES
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
-                consents['GRORConsent'] = (response_value, response_date)
+                if not 'GRORConsent' in consents:  # We only want the most recent consent answer.
+                    consents['GRORConsent'] = (response_value, response_date)
                 had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES\
+            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES \
                     and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
                 ehr_consent = True
             if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
@@ -1036,20 +1040,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             status = EnrollmentStatusV2.PARTICIPANT
         if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
             status = EnrollmentStatusV2.FULLY_CONSENTED
-        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and\
-                pm_complete and\
-                (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and\
-                'modules' in summary and\
-                completed_all_baseline_modules and \
-                dna_sample_count > 0:
+        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
+            pm_complete and \
+            (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
+            'modules' in summary and \
+            completed_all_baseline_modules and \
+            dna_sample_count > 0:
             status = EnrollmentStatusV2.CORE_PARTICIPANT
 
         if status == EnrollmentStatusV2.PARTICIPANT or status == EnrollmentStatusV2.FULLY_CONSENTED:
             # Check to see if the participant might have had all the right ingredients to be Core at some point
             # This assumes consent for study, completion of baseline modules, stored dna sample,
             # and physical measurements can't be reversed
-            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and\
-                    had_ehr_consent and\
+            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
+                    had_ehr_consent and \
                     (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
@@ -1089,10 +1093,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             ehr_date_range.add_stop(response_date)
                     elif consent_question == DVEHR_SHARING_QUESTION_CODE:
                         current_dv_ehr_response = consent_response
-                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and\
+                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and \
                                 current_ehr_response != CONSENT_PERMISSION_NO_CODE:
                             ehr_date_range.add_start(response_date)
-                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and\
+                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and \
                                 current_ehr_response != CONSENT_PERMISSION_YES_CODE:
                             ehr_date_range.add_stop(response_date)
                     elif consent_question == GROR_CONSENT_QUESTION_CODE:
@@ -1104,7 +1108,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 try:
                     date_overlap = study_consent_date_range\
                         .get_intersection(pm_date_range)\
-                        .get_intersection(baseline_modules_date_range)\
+                        .get_intersection(baseline_modules_date_range) \
                         .get_intersection(dna_date_range)\
                         .get_intersection(ehr_date_range)
 
@@ -1266,9 +1270,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             elif '@example.com' in (summary.get('email') or ''):
                 test_participant = 1
             # Check for SMS phone number for test participants.
-            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')):
+            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')).startswith('4442'):
                 test_participant = 1
-            elif '4442' in re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')):
+            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')).startswith('4442'):
                 test_participant = 1
 
         data = {'test_participant': test_participant}
@@ -1431,17 +1435,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         return True
 
 
-def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
+def rebuild_participant_summary_resource(p_id, res_gen=None, pdr_gen=None, patch_data=None):
     """
     Rebuild a resource record for a specific participant
     :param p_id: participant id
     :param res_gen: ParticipantSummaryGenerator object
+    :param pdr_gen: PDRParticipantSummaryGenerator object
     :param patch_data: dict of resource values to update/insert.
     :return:
     """
     # Allow for batch requests to rebuild participant summary data.
     if not res_gen:
         res_gen = ParticipantSummaryGenerator()
+
+    if not pdr_gen:
+        pdr_gen = generators.PDRParticipantSummaryGenerator()
 
     # See if this is a partial update.
     if patch_data and isinstance(patch_data, dict):
@@ -1450,6 +1458,10 @@ def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):
 
     res = res_gen.make_resource(p_id)
     res.save()
+
+    pdr_res = pdr_gen.make_resource(p_id, ps_res=res)
+    pdr_res.save()
+
     return res
 
 def participant_summary_update_resource_task(p_id):

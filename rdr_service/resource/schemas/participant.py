@@ -8,7 +8,7 @@ from marshmallow import validate
 
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
-    SuspensionStatus
+    SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -37,7 +37,6 @@ class AddressSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_address
         resource_uri = 'Participant/{participant_id}/Address'
-        resource_pk_field = 'addr_type_id'
 
 
 class ModuleStatusSchema(Schema):
@@ -50,11 +49,12 @@ class ModuleStatusSchema(Schema):
     status = fields.EnumString(enum=QuestionnaireStatus)
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
     external_id = fields.String(validate=validate.Length(max=120))
+    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
 
     class Meta:
         schema_id = SchemaID.participant_modules
         resource_uri = 'Participant/{participant_id}/Modules'
-        resource_pk_field = 'module'
 
 
 class ConsentSchema(Schema):
@@ -69,11 +69,12 @@ class ConsentSchema(Schema):
     consent_module_created = fields.DateTime()
     consent_expired = fields.String(validate=validate.Length(max=80))
     consent_module_external_id = fields.String(validate=validate.Length(max=120))
+    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
 
     class Meta:
         schema_id = SchemaID.participant_consents
         resource_uri = 'Participant/{participant_id}/Consents'
-        resource_pk_field = 'consent_id'
 
 
 class RaceSchema(Schema):
@@ -84,7 +85,6 @@ class RaceSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_race
         resource_uri = 'Participant/{participant_id}/Races'
-        resource_pk_field = 'race_id'
 
 
 class GenderSchema(Schema):
@@ -95,7 +95,6 @@ class GenderSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_gender
         resource_uri = 'Participant/{participant_id}/Genders'
-        resource_pk_field = 'gender_id'
 
 
 class PhysicalMeasurementsSchema(Schema):
@@ -113,7 +112,6 @@ class PhysicalMeasurementsSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_physical_measurements
         resource_uri = 'Participant/{participant_id}/PhysicalMeasurements'
-        resource_pk_field = 'physical_measurements_id'
 
 
 class BiobankSampleSchema(Schema):
@@ -135,7 +133,6 @@ class BiobankSampleSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_biobank_order_samples
         resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples'
-        resource_pk_field = 'test'
 
 
 class BiobankOrderSchema(Schema):
@@ -160,7 +157,6 @@ class BiobankOrderSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_biobank_orders
         resource_uri = 'Participant/{participant_id}/BiobankOrders'
-        resource_pk_field = 'biobank_order_id'
 
 
 class PatientStatusSchema(Schema):
@@ -185,10 +181,23 @@ class PatientStatusSchema(Schema):
     class Meta:
         schema_id = SchemaID.patient_statuses
         resource_uri = 'Participant/{participant_id}/PatientStatuses'
-        resource_pk_field = 'patent_status_history_id'
 
 
-class ParticipantSchema(Schema):
+class EHRReceiptSchema(Schema):
+    """
+    Participant EHR status records.
+    """
+    participant_ehr_receipt_id = fields.Int32()
+    file_timestamp = fields.DateTime()
+    first_seen = fields.DateTime()
+    last_seen = fields.DateTime()
+
+    class Meta:
+        schema_id = SchemaID.ehr_recept
+        resource_uri = 'Participant/{participant_id}/EHRReceipt'
+
+
+class ParticipantSummarySchema(Schema):
     """ Participant Activity Summary Schema """
     last_modified = fields.DateTime()
 
@@ -272,6 +281,20 @@ class ParticipantSchema(Schema):
 
     # PDR-178:  Add CABoR authored to participant top-level schema
     cabor_authored = fields.DateTime()
+
+    deceased_status = fields.EnumString(enum=DeceasedStatus)
+    deceased_status_id = fields.EnumInteger(enum=DeceasedStatus)
+    deceased_authored = fields.DateTime()
+
+    cohort_2_pilot_flag = fields.EnumString(enum=ParticipantCohortPilotFlag)
+    cohort_2_pilot_flag_id = fields.EnumInteger(enum=ParticipantCohortPilotFlag)
+    # PDR-166:  Additional EHR status / history information enabled by DA-1781
+    is_ehr_data_available = fields.Boolean()
+    was_ehr_data_available = fields.Boolean()
+    first_ehr_receipt_time = fields.DateTime()
+    latest_ehr_receipt_time = fields.DateTime()
+    ehr_receipts = fields.Nested(EHRReceiptSchema, many=True)
+
 
     class Meta:
         schema_id = SchemaID.participant
