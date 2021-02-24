@@ -26,6 +26,11 @@ class BQCodeGenerator(BigQueryGenerator):
         with ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from code where code_id = :id'), {'id': code_id}).first()
             data = ro_dao.to_dict(row)
+            # In case the (RDR) code.value string has issues BigQuery schemas may complain about (contains whitespace
+            # or /, for example), code.value may be converted to a BQ-friendly field name in pdr_mod_* table
+            # schemas.  Keep that converted string with the code table record, for reference.
+            # (Note: make_bq_field_name() returns a second msg string value, which is ignored/unused here)
+            data['bq_field_name'] = BQCodeSchema.make_bq_field_name(data.get('value'), data.get('short_value'))[0]
             return BQRecord(schema=BQCodeSchema, data=data, convert_to_enum=convert_to_enum)
 
 @task_auth_required

@@ -16,6 +16,8 @@ from werkzeug.exceptions import NotFound
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.dao.bq_code_dao import BQCodeGenerator, BQCode
+from rdr_service.dao.code_dao import Code
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
@@ -256,6 +258,56 @@ class ParticipantResourceClass(object):
                 _logger.error(f'Participant ID {self.args.pid} not found.')
 
         return 1
+
+
+
+class CodeResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def update_code_table(self):
+
+        ro_dao = BigQuerySyncDao(backup=True)
+        with ro_dao.session() as ro_session:
+            gen = BQCodeGenerator()
+            results = ro_session.query(Code.codeId).all()
+
+        count = 0
+        total_ids = len(results)
+
+        w_dao = BigQuerySyncDao()
+        _logger.info('  Code table: rebuilding {0} records...'.format(total_ids))
+        with w_dao.session() as w_session:
+            for row in results:
+                bqr = gen.make_bqrecord(row.codeId)
+                gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
+                                  bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+                count += 1
+                if not self.args.debug:
+                    print_progress_bar(count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete")
+
+
+    def run(self):
+
+        clr = self.gcp_env.terminal_colors
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nUpdate Code table:',
+                             clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        return self.update_code_table()
+
+
 
 
 class GenomicResourceClass(object):
@@ -783,6 +835,13 @@ def run():
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
 
+    # Rebuild the code table ids
+    code_parser = subparser.add_parser(
+        "code",
+        parents=[all_ids_parser]
+    )
+    update_argument(code_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
+
     # Rebuild genomic resources.
     genomic_parser = subparser.add_parser(
         "genomic",
@@ -836,6 +895,10 @@ def run():
                 sys.exit(1)
 
             process = ResearchWorkbenchResourceClass(args, gcp_env, ids)
+            exit_code = process.run()
+
+        elif args.resource == 'code':
+            process = CodeResourceClass(args, gcp_env)
             exit_code = process.run()
 
         else:

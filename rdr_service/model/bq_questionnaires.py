@@ -1,6 +1,5 @@
 import json
 import logging
-import string
 
 from sqlalchemy.sql import text
 
@@ -24,35 +23,6 @@ class _BQModuleSchema(BQSchema):
     def get_module_name(self):
         """ Return the questionnaire module name """
         return self._module
-
-    @staticmethod
-    def field_name_is_valid(name):
-        """
-        Check that the field name meets BigQuery naming requirements.
-        :param name: field name to check
-        :return: True if valid otherwise False, error message.
-        """
-        # Check and make sure there are no other characters that are not allowed.
-        # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
-        # and be at most 128 characters long.
-        allowed_chars = string.ascii_letters + string.digits + '_'
-        if not all(c in allowed_chars for c in name):
-            message = f'Field {name} contains invalid characters, skipping.'
-
-            # Skip codes that are already known to be problematic
-            # TODO: alter the codes names instead of leaving them out (possibly something like
-            #  "DV Consent Decision" to "DV_Consent_Decision"
-            if name == 'DV Consent Decision':
-                message = None
-
-            return False, message
-        if len(name) > 128:
-            return False, f'Field {name} must be less than 128 characters, skipping.'
-        if name[:1] not in string.ascii_letters and name[:1] != '_':
-            # Disabled message, too many log entries.
-            # return False, f'Field {name} must start with a character or underscore, skipping.'
-            return False, None
-        return True, ''
 
     def get_fields(self):
         """
@@ -149,22 +119,19 @@ class _BQModuleSchema(BQSchema):
                 results = session.execute(sql, {'module_id': self._module, 'system': PPI_SYSTEM})
                 if results:
                     for row in results:
-                        name = row['value']
-                        if name.lower() in skip_fieldnames_lower:
+                        if row['value'].lower() in skip_fieldnames_lower:
                             continue
                         else:
-                            # Track the fields already found to avoid appending duplicates
-                            skip_fieldnames_lower.append(name.lower())
+                            skip_fieldnames_lower.append(row['value'].lower())
 
-                        # Verify field name meets BigQuery requirements.
-                        is_valid, msg = self.field_name_is_valid(name)
-                        if not is_valid:
+                        bq_field_name, msg = self.make_bq_field_name(row['value'], row['short_value'])
+                        if not bq_field_name:
                             if msg:
                                 logging.warning(msg)
                             continue
 
                         field = dict()
-                        field['name'] = name
+                        field['name'] = bq_field_name
                         field['type'] = BQFieldTypeEnum.STRING.name
                         field['mode'] = BQFieldModeEnum.NULLABLE.name
                         field['enum'] = None
@@ -209,15 +176,14 @@ class _BQModuleSchema(BQSchema):
                 else:
                     skip_fieldnames_lower.append(name.lower())
 
-                # Verify field name meets BigQuery requirements.
-                is_valid, msg = self.field_name_is_valid(name)
-                if not is_valid:
+                bq_field_name, msg = self.make_bq_field_name(name)
+                if not bq_field_name:
                     if msg:
                         logging.warning(msg)
                     continue
 
                 field = dict()
-                field['name'] = name
+                field['name'] = bq_field_name
                 field['type'] = BQFieldTypeEnum.STRING.name
                 field['mode'] = BQFieldModeEnum.NULLABLE.name
                 field['enum'] = None
