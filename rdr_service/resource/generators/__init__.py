@@ -5,10 +5,12 @@
 from ._base import BaseGenerator, ResourceRecordSet
 from .code import CodeGenerator
 from .participant import ParticipantSummaryGenerator
+from .pdr_participant import PDRParticipantSummaryGenerator
 
 __all__ = [
     'BaseGenerator',
     'ResourceRecordSet',
     'CodeGenerator',
-    'ParticipantSummaryGenerator'
+    'ParticipantSummaryGenerator',
+    'PDRParticipantSummaryGenerator'
 ]

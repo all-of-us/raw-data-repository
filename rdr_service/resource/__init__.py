@@ -33,11 +33,11 @@ class SchemaMeta(object):
             raise ValueError('Schema ID value must be a SchemaID Enum object.')
         if not isinstance(kwargs['resource_uri'], str):
             raise ValueError('Schema resource URI must be a string')
-        if not isinstance(kwargs['resource_pk_field'], str):
-            raise ValueError('Schema resource PK field must be a string')
+        # if not isinstance(kwargs['resource_pk_field'], str):
+        #     raise ValueError('Schema resource PK field must be a string')
 
         self._resource_uri = kwargs['resource_uri']
-        self._resource_pk_field = kwargs['resource_pk_field']
+        self._resource_pk_field = kwargs['resource_pk_field'] if kwargs['resource_pk_field'] else 'auto'
         self._schema_id = kwargs['schema_id']
 
         if hasattr(kwargs, 'nested_fields') and isinstance(kwargs['nested_fields'], list):
