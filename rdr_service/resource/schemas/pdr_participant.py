@@ -17,9 +17,8 @@ class PDRPhysicalMeasurementsSchema(Schema):
     """
     PDR Participant Physical Measurements
     """
-    physical_measurements_id = fields.Int32()
     status = fields.EnumString(enum=PhysicalMeasurementsStatus)
-    status_id = fields.EnumInteger(enum=PhysicalMeasurementsStatus)    
+    status_id = fields.EnumInteger(enum=PhysicalMeasurementsStatus)
     finalized = fields.DateTime()
 
     class Meta:
@@ -42,7 +41,6 @@ class PDRBiospecimenSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_physical_measurements
         resource_uri = 'Participant/{participant_id}/Biospecimen'
-
 
 
 class PDRParticipantSummarySchema(Schema):
@@ -145,6 +143,7 @@ class PDRParticipantSummarySchema(Schema):
     patient_statuses = fields.Nested(PatientStatusSchema, many=True)
 
     biobank_orders = fields.Nested(BiobankOrderSchema, many=True)
+    biospec = fields.Nested(PDRBiospecimenSchema, many=True)
     # PDR-166:  Additional EHR status / history information enabled by DA-1781
     is_ehr_data_available = fields.Boolean()
     was_ehr_data_available = fields.Boolean()
