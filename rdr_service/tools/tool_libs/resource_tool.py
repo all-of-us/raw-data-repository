@@ -70,41 +70,43 @@ class ParticipantResourceClass(object):
         :return: 0 if successful otherwise 1
         """
         try:
-            rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-            rebuild_participant_summary_resource(pid)
+            if not self.args.modules_only:
+                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                rebuild_participant_summary_resource(pid)
 
-            mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+            if not self.args.no_modules:
+                mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
-            # Generate participant questionnaire module response data
+                # Generate participant questionnaire module response data
 
-            modules = (
-                BQPDRConsentPII,
-                BQPDRTheBasics,
-                BQPDRLifestyle,
-                BQPDROverallHealth,
-                BQPDREHRConsentPII,
-                BQPDRDVEHRSharing,
-                BQPDRCOPEMay,
-                BQPDRCOPENov,
-                BQPDRCOPEDec,
-                BQPDRCOPEFeb,
-                BQPDRFamilyHistory,
-                BQPDRPersonalMedicalHistory,
-                BQPDRHealthcareAccess
-            )
+                modules = (
+                    BQPDRConsentPII,
+                    BQPDRTheBasics,
+                    BQPDRLifestyle,
+                    BQPDROverallHealth,
+                    BQPDREHRConsentPII,
+                    BQPDRDVEHRSharing,
+                    BQPDRCOPEMay,
+                    BQPDRCOPENov,
+                    BQPDRCOPEDec,
+                    BQPDRCOPEFeb,
+                    BQPDRFamilyHistory,
+                    BQPDRPersonalMedicalHistory,
+                    BQPDRHealthcareAccess
+                )
 
-            for module in modules:
-                mod = module()
+                for module in modules:
+                    mod = module()
 
-                table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
-                if not table:
-                    continue
+                    table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
+                    if not table:
+                        continue
 
-                w_dao = BigQuerySyncDao()
-                with w_dao.session() as w_session:
-                    for mod_bqr in mod_bqrs:
-                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
+                    w_dao = BigQuerySyncDao()
+                    with w_dao.session() as w_session:
+                        for mod_bqr in mod_bqrs:
+                            mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                    w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -832,6 +834,10 @@ def run():
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
     rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
                                 action="store_true")  # noqa
+    rebuild_parser.add_argument("--no-modules", default=False, action="store_true",
+                                help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
+    rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
+                                help="only rebuild participant questionnaire response data for pdr_mod_* tables")
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
 
