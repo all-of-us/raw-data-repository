@@ -8,7 +8,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
-from rdr_service.model.genomics import GenomicManifestFile
+from rdr_service.model.genomics import GenomicManifestFile, GenomicJobRun
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -508,3 +508,11 @@ class DataGenerator:
 
     def _genomic_manifest_file(self, **kwargs):
         return GenomicManifestFile(**kwargs)
+
+    def create_database_genomic_job_run(self, **kwargs):
+        job_run = self._genomic_job_run(**kwargs)
+        self._commit_to_database(job_run)
+        return job_run
+
+    def _genomic_job_run(self, **kwargs):
+        return GenomicJobRun(**kwargs)

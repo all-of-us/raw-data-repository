@@ -1056,7 +1056,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId != None,
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    GenomicGCValidationMetrics.modified > _date,
+                    #GenomicGCValidationMetrics.modified > _date,
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
                             GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
