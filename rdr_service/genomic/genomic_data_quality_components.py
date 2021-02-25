@@ -63,7 +63,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         report_def = self.get_report_def(level, target, time_frame)
 
-        sql = report_def.get_sql()
+        # Useful for debugging
+        # sql = report_def.get_sql()
 
         return self.get_report_data(report_def)
 
