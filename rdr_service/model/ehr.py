@@ -15,6 +15,7 @@ class EhrReceipt(Base):
     organizationId = Column(
         "organization_id", Integer, ForeignKey("organization.organization_id", ondelete="CASCADE"), nullable=False
     )
+    """An organization a participant is paired with or "unset" if none"""
     receiptTime = Column("receipt_time", UTCDateTime, nullable=False, index=True)
 
 

@@ -1310,10 +1310,15 @@ Index("participant_summary_last_modified", ParticipantSummary.hpoId, Participant
 class ParticipantGenderAnswers(Base):
     __tablename__ = "participant_gender_answers"
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    """RDR internal id for that specific answer"""
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), autoincrement=False)
+    """Participant that provided the answer"""
     created = Column("created", DateTime, nullable=True)
+    """When RDR received the answers"""
     modified = Column("modified", DateTime, nullable=True)
+    """When the record was modified"""
     codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    """Code tied to answer to PPI question"""
 
 
 event.listen(ParticipantGenderAnswers, "before_insert", model_insert_listener)
@@ -1323,10 +1328,15 @@ event.listen(ParticipantGenderAnswers, "before_update", model_update_listener)
 class ParticipantRaceAnswers(Base):
     __tablename__ = "participant_race_answers"
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    """RDR internal id for that specific answer"""
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), autoincrement=False)
+    """Id of the participant that has answered"""
     created = Column("created", DateTime, nullable=True)
+    """When RDR received the answer"""
     modified = Column("modified", DateTime, nullable=True)
+    """When the record was modified"""
     codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    """Code tied to answer to PPI question"""
 
 
 event.listen(ParticipantRaceAnswers, "before_insert", model_insert_listener)
