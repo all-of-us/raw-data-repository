@@ -1,5 +1,6 @@
 from rdr_service import app_util
 from rdr_service import clock
+from flask import request
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import WORKBENCH_AND_REDCAP
 from rdr_service.dao.bq_workbench_dao import rebuild_bq_workpaces, rebuild_bq_wb_researchers
@@ -16,6 +17,9 @@ class WorkbenchWorkspaceApi(BaseApi):
         now = clock.CLOCK.now()
         metadata_dao = MetadataDao()
         metadata_dao.upsert(WORKBENCH_LAST_SYNC_KEY, date_value=now)
+        backfill_arg = request.args.get('backfill')
+        is_backfill = True if backfill_arg and backfill_arg.lower() == 'true' else False
+        self.dao.is_backfill = is_backfill
         return super().post()
 
     def _do_insert(self, m):
