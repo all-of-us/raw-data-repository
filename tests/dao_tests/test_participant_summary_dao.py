@@ -446,7 +446,7 @@ class ParticipantSummaryDaoTest(BaseTestCase):
             ),
         )
         self.assertEqual(
-            EnrollmentStatus.MEMBER,
+            EnrollmentStatus.CORE_MINUS_PM,
             self.dao.calculate_enrollment_status(
                 True, NUM_BASELINE_PPI_MODULES, PhysicalMeasurementsStatus.UNSET, SampleStatus.RECEIVED,
                 ParticipantCohort.COHORT_1, QuestionnaireStatus.SUBMITTED_NO_CONSENT
@@ -505,6 +505,23 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.dao.update_enrollment_status(summary)
         self.assertEqual(EnrollmentStatus.MEMBER, summary.enrollmentStatus)
         self.assertEqual(ehr_consent_authored_time, summary.enrollmentStatusMemberTime)
+
+        sample_time = datetime.datetime(2019, 3, 1)
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            enrollmentStatus=EnrollmentStatus.MEMBER,
+            sampleStatus2ED10Time=sample_time
+        )
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
     def testCoreStatusRemains(self):
         member_time = datetime.datetime(2020, 6, 1)
