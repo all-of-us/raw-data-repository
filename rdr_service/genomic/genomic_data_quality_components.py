@@ -131,4 +131,5 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         return result
 
     def format_report(self, data):
+        # TODO: For use when notifications are implemented
         pass

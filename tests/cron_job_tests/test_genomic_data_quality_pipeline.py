@@ -42,15 +42,6 @@ class GenomicDataQualityJobControllerTest(BaseTestCase):
         report_job_mock.assert_called_once()
 
 
-class GenomicDataQualityPipelineTest(BaseTestCase):
-
-    def setUp(self, with_data=True, with_consent_codes=False) -> None:
-        super().setUp()
-
-    def test_daily_runs_report(self):
-        pass
-
-
 class GenomicDataQualityComponentTest(BaseTestCase):
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super().setUp()
