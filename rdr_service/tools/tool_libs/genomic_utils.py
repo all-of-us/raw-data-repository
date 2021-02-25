@@ -934,32 +934,33 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(f'A file is required for this job.')
                 return 1
 
-        if self.args.job == 'RECONCILE_GENOTYPING_DATA':
+        if self.args.job == 'RECONCILE_ARRAY_DATA':
             try:
                 server_config = self.get_server_config()
 
-                with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+                with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-                    controller.run_reconciliation_to_genotyping_data()
+                    genome_type = 'array'
+                    controller.run_reconciliation_to_data(genome_type)
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
-        if self.args.job == 'RECONCILE_SEQUENCING_DATA':
+        if self.args.job == 'RECONCILE_WGS_DATA':
             try:
                 server_config = self.get_server_config()
 
-                with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+                with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-
-                    controller.run_reconciliation_to_sequencing_data()
+                    genome_type = 'wgs'
+                    controller.run_reconciliation_to_data(genome_type)
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)

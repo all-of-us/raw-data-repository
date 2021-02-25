@@ -48,6 +48,7 @@ class MetricsRaceCache(Base):
     noAncestryChecked = Column("no_ancestry_checked", Integer, nullable=False)
     participantOrigin = Column("participant_origin", String(50), primary_key=True)
     unsetNoBasics = Column('unset_no_basics', Integer, nullable=True)
+    """Flag for individuals that have no data in TheBasics"""
 
 
 class MetricsGenderCache(Base):

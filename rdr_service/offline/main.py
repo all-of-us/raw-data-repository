@@ -325,23 +325,20 @@ def genomic_data_manifest_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_array_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_genotyping_data()
+    genomic_pipeline.reconcile_metrics_vs_array_data()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_wgs_data_reconciliation_workflow():
+    genomic_pipeline.reconcile_metrics_vs_wgs_data()
+    return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_scan_feedback_records():
     genomic_pipeline.scan_and_complete_feedback_records()
     return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_wgs_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_sequencing_data()
-    return '{"success": "true"}'
-
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -651,14 +648,14 @@ def _build_pipeline_app():
         view_func=genomic_array_data_reconciliation_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFeedbackManifestWorkflow",
-        endpoint="genomic_scan_feedback_records",
-        view_func=genomic_scan_feedback_records, methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicWGSReconciliationWorkflow",
         endpoint="genomic_wgs_data_reconciliation_workflow",
         view_func=genomic_wgs_data_reconciliation_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicFeedbackManifestWorkflow",
+        endpoint="genomic_scan_feedback_records",
+        view_func=genomic_scan_feedback_records, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA1Workflow",

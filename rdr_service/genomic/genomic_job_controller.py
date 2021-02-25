@@ -238,13 +238,15 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_reconciliation_to_genotyping_data(self):
+    def run_reconciliation_to_data(self, genome_type):
         """
-        Reconciles the metrics to genotyping files using reconciler component
+        Reconciles the metrics based on type of files using reconciler component
+        :param genome_type array or wgs
         """
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
                                             storage_provider=self.storage_provider,
                                             controller=self)
+
         try:
             # Set reconciler's bucket and filter queries on gc_site_id for each bucket
             for bucket_name in self.bucket_name_list:
@@ -254,7 +256,8 @@ class GenomicJobController:
                 gc_site_id = 'rdr'
 
                 if 'baylor' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['baylor_array']
+                    baylor = 'baylor_{}'.format(genome_type)
+                    gc_site_id = site_id_mapping[baylor]
 
                 if 'broad' in bucket_name.lower():
                     gc_site_id = site_id_mapping['broad']
@@ -263,36 +266,10 @@ class GenomicJobController:
                     gc_site_id = site_id_mapping['northwest']
 
                 # Run the reconciliation by GC
-                self.job_result = self.reconciler.reconcile_metrics_to_genotyping_data(_gc_site_id=gc_site_id)
-
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
-    def run_reconciliation_to_sequencing_data(self):
-        """
-        Reconciles the metrics to sequencing files using reconciler component
-        """
-        self.reconciler = GenomicReconciler(self.job_run.id, self.job_id,
-                                            storage_provider=self.storage_provider,
-                                            controller=self)
-        try:
-            # Set reconciler's bucket and filter queries on gc_site_id for each bucket
-            for bucket_name in self.bucket_name_list:
-                self.reconciler.bucket_name = bucket_name
-                site_id_mapping = config.getSettingJson("gc_name_to_id_mapping")
-
-                gc_site_id = 'rdr'
-
-                if 'baylor' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['baylor_wgs']
-
-                if 'broad' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['broad']
-
-                if 'northwest' in bucket_name.lower():
-                    gc_site_id = site_id_mapping['northwest']
-
-                self.job_result = self.reconciler.reconcile_metrics_to_sequencing_data(_gc_site_id=gc_site_id)
+                if genome_type == 'array':
+                    self.job_result = self.reconciler.reconcile_metrics_to_array_data(_gc_site_id=gc_site_id)
+                elif genome_type == 'wgs':
+                    self.job_result = self.reconciler.reconcile_metrics_to_wgs_data(_gc_site_id=gc_site_id)
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR

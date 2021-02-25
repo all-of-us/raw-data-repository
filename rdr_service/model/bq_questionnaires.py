@@ -1,6 +1,5 @@
 import json
 import logging
-import string
 
 from sqlalchemy.sql import text
 
@@ -25,35 +24,6 @@ class _BQModuleSchema(BQSchema):
         """ Return the questionnaire module name """
         return self._module
 
-    @staticmethod
-    def field_name_is_valid(name):
-        """
-        Check that the field name meets BigQuery naming requirements.
-        :param name: field name to check
-        :return: True if valid otherwise False, error message.
-        """
-        # Check and make sure there are no other characters that are not allowed.
-        # Fields must contain only letters, numbers, and underscores, start with a letter or underscore,
-        # and be at most 128 characters long.
-        allowed_chars = string.ascii_letters + string.digits + '_'
-        if not all(c in allowed_chars for c in name):
-            message = f'Field {name} contains invalid characters, skipping.'
-
-            # Skip codes that are already known to be problematic
-            # TODO: alter the codes names instead of leaving them out (possibly something like
-            #  "DV Consent Decision" to "DV_Consent_Decision"
-            if name == 'DV Consent Decision':
-                message = None
-
-            return False, message
-        if len(name) > 128:
-            return False, f'Field {name} must be less than 128 characters, skipping.'
-        if name[:1] not in string.ascii_letters and name[:1] != '_':
-            # Disabled message, too many log entries.
-            # return False, f'Field {name} must start with a character or underscore, skipping.'
-            return False, None
-        return True, ''
-
     def get_fields(self):
         """
         Look up questionnaire concept to get fields.
@@ -61,7 +31,7 @@ class _BQModuleSchema(BQSchema):
         """
         fields = list()
         self._fields = list()
-        # Standard fields that must be in every BigQuery table.
+        # Standard fields that must be in every BigQuery pdr_mod_* table.
         fields.append({'name': 'id', 'type': BQFieldTypeEnum.INTEGER.name, 'mode': BQFieldModeEnum.REQUIRED.name})
         fields.append({'name': 'created', 'type': BQFieldTypeEnum.DATETIME.name,
                        'mode': BQFieldModeEnum.REQUIRED.name})
@@ -125,7 +95,7 @@ class _BQModuleSchema(BQSchema):
         """
 
         # With DA-1844, question codes can be determined from codebook survey data imported from REDCap
-        # (if it exists in the new RDR survey tables)
+        # (or backfilled via python tool, for surveys that existed before codebook management shifted to REDCap)
         _survey_question_codes_sql = select_clause_sql + """
 
             from survey_question sq
@@ -141,34 +111,35 @@ class _BQModuleSchema(BQSchema):
         """
 
         with dao.session() as session:
-            # Look for question codes via the survey tables from DA-1884 first, but fall back to the old logic
-            # if the survey data from a REDCap import can't be found yet
+            # A list of lowercase field strings to skip if they are returned from varies queries used to compile
+            # the field list.  Initialize to the list of any known excluded fields for this module class
+            skip_fieldnames_lower = [x.lower() for x in self._excluded_fields]
+
             for sql in [_survey_question_codes_sql, _existing_question_codes_sql]:
                 results = session.execute(sql, {'module_id': self._module, 'system': PPI_SYSTEM})
-                if results and results.rowcount:
-                    break
+                if results:
+                    for row in results:
+                        if row['value'].lower() in skip_fieldnames_lower:
+                            continue
+                        else:
+                            skip_fieldnames_lower.append(row['value'].lower())
 
-            if results:
-                for row in results:
-                    # Verify field name meets BigQuery requirements.
-                    name = row['value']
-                    is_valid, msg = self.field_name_is_valid(name)
-                    if not is_valid:
-                        if msg:
-                            logging.warning(msg)
-                        continue
+                        bq_field_name, msg = self.make_bq_field_name(row['value'], row['short_value'])
+                        if not bq_field_name:
+                            if msg:
+                                logging.warning(msg)
+                            continue
 
-                    if name.lower() in [x.lower() for x in self._excluded_fields]:
-                        continue
+                        field = dict()
+                        field['name'] = bq_field_name
+                        field['type'] = BQFieldTypeEnum.STRING.name
+                        field['mode'] = BQFieldModeEnum.NULLABLE.name
+                        field['enum'] = None
+                        fields.append(field)
 
-                    field = dict()
-                    field['name'] = name
-                    field['type'] = BQFieldTypeEnum.STRING.name
-                    field['mode'] = BQFieldModeEnum.NULLABLE.name
-                    field['enum'] = None
-                    fields.append(field)
-
-            # This query makes better use of the indexes.
+            # This query makes better use of the indexes.  Intention is to check the most recent POST Questionnaire
+            # payload for any codes not already found above because the RDR code table was potentially behind on
+            # having the latest codebook imported?
             _sql_term = text("""
                 select convert(qh.resource using utf8) as resource
                     from questionnaire_history qh
@@ -200,34 +171,24 @@ class _BQModuleSchema(BQSchema):
                     continue
 
                 name = qn['concept'][0]['code']
-                if name.lower() in [x.lower() for x in self._excluded_fields]:
+                if name.lower() in skip_fieldnames_lower:
                     continue
+                else:
+                    skip_fieldnames_lower.append(name.lower())
 
-                # Verify field name meets BigQuery requirements.
-                is_valid, msg = self.field_name_is_valid(name)
-                if not is_valid:
+                bq_field_name, msg = self.make_bq_field_name(name)
+                if not bq_field_name:
                     if msg:
                         logging.warning(msg)
                     continue
 
-                # flag duplicate fields.
-                found = False
-                for fld in fields:
-                    if fld['name'].lower() == name.lower():
-                        found = True
-                        break
+                field = dict()
+                field['name'] = bq_field_name
+                field['type'] = BQFieldTypeEnum.STRING.name
+                field['mode'] = BQFieldModeEnum.NULLABLE.name
+                field['enum'] = None
+                fields.append(field)
 
-                if not found:
-                    field = dict()
-                    field['name'] = name
-                    field['type'] = BQFieldTypeEnum.STRING.name
-                    field['mode'] = BQFieldModeEnum.NULLABLE.name
-                    field['enum'] = None
-                    fields.append(field)
-
-            # There seems to be duplicate column definitions we need to remove in some of the modules.
-            # tmpflds = [i for n, i in enumerate(fields) if i not in fields[n + 1:]]
-            # return tmpflds
             return fields
 
 
@@ -321,7 +282,8 @@ class BQPDRTheBasicsSchema(_BQModuleSchema):
         'SecondContactsAddress_SecondContactZipCode',
         'PersonOneAddress_PersonOneAddressZipCode',
         'SecondContactsAddress_SecondContactZipCode',
-        'OtherHealthPlan_FreeText'
+        'OtherHealthPlan_FreeText',
+        'AIAN_Tribe'
     )
 
 
@@ -343,11 +305,13 @@ class BQPDRTheBasicsView(BQView):
 #
 # Lifestyle
 #
+# Note:  Must add the comma after a single element in the _excluded_fields list so it is still treated like a
+# list of strings in a comprehension (vs. a list of chars from the single string)
 class BQPDRLifestyleSchema(_BQModuleSchema):
     """ Lifestyle Module """
     _module = 'Lifestyle'
     _excluded_fields = (
-        'OtherSpecify_OtherDrugsTextBox'
+        'OtherSpecify_OtherDrugsTextBox',
     )
 
 
@@ -529,6 +493,7 @@ class BQPDRPersonalMedicalHistorySchema(_BQModuleSchema):
     _module = 'PersonalMedicalHistory'
     _excluded_fields = (
         'OtherHeartorBloodCondition_FreeTextBox',
+        'OtherHeartandBloodCondition_FreeTextBox',
         'OtherRespiratory_FreeTextBox',
         'OtherCancer_FreeTextBox',
         'OtherDigestiveCondition_FreeTextBox',

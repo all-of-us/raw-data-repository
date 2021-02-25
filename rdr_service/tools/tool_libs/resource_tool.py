@@ -16,6 +16,8 @@ from werkzeug.exceptions import NotFound
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.dao.bq_code_dao import BQCodeGenerator, BQCode
+from rdr_service.dao.code_dao import Code
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
@@ -24,7 +26,8 @@ from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_u
     bq_institutional_affiliations_update, bq_researcher_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory, \
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
@@ -67,38 +70,43 @@ class ParticipantResourceClass(object):
         :return: 0 if successful otherwise 1
         """
         try:
-            rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-            rebuild_participant_summary_resource(pid)
+            if not self.args.modules_only:
+                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                rebuild_participant_summary_resource(pid)
 
-            mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+            if not self.args.no_modules:
+                mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
-            # Generate participant questionnaire module response data
+                # Generate participant questionnaire module response data
 
-            modules = (
-                BQPDRConsentPII,
-                BQPDRTheBasics,
-                BQPDRLifestyle,
-                BQPDROverallHealth,
-                BQPDREHRConsentPII,
-                BQPDRDVEHRSharing,
-                BQPDRCOPEMay,
-                BQPDRCOPENov,
-                BQPDRCOPEDec,
-                BQPDRCOPEFeb
-            )
+                modules = (
+                    BQPDRConsentPII,
+                    BQPDRTheBasics,
+                    BQPDRLifestyle,
+                    BQPDROverallHealth,
+                    BQPDREHRConsentPII,
+                    BQPDRDVEHRSharing,
+                    BQPDRCOPEMay,
+                    BQPDRCOPENov,
+                    BQPDRCOPEDec,
+                    BQPDRCOPEFeb,
+                    BQPDRFamilyHistory,
+                    BQPDRPersonalMedicalHistory,
+                    BQPDRHealthcareAccess
+                )
 
-            for module in modules:
-                mod = module()
+                for module in modules:
+                    mod = module()
 
-                table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
-                if not table:
-                    continue
+                    table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
+                    if not table:
+                        continue
 
-                w_dao = BigQuerySyncDao()
-                with w_dao.session() as w_session:
-                    for mod_bqr in mod_bqrs:
-                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
+                    w_dao = BigQuerySyncDao()
+                    with w_dao.session() as w_session:
+                        for mod_bqr in mod_bqrs:
+                            mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                    w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -252,6 +260,56 @@ class ParticipantResourceClass(object):
                 _logger.error(f'Participant ID {self.args.pid} not found.')
 
         return 1
+
+
+
+class CodeResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def update_code_table(self):
+
+        ro_dao = BigQuerySyncDao(backup=True)
+        with ro_dao.session() as ro_session:
+            gen = BQCodeGenerator()
+            results = ro_session.query(Code.codeId).all()
+
+        count = 0
+        total_ids = len(results)
+
+        w_dao = BigQuerySyncDao()
+        _logger.info('  Code table: rebuilding {0} records...'.format(total_ids))
+        with w_dao.session() as w_session:
+            for row in results:
+                bqr = gen.make_bqrecord(row.codeId)
+                gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
+                                  bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+                count += 1
+                if not self.args.debug:
+                    print_progress_bar(count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete")
+
+
+    def run(self):
+
+        clr = self.gcp_env.terminal_colors
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nUpdate Code table:',
+                             clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        return self.update_code_table()
+
+
 
 
 class GenomicResourceClass(object):
@@ -776,8 +834,19 @@ def run():
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
     rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
                                 action="store_true")  # noqa
+    rebuild_parser.add_argument("--no-modules", default=False, action="store_true",
+                                help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
+    rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
+                                help="only rebuild participant questionnaire response data for pdr_mod_* tables")
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
+
+    # Rebuild the code table ids
+    code_parser = subparser.add_parser(
+        "code",
+        parents=[all_ids_parser]
+    )
+    update_argument(code_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
 
     # Rebuild genomic resources.
     genomic_parser = subparser.add_parser(
@@ -832,6 +901,10 @@ def run():
                 sys.exit(1)
 
             process = ResearchWorkbenchResourceClass(args, gcp_env, ids)
+            exit_code = process.run()
+
+        elif args.resource == 'code':
+            process = CodeResourceClass(args, gcp_env)
             exit_code = process.run()
 
         else:

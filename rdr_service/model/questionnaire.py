@@ -20,13 +20,18 @@ class QuestionnaireBase(object):
     """Mixin containing columns for Questionnaire and QuestionnaireHistory"""
 
     questionnaireId = Column("questionnaire_id", Integer, primary_key=True)
+    """RDR identifier for the questionnaire"""
     # Incrementing version, starts at 1 and is incremented on each update.
     version = Column("version", Integer, nullable=False)
+    """RDR version of the questionnaire"""
     semanticVersion = Column('semantic_version', String(100))
+    """PTSC's version of the questionnaire (does not necessarily match RDR version)"""
     semanticDesc = Column('semantic_desc', String(500))
     irbMapping = Column('irb_mapping', String(500))
     created = Column("created", UTCDateTime, nullable=False)
+    """The date and time the questionnaire was created"""
     lastModified = Column("last_modified", UTCDateTime, nullable=False)
+    """The date and time the questionnaire was last modified"""
     # The JSON representation of the questionnaire provided by the client.
     # Concepts and questions can be be parsed out of this for use in querying.
     resource = Column("resource", BlobUTF8, nullable=False)
@@ -73,9 +78,13 @@ class QuestionnaireConcept(Base):
 
     __tablename__ = "questionnaire_concept"
     questionnaireConceptId = Column("questionnaire_concept_id", Integer, primary_key=True)
+    """An identifier to link the questionnaire to the CONCEPT table from OMOP"""
     questionnaireId = Column("questionnaire_id", Integer, nullable=False)
+    """Questionnaire identifier for the concept"""
     questionnaireVersion = Column("questionnaire_version", Integer, nullable=False)
+    """Questionnaire's RDR version for the concept"""
     codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    """The corresponding concept for this item"""
     __table_args__ = (
         ForeignKeyConstraint(
             ["questionnaire_id", "questionnaire_version"],
@@ -100,11 +109,17 @@ class QuestionnaireQuestion(Base):
 
     __tablename__ = "questionnaire_question"
     questionnaireQuestionId = Column("questionnaire_question_id", Integer, primary_key=True)
+    """RDR identifier for the question"""
     questionnaireId = Column("questionnaire_id", Integer)
+    """RDR identifier for the containing questionnaire"""
     questionnaireVersion = Column("questionnaire_version", Integer)
+    """RDR version for the containing questionnaire"""
     linkId = Column("link_id", String(40))
+    """The unique ID for the item in the questionnaire"""
     codeId = Column("code_id", Integer, ForeignKey("code.code_id"), nullable=False)
+    """The corresponding concept for this question"""
     repeats = Column("repeats", Boolean, nullable=False)
+    """Whether the item may repeat"""
     __table_args__ = (
         ForeignKeyConstraint(
             ["questionnaire_id", "questionnaire_version"],
