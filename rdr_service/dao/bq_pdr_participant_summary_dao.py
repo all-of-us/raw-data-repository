@@ -213,8 +213,10 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         break
 
             if consent_date:
-                age = int((consent_date - ps_bqr.date_of_birth).days / 365)
-                if not 18 <= age <= 65:
+                # PDR-261:  Should not use years (integer) alone;  anyone older than 65 by even a day should be
+                # flagged as UBR, so use float
+                age = (consent_date - ps_bqr.date_of_birth).days / 365
+                if not 18.0 <= age <= 65.0:
                     data['ubr_age_at_consent'] = 1
 
         # pylint: disable=unused-variable

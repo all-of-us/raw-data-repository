@@ -12,24 +12,41 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 
 class WorkbenchWorkspaceBase(object):
     workspaceSourceId = Column("workspace_source_id", Integer, nullable=False)
+    """The workspace ID in RW system."""
     name = Column("name", String(1000), nullable=False)
+    """The user-provided workspace name."""
     creationTime = Column("creation_time", UTCDateTime6, nullable=True)
+    """Workspace creation time in RW system."""
     modifiedTime = Column("modified_time", UTCDateTime6, nullable=True)
+    """The last-modified time of the workspace in RW system."""
     status = Column("status", Enum(WorkbenchWorkspaceStatus), default=WorkbenchWorkspaceStatus.UNSET)
     excludeFromPublicDirectory = Column("exclude_from_public_directory", Boolean)
+    """Whether this workspace should be hidden from public view"""
     reviewRequested = Column("review_requested", Boolean)
     diseaseFocusedResearch = Column("disease_focused_research", Boolean)
+    """Purpose: Disease Focused Research"""
     diseaseFocusedResearchName = Column("disease_focused_research_name", String(1000))
+    """Purpose: Disease name"""
     otherPurposeDetails = Column("other_purpose_details", String(2000))
+    """Purpose: Other purpose description"""
     methodsDevelopment = Column("methods_development", Boolean)
+    """Purpose: Methods development/validation study"""
     controlSet = Column("control_set", Boolean)
+    """Purpose: Research Control"""
     ancestry = Column("ancestry", Boolean)
+    """Purpose: Genetic Research"""
     socialBehavioral = Column("social_behavioral", Boolean)
+    """Purpose: Social/Behavioral Research"""
     populationHealth = Column("population_health", Boolean)
+    """Purpose: Population Health/Public Health Research"""
     drugDevelopment = Column("drug_development", Boolean)
+    """Purpose: Drug/Therapeutics Development Research"""
     commercialPurpose = Column("commercial_purpose", Boolean)
+    """Purpose: For Profit"""
     educational = Column("educational", Boolean)
+    """Purpose: Educational Purpose"""
     otherPurpose = Column("other_purpose", Boolean)
+    """Purpose: Other Purpose"""
     scientificApproaches = Column("scientific_approaches", TEXT)
     intendToStudy = Column("intend_to_study", TEXT)
     findingsFromStudy = Column("findings_from_study", TEXT)
@@ -57,6 +74,7 @@ class WorkbenchWorkspaceBase(object):
     cdrVersion = Column("cdr_version", String(200))
 
     resource = Column("resource", BlobUTF8, nullable=False)
+    """The resource payload"""
 
 
 class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):
@@ -66,10 +84,10 @@ class WorkbenchWorkspaceApproved(WorkbenchWorkspaceBase, Base):
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
-    # have mysql set the creation data for each new order
     created = Column("created", UTCDateTime6, nullable=True)
-    # have mysql always update the modified data when the record is changed
+    """The create time for this record."""
     modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
 
     __table_args__ = (UniqueConstraint("workspace_source_id", name="uniqe_workspace_source_id"),)
 
@@ -79,10 +97,10 @@ class WorkbenchWorkspaceUser(Base):
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
-    # have mysql set the creation data for each new order
     created = Column("created", UTCDateTime6, nullable=True)
-    # have mysql always update the modified data when the record is changed
+    """The create time for this record."""
     modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
 
     workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_approved.id"), nullable=False)
     researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher.id"), nullable=False)
@@ -99,10 +117,10 @@ class WorkbenchWorkspaceSnapshot(WorkbenchWorkspaceBase, Base):
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
-    # have mysql set the creation data for each new order
     created = Column("created", UTCDateTime6, nullable=True)
-    # have mysql always update the modified data when the record is changed
+    """The create time for this record."""
     modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
 
 
 class WorkbenchWorkspaceUserHistory(Base):
@@ -110,10 +128,16 @@ class WorkbenchWorkspaceUserHistory(Base):
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
-    # have mysql set the creation data for each new order
     created = Column("created", UTCDateTime6, nullable=True)
-    # have mysql always update the modified data when the record is changed
+    """
+    When that record was created in the history table specifically (if main table is updated; previous version
+    if/when a record is updated; if never changed, it appears as it was originally created)
+    """
     modified = Column("modified", UTCDateTime6, nullable=True)
+    """
+    When that record was created in the history table specifically (if main table is updated; previous version
+    if/when a record is updated; if never changed, it appears as it was originally created)
+    """
 
     workspaceId = Column("workspace_id", Integer, ForeignKey("workbench_workspace_snapshot.id"), nullable=False)
     researcherId = Column("researcher_Id", Integer, ForeignKey("workbench_researcher_history.id"), nullable=False)

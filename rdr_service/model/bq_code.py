@@ -16,6 +16,11 @@ class BQCodeSchema(BQSchema):
     code_book_id = BQField('code_book_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     parent_id = BQField('parent_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     short_value = BQField('short_value', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    # bq_field_name is generally the same as the value field.  If len(value) > 128, it will generally match
+    # short_value.  If value (and  short_value) does not conform to "legal" BigQuery table field name
+    # requirements, bq_field_name may be a slightly modified version of value/short_value (e.g., spaces or /
+    # replaced with _) that can be used in a BigQuery schema instead
+    bq_field_name = BQField('bq_field_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQCode(BQTable):
