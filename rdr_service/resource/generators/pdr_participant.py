@@ -20,7 +20,7 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
 
     def make_resource(self, p_id, ps_res=None):
         """
-        Build a Participant Summary BQRecord object for the given participant id.
+        Build a Participant Summary Resource record object for the given participant id.
         :param p_id: participant id
         :param ps_res: A BQParticipantSummary BQRecord object.
         :return: BQRecord object
@@ -210,8 +210,8 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
                         break
 
             if consent_date:
-                age = int((consent_date - res.date_of_birth).days / 365)
-                if not 18 <= age <= 65:
+                age = (consent_date - res.date_of_birth).days / 365
+                if not 18.0 <= age <= 65.0:
                     data['ubr_age_at_consent'] = 1
 
         # pylint: disable=unused-variable

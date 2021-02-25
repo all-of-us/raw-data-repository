@@ -640,7 +640,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if not qnans or len(qnans) == 0:
             return {}
 
-        # get race question answers
+        # get TheBasics questionnaire response answers
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
         data = {}
         if qnan.get('Race_WhatRaceEthnicity'):

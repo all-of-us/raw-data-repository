@@ -2,7 +2,7 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-import json
+# import json
 import logging
 from datetime import datetime
 
@@ -36,7 +36,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
     batch = payload['batch']
 
     logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
-    logging.info(json.dumps(batch, indent=2))
+    # logging.info(json.dumps(batch, indent=2))
 
     for item in batch:
         p_id = item['pid']

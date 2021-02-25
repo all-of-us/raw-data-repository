@@ -29,7 +29,7 @@ class SchemaID(IntEnum):
     participant_address = 2080
     patient_statuses = 2090
     ehr_recept = 2100
-    pdr_participant = 2010
+    pdr_participant = 2110
     # Genomic schemas
     genomic_set = 3000
     genomic_set_member = 3010
