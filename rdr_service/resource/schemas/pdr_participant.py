@@ -4,7 +4,7 @@
 #
 from marshmallow import validate
 
-from rdr_service.participant_enums import ParticipantCohort, PhysicalMeasurementsStatus, OrderStatus, \
+from rdr_service.participant_enums import ParticipantCohort, PhysicalMeasurementsStatus, \
     EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, DeceasedStatus, ParticipantCohortPilotFlag
 from rdr_service.resource import Schema, fields
@@ -25,22 +25,14 @@ class PDRPhysicalMeasurementsSchema(Schema):
         schema_id = SchemaID.participant_physical_measurements
         resource_uri = 'Participant/{participant_id}/PhysicalMeasurements'
 
-
-class PDRBiospecimenSchema(Schema):
+class PDRBiobankOrderSchema(BiobankOrderSchema):
     """
-    PDR Summary of Biobank Orders and Tests
+    Add additional summary fields to biobank order schema.
     """
-    status = fields.EnumString(enum=OrderStatus)
-    status_id = fields.EnumInteger(enum=OrderStatus)
-    order_time = fields.DateTime()
     isolate_dna = fields.Boolean()
     isolate_dna_confirmed = fields.Boolean()
     baseline_tests = fields.Int32()
     baseline_tests_confirmed = fields.Int32()
-
-    class Meta:
-        schema_id = SchemaID.participant_physical_measurements
-        resource_uri = 'Participant/{participant_id}/Biospecimen'
 
 
 class PDRParticipantSummarySchema(Schema):
@@ -126,8 +118,6 @@ class PDRParticipantSummarySchema(Schema):
     modules = fields.Nested(ModuleStatusSchema, many=True)
     consents = fields.Nested(ConsentSchema, many=True)
 
-    biospec = fields.Nested(PDRBiospecimenSchema, many=True)
-
     ubr_sex = fields.Boolean()
     ubr_sexual_orientation = fields.Boolean()
     ubr_gender_identity = fields.Boolean()
@@ -142,8 +132,8 @@ class PDRParticipantSummarySchema(Schema):
 
     patient_statuses = fields.Nested(PatientStatusSchema, many=True)
 
-    biobank_orders = fields.Nested(BiobankOrderSchema, many=True)
-    biospec = fields.Nested(PDRBiospecimenSchema, many=True)
+    biobank_orders = fields.Nested(PDRBiobankOrderSchema, many=True)
+
     # PDR-166:  Additional EHR status / history information enabled by DA-1781
     is_ehr_data_available = fields.Boolean()
     was_ehr_data_available = fields.Boolean()

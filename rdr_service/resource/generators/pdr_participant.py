@@ -21,7 +21,7 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
     def make_resource(self, p_id, ps_res=None):
         """
         Build a Participant Summary BQRecord object for the given participant id.
-        :param p_id: participant id        
+        :param p_id: participant id
         :param ps_res: A BQParticipantSummary BQRecord object.
         :return: BQRecord object
         """
@@ -42,10 +42,9 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
                         setattr(res, 'addr_zip', address['addr_zip'][:3])
 
         summary = res.to_dict()
-        # Populate BQAnalyticsBiospecimenSchema if there are biobank orders.
-        if hasattr(ps_res, 'biobank_orders'):
-            data = {'biospec': list()}
-            for order in ps_res.biobank_orders:
+        # Summarize biobank order data if there are biobank orders.
+        if hasattr(res, 'biobank_orders'):
+            for order in res.biobank_orders:
                 # Count the number of DNA and Baseline tests in this order.
                 dna_tests = 0
                 dna_tests_confirmed = 0
@@ -62,17 +61,10 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
                         if test['confirmed']:
                             baseline_tests_confirmed += 1
 
-                data['biospec'].append({
-                    'status': order.get('status', None),
-                    'status_id': order.get('status_id', None),
-                    'order_time': order.get('created', None),
-                    'isolate_dna': dna_tests,
-                    'isolate_dna_confirmed': dna_tests_confirmed,
-                    'baseline_tests': baseline_tests,
-                    'baseline_tests_confirmed': baseline_tests_confirmed
-                })
-
-            summary = self._merge_schema_dicts(summary, data)
+                order['isolate_dna'] = dna_tests
+                order['isolate_dna_confirmed'] = dna_tests_confirmed
+                order['baseline_tests'] = baseline_tests
+                order['baseline_tests_confirmed'] = baseline_tests_confirmed
 
         # Calculate contact information
         summary = self._merge_schema_dicts(summary, self._set_contact_flags(res))
