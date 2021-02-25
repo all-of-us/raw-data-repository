@@ -67,6 +67,7 @@ class ParticipantBase(object):
     participantOrigin = Column("participant_origin", String(80), nullable=False)
     """
     The originating resource for participant, this (unlike clientId) will not change.
+    @rdr_dictionary_show_unique_values
     """
 
     # Default values for withdrawal and suspension are managed through the DAO (instead of column

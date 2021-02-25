@@ -177,7 +177,10 @@ class ParticipantSummary(Base):
     """The email address participant provided to register; they must provide an email or a login_phone_number"""
 
     primaryLanguage = Column("primary_language", String(80))
-    """Indicates the language of the consent that the participant signed. We only have "en" or "es" for now."""
+    """
+    Indicates the language of the consent that the participant signed. We only have "en" or "es" for now.
+    @rdr_dictionary_show_unique_values
+    """
 
     recontactMethodId = Column("recontact_method_id", Integer, ForeignKey("code.code_id"))
     """Which method the participant would like used for contact, i.e., phone or email"""
@@ -292,7 +295,7 @@ class ParticipantSummary(Base):
     """
     Depends on a number of factors including questionnaires and biobank samples completed
 
-    :ref:`Enumerated values <enrollment_status>`
+    :ref:`Enumerated values <enrollment_status>
     """
 
     enrollmentStatusMemberTime = Column("enrollment_status_member_time", UTCDateTime)
@@ -490,7 +493,10 @@ class ParticipantSummary(Base):
 
     # The originating resource for participant, this (unlike clientId) will not change.
     participantOrigin = Column("participant_origin", String(80), nullable=False)
-    """The sign up portal the participant used to enroll (Vibrent, Care Evolution)."""
+    """
+    The sign up portal the participant used to enroll (Vibrent, Care Evolution).
+    @rdr_dictionary_show_unique_values
+    """
 
     # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
     # # patientStatuses = relationship("PatientStatus", back_populates="participantSummary")

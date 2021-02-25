@@ -37,6 +37,7 @@ class MetricsBucket(Base):
   """
 
     __tablename__ = "metrics_bucket"
+    __rdr_internal_table__ = True
     metricsVersionId = Column(
         "metrics_version_id",
         Integer,

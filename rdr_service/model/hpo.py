@@ -15,9 +15,13 @@ class HPO(Base):
     name = Column("name", String(20))
     """
     An identifier for the HPO (just the resource id, like PITT — not a reference like Organization/PITT)
+    @rdr_dictionary_show_unique_values
     """
     displayName = Column("display_name", String(255))
-    """The hpo display name"""
+    """
+    The hpo display name
+    @rdr_dictionary_show_unique_values
+    """
     organizationType = Column("organization_type", Enum(OrganizationType), default=OrganizationType.UNSET)
     """The type of organization responsible for signing up participants"""
     organizations = relationship("Organization", cascade="all, delete-orphan", order_by="Organization.externalId")

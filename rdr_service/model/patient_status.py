@@ -32,6 +32,9 @@ class PatientStatus(Base, ModelMixin):
     """Reference to a physical location pairing level below organization"""
     comment = Column("comment", Text, nullable=True)
     authored = Column("authored", UTCDateTime)
+    """
+    The exact time a patient status was entered for HealthPro, to support enrollment information sharing across sites
+    """
     user = Column("user", String(80), nullable=False)
     """PMI Ops email that sent the data from the site"""
 
