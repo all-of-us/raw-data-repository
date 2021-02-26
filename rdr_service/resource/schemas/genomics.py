@@ -178,6 +178,7 @@ class GenomicManifestFileSchema(Schema):
     rdr_processing_complete = fields.Int16()
     rdr_processing_complete_date = fields.DateTime()
     ignore_flag = fields.Int16()
+    file_name = fields.String(validate=validate.Length(max=255))
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_file
