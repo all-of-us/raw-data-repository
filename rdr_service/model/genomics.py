@@ -308,6 +308,7 @@ class GenomicManifestFile(Base):
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
     manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
     filePath = Column('file_path', String(255), nullable=True, index=True)
+    fileName = Column('file_name', String(255), nullable=True, index=True)
     bucketName = Column('bucket_name', String(128), nullable=True)
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
