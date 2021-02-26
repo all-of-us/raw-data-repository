@@ -523,6 +523,42 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
+    def testDowngradeCoreMinusPm(self):
+        ehr_consent_authored_time = datetime.datetime(2018, 3, 1)
+        sample_time = datetime.datetime(2019, 3, 1)
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            enrollmentStatus=EnrollmentStatus.MEMBER,
+            sampleStatus2ED10Time=sample_time
+        )
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+
+        summary = ParticipantSummary(
+            participantId=1,
+            biobankId=2,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED_NO_CONSENT,
+            consentForElectronicHealthRecordsAuthored=ehr_consent_authored_time,
+            numCompletedBaselinePPIModules=NUM_BASELINE_PPI_MODULES,
+            samplesToIsolateDNA=SampleStatus.RECEIVED,
+            physicalMeasurementsStatus=PhysicalMeasurementsStatus.UNSET,
+            enrollmentStatus=EnrollmentStatus.CORE_MINUS_PM,
+            sampleStatus2ED10Time=sample_time
+        )
+        self.dao.update_enrollment_status(summary)
+        self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
+        self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
+
+
     def testCoreStatusRemains(self):
         member_time = datetime.datetime(2020, 6, 1)
         participant_summary = self.data_generator._participant_summary_with_defaults(

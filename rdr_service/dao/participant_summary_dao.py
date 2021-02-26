@@ -639,16 +639,19 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
+        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary)
 
         # [DA-1623] Participants that have 'Core' status should never lose it
-        if summary.enrollmentStatus != EnrollmentStatus.FULL_PARTICIPANT:
+        # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
+        if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
+            or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
+                and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
             # Update last modified date if status changes
             if summary.enrollmentStatus != enrollment_status:
                 summary.lastModified = clock.CLOCK.now()
 
             summary.enrollmentStatus = enrollment_status
             summary.enrollmentStatusMemberTime = self.calculate_member_time(consent, summary)
-            summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary)
 
     def calculate_enrollment_status(
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
