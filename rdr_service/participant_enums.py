@@ -109,6 +109,7 @@ class EnrollmentStatus(messages.Enum):
     INTERESTED = 1
     MEMBER = 2
     FULL_PARTICIPANT = 3
+    CORE_MINUS_PM = 4
 
 
 class EnrollmentStatusV2(messages.Enum):
@@ -118,6 +119,7 @@ class EnrollmentStatusV2(messages.Enum):
     PARTICIPANT = 1
     FULLY_CONSENTED = 2
     CORE_PARTICIPANT = 3
+    CORE_MINUS_PM = 4
 
 
 class SampleStatus(messages.Enum):

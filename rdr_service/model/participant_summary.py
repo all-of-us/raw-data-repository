@@ -301,6 +301,11 @@ class ParticipantSummary(Base):
     is the timestamp of when that consent was authored
     """
 
+    enrollmentStatusCoreMinusPMTime = Column("enrollment_status_core_minus_pm_time", UTCDateTime)
+    """
+    is the timestamp of when meet the CORE_MINUS_PM status criteria
+    """
+
     # The time when we get the first stored sample
     enrollmentStatusCoreStoredSampleTime = Column("enrollment_status_core_stored_sample_time", UTCDateTime)
     """
