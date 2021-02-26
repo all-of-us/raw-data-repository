@@ -363,6 +363,8 @@ class GoogleCloudStorageProvider(StorageProvider):
 
 def get_storage_provider():
     # Set a good default and let the environment var be the override.
+    import ipdb;
+    ipdb.set_trace()
     if os.getenv('GAE_ENV', '').startswith('standard'):
         default_provider = GoogleCloudStorageProvider
     else:

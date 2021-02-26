@@ -501,6 +501,24 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CONTROL_SAMPLE
             ).one()
 
+    def get_member_count_from_manifest_path(self, filepath):
+        """
+        Retrieves the count of members based on file path
+        :return: integer
+        """
+        with self.session() as s:
+            return s.query(
+                functions.count(GenomicSetMember.id)
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+            ).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
+            ).filter(
+                GenomicManifestFile.filePath == filepath
+            ).one_or_none()
+
     def update_report_consent_removal_date(self, member, date):
         """
         Updates the reportConsentRemovalDate on the genomic set member
@@ -1086,6 +1104,17 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .one_or_none()
             )
 
+    def get_metric_record_counts_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                functions.count(GenomicGCValidationMetrics.id)
+            ).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicGCValidationMetrics.genomicFileProcessedId
+            ).filter(
+                GenomicManifestFile.filePath == filepath
+            ).one_or_none()
+
     def update_metric_set_member_id(self, metric_obj, member_id):
         """
         Updates the record with the reconciliation data.
@@ -1338,6 +1367,14 @@ class GenomicManifestFileDao(BaseDao):
                     GenomicManifestFile.id == manifest_file_obj.id
                 ).one_or_none()
 
+    def get_record_count_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicManifestFile.recordCount
+            ).filter(
+                GenomicManifestFile.filePath == filepath
+            ).first()
+
     def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
 
         with self.session() as session:
@@ -1410,6 +1447,14 @@ class GenomicManifestFeedbackDao(BaseDao):
 
         return list(results)
 
+    def get_feedback_record_counts_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicManifestFeedback.feedbackRecordCount
+            ).filter(
+                GenomicManifestFile.filePath == filepath
+            ).first()
+
     def get_feedback_records_for_aw2f(self):
         pass
 
@@ -1433,6 +1478,14 @@ class GenomicAW1RawDao(BaseDao):
                 GenomicAW1Raw.file_path == filepath
             ).all()
 
+    def get_record_count_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                functions.count(GenomicAW1Raw.id)
+            ).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).one_or_none()
+
 
 class GenomicAW2RawDao(BaseDao):
     def __init__(self):
@@ -1452,6 +1505,14 @@ class GenomicAW2RawDao(BaseDao):
             ).filter(
                 GenomicAW2Raw.file_path == filepath
             ).all()
+
+    def get_record_count_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                functions.count(GenomicAW2Raw.id)
+            ).filter(
+                GenomicAW2Raw.file_path == filepath
+            ).one_or_none()
 
 
 class GenomicIncidentDao(UpdatableDao):
