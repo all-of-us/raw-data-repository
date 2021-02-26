@@ -24,6 +24,7 @@ class _BQModuleSchema(BQSchema):
         """ Return the questionnaire module name """
         return self._module
 
+
     def get_fields(self):
         """
         Look up questionnaire concept to get fields.
@@ -136,8 +137,13 @@ class _BQModuleSchema(BQSchema):
                             field['mode'] = BQFieldModeEnum.NULLABLE.name
                             field['enum'] = None
                             fields.append(field)
-                            skip_fieldnames_lower.add(field_name.lower())
                             skip_fieldnames_lower.add(bq_field_name.lower())
+                        else:
+                            logging.warning(
+                                f'Code "{field_name}" resulted in duplicate BQ field name "{bq_field_name}".'
+                            )
+
+                        skip_fieldnames_lower.add(field_name.lower())
 
             # This query makes better use of the indexes.  Intention is to check the most recent POST Questionnaire
             # payload for any codes not already found above because the RDR code table was potentially behind on
@@ -189,8 +195,11 @@ class _BQModuleSchema(BQSchema):
                     field['mode'] = BQFieldModeEnum.NULLABLE.name
                     field['enum'] = None
                     fields.append(field)
-                    skip_fieldnames_lower.add(name.lower())
                     skip_fieldnames_lower.add(bq_field_name.lower())
+                else:
+                    logging.warning(f'Code "{field_name}" resulted in duplicate BQ field name "{bq_field_name}".')
+
+                skip_fieldnames_lower.add(name.lower())
 
             return fields
 
