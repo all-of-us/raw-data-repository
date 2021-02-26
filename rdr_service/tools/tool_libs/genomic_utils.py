@@ -18,7 +18,7 @@ from sqlalchemy.sql import functions
 
 from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-from rdr_service.code_constants import GENOME_TYPE, GC_SITE_IDs
+from rdr_service.code_constants import GENOME_TYPE, GC_SITE_IDs, AW1_BUCKETS, AW2_BUCKETS
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
@@ -42,9 +42,6 @@ from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
     GenomicWorkflowState, GenomicSetMemberStatus
 from rdr_service.tools.tool_libs.tool_base import ToolBase
-
-
-
 from rdr_service.services.system_utils import JSONObject
 
 _logger = logging.getLogger("rdr_logger")
@@ -1707,22 +1704,26 @@ class CompareRecordsClass(GenomicManifestBase):
 
     def get_file_paths_in_bucket(self, *, bucket, manifest_type):
         manifest_type = manifest_type.lower()
-        prefixes = {
-            'aw1': ['AW1_wgs_sample_manifests'],
-            'aw2': []
+        bucket = bucket.lower()
+        # sigh, https://github.com/googleapis/google-cloud-python/issues/4154#issuecomment-521316326
+        pre_config = {
+            'aw1': [
+                'AW1_genotyping_sample_manifests',
+                'AW1_wgs_sample_manifests',
+            ],
+            'aw2': [
+                'AW2_genotyping_data_manifests',
+                'AW2_wgs_data_manifests',
+            ]
         }
-
-        if manifest_type == 'aw1':
-            pass
-        elif manifest_type == 'aw2':
-            # aw2_wgs_data_manifests
-            pass
-
-        for prefix in prefixes[manifest_type]:
+        all_files = []
+        prefixes = pre_config[manifest_type]
+        if 'data-broad' in bucket:
+            prefixes[1].lower()
+        for prefix in prefixes:
             files = self.gscp.list(bucket, prefix)
-            file_list = ['{}/{}'.format(f.bucket.name, f.name) for f in files if files]
-
-        return file_list
+            all_files.extend(['{}/{}'.format(f.bucket.name, f.name) for f in files if files and '.csv' in f.name])
+        return
 
     def output_records(self):
         print(self.data_rows)
@@ -2044,6 +2045,8 @@ def run():
     compare_records.add_argument(
         "--bucket",
         help="",
+        choices=AW1_BUCKETS + AW2_BUCKETS,
+        type=str,
         default=None,
         required=False
     )  # noqa

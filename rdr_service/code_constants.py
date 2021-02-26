@@ -155,7 +155,18 @@ LANGUAGE_OF_CONSENT = ["en", "es"]
 # genome type values
 GENOME_TYPE = ["aou_array", "aou_wgs"]
 GC_SITE_IDs = ['rdr', 'bcm', 'jh', 'bi', 'uw']
+AW1_BUCKETS = [
+    'prod-genomics-baylor',
+    'prod-genomics-broad',
+    'prod-genomics-northwest'
+]
+AW2_BUCKETS = [
+    'prod-genomics-data-baylor',
+    'prod-genomics-data-broad',
+    'prod-genomics-data-northwest'
+]
 
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
+
 
