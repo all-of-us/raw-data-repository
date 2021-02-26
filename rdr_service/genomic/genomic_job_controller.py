@@ -18,6 +18,7 @@ from rdr_service.config import (
     MissingConfigException)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
+from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
@@ -724,3 +725,122 @@ class GenomicJobController:
 
         return response
 
+
+class DataQualityJobController:
+    """
+    Analogous to the GenomicJobController but
+    more tailored for data quality jobs.
+    Executes jobs as cloud tasks or via tools ran locally
+    """
+
+    def __init__(self, job, bq_project_id=None):
+        super().__init__()
+
+        # Job attributes
+        self.job = job
+        self.job_run = None
+        self.from_date = datetime(2021, 2, 23, 0, 0, 0)
+        self.job_run_result = GenomicSubProcessResult.UNSET
+
+        # Other attributes
+        self.bq_project_id = bq_project_id
+
+        # Components
+        self.job_run_dao = GenomicJobRunDao()
+
+    def __enter__(self):
+        logging.info(f'Workflow Initiated: {self.job.name}')
+        self.job_run = self.create_genomic_job_run()
+        self.from_date = self.get_last_successful_run_time()
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logging.info(f'Workflow Completed: {self.job.name}')
+        self.end_genomic_job_run()
+
+    def create_genomic_job_run(self):
+        """
+        Creates GenomicJobRun record
+        :return: GenomicJobRun
+        """
+        new_run = self.job_run_dao.insert_run_record(self.job)
+
+        # Insert new run for PDR
+        bq_genomic_job_run_update(new_run.id, self.bq_project_id)
+        genomic_job_run_update(new_run.id)
+
+        return new_run
+
+    def end_genomic_job_run(self):
+        """Updates the genomic_job_run table with end result"""
+        self.job_run_dao.update_run_record(self.job_run.id, self.job_run_result, GenomicSubProcessStatus.COMPLETED)
+
+        # Update run for PDR
+        bq_genomic_job_run_update(self.job_run.id, self.bq_project_id)
+        genomic_job_run_update(self.job_run.id)
+
+    def get_last_successful_run_time(self):
+        """Return last successful run's start time from genomic_job_run"""
+        last_run_time = self.job_run_dao.get_last_successful_runtime(self.job)
+        return last_run_time if last_run_time else self.from_date
+
+    def get_job_registry_entry(self, job):
+        """
+        Registry for jobs and which method to execute.
+        Reports will execute get_report()
+        In the future, other DQ pipeline jobs will execute other methods
+        :param job:
+        :return:
+        """
+        # Only 'get_report()' is used. Subsequent PRs will expand this
+        job_registry = {
+            GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
+            GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+        }
+
+        return job_registry[job]
+
+    def execute_workflow(self, **kwargs):
+        """
+        Serves as the interface for the controller
+        to execute a genomic data quality workflow
+        :param kwargs:
+        :return: dictionary of the results of a workflow
+        """
+        # print(f"Executing {self.job}")
+        logging.info(f"Executing {self.job}")
+
+        job_function = self.get_job_registry_entry(self.job)
+        result_data = job_function(**kwargs)
+
+        return result_data
+
+    def get_report(self, **kwargs):
+        """
+        Executes a reporting job using the ReportingComponent
+
+        supports time frames:
+        'D': 24 hours
+        'W': 1 week
+
+        support levels:
+        'SUMMARY'
+        'DETAIL'
+
+        :return: dict of result data
+        """
+
+        rc = ReportingComponent(self)
+
+        report_level, report_target, time_frame = rc.set_report_parameters(**kwargs)
+
+        report = rc.generate_report(level=report_level,
+                                    target=report_target,
+                                    time_frame=time_frame)
+
+        self.job_run_result = GenomicSubProcessResult.SUCCESS
+
+        return report

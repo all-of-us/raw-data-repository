@@ -1,3 +1,4 @@
+from rdr_service.participant_enums import GenomicSubProcessResult
 
 
 class GenomicQueryClass:
@@ -5,6 +6,7 @@ class GenomicQueryClass:
     def __init__(self):
         pass
 
+    # BEGIN AW0 Queries
     @staticmethod
     def remaining_c2_participants():
         return  """
@@ -401,3 +403,43 @@ class GenomicQueryClass:
             AND ps.participant_origin != 'careevolution'
             AND m.id IS NULL
         """
+
+    # BEGIN Data Quality Pipeline Report Queries
+    @staticmethod
+    def dq_report_runs_summary(from_date):
+
+        query_sql = """
+            SELECT job_id
+                , SUM(IF(run_result = :unset, run_count, 0)) AS 'UNSET'
+                , SUM(IF(run_result = :success, run_count, 0)) AS 'SUCCESS'
+                , SUM(IF(run_result = :error, run_count, 0)) AS 'ERROR'    
+                , SUM(IF(run_result = :no_files, run_count, 0)) AS 'NO_FILES'
+                , SUM(IF(run_result = :invalid_name, run_count, 0)) AS 'INVALID_FILE_NAME'
+                , SUM(IF(run_result = :invalid_structure, run_count, 0)) AS 'INVALID_FILE_STRUCTURE'
+            FROM 
+                (
+                    SELECT count(id) run_count
+                        , job_id
+                        , run_result	
+                    FROM genomic_job_run
+                    WHERE start_time > :from_date
+                    group by job_id, run_result
+                ) sub
+            group by job_id
+        """
+
+        query_params = {
+            "unset": GenomicSubProcessResult.UNSET.number,
+            "success": GenomicSubProcessResult.SUCCESS.number,
+            "error": GenomicSubProcessResult.ERROR.number,
+            "no_files": GenomicSubProcessResult.NO_FILES.number,
+            "invalid_name": GenomicSubProcessResult.INVALID_FILE_NAME.number,
+            "invalid_structure": GenomicSubProcessResult.INVALID_FILE_STRUCTURE.number,
+            "from_date": from_date
+        }
+        return query_sql, query_params
+
+    @staticmethod
+    def dq_report_ingestions_summary(from_date):
+        # TODO: Not implemented yet
+        pass
