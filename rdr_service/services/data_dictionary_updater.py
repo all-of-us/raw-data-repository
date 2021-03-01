@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from rdr_service.model.base import Base
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
-from rdr_service.model.questionnaire import Questionnaire
+from rdr_service.model.questionnaire import QuestionnaireHistory
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.site import Site
 from rdr_service.services.google_sheets_client import GoogleSheetsClient
@@ -151,7 +151,7 @@ class DataDictionaryUpdater:
         ]))
         # Display the target column names of foreign keys
         sheet.update_cell(current_row, 12, ', '.join([
-            foreign_key.column.name.ljust(20) for foreign_key in reflected_column.foreign_keys
+            foreign_key.column.name for foreign_key in reflected_column.foreign_keys
         ]))
 
         is_deprecated, deprecation_note = self._get_deprecation_status_and_note(reflected_table_name)
@@ -178,7 +178,7 @@ class DataDictionaryUpdater:
         return False
 
     def _populate_questionnaire_key_tab(self, sheet: GoogleSheetsClient):
-        query = self.session.query(Questionnaire).options(joinedload(Questionnaire.concepts))
+        query = self.session.query(QuestionnaireHistory).options(joinedload(QuestionnaireHistory.concepts))
         questionnaire_data_list = query.all()
         sheet.set_current_tab(questionnaire_key_tab_id)
         for row_number, questionnaire_data in enumerate(questionnaire_data_list):
