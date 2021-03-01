@@ -19,6 +19,7 @@ class PhysicalMeasurements(Base):
     __tablename__ = "physical_measurements"
     physicalMeasurementsId = Column("physical_measurements_id", Integer, primary_key=True, autoincrement=False)
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    """ID of the participant that the physical measurements are for"""
     created = Column("created", UTCDateTime, nullable=False)
     final = Column("final", Boolean, nullable=False)
     # The ID that these measurements are an amendment of (points from new to old)
@@ -36,14 +37,18 @@ class PhysicalMeasurements(Base):
     finalizedUsername = Column("finalized_username", String(255))
     logPosition = relationship("LogPosition")
     finalized = Column("finalized", UTCDateTime)
-    # Restored/amended measurements will be UNSET.
+    """The time at which the physical measurements were finalized"""
     status = Column("status", Enum(PhysicalMeasurementsStatus))
+    """status of the physical measurements data (restored/amended measurements will be UNSET)"""
     cancelledUsername = Column("cancelled_username", String(255))
     cancelledSiteId = Column("cancelled_site_id", Integer, ForeignKey("site.site_id"))
     cancelledTime = Column("cancelled_time", UTCDateTime)
+    """The datetime at which the physical measurements were cancelled"""
     reason = Column("reason", UnicodeText)
+    """If measurements are edited or cancelled, user notes to detail change"""
     measurements = relationship("Measurement", cascade="all, delete-orphan")
     resource = Column("resource", JSON, nullable=True)
+    """Original resource value; whole payload request that was sent"""
 
 
 class Measurement(Base):
@@ -53,6 +58,7 @@ class Measurement(Base):
     # Note: measurementId will be physicalMeasurementsId * 100 + an index. (This way we don't have to
     # generate N random unique IDs.)
     measurementId = Column("measurement_id", BIGINT, primary_key=True, autoincrement=False)
+    """A unique identifier for each Measurement (definition from CDR)"""
     physicalMeasurementsId = Column(
         "physical_measurements_id",
         Integer,

@@ -35,6 +35,8 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceApproved, order_by_ending=["id"])
+        self.is_backfill = False
+        self.workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
 
     def get_id(self, obj):
         return obj.id
@@ -225,7 +227,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
-                cdrVersion=item.get('cdrVersion'),
+                cdrVersion=item.get('cdrVersionName'),
                 resource=json.dumps(item)
             )
 
@@ -258,16 +260,21 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
     def insert_with_session(self, session, workspaces):
         new_workspaces = []
-        workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
         for workspace in workspaces:
-            is_exist = workspace_snapshot_dao.is_snapshot_exist_with_session(session, workspace.workspaceSourceId,
-                                                                             workspace.modifiedTime)
-            if is_exist:
-                continue
-            session.add(workspace)
-            new_workspaces.append(workspace)
-            if workspace.excludeFromPublicDirectory is not True:
-                self.add_approved_workspace_with_session(session, workspace)
+            if self.is_backfill:
+                backfilled_snapshot = self.backfill_workspace_with_session(session, workspace)
+                if backfilled_snapshot:
+                    new_workspaces.append(backfilled_snapshot)
+            else:
+                is_exist = self.workspace_snapshot_dao.get_exist_snapshot_with_session(session,
+                                                                                       workspace.workspaceSourceId,
+                                                                                       workspace.modifiedTime)
+                if is_exist:
+                    continue
+                session.add(workspace)
+                new_workspaces.append(workspace)
+                if workspace.excludeFromPublicDirectory is not True:
+                    self.add_approved_workspace_with_session(session, workspace)
 
         return new_workspaces
 
@@ -639,6 +646,23 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             "data": expected_result
         }
 
+    def backfill_workspace_with_session(self, session, backfilled_workspace):
+        exist_approved = self.get_workspace_by_workspace_id_with_session(session,
+                                                                         backfilled_workspace.workspaceSourceId)
+        if exist_approved:
+            for k, v in backfilled_workspace:
+                if k not in ('id', 'workbenchWorkspaceUser', 'excludeFromPublicDirectory', 'isReviewed'):
+                    setattr(exist_approved, k, v)
+
+        exist_snapshot = self.workspace_snapshot_dao.get_exist_snapshot_with_session(
+            session, backfilled_workspace.workspaceSourceId, backfilled_workspace.modifiedTime)
+        if exist_snapshot:
+            for k, v in backfilled_workspace:
+                if k not in ('id', 'workbenchWorkspaceUser', 'excludeFromPublicDirectory', 'isReviewed'):
+                    setattr(exist_snapshot, k, v)
+
+        return exist_snapshot
+
     def add_approved_workspace_with_session(self, session, workspace_snapshot, is_reviewed=False):
         exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
 
@@ -688,12 +712,13 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
             .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceSnapshot.id == snapshot_id).first()
 
-    def is_snapshot_exist_with_session(self, session, workspace_id, modified_time):
+    def get_exist_snapshot_with_session(self, session, workspace_id, modified_time):
         record = session.query(WorkbenchWorkspaceSnapshot) \
+            .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser))\
             .filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id,
                     WorkbenchWorkspaceSnapshot.modifiedTime == modified_time) \
             .first()
-        return True if record else False
+        return record
 
     def get_all_with_children(self):
         with self.session() as session:

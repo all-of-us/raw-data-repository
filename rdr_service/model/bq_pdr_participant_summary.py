@@ -163,6 +163,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
     # RDR CABoR tracking is to surface the appropriate authored date here.  Presence of a date (vs. null/None also
     # acts as the true/false flag equivalent to RDR participant_summary.consent_for_cabor field
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -289,7 +290,8 @@ class BQPDRModuleView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id,
            nt.mod_module, nt.mod_baseline_module,
            CAST(nt.mod_authored AS DATETIME) as mod_authored, CAST(nt.mod_created AS DATETIME) as mod_created,
-           nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_external_id
+           nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_response_status, nt.mod_response_status_id,
+           nt.mod_external_id
       FROM (
         SELECT *,
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn

@@ -636,12 +636,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        qnans = self.ro_dao.call_proc('sp_get_questionnaire_answers', args=['TheBasics', p_id])
+        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, return_responses=False,
+                                        cdm_db_exists=self.cdm_db_exists)
         if not qnans or len(qnans) == 0:
             return {}
 
-        # get race question answers
-        qnan = BQRecord(schema=None, data=qnans[0])  # use only most recent questionnaire.
+        # get TheBasics questionnaire response answers
+        qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
         data = {}
         if qnan.get('Race_WhatRaceEthnicity'):
             rl = list()
@@ -1458,7 +1459,6 @@ def rebuild_bq_participant(p_id, ps_bqgen=None, pdr_bqgen=None, project_id=None,
     pdr_bqr = pdr_bqgen.make_bqrecord(p_id, ps_bqr=ps_bqr)
 
     w_dao = BigQuerySyncDao()
-
 
     with w_dao.session() as w_session:
         # save the participant summary record if this is a full rebuild.

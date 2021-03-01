@@ -13,10 +13,16 @@ class HPO(Base):
     __tablename__ = "hpo"
     hpoId = Column("hpo_id", Integer, primary_key=True, autoincrement=False)
     name = Column("name", String(20))
+    """
+    An identifier for the HPO (just the resource id, like PITT — not a reference like Organization/PITT)
+    """
     displayName = Column("display_name", String(255))
+    """The hpo display name"""
     organizationType = Column("organization_type", Enum(OrganizationType), default=OrganizationType.UNSET)
+    """The type of organization responsible for signing up participants"""
     organizations = relationship("Organization", cascade="all, delete-orphan", order_by="Organization.externalId")
     isObsolete = Column("is_obsolete", Enum(ObsoleteStatus))
+    """Whether or not the hpo has been inactivated (1 if obsolete)"""
     resourceId = Column('resource_id', String(255))
 
     __table_args__ = (UniqueConstraint("name"),)

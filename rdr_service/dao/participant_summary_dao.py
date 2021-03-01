@@ -101,6 +101,18 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                    AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status != :completed
+                   AND samples_to_isolate_dna = :received) OR
+                  (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :unset
+                   AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status != :completed
+                   AND samples_to_isolate_dna = :received)
+             THEN :core_minus_pm
+             WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
@@ -118,7 +130,12 @@ _ENROLLMENT_STATUS_SQL = """
       enrollment_status = {enrollment_status_case_sql},
       last_modified = :now
     WHERE
-      enrollment_status != :full_participant AND enrollment_status != {enrollment_status_case_sql}
+      (
+        (enrollment_status != :full_participant and enrollment_status != :core_minus_pm)
+        OR
+        (enrollment_status = :core_minus_pm AND :full_participant = {enrollment_status_case_sql})
+      )
+      AND enrollment_status != {enrollment_status_case_sql}
    """.format(
     enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL
 )
@@ -573,6 +590,7 @@ class ParticipantSummaryDao(UpdatableDao):
             "completed": int(PhysicalMeasurementsStatus.COMPLETED),
             "received": int(SampleStatus.RECEIVED),
             "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
+            "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
             "member": int(EnrollmentStatus.MEMBER),
             "interested": int(EnrollmentStatus.INTERESTED),
             "now": now,
@@ -626,9 +644,13 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
+        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary)
 
         # [DA-1623] Participants that have 'Core' status should never lose it
-        if summary.enrollmentStatus != EnrollmentStatus.FULL_PARTICIPANT:
+        # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
+        if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
+            or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
+                and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
             # Update last modified date if status changes
             if summary.enrollmentStatus != enrollment_status:
                 summary.lastModified = clock.CLOCK.now()
@@ -648,7 +670,14 @@ class ParticipantSummaryDao(UpdatableDao):
                 and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
-            if consent_expire_status != ConsentExpireStatus.EXPIRED:
+            elif (
+                num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
+                and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
+                and samples_to_isolate_dna == SampleStatus.RECEIVED
+                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
+            ):
+                return EnrollmentStatus.CORE_MINUS_PM
+            elif consent_expire_status != ConsentExpireStatus.EXPIRED:
                 return EnrollmentStatus.MEMBER
         return EnrollmentStatus.INTERESTED
 
@@ -662,6 +691,27 @@ class ParticipantSummaryDao(UpdatableDao):
             ):
                 return participant_summary.consentForDvElectronicHealthRecordsSharingAuthored
             return participant_summary.consentForElectronicHealthRecordsAuthored
+        else:
+            return None
+
+    def calculate_core_minus_pm_time(self, consent, participant_summary):
+        if (
+            consent
+            and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
+            and participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED
+            and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
+            and (participant_summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED
+                 or participant_summary.consentCohort != ParticipantCohort.COHORT_3)
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+
+            max_core_sample_time = self.calculate_max_core_sample_time(
+                participant_summary, field_name_prefix="sampleStatus"
+            )
+
+            if max_core_sample_time and participant_summary.enrollmentStatusCoreStoredSampleTime:
+                return participant_summary.enrollmentStatusCoreStoredSampleTime
+            else:
+                return max_core_sample_time
         else:
             return None
 
@@ -820,6 +870,10 @@ class ParticipantSummaryDao(UpdatableDao):
                  model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
                 (model.questionnaireOnCopeMayAuthored and
                  model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeDecAuthored and
+                 model.questionnaireOnCopeDecAuthored > eighteen_month_ago) or \
+                (model.questionnaireOnCopeFebAuthored and
+                 model.questionnaireOnCopeFebAuthored > eighteen_month_ago) or \
                 (model.consentCohort == ParticipantCohort.COHORT_1 and
                  model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
                  model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
@@ -1016,6 +1070,8 @@ class RetentionTypeFieldFilter(FieldFilter):
                 ParticipantSummary.questionnaireOnCopeJulyAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeJuneAuthored > eighteen_month_ago,
                 ParticipantSummary.questionnaireOnCopeMayAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeDecAuthored > eighteen_month_ago,
+                ParticipantSummary.questionnaireOnCopeFebAuthored > eighteen_month_ago,
                 and_(
                     ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
                     ParticipantSummary.consentForStudyEnrollmentAuthored !=
@@ -1059,6 +1115,14 @@ class RetentionTypeFieldFilter(FieldFilter):
                 or_(
                     ParticipantSummary.questionnaireOnCopeMayAuthored == None,
                     ParticipantSummary.questionnaireOnCopeMayAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeDecAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeDecAuthored <= eighteen_month_ago
+                ),
+                or_(
+                    ParticipantSummary.questionnaireOnCopeFebAuthored == None,
+                    ParticipantSummary.questionnaireOnCopeFebAuthored <= eighteen_month_ago
                 ),
                 or_(
                     ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,

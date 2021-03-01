@@ -354,7 +354,7 @@ class WorkbenchApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersion": "irving"
+                "cdrVersionName": "irving"
             }
         ]
 
@@ -515,6 +515,182 @@ class WorkbenchApiTest(BaseTestCase):
         else:
             self.assertEqual(results[2].workbenchWorkspaceUser[0].role, WorkbenchWorkspaceUserRole.WRITER)
             self.assertEqual(results[2].workbenchWorkspaceUser[1].role, WorkbenchWorkspaceUserRole.READER)
+
+    def test_backfill_workspace(self):
+        # create researchers first
+        researchers_json = [
+            {
+                "userId": 1,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "string_modify",
+                "familyName": "string_modify",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["ASIAN"],
+                "affiliations": [
+                    {
+                        "institution": "string_modify",
+                        "role": "string",
+                        "nonAcademicAffiliation": True
+                    }
+                ]
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        # test create workspace
+        request_json = [
+            {
+                "workspaceId": 1,
+                "name": "string",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 1,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": True,
+                "reviewRequested": True,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'string',
+                "intendToStudy": 'string',
+                "findingsFromStudy": 'string',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+                    "raceEthnicity": ['AIAN', 'MENA'],
+                    "age": ['AGE_0_11', 'AGE_65_74'],
+                    "sexAtBirth": "INTERSEX",
+                    "genderIdentity": "OTHER_THAN_MAN_WOMAN",
+                    "sexualOrientation": "OTHER_THAN_STRAIGHT",
+                    "geography": "RURAL",
+                    "disabilityStatus": "DISABILITY",
+                    "accessToCare": "NOT_EASILY_ACCESS_CARE",
+                    "educationLevel": "LESS_THAN_HIGH_SCHOOL",
+                    "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
+                    "others": "string"
+                },
+                "cdrVersionName": "irving"
+            }
+        ]
+
+        self.send_post('workbench/directory/workspaces', request_data=request_json)
+
+        workspace_dao = WorkbenchWorkspaceDao()
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(workspace_dao.count(), 1)
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].ethicalLegalSocialImplications, True)
+        self.assertEqual(results[0].scientificApproaches, 'string')
+        self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].cdrVersion, 'irving')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+
+        workspace_history_dao = WorkbenchWorkspaceHistoryDao()
+        results = workspace_history_dao.get_all_with_children()
+        self.assertEqual(workspace_history_dao.count(), 1)
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string')
+        self.assertEqual(results[0].scientificApproaches, 'string')
+        self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+        self.assertEqual('irving', results[0].cdrVersion)
+
+        # test backfill workspace
+        update_json = [
+            {
+                "workspaceId": 1,
+                "name": "string_modify",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-25T17:43:41.085Z",
+                "status": "ACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "creator": {
+                    "userId": 1,
+                    "givenName": "aaa",
+                    "familyName": "bbb"
+                },
+                "excludeFromPublicDirectory": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "string",
+                "otherPurposeDetails": "string",
+                "methodsDevelopment": True,
+                "controlSet": True,
+                "ancestry": True,
+                "socialBehavioral": True,
+                "populationHealth": True,
+                "drugDevelopment": True,
+                "commercialPurpose": True,
+                "educational": True,
+                "otherPurpose": True,
+                "scientificApproaches": 'string2',
+                "intendToStudy": 'string2',
+                "findingsFromStudy": 'string2',
+                "focusOnUnderrepresentedPopulations": True,
+                "workspaceDemographic": {
+
+                },
+                "cdrVersionName": "irving2"
+            }
+        ]
+
+        self.send_post('workbench/directory/workspaces?backfill=true', request_data=update_json)
+        workspace_dao = WorkbenchWorkspaceDao()
+        self.assertEqual(workspace_dao.count(), 1)
+        results = workspace_dao.get_all_with_children()
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string_modify')
+        self.assertEqual(results[0].scientificApproaches, 'string2')
+        self.assertEqual(len(results[0].workbenchWorkspaceUser), 1)
+        self.assertEqual(results[0].cdrVersion, 'irving2')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
+
+        workspace_history_dao = WorkbenchWorkspaceHistoryDao()
+        results = workspace_history_dao.get_all_with_children()
+        self.assertEqual(workspace_history_dao.count(), 1)
+        self.assertEqual(results[0].workspaceSourceId, 1)
+        self.assertEqual(results[0].name, 'string_modify')
+        self.assertEqual(results[0].scientificApproaches, 'string2')
+        self.assertEqual(results[0].cdrVersion, 'irving2')
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
+        self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 
     def test_invalid_input_for_workspace(self):
         request_json = [

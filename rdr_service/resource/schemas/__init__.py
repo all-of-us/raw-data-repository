@@ -2,7 +2,8 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-from .participant import ParticipantSchema
+from .participant import ParticipantSummarySchema
+from .pdr_participant import PDRParticipantSummarySchema
 from .code import CodeSchema
 from .hpo import HPOSchema
 from .organization import OrganizationSchema
@@ -16,7 +17,8 @@ from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSch
     GenomicManifestFeedbackSchema
 
 __all__ = [
-    'ParticipantSchema',
+    'ParticipantSummarySchema',
+    'PDRParticipantSummarySchema',
     'CodeSchema',
     'HPOSchema',
     'OrganizationSchema',

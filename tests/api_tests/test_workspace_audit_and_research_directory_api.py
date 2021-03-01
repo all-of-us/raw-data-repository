@@ -977,7 +977,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersion": cdr_version
+                "cdrVersionName": cdr_version
             },
             {
                 "workspaceId": 1,
@@ -1014,7 +1014,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2',
-                "cdrVersion": cdr_version
+                "cdrVersionName": cdr_version
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)

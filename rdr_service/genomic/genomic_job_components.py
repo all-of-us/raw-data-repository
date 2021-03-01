@@ -1756,12 +1756,12 @@ class GenomicReconciler:
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
                                       ("craiReceived", ".cram.crai", "craiPath"))
 
-    def reconcile_metrics_to_genotyping_data(self, _gc_site_id):
+    def reconcile_metrics_to_array_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
         :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_gen_files(self.controller.last_run_time, _gc_site_id)
+        metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
 
         total_missing_data = []
 
@@ -1838,12 +1838,12 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def reconcile_metrics_to_sequencing_data(self, _gc_site_id):
+    def reconcile_metrics_to_wgs_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. sequencing data reconciliation
         :param: _gc_site_id: "jh", "uw", "bi", etc.
         :return: result code
         """
-        metrics = self.metrics_dao.get_with_missing_seq_files(self.controller.last_run_time, _gc_site_id)
+        metrics = self.metrics_dao.get_with_missing_wsg_files(_gc_site_id)
 
         # Get list of files in GC data bucket
         if self.storage_provider:

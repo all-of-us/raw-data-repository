@@ -278,6 +278,7 @@ class BQGenomicManifestFileSchema(BQSchema):
     rdr_processing_complete_date = BQField('rdr_processing_complete_date', BQFieldTypeEnum.DATETIME,
                                            BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    file_name = BQField('file_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicManifestFile(BQTable):

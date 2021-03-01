@@ -1018,7 +1018,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_gen_files(self, _date, _gc_site_id):
+    def get_with_missing_array_files(self, _gc_site_id):
         """
         Retrieves all gc metrics with missing genotyping files for a gc
         :param: _date: last run time
@@ -1036,9 +1036,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    GenomicGCValidationMetrics.modified > _date,
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) |
                      (GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
@@ -1052,7 +1051,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_seq_files(self, _date, _gc_site_id):
+    def get_with_missing_wsg_files(self, _gc_site_id):
         """
         Retrieves all gc metrics with missing sequencing files
         :param: _date: last run time
@@ -1072,9 +1071,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
-                    GenomicGCValidationMetrics.genomicFileProcessedId != None,
+                    GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    GenomicGCValidationMetrics.modified > _date,
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
                             GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |

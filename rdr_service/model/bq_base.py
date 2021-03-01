@@ -9,6 +9,7 @@ import inspect
 import itertools
 import json
 import operator
+import re
 from enum import Enum, EnumMeta
 from dateutil import parser
 
@@ -220,6 +221,40 @@ class BQSchema(object):
     # def __repr__(self):
     #   self.to_json()
 
+    @staticmethod
+    def make_bq_field_name(name, alt_name=None):
+        """
+        Validate/convert the provided name into a field name that meets BigQuery table field naming requirements.
+        The field name must start with letter or underscore, must not exceed 128 chars, and must only contain
+        alphanumeric characters and underscores.  Invalid chars (whitespace, /, etc.) will be converted to an
+        underscore
+        :param name: string to validate/convert  (generally corresponds to a code.value column value)
+        :param alt_name:  alternate string to validate/convert (generally corresponds to code.short_value)
+        :return: field name string (or None if one cannot be successfully constructed), message string
+        """
+
+        bq_field_name = None
+        # Only fall back to using the alternate name parameter if the primary name parameter is too long
+        for field_name in [name, alt_name]:
+            if isinstance(field_name, str) and len(field_name) <= 128:
+                bq_field_name = field_name
+                break
+
+        if not bq_field_name:
+            return None, f'{name} (alt: {alt_name}) is not a valid string less than 128 characters'
+
+        # Replace BigQuery illegal field name characters with an underscore
+        bq_field_name = re.sub('\W+', '_', bq_field_name)
+
+        # Make sure the field name starts with a character or underscore.  Prefix w/ underscore otherwise
+        # (provided we're still within the length limit)
+        if re.match("\A[^a-zA-Z_]", bq_field_name):
+            bq_field_name = '_' + bq_field_name
+            if len(bq_field_name) > 128:
+                return None, f'Resulting field name {bq_field_name} exceeds 128 characters'
+
+        return bq_field_name, ''
+
 
 class BQField(object):
     """
@@ -419,14 +454,14 @@ class BQView(object):
             pk = ', '.join(self.__pk_id__) if isinstance(self.__pk_id__, list) else str(self.__pk_id__)
 
             self.__sql__ = """
-                SELECT {fields} 
+                SELECT {fields}
               """.format(fields=', '.join([f['name'] for f in fields]))
 
             self.__sql__ += """
                 FROM (
-                  SELECT *,                        
+                  SELECT *,
                       ROW_NUMBER() OVER (PARTITION BY %%pk_id%% ORDER BY modified desc) AS rn
-                    FROM `{project}`.{dataset}.%%table%% 
+                    FROM `{project}`.{dataset}.%%table%%
                 ) t
                 WHERE t.rn = 1
               """.replace('%%table%%', tbl.get_name()).replace('%%pk_id%%', pk)

@@ -109,6 +109,7 @@ class EnrollmentStatus(messages.Enum):
     INTERESTED = 1
     MEMBER = 2
     FULL_PARTICIPANT = 3
+    CORE_MINUS_PM = 4
 
 
 class EnrollmentStatusV2(messages.Enum):
@@ -118,6 +119,7 @@ class EnrollmentStatusV2(messages.Enum):
     PARTICIPANT = 1
     FULLY_CONSENTED = 2
     CORE_PARTICIPANT = 3
+    CORE_MINUS_PM = 4
 
 
 class SampleStatus(messages.Enum):
@@ -614,7 +616,7 @@ class GenomicJob(messages.Enum):
     UNSET = 0
     METRICS_INGESTION = 1
     RECONCILE_MANIFEST = 2
-    RECONCILE_GENOTYPING_DATA = 3
+    RECONCILE_ARRAY_DATA = 3
     NEW_PARTICIPANT_WORKFLOW = 4
     CVL_RECONCILIATION_REPORT = 5
     CREATE_CVL_W1_MANIFESTS = 6
@@ -625,7 +627,7 @@ class GenomicJob(messages.Enum):
     GEM_A2_MANIFEST = 11
     GEM_A3_MANIFEST = 12
     AW1F_MANIFEST = 13
-    RECONCILE_SEQUENCING_DATA = 14
+    RECONCILE_WGS_DATA = 14
     W2_INGEST = 15
     W3_MANIFEST = 16
     C2_PARTICIPANT_WORKFLOW = 17
@@ -653,6 +655,13 @@ class GenomicJob(messages.Enum):
 
     AW5_ARRAY_MANIFEST = 36
     AW5_WGS_MANIFEST = 37
+
+    # Data Quality Pipeline Jobs
+    # Naming matters for reports (timeframe_level_report_target)
+    DAILY_SUMMARY_REPORT_JOB_RUNS = 101
+    WEEKLY_SUMMARY_REPORT_JOB_RUNS = 102
+    DAILY_SUMMARY_REPORT_INGESTIONS = 103
+    WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
 
 
 class GenomicWorkflowState(messages.Enum):
