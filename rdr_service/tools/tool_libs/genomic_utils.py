@@ -1718,12 +1718,14 @@ class CompareRecordsClass(GenomicManifestBase):
     def get_file_paths_in_bucket(self):
         manifest_type = self.args.manifest_type.lower()
         bucket = self.args.bucket.lower()
-        # sigh, https://github.com/googleapis/google-cloud-python/issues/4154#issuecomment-521316326
         all_files = []
+        # sigh no wildcards for dir
+        # https://github.com/googleapis/google-cloud-python/issues/4154#issuecomment-521316326
         prefixes = self.main_config[manifest_type]['prefixes']
         for i, prefix in enumerate(prefixes):
             if 'data-broad' in bucket and i == 1:
-                prefix = prefix.lower()  # self.gscp.list => case sensitive for prefixes
+                # self.gscp.list => case sensitive for prefixes
+                prefix = prefix.lower()
             files = self.gscp.list(bucket, prefix)
             all_files.extend(['{}/{}'.format(f.bucket.name, f.name) for f in files if files and '.csv' in f.name])
         return
