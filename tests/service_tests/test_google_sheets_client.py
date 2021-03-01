@@ -34,6 +34,7 @@ class GoogleSheetsTestBase(BaseTestCase):
         }
 
     def tearDown(self):
+        super(GoogleSheetsTestBase, self).tearDown()
         for patcher in self.patchers:
             patcher.stop()
 
