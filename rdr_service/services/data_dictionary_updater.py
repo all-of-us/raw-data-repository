@@ -283,4 +283,5 @@ class DataDictionaryUpdater:
         ) as sheet:
             self._populate_schema_tabs(sheet)
             self._populate_hpo_key_tab(sheet)
+            self._populate_site_key_tab(sheet)
             self._populate_questionnaire_key_tab(sheet)
