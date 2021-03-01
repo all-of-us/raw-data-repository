@@ -92,7 +92,7 @@ class GoogleSheetsClient:
 
             # Initialize the internal tab structure and parse the values from the response
             self._tabs[tab_id] = self._initialize_empty_tab()
-            tab_grid_data = tab['data'][0]['rowData']
+            tab_grid_data = tab['data'][0].get('rowData', [])
             for row_number, row_data in enumerate(tab_grid_data):
                 row_values = row_data.get('values')
                 if row_values:

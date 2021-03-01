@@ -4,9 +4,9 @@ from rdr_service.services.google_sheets_client import GoogleSheetsClient
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class GoogleSheetsApiTest(BaseTestCase):
-    def setUp(self, **kwargs):
-        super(GoogleSheetsApiTest, self).setUp(**kwargs)
+class GoogleSheetsTestBase(BaseTestCase):
+    def setUp(self, **kwargs) -> None:
+        super(GoogleSheetsTestBase, self).setUp(**kwargs)
 
         # Patch system calls that the sheets api uses
         self.patchers = []  # We'll need to stop the patchers when the tests are done
@@ -25,7 +25,7 @@ class GoogleSheetsApiTest(BaseTestCase):
         self.mock_spreadsheets_return = mock_discovery.build.return_value.spreadsheets.return_value
 
         # We can't create tabs through code, so have the spreadsheet download two empty tabs by default
-        self.default_tab_names = ['one', 'two']
+        self.default_tab_names = self._default_tab_names()
         self.mock_spreadsheets_return.get.return_value.execute.return_value = {
             'sheets': [{
                 'properties': {'title': tab_name},
@@ -38,6 +38,10 @@ class GoogleSheetsApiTest(BaseTestCase):
             patcher.stop()
 
     @classmethod
+    def _default_tab_names(cls):
+        return ['one', 'two']
+
+    @classmethod
     def _mock_cell(cls, value):
         cell_dict = {}
         if value:
@@ -45,6 +49,11 @@ class GoogleSheetsApiTest(BaseTestCase):
 
         return cell_dict
 
+    def _get_uploaded_sheet_data(self):
+        return self.mock_spreadsheets_return.values.return_value.batchUpdate.call_args.kwargs.get('body').get('data')
+
+
+class GoogleSheetsApiTest(GoogleSheetsTestBase):
     def test_spreadsheet_downloads_values_from_drive(self):
         """Check that the spreadsheet initializes with the values currently in the spreadsheet on drive"""
 
@@ -164,8 +173,7 @@ class GoogleSheetsApiTest(BaseTestCase):
             sheet.update_cell(2, 0, '7')  # Set 7 on second tab
             sheet.update_cell(1, 1, '5')  # Set 5 on second tab
 
-        tabs_uploaded = self.mock_spreadsheets_return.values.return_value.batchUpdate\
-            .call_args.kwargs.get('body').get('data')
+        tabs_uploaded = self._get_uploaded_sheet_data()
 
         first_uploaded_tab_data = tabs_uploaded[0]
         self.assertEqual(f"'{self.default_tab_names[0]}'!A1", first_uploaded_tab_data['range'])
@@ -261,8 +269,7 @@ class GoogleSheetsApiTest(BaseTestCase):
             sheet.update_cell(0, 1, '8', tab_id=second_tab_title)
 
         # Make sure that the offsets were used when uploading values
-        tabs_uploaded = self.mock_spreadsheets_return.values.return_value.batchUpdate\
-            .call_args.kwargs.get('body').get('data')
+        tabs_uploaded = self._get_uploaded_sheet_data()
 
         first_uploaded_tab_data = tabs_uploaded[0]
         self.assertEqual(f"'{first_tab_title}'!B2", first_uploaded_tab_data['range'])
