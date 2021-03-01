@@ -1644,24 +1644,19 @@ class CompareIngestionAW2Class(GenomicManifestBase):
                     'delta': row_count - r.rdr_count,
                     'path': r.filePath,
                 })
-            self.output_csv()
+            self.output_records()
 
     def get_row_count_file(self, file):
         _logger.info('Getting row count for file...')
-        return (sum(1 for l in self.gscp.open(file, 'r')) - 1) # accounting for header row
+        return sum(1 for _ in self.gscp.open(file, 'r')) - 1  # accounting for header row
 
-    def output_csv(self):
+    def output_records(self):
         filename = 'aw2_comparisons_file_data_{}_{}_{}.csv'.format(
             self.args.gc_site_id,
             self.args.genome_type,
             self.nowf,
         )
-        with open(filename, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=[k for k in self.data_objs[0]])
-            writer.writeheader()
-            writer.writerows(self.data_objs)
-
-        _logger.info('Outputting csv: {}/{}'.format(os.getcwd(), filename))
+        output_local_csv(filename=filename, data=self.data_objs)
 
 
 class CompareRecordsClass(GenomicManifestBase):
@@ -1673,14 +1668,34 @@ class CompareRecordsClass(GenomicManifestBase):
         self.member_dao = None
         self.manifest_dao = None
         self.metrics_dao = None
-        self.headers = {
-            'aw1': ['aw1_member_count', 'aw1_manifest_file_count', 'aw1_raw_count'],
-            'aw2': ['aw2_val_metric_count', 'aw2_manifest_metric_count', 'aw2_raw_count'],
-        }
         self.data_rows = []
+        self.main_config = {
+            'aw1': {
+                'prefixes': [
+                    'AW1_genotyping_sample_manifests',
+                    'AW1_wgs_sample_manifests',
+                ],
+                'headers': [
+                    'aw1_member_count',
+                    'aw1_manifest_file_count',
+                    'aw1_raw_count'
+                ]
+            },
+            'aw2': {
+                'prefixes': [
+                    'AW2_genotyping_data_manifests',
+                    'AW2_wgs_data_manifests',
+                ],
+                'headers': [
+                    'aw2_val_metric_count',
+                    'aw2_manifest_metric_count',
+                    'aw2_raw_count'
+                ]
+            }
+        }
 
-    def get_counts_for_path(self, *, path, manifest_type):
-
+    def get_counts_for_path(self, *, path):
+        manifest_type = self.args.manifest_type.lower()
         paths = {
             'aw1': {
                 0: self.member_dao.get_member_count_from_manifest_path,
@@ -1693,49 +1708,54 @@ class CompareRecordsClass(GenomicManifestBase):
                 2: self.aw2_raw_dao.get_record_count_from_filepath,
             }
         }
-        counts = []
-        for _, val in paths[manifest_type.lower()].items():
-            counts.append(val(path)[0])
+        _dict = {}
+        for i, val in paths[manifest_type].items():
+            _dict[self.main_config[manifest_type]['headers'][i]] = val(path)[0]
 
-        idx = (len(self.data_rows) + 1)
-        self.data_rows.append(
-            {idx: counts}
-        )
+        self.data_rows.append(_dict)
         return self.data_rows
 
-    def get_file_paths_in_bucket(self, *, bucket, manifest_type):
-        manifest_type = manifest_type.lower()
-        bucket = bucket.lower()
+    def get_file_paths_in_bucket(self):
+        manifest_type = self.args.manifest_type.lower()
+        bucket = self.args.bucket.lower()
         # sigh, https://github.com/googleapis/google-cloud-python/issues/4154#issuecomment-521316326
-        pre_config = {
-            'aw1': [
-                'AW1_genotyping_sample_manifests',
-                'AW1_wgs_sample_manifests',
-            ],
-            'aw2': [
-                'AW2_genotyping_data_manifests',
-                'AW2_wgs_data_manifests',
-            ]
-        }
         all_files = []
-        prefixes = pre_config[manifest_type]
-        if 'data-broad' in bucket:
-            prefixes[1].lower()
-        for prefix in prefixes:
+        prefixes = self.main_config[manifest_type]['prefixes']
+        for i, prefix in enumerate(prefixes):
+            if 'data-broad' in bucket and i == 1:
+                prefix = prefix.lower()  # self.gscp.list => case sensitive for prefixes
             files = self.gscp.list(bucket, prefix)
             all_files.extend(['{}/{}'.format(f.bucket.name, f.name) for f in files if files and '.csv' in f.name])
         return
 
     def output_records(self):
-        print(self.data_rows)
+        manifest_type = self.args.manifest_type.lower()
+        sec_pos = (self.args.bucket or self.args.csv or self.args.manifest_file) \
+            .replace('/', '_') \
+            .strip('.csv')
+        filename = 'genomic_ingestion_comparisons__{}__{}__{}__.csv'.format(
+            manifest_type,
+            sec_pos,
+            self.nowf,
+        )
+        output_local_csv(
+            filename=filename,
+            data=self.data_rows
+        )
 
     def run(self):
         if not any([self.args.bucket, self.args.csv, self.args.manifest_file]):
             _logger.error('You must include at least one optional arg: bucket/csv/manifest_file')
             return
 
+        if self.args.bucket and ('data' in self.args.bucket and self.args.manifest_type == 'AW1' or
+                                 self.args.manifest_type == 'AW2' and 'data' not in self.args.bucket):
+            _logger.error('Misconfiguration in bucket and manifest type')
+            return
+
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
+
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
         self.feedback_dao = GenomicManifestFeedbackDao()
@@ -1744,21 +1764,12 @@ class CompareRecordsClass(GenomicManifestBase):
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
         if self.args.manifest_file:
-            self.get_counts_for_path(
-                    path=self.args.manifest_file,
-                    manifest_type=self.args.manifest_type
-            )
+            self.get_counts_for_path(path=self.args.manifest_file)
 
         elif self.args.bucket:
-            bucket_paths = self.get_file_paths_in_bucket(
-                bucket=self.args.bucket,
-                manifest_type=self.args.manifest_type
-            ) or []
+            bucket_paths = self.get_file_paths_in_bucket() or []
             for path in bucket_paths:
-                self.get_counts_for_path(
-                    path=path,
-                    manifest_type=self.args.manifest_type
-                )
+                self.get_counts_for_path(path=path)
 
         elif self.args.csv:
             csv_list = []
@@ -1768,12 +1779,18 @@ class CompareRecordsClass(GenomicManifestBase):
                     csv_list.append(line.strip())
 
             for path in csv_list:
-                self.get_counts_for_path(
-                    path=path,
-                    manifest_type=self.args.manifest_type
-                )
+                self.get_counts_for_path(path=path)
 
         self.output_records()
+
+
+def output_local_csv(*, filename, data):
+    with open(filename, 'w') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=[k for k in data[0]])
+        writer.writeheader()
+        writer.writerows(data)
+
+    _logger.info('Generated csv: {}/{}'.format(os.getcwd(), filename))
 
 
 class LoadRawManifest(GenomicManifestBase):
