@@ -2867,7 +2867,6 @@ class GenomicPipelineTest(BaseTestCase):
             "crai_path",
             "contamination",
             "sex_concordance",
-            "array_concordance",
             "processing_status",
             "mean_coverage",
             "research_id",
@@ -2905,7 +2904,6 @@ class GenomicPipelineTest(BaseTestCase):
             # Test GC metrics columns
             self.assertEqual(metric.contamination, rows[0]['contamination'])
             self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
-            self.assertEqual(metric.arrayConcordance, rows[0]['array_concordance'])
             self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
             self.assertEqual(metric.meanCoverage, rows[0]['mean_coverage'])
 
