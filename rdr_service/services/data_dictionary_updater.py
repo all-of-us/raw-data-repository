@@ -117,14 +117,20 @@ class DataDictionaryUpdater:
             self._get_column_docstring_list(column_definition, analyzer)
         ) if not line.startswith('@rdr_dictionary')])
 
-    def _get_deprecation_status_and_note(self, table_name):
+    def _get_deprecation_status_and_note(self, table_name, column_definition, analyzer: ModuleAnalyzer):
         if table_name in self._deprecated_table_map:
             return True, self._deprecated_table_map[table_name]
+
+        if column_definition and analyzer:
+            for docstring_line in self._get_column_docstring_list(column_definition, analyzer):
+                if docstring_line.startswith('@deprecated'):
+                    return True, docstring_line[11:].strip()
 
         return False, None
 
     def _write_to_schema_sheet(self, sheet: GoogleSheetsClient, tab_id, reflected_table_name,
-                               reflected_column, column_description, display_unique_data, value_meaning_map):
+                               reflected_column, column_description, display_unique_data, value_meaning_map,
+                               is_deprecated, deprecation_note):
         sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
 
@@ -143,6 +149,11 @@ class DataDictionaryUpdater:
                 # no longer exists in the database.
                 adding_new_column = (reflected_table_name != existing_table_name
                                      and reflected_column.name != existing_column_name)
+
+        existing_deprecation_note = None
+        if not adding_new_column:
+            *_, existing_deprecation_note, _ = row_values
+            existing_deprecation_note = None
 
         if adding_new_column:
             sheet.update_cell(current_row, 14, self.rdr_version)
@@ -182,8 +193,9 @@ class DataDictionaryUpdater:
             foreign_key.column.name for foreign_key in reflected_column.foreign_keys
         ]))
 
-        is_deprecated, deprecation_note = self._get_deprecation_status_and_note(reflected_table_name)
-        sheet.update_cell(current_row, 13, f'Deprecated: {deprecation_note}' if is_deprecated else '')
+        # Don't replace the existing deprecation note (and rdr version) if it's already there
+        if is_deprecated and not existing_deprecation_note:
+            sheet.update_cell(current_row, 13, f'Deprecated in {self.rdr_version}: {deprecation_note}')
 
         self.schema_tab_row_trackers[tab_id] += 1
 
@@ -313,8 +325,12 @@ class DataDictionaryUpdater:
                 else:
                     sheet_tab_id = dictionary_tab_id
 
+                is_deprecated, deprecation_note = self._get_deprecation_status_and_note(
+                    table_name, column_definition, analyzer
+                )
+
                 self._write_to_schema_sheet(sheet, sheet_tab_id, table_name, column, column_description,
-                                            show_unique_values, value_meaning_map)
+                                            show_unique_values, value_meaning_map, is_deprecated, deprecation_note)
 
         for tab_id, row in self.schema_tab_row_trackers.items():
             sheet.truncate_tab_at_row(row, tab_id)

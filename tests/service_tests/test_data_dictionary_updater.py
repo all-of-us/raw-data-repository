@@ -244,3 +244,34 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
         # Check that previous RDR version values are maintained
         self.assert_has_row('participant', 'participant_id', dictionary_tab_rows, expected_rdr_version='1.2.1')
+
+    def test_version_in_deprecation_note(self):
+        """Verify that rows for the data-dictionary show what RDR version they were deprecated in"""
+
+        # Set a previously existing record that doesn't have a deprecation note, but will get one in an update
+        # This test assumes there is something in a current model that is marked as deprecated.
+        empty_cell = self._mock_cell(None)
+        default_tab_values = {tab_id: [empty_cell] for tab_id in self.default_tab_names}
+        default_tab_values[dictionary_tab_id] = [
+            [empty_cell],
+            [empty_cell],
+            [empty_cell],
+            [empty_cell],
+            # Add a row for participant_summary's ehr_status column (using expansion to fill in the middle cells)
+            [self._mock_cell('participant_summary'), self._mock_cell('ehr_status'),
+             *([empty_cell] * 12)]
+        ]
+        self.mock_spreadsheets_return.get.return_value.execute.return_value = {
+            'sheets': [{
+                'properties': {'title': tab_name},
+                'data': [{'rowData': [{'values': row_values} for row_values in tab_rows]}]
+            } for tab_name, tab_rows in default_tab_values.items()]
+        }
+
+        self.updater.run_update()
+        dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
+
+        # Check that previous RDR version values are maintained
+        self.assert_has_row('participant_summary', 'ehr_status', dictionary_tab_rows,
+                            expected_deprecated_note=f'Deprecated in {self.mock_rdr_version}: '
+                                                     'Use wasEhrDataAvailable (was_ehr_data_available) instead')
