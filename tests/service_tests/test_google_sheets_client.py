@@ -329,3 +329,50 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             ['', '', '', '', ''],
             ['', ''],
         ], tab_data['values'])
+
+    def test_inserting_new_rows(self):
+        """Inserting new rows should push existing rows down"""
+        with GoogleSheetsClient('', '') as sheet:
+
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # _
+            # _ _ _ 8
+            # 9
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(2, 3, '8')
+            sheet.update_cell(3, 0, '9')
+
+            # Insert a new row at the third spot, resulting in a sheet that appears as
+            # 1
+            # _
+            # _
+            # _ _ _ 8
+            # 9
+            sheet.insert_new_row_at(2)
+
+            # Check that the sheet has the new row
+            self.assertEqual([
+                ['1'],
+                [''],
+                [''],
+                ['', '', '', '8'],
+                ['9'],
+            ], sheet.get_tab_values())
+
+    def test_retrieving_row_values(self):
+        with GoogleSheetsClient('', '') as sheet:
+
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # _
+            # _ 1 2 _ 8
+            # 9
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(2, 1, '1')
+            sheet.update_cell(2, 2, '2')
+            sheet.update_cell(2, 4, '8')
+            sheet.update_cell(3, 0, '9')
+
+            # Verify we can get the expected row
+            self.assertEqual(['', '1', '2', '', '8'], sheet.get_row_at(2))

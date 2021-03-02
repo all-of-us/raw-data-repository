@@ -155,15 +155,32 @@ class GoogleSheetsClient:
         current_row = row
         while current_row < len(values_grid):  # Iterate through the rows
             # Replace everything in the row with empty strings
-            values_grid[current_row] = [''] * len(values_grid[current_row])
+            values_grid[current_row] = [self._empty_cell_value] * len(values_grid[current_row])
             current_row += 1
+
+    def insert_new_row_at(self, row_index, tab_id=None):
+        """
+        Creates a new, empty row at the given row index. The current row at the given index will be moved down.
+        :param row_index: Index, counting from 0, for the new row
+        :param tab_id: Tab add the new row to, defaults to the current tab if not provided
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        values_grid.insert(row_index, [self._empty_cell_value])
+
+    def get_row_at(self, row_index, tab_id=None):
+        """
+        Retrieves the list of values at the given row
+        :param row_index: Index, counting from 0, for the row to retrieve
+        :param tab_id: Tab to read the row from, defaults to the current tab if not provided
+        :return: List of values that make up the given row
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        return list(values_grid[row_index])
 
     def upload_values(self):
         """
         Upload the local data to the google drive spreadsheet.
         Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
-
-        :return: None
         """
         request = self._service.spreadsheets().values().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
