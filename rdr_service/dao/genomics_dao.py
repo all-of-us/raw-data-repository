@@ -516,6 +516,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicManifestFile,
                 GenomicManifestFile.id == GenomicFileProcessed.genomicManifestFileId
             ).filter(
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                 GenomicManifestFile.filePath == filepath
             ).one_or_none()
 
@@ -1110,7 +1111,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 GenomicManifestFile,
                 GenomicManifestFile.id == GenomicGCValidationMetrics.genomicFileProcessedId
             ).filter(
-                GenomicManifestFile.filePath == filepath
+                GenomicManifestFile.filePath == filepath,
+                GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
 
     def update_metric_set_member_id(self, metric_obj, member_id):
@@ -1370,7 +1372,8 @@ class GenomicManifestFileDao(BaseDao):
             return session.query(
                 GenomicManifestFile.recordCount
             ).filter(
-                GenomicManifestFile.filePath == filepath
+                GenomicManifestFile.filePath == filepath,
+                GenomicManifestFile.ignore_flag != 1
             ).first()
 
     def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
@@ -1432,7 +1435,6 @@ class GenomicManifestFeedbackDao(BaseDao):
         Retrieves feedback records where feedback count = record_count
         :return: list of feedback records
         """
-
         with self.session() as session:
             results = session.query(GenomicManifestFeedback).join(
                 GenomicManifestFile,
@@ -1447,9 +1449,11 @@ class GenomicManifestFeedbackDao(BaseDao):
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:
-            return session.query(
-                GenomicManifestFeedback.feedbackRecordCount
+            return session.query(GenomicManifestFeedback.feedbackRecordCount).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
             ).filter(
+                GenomicManifestFeedback.ignoreFlag != 1,
                 GenomicManifestFile.filePath == filepath
             ).first()
 
