@@ -1,12 +1,12 @@
 from sqlalchemy import MetaData
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
-from sqlalchemy.orm import joinedload
 
 from rdr_service.model.base import Base
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
-from rdr_service.model.questionnaire import QuestionnaireHistory
+from rdr_service.model.organization import Organization
+from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.site import Site
 from rdr_service.services.google_sheets_client import GoogleSheetsClient
@@ -156,8 +156,7 @@ class DataDictionaryUpdater:
         ]))
 
         is_deprecated, deprecation_note = self._get_deprecation_status_and_note(reflected_table_name)
-        if is_deprecated:
-            sheet.update_cell(current_row, 13, f'Deprecated: {deprecation_note}')
+        sheet.update_cell(current_row, 13, f'Deprecated: {deprecation_note}' if is_deprecated else '')
 
     def _get_is_internal_column(self, model, table_name, column_definition, analyzer: ModuleAnalyzer):
         if model and getattr(model, '__rdr_internal_table__', False):
@@ -179,23 +178,35 @@ class DataDictionaryUpdater:
         return False
 
     def _populate_questionnaire_key_tab(self, sheet: GoogleSheetsClient):
-        query = self.session.query(QuestionnaireHistory).options(joinedload(QuestionnaireHistory.concepts))
-        questionnaire_data_list = query.all()
+        questionnaire_data_list = self.session.query(
+            QuestionnaireConcept.questionnaireId,
+            Code.display,
+            Code.value,
+            Code.shortValue,
+            QuestionnaireResponse.questionnaireResponseId.isnot(None),
+            Code.codeId
+        ).join(
+            Code,
+            QuestionnaireConcept.codeId == Code.codeId
+        ).join(
+            QuestionnaireResponse,
+            # Specifically not joining by version (and assuming all versions use the same concept) since the output
+            # doesn't show version information
+            QuestionnaireResponse.questionnaireId == QuestionnaireConcept.questionnaireId,
+            isouter=True
+        ).distinct().all()
         sheet.set_current_tab(questionnaire_key_tab_id)
-        for row_number, questionnaire_data in enumerate(questionnaire_data_list):
-            sheet.update_cell(row_number, 0, questionnaire_data.questionnaireId)
+        for row_number, (questionnaire_id, code_display, code_value,
+                         code_short_value, has_responses) in enumerate(questionnaire_data_list):
+            sheet.update_cell(row_number, 0, questionnaire_id)
 
-            if len(questionnaire_data.concepts) > 0:
-                first_module_code = self.session.query(Code).filter(
-                    Code.codeId == questionnaire_data.concepts[0].codeId
-                ).one()
-                sheet.update_cell(row_number, 1, first_module_code.display)
-                sheet.update_cell(row_number, 2, first_module_code.shortValue)
+            sheet.update_cell(row_number, 1, code_display)
+            sheet.update_cell(row_number, 2, code_short_value)
 
-            has_response = self.session.query(QuestionnaireResponse).filter(
-                QuestionnaireResponse.questionnaireId == questionnaire_data.questionnaireId
-            ).limit(1).one_or_none()
-            sheet.update_cell(row_number, 3, 'Y' if has_response else 'N')
+            sheet.update_cell(row_number, 3, 'Y' if has_responses else 'N')
+
+            is_ppi_survey = 'Scheduling' not in code_value and 'SNAP' not in code_value
+            sheet.update_cell(row_number, 4, 'Y' if is_ppi_survey else 'N')
 
         sheet.truncate_tab_at_row(len(questionnaire_data_list))
 

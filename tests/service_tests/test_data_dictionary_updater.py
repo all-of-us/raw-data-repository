@@ -154,17 +154,25 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
     def test_questionnaire_key_tab(self):
         # Create two questionnaires for the test, one without any responses and another that has one
+        # Also make one a scheduling survey to check the PPI survey indicator
         code = self.data_generator.create_database_code(display='Test Questionnaire', shortValue='test_questionnaire')
-
+        scheduling_code = self.data_generator.create_database_code(
+            display='Scheduling Survey',
+            value='Scheduling',
+            shortValue='Scheduling'
+        )
         no_response_questionnaire = self.data_generator.create_database_questionnaire_history()
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=no_response_questionnaire.questionnaireId,
+            questionnaireVersion=no_response_questionnaire.version,
+            codeId=code.codeId
+        )
         response_questionnaire = self.data_generator.create_database_questionnaire_history()
-        for questionnaire in [no_response_questionnaire, response_questionnaire]:
-            self.data_generator.create_database_questionnaire_concept(
-                questionnaireId=questionnaire.questionnaireId,
-                questionnaireVersion=questionnaire.version,
-                codeId=code.codeId
-            )
-
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=response_questionnaire.questionnaireId,
+            questionnaireVersion=response_questionnaire.version,
+            codeId=scheduling_code.codeId
+        )
         participant = self.data_generator.create_database_participant()
         self.data_generator.create_database_questionnaire_response(
             questionnaireId=response_questionnaire.questionnaireId,
@@ -176,10 +184,10 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         self.updater.run_update()
         questionnaire_values = self._get_tab_rows(questionnaire_key_tab_id)
         self.assertIn(
-            [no_response_questionnaire.questionnaireId, code.display, code.shortValue, 'N'],
+            [no_response_questionnaire.questionnaireId, code.display, code.shortValue, 'N', 'Y'],
             questionnaire_values
         )
         self.assertIn(
-            [response_questionnaire.questionnaireId, code.display, code.shortValue, 'Y'],
+            [response_questionnaire.questionnaireId, scheduling_code.display, scheduling_code.shortValue, 'Y', 'N'],
             questionnaire_values
         )
