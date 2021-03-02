@@ -33,6 +33,7 @@ class DataDictionaryUpdater:
             'metrics_lifecycle_cache_bak',
             'metrics_race_cache_bak',
             'metrics_region_cache_bak',
+            'ptsc_cohort',
             'temp_debug_bigquery_sync',
             'tmp_participants'
         ]
