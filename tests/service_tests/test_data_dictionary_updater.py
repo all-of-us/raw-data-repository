@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater, dictionary_tab_id,\
     internal_tables_tab_id, hpo_key_tab_id, questionnaire_key_tab_id, site_key_tab_id
 from tests.service_tests.test_google_sheets_client import GoogleSheetsTestBase
@@ -87,6 +89,11 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             expected_description="The datetime at which the sample was disposed of"
         )
 
+        # Check that the update date gets written
+        timestamp_cell_value = dictionary_tab_rows[1][0]
+        today = datetime.today()
+        self.assertEqual(f'Last Updated: {today.month}/{today.day}/{today.year}', timestamp_cell_value)
+
     def test_show_unique_values(self):
         # Create some data for checking the dictionary values list
         self.data_generator.create_database_participant(participantOrigin='test')
@@ -136,6 +143,11 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
         # Check that ORM mapped tables can appear in the internal tab when marked as internal
         self.assert_has_row('bigquery_sync', 'id', internal_tab_rows)
+
+        # Check that the update date gets written
+        timestamp_cell_value = internal_tab_rows[1][1]
+        today = datetime.today()
+        self.assertEqual(f'Last Updated: {today.month}/{today.day}/{today.year}', timestamp_cell_value)
 
     def test_hpo_and_site_key_tabs(self):
         # Create hpo and site for test

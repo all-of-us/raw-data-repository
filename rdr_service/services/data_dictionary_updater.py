@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import MetaData
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
@@ -295,6 +296,12 @@ class DataDictionaryUpdater:
 
         for tab_id, row in current_row_tracker.items():
             sheet.truncate_tab_at_row(row, tab_id)
+
+        # TODO: should only update dates if something on the tabs actually changed
+        now = datetime.now()
+        current_date_string = f'{now.month}/{now.day}/{now.year}'
+        sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
+        sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
 
     def run_update(self):
         with GoogleSheetsClient(
