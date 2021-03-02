@@ -3004,19 +3004,56 @@ class ManifestDefinitionProvider:
         :return: column tuple
         """
         columns = tuple()
-        if manifest_type == GenomicManifestTypes.CVL_W1:
-            columns = (
-                "genomic_set_name",
+
+        column_config = {
+            GenomicManifestTypes.CVL_W1: (
+                    "genomic_set_name",
+                    "biobank_id",
+                    "sample_id",
+                    "sex_at_birth",
+                    "ny_flag",
+                    "site_id",
+                    "secondary_validation",
+                    "date_submitted",
+                    "test_name",
+            ),
+            GenomicManifestTypes.AW3_ARRAY: (
+                "chipwellbarcode",
                 "biobank_id",
                 "sample_id",
                 "sex_at_birth",
-                "ny_flag",
                 "site_id",
-                "secondary_validation",
-                "date_submitted",
-                "test_name",
+                "red_idat_path",
+                "red_idat_md5_path",
+                "green_idat_path",
+                "green_idat_md5_path",
+                "vcf_path",
+                "vcf_index_path",
+                "vcf_md5_path",
+                "callrate",
+                "sex_concordance",
+                "contamination",
+                "processing_status",
+                "research_id",
             )
-        elif manifest_type == GenomicManifestTypes.GEM_A1:
+        }
+        columns = column_config[manifest_type]
+
+        import ipdb;ipdb.set_trace()
+
+        # if manifest_type == GenomicManifestTypes.CVL_W1:
+        #     columns = (
+        #         "genomic_set_name",
+        #         "biobank_id",
+        #         "sample_id",
+        #         "sex_at_birth",
+        #         "ny_flag",
+        #         "site_id",
+        #         "secondary_validation",
+        #         "date_submitted",
+        #         "test_name",
+        #     )
+        if manifest_type == GenomicManifestTypes.GEM_A1:
             columns = (
                 'biobank_id',
                 'sample_id',
@@ -3048,26 +3085,26 @@ class ManifestDefinitionProvider:
                 "site_id",
             )
 
-        elif manifest_type == GenomicManifestTypes.AW3_ARRAY:
-            columns = (
-                "chipwellbarcode",
-                "biobank_id",
-                "sample_id",
-                "sex_at_birth",
-                "site_id",
-                "red_idat_path",
-                "red_idat_md5_path",
-                "green_idat_path",
-                "green_idat_md5_path",
-                "vcf_path",
-                "vcf_index_path",
-                "vcf_md5_path",
-                "callrate",
-                "sex_concordance",
-                "contamination",
-                "processing_status",
-                "research_id",
-            )
+        # elif manifest_type == GenomicManifestTypes.AW3_ARRAY:
+        #     columns = (
+        #         "chipwellbarcode",
+        #         "biobank_id",
+        #         "sample_id",
+        #         "sex_at_birth",
+        #         "site_id",
+        #         "red_idat_path",
+        #         "red_idat_md5_path",
+        #         "green_idat_path",
+        #         "green_idat_md5_path",
+        #         "vcf_path",
+        #         "vcf_index_path",
+        #         "vcf_md5_path",
+        #         "callrate",
+        #         "sex_concordance",
+        #         "contamination",
+        #         "processing_status",
+        #         "research_id",
+        #     )
 
         elif manifest_type == GenomicManifestTypes.AW3_WGS:
             columns = (
