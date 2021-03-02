@@ -1442,7 +1442,7 @@ class GenomicManifestFeedbackDao(BaseDao):
             ).filter(
                 GenomicManifestFeedback.ignoreFlag == 0,
                 GenomicManifestFeedback.feedbackRecordCount == GenomicManifestFile.recordCount,
-                GenomicManifestFeedback.feedbackManifestFileId == None,
+                GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
 
         return list(results)
