@@ -184,8 +184,7 @@ class DataDictionaryUpdater:
             Code.display,
             Code.value,
             Code.shortValue,
-            QuestionnaireResponse.questionnaireResponseId.isnot(None),
-            Code.codeId
+            QuestionnaireResponse.questionnaireResponseId.isnot(None)
         ).join(
             Code,
             QuestionnaireConcept.codeId == Code.codeId
