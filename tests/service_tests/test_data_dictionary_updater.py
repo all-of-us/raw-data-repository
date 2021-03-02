@@ -140,7 +140,10 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
     def test_hpo_and_site_key_tabs(self):
         # Create hpo and site for test
         self.data_generator.create_database_hpo(hpoId=1000, name='DictionaryTest', displayName='Dictionary Test')
-        self.data_generator.create_database_site(siteId=4000, siteName='Test', googleGroup='test_site_group')
+        test_org = self.data_generator.create_database_organization(displayName='Test Org', externalId='test_org')
+        self.data_generator.create_database_site(
+            siteId=4000, siteName='Test', googleGroup='test_site_group', organizationId=test_org.organizationId
+        )
 
         self.updater.run_update()
 
@@ -150,7 +153,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
         # Check that the expected site row gets into the spreadsheet
         site_rows = self._get_tab_rows(site_key_tab_id)
-        self.assertIn([4000, 'Test', 'test_site_group'], site_rows)
+        self.assertIn([4000, 'Test', 'test_site_group', test_org.externalId, test_org.displayName], site_rows)
 
     def test_questionnaire_key_tab(self):
         # Create two questionnaires for the test, one without any responses and another that has one

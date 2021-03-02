@@ -221,12 +221,17 @@ class DataDictionaryUpdater:
         sheet.truncate_tab_at_row(len(hpo_data_list))
 
     def _populate_site_key_tab(self, sheet: GoogleSheetsClient):
-        site_data_list = self.session.query(Site.siteId, Site.siteName, Site.googleGroup).all()
+        site_data_list = self.session.query(
+            Site.siteId, Site.siteName, Site.googleGroup, Organization.displayName, Organization.externalId
+        ).join(Organization).all()
         sheet.set_current_tab(site_key_tab_id)
-        for row_number, site_data in enumerate(site_data_list):
-            sheet.update_cell(row_number, 0, site_data.siteId)
-            sheet.update_cell(row_number, 1, site_data.siteName)
-            sheet.update_cell(row_number, 2, site_data.googleGroup)
+        for row_number, (site_id, site_name, google_group,
+                         org_display_name, org_external_id) in enumerate(site_data_list):
+            sheet.update_cell(row_number, 0, site_id)
+            sheet.update_cell(row_number, 1, site_name)
+            sheet.update_cell(row_number, 2, google_group)
+            sheet.update_cell(row_number, 3, org_external_id)
+            sheet.update_cell(row_number, 4, org_display_name)
 
         sheet.truncate_tab_at_row(len(site_data_list))
 
