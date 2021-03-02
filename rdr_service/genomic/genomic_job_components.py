@@ -11,7 +11,6 @@ from collections import deque, namedtuple
 from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
-from sqlalchemy import or_
 
 from rdr_service import clock
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
@@ -2994,8 +2993,8 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicGCValidationMetrics.ignoreFlag == 0) &
-                    or_(GenomicGCValidationMetrics.contamination.isnot(None),
-                        GenomicGCValidationMetrics.contamination != '') &
+                    (GenomicGCValidationMetrics.contamination.isnot(None)) &
+                    (GenomicGCValidationMetrics.contamination != '') &
                     (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
