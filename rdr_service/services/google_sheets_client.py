@@ -126,9 +126,7 @@ class GoogleSheetsClient:
         :return: None
         """
 
-        if tab_id is None:
-            tab_id = self._default_tab_id
-        values_grid = self._tabs.get(tab_id)
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
 
         # Increase the number of rows we have if the caller is setting a cell on a
         # row farther out than what is initialized
@@ -143,6 +141,22 @@ class GoogleSheetsClient:
             row_for_update.append(self._empty_cell_value)
 
         row_for_update[col] = value
+
+    def truncate_tab_at_row(self, row, tab_id=None):
+        """
+        Clears all values from the sheet at and below the given row (setting their cells equal to an empty string).
+
+        :param row: Row to start clearing, starting from 0 at the top of the document
+        :param tab_id: Tab to clear values from, defaults to the current tab if not provided
+        """
+
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+
+        current_row = row
+        while current_row < len(values_grid):  # Iterate through the rows
+            # Replace everything in the row with empty strings
+            values_grid[current_row] = [''] * len(values_grid[current_row])
+            current_row += 1
 
     def upload_values(self):
         """

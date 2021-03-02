@@ -53,9 +53,6 @@ class DataDictionaryUpdater:
             'patient_status_history'
         ]
 
-    # TODO:
-    #  Create ability to clear cells in content and further rows (if the update is shorter than what was there)
-
     def _is_alembic_generated_history_table(self, table_name):
         return table_name in self._alembic_history_table_list
 
@@ -139,11 +136,14 @@ class DataDictionaryUpdater:
             sheet.update_cell(current_row, 6, ', '.join(
                 sorted(unique_values_display_list, key=lambda val_str: val_str.lower())
             ))
+        else:
+            # Write empty values to the cells in case they previously had values
+            sheet.update_cell(current_row, 5, '')
+            sheet.update_cell(current_row, 6, '')
 
-        if value_meaning_map:
-            sheet.update_cell(current_row, 7, value_meaning_map)
+        sheet.update_cell(current_row, 7, value_meaning_map or '')
 
-        sheet.update_cell(current_row, 8, ' ')
+        sheet.update_cell(current_row, 8, '')  # 'Values Key' column
         sheet.update_cell(current_row, 9, 'Yes' if reflected_column.primary_key else 'No')
         sheet.update_cell(current_row, 10, 'Yes' if len(reflected_column.foreign_keys) > 0 else 'No')
         # Display the targets of foreign keys as target_table_name.target_column_name
@@ -197,6 +197,8 @@ class DataDictionaryUpdater:
             ).limit(1).one_or_none()
             sheet.update_cell(row_number, 3, 'Y' if has_response else 'N')
 
+        sheet.truncate_tab_at_row(len(questionnaire_data_list))
+
     def _populate_hpo_key_tab(self, sheet: GoogleSheetsClient):
         hpo_data_list = self.session.query(HPO.hpoId, HPO.name, HPO.displayName).all()
         sheet.set_current_tab(hpo_key_tab_id)
@@ -205,6 +207,8 @@ class DataDictionaryUpdater:
             sheet.update_cell(row_number, 1, hpo_data.name)
             sheet.update_cell(row_number, 2, hpo_data.displayName)
 
+        sheet.truncate_tab_at_row(len(hpo_data_list))
+
     def _populate_site_key_tab(self, sheet: GoogleSheetsClient):
         site_data_list = self.session.query(Site.siteId, Site.siteName, Site.googleGroup).all()
         sheet.set_current_tab(site_key_tab_id)
@@ -212,6 +216,8 @@ class DataDictionaryUpdater:
             sheet.update_cell(row_number, 0, site_data.siteId)
             sheet.update_cell(row_number, 1, site_data.siteName)
             sheet.update_cell(row_number, 2, site_data.googleGroup)
+
+        sheet.truncate_tab_at_row(len(site_data_list))
 
     def _populate_schema_tabs(self, sheet: GoogleSheetsClient):
         metadata = MetaData()
@@ -270,6 +276,9 @@ class DataDictionaryUpdater:
                 self._write_to_sheet(sheet, sheet_tab_id, current_row_tracker[sheet_tab_id], table_name, column,
                                      column_description, show_unique_values, value_meaning_map)
                 current_row_tracker[sheet_tab_id] += 1
+
+        for tab_id, row in current_row_tracker.items():
+            sheet.truncate_tab_at_row(row, tab_id)
 
     def run_update(self):
         with GoogleSheetsClient(

@@ -223,8 +223,7 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         able to offset the values that are uploaded as an update.
         """
 
-
-        # Mock a spreadsheet with three tabs on google drive
+        # Mock a spreadsheet with two tabs on google drive
         # The test spreadsheet looks like this (underscores represent a cell that will be blank):
         # Tab title: 'first_tab'
         # _ _ '7' _ '9'
@@ -284,3 +283,49 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             ['', '8'],
             ['', '9']
         ], second_uploaded_tab_data['values'])
+
+    def test_clearing_further_sheet_rows(self):
+        """
+        When updating sheets there should be a way to clear out the rest of the
+        sheet when we know we're at the last row of the updates
+        """
+
+        # Mock a spreadsheet
+        # The test spreadsheet looks like this:
+        # Tab title: 'first_tab'
+        # _
+        # _
+        # _
+        # _ _ _ _ b
+        # _ a
+        empty_cell = self._mock_cell(None)
+        tab_title = 'only_tab'
+        self.mock_spreadsheets_return.get.return_value.execute.return_value = {
+            'sheets': [{
+                'properties': {'title': tab_title},
+                'data': [{
+                    'rowData': [
+                        {'values': [empty_cell]},
+                        {'values': [empty_cell]},
+                        {'values': [empty_cell]},
+                        {'values': [empty_cell, empty_cell, empty_cell, empty_cell, self._mock_cell('b')]},
+                        {'values': [empty_cell, self._mock_cell('a')]}
+                    ]
+                }]
+            }]
+        }
+
+        # Set offsets for the tabs and then update some values
+        with GoogleSheetsClient('', '') as sheet:
+            sheet.update_cell(0, 0, 'test')
+            sheet.truncate_tab_at_row(1)
+
+        # Make sure row 1 and on were cleared
+        tab_data = self._get_uploaded_sheet_data()[0]
+        self.assertEqual([
+            ['test'],
+            [''],
+            [''],
+            ['', '', '', '', ''],
+            ['', ''],
+        ], tab_data['values'])
