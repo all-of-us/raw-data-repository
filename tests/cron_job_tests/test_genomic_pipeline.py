@@ -1973,6 +1973,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Check record count for manifest record
         manifest_record = self.manifest_file_dao.get(1)
 
+        self.assertEqual(file_name.split('/')[1], manifest_record.fileName)
         self.assertEqual(2, manifest_record.recordCount)
 
         # Test the end result code is recorded
@@ -3176,6 +3177,7 @@ class GenomicPipelineTest(BaseTestCase):
         # create test file
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         sub_folder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        file_name = 'RDR_AoU_GEN_TestDataManifest_11192019.csv'
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
                                          bucket_name,
                                          folder=sub_folder)
@@ -3188,7 +3190,7 @@ class GenomicPipelineTest(BaseTestCase):
                 "create_feedback_record": True,
                 "upload_date": "2020-11-20 00:00:00",
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
-                "file_path": f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv"
+                "file_path": f"{bucket_name}/{sub_folder}/{file_name}"
             }
         }
 
@@ -3200,12 +3202,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test data was inserted correctly
         # manifest_file
-        self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
+        self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
         self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
         self.assertEqual(0, manifest_record.recordCount)
         self.assertEqual(bucket_name, manifest_record.bucketName)
-        self.assertEqual(f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_TestDataManifest_11192019.csv", manifest_record.filePath)
-
+        self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
+        self.assertEqual(file_name, manifest_record.fileName)
         # manifest_feedback
         self.assertEqual(1, feedback_record.inputManifestFileId)
 
@@ -3243,7 +3245,7 @@ class GenomicPipelineTest(BaseTestCase):
                 "create_feedback_record": True,
                 "upload_date": "2020-11-20 00:00:00",
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
-                "file_path": f"{bucket_name}/{sub_folder}/RDR_AoU_GEN_PKG-1908-218051.csv"
+                "file_path": f"{bucket_name}/{sub_folder}/{gc_manifest_filename}"
             }
         }
 
@@ -3334,9 +3336,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
         sub_folder = config.BIOBANK_AW2F_SUBFOLDER
+        gc_manifest_filename = gc_manifest_filename.replace('.csv', '')
 
         with open_cloud_file(os.path.normpath(
-                f'{bucket_name}/{sub_folder}/RDR_AoU_GEN_PKG-1908-218051_contamination.csv')) as csv_file:
+                f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = len(set(expected_aw2f_columns)) - len(set(csv_reader.fieldnames))
             self.assertEqual(0, missing_cols)
@@ -3579,7 +3582,6 @@ class GenomicPipelineTest(BaseTestCase):
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
-
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         self._write_cloud_csv(
