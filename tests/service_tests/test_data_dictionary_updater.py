@@ -8,7 +8,9 @@ from tests.service_tests.test_google_sheets_client import GoogleSheetsTestBase
 class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
     def setUp(self, **kwargs) -> None:
         super(DataDictionaryUpdaterTest, self).setUp(**kwargs)
-        self.updater = DataDictionaryUpdater('', '', self.session)
+
+        self.mock_rdr_version = '1.97.1'
+        self.updater = DataDictionaryUpdater('', '', self.mock_rdr_version, self.session)
 
     @classmethod
     def _default_tab_names(cls):
@@ -27,7 +29,8 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
                        expected_unique_value_count=None, expected_unique_values_list=None,
                        expected_value_meaning_map=None, expected_is_primary_key=None,
                        expected_is_foreign_key=None, expected_foreign_key_target_table_fields=None,
-                       expected_foreign_key_target_columns=None, expected_deprecated_note=None):
+                       expected_foreign_key_target_columns=None, expected_deprecated_note=None,
+                       expected_rdr_version=None):
 
         # Find a row with the given table and column names
         row_found = False
@@ -36,7 +39,8 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
                 'row_table_name': None, 'row_column_name': None, 'table_column_concat': None, 'data_type': None,
                 'description': None, 'unique_value_count': None, 'unique_value_list': None, 'value_meaning_map': None,
                 'values_key': None, 'is_primary_key': None, 'is_foreign_key': None,
-                'foreign_key_target_table_fields': None, 'foreign_key_target_columns': None, 'deprecated_note': None
+                'foreign_key_target_table_fields': None, 'foreign_key_target_columns': None, 'deprecated_note': None,
+                'rdr_version': None
             }
             row_values_dict.update(zip(row_values_dict, row_values))
 
@@ -68,6 +72,8 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
                     self.assertEqual(expected_foreign_key_target_columns, row_values_dict['foreign_key_target_columns'])
                 if expected_deprecated_note:
                     self.assertEqual(expected_deprecated_note, row_values_dict['deprecated_note'])
+                if expected_rdr_version:
+                    self.assertEqual(expected_rdr_version, row_values_dict['rdr_version'])
 
         if not row_found:
             self.fail(f'{table_name}.{column_name} not found in results')
@@ -206,3 +212,35 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [response_questionnaire.questionnaireId, scheduling_code.display, scheduling_code.shortValue, 'Y', 'N'],
             questionnaire_values
         )
+
+    def test_version_added_display(self):
+        """Verify that rows for the data-dictionary show what RDR version they were added in"""
+
+        # Set the spreadsheet up to have a previously existing record that doesn't have the version number changed
+        empty_cell = self._mock_cell(None)
+        default_tab_values = {tab_id: [empty_cell] for tab_id in self.default_tab_names}
+        default_tab_values[dictionary_tab_id] = [
+            [empty_cell],
+            [empty_cell],
+            [empty_cell],
+            [empty_cell],
+            # Add a row for participant id that gives RDR version 1.1 (using expansion to fill in the middle cells)
+            [self._mock_cell('participant'), self._mock_cell('participant_id'),
+             *([empty_cell] * 12), self._mock_cell('1.2.1')]
+        ]
+        self.mock_spreadsheets_return.get.return_value.execute.return_value = {
+            'sheets': [{
+                'properties': {'title': tab_name},
+                'data': [{'rowData': [{'values': row_values} for row_values in tab_rows]}]
+            } for tab_name, tab_rows in default_tab_values.items()]
+        }
+
+        self.updater.run_update()
+        dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
+
+        # Check that a column that wasn't already on the spreadsheet shows the new version number
+        self.assert_has_row('participant', 'biobank_id', dictionary_tab_rows,
+                            expected_rdr_version=self.mock_rdr_version)
+
+        # Check that previous RDR version values are maintained
+        self.assert_has_row('participant', 'participant_id', dictionary_tab_rows, expected_rdr_version='1.2.1')

@@ -169,12 +169,18 @@ class GoogleSheetsClient:
 
     def get_row_at(self, row_index, tab_id=None):
         """
-        Retrieves the list of values at the given row
+        Retrieves the list of values at the given row. If the indexed row doesn't already exist, this method will
+        expand the grid until it does.
+
         :param row_index: Index, counting from 0, for the row to retrieve
         :param tab_id: Tab to read the row from, defaults to the current tab if not provided
         :return: List of values that make up the given row
         """
         values_grid = self._tabs.get(tab_id or self._default_tab_id)
+
+        while row_index >= len(values_grid):
+            values_grid.append([self._empty_cell_value])
+
         return list(values_grid[row_index])
 
     def upload_values(self):

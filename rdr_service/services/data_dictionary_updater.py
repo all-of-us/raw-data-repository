@@ -20,10 +20,15 @@ site_key_tab_id = 'Key_Site'
 
 
 class DataDictionaryUpdater:
-    def __init__(self, gcp_service_key_id, dictionary_sheet_id, session):
+    def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session):
         self.gcp_service_key_id = gcp_service_key_id
         self.dictionary_sheet_id = dictionary_sheet_id
         self.session = session
+        self.schema_tab_row_trackers = {
+            dictionary_tab_id: 4,
+            internal_tables_tab_id: 4
+        }
+        self.rdr_version = rdr_version
 
         # List out tables that should be marked as internal, but aren't mapped in the ORM
         self.internal_table_list = [
@@ -118,9 +123,30 @@ class DataDictionaryUpdater:
 
         return False, None
 
-    def _write_to_sheet(self, sheet: GoogleSheetsClient, tab_id, current_row, reflected_table_name, reflected_column,
-                        column_description, display_unique_data, value_meaning_map):
+    def _write_to_schema_sheet(self, sheet: GoogleSheetsClient, tab_id, reflected_table_name,
+                               reflected_column, column_description, display_unique_data, value_meaning_map):
         sheet.set_current_tab(tab_id)
+        current_row = self.schema_tab_row_trackers[tab_id]
+
+        # Check what's already on the sheet
+        adding_new_column = True
+        row_values = sheet.get_row_at(current_row)
+        if len(row_values) > 2:  # Otherwise it's a row that doesn't have schema information
+            existing_table_name, existing_column_name, *_ = row_values
+            if reflected_table_name < existing_table_name or reflected_column.name < existing_column_name:
+                # The row being written would go before what's already there (regardless of whether what is there will
+                # continue to be there later).
+                # Insert the new row above what's already there.
+                sheet.insert_new_row_at(current_row)
+            else:
+                # Could be equal, just an update for the existing data. If it's greater than, then the existing data
+                # no longer exists in the database.
+                adding_new_column = (reflected_table_name != existing_table_name
+                                     and reflected_column.name != existing_column_name)
+
+        if adding_new_column:
+            sheet.update_cell(current_row, 14, self.rdr_version)
+
         sheet.update_cell(current_row, 0, reflected_table_name)
         sheet.update_cell(current_row, 1, reflected_column.name)
         sheet.update_cell(current_row, 2, f'{reflected_table_name}.{reflected_column.name}')
@@ -158,6 +184,8 @@ class DataDictionaryUpdater:
 
         is_deprecated, deprecation_note = self._get_deprecation_status_and_note(reflected_table_name)
         sheet.update_cell(current_row, 13, f'Deprecated: {deprecation_note}' if is_deprecated else '')
+
+        self.schema_tab_row_trackers[tab_id] += 1
 
     def _get_is_internal_column(self, model, table_name, column_definition, analyzer: ModuleAnalyzer):
         if model and getattr(model, '__rdr_internal_table__', False):
@@ -239,10 +267,6 @@ class DataDictionaryUpdater:
         metadata = MetaData()
         metadata.reflect(bind=self.session.bind)  # , views=True)
 
-        current_row_tracker = {
-            dictionary_tab_id: 4,
-            internal_tables_tab_id: 4
-        }
         for table_name in sorted(metadata.tables.keys()):
             table_data = metadata.tables[table_name]
 
@@ -289,11 +313,10 @@ class DataDictionaryUpdater:
                 else:
                     sheet_tab_id = dictionary_tab_id
 
-                self._write_to_sheet(sheet, sheet_tab_id, current_row_tracker[sheet_tab_id], table_name, column,
-                                     column_description, show_unique_values, value_meaning_map)
-                current_row_tracker[sheet_tab_id] += 1
+                self._write_to_schema_sheet(sheet, sheet_tab_id, table_name, column, column_description,
+                                            show_unique_values, value_meaning_map)
 
-        for tab_id, row in current_row_tracker.items():
+        for tab_id, row in self.schema_tab_row_trackers.items():
             sheet.truncate_tab_at_row(row, tab_id)
 
         # TODO: should only update dates if something on the tabs actually changed
