@@ -2387,9 +2387,9 @@ class GenomicBiobankSamplesCoupler:
 
                 bids.append(bid)
                 processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
-                count = i
+                count = i + 1
 
-                if count % 1000 == 0 and count > 0:
+                if count % 1000 == 0:
                     self.genomic_members_insert(
                         members=processed_array_wgs,
                         session=session,
