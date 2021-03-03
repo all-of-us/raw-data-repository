@@ -1,4 +1,5 @@
 from datetime import datetime
+from protorpc import messages
 from sqlalchemy import MetaData
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
@@ -53,13 +54,13 @@ class DictionarySchemaRowUpdateHelper:
         if self.existing_row_values:
             previous_value = self.existing_row_values[value_ref_index] \
                 if len(self.existing_row_values) > value_ref_index else None
-            if previous_value != new_value:
+            if previous_value != new_value and (previous_value or new_value):
                 if self.changelog_key not in self.changelog:
                     # Initialize this column's list of changes
                     self.changelog[self.changelog_key] = []
 
                 self.changelog[self.changelog_key].append(f'{value_reference}: changing from:\n{previous_value}\n'
-                                                          f'<<<to>>>\n{new_value}')
+                                                          f'<<< to >>>\n{new_value}')
 
         self.sheet.update_cell(self.row, value_ref_index, new_value)
 
@@ -103,9 +104,17 @@ class DataDictionaryUpdater:
             'patient_status_history'
         ]
 
-        # The changelog keys will be a tuple of the table and column names, and the values will be a list of the changes
-        # being made to that column
-        self.changelog = {}
+        # Keep a record of the changes made to the sheet.
+        # The changelog for the key tabs will just be an indicator of whether something was added or not.
+        # The schema changelogs will be dictionaries. Keys will be a tuple of the table and column names,
+        # and the values will be a list of the changes being made to that column
+        self.changelog = {
+            dictionary_tab_id: {},
+            internal_tables_tab_id: {},
+            hpo_key_tab_id: False,
+            questionnaire_key_tab_id: False,
+            site_key_tab_id: False
+        }
 
     def _is_alembic_generated_history_table(self, table_name):
         return table_name in self._alembic_history_table_list
