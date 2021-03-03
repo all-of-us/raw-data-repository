@@ -9,6 +9,7 @@ class BigQuerySync(Base):
     BigQuery synchronization table
     """
     __tablename__ = 'bigquery_sync'
+    __rdr_internal_table__ = True
 
     # Primary Key
     id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)

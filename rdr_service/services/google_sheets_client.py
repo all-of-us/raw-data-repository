@@ -15,10 +15,15 @@ class GoogleSheetsClient:
     currently work (such as formula manipulation and making new tabs).
     """
 
-    def __init__(self, spreadsheet_id, service_key_id):
+    def __init__(self, spreadsheet_id, service_key_id, tab_offsets=None):
         """
         :param spreadsheet_id: Google Drive id of the spreadsheet.
         :param service_key_id: Key id for the service account used.
+        :type tab_offsets: Dictionary specifying tab names and offsets for them (defined in Google Sheet cell
+                notation such as B4). Giving a cell value will specify that any changes for that tab use that cell
+                as the origin. So with an origin of B4 an update to C5 would be given as row 1 and column 1.
+                Used to prevent updating headers in the target spreadsheet.
+                WARNING: Does not support columns past Z
         """
 
         # Load credentials from service key file
@@ -33,6 +38,11 @@ class GoogleSheetsClient:
         self._default_tab_id = None
         self._tabs = None
         self._empty_cell_value = ''
+        self._tab_offsets = {tab_name: {
+            'row': int(offset[1:]) - 1,  # convert row number specified in a system of counting from 1
+            'col': ord(offset[:1].upper()) - ord('A'),  # Get column number (A = 0, B = 1, ...)
+            'offset_str': offset
+        } for tab_name, offset in tab_offsets.items()} if tab_offsets else {}
 
     def __enter__(self):
         self.download_values()
@@ -40,6 +50,23 @@ class GoogleSheetsClient:
 
     def __exit__(self, *_):
         self.upload_values()
+
+    @classmethod
+    def _initialize_empty_tab(cls):
+        return []
+
+    def _get_offset_row_col(self, tab_id):
+        tab_offset_data = self._tab_offsets.get(tab_id, {
+            'row': 0,
+            'col': 0
+        })
+        return tab_offset_data['row'], tab_offset_data['col']
+
+    def _get_offset_string(self, tab_id):
+        tab_offset_data = self._tab_offsets.get(tab_id, {
+            'offset_str': 'A1'
+        })
+        return tab_offset_data['offset_str']
 
     def download_values(self):
         """
@@ -65,17 +92,16 @@ class GoogleSheetsClient:
 
             # Initialize the internal tab structure and parse the values from the response
             self._tabs[tab_id] = self._initialize_empty_tab()
-            tab_grid_data = tab['data'][0]['rowData']
+            tab_grid_data = tab['data'][0].get('rowData', [])
             for row_number, row_data in enumerate(tab_grid_data):
                 row_values = row_data.get('values')
                 if row_values:
                     for col_number, cell_data in enumerate(row_values):
-                        cell_value = cell_data.get('formattedValue', self._empty_cell_value)
-                        self.update_cell(row_number, col_number, cell_value, tab_id)
+                        row_offset, col_offset = self._get_offset_row_col(tab_id)
 
-    @classmethod
-    def _initialize_empty_tab(cls):
-        return []
+                        if row_number >= row_offset and col_number >= col_offset:
+                            cell_value = cell_data.get('formattedValue', self._empty_cell_value)
+                            self.update_cell(row_number - row_offset, col_number - col_offset, cell_value, tab_id)
 
     def set_current_tab(self, tab_id):
         """
@@ -130,9 +156,9 @@ class GoogleSheetsClient:
             body={
                 'valueInputOption': 'RAW',
                 'data': [{
-                    'range': f"'{tab_title}'!A1",
+                    'range': f"'{tab_id}'!{self._get_offset_string(tab_id)}",
                     'values': tab_data
-                } for tab_title, tab_data in self._tabs.items()]
+                } for tab_id, tab_data in self._tabs.items()]
             }
         )
         request.execute()
