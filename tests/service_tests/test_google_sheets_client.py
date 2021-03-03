@@ -24,12 +24,14 @@ class GoogleSheetsTestBase(BaseTestCase):
         mock_discovery = service_patcher.start()
         self.mock_spreadsheets_return = mock_discovery.build.return_value.spreadsheets.return_value
 
+        self._empty_cell = self._mock_cell(None)
+
         # We can't create tabs through code, so have the spreadsheet download two empty tabs by default
         self.default_tab_names = self._default_tab_names()
         self.mock_spreadsheets_return.get.return_value.execute.return_value = {
             'sheets': [{
                 'properties': {'title': tab_name},
-                'data': [{'rowData': [{'values': [self._mock_cell(None)]}]}]
+                'data': [{'rowData': [{'values': [self._empty_cell]}]}]
             } for tab_name in self.default_tab_names]
         }
 
@@ -71,17 +73,17 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         # _ _ 'another tab for testing'
         # Tab title: 'Final tab'
         # 'test'
-        empty_cell = self._mock_cell(None)
         first_tab_title = 'first_tab'
         first_tab_data = {
             'properties': {'title': first_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]},
-                    {'values': [empty_cell, self._mock_cell('5')]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'), self._empty_cell,
+                                self._mock_cell('9')]},
+                    {'values': [self._empty_cell, self._mock_cell('5')]},
                     {'values': [self._mock_cell('3')]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('4')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('4')]}
                 ]
             }]
         }
@@ -90,8 +92,8 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             'properties': {'title': second_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('another tab for testing')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('another tab for testing')]}
                 ]
             }]
         }
@@ -233,14 +235,14 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         # _
         # _
         # _ _ '7' _ '9'
-        empty_cell = self._mock_cell(None)
         first_tab_title = 'first_tab'
         first_tab_data = {
             'properties': {'title': first_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]},
-                    {'values': [empty_cell, self._mock_cell('2'), self._mock_cell('3')]}
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'),
+                                self._empty_cell, self._mock_cell('9')]},
+                    {'values': [self._empty_cell, self._mock_cell('2'), self._mock_cell('3')]}
                 ]
             }]
         }
@@ -250,9 +252,10 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             'data': [{
                 'rowData': [
                     {'values': [self._mock_cell('another tab for testing')]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'),
+                                self._empty_cell, self._mock_cell('9')]}
                 ]
             }]
         }
@@ -298,18 +301,18 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         # _
         # _ _ _ _ b
         # _ a
-        empty_cell = self._mock_cell(None)
         tab_title = 'only_tab'
         self.mock_spreadsheets_return.get.return_value.execute.return_value = {
             'sheets': [{
                 'properties': {'title': tab_title},
                 'data': [{
                     'rowData': [
-                        {'values': [empty_cell]},
-                        {'values': [empty_cell]},
-                        {'values': [empty_cell]},
-                        {'values': [empty_cell, empty_cell, empty_cell, empty_cell, self._mock_cell('b')]},
-                        {'values': [empty_cell, self._mock_cell('a')]}
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell, self._empty_cell, self._empty_cell, self._empty_cell,
+                                    self._mock_cell('b')]},
+                        {'values': [self._empty_cell, self._mock_cell('a')]}
                     ]
                 }]
             }]

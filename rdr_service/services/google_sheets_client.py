@@ -125,6 +125,8 @@ class GoogleSheetsClient:
         :param tab_id: Name of the tab to modify. The default tab is used if this parameter isn't provided.
         :return: None
         """
+        if not isinstance(col, int):
+            col = int(col)
 
         values_grid = self._tabs.get(tab_id or self._default_tab_id)
 

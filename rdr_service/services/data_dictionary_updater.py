@@ -19,6 +19,50 @@ questionnaire_key_tab_id = 'Key_Questionnaire'
 site_key_tab_id = 'Key_Site'
 
 
+class DictionarySchemaField(messages.Enum):
+    TABLE_NAME = 0
+    COLUMN_NAME = 1
+    TABLE_COLUMN_CONCATENATION = 2
+    DATA_TYPE = 3
+    DESCRIPTION = 4
+    NUM_UNIQUE_VALUES = 5
+    UNIQUE_VALUE_LIST = 6
+    VALUE_MEANING_MAP = 7
+    VALUES_KEY = 8
+    PRIMARY_KEY_INDICATOR = 9
+    FOREIGN_KEY_INDICATOR = 10
+    FOREIGN_KEY_TARGET_TABLE_COLUMN_LIST = 11
+    FOREIGN_KEY_TARGET_COLUMN_LIST = 12
+    DEPRECATION_INDICATOR = 13
+    RDR_VERSION_INTRODUCED = 14
+
+
+class DictionarySchemaRowUpdateHelper:
+    """Updating the rows for a column depends on shared values, this helps de-clutter while allowing for reuse"""
+    def __init__(self, sheet, row, existing_row_values, changelog, changelog_key):
+        self.sheet = sheet
+        self.row = row
+        self.existing_row_values = existing_row_values
+        self.changelog = changelog
+        self.changelog_key = changelog_key
+
+    def set_value(self, value_reference, new_value):
+        value_ref_index = int(value_reference)
+
+        # Only record the update in the changelog if we're updating a row (rather than adding a brand new one)
+        if self.existing_row_values:
+            previous_value = self.existing_row_values[value_ref_index] \
+                if len(self.existing_row_values) > value_ref_index else None
+            if previous_value != new_value:
+                if self.changelog_key not in self.changelog:
+                    # Initialize this column's list of changes
+                    self.changelog[self.changelog_key] = []
+
+                self.changelog[self.changelog_key].append(f'{value_reference}: changing from:\n{previous_value}\n'
+                                                          f'<<<to>>>\n{new_value}')
+
+        self.sheet.update_cell(self.row, value_ref_index, new_value)
+
 class DataDictionaryUpdater:
     def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session):
         self.gcp_service_key_id = gcp_service_key_id
@@ -137,6 +181,7 @@ class DataDictionaryUpdater:
                                is_deprecated, deprecation_note):
         sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
+        change_log_key = (reflected_table_name, reflected_column.name)
 
         # Check what's already on the sheet in the row we're currently at. If the current table and column would go
         # before what's already there, then insert a new row and fill that out. If what is there would be
@@ -170,17 +215,28 @@ class DataDictionaryUpdater:
 
         existing_deprecation_note = None
         if adding_new_row:
-            sheet.update_cell(current_row, 14, self.rdr_version)
+            sheet.update_cell(current_row, DictionarySchemaField.TABLE_NAME, reflected_table_name)
+            sheet.update_cell(current_row, DictionarySchemaField.COLUMN_NAME, reflected_column.name)
+            sheet.update_cell(current_row, DictionarySchemaField.RDR_VERSION_INTRODUCED, self.rdr_version)
+            sheet.update_cell(current_row, DictionarySchemaField.TABLE_COLUMN_CONCATENATION,
+                              f'{reflected_table_name}.{reflected_column.name}')
             self.changelog[(reflected_table_name, reflected_column.name)] = 'adding'
         else:
-            # If we're not adding a row, then we're updating one
-            existing_deprecation_note = existing_row_values[13] if len(existing_row_values) >= 14 else None
+            # If we're not adding a row, then we're updating one. Check to see if there's a deprecation note.
+            deprecation_note_index = int(DictionarySchemaField.DEPRECATION_INDICATOR)
+            if len(existing_row_values) > deprecation_note_index:
+                existing_deprecation_note = existing_row_values[deprecation_note_index]
 
-        sheet.update_cell(current_row, 0, reflected_table_name)
-        sheet.update_cell(current_row, 1, reflected_column.name)
-        sheet.update_cell(current_row, 2, f'{reflected_table_name}.{reflected_column.name}')
-        sheet.update_cell(current_row, 3, str(reflected_column.type))
-        sheet.update_cell(current_row, 4, column_description)
+        sheet_row = DictionarySchemaRowUpdateHelper(
+            sheet,
+            current_row,
+            existing_row_values if not adding_new_row else None,
+            self.changelog,
+            change_log_key
+        )
+
+        sheet_row.set_value(DictionarySchemaField.DATA_TYPE, str(reflected_column.type))
+        sheet_row.set_value(DictionarySchemaField.DESCRIPTION, column_description)
 
         if display_unique_data:
             distinct_values = self.session.execute(
@@ -188,32 +244,36 @@ class DataDictionaryUpdater:
             )
             unique_values_display_list = [str(value) if value is not None else 'NULL' for (value,) in distinct_values]
 
-            sheet.update_cell(current_row, 5, str(len(unique_values_display_list)))
-            sheet.update_cell(current_row, 6, ', '.join(
+            sheet_row.set_value(DictionarySchemaField.NUM_UNIQUE_VALUES, str(len(unique_values_display_list)))
+            sheet_row.set_value(DictionarySchemaField.UNIQUE_VALUE_LIST, ', '.join(
                 sorted(unique_values_display_list, key=lambda val_str: val_str.lower())
             ))
         else:
             # Write empty values to the cells in case they previously had values
-            sheet.update_cell(current_row, 5, '')
-            sheet.update_cell(current_row, 6, '')
+            sheet_row.set_value(DictionarySchemaField.NUM_UNIQUE_VALUES, '')
+            sheet_row.set_value(DictionarySchemaField.UNIQUE_VALUE_LIST, '')
 
-        sheet.update_cell(current_row, 7, value_meaning_map or '')
+        sheet_row.set_value(DictionarySchemaField.VALUE_MEANING_MAP, value_meaning_map or '')
+        sheet_row.set_value(DictionarySchemaField.VALUES_KEY, '')
 
-        sheet.update_cell(current_row, 8, '')  # 'Values Key' column
-        sheet.update_cell(current_row, 9, 'Yes' if reflected_column.primary_key else 'No')
-        sheet.update_cell(current_row, 10, 'Yes' if len(reflected_column.foreign_keys) > 0 else 'No')
+        sheet_row.set_value(DictionarySchemaField.PRIMARY_KEY_INDICATOR,
+                            'Yes' if reflected_column.primary_key else 'No')
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_INDICATOR,
+                            'Yes' if len(reflected_column.foreign_keys) > 0 else 'No')
+
         # Display the targets of foreign keys as target_table_name.target_column_name
-        sheet.update_cell(current_row, 11, ', '.join([
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_TARGET_TABLE_COLUMN_LIST, ', '.join([
             f'{foreign_key.column.table}.{foreign_key.column.name}' for foreign_key in reflected_column.foreign_keys
         ]))
         # Display the target column names of foreign keys
-        sheet.update_cell(current_row, 12, ', '.join([
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_TARGET_COLUMN_LIST, ', '.join([
             foreign_key.column.name for foreign_key in reflected_column.foreign_keys
         ]))
 
         # Don't replace the existing deprecation note (and rdr version) if it's already there
         if is_deprecated and not existing_deprecation_note:
-            sheet.update_cell(current_row, 13, f'Deprecated in {self.rdr_version}: {deprecation_note}')
+            sheet_row.set_value(DictionarySchemaField.DEPRECATION_INDICATOR,
+                                f'Deprecated in {self.rdr_version}: {deprecation_note}')
 
         self.schema_tab_row_trackers[tab_id] += 1
 
