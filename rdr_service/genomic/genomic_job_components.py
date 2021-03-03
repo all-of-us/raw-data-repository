@@ -2640,6 +2640,8 @@ class GenomicBiobankSamplesCoupler:
 
     def _get_long_read_participants(self):
         """
+        Retrieves participants based on filters that have
+        been denoted to use in the long read pilot program
         """
         with self.member_dao.session() as session:
             result = session.query(GenomicSetMember).join(
