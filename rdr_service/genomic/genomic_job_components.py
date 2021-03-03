@@ -2251,23 +2251,24 @@ class GenomicBiobankSamplesCoupler:
 
         if len(participants) > 0:
             return self.process_genomic_members_into_manifest(
-                participants=participants
+                participants=participants,
+                max_num=384
             )
 
         logging.info(f'Long Read Participant Workflow: No participants to process.')
         return GenomicSubProcessResult.NO_FILES
 
-    def process_genomic_members_into_manifest(self, *, participants):
+    def process_genomic_members_into_manifest(self, *, participants, max_num=None):
         """
         Compiles AW0 Manifest from already submitted genomic members.
         :param participants:
+        :param max_num:
         :return:
         """
 
         new_genomic_set = self._create_new_genomic_set()
         processed_members = []
         count = 0
-        max_num = 384
         # duplicate genomic set members
         with self.member_dao.session() as session:
             for i, participant in enumerate(participants):
@@ -2299,6 +2300,9 @@ class GenomicBiobankSamplesCoupler:
                     )
                     processed_members.clear()
 
+                if max_num and count == max_num:
+                    break
+
             if count and processed_members:
                 self.genomic_members_insert(
                     members=processed_members,
@@ -2306,9 +2310,6 @@ class GenomicBiobankSamplesCoupler:
                     set_id=new_genomic_set.id,
                     bids=[pm.biobankId for pm in processed_members]
                 )
-
-            if count == max_num:
-                return new_genomic_set.id
 
         return new_genomic_set.id
 
