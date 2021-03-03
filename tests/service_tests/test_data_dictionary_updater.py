@@ -213,10 +213,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             questionnaire_values
         )
 
-    def test_version_added_display(self):
-        """Verify that rows for the data-dictionary show what RDR version they were added in"""
-
-        # Set the spreadsheet up to have a previously existing record that doesn't have the version number changed
+    def _mock_data_dictionary_rows(self, *rows):
         empty_cell = self._mock_cell(None)
         default_tab_values = {tab_id: [empty_cell] for tab_id in self.default_tab_names}
         default_tab_values[dictionary_tab_id] = [
@@ -224,9 +221,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [empty_cell],
             [empty_cell],
             [empty_cell],
-            # Add a row for participant id that gives RDR version 1.1 (using expansion to fill in the middle cells)
-            [self._mock_cell('participant'), self._mock_cell('participant_id'),
-             *([empty_cell] * 12), self._mock_cell('1.2.1')]
+            *rows
         ]
         self.mock_spreadsheets_return.get.return_value.execute.return_value = {
             'sheets': [{
@@ -234,6 +229,16 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
                 'data': [{'rowData': [{'values': row_values} for row_values in tab_rows]}]
             } for tab_name, tab_rows in default_tab_values.items()]
         }
+
+    def test_version_added_display(self):
+        """Verify that rows for the data-dictionary show what RDR version they were added in"""
+
+        # Set the spreadsheet up to have a previously existing record that shouldn't have the version number changed
+        self._mock_data_dictionary_rows(
+            # Add a row for participant id that gives RDR version 1.1 (using expansion to fill in the middle cells)
+            [self._mock_cell('participant'), self._mock_cell('participant_id'),
+             *([self._mock_cell(None)] * 12), self._mock_cell('1.2.1')]
+        )
 
         self.updater.run_update()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
@@ -250,23 +255,10 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
         # Set a previously existing record that doesn't have a deprecation note, but will get one in an update
         # This test assumes there is something in a current model that is marked as deprecated.
-        empty_cell = self._mock_cell(None)
-        default_tab_values = {tab_id: [empty_cell] for tab_id in self.default_tab_names}
-        default_tab_values[dictionary_tab_id] = [
-            [empty_cell],
-            [empty_cell],
-            [empty_cell],
-            [empty_cell],
+        self._mock_data_dictionary_rows(
             # Add a row for participant_summary's ehr_status column (using expansion to fill in the middle cells)
-            [self._mock_cell('participant_summary'), self._mock_cell('ehr_status'),
-             *([empty_cell] * 12)]
-        ]
-        self.mock_spreadsheets_return.get.return_value.execute.return_value = {
-            'sheets': [{
-                'properties': {'title': tab_name},
-                'data': [{'rowData': [{'values': row_values} for row_values in tab_rows]}]
-            } for tab_name, tab_rows in default_tab_values.items()]
-        }
+            [self._mock_cell('participant_summary'), self._mock_cell('ehr_status')]
+        )
 
         self.updater.run_update()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
@@ -296,3 +288,17 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         # Check that previous RDR version values are maintained
         self.assert_has_row('participant_summary', 'ehr_status', dictionary_tab_rows,
                             expected_deprecated_note=deprecation_note_with_version)
+
+    def test_changelog_adding_and_removing_rows(self):
+        """Check that adding and removing columns from the data-dictionary gets recorded in the changelog"""
+
+        # Create something in the data-dictionary that will be removed because it isn't in the current schema
+        self._mock_data_dictionary_rows(
+            [self._mock_cell('table_that_never_existed'), self._mock_cell('id')]
+        )
+        self.updater.run_update()
+
+        # Check that the changelog shows that we're adding something that is in our current schema, and
+        # removing the dictionary record that isn't
+        self.assertEqual('adding', self.updater.changelog.get(('participant', 'participant_id')))
+        self.assertEqual('removing', self.updater.changelog.get(('table_that_never_existed', 'id')))

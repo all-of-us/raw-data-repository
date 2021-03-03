@@ -59,6 +59,10 @@ class DataDictionaryUpdater:
             'patient_status_history'
         ]
 
+        # The changelog keys will be a tuple of the table and column names, and the values will be a list of the changes
+        # being made to that column
+        self.changelog = {}
+
     def _is_alembic_generated_history_table(self, table_name):
         return table_name in self._alembic_history_table_list
 
@@ -162,10 +166,12 @@ class DataDictionaryUpdater:
                     # row in the sheet and continue checking the next row.
                     if reflected_table_name != existing_table_name or reflected_column.name != existing_column_name:
                         sheet.remove_row_at(current_row)
+                        self.changelog[(existing_table_name, existing_column_name)] = 'removing'
 
         existing_deprecation_note = None
         if adding_new_row:
             sheet.update_cell(current_row, 14, self.rdr_version)
+            self.changelog[(reflected_table_name, reflected_column.name)] = 'adding'
         else:
             # If we're not adding a row, then we're updating one
             existing_deprecation_note = existing_row_values[13] if len(existing_row_values) >= 14 else None
