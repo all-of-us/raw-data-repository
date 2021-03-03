@@ -2289,7 +2289,7 @@ class GenomicBiobankSamplesCoupler:
                 processed_members.append(dup_member_obj)
                 count = i
 
-                if count % 100 == 0:
+                if count % 100 == 0 and count > 0:
                     self.genomic_members_insert(
                         members=processed_members,
                         session=session,
@@ -2384,7 +2384,7 @@ class GenomicBiobankSamplesCoupler:
                 processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
                 count = i
 
-                if count % 1000 == 0:
+                if count % 1000 == 0 and count > 0:
                     self.genomic_members_insert(
                         members=processed_array_wgs,
                         session=session,
@@ -2468,7 +2468,12 @@ class GenomicBiobankSamplesCoupler:
 
     def genomic_members_insert(self, *, members, session, set_id, bids):
         """
-
+        Bulk save of member for genomic_set_member as well as PDR
+        batch updating of members
+        :param: members
+        :param: session
+        :param: set_id
+        :param: bids
         """
         try:
             session.bulk_save_objects(members)
