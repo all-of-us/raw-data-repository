@@ -245,16 +245,12 @@ class GenerateManifestClass(GenomicManifestBase):
         self.dao = GenomicSetDao()
         args = self.args
 
-        # Check Manifest Type
-        if args.manifest not in [m.name for m in GenomicManifestTypes]:
-            _logger.error('Please choose a valid manifest type: {}'.format([m.name for m in GenomicManifestTypes]))
-            return 1
-
         # AW0 Manifest
         if args.manifest == "DRC_BIOBANK":
-            if args.cohort not in ParticipantCohort.numbers() and not args.saliva:
-                _logger.error('--cohort {} must be provided when generating DRC_BIOBANK manifest' \
-                .format(list(ParticipantCohort.numbers())))
+            if args.cohort not in ParticipantCohort.numbers() \
+                    and not args.saliva and not args.long_read:
+                # _logger.error('--cohort {} must be provided when generating DRC_BIOBANK manifest')\
+                #     .format(list(ParticipantCohort.numbers()))
                 return 1
 
             if args.cohort and int(args.cohort) == 2:
@@ -264,13 +260,16 @@ class GenerateManifestClass(GenomicManifestBase):
             if args.saliva:
                 _logger.info('Running saliva samples workflow')
                 s_dict = {
-                    'origin': args.saliva_origin if args.saliva_origin is not None \
-                         and args.saliva_origin >= 0 else None,
-                    'ror': args.saliva_ror if args.saliva_ror is not None \
-                        and args.saliva_ror >= 0 else None
+                    'origin': args.saliva_origin if args.saliva_origin is not None
+                    and args.saliva_origin >= 0 else None,
+                    'ror': args.saliva_ror if args.saliva_ror is not None
+                    and args.saliva_ror >= 0 else None
                 }
                 return self.generate_local_saliva_manifest(s_dict)
 
+            if args.long_read:
+                _logger.info('Running long read pilot workflow')
+                return self.generate_long_read_manifest()
 
     def generate_local_c2_remainder_manifest(self):
         """
@@ -287,7 +286,6 @@ class GenerateManifestClass(GenomicManifestBase):
 
         return 0
 
-
     def generate_local_saliva_manifest(self, s_dict):
         """
         # to do
@@ -302,11 +300,22 @@ class GenerateManifestClass(GenomicManifestBase):
 
         return 0
 
+    def generate_long_read_manifest(self):
+
+        with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW,
+                                  bq_project_id=self.gcp_env.project) as controller:
+            GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller)\
+                              .create_long_read_genomic_participants()
+            new_set_id = self.dao.get_max_set()
+            self.export_manifest_to_local_file(new_set_id, str_type='long_read')
+
+        return 0
 
     def export_manifest_to_local_file(self, set_id, str_type=None):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
         :param set_id:
+        :param str_type:
         :return:
         """
 
@@ -1798,10 +1807,17 @@ def run():
 
     # Manual Manifest Generation
     new_manifest_parser = subparser.add_parser("generate-manifest")
-    manifest_type_list = [m.name for m in GenomicManifestTypes]
-    new_manifest_help = f"which manifest type to generate: {manifest_type_list}"
-    new_manifest_parser.add_argument("--manifest", help=new_manifest_help, default=None, required=True)  # noqa
-    new_manifest_parser.add_argument("--cohort", help="Cohort [1, 2, 3]", default=None, required=False)  # noqa
+    new_manifest_parser.add_argument("--manifest",
+                                     default=None,
+                                     required=True,
+                                     choices=[m.name for m in GenomicManifestTypes],
+                                     type=str
+                                     )  # noqa
+    new_manifest_parser.add_argument("--cohort",
+                    help="Cohort [1, 2, 3]",
+                    default=None,
+                    required=False
+        )  # noqa
     new_manifest_parser.add_argument("--saliva",
                     help="bool for denoting if manifest is saliva only",
                     default=None,
@@ -1815,12 +1831,17 @@ def run():
                     type=int
         ) # noqa
     new_manifest_parser.add_argument("--saliva-ror",
-                    help="origin for saliva manifest config",
+                    help="denotes consent for genomics ror",
                     choices=[0, 1, 2],
                     default=None,
                     required=False,
                     type=int
-        ) # noq
+        ) # noqa
+    new_manifest_parser.add_argument("--long-read",
+                    help="denotes if manifest is for long read pilot",
+                    default=None,
+                    required=False,
+        )  # noqa
 
     # Set GenomicWorkflowState to provided state for provided member IDs
     member_state_parser = subparser.add_parser("member-state")

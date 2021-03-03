@@ -20,7 +20,8 @@ from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic.genomic_queries import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.code import Code
+from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.participant import Participant
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
@@ -37,7 +38,9 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicFileProcessed, GenomicAW1Raw, GenomicAW2Raw)
+    GenomicFileProcessed,
+    GenomicAW1Raw,
+    GenomicAW2Raw)
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     WithdrawalStatus,
@@ -2197,7 +2200,6 @@ class GenomicBiobankSamplesCoupler:
                 f'Saliva Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-
     def create_c2_genomic_participants(self, from_date, local=False):
         """
         Creates Cohort 2 Participants in the genomic system using reconsent.
@@ -2239,11 +2241,79 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
+    def create_long_read_genomic_participants(self):
+        """
+        Create long_read participants that are already in the genomic system,
+        based on downstream filters.
+        :return:
+        """
+        participants = self._get_long_read_participants()
+
+        if len(participants) > 0:
+            return self.process_genomic_members_into_manifest(
+                participants=participants
+            )
+        else:
+            logging.info(f'Long Read Participant Workflow: No participants to process.')
+            return GenomicSubProcessResult.NO_FILES
+
+    def process_genomic_members_into_manifest(self, *, participants):
+        """
+        Compiles AW0 Manifest from already submitted genomic members.
+        :param participants:
+        :return:
+        """
+
+        new_genomic_set = self._create_new_genomic_set()
+        processed_members = []
+        count = 0
+        # duplicate genomic set members
+        with self.member_dao.session() as session:
+            for i, participant in enumerate(participants):
+                dup_member_obj = GenomicSetMember(
+                    biobankId=participant.biobankId,
+                    genomicSetId=new_genomic_set.id,
+                    participantId=participant.participantId,
+                    nyFlag=participant.nyFlag,
+                    sexAtBirth=participant.sexAtBirth,
+                    collectionTubeId=participant.collectionTubeId,
+                    validationStatus=participant.validationStatus,
+                    validationFlags=participant.validationFlags,
+                    ai_an=participant.ai_an,
+                    genomeType='long_read',
+                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    created=clock.CLOCK.now(),
+                    modified=clock.CLOCK.now(),
+                )
+
+                processed_members.append(dup_member_obj)
+                count = i
+
+                if count % 100 == 0:
+                    self.genomic_members_insert(
+                        members=processed_members,
+                        session=session,
+                        set_id=new_genomic_set.id,
+                        bids=[pm.biobankId for pm in processed_members]
+                    )
+                    processed_members.clear()
+
+            if count and processed_members:
+                self.genomic_members_insert(
+                    members=processed_members,
+                    session=session,
+                    set_id=new_genomic_set.id,
+                    bids=[pm.biobankId for pm in processed_members]
+                )
+
+            return new_genomic_set.id
+
     def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
         Compiles AW0 Manifest from samples list.
         :param samples_meta:
         :param cohort:
+        :param saliva:
         :param local: overrides automatic push to bucket
         :return: job result code
         """
@@ -2312,25 +2382,24 @@ class GenomicBiobankSamplesCoupler:
 
                 bids.append(bid)
                 processed_array_wgs.extend([new_array_member_obj, new_wgs_member_obj])
-                count += 1
+                count = i
 
                 if count % 1000 == 0:
-                    session.bulk_save_objects(processed_array_wgs)
-                    session.commit()
-                    members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
-                    member_ids = [m.id for m in members]
-                    bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
-                    genomic_set_member_batch_update(member_ids)
+                    self.genomic_members_insert(
+                        members=processed_array_wgs,
+                        session=session,
+                        set_id=new_genomic_set.id,
+                        bids=bids
+                    )
                     processed_array_wgs.clear()
-                    bids.clear()
 
             if count and processed_array_wgs:
-                session.bulk_save_objects(processed_array_wgs)
-                session.commit()
-                members = self.member_dao.get_members_from_set_id(new_genomic_set.id, bids=bids)
-                member_ids = [m.id for m in members]
-                bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
-                genomic_set_member_batch_update(member_ids)
+                self.genomic_members_insert(
+                    members=processed_array_wgs,
+                    session=session,
+                    set_id=new_genomic_set.id,
+                    bids=bids
+                )
 
         # Create & transfer the Biobank Manifest based on the new genomic set
         try:
@@ -2360,6 +2429,7 @@ class GenomicBiobankSamplesCoupler:
         :param cohort:
         :param participants:
         :param local:
+        :param saliva:
         :return:
         """
 
@@ -2395,6 +2465,20 @@ class GenomicBiobankSamplesCoupler:
             saliva=saliva,
             local=local
         )
+
+    def genomic_members_insert(self, *, members, session, set_id, bids):
+        """
+
+        """
+        try:
+            session.bulk_save_objects(members)
+            session.commit()
+            members = self.member_dao.get_members_from_set_id(set_id, bids=bids)
+            member_ids = [m.id for m in members]
+            bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
+            genomic_set_member_batch_update(member_ids)
+        except Exception as e:
+            raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
     def _get_new_biobank_samples(self, from_date):
         """
@@ -2543,6 +2627,30 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
+    def _get_long_read_participants(self):
+        """
+        """
+        with self.member_dao.session() as session:
+            result = session.query(GenomicSetMember).join(
+                ParticipantSummary,
+                GenomicSetMember.participantId == ParticipantSummary.participantId,
+            ).join(
+                ParticipantRaceAnswers,
+                ParticipantRaceAnswers.participantId == ParticipantSummary.participantId,
+            ).join(
+                Code,
+                ParticipantRaceAnswers.codeId == Code.codeId,
+            ).filter(
+                Code.value == 'WhatRaceEthnicity_Black',
+                GenomicSetMember.genomeType == 'aou_wgs',
+                GenomicSetMember.genomeType != 'long_read',
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                ParticipantSummary.participantOrigin == 'vibrent',
+                ParticipantSummary.ehrUpdateTime.isnot(None)
+            ).all()
+
+        return result
+
     def _get_usable_blood_sample(self, pid, bid):
         """
         Select 1ED04 or 1ED10 based on max collected date
@@ -2599,7 +2707,6 @@ class GenomicBiobankSamplesCoupler:
             result = session.execute(_saliva_sql, params).fetchall()
 
         return list([list(r) for r in zip(*result)])
-
 
     def _create_new_genomic_set(self):
         """Inserts a new genomic set for this run"""
@@ -2729,7 +2836,7 @@ class ManifestDefinitionProvider:
                     (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                     (GenomicGCValidationMetrics.vcfReceived == 1) &
                     (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                    (GenomicSetMember.aw3ManifestJobRunID == None)
+                    (GenomicSetMember.aw3ManifestJobRunID.is_(None))
                 )
             )
 
@@ -2998,7 +3105,8 @@ class ManifestDefinitionProvider:
             )
         return query_sql
 
-    def _get_manifest_columns(self, manifest_type):
+    @staticmethod
+    def _get_manifest_columns(manifest_type):
         """
         Defines the columns of each manifest-type
         :param manifest_type:
