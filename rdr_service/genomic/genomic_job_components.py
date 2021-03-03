@@ -2253,9 +2253,9 @@ class GenomicBiobankSamplesCoupler:
             return self.process_genomic_members_into_manifest(
                 participants=participants
             )
-        else:
-            logging.info(f'Long Read Participant Workflow: No participants to process.')
-            return GenomicSubProcessResult.NO_FILES
+
+        logging.info(f'Long Read Participant Workflow: No participants to process.')
+        return GenomicSubProcessResult.NO_FILES
 
     def process_genomic_members_into_manifest(self, *, participants):
         """
@@ -2307,9 +2307,10 @@ class GenomicBiobankSamplesCoupler:
                     bids=[pm.biobankId for pm in processed_members]
                 )
 
-            if (count > max_num and len(participants) > max_num) \
-                    or (len(participants) == count):
+            if count == max_num:
                 return new_genomic_set.id
+
+        return new_genomic_set.id
 
     def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
