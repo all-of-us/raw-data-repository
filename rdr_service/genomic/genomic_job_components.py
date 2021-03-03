@@ -2247,22 +2247,20 @@ class GenomicBiobankSamplesCoupler:
         based on downstream filters.
         :return:
         """
-        participants = self._get_long_read_participants()
+        participants = self._get_long_read_participants(max_num=384)
 
         if len(participants) > 0:
             return self.process_genomic_members_into_manifest(
-                participants=participants,
-                max_num=384
+                participants=participants
             )
 
         logging.info(f'Long Read Participant Workflow: No participants to process.')
         return GenomicSubProcessResult.NO_FILES
 
-    def process_genomic_members_into_manifest(self, *, participants, max_num=None):
+    def process_genomic_members_into_manifest(self, *, participants):
         """
         Compiles AW0 Manifest from already submitted genomic members.
         :param participants:
-        :param max_num:
         :return:
         """
 
@@ -2299,9 +2297,6 @@ class GenomicBiobankSamplesCoupler:
                         bids=[pm.biobankId for pm in processed_members]
                     )
                     processed_members.clear()
-
-                if max_num and count == max_num:
-                    break
 
             if count and processed_members:
                 self.genomic_members_insert(
@@ -2397,6 +2392,7 @@ class GenomicBiobankSamplesCoupler:
                         bids=bids
                     )
                     processed_array_wgs.clear()
+                    bids.clear()
 
             if count and processed_array_wgs:
                 self.genomic_members_insert(
@@ -2638,7 +2634,7 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
-    def _get_long_read_participants(self):
+    def _get_long_read_participants(self, max_num=None):
         """
         Retrieves participants based on filters that have
         been denoted to use in the long read pilot program
@@ -2660,9 +2656,11 @@ class GenomicBiobankSamplesCoupler:
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                 ParticipantSummary.participantOrigin == 'vibrent',
                 ParticipantSummary.ehrUpdateTime.isnot(None)
-            ).all()
+            )
+            if max_num:
+                result = result.limit(max_num)
 
-        return result
+        return result.all()
 
     def _get_usable_blood_sample(self, pid, bid):
         """
