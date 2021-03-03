@@ -44,6 +44,8 @@ from rdr_service.code_constants import UNMAPPED, UNSET
 _UTC = pytz.utc
 _US_CENTRAL = pytz.timezone("US/Central")
 
+FEDEX_TRACKING_NUMBER_URL = 'https://fedex.com/tracking-number'
+
 def _ToFhirDate(dt):
     if not dt:
         return None
@@ -279,10 +281,12 @@ class BiobankOrderDao(UpdatableDao):
         # Verify that no identifier is in use by another order.
         for identifier in obj.identifiers:
             for existing in (
-                session.query(BiobankOrderIdentifier)
-                .filter_by(system=identifier.system)
-                .filter_by(value=identifier.value)
-                .filter(BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId)
+                session.query(BiobankOrderIdentifier).filter(
+                    BiobankOrderIdentifier.system == identifier.system,
+                    BiobankOrderIdentifier.system != FEDEX_TRACKING_NUMBER_URL,
+                    BiobankOrderIdentifier.value == identifier.value,
+                    BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId
+                )
             ):
                 raise BadRequest(f"Identifier {identifier} is already in use by order {existing.biobankOrderId}")
 

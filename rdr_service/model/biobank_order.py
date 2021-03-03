@@ -192,7 +192,11 @@ class BiobankOrderIdentifierBase(object):
 
     @declared_attr
     def biobankOrderId(cls):
-        return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), nullable=False)
+        return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"),
+                      primary_key=True, nullable=False)
+
+    def __str__(self):
+        return f'{self.value} (system: {self.system})'
 
 
 class BiobankOrderIdentifier(BiobankOrderIdentifierBase, Base):
