@@ -2267,6 +2267,7 @@ class GenomicBiobankSamplesCoupler:
         new_genomic_set = self._create_new_genomic_set()
         processed_members = []
         count = 0
+        max_num = 384
         # duplicate genomic set members
         with self.member_dao.session() as session:
             for i, participant in enumerate(participants):
@@ -2287,9 +2288,9 @@ class GenomicBiobankSamplesCoupler:
                 )
 
                 processed_members.append(dup_member_obj)
-                count = i
+                count = i + 1
 
-                if count % 100 == 0 and count > 0:
+                if count % 100 == 0:
                     self.genomic_members_insert(
                         members=processed_members,
                         session=session,
@@ -2306,7 +2307,9 @@ class GenomicBiobankSamplesCoupler:
                     bids=[pm.biobankId for pm in processed_members]
                 )
 
-            return new_genomic_set.id
+            if (count > max_num and len(participants) > max_num) \
+                    or (len(participants) == count):
+                return new_genomic_set.id
 
     def process_samples_into_manifest(self, samples_meta, cohort, saliva=False, local=False):
         """
@@ -2475,6 +2478,7 @@ class GenomicBiobankSamplesCoupler:
         :param: set_id
         :param: bids
         """
+
         try:
             session.bulk_save_objects(members)
             session.commit()
