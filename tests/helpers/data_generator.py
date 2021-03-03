@@ -385,6 +385,8 @@ class DataGenerator:
             kwargs['logPositionId'] = log_position.logPositionId
         if 'biobankOrderId' not in kwargs:
             kwargs['biobankOrderId'] = self.unique_biobank_order_id()
+        if 'participantId' not in kwargs:
+            kwargs['participantId'] = self.create_database_participant_summary().participantId
 
         return BiobankOrder(**kwargs)
 
