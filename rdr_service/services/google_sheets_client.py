@@ -162,10 +162,19 @@ class GoogleSheetsClient:
         """
         Creates a new, empty row at the given row index. The current row at the given index will be moved down.
         :param row_index: Index, counting from 0, for the new row
-        :param tab_id: Tab add the new row to, defaults to the current tab if not provided
+        :param tab_id: Tab to add the new row to, defaults to the current tab if not provided
         """
         values_grid = self._tabs.get(tab_id or self._default_tab_id)
         values_grid.insert(row_index, [self._empty_cell_value])
+
+    def remove_row_at(self, row_index, tab_id=None):
+        """
+        Removes a row from the sheet.
+        :param row_index: Index, counting from 0, for the row to remove
+        :param tab_id: Tab to remove the row from, defaults to the current tab if not provided
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        del values_grid[row_index]
 
     def get_row_at(self, row_index, tab_id=None):
         """

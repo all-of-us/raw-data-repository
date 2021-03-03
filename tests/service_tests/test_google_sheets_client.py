@@ -333,7 +333,6 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
     def test_inserting_new_rows(self):
         """Inserting new rows should push existing rows down"""
         with GoogleSheetsClient('', '') as sheet:
-
             # Set up a sheet with some values. The resulting sheet should appear as follows
             # 1
             # _
@@ -356,6 +355,31 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
                 ['1'],
                 [''],
                 [''],
+                ['', '', '', '8'],
+                ['9'],
+            ], sheet.get_tab_values())
+
+    def test_removing_rows(self):
+        with GoogleSheetsClient('', '') as sheet:
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # 10
+            # _ _ _ 8
+            # 9
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(1, 0, '10')
+            sheet.update_cell(2, 3, '8')
+            sheet.update_cell(3, 0, '9')
+
+            # Remove the second row, resulting in a sheet that appears as
+            # 1
+            # _ _ _ 8
+            # 9
+            sheet.remove_row_at(1)
+
+            # Check that the sheet looks right
+            self.assertEqual([
+                ['1'],
                 ['', '', '', '8'],
                 ['9'],
             ], sheet.get_tab_values())
