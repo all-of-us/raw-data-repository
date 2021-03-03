@@ -280,15 +280,15 @@ class BiobankOrderDao(UpdatableDao):
         # TODO(mwf) FHIR validation for identifiers?
         # Verify that no identifier is in use by another order.
         for identifier in obj.identifiers:
-            for existing in (
-                session.query(BiobankOrderIdentifier).filter(
-                    BiobankOrderIdentifier.system == identifier.system,
-                    BiobankOrderIdentifier.system != FEDEX_TRACKING_NUMBER_URL,
-                    BiobankOrderIdentifier.value == identifier.value,
-                    BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId
-                )
-            ):
-                raise BadRequest(f"Identifier {identifier} is already in use by order {existing.biobankOrderId}")
+            if identifier.system != FEDEX_TRACKING_NUMBER_URL:  # skip the check for fedex tracking numbers
+                for existing in (
+                    session.query(BiobankOrderIdentifier).filter(
+                        BiobankOrderIdentifier.system == identifier.system,
+                        BiobankOrderIdentifier.value == identifier.value,
+                        BiobankOrderIdentifier.biobankOrderId != obj.biobankOrderId
+                    )
+                ):
+                    raise BadRequest(f"Identifier {identifier} is already in use by order {existing.biobankOrderId}")
 
     def _validate_order_sample(self, sample):
         # TODO(mwf) Make use of FHIR validation?
