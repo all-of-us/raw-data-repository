@@ -275,3 +275,24 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         self.assert_has_row('participant_summary', 'ehr_status', dictionary_tab_rows,
                             expected_deprecated_note=f'Deprecated in {self.mock_rdr_version}: '
                                                      'Use wasEhrDataAvailable (was_ehr_data_available) instead')
+
+    def test_existing_deprecation_note_left_alone(self):
+        """
+        Verify that rows that already have deprecation notes don't update again (so that the version stays the same)
+        """
+
+        # Set a previously existing record that doesn't have a deprecation note, but will get one in an update
+        # This test assumes there is something in a current model that is marked as deprecated.
+        deprecation_note_with_version = 'Deprecated in 1.1.1: use something else'
+        self._mock_data_dictionary_rows(
+            # Add note for participant_summary's ehr_status column (using expansion to fill in the middle cells)
+            [self._mock_cell('participant_summary'), self._mock_cell('ehr_status'),
+             *([self._mock_cell(None)] * 11), self._mock_cell(deprecation_note_with_version)]
+        )
+
+        self.updater.run_update()
+        dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
+
+        # Check that previous RDR version values are maintained
+        self.assert_has_row('participant_summary', 'ehr_status', dictionary_tab_rows,
+                            expected_deprecated_note=deprecation_note_with_version)

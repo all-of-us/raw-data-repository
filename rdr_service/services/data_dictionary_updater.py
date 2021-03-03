@@ -134,29 +134,41 @@ class DataDictionaryUpdater:
         sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
 
-        # Check what's already on the sheet
-        adding_new_column = True
-        row_values = sheet.get_row_at(current_row)
-        if len(row_values) > 2:  # Otherwise it's a row that doesn't have schema information
-            existing_table_name, existing_column_name, *_ = row_values
-            if reflected_table_name < existing_table_name or reflected_column.name < existing_column_name:
-                # The row being written would go before what's already there (regardless of whether what is there will
-                # continue to be there later).
-                # Insert the new row above what's already there.
-                sheet.insert_new_row_at(current_row)
+        # Check what's already on the sheet in the row we're currently at. If the current table and column would go
+        # before what's already there, then insert a new row and fill that out. If what is there would be
+        # removed (the current table and column is different and we should have already seen what's in the sheet) then
+        # remove the current row and continue checking against the next row.
+        adding_new_row = False
+        existing_table_name = existing_column_name = existing_row_values = None
+        while not adding_new_row and not (
+            # Checking if we're supposed to update the existing dictionary row
+            reflected_table_name == existing_table_name and reflected_column.name == existing_column_name
+        ):
+            existing_row_values = sheet.get_row_at(current_row)
+            # If the length is less than two (table and column) then the row doesn't have schema information
+            if len(existing_row_values) < 2:
+                adding_new_row = True
             else:
-                # Could be equal, just an update for the existing data. If it's greater than, then the existing data
-                # no longer exists in the database.
-                adding_new_column = (reflected_table_name != existing_table_name
-                                     and reflected_column.name != existing_column_name)
+                existing_table_name, existing_column_name, *_ = existing_row_values
+                if reflected_table_name < existing_table_name or reflected_column.name < existing_column_name:
+                    # The row being written would go before what's already there (regardless of whether what is
+                    # there will continue to be there later).
+                    # Insert the new row above what's already there.
+                    sheet.insert_new_row_at(current_row)
+                    adding_new_row = True
+                else:
+                    # At this point the table and column name we're writing either match or belong after what is
+                    # currently there. If it belongs after, then we never saw what is there and we should remove the
+                    # row in the sheet and continue checking the next row.
+                    if reflected_table_name != existing_table_name or reflected_column.name != existing_column_name:
+                        sheet.remove_row_at(current_row)
 
         existing_deprecation_note = None
-        if not adding_new_column:
-            *_, existing_deprecation_note, _ = row_values
-            existing_deprecation_note = None
-
-        if adding_new_column:
+        if adding_new_row:
             sheet.update_cell(current_row, 14, self.rdr_version)
+        else:
+            # If we're not adding a row, then we're updating one
+            existing_deprecation_note = existing_row_values[13] if len(existing_row_values) >= 14 else None
 
         sheet.update_cell(current_row, 0, reflected_table_name)
         sheet.update_cell(current_row, 1, reflected_column.name)
