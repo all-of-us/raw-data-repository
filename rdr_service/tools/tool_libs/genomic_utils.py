@@ -32,7 +32,6 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import ParticipantCohort
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -247,12 +246,6 @@ class GenerateManifestClass(GenomicManifestBase):
 
         # AW0 Manifest
         if args.manifest == "DRC_BIOBANK":
-            if args.cohort not in ParticipantCohort.numbers() \
-                    and not args.saliva and not args.long_read:
-                # _logger.error('--cohort {} must be provided when generating DRC_BIOBANK manifest')\
-                #     .format(list(ParticipantCohort.numbers()))
-                return 1
-
             if args.cohort and int(args.cohort) == 2:
                 _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_remainder_manifest()
