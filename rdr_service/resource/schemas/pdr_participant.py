@@ -35,7 +35,7 @@ class PDRBiobankOrderSchema(BiobankOrderSchema):
     baseline_tests_confirmed = fields.Int32()
 
 
-class PDRParticipantSummarySchema(Schema):
+class PDRParticipantSchema(Schema):
     """
     A subset of participant summary for PDR that does not contain PII.
     Note: !!! If you add fields here, remember to add them to the View as well. !!!

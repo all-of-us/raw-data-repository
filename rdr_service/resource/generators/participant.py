@@ -164,7 +164,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
-            return generators.ResourceRecordSet(schemas.ParticipantSummarySchema, summary)
+            return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
         """

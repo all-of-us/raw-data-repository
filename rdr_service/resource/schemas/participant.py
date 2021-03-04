@@ -197,7 +197,7 @@ class EHRReceiptSchema(Schema):
         resource_uri = 'Participant/{participant_id}/EHRReceipt'
 
 
-class ParticipantSummarySchema(Schema):
+class ParticipantSchema(Schema):
     """ Participant Activity Summary Schema """
     last_modified = fields.DateTime()
 

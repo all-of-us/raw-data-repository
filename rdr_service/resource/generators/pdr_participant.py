@@ -71,7 +71,7 @@ class PDRParticipantSummaryGenerator(generators.BaseGenerator):
         # Calculate UBR
         summary = self._merge_schema_dicts(summary, self._calculate_ubr(res, p_id))
 
-        return generators.ResourceRecordSet(schemas.PDRParticipantSummarySchema, summary)
+        return generators.ResourceRecordSet(schemas.PDRParticipantSchema, summary)
 
 
     def _import_rural_zipcodes(self):
