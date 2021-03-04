@@ -24,7 +24,7 @@ deploy_args = [
     '--memory=512'
 ]
 
-task_queue = 'resource-tasks'
+task_queue = 'genomics'
 _logger = logging.getLogger('function')
 
 
@@ -35,6 +35,11 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
         # Verify this is a file that we want to process.
         if '_sample_manifests' not in self.event.name.lower():
             _logger.info(f'Skipping file {self.event.name}, name does not match AW1 file.')
+            return
+
+        # Northwest moves their files to a `downloaded` subfolder. Ignore these.
+        if 'downloaded' in self.event.name.lower():
+            _logger.info(f'Skipping file {self.event.name}, in downloaded folder.')
             return
 
         _logger.info(f"file found: {self.event.name}")
