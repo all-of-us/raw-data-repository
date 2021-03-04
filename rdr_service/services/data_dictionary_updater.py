@@ -206,12 +206,12 @@ class DataDictionaryUpdater:
         sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
         change_log_key = (reflected_table_name, reflected_column.name)
-        changelog_for_tab = self.changelog[dictionary_tab_id]
+        changelog_for_tab = self.changelog[tab_id]
 
         # Check what's already on the sheet in the row we're currently at. If the current table and column would go
         # before what's already there, then insert a new row and fill that out. If what is there would be
-        # removed (the current table and column is different and we should have already seen what's in the sheet) then
-        # remove the current row and continue checking against the next row.
+        # removed (the current table or column name is different and we should have already seen what's in the sheet
+        # since they're alphabetical) then remove the current row and continue checking against the next row.
         adding_new_row = False
         existing_table_name = existing_column_name = existing_row_values = None
         while not adding_new_row and not (
@@ -219,7 +219,8 @@ class DataDictionaryUpdater:
             reflected_table_name == existing_table_name and reflected_column.name == existing_column_name
         ):
             existing_row_values = sheet.get_row_at(current_row)
-            # If the length is less than two (table and column) then the row doesn't have schema information
+            # If the length is less than two then the row doesn't have schema information
+            # (since it should have a table and column name)
             if len(existing_row_values) < 2:
                 adding_new_row = True
             else:

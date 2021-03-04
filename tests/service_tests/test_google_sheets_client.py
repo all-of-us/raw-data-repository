@@ -295,7 +295,7 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
 
         # Mock a spreadsheet
         # The test spreadsheet looks like this:
-        # Tab title: 'first_tab'
+        # Tab title: 'only_tab'
         # _
         # _
         # _
