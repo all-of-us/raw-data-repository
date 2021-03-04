@@ -2133,6 +2133,7 @@ class GenomicBiobankSamplesCoupler:
 
     _ARRAY_GENOME_TYPE = "aou_array"
     _WGS_GENOME_TYPE = "aou_wgs"
+    _LR_GENOME_TYPE = "long_read"
     COHORT_1_ID = "C1"
     COHORT_2_ID = "C2"
     COHORT_3_ID = "C3"
@@ -2280,7 +2281,7 @@ class GenomicBiobankSamplesCoupler:
                     validationStatus=participant.validationStatus,
                     validationFlags=participant.validationFlags,
                     ai_an=participant.ai_an,
-                    genomeType='long_read',
+                    genomeType=self._LR_GENOME_TYPE,
                     genomicWorkflowState=GenomicWorkflowState.AW0_READY,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
