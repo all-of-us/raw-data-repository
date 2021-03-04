@@ -2663,8 +2663,9 @@ class GenomicBiobankSamplesCoupler:
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                 ParticipantSummary.participantOrigin == 'vibrent',
                 ParticipantSummary.ehrUpdateTime.isnot(None),
-                gsm_alias.id.is_(None)
-            )
+                gsm_alias.id.is_(None),
+            ).distinct(gsm_alias.biobankId)
+
             if max_num:
                 result = result.limit(max_num)
 
