@@ -21,6 +21,10 @@ from rdr_service.model.resource_type import ResourceType
 from rdr_service.services.flask import RESOURCE_PREFIX
 
 # Import all of the available resource schema objects.
+# TODO: If the Resource Schema class name is not the same as the Resource Schema's Meta.resource_uri
+#  value (minus Schema suffix) we break things.  Loop through each of the classes and build the list
+#  by instantiating each resource schema class and getting the Meta.resource_uri value for the final list.
+#  Remember to add a 'Schema' suffix to each Meta.resource_uri value.  IE: Participant URI = ParticipantSchema.
 RESOURCE_SCHEMAS = importlib.import_module("rdr_service.resource.schemas.__init__")
 
 # TODO: Fill out all the possible FHIR operands.
