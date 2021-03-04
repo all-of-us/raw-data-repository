@@ -39,7 +39,7 @@ from rdr_service.resource.generators.genomics import genomic_job_run_update, gen
 
 
 class GenomicJobController:
-    """This class controlls the tracking of Genomics subprocesses"""
+    """This class controls the tracking of Genomics subprocesses"""
 
     def __init__(self, job_id,
                  bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
