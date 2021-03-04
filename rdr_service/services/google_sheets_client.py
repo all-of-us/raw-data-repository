@@ -169,6 +169,18 @@ class GoogleSheetsClient:
         values_grid = self._tabs.get(tab_id or self._default_tab_id)
         values_grid.insert(row_index, [self._empty_cell_value])
 
+        # All the following rows will be moved down.
+        # Any row in front of a row that moves down will be uploaded to the document in the same position as the one
+        # that moved down. Any row in front of one that moves down needs to have as many cells as the one it's
+        # replacing, so that it will overwrite all the values left over from the row that it pushed down.
+        while row_index < len(values_grid) - 1:  # The last row isn't replacing anything, so doesn't need to be checked
+            row_to_expand = values_grid[row_index]
+            number_of_cells_to_replace = len(values_grid[row_index + 1])
+            while number_of_cells_to_replace > len(row_to_expand):
+                row_to_expand.append(self._empty_cell_value)
+
+            row_index += 1
+
     def remove_row_at(self, row_index, tab_id=None):
         """
         Removes a row from the sheet.
@@ -176,7 +188,27 @@ class GoogleSheetsClient:
         :param tab_id: Tab to remove the row from, defaults to the current tab if not provided
         """
         values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        number_of_cells_replaced = len(values_grid[row_index])
         del values_grid[row_index]
+
+        # Removing a row in the document means every row moves up, including the last one.
+        # So we need to insert a row at the end to overwrite the values left from when the original last row moves up.
+        # (The number of cells is expanded later in this method).
+        values_grid.append([self._empty_cell_value])
+
+        # All following rows will be moved up.
+        # Any rows after a row that moves up will be uploaded to the document in the same position as the one before it.
+        # If the following row doesn't have as many cells as the row it's replacing, then it wouldn't
+        # overwrite all the cells and some trailing values could be left over. All rows might need to have
+        # extra cells added so they will overwrite all the cells left from the row they're replacing.
+        while row_index < len(values_grid):
+            next_row = values_grid[row_index]
+            while number_of_cells_replaced > len(next_row):
+                next_row.append(self._empty_cell_value)
+
+            # Get the number of cells in this row, the row after it will be taking it's place in the document
+            number_of_cells_replaced = len(next_row)
+            row_index += 1
 
     def get_row_at(self, row_index, tab_id=None):
         """

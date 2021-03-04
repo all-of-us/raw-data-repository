@@ -340,26 +340,31 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             # 1
             # _
             # _ _ _ 8
-            # 9
+            # _
+            # _ 9
             sheet.update_cell(0, 0, '1')
             sheet.update_cell(2, 3, '8')
-            sheet.update_cell(3, 0, '9')
+            sheet.update_cell(4, 1, '9')
 
             # Insert a new row at the third spot, resulting in a sheet that appears as
             # 1
             # _
-            # _
+            # _ _ _ _
             # _ _ _ 8
             # 9
+            # NOTE: writing empty cells is needed to 'erase' what is google drive for the row that is moving down
+            # (otherwise we would write the cells in the new row and miss updates needed for where it was).
+            # 9 and 8 are examples of cells that need their old location cleared
             sheet.insert_new_row_at(2)
 
             # Check that the sheet has the new row
             self.assertEqual([
                 ['1'],
                 [''],
-                [''],
+                ['', '', '', ''],
                 ['', '', '', '8'],
-                ['9'],
+                ['', ''],
+                ['', '9']
             ], sheet.get_tab_values())
 
     def test_removing_rows(self):
@@ -369,22 +374,31 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             # 10
             # _ _ _ 8
             # 9
+            # _ _ _ _ 7
             sheet.update_cell(0, 0, '1')
             sheet.update_cell(1, 0, '10')
             sheet.update_cell(2, 3, '8')
             sheet.update_cell(3, 0, '9')
+            sheet.update_cell(4, 4, '7')
 
-            # Remove the second row, resulting in a sheet that appears as
+            # Remove the second and third row, resulting in a sheet that appears as
             # 1
             # _ _ _ 8
-            # 9
+            # 9 _ _ _
+            # _ _ _ _ 7
+            # _ _ _ _ _
+            # NOTE: writing empty cells is needed to 'erase' what is google drive for the rows that are moving up
+            # (otherwise we would write the cells in the new row and miss updates needed for where it was).
+            # 7 and 8 are examples of cells that need their old location cleared
             sheet.remove_row_at(1)
 
             # Check that the sheet looks right
             self.assertEqual([
                 ['1'],
                 ['', '', '', '8'],
-                ['9'],
+                ['9', '', '', ''],
+                ['', '', '', '', '7'],
+                ['', '', '', '', '']
             ], sheet.get_tab_values())
 
     def test_retrieving_row_values(self):
