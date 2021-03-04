@@ -43,7 +43,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus
 from rdr_service.resource.helpers import DateCollection
 
 
@@ -153,7 +153,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id, ro_session))
             # # Depreciated for now: calculate enrollment status times
             # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
@@ -206,13 +206,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: True if 'cdm' database exists otherwise False.
         """
         sql = "SELECT * FROM cdm.tmp_questionnaire_response LIMIT 1"
+
         try:
             ro_session.execute(sql)
             return True
         except exc.ProgrammingError:
             pass
         except exc.OperationalError:
-            logging.warning('Unexpected error found when checking for tmp_questionnaire_response table', exc_info=True)
+            logging.warning('Unexpected error found when checking for tmp_questionnaire_response table',
+                            exc_info=True)
         return False
 
     def _prep_participant(self, p_id, ro_session):
@@ -939,11 +941,13 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, summary):
+    def _calculate_enrollment_status(self, summary, p_id, ro_session):
         """
         Calculate the participant's enrollment status
-        :param summary: summary data
-        :return: dict:q
+        :param summary: summary
+        :param p_id: (int) Participant ID
+        :param ro_session: Readonly DAO session object
+        :return: dict:
         """
         status = EnrollmentStatusV2.REGISTERED
         data = {
@@ -1123,6 +1127,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         if status > EnrollmentStatusV2.REGISTERED:
             data['enrollment_member'] = \
                 enrollment_member_time if enrollment_member_time != datetime.datetime.max else None
+
+        # PDR-236 WORKAROUND.  The logic for determining CORE_MINUS_PM enrollment status and calculating the new
+        # enrollment_core_minus_pm timestamp will need to be incorporated above.  For now, check the
+        # RDR participant_summary data directly and use its values.  This is done after the existing calculation
+        # because RDR and PDR use different enrollment status buckets (EnrollmentStatus vs. EnrollmentStatusV2)
+        # PDR calculations should take precedence except when RDR has CORE_MINUS_PM as the status
+        ps = ro_session.query(ParticipantSummary.enrollmentStatus,
+                              ParticipantSummary.enrollmentStatusCoreMinusPMTime,
+                              ParticipantSummary.enrollmentStatusMemberTime) \
+            .filter(ParticipantSummary.participantId == p_id).first()
+
+        if ps:
+            # Always use RDR's enrollmentCoreMinusPMTime timestamp, regardless of current
+            # enrollment status (status could have since been upgraded if PM was later completed)
+            data['enrollment_core_minus_pm'] = ps.enrollmentStatusCoreMinusPMTime
+            if ps.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+                data['enrollment_status'] = str(EnrollmentStatusV2.CORE_MINUS_PM)
+                data['enrollment_status_id'] = int(EnrollmentStatusV2.CORE_MINUS_PM)
+
+            # Temporary/extra QC check of pre-existing calculation logic, since we have RDR timestamp to compare to
+            if data['enrollment_member'] != ps.enrollmentStatusMemberTime:
+                logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
 
         return data
 
