@@ -37,6 +37,11 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
             _logger.info(f'Skipping file {self.event.name}, name does not match AW1 file.')
             return
 
+        # Northwest moves their files to a `downloaded` subfolder. Ignore these.
+        if 'downloaded' in self.event.name.lower():
+            _logger.info(f'Skipping file {self.event.name}, in downloaded folder.')
+            return
+
         _logger.info(f"file found: {self.event.name}")
 
         cloud_file_path = f'{self.event.bucket}/{self.event.name}'
