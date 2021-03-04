@@ -2993,6 +2993,8 @@ class ManifestDefinitionProvider:
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                     (GenomicGCValidationMetrics.ignoreFlag == 0) &
+                    (GenomicGCValidationMetrics.contamination.isnot(None)) &
+                    (GenomicGCValidationMetrics.contamination != '') &
                     (GenomicFileProcessed.genomicManifestFileId == self.kwargs['kwargs']['input_manifest'].id)
                 )
             )
