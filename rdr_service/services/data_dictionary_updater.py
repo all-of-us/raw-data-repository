@@ -439,11 +439,12 @@ class DataDictionaryUpdater:
         for tab_id, row in self.schema_tab_row_trackers.items():
             sheet.truncate_tab_at_row(row, tab_id)
 
-        # TODO: should only update dates if something on the tabs actually changed
         now = datetime.now()
         current_date_string = f'{now.month}/{now.day}/{now.year}'
-        sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
-        sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
+        if self.changelog[dictionary_tab_id]:
+            sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
+        if self.changelog[internal_tables_tab_id]:
+            sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
 
     def run_update(self):
         with GoogleSheetsClient(
