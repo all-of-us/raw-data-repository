@@ -88,7 +88,7 @@ from rdr_service.config import (
     BIOBANK_AW2F_SUBFOLDER,
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
-
+from sqlalchemy.orm import aliased
 
 class GenomicFileIngester:
     """
@@ -2640,6 +2640,7 @@ class GenomicBiobankSamplesCoupler:
         been denoted to use in the long read pilot program
         """
         with self.member_dao.session() as session:
+            gsm_alias = aliased(GenomicSetMember)
             result = session.query(GenomicSetMember).join(
                 ParticipantSummary,
                 GenomicSetMember.participantId == ParticipantSummary.participantId,
@@ -2649,13 +2650,19 @@ class GenomicBiobankSamplesCoupler:
             ).join(
                 Code,
                 ParticipantRaceAnswers.codeId == Code.codeId,
+            ).outerjoin(
+                gsm_alias,
+                sqlalchemy.and_(
+                    gsm_alias.participantId == ParticipantSummary.participantId,
+                    gsm_alias.genomeType == 'long_read'
+                )
             ).filter(
                 Code.value == 'WhatRaceEthnicity_Black',
-                GenomicSetMember.genomeType == 'aou_wgs',
-                GenomicSetMember.genomeType != 'long_read',
+                GenomicSetMember.genomeType.in_(['aou_wgs']),
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                 ParticipantSummary.participantOrigin == 'vibrent',
-                ParticipantSummary.ehrUpdateTime.isnot(None)
+                ParticipantSummary.ehrUpdateTime.isnot(None),
+                gsm_alias.id.is_(None)
             )
             if max_num:
                 result = result.limit(max_num)
