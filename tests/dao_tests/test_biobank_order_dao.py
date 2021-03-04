@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, Conflict, Forbidden
 
 from rdr_service import clock
 from rdr_service.code_constants import BIOBANK_TESTS
-from rdr_service.dao.biobank_order_dao import BiobankOrderDao
+from rdr_service.dao.biobank_order_dao import BiobankOrderDao, FEDEX_TRACKING_NUMBER_URL
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
@@ -331,3 +331,25 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.assertEqual(amended_order.amendedReason, "I had to change something")
         self.assertEqual(amended_order.amendedSiteId, 1)
         self.assertEqual(amended_order.amendedUsername, "mike@pmi-ops.org")
+
+    def test_orders_can_use_a_recycled_tracking_number(self):
+        recycled_tracking_number = '121212'
+        self.data_generator.create_database_biobank_order_identifier(
+            system=FEDEX_TRACKING_NUMBER_URL,
+            value=recycled_tracking_number
+        )
+
+        another_order = self.data_generator._biobank_order()
+        another_order.identifiers.append(self.data_generator._biobank_order_identifier(
+            system=FEDEX_TRACKING_NUMBER_URL,
+            value=recycled_tracking_number
+        ))
+
+        self.dao.insert(another_order)
+
+        # Verify that there are two identifiers with the tracking number now
+        identifier_query = self.session.query(BiobankOrderIdentifier).filter(
+            BiobankOrderIdentifier.system == FEDEX_TRACKING_NUMBER_URL,
+            BiobankOrderIdentifier.value == recycled_tracking_number
+        )
+        self.assertEqual(2, identifier_query.count())

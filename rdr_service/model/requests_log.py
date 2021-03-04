@@ -10,6 +10,7 @@ class RequestsLog(Base):
   """
 
     __tablename__ = "requests_log"
+    __rdr_internal_table__ = True
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)

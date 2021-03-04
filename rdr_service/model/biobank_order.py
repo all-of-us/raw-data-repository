@@ -95,7 +95,10 @@ class BiobankOrderBase(object):
     """
 
     orderOrigin = Column("order_origin", String(80))
-    """Where it came from - HealthPro, etc."""
+    """
+    Where it came from - HealthPro, etc.
+    @rdr_dictionary_show_unique_values
+    """
 
     @declared_attr
     def participantId(cls):
@@ -113,6 +116,7 @@ class BiobankOrderBase(object):
     # For syncing new orders.
     @declared_attr
     def logPositionId(cls):
+        """@rdr_dictionary_internal_column"""
         return Column("log_position_id", Integer, ForeignKey("log_position.log_position_id"), nullable=False)
 
     # The site that created the order -- createdInfo['site'] in the resulting JSON
@@ -186,13 +190,20 @@ class BiobankQuestOrderSiteAddress(Base):
 
 class BiobankOrderIdentifierBase(object):
     system = Column("system", String(80), primary_key=True)
-    """Whether the order originated from Mayo Clinic or HealthPro"""
+    """
+    Whether the order originated from Mayo Clinic or HealthPro
+    @rdr_dictionary_show_unique_values
+    """
     value = Column("value", String(80), primary_key=True, index=True)
     """The internal ID of the system"""
 
     @declared_attr
     def biobankOrderId(cls):
-        return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), nullable=False)
+        return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"),
+                      primary_key=True, nullable=False)
+
+    def __str__(self):
+        return f'{self.value} (system: {self.system})'
 
 
 class BiobankOrderIdentifier(BiobankOrderIdentifierBase, Base):
@@ -218,6 +229,7 @@ class BiobankOrderedSampleBase(object):
     """
     What the test ordered is.
     Unique within an order, though the same test may be redone in another order for the participant.
+    @rdr_dictionary_show_unique_values
     """
 
     description = Column("description", UnicodeText, nullable=False)

@@ -45,6 +45,9 @@ class _CodeBase(object):
 
     codeId = Column("code_id", Integer, primary_key=True)
     system = Column("system", String(255), nullable=False)
+    """
+    @rdr_dictionary_show_unique_values
+    """
     value = Column("value", String(80), nullable=False)
     # OMOP codes are supposed to be at most 50 characters long; for legacy codes that exceeded this
     # limit, we populate a shortened version for use in OMOP here. Otherwise, shortValue is identical

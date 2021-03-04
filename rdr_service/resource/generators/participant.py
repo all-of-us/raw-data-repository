@@ -93,7 +93,7 @@ _consent_answer_status_map = {
     # COPE_A_13
     CONSENT_COPE_NO_CODE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     # COPE_A_231
-    CONSENT_COPE_DEFERRED_CODE: BQModuleStatusEnum.SUBMITTED_NOT_SURE,
+    CONSENT_COPE_DEFERRED_CODE: BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'ConsentAncestryTraits_Yes': BQModuleStatusEnum.SUBMITTED,
     'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE

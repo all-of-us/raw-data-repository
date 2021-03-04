@@ -67,7 +67,10 @@ class BiobankMailKitOrder(Base):
     """PTSC payload; device name"""
     # itemReference/Device/Identifier[0] (system=SKU)
     itemSKUCode = Column("item_sku_code", String(80), nullable=True)
-    """Sku of the order"""
+    """
+    Sku of the order
+    @rdr_dictionary_show_unique_values
+    """
     # itemReference/Device/Identifier[1] (system=SNOMED)
     itemSNOMEDCode = Column("item_snomed_code", String(80), nullable=True)
     """snomed code"""
@@ -114,13 +117,17 @@ class BiobankMailKitOrder(Base):
     """
     Whether it was part of a salivary order or the salivary pilot; easy way to filter DVs out of biobank_orders
     (if it contains value here, it should be a DV order)
+    @rdr_dictionary_show_unique_values
     """
 
     orderStatus = Column("order_status", Enum(OrderShipmentStatus), default=OrderShipmentStatus.UNSET)
     """The fulfillment status of the order"""
 
     shipmentCarrier = Column("shipment_carrier", String(80), nullable=True)
-    """The carrier for the biobank order shipment; which carrier to query for order_status"""
+    """
+    The carrier for the biobank order shipment; which carrier to query for order_status
+    @rdr_dictionary_show_unique_values
+    """
 
     shipmentEstArrival = Column("shipment_est_arrival", DateTime, nullable=True)
     """The estimated arrival datetime for the shipment"""
@@ -146,7 +153,10 @@ class BiobankMailKitOrder(Base):
     """
 
     biobankStatus = Column("biobank_status", String(30), nullable=True)
-    """Response from the Mayo Clinic API about the RDR creating the biobank order"""
+    """
+    Response from the Mayo Clinic API about the RDR creating the biobank order
+    @rdr_dictionary_show_unique_values
+    """
 
     biobankReceived = Column("biobank_received", UTCDateTime6, nullable=True)
     """The datetime when the biobank order was received"""

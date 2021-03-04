@@ -111,16 +111,17 @@ class GenomicJobController:
         manifest_file = self.manifest_file_dao.get_manifest_file_from_filepath(_file_path)
 
         if manifest_file is None:
-
+            path_list = _file_path.split('/')
             file_to_insert = GenomicManifestFile(
                 created=now,
                 modified=now,
                 uploadDate=_uploadDate,
                 manifestTypeId=_manifest_type,
                 filePath=_file_path,
-                bucketName=_file_path.split('/')[0],
+                bucketName=path_list[0],
                 recordCount=0,  # Initializing with 0, counting records when processing file
                 rdrProcessingComplete=0,
+                fileName=path_list[-1]
             )
 
             manifest_file = self.manifest_file_dao.insert(file_to_insert)
@@ -494,6 +495,7 @@ class GenomicJobController:
                     recordCount=result['record_count'],
                     rdrProcessingComplete=1,
                     rdrProcessingCompleteDate=now_time,
+                    fileName=new_file_path.split('/')[-1]
                 )
                 new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 

@@ -187,7 +187,6 @@ class GenomicSetMember(Base):
     cvlW4ManifestJobRunID = Column('cvl_w4_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
-
     cvlW4FManifestJobRunID = Column('cvl_w4f_manifest_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)

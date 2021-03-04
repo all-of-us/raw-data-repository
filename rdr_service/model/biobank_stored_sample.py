@@ -57,7 +57,10 @@ class BiobankStoredSample(Base):
     As requested/suggested by Mayo, it should be 12 alphanumeric characters long
     """
     test = Column("test", String(80), nullable=False, index=True)
-    """The name of the test run to produce this sample"""
+    """
+    The name of the test run to produce this sample
+    @rdr_dictionary_show_unique_values
+    """
 
     # Timestamp when Biobank finished receiving/preparing the sample (status changed from "In Prep"
     # to "In Circulation" in Mayo). This is the end time used for order-to-sample latency measurement.
@@ -107,6 +110,7 @@ class BiobankStoredSampleStatusImportTmp(Base):
     This table will store the data from these old inventory files in the RDR.
     """
     __tablename__ = "biobank_stored_sample_status_import_tmp"
+    __rdr_internal_table__ = True
 
     id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
 

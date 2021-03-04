@@ -14,7 +14,10 @@ class Organization(Base):
     organizationId = Column("organization_id", Integer, primary_key=True)
     # External ID for the organization, e.g. WISC_MADISON
     externalId = Column("external_id", String(80), nullable=False)
-    """Vibrent's internal ID for organizations"""
+    """
+    Vibrent's internal ID for organizations
+    @rdr_dictionary_show_unique_values
+    """
     displayName = Column("display_name", String(255), nullable=False)
     """Human readable display name for the organization, e.g. University of Wisconsin, Madison"""
     hpoId = Column("hpo_id", Integer, ForeignKey("hpo.hpo_id"), nullable=False)
