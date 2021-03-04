@@ -64,6 +64,21 @@ class DictionarySchemaRowUpdateHelper:
 
         self.sheet.update_cell(self.row, value_ref_index, new_value)
 
+
+class KeyTabUpdateHelper:
+    def __init__(self):
+        self.change_detected = False
+
+    def update_with_values(self, sheet: GoogleSheetsClient, row, values_list):
+        existing_values = sheet.get_row_at(row)
+        for column_index, new_value in enumerate(values_list):
+            existing_value = existing_values[column_index] if len(existing_values) > column_index else None
+            self.change_detected = self.change_detected or (
+                existing_value != new_value and bool(existing_value or new_value)
+            )
+            sheet.update_cell(row, column_index, new_value)
+
+
 class DataDictionaryUpdater:
     def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session):
         self.gcp_service_key_id = gcp_service_key_id
@@ -191,6 +206,7 @@ class DataDictionaryUpdater:
         sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
         change_log_key = (reflected_table_name, reflected_column.name)
+        changelog_for_tab = self.changelog[dictionary_tab_id]
 
         # Check what's already on the sheet in the row we're currently at. If the current table and column would go
         # before what's already there, then insert a new row and fill that out. If what is there would be
@@ -220,7 +236,7 @@ class DataDictionaryUpdater:
                     # row in the sheet and continue checking the next row.
                     if reflected_table_name != existing_table_name or reflected_column.name != existing_column_name:
                         sheet.remove_row_at(current_row)
-                        self.changelog[(existing_table_name, existing_column_name)] = 'removing'
+                        changelog_for_tab[(existing_table_name, existing_column_name)] = 'removing'
 
         existing_deprecation_note = None
         if adding_new_row:
@@ -229,7 +245,7 @@ class DataDictionaryUpdater:
             sheet.update_cell(current_row, DictionarySchemaField.RDR_VERSION_INTRODUCED, self.rdr_version)
             sheet.update_cell(current_row, DictionarySchemaField.TABLE_COLUMN_CONCATENATION,
                               f'{reflected_table_name}.{reflected_column.name}')
-            self.changelog[(reflected_table_name, reflected_column.name)] = 'adding'
+            changelog_for_tab[(reflected_table_name, reflected_column.name)] = 'adding'
         else:
             # If we're not adding a row, then we're updating one. Check to see if there's a deprecation note.
             deprecation_note_index = int(DictionarySchemaField.DEPRECATION_INDICATOR)
@@ -240,7 +256,7 @@ class DataDictionaryUpdater:
             sheet,
             current_row,
             existing_row_values if not adding_new_row else None,
-            self.changelog,
+            changelog_for_tab,
             change_log_key
         )
 
@@ -306,6 +322,8 @@ class DataDictionaryUpdater:
         return False
 
     def _populate_questionnaire_key_tab(self, sheet: GoogleSheetsClient):
+        update_helper = KeyTabUpdateHelper()
+
         questionnaire_data_list = self.session.query(
             QuestionnaireConcept.questionnaireId,
             Code.display,
@@ -325,42 +343,41 @@ class DataDictionaryUpdater:
         sheet.set_current_tab(questionnaire_key_tab_id)
         for row_number, (questionnaire_id, code_display, code_value,
                          code_short_value, has_responses) in enumerate(questionnaire_data_list):
-            sheet.update_cell(row_number, 0, questionnaire_id)
-
-            sheet.update_cell(row_number, 1, code_display)
-            sheet.update_cell(row_number, 2, code_short_value)
-
-            sheet.update_cell(row_number, 3, 'Y' if has_responses else 'N')
+            has_responses_yn_indicator = 'Y' if has_responses else 'N'
 
             is_ppi_survey = 'Scheduling' not in code_value and 'SNAP' not in code_value
-            sheet.update_cell(row_number, 4, 'Y' if is_ppi_survey else 'N')
+            is_ppi_survey_yn_indicator = 'Y' if is_ppi_survey else 'N'
+
+            update_helper.update_with_values(sheet, row_number, [
+                questionnaire_id, code_display, code_short_value, has_responses_yn_indicator, is_ppi_survey_yn_indicator
+            ])
 
         sheet.truncate_tab_at_row(len(questionnaire_data_list))
+        self.changelog[questionnaire_key_tab_id] = update_helper.change_detected
 
     def _populate_hpo_key_tab(self, sheet: GoogleSheetsClient):
+        update_helper = KeyTabUpdateHelper()
+
         hpo_data_list = self.session.query(HPO.hpoId, HPO.name, HPO.displayName).all()
         sheet.set_current_tab(hpo_key_tab_id)
         for row_number, hpo_data in enumerate(hpo_data_list):
-            sheet.update_cell(row_number, 0, hpo_data.hpoId)
-            sheet.update_cell(row_number, 1, hpo_data.name)
-            sheet.update_cell(row_number, 2, hpo_data.displayName)
+            update_helper.update_with_values(sheet, row_number, hpo_data)
 
         sheet.truncate_tab_at_row(len(hpo_data_list))
+        self.changelog[hpo_key_tab_id] = update_helper.change_detected
 
     def _populate_site_key_tab(self, sheet: GoogleSheetsClient):
+        update_helper = KeyTabUpdateHelper()
+
         site_data_list = self.session.query(
-            Site.siteId, Site.siteName, Site.googleGroup, Organization.displayName, Organization.externalId
+            Site.siteId, Site.siteName, Site.googleGroup, Organization.externalId, Organization.displayName
         ).join(Organization).all()
         sheet.set_current_tab(site_key_tab_id)
-        for row_number, (site_id, site_name, google_group,
-                         org_display_name, org_external_id) in enumerate(site_data_list):
-            sheet.update_cell(row_number, 0, site_id)
-            sheet.update_cell(row_number, 1, site_name)
-            sheet.update_cell(row_number, 2, google_group)
-            sheet.update_cell(row_number, 3, org_external_id)
-            sheet.update_cell(row_number, 4, org_display_name)
+        for row_number, site_data in enumerate(site_data_list):
+            update_helper.update_with_values(sheet, row_number, site_data)
 
         sheet.truncate_tab_at_row(len(site_data_list))
+        self.changelog[site_key_tab_id] = update_helper.change_detected
 
     def _populate_schema_tabs(self, sheet: GoogleSheetsClient):
         metadata = MetaData()

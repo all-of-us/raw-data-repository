@@ -298,8 +298,9 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
 
         # Check that the changelog shows that we're adding something that is in our current schema, and
         # removing the dictionary record that isn't
-        self.assertEqual('adding', self.updater.changelog.get(('participant', 'participant_id')))
-        self.assertEqual('removing', self.updater.changelog.get(('table_that_never_existed', 'id')))
+        data_dictionary_change_log = self.updater.changelog[dictionary_tab_id]
+        self.assertEqual('adding', data_dictionary_change_log.get(('participant', 'participant_id')))
+        self.assertEqual('removing', data_dictionary_change_log.get(('table_that_never_existed', 'id')))
 
     def test_change_log_when_updating_schema_row(self):
         """Show that the changelog displays what changed when updating a row in the data-dictionary"""
@@ -322,3 +323,13 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
                       '10-character string beginning with P.', list_of_participant_id_changes)
         self.assertIn('PRIMARY_KEY_INDICATOR: changing from:\n\n<<< to >>>\nYes', list_of_participant_id_changes)
         self.assertIn('FOREIGN_KEY_INDICATOR: changing from:\nYes\n<<< to >>>\nNo', list_of_participant_id_changes)
+
+    def test_key_tab_change_indicator(self):
+        self.updater.run_update()
+
+        # For now the changelog just says whether something was changed on the key tabs.
+        # Check to make sure it's set appropriately.
+        # This test assumes there are no Questionnaires in the database (that way the questionnair key tab stays
+        # unchanged/empty and there wouldn't be any changes for it.
+        self.assertTrue(self.updater.changelog[hpo_key_tab_id])
+        self.assertFalse(self.updater.changelog[questionnaire_key_tab_id])
