@@ -165,6 +165,9 @@ class BQPDRParticipantSummarySchema(BQSchema):
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    # PDR-236:  Support for new RDR participant_summary.enrollment_core_minus_pm_time field in PDR data
+    enrollment_core_minus_pm = BQField('enrollment_core_minus_pm', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """

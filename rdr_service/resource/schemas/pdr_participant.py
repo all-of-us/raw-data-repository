@@ -62,6 +62,7 @@ class PDRParticipantSchema(Schema):
     enrollment_member = fields.DateTime()
     enrollment_core_ordered = fields.DateTime()
     enrollment_core_stored = fields.DateTime()
+    enrollment_core_minus_pm = fields.DateTime()
 
     consent_cohort = fields.EnumString(enum=ParticipantCohort)
     consent_cohort_id = fields.EnumInteger(enum=ParticipantCohort)
