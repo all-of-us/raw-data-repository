@@ -219,9 +219,9 @@ class DataDictionaryUpdater:
             reflected_table_name == existing_table_name and reflected_column.name == existing_column_name
         ):
             existing_row_values = sheet.get_row_at(current_row)
-            # If the length is less than two then the row doesn't have schema information
-            # (since it should have a table and column name)
-            if len(existing_row_values) < 2:
+            # Check if the current row has any schema information, if not then overwrite it
+            # and assume we're adding a new row
+            if len(existing_row_values) < 2 or existing_row_values[:2] == ['', '']:
                 adding_new_row = True
             else:
                 existing_table_name, existing_column_name, *_ = existing_row_values
