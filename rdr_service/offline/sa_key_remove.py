@@ -27,7 +27,7 @@ def delete_service_account_keys():
 
         for account in accounts:
             if account["email"] in service_accounts_with_long_lived_keys:
-                logging.info("Skip key expiration check for Service Account {}".format(account))
+                logging.info("Skip key expiration check for Service Account {}".format(account["email"]))
                 continue
 
             serviceaccount = project_name + "/serviceAccounts/" + account["email"]

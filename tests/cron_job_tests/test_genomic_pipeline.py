@@ -3059,10 +3059,13 @@ class GenomicPipelineTest(BaseTestCase):
         # Set up test Aw4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+        file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
 
-        self._create_ingestion_test_file('AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
-                                         bucket_name, folder=sub_folder,
-                                         include_timestamp=False)
+        self._create_ingestion_test_file(file_name,
+                                         bucket_name,
+                                         folder=sub_folder,
+                                         include_timestamp=False
+                                        )
         # Run Workflow
         genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
 
@@ -3073,17 +3076,15 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
             if member.id == 1:
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
-                self.assertEqual("gs://drc-broad-test/fp_path_1.vcf.gz", member.fingerprintPath)
             if member.id == 2:
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
-                self.assertEqual("gs://drc-broad-test/fp_path_2.vcf.gz", member.fingerprintPath)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_DRCB_GEN_2020-07-11-00-00-00.csv',
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
-        self.assertEqual('AoU_DRCB_GEN_2020-07-11-00-00-00.csv', file_record.fileName)
+        self.assertEqual(file_name, file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

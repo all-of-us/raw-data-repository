@@ -789,7 +789,8 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['sampleid']
-                genome_type = GENOME_TYPE_ARRAY if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
+                genome_type = GENOME_TYPE_ARRAY \
+                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
 
                 member = self.member_dao.get_member_from_aw3_sample(sample_id,
                                                                     genome_type)
@@ -798,12 +799,7 @@ class GenomicFileIngester:
                     continue
 
                 member.aw4ManifestJobRunID = self.job_run_id
-
-                # Set the QC status and fingerprint path
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
-
-                if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
-                    member.fingerprintPath = row_copy['fppath']
 
                 self.member_dao.update(member)
 
@@ -1396,7 +1392,6 @@ class GenomicFileValidator:
             "vcfindexpath",
             "researchid",
             "qcstatus",
-            "fppath",
         )
 
         self.AW4_WGS_SCHEMA = (

@@ -1,3 +1,3 @@
-biobank_id,sample_id,sex_at_birth,site_id,red_idat_path,red_idat_md5_path,green_idat_path,green_idat_md5_path,vcf_path,vcf_index_path,research_id,QC_status,fp_path
-1,1001,f,BI,1234_1_Red.idat,1234_1_Red.idat.md5sum,1234_1_Grn.idat,1234_1_Grn.idat.md5sum,1234_1_vcf.gz,1234_1_vcf.gz.tbi,109001,PASS,gs://drc-broad-test/fp_path_1.vcf.gz
-2,1002,f,BI,1234_2_Red.idat,1234_2_Red.idat.md5sum,1234_2_Grn.idat,1234_2_Grn.idat.md5sum,1234_2_vcf.gz,1234_2_vcf.gz.tbi,109002,FAIL,gs://drc-broad-test/fp_path_2.vcf.gz
+biobank_id,sample_id,sex_at_birth,site_id,red_idat_path,red_idat_md5_path,green_idat_path,green_idat_md5_path,vcf_path,vcf_index_path,research_id,QC_status
+1,1001,f,BI,1234_1_Red.idat,1234_1_Red.idat.md5sum,1234_1_Grn.idat,1234_1_Grn.idat.md5sum,1234_1_vcf.gz,1234_1_vcf.gz.tbi,109001,PASS
+2,1002,f,BI,1234_2_Red.idat,1234_2_Red.idat.md5sum,1234_2_Grn.idat,1234_2_Grn.idat.md5sum,1234_2_vcf.gz,1234_2_vcf.gz.tbi,109002,FAIL
