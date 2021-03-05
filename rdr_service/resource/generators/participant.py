@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import MySQLdb
 import re
 
 from collections import OrderedDict
@@ -214,7 +215,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return True
         except exc.ProgrammingError:
             pass
-        except exc.OperationalError:
+        except (exc.OperationalError, MySQLdb._exceptions.OperationalError):
             msg = 'Unexpected error found when checking for tmp_questionnaire_response table'
             logging.warning(msg, exc_info=False)
         return False
