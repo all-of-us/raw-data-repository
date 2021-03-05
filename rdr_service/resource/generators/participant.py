@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import MySQLdb
 import re
 
 from collections import OrderedDict
@@ -44,7 +45,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -151,7 +152,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id, ro_session))
             # # Depreciated for now: calculate enrollment status times
             # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
@@ -164,7 +165,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
-            return generators.ResourceRecordSet(schemas.ParticipantSummarySchema, summary)
+            return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
         """
@@ -214,7 +215,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return True
         except exc.ProgrammingError:
             pass
-        except exc.OperationalError:
+        except (exc.OperationalError, MySQLdb._exceptions.OperationalError):
             msg = 'Unexpected error found when checking for tmp_questionnaire_response table'
             logging.warning(msg, exc_info=False)
         return False
@@ -944,10 +945,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, summary):
+    def _calculate_enrollment_status(self, summary, p_id, ro_session):
         """
         Calculate the participant's enrollment status
         :param summary: summary data
+        :param p_id:  (int) participant ID
+        :param ro_session: Readonly DAO session object
         :return: dict
         """
         status = EnrollmentStatusV2.REGISTERED
@@ -1128,6 +1131,28 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if status > EnrollmentStatusV2.REGISTERED:
             data['enrollment_member'] = \
                 enrollment_member_time if enrollment_member_time != datetime.datetime.max else None
+
+        # PDR-236 WORKAROUND.  The logic for determining CORE_MINUS_PM enrollment status and calculating the new
+        # enrollment_core_minus_pm timestamp will need to be incorporated above.  For now, check the
+        # RDR participant_summary data directly and use its values.  This is done after the existing calculation
+        # because RDR and PDR use different enrollment status buckets (EnrollmentStatus vs. EnrollmentStatusV2)
+        # PDR calculations should take precedence except when RDR has CORE_MINUS_PM as the status
+        ps = ro_session.query(ParticipantSummary.enrollmentStatus,
+                              ParticipantSummary.enrollmentStatusCoreMinusPMTime,
+                              ParticipantSummary.enrollmentStatusMemberTime) \
+            .filter(ParticipantSummary.participantId == p_id).first()
+
+        if ps:
+            # Always use RDR's enrollmentCoreMinusPMTime timestamp, regardless of current
+            # enrollment status (status could have since been upgraded if PM was later completed)
+            data['enrollment_core_minus_pm'] = ps.enrollmentStatusCoreMinusPMTime
+            if ps.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+                data['enrollment_status'] = str(EnrollmentStatusV2.CORE_MINUS_PM)
+                data['enrollment_status_id'] = int(EnrollmentStatusV2.CORE_MINUS_PM)
+
+            # Temporary/extra QC check of pre-existing calculation logic, since we have RDR timestamp to compare to
+            if data['enrollment_member'] != ps.enrollmentStatusMemberTime:
+                logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
 
         return data
 

@@ -24,7 +24,7 @@ deploy_args = [
     '--memory=512'
 ]
 
-task_queue = 'resource-tasks'
+task_queue = 'genomics'
 _logger = logging.getLogger('function')
 
 

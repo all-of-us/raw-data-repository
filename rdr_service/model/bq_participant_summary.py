@@ -294,6 +294,10 @@ class BQParticipantSummarySchema(BQSchema):
 
     # PDR-178:  Add cabor_authored to align with RDR consent_for_cabor / consent_for_cabor_authored
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    # PDR-236:  Support for new RDR participant_summary.enrollment_core_minus_pm_time field in PDR data
+    enrollment_core_minus_pm = BQField('enrollment_core_minus_pm', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

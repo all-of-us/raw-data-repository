@@ -197,7 +197,7 @@ class EHRReceiptSchema(Schema):
         resource_uri = 'Participant/{participant_id}/EHRReceipt'
 
 
-class ParticipantSummarySchema(Schema):
+class ParticipantSchema(Schema):
     """ Participant Activity Summary Schema """
     last_modified = fields.DateTime()
 
@@ -219,6 +219,7 @@ class ParticipantSummarySchema(Schema):
     enrollment_member = fields.DateTime()
     enrollment_core_ordered = fields.DateTime()
     enrollment_core_stored = fields.DateTime()
+    enrollment_core_minus_pm = fields.DateTime()
 
     # These EHR fields are populated from Curation data.
     ehr_status = fields.EnumString(enum=EhrStatus)

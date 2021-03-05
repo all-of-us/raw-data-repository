@@ -361,6 +361,7 @@ class ParticipantSummary(Base):
     """
     .. warning::
         DEPRECATED - use :py:attr:`wasEhrDataAvailable` instead.
+    @deprecated Use wasEhrDataAvailable (was_ehr_data_available) instead
 
     Indicates whether Electronic Health Records (EHR) have ever been present for the participant.
 

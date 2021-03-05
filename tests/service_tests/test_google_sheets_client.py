@@ -24,12 +24,14 @@ class GoogleSheetsTestBase(BaseTestCase):
         mock_discovery = service_patcher.start()
         self.mock_spreadsheets_return = mock_discovery.build.return_value.spreadsheets.return_value
 
+        self._empty_cell = self._mock_cell(None)
+
         # We can't create tabs through code, so have the spreadsheet download two empty tabs by default
         self.default_tab_names = self._default_tab_names()
         self.mock_spreadsheets_return.get.return_value.execute.return_value = {
             'sheets': [{
                 'properties': {'title': tab_name},
-                'data': [{'rowData': [{'values': [self._mock_cell(None)]}]}]
+                'data': [{'rowData': [{'values': [self._empty_cell]}]}]
             } for tab_name in self.default_tab_names]
         }
 
@@ -71,17 +73,17 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         # _ _ 'another tab for testing'
         # Tab title: 'Final tab'
         # 'test'
-        empty_cell = self._mock_cell(None)
         first_tab_title = 'first_tab'
         first_tab_data = {
             'properties': {'title': first_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]},
-                    {'values': [empty_cell, self._mock_cell('5')]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'), self._empty_cell,
+                                self._mock_cell('9')]},
+                    {'values': [self._empty_cell, self._mock_cell('5')]},
                     {'values': [self._mock_cell('3')]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('4')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('4')]}
                 ]
             }]
         }
@@ -90,8 +92,8 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             'properties': {'title': second_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('another tab for testing')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('another tab for testing')]}
                 ]
             }]
         }
@@ -223,8 +225,7 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         able to offset the values that are uploaded as an update.
         """
 
-
-        # Mock a spreadsheet with three tabs on google drive
+        # Mock a spreadsheet with two tabs on google drive
         # The test spreadsheet looks like this (underscores represent a cell that will be blank):
         # Tab title: 'first_tab'
         # _ _ '7' _ '9'
@@ -234,14 +235,14 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
         # _
         # _
         # _ _ '7' _ '9'
-        empty_cell = self._mock_cell(None)
         first_tab_title = 'first_tab'
         first_tab_data = {
             'properties': {'title': first_tab_title},
             'data': [{
                 'rowData': [
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]},
-                    {'values': [empty_cell, self._mock_cell('2'), self._mock_cell('3')]}
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'),
+                                self._empty_cell, self._mock_cell('9')]},
+                    {'values': [self._empty_cell, self._mock_cell('2'), self._mock_cell('3')]}
                 ]
             }]
         }
@@ -251,9 +252,10 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             'data': [{
                 'rowData': [
                     {'values': [self._mock_cell('another tab for testing')]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell]},
-                    {'values': [empty_cell, empty_cell, self._mock_cell('7'), empty_cell, self._mock_cell('9')]}
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell]},
+                    {'values': [self._empty_cell, self._empty_cell, self._mock_cell('7'),
+                                self._empty_cell, self._mock_cell('9')]}
                 ]
             }]
         }
@@ -284,3 +286,134 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
             ['', '8'],
             ['', '9']
         ], second_uploaded_tab_data['values'])
+
+    def test_clearing_further_sheet_rows(self):
+        """
+        When updating sheets there should be a way to clear out the rest of the
+        sheet when we know we're at the last row of the updates
+        """
+
+        # Mock a spreadsheet
+        # The test spreadsheet looks like this:
+        # Tab title: 'only_tab'
+        # _
+        # _
+        # _
+        # _ _ _ _ b
+        # _ a
+        tab_title = 'only_tab'
+        self.mock_spreadsheets_return.get.return_value.execute.return_value = {
+            'sheets': [{
+                'properties': {'title': tab_title},
+                'data': [{
+                    'rowData': [
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell]},
+                        {'values': [self._empty_cell, self._empty_cell, self._empty_cell, self._empty_cell,
+                                    self._mock_cell('b')]},
+                        {'values': [self._empty_cell, self._mock_cell('a')]}
+                    ]
+                }]
+            }]
+        }
+
+        # Set offsets for the tabs and then update some values
+        with GoogleSheetsClient('', '') as sheet:
+            sheet.update_cell(0, 0, 'test')
+            sheet.truncate_tab_at_row(1)
+
+        # Make sure row 1 and on were cleared
+        tab_data = self._get_uploaded_sheet_data()[0]
+        self.assertEqual([
+            ['test'],
+            [''],
+            [''],
+            ['', '', '', '', ''],
+            ['', ''],
+        ], tab_data['values'])
+
+    def test_inserting_new_rows(self):
+        """Inserting new rows should push existing rows down"""
+        with GoogleSheetsClient('', '') as sheet:
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # _
+            # _ _ _ 8
+            # _
+            # _ 9
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(2, 3, '8')
+            sheet.update_cell(4, 1, '9')
+
+            # Insert a new row at the third spot, resulting in a sheet that appears as
+            # 1
+            # _
+            # _ _ _ _
+            # _ _ _ 8
+            # 9
+            # NOTE: writing empty cells is needed to 'erase' what is google drive for the row that is moving down
+            # (otherwise we would write the cells in the new row and miss updates needed for where it was).
+            # 9 and 8 are examples of cells that need their old location cleared
+            sheet.insert_new_row_at(2)
+
+            # Check that the sheet has the new row
+            self.assertEqual([
+                ['1'],
+                [''],
+                ['', '', '', ''],
+                ['', '', '', '8'],
+                ['', ''],
+                ['', '9']
+            ], sheet.get_tab_values())
+
+    def test_removing_rows(self):
+        with GoogleSheetsClient('', '') as sheet:
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # 10
+            # _ _ _ 8
+            # 9
+            # _ _ _ _ 7
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(1, 0, '10')
+            sheet.update_cell(2, 3, '8')
+            sheet.update_cell(3, 0, '9')
+            sheet.update_cell(4, 4, '7')
+
+            # Remove the second and third row, resulting in a sheet that appears as
+            # 1
+            # _ _ _ 8
+            # 9 _ _ _
+            # _ _ _ _ 7
+            # _ _ _ _ _
+            # NOTE: writing empty cells is needed to 'erase' what is google drive for the rows that are moving up
+            # (otherwise we would write the cells in the new row and miss updates needed for where it was).
+            # 7 and 8 are examples of cells that need their old location cleared
+            sheet.remove_row_at(1)
+
+            # Check that the sheet looks right
+            self.assertEqual([
+                ['1'],
+                ['', '', '', '8'],
+                ['9', '', '', ''],
+                ['', '', '', '', '7'],
+                ['', '', '', '', '']
+            ], sheet.get_tab_values())
+
+    def test_retrieving_row_values(self):
+        with GoogleSheetsClient('', '') as sheet:
+
+            # Set up a sheet with some values. The resulting sheet should appear as follows
+            # 1
+            # _
+            # _ 1 2 _ 8
+            # 9
+            sheet.update_cell(0, 0, '1')
+            sheet.update_cell(2, 1, '1')
+            sheet.update_cell(2, 2, '2')
+            sheet.update_cell(2, 4, '8')
+            sheet.update_cell(3, 0, '9')
+
+            # Verify we can get the expected row
+            self.assertEqual(['', '1', '2', '', '8'], sheet.get_row_at(2))
