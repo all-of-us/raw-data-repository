@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import MySQLdb
 import re
 
 from collections import OrderedDict
@@ -212,7 +213,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             return True
         except exc.ProgrammingError:
             pass
-        except exc.OperationalError:
+        except (exc.OperationalError, MySQLdb._exceptions.OperationalError):
             logging.warning('Unexpected error found when checking for tmp_questionnaire_response table',
                             exc_info=True)
         return False
