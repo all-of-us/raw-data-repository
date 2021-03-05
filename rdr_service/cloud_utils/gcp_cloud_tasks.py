@@ -81,7 +81,7 @@ class GCPCloudTask(object):
         while retry:
             retry -= 1
             try:
-                response = self._client.create_task(parent, task)
+                response = self._client.create_task(parent=parent, task=task)
                 if not quiet:
                     logging.info('Created task {0}'.format(response.name))
                 return
