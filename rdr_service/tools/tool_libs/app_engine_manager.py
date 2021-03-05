@@ -204,7 +204,7 @@ class DeployAppClass(object):
             \nDevelopers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
             \nNeeded By Date/Event: <target release date>
             \nPriority: <Low, Medium, High>
-            \nConfiguration/Change Manager: Katie Worley
+            \nConfiguration/Change Manager: Bhinnata Piya
             \n
             \nAnticipated Impact: <None, Low, Medium, High>
             \nSoftware Impact: <Software Impact>
