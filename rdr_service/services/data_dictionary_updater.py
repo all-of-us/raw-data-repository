@@ -1,12 +1,14 @@
+from datetime import datetime
+from protorpc import messages
 from sqlalchemy import MetaData
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
-from sqlalchemy.orm import joinedload
 
 from rdr_service.model.base import Base
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
-from rdr_service.model.questionnaire import QuestionnaireHistory
+from rdr_service.model.organization import Organization
+from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.site import Site
 from rdr_service.services.google_sheets_client import GoogleSheetsClient
@@ -18,11 +20,75 @@ questionnaire_key_tab_id = 'Key_Questionnaire'
 site_key_tab_id = 'Key_Site'
 
 
+class DictionarySchemaField(messages.Enum):
+    TABLE_NAME = 0
+    COLUMN_NAME = 1
+    TABLE_COLUMN_CONCATENATION = 2
+    DATA_TYPE = 3
+    DESCRIPTION = 4
+    NUM_UNIQUE_VALUES = 5
+    UNIQUE_VALUE_LIST = 6
+    VALUE_MEANING_MAP = 7
+    VALUES_KEY = 8
+    PRIMARY_KEY_INDICATOR = 9
+    FOREIGN_KEY_INDICATOR = 10
+    FOREIGN_KEY_TARGET_TABLE_COLUMN_LIST = 11
+    FOREIGN_KEY_TARGET_COLUMN_LIST = 12
+    DEPRECATION_INDICATOR = 13
+    RDR_VERSION_INTRODUCED = 14
+
+
+class DictionarySchemaRowUpdateHelper:
+    """Updating the rows for a column depends on shared values, this helps de-clutter while allowing for reuse"""
+    def __init__(self, sheet, row, existing_row_values, changelog, changelog_key):
+        self.sheet = sheet
+        self.row = row
+        self.existing_row_values = existing_row_values
+        self.changelog = changelog
+        self.changelog_key = changelog_key
+
+    def set_value(self, value_reference, new_value):
+        value_ref_index = int(value_reference)
+
+        # Only record the update in the changelog if we're updating a row (rather than adding a brand new one)
+        if self.existing_row_values:
+            previous_value = self.existing_row_values[value_ref_index] \
+                if len(self.existing_row_values) > value_ref_index else None
+            if previous_value != new_value and (previous_value or new_value):
+                if self.changelog_key not in self.changelog:
+                    # Initialize this column's list of changes
+                    self.changelog[self.changelog_key] = []
+
+                self.changelog[self.changelog_key].append(f'{value_reference}: changing from:\n{previous_value}\n'
+                                                          f'<<< to >>>\n{new_value}')
+
+        self.sheet.update_cell(self.row, value_ref_index, new_value)
+
+
+class KeyTabUpdateHelper:
+    def __init__(self):
+        self.change_detected = False
+
+    def update_with_values(self, sheet: GoogleSheetsClient, row, values_list):
+        existing_values = sheet.get_row_at(row)
+        for column_index, new_value in enumerate(values_list):
+            existing_value = existing_values[column_index] if len(existing_values) > column_index else None
+            self.change_detected = self.change_detected or (
+                existing_value != new_value and bool(existing_value or new_value)
+            )
+            sheet.update_cell(row, column_index, new_value)
+
+
 class DataDictionaryUpdater:
-    def __init__(self, gcp_service_key_id, dictionary_sheet_id, session):
+    def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session):
         self.gcp_service_key_id = gcp_service_key_id
         self.dictionary_sheet_id = dictionary_sheet_id
         self.session = session
+        self.schema_tab_row_trackers = {
+            dictionary_tab_id: 4,
+            internal_tables_tab_id: 4
+        }
+        self.rdr_version = rdr_version
 
         # List out tables that should be marked as internal, but aren't mapped in the ORM
         self.internal_table_list = [
@@ -53,8 +119,17 @@ class DataDictionaryUpdater:
             'patient_status_history'
         ]
 
-    # TODO:
-    #  Create ability to clear cells in content and further rows (if the update is shorter than what was there)
+        # Keep a record of the changes made to the sheet.
+        # The changelog for the key tabs will just be an indicator of whether something was added or not.
+        # The schema changelogs will be dictionaries. Keys will be a tuple of the table and column names,
+        # and the values will be a list of the changes being made to that column
+        self.changelog = {
+            dictionary_tab_id: {},
+            internal_tables_tab_id: {},
+            hpo_key_tab_id: False,
+            questionnaire_key_tab_id: False,
+            site_key_tab_id: False
+        }
 
     def _is_alembic_generated_history_table(self, table_name):
         return table_name in self._alembic_history_table_list
@@ -114,20 +189,80 @@ class DataDictionaryUpdater:
             self._get_column_docstring_list(column_definition, analyzer)
         ) if not line.startswith('@rdr_dictionary')])
 
-    def _get_deprecation_status_and_note(self, table_name):
+    def _get_deprecation_status_and_note(self, table_name, column_definition, analyzer: ModuleAnalyzer):
         if table_name in self._deprecated_table_map:
             return True, self._deprecated_table_map[table_name]
 
+        if column_definition and analyzer:
+            for docstring_line in self._get_column_docstring_list(column_definition, analyzer):
+                if docstring_line.startswith('@deprecated'):
+                    return True, docstring_line[11:].strip()
+
         return False, None
 
-    def _write_to_sheet(self, sheet: GoogleSheetsClient, tab_id, current_row, reflected_table_name, reflected_column,
-                        column_description, display_unique_data, value_meaning_map):
+    def _write_to_schema_sheet(self, sheet: GoogleSheetsClient, tab_id, reflected_table_name,
+                               reflected_column, column_description, display_unique_data, value_meaning_map,
+                               is_deprecated, deprecation_note):
         sheet.set_current_tab(tab_id)
-        sheet.update_cell(current_row, 0, reflected_table_name)
-        sheet.update_cell(current_row, 1, reflected_column.name)
-        sheet.update_cell(current_row, 2, f'{reflected_table_name}.{reflected_column.name}')
-        sheet.update_cell(current_row, 3, str(reflected_column.type))
-        sheet.update_cell(current_row, 4, column_description)
+        current_row = self.schema_tab_row_trackers[tab_id]
+        change_log_key = (reflected_table_name, reflected_column.name)
+        changelog_for_tab = self.changelog[tab_id]
+
+        # Check what's already on the sheet in the row we're currently at. If the current table and column would go
+        # before what's already there, then insert a new row and fill that out. If what is there would be
+        # removed (the current table or column name is different and we should have already seen what's in the sheet
+        # since they're alphabetical) then remove the current row and continue checking against the next row.
+        adding_new_row = False
+        existing_table_name = existing_column_name = existing_row_values = None
+        while not adding_new_row and not (
+            # Checking if we're supposed to update the existing dictionary row
+            reflected_table_name == existing_table_name and reflected_column.name == existing_column_name
+        ):
+            existing_row_values = sheet.get_row_at(current_row)
+            # Check if the current row has any schema information, if not then overwrite it
+            # and assume we're adding a new row
+            if len(existing_row_values) < 2 or existing_row_values[:2] == ['', '']:
+                adding_new_row = True
+            else:
+                existing_table_name, existing_column_name, *_ = existing_row_values
+                if reflected_table_name < existing_table_name or reflected_column.name < existing_column_name:
+                    # The row being written would go before what's already there (regardless of whether what is
+                    # there will continue to be there later).
+                    # Insert the new row above what's already there.
+                    sheet.insert_new_row_at(current_row)
+                    adding_new_row = True
+                else:
+                    # At this point the table and column name we're writing either match or belong after what is
+                    # currently there. If it belongs after, then we never saw what is there and we should remove the
+                    # row in the sheet and continue checking the next row.
+                    if reflected_table_name != existing_table_name or reflected_column.name != existing_column_name:
+                        sheet.remove_row_at(current_row)
+                        changelog_for_tab[(existing_table_name, existing_column_name)] = 'removing'
+
+        existing_deprecation_note = None
+        if adding_new_row:
+            sheet.update_cell(current_row, DictionarySchemaField.TABLE_NAME, reflected_table_name)
+            sheet.update_cell(current_row, DictionarySchemaField.COLUMN_NAME, reflected_column.name)
+            sheet.update_cell(current_row, DictionarySchemaField.RDR_VERSION_INTRODUCED, self.rdr_version)
+            sheet.update_cell(current_row, DictionarySchemaField.TABLE_COLUMN_CONCATENATION,
+                              f'{reflected_table_name}.{reflected_column.name}')
+            changelog_for_tab[(reflected_table_name, reflected_column.name)] = 'adding'
+        else:
+            # If we're not adding a row, then we're updating one. Check to see if there's a deprecation note.
+            deprecation_note_index = int(DictionarySchemaField.DEPRECATION_INDICATOR)
+            if len(existing_row_values) > deprecation_note_index:
+                existing_deprecation_note = existing_row_values[deprecation_note_index]
+
+        sheet_row = DictionarySchemaRowUpdateHelper(
+            sheet,
+            current_row,
+            existing_row_values if not adding_new_row else None,
+            changelog_for_tab,
+            change_log_key
+        )
+
+        sheet_row.set_value(DictionarySchemaField.DATA_TYPE, str(reflected_column.type))
+        sheet_row.set_value(DictionarySchemaField.DESCRIPTION, column_description)
 
         if display_unique_data:
             distinct_values = self.session.execute(
@@ -135,29 +270,38 @@ class DataDictionaryUpdater:
             )
             unique_values_display_list = [str(value) if value is not None else 'NULL' for (value,) in distinct_values]
 
-            sheet.update_cell(current_row, 5, str(len(unique_values_display_list)))
-            sheet.update_cell(current_row, 6, ', '.join(
+            sheet_row.set_value(DictionarySchemaField.NUM_UNIQUE_VALUES, str(len(unique_values_display_list)))
+            sheet_row.set_value(DictionarySchemaField.UNIQUE_VALUE_LIST, ', '.join(
                 sorted(unique_values_display_list, key=lambda val_str: val_str.lower())
             ))
+        else:
+            # Write empty values to the cells in case they previously had values
+            sheet_row.set_value(DictionarySchemaField.NUM_UNIQUE_VALUES, '')
+            sheet_row.set_value(DictionarySchemaField.UNIQUE_VALUE_LIST, '')
 
-        if value_meaning_map:
-            sheet.update_cell(current_row, 7, value_meaning_map)
+        sheet_row.set_value(DictionarySchemaField.VALUE_MEANING_MAP, value_meaning_map or '')
+        sheet_row.set_value(DictionarySchemaField.VALUES_KEY, '')
 
-        sheet.update_cell(current_row, 8, ' ')
-        sheet.update_cell(current_row, 9, 'Yes' if reflected_column.primary_key else 'No')
-        sheet.update_cell(current_row, 10, 'Yes' if len(reflected_column.foreign_keys) > 0 else 'No')
+        sheet_row.set_value(DictionarySchemaField.PRIMARY_KEY_INDICATOR,
+                            'Yes' if reflected_column.primary_key else 'No')
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_INDICATOR,
+                            'Yes' if len(reflected_column.foreign_keys) > 0 else 'No')
+
         # Display the targets of foreign keys as target_table_name.target_column_name
-        sheet.update_cell(current_row, 11, ', '.join([
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_TARGET_TABLE_COLUMN_LIST, ', '.join([
             f'{foreign_key.column.table}.{foreign_key.column.name}' for foreign_key in reflected_column.foreign_keys
         ]))
         # Display the target column names of foreign keys
-        sheet.update_cell(current_row, 12, ', '.join([
+        sheet_row.set_value(DictionarySchemaField.FOREIGN_KEY_TARGET_COLUMN_LIST, ', '.join([
             foreign_key.column.name for foreign_key in reflected_column.foreign_keys
         ]))
 
-        is_deprecated, deprecation_note = self._get_deprecation_status_and_note(reflected_table_name)
-        if is_deprecated:
-            sheet.update_cell(current_row, 13, f'Deprecated: {deprecation_note}')
+        # Don't replace the existing deprecation note (and rdr version) if it's already there
+        if is_deprecated and not existing_deprecation_note:
+            sheet_row.set_value(DictionarySchemaField.DEPRECATION_INDICATOR,
+                                f'Deprecated in {self.rdr_version}: {deprecation_note}')
+
+        self.schema_tab_row_trackers[tab_id] += 1
 
     def _get_is_internal_column(self, model, table_name, column_definition, analyzer: ModuleAnalyzer):
         if model and getattr(model, '__rdr_internal_table__', False):
@@ -179,48 +323,67 @@ class DataDictionaryUpdater:
         return False
 
     def _populate_questionnaire_key_tab(self, sheet: GoogleSheetsClient):
-        query = self.session.query(QuestionnaireHistory).options(joinedload(QuestionnaireHistory.concepts))
-        questionnaire_data_list = query.all()
+        update_helper = KeyTabUpdateHelper()
+
+        questionnaire_data_list = self.session.query(
+            QuestionnaireConcept.questionnaireId,
+            Code.display,
+            Code.value,
+            Code.shortValue,
+            QuestionnaireResponse.questionnaireResponseId.isnot(None)
+        ).join(
+            Code,
+            QuestionnaireConcept.codeId == Code.codeId
+        ).join(
+            QuestionnaireResponse,
+            # Specifically not joining by version (and assuming all versions use the same concept) since the output
+            # doesn't show version information
+            QuestionnaireResponse.questionnaireId == QuestionnaireConcept.questionnaireId,
+            isouter=True
+        ).distinct().all()
         sheet.set_current_tab(questionnaire_key_tab_id)
-        for row_number, questionnaire_data in enumerate(questionnaire_data_list):
-            sheet.update_cell(row_number, 0, questionnaire_data.questionnaireId)
+        for row_number, (questionnaire_id, code_display, code_value,
+                         code_short_value, has_responses) in enumerate(questionnaire_data_list):
+            has_responses_yn_indicator = 'Y' if has_responses else 'N'
 
-            if len(questionnaire_data.concepts) > 0:
-                first_module_code = self.session.query(Code).filter(
-                    Code.codeId == questionnaire_data.concepts[0].codeId
-                ).one()
-                sheet.update_cell(row_number, 1, first_module_code.display)
-                sheet.update_cell(row_number, 2, first_module_code.shortValue)
+            is_ppi_survey = 'Scheduling' not in code_value and 'SNAP' not in code_value
+            is_ppi_survey_yn_indicator = 'Y' if is_ppi_survey else 'N'
 
-            has_response = self.session.query(QuestionnaireResponse).filter(
-                QuestionnaireResponse.questionnaireId == questionnaire_data.questionnaireId
-            ).limit(1).one_or_none()
-            sheet.update_cell(row_number, 3, 'Y' if has_response else 'N')
+            update_helper.update_with_values(sheet, row_number, [
+                questionnaire_id, code_display, code_short_value, has_responses_yn_indicator, is_ppi_survey_yn_indicator
+            ])
+
+        sheet.truncate_tab_at_row(len(questionnaire_data_list))
+        self.changelog[questionnaire_key_tab_id] = update_helper.change_detected
 
     def _populate_hpo_key_tab(self, sheet: GoogleSheetsClient):
+        update_helper = KeyTabUpdateHelper()
+
         hpo_data_list = self.session.query(HPO.hpoId, HPO.name, HPO.displayName).all()
         sheet.set_current_tab(hpo_key_tab_id)
         for row_number, hpo_data in enumerate(hpo_data_list):
-            sheet.update_cell(row_number, 0, hpo_data.hpoId)
-            sheet.update_cell(row_number, 1, hpo_data.name)
-            sheet.update_cell(row_number, 2, hpo_data.displayName)
+            update_helper.update_with_values(sheet, row_number, hpo_data)
+
+        sheet.truncate_tab_at_row(len(hpo_data_list))
+        self.changelog[hpo_key_tab_id] = update_helper.change_detected
 
     def _populate_site_key_tab(self, sheet: GoogleSheetsClient):
-        site_data_list = self.session.query(Site.siteId, Site.siteName, Site.googleGroup).all()
+        update_helper = KeyTabUpdateHelper()
+
+        site_data_list = self.session.query(
+            Site.siteId, Site.siteName, Site.googleGroup, Organization.externalId, Organization.displayName
+        ).join(Organization).all()
         sheet.set_current_tab(site_key_tab_id)
         for row_number, site_data in enumerate(site_data_list):
-            sheet.update_cell(row_number, 0, site_data.siteId)
-            sheet.update_cell(row_number, 1, site_data.siteName)
-            sheet.update_cell(row_number, 2, site_data.googleGroup)
+            update_helper.update_with_values(sheet, row_number, site_data)
+
+        sheet.truncate_tab_at_row(len(site_data_list))
+        self.changelog[site_key_tab_id] = update_helper.change_detected
 
     def _populate_schema_tabs(self, sheet: GoogleSheetsClient):
         metadata = MetaData()
         metadata.reflect(bind=self.session.bind)  # , views=True)
 
-        current_row_tracker = {
-            dictionary_tab_id: 4,
-            internal_tables_tab_id: 4
-        }
         for table_name in sorted(metadata.tables.keys()):
             table_data = metadata.tables[table_name]
 
@@ -267,9 +430,22 @@ class DataDictionaryUpdater:
                 else:
                     sheet_tab_id = dictionary_tab_id
 
-                self._write_to_sheet(sheet, sheet_tab_id, current_row_tracker[sheet_tab_id], table_name, column,
-                                     column_description, show_unique_values, value_meaning_map)
-                current_row_tracker[sheet_tab_id] += 1
+                is_deprecated, deprecation_note = self._get_deprecation_status_and_note(
+                    table_name, column_definition, analyzer
+                )
+
+                self._write_to_schema_sheet(sheet, sheet_tab_id, table_name, column, column_description,
+                                            show_unique_values, value_meaning_map, is_deprecated, deprecation_note)
+
+        for tab_id, row in self.schema_tab_row_trackers.items():
+            sheet.truncate_tab_at_row(row, tab_id)
+
+        now = datetime.now()
+        current_date_string = f'{now.month}/{now.day}/{now.year}'
+        if self.changelog[dictionary_tab_id]:
+            sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
+        if self.changelog[internal_tables_tab_id]:
+            sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
 
     def run_update(self):
         with GoogleSheetsClient(

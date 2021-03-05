@@ -125,10 +125,10 @@ class GoogleSheetsClient:
         :param tab_id: Name of the tab to modify. The default tab is used if this parameter isn't provided.
         :return: None
         """
+        if not isinstance(col, int):
+            col = int(col)
 
-        if tab_id is None:
-            tab_id = self._default_tab_id
-        values_grid = self._tabs.get(tab_id)
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
 
         # Increase the number of rows we have if the caller is setting a cell on a
         # row farther out than what is initialized
@@ -144,12 +144,92 @@ class GoogleSheetsClient:
 
         row_for_update[col] = value
 
+    def truncate_tab_at_row(self, row, tab_id=None):
+        """
+        Clears all values from the sheet at and below the given row (setting their cells equal to an empty string).
+
+        :param row: Row to start clearing, starting from 0 at the top of the document
+        :param tab_id: Tab to clear values from, defaults to the current tab if not provided
+        """
+
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+
+        current_row = row
+        while current_row < len(values_grid):  # Iterate through the rows
+            # Replace everything in the row with empty strings
+            values_grid[current_row] = [self._empty_cell_value] * len(values_grid[current_row])
+            current_row += 1
+
+    def insert_new_row_at(self, row_index, tab_id=None):
+        """
+        Creates a new, empty row at the given row index. The current row at the given index will be moved down.
+        :param row_index: Index, counting from 0, for the new row
+        :param tab_id: Tab to add the new row to, defaults to the current tab if not provided
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        values_grid.insert(row_index, [self._empty_cell_value])
+
+        # All the following rows will be moved down.
+        # Any row in front of a row that moves down will be uploaded to the document in the same position as the one
+        # that moved down. Any row in front of one that moves down needs to have as many cells as the one it's
+        # replacing, so that it will overwrite all the values left over from the row that it pushed down.
+        while row_index < len(values_grid) - 1:  # The last row isn't replacing anything, so doesn't need to be checked
+            row_to_expand = values_grid[row_index]
+            number_of_cells_to_replace = len(values_grid[row_index + 1])
+            while number_of_cells_to_replace > len(row_to_expand):
+                row_to_expand.append(self._empty_cell_value)
+
+            row_index += 1
+
+    def remove_row_at(self, row_index, tab_id=None):
+        """
+        Removes a row from the sheet.
+        :param row_index: Index, counting from 0, for the row to remove
+        :param tab_id: Tab to remove the row from, defaults to the current tab if not provided
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+        number_of_cells_replaced = len(values_grid[row_index])
+        del values_grid[row_index]
+
+        # Removing a row in the document means every row moves up, including the last one.
+        # So we need to insert a row at the end to overwrite the values left from when the original last row moves up.
+        # (The number of cells is expanded later in this method).
+        values_grid.append([self._empty_cell_value])
+
+        # All following rows will be moved up.
+        # Any rows after a row that moves up will be uploaded to the document in the same position as the one before it.
+        # If the following row doesn't have as many cells as the row it's replacing, then it wouldn't
+        # overwrite all the cells and some trailing values could be left over. All rows might need to have
+        # extra cells added so they will overwrite all the cells left from the row they're replacing.
+        while row_index < len(values_grid):
+            next_row = values_grid[row_index]
+            while number_of_cells_replaced > len(next_row):
+                next_row.append(self._empty_cell_value)
+
+            # Get the number of cells in this row, the row after it will be taking it's place in the document
+            number_of_cells_replaced = len(next_row)
+            row_index += 1
+
+    def get_row_at(self, row_index, tab_id=None):
+        """
+        Retrieves the list of values at the given row. If the indexed row doesn't already exist, this method will
+        expand the grid until it does.
+
+        :param row_index: Index, counting from 0, for the row to retrieve
+        :param tab_id: Tab to read the row from, defaults to the current tab if not provided
+        :return: List of values that make up the given row
+        """
+        values_grid = self._tabs.get(tab_id or self._default_tab_id)
+
+        while row_index >= len(values_grid):
+            values_grid.append([self._empty_cell_value])
+
+        return list(values_grid[row_index])
+
     def upload_values(self):
         """
         Upload the local data to the google drive spreadsheet.
         Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
-
-        :return: None
         """
         request = self._service.spreadsheets().values().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
