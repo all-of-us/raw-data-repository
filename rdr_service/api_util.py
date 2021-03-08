@@ -4,7 +4,7 @@ import datetime
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 from rdr_service.storage import get_storage_provider
-from rdr_service.code_constants import UNMAPPED, UNSET, PMI_SKIP_CODE
+from rdr_service.code_constants import UNMAPPED, UNSET
 
 # Role constants
 PTC = "ptc"
@@ -71,7 +71,7 @@ def format_json_date(obj, field_name, date_format=None):
                 obj[field_name] = obj[field_name].isoformat()
 
 
-def format_json_code(obj, code_dao, field_name, is_the_basics_complete):
+def format_json_code(obj, code_dao, field_name, unset_value=UNSET):
     field_without_id = field_name[0 : len(field_name) - 2]
     value = obj.get(field_name)
     if value:
@@ -82,7 +82,7 @@ def format_json_code(obj, code_dao, field_name, is_the_basics_complete):
             obj[field_without_id] = UNMAPPED
         del obj[field_name]
     else:
-        obj[field_without_id] = PMI_SKIP_CODE if is_the_basics_complete else UNSET
+        obj[field_without_id] = unset_value
 
 
 def format_json_hpo(obj, hpo_dao, field_name):

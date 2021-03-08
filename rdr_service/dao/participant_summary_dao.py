@@ -21,7 +21,7 @@ from rdr_service.api_util import (
     format_json_site,
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PPI_SYSTEM, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PPI_SYSTEM, PMI_SKIP_CODE, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -830,10 +830,11 @@ class ParticipantSummaryDao(UpdatableDao):
 
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
-        if model.withdrawalStatus == WithdrawalStatus.NO_USE and (
+        should_clear_fields_for_withdrawal = model.withdrawalStatus == WithdrawalStatus.NO_USE and (
             model.withdrawalTime is None
             or model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
-        ):
+        )
+        if should_clear_fields_for_withdrawal:
             result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
         result["participantId"] = to_client_participant_id(model.participantId)
@@ -858,7 +859,7 @@ class ParticipantSummaryDao(UpdatableDao):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
 
         # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
-        if is_the_basics_complete:
+        if is_the_basics_complete and not should_clear_fields_for_withdrawal:
             if model.genderIdentity is None or model.genderIdentity == GenderIdentity.UNSET:
                 result['genderIdentity'] = GenderIdentity.PMI_Skip
 
@@ -925,7 +926,9 @@ class ParticipantSummaryDao(UpdatableDao):
         for fieldname in _DATE_FIELDS:
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
-            format_json_code(result, self.code_dao, fieldname, is_the_basics_complete)
+            is_demographic_field = fieldname in ['educationId', 'incomeId', 'sexualOrientationId', 'sexId']
+            unset_value = PMI_SKIP_CODE if is_demographic_field and not should_clear_fields_for_withdrawal else UNSET
+            format_json_code(result, self.code_dao, fieldname, unset_value=unset_value)
         for fieldname in _ENUM_FIELDS:
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:
