@@ -3236,6 +3236,28 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
 
+    def test_blank_demographics_data_mapped_to_skip(self):
+        # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.
+        # Some early summaries show this, we should map to displaying skip to have a more consistent output.
+        participant_summary = self.data_generator.create_database_participant_summary(
+            questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+            genderIdentityId=None,
+            sexId=None,
+            sexualOrientationId=None,
+            race=None,
+            educationId=None,
+            incomeId=None
+        )
+
+        # Verify that the UNSET demographic fields are mapped to skip codes
+        response = self.send_get(f'Participant/P{participant_summary.participantId}/Summary')
+        self.assertEqual(PMI_SKIP_CODE, response['genderIdentity'])
+        self.assertEqual(PMI_SKIP_CODE, response['sex'])
+        self.assertEqual(PMI_SKIP_CODE, response['sexualOrientation'])
+        self.assertEqual(PMI_SKIP_CODE, response['race'])
+        self.assertEqual(PMI_SKIP_CODE, response['education'])
+        self.assertEqual(PMI_SKIP_CODE, response['income'])
+
     def test_access_unset_participants_for_hoa_lite(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
