@@ -801,6 +801,21 @@ class GenomicFileIngester:
                 member.aw4ManifestJobRunID = self.job_run_id
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
 
+                metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+                if metrics:
+                    metrics.drcSexConcordance = row_copy['drcsexconcordance']
+                    metrics.drcContamination = row_copy['drccontamination']
+
+                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                        metrics.drcCallRate = row_copy['drccallrate']
+
+                    elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                        metrics.drcMeanCoverage = row_copy['drcmeancoverage']
+                        metrics.drcFpConcordance = row_copy['drcfpconcordance']
+
+                    self.metrics_dao.upsert(metrics)
+
                 self.member_dao.update(member)
 
                 # Update member for PDR
@@ -835,7 +850,8 @@ class GenomicFileIngester:
             logging.error(f"File path '{path}' not found")
             return GenomicSubProcessResult.ERROR
 
-    def _read_data_to_ingest(self, csv_file):
+    @staticmethod
+    def _read_data_to_ingest(csv_file):
         data_to_ingest = {'rows': []}
         csv_reader = csv.DictReader(csv_file, delimiter=",")
         data_to_ingest['fieldnames'] = csv_reader.fieldnames
@@ -1153,7 +1169,6 @@ class GenomicFileIngester:
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
 
-
     def _validate_collection_tube_id(self, collection_tube_id, bid):
         """
         Returns true if biobank_ID is associated to biobank_stored_sample_id
@@ -1169,7 +1184,8 @@ class GenomicFileIngester:
 
         return False
 
-    def _get_qc_status_from_value(self, aw4_value):
+    @staticmethod
+    def _get_qc_status_from_value(aw4_value):
         """
         Returns the GenomicQcStatus enum value for
         :param aw4_value: string from AW4 file (PASS/FAIL)
@@ -1392,6 +1408,9 @@ class GenomicFileValidator:
             "vcfindexpath",
             "researchid",
             "qcstatus",
+            "drcsexconcordance",
+            "drccontamination",
+            "drccallrate",
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1410,6 +1429,10 @@ class GenomicFileValidator:
             "craipath",
             "researchid",
             "qcstatus",
+            "drcsexconcordance",
+            "drccontamination",
+            "drcmeancoverage",
+            "drcfpconcordance",
         )
 
         self.AW5_WGS_SCHEMA = {

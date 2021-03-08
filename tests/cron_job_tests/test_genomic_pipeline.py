@@ -3056,6 +3056,12 @@ class GenomicPipelineTest(BaseTestCase):
         # simulates the AW1 (sample_ids come from Biobank)
         self._update_test_sample_ids()
 
+        for i, member in enumerate(self.member_dao.get_all()):
+            record = GenomicGCValidationMetrics()
+            record.id = i + 1
+            record.genomicSetMemberId = member.id
+            self.metrics_dao.upsert(record)
+
         # Set up test Aw4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
@@ -3066,17 +3072,30 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=sub_folder,
                                          include_timestamp=False
                                         )
+
         # Run Workflow
         genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
 
         # Test AW4 manifest updated fields
-        members = self.member_dao.get_all()
-        for member in members:
+        for member in self.member_dao.get_all():
+            metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+            self.assertIsNotNone(metrics.drcSexConcordance)
+            self.assertIsNotNone(metrics.drcContamination)
+            self.assertIsNotNone(metrics.drcCallRate)
+
+            self.assertIsNone(metrics.drcMeanCoverage)
+            self.assertIsNone(metrics.drcFpConcordance)
+
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
+                self.assertEqual('0', metrics.drcContamination)
+                self.assertEqual('0.99689185', metrics.drcCallRate)
             if member.id == 1:
+                self.assertEqual('TRUE', metrics.drcSexConcordance)
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
             if member.id == 2:
+                self.assertEqual('FALSE', metrics.drcSexConcordance)
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
 
         # Test Files Processed
@@ -3104,32 +3123,52 @@ class GenomicPipelineTest(BaseTestCase):
         # simulates the AW1 (sample_ids come from Biobank)
         self._update_test_sample_ids()
 
+        for i, member in enumerate(self.member_dao.get_all()):
+            record = GenomicGCValidationMetrics()
+            record.id = i + 1
+            record.genomicSetMemberId = member.id
+            self.metrics_dao.upsert(record)
+
         # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
+        file_name = 'AoU_DRCB_SEQ_2020-07-11-00-00-00.csv'
 
-        self._create_ingestion_test_file('AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
-                                         bucket_name, folder=sub_folder,
-                                         include_timestamp=False)
+        self._create_ingestion_test_file(file_name,
+                                         bucket_name,
+                                         folder=sub_folder,
+                                         include_timestamp=False
+                                         )
         # Run Workflow
         genomic_pipeline.aw4_wgs_manifest_workflow()  # run_id 2
 
         # Test AW4 manifest updated fields
-        members = self.member_dao.get_all()
-        for member in members:
+        for member in self.member_dao.get_all():
+            metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+            self.assertIsNotNone(metrics.drcSexConcordance)
+            self.assertIsNotNone(metrics.drcContamination)
+            self.assertIsNone(metrics.drcCallRate)
+            self.assertIsNotNone(metrics.drcMeanCoverage)
+            self.assertIsNotNone(metrics.drcFpConcordance)
+
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
+                self.assertEqual('0', metrics.drcContamination)
+                self.assertEqual('63.2800', metrics.drcMeanCoverage)
             if member.id == 1:
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+                self.assertEqual('TRUE', metrics.drcFpConcordance)
             if member.id == 2:
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
+                self.assertEqual('FALSE', metrics.drcFpConcordance)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_DRCB_SEQ_2020-07-11-00-00-00.csv',
+        self.assertEqual(f'/{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
-        self.assertEqual('AoU_DRCB_SEQ_2020-07-11-00-00-00.csv', file_record.fileName)
+        self.assertEqual(file_name, file_record.fileName)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

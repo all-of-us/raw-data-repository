@@ -163,8 +163,9 @@ def reconcile_metrics_vs_array_data(provider=None):
     with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        genome_type = 'array'
-        controller.run_reconciliation_to_data(genome_type)
+        controller.run_reconciliation_to_data(
+            genome_type='array'
+        )
 
 
 def reconcile_metrics_vs_wgs_data(provider=None):
@@ -175,8 +176,9 @@ def reconcile_metrics_vs_wgs_data(provider=None):
     with GenomicJobController(GenomicJob.RECONCILE_WGS_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        genome_type = 'wgs'
-        controller.run_reconciliation_to_data(genome_type)
+        controller.run_reconciliation_to_data(
+            genome_type='wgs'
+        )
 
 
 def aw3_array_manifest_workflow():
