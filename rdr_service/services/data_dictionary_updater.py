@@ -134,7 +134,7 @@ class DataDictionaryUpdater:
             site_key_tab_id: False
         }
 
-        self.sheet = None
+        self._sheet = None
 
     def _is_alembic_generated_history_table(self, table_name):
         return table_name in self._alembic_history_table_list
@@ -207,7 +207,7 @@ class DataDictionaryUpdater:
 
     def _write_to_schema_sheet(self, tab_id, reflected_table_name, reflected_column, column_description,
                                display_unique_data, value_meaning_map, is_deprecated, deprecation_note):
-        self.sheet.set_current_tab(tab_id)
+        self._sheet.set_current_tab(tab_id)
         current_row = self.schema_tab_row_trackers[tab_id]
         change_log_key = (reflected_table_name, reflected_column.name)
         changelog_for_tab = self.changelog[tab_id]
@@ -222,7 +222,7 @@ class DataDictionaryUpdater:
             # Checking if we're supposed to update the existing dictionary row
             reflected_table_name == existing_table_name and reflected_column.name == existing_column_name
         ):
-            existing_row_values = self.sheet.get_row_at(current_row)
+            existing_row_values = self._sheet.get_row_at(current_row)
             # Check if the current row has any schema information, if not then overwrite it
             # and assume we're adding a new row
             if len(existing_row_values) < 2 or existing_row_values[:2] == ['', '']:
@@ -234,22 +234,22 @@ class DataDictionaryUpdater:
                     # The row being written would go before what's already there (regardless of whether what is
                     # there will continue to be there later).
                     # Insert the new row above what's already there.
-                    self.sheet.insert_new_row_at(current_row)
+                    self._sheet.insert_new_row_at(current_row)
                     adding_new_row = True
                 else:
                     # At this point the table and column name we're writing either match or belong after what is
                     # currently there. If it belongs after, then we never saw what is there and we should remove the
                     # row in the sheet and continue checking the next row.
                     if reflected_table_name != existing_table_name or reflected_column.name != existing_column_name:
-                        self.sheet.remove_row_at(current_row)
+                        self._sheet.remove_row_at(current_row)
                         changelog_for_tab[(existing_table_name, existing_column_name)] = 'removing'
 
         existing_deprecation_note = None
         if adding_new_row:
-            self.sheet.update_cell(current_row, DictionarySchemaField.TABLE_NAME, reflected_table_name)
-            self.sheet.update_cell(current_row, DictionarySchemaField.COLUMN_NAME, reflected_column.name)
-            self.sheet.update_cell(current_row, DictionarySchemaField.RDR_VERSION_INTRODUCED, self.rdr_version)
-            self.sheet.update_cell(current_row, DictionarySchemaField.TABLE_COLUMN_CONCATENATION,
+            self._sheet.update_cell(current_row, DictionarySchemaField.TABLE_NAME, reflected_table_name)
+            self._sheet.update_cell(current_row, DictionarySchemaField.COLUMN_NAME, reflected_column.name)
+            self._sheet.update_cell(current_row, DictionarySchemaField.RDR_VERSION_INTRODUCED, self.rdr_version)
+            self._sheet.update_cell(current_row, DictionarySchemaField.TABLE_COLUMN_CONCATENATION,
                                    f'{reflected_table_name}.{reflected_column.name}')
             changelog_for_tab[(reflected_table_name, reflected_column.name)] = 'adding'
         else:
@@ -259,7 +259,7 @@ class DataDictionaryUpdater:
                 existing_deprecation_note = existing_row_values[deprecation_note_index]
 
         sheet_row = DictionarySchemaRowUpdateHelper(
-            self.sheet,
+            self._sheet,
             current_row,
             existing_row_values if not adding_new_row else None,
             changelog_for_tab,
@@ -328,7 +328,7 @@ class DataDictionaryUpdater:
         return False
 
     def _populate_questionnaire_key_tab(self):
-        update_helper = KeyTabUpdateHelper(self.sheet)
+        update_helper = KeyTabUpdateHelper(self._sheet)
 
         questionnaire_data_list = self.session.query(
             QuestionnaireConcept.questionnaireId,
@@ -346,7 +346,7 @@ class DataDictionaryUpdater:
             QuestionnaireResponse.questionnaireId == QuestionnaireConcept.questionnaireId,
             isouter=True
         ).order_by(QuestionnaireConcept.questionnaireId).distinct().all()
-        self.sheet.set_current_tab(questionnaire_key_tab_id)
+        self._sheet.set_current_tab(questionnaire_key_tab_id)
         for row_number, (questionnaire_id, code_display, code_value,
                          code_short_value, has_responses) in enumerate(questionnaire_data_list):
             has_responses_yn_indicator = 'Y' if has_responses else 'N'
@@ -358,31 +358,31 @@ class DataDictionaryUpdater:
                 questionnaire_id, code_display, code_short_value, has_responses_yn_indicator, is_ppi_survey_yn_indicator
             ])
 
-        self.sheet.truncate_tab_at_row(len(questionnaire_data_list))
+        self._sheet.truncate_tab_at_row(len(questionnaire_data_list))
         self.changelog[questionnaire_key_tab_id] = update_helper.change_detected
 
     def _populate_hpo_key_tab(self):
-        update_helper = KeyTabUpdateHelper(self.sheet)
+        update_helper = KeyTabUpdateHelper(self._sheet)
 
         hpo_data_list = self.session.query(HPO.hpoId, HPO.name, HPO.displayName).order_by(HPO.hpoId).all()
-        self.sheet.set_current_tab(hpo_key_tab_id)
+        self._sheet.set_current_tab(hpo_key_tab_id)
         for row_number, hpo_data in enumerate(hpo_data_list):
             update_helper.update_with_values(row_number, hpo_data)
 
-        self.sheet.truncate_tab_at_row(len(hpo_data_list))
+        self._sheet.truncate_tab_at_row(len(hpo_data_list))
         self.changelog[hpo_key_tab_id] = update_helper.change_detected
 
     def _populate_site_key_tab(self):
-        update_helper = KeyTabUpdateHelper(self.sheet)
+        update_helper = KeyTabUpdateHelper(self._sheet)
 
         site_data_list = self.session.query(
             Site.siteId, Site.siteName, Site.googleGroup, Organization.externalId, Organization.displayName
         ).join(Organization).order_by(Site.siteId).all()
-        self.sheet.set_current_tab(site_key_tab_id)
+        self._sheet.set_current_tab(site_key_tab_id)
         for row_number, site_data in enumerate(site_data_list):
             update_helper.update_with_values(row_number, site_data)
 
-        self.sheet.truncate_tab_at_row(len(site_data_list))
+        self._sheet.truncate_tab_at_row(len(site_data_list))
         self.changelog[site_key_tab_id] = update_helper.change_detected
 
     def _populate_schema_tabs(self):
@@ -443,14 +443,14 @@ class DataDictionaryUpdater:
                                             show_unique_values, value_meaning_map, is_deprecated, deprecation_note)
 
         for tab_id, row in self.schema_tab_row_trackers.items():
-            self.sheet.truncate_tab_at_row(row, tab_id)
+            self._sheet.truncate_tab_at_row(row, tab_id)
 
         now = datetime.now()
         current_date_string = f'{now.month}/{now.day}/{now.year}'
         if self.changelog[dictionary_tab_id]:
-            self.sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
+            self._sheet.update_cell(1, 0, f'Last Updated: {current_date_string}', dictionary_tab_id)
         if self.changelog[internal_tables_tab_id]:
-            self.sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
+            self._sheet.update_cell(1, 1, f'Last Updated: {current_date_string}', internal_tables_tab_id)
 
     def _modify_sheet(self):
         self._populate_schema_tabs()
@@ -474,7 +474,7 @@ class DataDictionaryUpdater:
     def run_update(self):
         """This will run the complete update, finding differences and uploading the new values to the data-dictionary"""
         with self._build_sheet() as sheet:
-            self.sheet = sheet
+            self._sheet = sheet
             self._modify_sheet()
 
     def find_data_dictionary_diff(self):
@@ -482,22 +482,22 @@ class DataDictionaryUpdater:
         This will find the updates needed for the data-dictionary and return the changes.
         Use the `upload_changes` method to write them to the data-dictionary spreadsheet.
         """
-        self.sheet = self._build_sheet()
-        self.sheet.download_values()
+        self._sheet = self._build_sheet()
+        self._sheet.download_values()
         self._modify_sheet()
 
         return self.changelog
 
     def upload_changes(self, message, author):
-        if not self.sheet:
+        if not self._sheet:
             raise Exception('Must call `find_data_dictionary_diff` first')
 
-        self.sheet.set_current_tab(changelog_tab_id)
+        self._sheet.set_current_tab(changelog_tab_id)
 
         # Go through the existing change log rows until we get to a new row
         change_log_row_index = 0
         change_log_row_display = 1
-        previous_change_log_row_display = self.sheet.get_row_at(change_log_row_index)[0]
+        previous_change_log_row_display = self._sheet.get_row_at(change_log_row_index)[0]
         while previous_change_log_row_display != '':
             if previous_change_log_row_display.isdigit():
                 change_log_row_display = int(previous_change_log_row_display) + 1
@@ -505,15 +505,15 @@ class DataDictionaryUpdater:
                 change_log_row_display += 1
 
             change_log_row_index += 1
-            previous_change_log_row_display = self.sheet.get_row_at(change_log_row_index)[0]
+            previous_change_log_row_display = self._sheet.get_row_at(change_log_row_index)[0]
 
         # Write a new record to the change log tab
-        self.sheet.update_cell(change_log_row_index, 0, str(change_log_row_display))
-        self.sheet.update_cell(change_log_row_index, 1, message)
+        self._sheet.update_cell(change_log_row_index, 0, str(change_log_row_display))
+        self._sheet.update_cell(change_log_row_index, 1, message)
         today = datetime.today()
-        self.sheet.update_cell(change_log_row_index, 2, f'{today.month}/{today.day}/{today.year}')
-        self.sheet.update_cell(change_log_row_index, 3, self.rdr_version)
-        self.sheet.update_cell(change_log_row_index, 4, author)
+        self._sheet.update_cell(change_log_row_index, 2, f'{today.month}/{today.day}/{today.year}')
+        self._sheet.update_cell(change_log_row_index, 3, self.rdr_version)
+        self._sheet.update_cell(change_log_row_index, 4, author)
 
         # Upload all the changes
-        self.sheet.upload_values()
+        self._sheet.upload_values()

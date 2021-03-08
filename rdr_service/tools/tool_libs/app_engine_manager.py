@@ -64,7 +64,7 @@ class DeployAppClass(object):
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
 
-        self.environment = None
+        self.environment = RdrEnvironment(self.gcp_env.project)
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -370,7 +370,6 @@ class DeployAppClass(object):
         Deploy the app
         """
 
-        self.environment = RdrEnvironment(self.gcp_env.project)
         if self.environment == RdrEnvironment.PROD and self.gcp_env.service_key_id is None:
             raise Exception('SA account needed to update the data-dictionary when deploying to production.')
 
