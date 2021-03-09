@@ -135,6 +135,16 @@ participant_summary_default_values = {
     "wasEhrDataAvailable": False
 }
 
+participant_summary_default_values_no_basics = dict(participant_summary_default_values)
+participant_summary_default_values_no_basics.update({
+    "questionnaireOnTheBasics": "UNSET",
+    "race": "UNSET",
+    "education": "UNSET",
+    "income": "UNSET",
+    "sex": "UNSET",
+    "sexualOrientation": "UNSET"
+})
+
 
 class ParticipantSummaryMySqlApiTest(BaseTestCase):
     def setUp(self):

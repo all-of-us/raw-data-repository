@@ -927,8 +927,13 @@ class ParticipantSummaryDao(UpdatableDao):
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
             is_demographic_field = fieldname in ['educationId', 'incomeId', 'sexualOrientationId', 'sexId']
-            unset_value = PMI_SKIP_CODE if is_demographic_field and not should_clear_fields_for_withdrawal else UNSET
-            format_json_code(result, self.code_dao, fieldname, unset_value=unset_value)
+            should_map_unset_to_skip = (
+                is_the_basics_complete and is_demographic_field and not should_clear_fields_for_withdrawal
+            )
+            format_json_code(
+                result, self.code_dao, fieldname,
+                unset_value=PMI_SKIP_CODE if should_map_unset_to_skip else UNSET
+            )
         for fieldname in _ENUM_FIELDS:
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:
