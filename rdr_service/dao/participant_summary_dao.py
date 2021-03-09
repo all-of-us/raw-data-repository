@@ -21,7 +21,7 @@ from rdr_service.api_util import (
     format_json_site,
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PPI_SYSTEM, PMI_SKIP_CODE, UNSET
+from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -865,7 +865,6 @@ class ParticipantSummaryDao(UpdatableDao):
 
             if model.race is None or model.race == Race.UNSET:
                 result['race'] = Race.PMI_Skip
-
 
         result["retentionType"] = str(RetentionType.UNSET)
         if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
