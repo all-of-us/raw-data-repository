@@ -6,7 +6,7 @@ from rdr_service.model.measurements import Measurement, PhysicalMeasurements
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
 tool_cmd = 'measurement-back-fill'
-tool_desc = 'back fill the valueCodeDescription for meausurements'
+tool_desc = 'back fill the valueCodeDescription for measurements'
 
 
 class MeasurementBackFill(ToolBase):
