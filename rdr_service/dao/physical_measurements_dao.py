@@ -511,6 +511,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
         value_unit = None
         value_code_system = None
         value_code_value = None
+        value_code_description = None
         value_date_time = None
         if observation.bodySite and observation.bodySite.coding:
             body_site_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.bodySite)
@@ -529,6 +530,14 @@ class PhysicalMeasurementsDao(UpdatableDao):
             value_coding = PhysicalMeasurementsDao.get_preferred_coding(observation.valueCodeableConcept)
             value_code_system = value_coding.system
             value_code_value = value_coding.code
+
+            value_code_description = observation.valueCodeableConcept.text
+            desc_char_count = len(value_code_description)
+            char_limit = Measurement.valueCodeDescription.type.length
+            if desc_char_count > char_limit:
+                logging.warning(f'Truncating codeable concept description of length {desc_char_count}')
+                value_code_description = value_code_description[:char_limit]
+
         measurements = []
         if observation.component:
             for component in observation.component:
@@ -556,6 +565,7 @@ class PhysicalMeasurementsDao(UpdatableDao):
             valueUnit=value_unit,
             valueCodeSystem=value_code_system,
             valueCodeValue=value_code_value,
+            valueCodeDescription=value_code_description,
             valueDateTime=value_date_time,
             measurements=measurements,
             qualifiers=qualifiers,
