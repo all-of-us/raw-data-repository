@@ -925,9 +925,11 @@ class GenomicProcessRunner(GenomicManifestBase):
         self.dao = GenomicJobRunDao()
         self.gen_enum = GenomicJob.__dict__[self.args.job]
 
+        gen_job_name = self.gen_enum.name
+
         _logger.info(f"Running Genomic Process Runner for: {self.args.job}")
 
-        if self.args.job == 'AW1_MANIFEST':
+        if gen_job_name == 'AW1_MANIFEST':
             if self.args.manifest_file:
                 _logger.info(f'Manifest File Specified: {self.args.manifest_file}')
                 return self.run_aw1_manifest()
@@ -936,7 +938,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(f'A manifest file is required for this job.')
                 return 1
 
-        if self.args.job == 'RECONCILE_ARRAY_DATA':
+        if gen_job_name == 'RECONCILE_ARRAY_DATA':
             try:
                 server_config = self.get_server_config()
 
@@ -951,7 +953,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
-        if self.args.job == 'RECONCILE_WGS_DATA':
+        if gen_job_name == 'RECONCILE_WGS_DATA':
             try:
                 server_config = self.get_server_config()
 
@@ -966,7 +968,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
-        if self.args.job in ('METRICS_INGESTION', 'AW4_ARRAY_WORKFLOW', 'AW4_WGS_WORKFLOW'):
+        if gen_job_name in ('METRICS_INGESTION', 'AW4_ARRAY_WORKFLOW', 'AW4_WGS_WORKFLOW'):
             try:
                 if self.args.manifest_file or self.args.csv:
                     _logger.info(f'File(s) Specified: {self.args.file or self.args.csv}')
@@ -991,7 +993,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
-        if self.args.job == 'AW2F_MANIFEST':
+        if gen_job_name == 'AW2F_MANIFEST':
             try:
                 if not self.args.csv:
                     _logger.info('--csv of genomic_manifest_feedback ids record required for this job.')
@@ -1018,7 +1020,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
-        if self.args.job == 'CALCULATE_RECORD_COUNT_AW1':
+        if gen_job_name == 'CALCULATE_RECORD_COUNT_AW1':
             self.dao = GenomicManifestFileDao()
 
             if not self.args.id:
