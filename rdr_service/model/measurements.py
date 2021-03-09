@@ -75,6 +75,7 @@ class Measurement(Base):
     valueUnit = Column("value_unit", String(255))
     valueCodeSystem = Column("value_code_system", String(255))
     valueCodeValue = Column("value_code_value", String(255))
+    valueCodeDescription = Column("value_code_description", String(512))
     valueDateTime = Column("value_datetime", UTCDateTime)
     parentId = Column("parent_id", BIGINT, ForeignKey("measurement.measurement_id"))
     qualifierId = Column("qualifier_id", BIGINT, ForeignKey("measurement.measurement_id"))
