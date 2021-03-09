@@ -918,8 +918,6 @@ class GenomicProcessRunner(GenomicManifestBase):
         Main program process
         :return: Exit code value
         """
-        if self.args.job not in GenomicJob.names():
-            _logger.error(f'Job must be a valid GenomicJob: {GenomicJob.names()}')
 
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
@@ -928,12 +926,12 @@ class GenomicProcessRunner(GenomicManifestBase):
         _logger.info(f"Running Genomic Process Runner for: {self.args.job}")
 
         if self.args.job == 'AW1_MANIFEST':
-            if self.args.file:
-                _logger.info(f'File Specified: {self.args.file}')
+            if self.args.manifest_file:
+                _logger.info(f'Manifest File Specified: {self.args.manifest_file}')
                 return self.run_aw1_manifest()
 
             else:
-                _logger.error(f'A file is required for this job.')
+                _logger.error(f'A manifest file is required for this job.')
                 return 1
 
         if self.args.job == 'RECONCILE_ARRAY_DATA':
@@ -945,8 +943,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-                    genome_type = 'array'
-                    controller.run_reconciliation_to_data(genome_type)
+                    controller.run_reconciliation_to_data(genome_type='array')
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
@@ -961,18 +958,17 @@ class GenomicProcessRunner(GenomicManifestBase):
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-                    genome_type = 'wgs'
-                    controller.run_reconciliation_to_data(genome_type)
+                    controller.run_reconciliation_to_data(genome_type='wgs')
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
                 return 1
 
-        if self.args.job == 'METRICS_INGESTION':
+        if self.args.job in ('METRICS_INGESTION', 'AW4_ARRAY_WORKFLOW', 'AW4_WGS_WORKFLOW'):
             try:
-                if self.args.file:
-                    _logger.info(f'File Specified: {self.args.file}')
-                    return self.run_aw2_manifest()
+                if self.args.manifest_file or self.args.csv:
+                    _logger.info(f'File(s) Specified: {self.args.file or self.args.csv}')
+                    return self.run_manifest_ingestion()
 
                 elif self.args.csv:
                     _logger.info(f'File list Specified: {self.args.csv}')
@@ -983,10 +979,10 @@ class GenomicProcessRunner(GenomicManifestBase):
                         _logger.error(f'File {self.args.csv} was not found.')
                         return 1
 
-                    return self.process_multiple_aw2_from_file()
+                    return self.process_multiple_from_file()
 
                 else:
-                    _logger.error(f'A file is required for this job.')
+                    _logger.error(f'A manifest file is required for this job.')
                     return 1
 
             except Exception as e:   # pylint: disable=broad-except
@@ -1009,13 +1005,10 @@ class GenomicProcessRunner(GenomicManifestBase):
                     # Open list of feedback records and process AW2F for each
                     with open(self.args.csv, encoding='utf-8-sig') as f:
                         csvreader = csv.reader(f)
-
-                        # Run the AW2 manifest ingestion on each file
+                        # Run the AW2/AW4 manifest ingestion on each file
                         for l in csvreader:
                             feedback_id = l[0]
-
                             result = self.run_aw2f_manifest(feedback_id)
-
                             if result != 0:
                                 return 1
 
@@ -1034,7 +1027,6 @@ class GenomicProcessRunner(GenomicManifestBase):
 
             while len(id_list) > 0:
                 mid = id_list.pop(0)
-
                 try:
                     int(mid)
                 except ValueError:
@@ -1088,15 +1080,14 @@ class GenomicProcessRunner(GenomicManifestBase):
             _logger.error(e)
             return 1
 
-    def run_aw2_manifest(self):
-        # Get bucket and filename from argument
+    def run_manifest_ingestion(self):
         bucket_name = self.args.file.split('/')[0]
         file_name = self.args.file.replace(bucket_name + '/', '')
         _logger.info(f'Processing: {file_name}')
 
         # Use a Controller to run the job
         try:
-            with GenomicJobController(GenomicJob.METRICS_INGESTION,
+            with GenomicJobController(self.args.job,
                                       storage_provider=self.gscp,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
@@ -1108,15 +1099,15 @@ class GenomicProcessRunner(GenomicManifestBase):
             _logger.error(e)
             return 1
 
-    def process_multiple_aw2_from_file(self):
+    def process_multiple_from_file(self):
         # Open list of files and run_aw2_manifest() for each one individually
         with open(self.args.csv, encoding='utf-8-sig') as f:
             csvreader = csv.reader(f)
 
-            # Run the AW2 manifest ingestion on each file
+            # Run the AW2/AW4 manifest ingestion on each file
             for l in csvreader:
                 self.args.file = l[0]
-                result = self.run_aw2_manifest()
+                result = self.run_manifest_ingestion()
                 if result == 1:
                     return 1
 
@@ -2000,9 +1991,13 @@ def run():
 
     # Process Runner
     process_runner_parser = subparser.add_parser("process-runner")
-    process_runner_parser.add_argument("--job", help="GenomicJob process to run",
-                                       default=None, required=True)
-    process_runner_parser.add_argument("--file", help="The full 'bucket/subfolder/file.ext to process",
+    process_runner_parser.add_argument("--job",
+                                       default=None,
+                                       required=True,
+                                       choices=[GenomicJob.names()],
+                                       type=str
+                                       )
+    process_runner_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
                                        default=None, required=False)
     process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
                                        default=None, required=False)
