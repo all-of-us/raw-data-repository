@@ -1994,15 +1994,32 @@ def run():
     process_runner_parser.add_argument("--job",
                                        default=None,
                                        required=True,
-                                       choices=[GenomicJob.names()],
+                                       choices=[
+                                           'AW1_MANIFEST',
+                                           'RECONCILE_ARRAY_DATA',
+                                           'RECONCILE_WGS_DATA',
+                                           'METRICS_INGESTION',
+                                           'AW4_ARRAY_WORKFLOW',
+                                           'AW4_WGS_WORKFLOW',
+                                           'AW2F_MANIFEST'
+                                           'CALCULATE_RECORD_COUNT_AW1'
+                                       ],
                                        type=str
                                        )
-    process_runner_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
-                                       default=None, required=False)
-    process_runner_parser.add_argument("--csv", help="A file specifying multiple manifests to process",
-                                       default=None, required=False)
-    process_runner_parser.add_argument("--id", help="A comma-separated list of ids",
-                                       default=None, required=False)
+    process_runner_parser.add_argument("--manifest-file",
+                                       help="The full 'bucket/subfolder/file.ext to process",
+                                       default=None,
+                                       required=False
+                                       )
+    process_runner_parser.add_argument("--csv",
+                                       help="A file specifying multiple manifests to process",
+                                       default=None,
+                                       required=False
+                                       )
+    process_runner_parser.add_argument("--id",
+                                       help="A comma-separated list of ids",
+                                       default=None,
+                                       required=False)
 
     # Backfill GenomicFileProcessed UploadDate
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
