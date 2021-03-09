@@ -912,6 +912,7 @@ class UpdateGcMetricsClass(GenomicManifestBase):
 class GenomicProcessRunner(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GenomicProcessRunner, self).__init__(args, gcp_env)
+        self.gen_enum = None
 
     def run(self):
         """
@@ -922,6 +923,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicJobRunDao()
+        self.gen_enum = GenomicJob.__dict__[self.args.job]
 
         _logger.info(f"Running Genomic Process Runner for: {self.args.job}")
 
@@ -938,7 +940,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             try:
                 server_config = self.get_server_config()
 
-                with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
+                with GenomicJobController(self.gen_enum,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
 
@@ -953,7 +955,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             try:
                 server_config = self.get_server_config()
 
-                with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
+                with GenomicJobController(self.gen_enum,
                                           storage_provider=self.gscp,
                                           bq_project_id=self.gcp_env.project) as controller:
 
@@ -982,7 +984,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                     return self.process_multiple_from_file()
 
                 else:
-                    _logger.error(f'A manifest file is required for this job.')
+                    _logger.error(f'A manifest file or csv is required for this job.')
                     return 1
 
             except Exception as e:   # pylint: disable=broad-except
@@ -1039,8 +1041,8 @@ class GenomicProcessRunner(GenomicManifestBase):
 
     def run_aw1_manifest(self):
         # Get bucket and filename from argument
-        bucket_name = self.args.file.split('/')[0]
-        file_name = self.args.file.replace(bucket_name + '/', '')
+        bucket_name = self.args.manifest_file.split('/')[0]
+        file_name = self.args.manifest_file.replace(bucket_name + '/', '')
 
         # Get blob for file from gcs
         _blob = self.gscp.get_blob(bucket_name, file_name)
@@ -1054,20 +1056,18 @@ class GenomicProcessRunner(GenomicManifestBase):
                 "create_feedback_record": True,
                 "upload_date": _blob.updated,
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
-                "file_path": self.args.file,
+                "file_path": self.args.manifest_file,
             }
         }
 
         # Call pipeline function
         mf = genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data, project_id=self.gcp_env.project)
-
         task_data['manifest_file'] = mf
-
         _task_data = JSONObject(task_data)
 
         # Use a Controller to run the job
         try:
-            with GenomicJobController(GenomicJob.AW1_MANIFEST,
+            with GenomicJobController(self.gen_enum,
                                       storage_provider=self.gscp,
                                       task_data=_task_data,
                                       bq_project_id=self.gcp_env.project) as controller:
@@ -1081,13 +1081,13 @@ class GenomicProcessRunner(GenomicManifestBase):
             return 1
 
     def run_manifest_ingestion(self):
-        bucket_name = self.args.file.split('/')[0]
-        file_name = self.args.file.replace(bucket_name + '/', '')
+        bucket_name = self.args.manifest_file.split('/')[0]
+        file_name = self.args.manifest_file.replace(bucket_name + '/', '')
         _logger.info(f'Processing: {file_name}')
 
         # Use a Controller to run the job
         try:
-            with GenomicJobController(self.args.job,
+            with GenomicJobController(self.gen_enum,
                                       storage_provider=self.gscp,
                                       bq_project_id=self.gcp_env.project) as controller:
                 controller.bucket_name = bucket_name
@@ -1106,7 +1106,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
             # Run the AW2/AW4 manifest ingestion on each file
             for l in csvreader:
-                self.args.file = l[0]
+                self.args.manifest_file = l[0]
                 result = self.run_manifest_ingestion()
                 if result == 1:
                     return 1
@@ -1130,13 +1130,13 @@ class GenomicProcessRunner(GenomicManifestBase):
                 ).filter(GenomicManifestFeedback.id == feedback_id).one_or_none()
 
             # Run the AW2F Workflow
-            with GenomicJobController(GenomicJob.AW2F_MANIFEST,
+            with GenomicJobController(self.gen_enum,
                                       bq_project_id=self.gcp_env.project
                                       ) as controller:
 
                 controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
 
-                controller.generate_manifest(GenomicManifestTypes.AW2F,
+                controller.generate_manifest(self.gen_enum,
                                              _genome_type=config.GENOME_TYPE_ARRAY,
                                              feedback_record=feedback_record)
 
@@ -1152,7 +1152,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         manifest = self.dao.get(manifest_id)
 
         task_data = {
-            "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
+            "job": self.gen_enum,
             "manifest_file": manifest
         }
 
