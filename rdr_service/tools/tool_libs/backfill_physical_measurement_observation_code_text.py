@@ -6,7 +6,7 @@ from rdr_service.model.measurements import Measurement, PhysicalMeasurements
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase, logger
 
 tool_cmd = 'measurement-back-fill'
-tool_desc = 'Sync deceased reports from Redcap to an environment'
+tool_desc = 'back fill the valueCodeDescription for meausurements'
 
 
 class MeasurementBackFill(ToolBase):
@@ -39,8 +39,9 @@ class MeasurementBackFill(ToolBase):
                                 measurement = session.query(Measurement).filter(
                                     Measurement.physicalMeasurementsId == physical_measurement_id,
                                     Measurement.valueCodeValue == value_coding.code,
-                                    Measurement.valueCodeSystem == value_coding.system
-                                ).one()
+                                    Measurement.valueCodeSystem == value_coding.system,
+                                    Measurement.valueCodeDescription.is_(None)
+                                ).all()[0]  # Should fail if nothing is found, gets the first one if there are multiple
                                 measurement.valueCodeDescription = observation_obj.valueCodeableConcept.text
 
                     latest_id = physical_measurement_id
