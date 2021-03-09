@@ -190,6 +190,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
             measurementTime=now,
             valueCodeSystem=pm_height_system,
             valueCodeValue="hair-style",
+            valueCodeDescription="Hair style"
         )
 
         em2 = Measurement(
@@ -210,6 +211,7 @@ class PhysicalMeasurementsApiTest(BaseTestCase):
             measurementTime=now,
             valueCodeSystem=pm_weight_system,
             valueCodeValue="other",
+            valueCodeDescription="Participant could not remove boots weight 20 pounds"
         )
         em3 = Measurement(
             measurementId=pm_id * 1000 + 7,
