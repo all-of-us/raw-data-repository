@@ -239,7 +239,7 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def run_reconciliation_to_data(self, genome_type):
+    def run_reconciliation_to_data(self, *, genome_type):
         """
         Reconciles the metrics based on type of files using reconciler component
         :param genome_type array or wgs
