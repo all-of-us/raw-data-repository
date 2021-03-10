@@ -1,7 +1,7 @@
 """
 
 Revision ID: 061dc1adde35
-Revises: bb29335721aa
+Revises: d5e7affa8201
 Create Date: 2021-03-05 14:25:59.729392
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '061dc1adde35'
-down_revision = 'bb29335721aa'
+down_revision = 'd5e7affa8201'
 branch_labels = None
 depends_on = None
 
