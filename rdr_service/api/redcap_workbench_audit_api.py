@@ -19,7 +19,8 @@ class RedcapWorkbenchAuditApi(BaseApi):
     def get(self):
         params = {
             'last_snapshot_id': request.args.get('last_snapshot_id'),
-            'snapshot_id': request.args.get('snapshot_id')
+            'snapshot_id': request.args.get('snapshot_id'),
+            'workspace_id': request.args.get('workspace_id')
         }
 
         filters = self.validate_params(params)
@@ -27,31 +28,20 @@ class RedcapWorkbenchAuditApi(BaseApi):
 
         return results
 
-    def get_filtered_results(self, last_snapshot_id, snapshot_id):
+    def get_filtered_results(self, **filters):
         """Queries DB, returns results in format consumed by front-end
-        :param last_snapshot_id: indicate the last max snapshot id which has been synced
-        :param snapshot_id: indicate the snapshot to be synced
+        :param filters: query parameters for filtering the data
         :return: Filtered results
         """
 
-        return self.workspace_dao.get_redcap_audit_workspaces(last_snapshot_id, snapshot_id)
+        return self.workspace_dao.get_redcap_audit_workspaces(**filters)
 
     def validate_params(self, params):
         filters = {}
-        if params['last_snapshot_id']:
+        for key in params:
             try:
-                filters['last_snapshot_id'] = int(params['last_snapshot_id'])
+                filters[key] = int(params[key]) if params[key] is not None else None
             except TypeError:
-                raise BadRequest(f"Invalid parameter last_snapshot_id: {params['last_snapshot_id']}")
-        else:
-            filters['last_snapshot_id'] = None
-
-        if params['snapshot_id']:
-            try:
-                filters['snapshot_id'] = int(params['snapshot_id'])
-            except TypeError:
-                raise BadRequest(f"Invalid parameter snapshot_id: {params['snapshot_id']}")
-        else:
-            filters['snapshot_id'] = None
+                raise BadRequest(f"Invalid parameter {key}: {params[key]}")
 
         return filters
