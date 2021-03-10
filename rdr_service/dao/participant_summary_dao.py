@@ -21,7 +21,7 @@ from rdr_service.api_util import (
     format_json_site,
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET, ORIGINATING_SOURCES
+from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -46,10 +46,12 @@ from rdr_service.participant_enums import (
     EnrollmentStatus,
     DeceasedStatus,
     ConsentExpireStatus,
+    GenderIdentity,
     ParticipantCohort,
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
+    Race,
     SampleCollectionMethod,
     SampleStatus,
     SuspensionStatus,
@@ -822,14 +824,17 @@ class ParticipantSummaryDao(UpdatableDao):
             client_id = 'example'  # account for temp configs that dont create the key
         return client_id
 
-    def to_client_json(self, model):
+    def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+        is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
-        if model.withdrawalStatus == WithdrawalStatus.NO_USE and (
+        should_clear_fields_for_withdrawal = model.withdrawalStatus == WithdrawalStatus.NO_USE and (
             model.withdrawalTime is None
             or model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
-        ):
+        )
+        if should_clear_fields_for_withdrawal:
             result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
         result["participantId"] = to_client_participant_id(model.participantId)
@@ -852,6 +857,14 @@ class ParticipantSummaryDao(UpdatableDao):
 
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
+
+        # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
+        if is_the_basics_complete and not should_clear_fields_for_withdrawal:
+            if model.genderIdentity is None or model.genderIdentity == GenderIdentity.UNSET:
+                result['genderIdentity'] = GenderIdentity.PMI_Skip
+
+            if model.race is None or model.race == Race.UNSET:
+                result['race'] = Race.PMI_Skip
 
         result["retentionType"] = str(RetentionType.UNSET)
         if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
@@ -912,7 +925,14 @@ class ParticipantSummaryDao(UpdatableDao):
         for fieldname in _DATE_FIELDS:
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
-            format_json_code(result, self.code_dao, fieldname)
+            is_demographic_field = fieldname in ['educationId', 'incomeId', 'sexualOrientationId', 'sexId']
+            should_map_unset_to_skip = (
+                is_the_basics_complete and is_demographic_field and not should_clear_fields_for_withdrawal
+            )
+            format_json_code(
+                result, self.code_dao, fieldname,
+                unset_value=PMI_SKIP_CODE if should_map_unset_to_skip else UNSET
+            )
         for fieldname in _ENUM_FIELDS:
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:
