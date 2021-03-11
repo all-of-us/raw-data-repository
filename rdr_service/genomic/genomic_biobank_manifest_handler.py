@@ -133,7 +133,22 @@ def create_and_upload_genomic_biobank_manifest_file(
         saliva=False,
         filename=None,
         prefix=None,
+        project=None
     ):
+
+    _where = 'WHERE genomic_workflow_state=:workflow_state'
+    clauses = {
+        'default': {
+            'text': _where + ' AND genomic_set_id=:genomic_set_id',
+            'state': int(GenomicWorkflowState.AW0_READY)
+        },
+        'long_read': {
+            'text':  _where,
+            'state': int(GenomicWorkflowState.LR_PENDING)
+        }
+    }
+    clause = clauses[project] if project else clauses['default']
+
     result_filename = filename if filename is not None \
         else _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id, saliva)
 
@@ -141,11 +156,11 @@ def create_and_upload_genomic_biobank_manifest_file(
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
     exporter = SqlExporter(bucket_name)
     export_sql = """
-      SELECT 
+      SELECT
         '' as value,
-        CASE 
+        CASE
             WHEN collection_tube_id IS NOT NULL THEN collection_tube_id
-            ELSE sample_id 
+            ELSE sample_id
         END AS sample_id,
         CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
@@ -160,14 +175,17 @@ def create_and_upload_genomic_biobank_manifest_file(
         END AS validation_passed,
         ai_an
       FROM genomic_set_member
-      WHERE genomic_set_id=:genomic_set_id
-        AND genomic_workflow_state=:aw0_ready_state
+      {clause}
       ORDER BY id
-    """
+    """.format(
+        clause=clause['text']
+    )
 
-    query_params = {"genomic_set_id": genomic_set_id,
-                    "prefix": prefix or BIOBANK_ID_PREFIX,
-                    "aw0_ready_state": int(GenomicWorkflowState.AW0_READY),}
+    query_params = {
+        "genomic_set_id": genomic_set_id,
+        "prefix": prefix or BIOBANK_ID_PREFIX,
+        "workflow_state": clause['state']
+    }
 
     exporter.run_export(result_filename, export_sql, query_params)
 

@@ -708,6 +708,11 @@ class GenomicWorkflowState(messages.Enum):
     IGNORE = 33
     CONTROL_SAMPLE = 34
 
+    # Long Read
+    LR_PENDING = 35
+    LR_REJECTED = 36
+    LR_ACCEPTED = 37
+
 
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""

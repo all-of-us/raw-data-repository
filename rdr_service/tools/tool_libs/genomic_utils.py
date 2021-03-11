@@ -233,6 +233,7 @@ class ResendSamplesClass(GenomicManifestBase):
 class GenerateManifestClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GenerateManifestClass, self).__init__(args, gcp_env)
+        self.limit = None
 
     def run(self):
         """
@@ -243,6 +244,7 @@ class GenerateManifestClass(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetDao()
         args = self.args
+        self.limit = args.limit
 
         # AW0 Manifest
         if args.manifest == "DRC_BIOBANK":
@@ -262,7 +264,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
             if args.long_read:
                 _logger.info('Running long read pilot workflow')
-                return self.generate_long_read_manifest()
+                return self.generate_long_read_manifest(limit=self.limit or 384)
 
     def generate_local_c2_remainder_manifest(self):
         """
@@ -293,22 +295,28 @@ class GenerateManifestClass(GenomicManifestBase):
 
         return 0
 
-    def generate_long_read_manifest(self):
+    def generate_long_read_manifest(self, limit=None):
 
         with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW,
                                   bq_project_id=self.gcp_env.project) as controller:
             GenomicBiobankSamplesCoupler(controller.job_run.id, controller=controller)\
-                              .create_long_read_genomic_participants()
+                              .create_long_read_genomic_participants(limit)
             new_set_id = self.dao.get_max_set()
-            self.export_manifest_to_local_file(new_set_id, str_type='long_read')
+            _type = 'long_read'
+            self.export_manifest_to_local_file(
+                new_set_id,
+                str_type=_type,
+                project=_type
+            )
 
         return 0
 
-    def export_manifest_to_local_file(self, set_id, str_type=None):
+    def export_manifest_to_local_file(self, set_id, str_type=None, project=None):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
         :param set_id:
         :param str_type:
+        :param project:
         :return:
         """
 
@@ -328,6 +336,7 @@ class GenerateManifestClass(GenomicManifestBase):
                 bucket_name=bucket_name,
                 filename=_filename,
                 prefix=prefix,
+                project=project,
             )
 
         # Handle Genomic States for manifests
@@ -1961,6 +1970,13 @@ def run():
                     help="denotes if manifest is for long read pilot",
                     default=None,
                     required=False,
+        ) # noqa
+
+    new_manifest_parser.add_argument("--limit",
+                    help="denotes a LIMIT for the query in the manifest",
+                    default=None,
+                    required=False,
+                    type=int
         )  # noqa
 
     # Set GenomicWorkflowState to provided state for provided member IDs

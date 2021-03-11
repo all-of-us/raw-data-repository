@@ -102,7 +102,8 @@ class GenomicSetDao(UpdatableDao):
         for row in cursor:
             yield Row(*row)
 
-    def _get_validation_data_query_for_genomic_set_id(self, genomic_set_id):
+    @staticmethod
+    def _get_validation_data_query_for_genomic_set_id(genomic_set_id):
         """
     Build a sqlalchemy query for validation data.
 
