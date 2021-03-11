@@ -2300,7 +2300,7 @@ class GenomicBiobankSamplesCoupler:
                     validationFlags=participant.validationFlags,
                     ai_an=participant.ai_an,
                     genomeType=self._LR_GENOME_TYPE,
-                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
