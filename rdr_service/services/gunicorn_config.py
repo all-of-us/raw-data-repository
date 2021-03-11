@@ -50,4 +50,4 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
         # WARNING: As of now the parameters sig and frame aren't used by the thread worker (our current default). If
         # we change to another worker type, or if Gunicorn updates the handle_quit code to do something with them,
         # then we may need to pass something in.
-        worker.handle_quit(None, None)
+        worker.handle_abort(None, None)
