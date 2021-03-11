@@ -63,7 +63,7 @@ class GenomicJobController:
         self.task_data = task_data
         self.bypass_record_count = False
         self.skip_updates = False
-        self.feedback_threshold = float(2/3)
+        self.feedback_threshold = 2/3
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
