@@ -489,6 +489,16 @@ class ParticipantDaoTest(BaseTestCase):
         with self.assertRaises(Forbidden):
             self.dao.update(p)
 
+    @mock.patch('rdr_service.dao.participant_dao.logging')
+    def test_error_log_for_incorrect_status_on_participant(self, mock_logging):
+        """Participants that have not yet consented should only be withdrawn with the status of EARLY_OUT"""
+        participant = self.data_generator.create_database_participant()
+        participant.withdrawalStatus = WithdrawalStatus.NO_USE
+        self.dao.update(participant)
+        mock_logging.error.assert_called_with(
+            f'Un-consented participant {participant.participantId} was withdrawn with NO_USE'
+        )
+
     def test_update_not_exists(self):
         p = self.data_generator._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):

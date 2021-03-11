@@ -196,6 +196,12 @@ class ParticipantDao(UpdatableDao):
 
             need_new_summary = True
 
+            # Participants that haven't yet consented should be withdrawn with EARLY_OUT
+            if existing_obj.participantSummary is None and obj.withdrawalStatus != WithdrawalStatus.EARLY_OUT:
+                logging.error(
+                    f'Un-consented participant {existing_obj.participantId} was withdrawn with {obj.withdrawalStatus}'
+                )
+
         if obj.suspensionStatus != existing_obj.suspensionStatus:
             obj.suspensionTime = obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT else None
             need_new_summary = True
