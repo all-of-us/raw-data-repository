@@ -2260,13 +2260,13 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_long_read_genomic_participants(self):
+    def create_long_read_genomic_participants(self, limit=None):
         """
         Create long_read participants that are already in the genomic system,
         based on downstream filters.
         :return:
         """
-        participants = self._get_long_read_participants(max_num=384)
+        participants = self._get_long_read_participants(limit)
 
         if len(participants) > 0:
             return self.process_genomic_members_into_manifest(
@@ -2653,7 +2653,7 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
-    def _get_long_read_participants(self, max_num=None):
+    def _get_long_read_participants(self, limit=None):
         """
         Retrieves participants based on filters that have
         been denoted to use in the long read pilot program
@@ -2684,8 +2684,8 @@ class GenomicBiobankSamplesCoupler:
                 gsm_alias.id.is_(None),
             ).distinct(gsm_alias.biobankId)
 
-            if max_num:
-                result = result.limit(max_num)
+            if limit:
+                result = result.limit(limit)
 
         return result.all()
 
