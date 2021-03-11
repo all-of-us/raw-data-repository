@@ -929,7 +929,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         _logger.info(f"Running Genomic Process Runner for: {self.args.job}")
 
-        if gen_job_name == 'AW1_MANIFEST':
+        if gen_job_name in ['AW1_MANIFEST', 'AW1F_MANIFEST']:
             if self.args.manifest_file:
                 _logger.info(f'Manifest File Specified: {self.args.manifest_file}')
                 return self.run_aw1_manifest()
@@ -1055,7 +1055,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             "job": False,
             "manifest_file": None,
             "file_data": {
-                "create_feedback_record": True,
+                "create_feedback_record": False,
                 "upload_date": _blob.updated,
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
                 "file_path": self.args.manifest_file,
@@ -1998,6 +1998,7 @@ def run():
                                        required=True,
                                        choices=[
                                            'AW1_MANIFEST',
+                                           'AW1F_MANIFEST',
                                            'RECONCILE_ARRAY_DATA',
                                            'RECONCILE_WGS_DATA',
                                            'METRICS_INGESTION',
