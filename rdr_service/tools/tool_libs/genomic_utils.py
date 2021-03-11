@@ -264,7 +264,7 @@ class GenerateManifestClass(GenomicManifestBase):
 
             if args.long_read:
                 _logger.info('Running long read pilot workflow')
-                return self.generate_long_read_manifest(self.limit)
+                return self.generate_long_read_manifest(limit=self.limit)
 
     def generate_local_c2_remainder_manifest(self):
         """
