@@ -1445,7 +1445,7 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
 
-        return list(results)
+        return results
 
     def get_feedback_count_within_threshold(self, theta):
         """
@@ -1465,7 +1465,7 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
 
-        return list(results)
+        return results
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:
