@@ -98,37 +98,3 @@ def stored_sample_insert_listener(mapper, connection, target):
 
 event.listen(BiobankStoredSample, 'before_insert', stored_sample_insert_listener)
 event.listen(BiobankStoredSample, "before_update", model_update_listener)
-
-
-class BiobankStoredSampleStatusImportTmp(Base):
-    """
-    Temporary table to import Biobank Nightly Inventory report files
-    directly from the GCS bucket into the RDR.
-    Prior to 2019-01-08, the biobank_stored_sample.status field was not imported
-    from the nightly inventory report files. The Biobank samples pipeline was updated
-    but the previously processed files were never re-processed.
-    This table will store the data from these old inventory files in the RDR.
-    """
-    __tablename__ = "biobank_stored_sample_status_import_tmp"
-    __rdr_internal_table__ = True
-
-    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
-
-    # Fields imported from CSV
-    sample_family_id = Column("sample_family_id", String(80))
-    sample_id = Column("sample_id", String(80), index=True)
-    sample_storage_status = Column("sample_storage_status", String(80))
-    sample_type = Column("sample_type", String(80))
-    parent_expected_volume = Column("parent_expected_volume", String(80))
-    sample_quantity = Column("sample_quantity", String(80))
-    sample_container_type = Column("sample_container_type", String(80))
-    sample_family_collection_date = Column("sample_family_collection_date", UTCDateTime)
-    sample_disposal_status = Column("sample_disposal_status", String(80))
-    sample_disposed_date = Column("sample_disposed_date", UTCDateTime)
-    parent_sample_id = Column("parent_sample_id", String(80))
-    sample_confirmed_date = Column("sample_confirmed_date", UTCDateTime)
-    external_participant_id = Column("external_participant_id", String(80), index=True)
-    test_code = Column("test_code", String(80))
-    sample_treatment = Column("sample_treatment", String(80))
-    sample_family_create_date = Column("sample_family_create_date", UTCDateTime)
-    sent_order_id = Column("sent_order_id", String(80))
