@@ -136,14 +136,14 @@ def create_and_upload_genomic_biobank_manifest_file(
         project=None
     ):
 
+    _where = 'WHERE genomic_workflow_state=:workflow_state'
     clauses = {
         'default': {
-            'text': """WHERE genomic_set_id=:genomic_set_id
-                    AND genomic_workflow_state=:workflow_state""",
+            'text': _where + ' AND genomic_set_id=:genomic_set_id',
             'state': int(GenomicWorkflowState.AW0_READY)
         },
         'long_read': {
-            'text':  """WHERE genomic_workflow_state=:workflow_state""",
+            'text':  _where,
             'state': int(GenomicWorkflowState.LR_PENDING)
         }
     }
