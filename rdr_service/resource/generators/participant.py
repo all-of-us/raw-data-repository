@@ -45,7 +45,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -788,6 +788,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.collected_site_id, (select google_group from site where site.site_id = bo.collected_site_id) as collected_site,
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
+                   bo.finalized_time,
                    case when exists (
                      select bmko.participant_id
                      from biobank_mail_kit_order bmko
@@ -851,13 +852,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if stored_sample:
                     stored_count += 1
 
+            # PDR-243:  calculate an UNSET or FINALIZED OrderStatus to include with the biobank order data.  Aligns
+            # with how RDR summarizes biospecimen details in participant_summary.biospecimen_* fields.  Intended to
+            # replace the need for a separate BQPDRBiospecimenSchema nested field in the participant data once PDR
+            # users update their queries to use the biobank order data instead of the biospec data.
+            bb_order_status = BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET
+            if row.finalized_time and bb_order_status != BiobankOrderStatus.CANCELLED:
+                finalized_status = OrderStatus.FINALIZED
+            else:
+                finalized_status = OrderStatus.UNSET
+
             order = {
                 'biobank_order_id': row.biobank_order_id,
                 'created': row.created,
-                'status': str(
-                    BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
-                'status_id': int(
-                    BiobankOrderStatus(row.order_status) if row.order_status else BiobankOrderStatus.UNSET),
+                'status': str(bb_order_status),
+                'status_id': int(bb_order_status),
                 'dv_order': row.dv_order,
                 'collected_site': row.collected_site,
                 'collected_site_id': row.collected_site_id,
@@ -865,6 +874,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'processed_site_id': row.processed_site_id,
                 'finalized_site': row.finalized_site,
                 'finalized_site_id': row.finalized_site_id,
+                'finalized_time': row.finalized_time,
+                'finalized_status': str(OrderStatus(finalized_status)),
+                'finalized_status_id': int(OrderStatus(finalized_status)),
                 'tests_ordered': len(bos_results),
                 'tests_stored': stored_count,
                 'samples': bbo_samples

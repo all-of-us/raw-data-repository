@@ -33,6 +33,9 @@ class PDRBiobankOrderSchema(BiobankOrderSchema):
     isolate_dna_confirmed = fields.Boolean()
     baseline_tests = fields.Int32()
     baseline_tests_confirmed = fields.Int32()
+    finalized_time = fields.DateTime()
+    finalized_status = fields.String()
+    finalized_status_id = fields.Int32()
 
 
 class PDRParticipantSchema(Schema):
@@ -146,6 +149,7 @@ class PDRParticipantSchema(Schema):
     deceased_status = fields.EnumString(enum=DeceasedStatus)
     deceased_status_id = fields.EnumInteger(enum=DeceasedStatus)
     deceased_authored = fields.DateTime()
+
     # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
     # date_of_death = fields.Date()
 
