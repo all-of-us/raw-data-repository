@@ -5,6 +5,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
+from rdr_service.participant_enums import OrderStatus
 
 
 class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
@@ -37,7 +38,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             setattr(bqr, 'addr_zip', getattr(bqr, 'addr_zip')[:3])
 
         summary = bqr.to_dict()
-        # Populate BQAnalyticsBiospecimenSchema if there are biobank orders.
+        # Populate BQPDRBiospecimenSchema if there are biobank orders.
+        # TODO:  Deprecate this BQPDRBiospecimenSchema and transition PDR users to utilize BQBiobankOrderSchema data
         if hasattr(ps_bqr, 'biobank_orders'):
             data = {'biospec': list()}
             for order in ps_bqr.biobank_orders:
@@ -57,15 +59,19 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         if test['bbs_confirmed']:
                             baseline_tests_confirmed += 1
 
+                # PDR-243:  Use an OrderStatus (not the order's BiobankOrderStatus value)
+                # to align with the RDR biospecimen fields in participant summary.  TODO:  the BQPDRBiospecimenSchema
+                # will be deprecated once PDR users migrate to using the BQBiobankOrderSchema data for queries
                 data['biospec'].append({
-                    'biosp_status': order.get('bbo_status', None),
-                    'biosp_status_id': order.get('bbo_status_id', None),
+                    'biosp_status': str(OrderStatus(order.get('bbo_finalized_status', OrderStatus.UNSET))),
+                    'biosp_status_id': int(OrderStatus(order.get('bbo_finalized_status_id', OrderStatus.UNSET))),
                     'biosp_order_time': order.get('bbo_created', None),
                     'biosp_isolate_dna': dna_tests,
                     'biosp_isolate_dna_confirmed': dna_tests_confirmed,
                     'biosp_baseline_tests': baseline_tests,
-                    'biosp_baseline_tests_confirmed': baseline_tests_confirmed
+                    'biosp_baseline_tests_confirmed': baseline_tests_confirmed,
                 })
+
 
             summary = self._merge_schema_dicts(summary, data)
 

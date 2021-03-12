@@ -22,7 +22,7 @@ class BQPDRPhysicalMeasurements(BQSchema):
     pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
 
-
+# TODO:  Deprecate use of this class and add these fields to the BQBiobankOrderSchema
 class BQPDRBiospecimenSchema(BQSchema):
     """
     PDR Summary of Biobank Orders and Tests
@@ -36,7 +36,6 @@ class BQPDRBiospecimenSchema(BQSchema):
     biosp_baseline_tests = BQField('biosp_baseline_tests', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     biosp_baseline_tests_confirmed = BQField('biosp_baseline_tests_confirmed',
                                              BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-
 
 class BQPDREhrReceiptSchema(BQSchema):
     """

@@ -156,6 +156,12 @@ class BQBiobankOrderSchema(BQSchema):
     bbo_samples = BQRecordField('bbo_samples', schema=BQBiobankSampleSchema)
     bbo_tests_ordered = BQField('bbo_tests_ordered', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_tests_stored = BQField('bbo_tests_stored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    # PDR-243:  Including calculated OrderStatus (UNSET/FINALIZED) and finalized time analogous to the RDR
+    # participant_summary.biospecimen_* fields that are based on non-cancelled orders.
+    bbo_finalized_time = BQField('bbo_finalized_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    bbo_finalized_status = BQField('bbo_finalized_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    bbo_finalized_status_id = BQField('bbo_finalized_status_id',
+                                      BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPatientStatusSchema(BQSchema):
