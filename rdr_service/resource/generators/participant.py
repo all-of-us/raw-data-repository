@@ -875,8 +875,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': row.finalized_site,
                 'finalized_site_id': row.finalized_site_id,
                 'finalized_time': row.finalized_time,
-                'finalized_status': str(OrderStatus(finalized_status)),
-                'finalized_status_id': int(OrderStatus(finalized_status)),
+                'finalized_status': str(finalized_status),
+                'finalized_status_id': int(finalized_status),
                 'tests_ordered': len(bos_results),
                 'tests_stored': stored_count,
                 'samples': bbo_samples

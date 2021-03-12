@@ -878,8 +878,8 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 'bbo_finalized_site': row.finalized_site,
                 'bbo_finalized_site_id': row.finalized_site_id,
                 'bbo_finalized_time': row.finalized_time,
-                'bbo_finalized_status': str(OrderStatus(finalized_status)),
-                'bbo_finalized_status_id': int(OrderStatus(finalized_status)),
+                'bbo_finalized_status': str(finalized_status),
+                'bbo_finalized_status_id': int(finalized_status),
                 'bbo_tests_ordered': len(bos_results),
                 'bbo_tests_stored': stored_count,
                 'bbo_samples': bbo_samples
