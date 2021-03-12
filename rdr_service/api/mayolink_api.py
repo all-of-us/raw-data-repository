@@ -1,6 +1,7 @@
 import json
-import xml.etree.ElementTree as ET
 import httplib2
+import logging
+import xml.etree.ElementTree as ET
 import xmltodict
 from werkzeug.exceptions import ServiceUnavailable
 
@@ -41,11 +42,12 @@ class MayoLinkApi:
                 result = self._xml_to_dict(content)
                 return result
             else:
+                logging.error(content)
                 raise ServiceUnavailable("Mayolink service return {} rather than 201".format(response['status']))
         except httplib2.HttpLib2Error:
-            pass
+            logging.error('HttpLib2Error exception encountered', exc_info=True)
         except OSError:
-            pass
+            logging.error('OSError exception encountered', exc_info=True)
 
         raise ServiceUnavailable("Mayolink service unavailable, please re-try later")
 

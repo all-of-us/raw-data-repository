@@ -109,6 +109,7 @@ class ParticipantCountsOverTimeService(BaseDao):
                           'not_withdraw': int(WithdrawalStatus.NOT_WITHDRAWN), 'hpo_id': hpo.hpoId}
 
                 session.execute('CREATE INDEX idx_sign_up_time ON {} (sign_up_time)'.format(temp_table_name))
+                session.execute('CREATE INDEX idx_date_of_birth ON {} (date_of_birth)'.format(temp_table_name))
                 session.execute('CREATE INDEX idx_consent_time ON {} (consent_for_study_enrollment_time)'
                                 .format(temp_table_name))
                 session.execute('CREATE INDEX idx_member_time ON {} (enrollment_status_member_time)'

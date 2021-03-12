@@ -653,7 +653,7 @@ def _build_pipeline_app():
         view_func=genomic_wgs_data_reconciliation_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFeedbackManifestWorkflow",
+        OFFLINE_PREFIX + "GenomicAW2ManifestWorkflow",
         endpoint="genomic_scan_feedback_records",
         view_func=genomic_scan_feedback_records, methods=["GET"]
     )

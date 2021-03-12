@@ -102,7 +102,8 @@ class GenomicSetDao(UpdatableDao):
         for row in cursor:
             yield Row(*row)
 
-    def _get_validation_data_query_for_genomic_set_id(self, genomic_set_id):
+    @staticmethod
+    def _get_validation_data_query_for_genomic_set_id(genomic_set_id):
         """
     Build a sqlalchemy query for validation data.
 
@@ -1452,7 +1453,27 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
 
-        return list(results)
+        return results
+
+    def get_feedback_count_within_threshold(self, theta):
+        """
+        Retrieves feedback records where feedback count is >= a threshold of record_count
+        :param theta: threshold
+        :return: list of feedback records
+        """
+        with self.session() as session:
+            results = session.query(GenomicManifestFeedback).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
+            ).filter(
+                GenomicManifestFeedback.ignoreFlag == 0,
+                GenomicManifestFeedback.feedbackComplete == 0,
+                GenomicManifestFeedback.feedbackRecordCount != 0,
+                GenomicManifestFeedback.feedbackRecordCount >= GenomicManifestFile.recordCount * theta,
+                GenomicManifestFeedback.feedbackManifestFileId.is_(None),
+            ).all()
+
+        return results
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:

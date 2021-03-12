@@ -68,6 +68,7 @@ class GenomicJobController:
         self.bypass_record_count = False
         self.skip_updates = False
         self.server_config = server_config
+        self.feedback_threshold = 2/3
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -165,13 +166,13 @@ class GenomicJobController:
 
         return feedback_file
 
-    def get_feedback_complete_records(self):
+    def get_feedback_records_to_send(self):
         """
         Retrieves genomic_manifest_feedback records that are complete
         and have not had a feedback_manifest_ID
         :return: list of GenomicManifestFeedback
         """
-        return self.manifest_feedback_dao.get_feedback_equals_record_count()
+        return self.manifest_feedback_dao.get_feedback_count_within_threshold(self.feedback_threshold)
 
     def ingest_awn_data_for_member(self, file_path, member):
         """
@@ -371,7 +372,7 @@ class GenomicJobController:
 
         return member
 
-    def run_reconciliation_to_data(self, genome_type):
+    def run_reconciliation_to_data(self, *, genome_type):
         """
         Reconciles the metrics based on type of files using reconciler component
         :param genome_type array or wgs

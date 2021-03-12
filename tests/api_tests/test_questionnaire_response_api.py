@@ -29,7 +29,8 @@ from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGener
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 
-from tests.api_tests.test_participant_summary_api import participant_summary_default_values
+from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
+    participant_summary_default_values_no_basics
 from tests.test_data import data_path
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.concepts import Concept
@@ -464,7 +465,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = dict(participant_summary_default_values)
+        expected = dict(participant_summary_default_values_no_basics)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -480,7 +481,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
             "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "primaryLanguage": "es",
-            "questionnaireOnTheBasics": "UNSET",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
@@ -554,7 +554,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = dict(participant_summary_default_values)
+        expected = dict(participant_summary_default_values_no_basics)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -570,7 +570,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
             "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "primaryLanguage": "es",
-            "questionnaireOnTheBasics": "UNSET",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)

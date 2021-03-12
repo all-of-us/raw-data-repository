@@ -490,6 +490,12 @@ class GenomicGCValidationMetrics(Base):
     notes = Column('notes', String(128), nullable=True)
     siteId = Column('site_id', String(80), nullable=True)
 
+    drcSexConcordance = Column('drc_sex_concordance', String(255), nullable=True)
+    drcContamination = Column('drc_contamination', String(255), nullable=True)
+    drcCallRate = Column('drc_call_rate', String(255), nullable=True)
+    drcMeanCoverage = Column('drc_mean_coverage', String(255), nullable=True)
+    drcFpConcordance = Column('drc_fp_concordance', String(255), nullable=True)
+
     # Genotyping Data (Array) reconciliation
     idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
     idatRedDeleted = Column('idat_red_deleted', SmallInteger, nullable=False, default=0)

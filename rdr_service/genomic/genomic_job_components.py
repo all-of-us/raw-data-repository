@@ -801,6 +801,21 @@ class GenomicFileIngester:
                 member.aw4ManifestJobRunID = self.job_run_id
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
 
+                metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+
+                if metrics:
+                    metrics.drcSexConcordance = row_copy['drcsexconcordance']
+                    metrics.drcContamination = row_copy['drccontamination']
+
+                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
+                        metrics.drcCallRate = row_copy['drccallrate']
+
+                    elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                        metrics.drcMeanCoverage = row_copy['drcmeancoverage']
+                        metrics.drcFpConcordance = row_copy['drcfpconcordance']
+
+                    self.metrics_dao.upsert(metrics)
+
                 self.member_dao.update(member)
 
                 # Update member for PDR
@@ -835,7 +850,8 @@ class GenomicFileIngester:
             logging.error(f"File path '{path}' not found")
             return GenomicSubProcessResult.ERROR
 
-    def _read_data_to_ingest(self, csv_file):
+    @staticmethod
+    def _read_data_to_ingest(csv_file):
         data_to_ingest = {'rows': []}
         csv_reader = csv.DictReader(csv_file, delimiter=",")
         data_to_ingest['fieldnames'] = csv_reader.fieldnames
@@ -1153,7 +1169,6 @@ class GenomicFileIngester:
         """
         return self.file_obj.fileName.split('/')[-1].split("_")[0].lower()
 
-
     def _validate_collection_tube_id(self, collection_tube_id, bid):
         """
         Returns true if biobank_ID is associated to biobank_stored_sample_id
@@ -1169,7 +1184,8 @@ class GenomicFileIngester:
 
         return False
 
-    def _get_qc_status_from_value(self, aw4_value):
+    @staticmethod
+    def _get_qc_status_from_value(aw4_value):
         """
         Returns the GenomicQcStatus enum value for
         :param aw4_value: string from AW4 file (PASS/FAIL)
@@ -1392,6 +1408,9 @@ class GenomicFileValidator:
             "vcfindexpath",
             "researchid",
             "qcstatus",
+            "drcsexconcordance",
+            "drccontamination",
+            "drccallrate",
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1410,6 +1429,10 @@ class GenomicFileValidator:
             "craipath",
             "researchid",
             "qcstatus",
+            "drcsexconcordance",
+            "drccontamination",
+            "drcmeancoverage",
+            "drcfpconcordance",
         )
 
         self.AW5_WGS_SCHEMA = {
@@ -2237,13 +2260,13 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_long_read_genomic_participants(self):
+    def create_long_read_genomic_participants(self, limit=None):
         """
         Create long_read participants that are already in the genomic system,
         based on downstream filters.
         :return:
         """
-        participants = self._get_long_read_participants(max_num=384)
+        participants = self._get_long_read_participants(limit)
 
         if len(participants) > 0:
             return self.process_genomic_members_into_manifest(
@@ -2277,7 +2300,7 @@ class GenomicBiobankSamplesCoupler:
                     validationFlags=participant.validationFlags,
                     ai_an=participant.ai_an,
                     genomeType=self._LR_GENOME_TYPE,
-                    genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
@@ -2630,7 +2653,7 @@ class GenomicBiobankSamplesCoupler:
 
         return list([list(r) for r in zip(*result)])
 
-    def _get_long_read_participants(self, max_num=None):
+    def _get_long_read_participants(self, limit=None):
         """
         Retrieves participants based on filters that have
         been denoted to use in the long read pilot program
@@ -2661,8 +2684,8 @@ class GenomicBiobankSamplesCoupler:
                 gsm_alias.id.is_(None),
             ).distinct(gsm_alias.biobankId)
 
-            if max_num:
-                result = result.limit(max_num)
+            if limit:
+                result = result.limit(limit)
 
         return result.all()
 
@@ -2878,7 +2901,6 @@ class ManifestDefinitionProvider:
                         GenomicGCValidationMetrics.craiPath,
                         GenomicGCValidationMetrics.contamination,
                         GenomicGCValidationMetrics.sexConcordance,
-                        GenomicGCValidationMetrics.arrayConcordance,
                         GenomicGCValidationMetrics.processingStatus,
                         GenomicGCValidationMetrics.meanCoverage,
                         Participant.researchId,
@@ -3129,53 +3151,19 @@ class ManifestDefinitionProvider:
         :param manifest_type:
         :return: column tuple
         """
-        columns = tuple()
-        if manifest_type == GenomicManifestTypes.CVL_W1:
-            columns = (
-                "genomic_set_name",
-                "biobank_id",
-                "sample_id",
-                "sex_at_birth",
-                "ny_flag",
-                "site_id",
-                "secondary_validation",
-                "date_submitted",
-                "test_name",
-            )
-        elif manifest_type == GenomicManifestTypes.GEM_A1:
-            columns = (
-                'biobank_id',
-                'sample_id',
-                "sex_at_birth",
-                "consent_for_ror",
-                "date_of_consent_for_ror",
-                "chipwellbarcode",
-                "genome_center",
-            )
-        elif manifest_type == GenomicManifestTypes.GEM_A3:
-            columns = (
-                'biobank_id',
-                'sample_id',
-                'date_of_consent_removal',
-            )
-
-        elif manifest_type == GenomicManifestTypes.CVL_W3:
-            columns = (
-                "value",
-                "sample_id",
-                "biobank_id",
-                "collection_tubeid",
-                "sex_at_birth",
-                "genome_type",
-                "ny_flag",
-                "request_id",
-                "package_id",
-                "ai_an",
-                "site_id",
-            )
-
-        elif manifest_type == GenomicManifestTypes.AW3_ARRAY:
-            columns = (
+        column_config = {
+            GenomicManifestTypes.CVL_W1: (
+                    "genomic_set_name",
+                    "biobank_id",
+                    "sample_id",
+                    "sex_at_birth",
+                    "ny_flag",
+                    "site_id",
+                    "secondary_validation",
+                    "date_submitted",
+                    "test_name",
+            ),
+            GenomicManifestTypes.AW3_ARRAY: (
                 "chipwellbarcode",
                 "biobank_id",
                 "sample_id",
@@ -3193,10 +3181,35 @@ class ManifestDefinitionProvider:
                 "contamination",
                 "processing_status",
                 "research_id",
-            )
-
-        elif manifest_type == GenomicManifestTypes.AW3_WGS:
-            columns = (
+            ),
+            GenomicManifestTypes.GEM_A1:  (
+                'biobank_id',
+                'sample_id',
+                "sex_at_birth",
+                "consent_for_ror",
+                "date_of_consent_for_ror",
+                "chipwellbarcode",
+                "genome_center",
+            ),
+            GenomicManifestTypes.GEM_A3: (
+                'biobank_id',
+                'sample_id',
+                'date_of_consent_removal',
+            ),
+            GenomicManifestTypes.CVL_W3: (
+                "value",
+                "sample_id",
+                "biobank_id",
+                "collection_tubeid",
+                "sex_at_birth",
+                "genome_type",
+                "ny_flag",
+                "request_id",
+                "package_id",
+                "ai_an",
+                "site_id",
+            ),
+            GenomicManifestTypes.AW3_WGS: (
                 "biobank_id",
                 "sample_id",
                 "biobankidsampleid",
@@ -3213,14 +3226,11 @@ class ManifestDefinitionProvider:
                 "crai_path",
                 "contamination",
                 "sex_concordance",
-                "array_concordance",
                 "processing_status",
                 "mean_coverage",
                 "research_id",
-            )
-
-        elif manifest_type == GenomicManifestTypes.AW2F:
-            columns = (
+            ),
+            GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",
                 "BIOBANKID_SAMPLEID",
                 "BOX_STORAGEUNIT_ID",
@@ -3254,9 +3264,9 @@ class ManifestDefinitionProvider:
                 "CONTAMINATION",
                 "CONTAMINATION_CATEGORY",
                 "CONSENT_FOR_ROR",
-            )
-
-        return columns
+            ),
+        }
+        return column_config[manifest_type]
 
     def get_def(self, manifest_type):
         """
