@@ -1955,7 +1955,7 @@ class GenomicReconciler:
         :return: summary, description
         """
         file = self.file_dao.get(_file_processed_id)
-        file_list = '\n'.join([md for md in _missing_data[1:]])
+        file_list = '\n'.join([md for md in _missing_data])
 
         description = f"\nManifest File: {file.fileName}"
         description += "\nMissing Genotype Data:"

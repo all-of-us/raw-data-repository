@@ -1017,8 +1017,9 @@ class GenomicPipelineTest(BaseTestCase):
         summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
         description = "The following AW2 manifests are missing data files."
         description += "\nGenomic Job Run ID: 2"
-        description += f"\n\tManifest File: {manifest_file.fileName}"
-        description += "\n\tMissing Genotype Data: ['10001_R01C01_grn.idat.md5sum']"
+        description += f"\nManifest File: {manifest_file.fileName}"
+        description += "\nMissing Genotype Data:"
+        description += "\n10001_R01C01_grn.idat.md5sum"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
@@ -1096,8 +1097,9 @@ class GenomicPipelineTest(BaseTestCase):
         summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
         description = "The following AW2 manifests are missing data files."
         description += "\nGenomic Job Run ID: 2"
-        description += f"\n\tManifest File: {manifest_file.fileName}"
-        description += "\n\tMissing Genotype Data: ['RDR_2_1002_10002_1.cram.crai']"
+        description += f"\nManifest File: {manifest_file.fileName}"
+        description += "\nMissing Genotype Data:"
+        description += "\nRDR_2_1002_10002_1.cram.crai"
 
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
