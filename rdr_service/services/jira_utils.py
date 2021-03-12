@@ -26,7 +26,7 @@ class JiraTicketHandler:
             'drc_analytics': ['alpha.parrott@vumc.org'],
             'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
             'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
-            'change_manager': ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org', 'katherine.j.worley@vumc.org']
+            'change_manager': ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org']
         }
         self.developer_tags = {
             'developers': ['yu.wang.3@vumc.org', 'robert.m.abram.1@vumc.org', 'kenneth.d.skaggs@vumc.org',

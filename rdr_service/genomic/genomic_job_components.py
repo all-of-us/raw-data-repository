@@ -1783,7 +1783,6 @@ class GenomicReconciler:
         :return: result code
         """
         metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
-
         total_missing_data = []
 
         # Get list of files in GC data bucket
@@ -1799,9 +1798,7 @@ class GenomicReconciler:
         # Iterate over metrics, searching the bucket for filenames where *_received = 0
         for metric in metrics:
             member = self.member_dao.get(metric.genomicSetMemberId)
-
             missing_data_files = []
-
             metric_touched = False
 
             for file_type in self.genotyping_file_types:
@@ -1836,16 +1833,18 @@ class GenomicReconciler:
                 next_state = None
 
             # Update state for missing files
-            if len(missing_data_files) > 0:
+            if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
+                file = self.file_dao.get(metric.genomicFileProcessedId)
+                if not file.missingFilesAlertSent:
+                    total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
 
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
-        if len(total_missing_data) > 0:
+        if total_missing_data:
             alert = GenomicAlertHandler()
 
             summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
@@ -1853,8 +1852,13 @@ class GenomicReconciler:
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
-
-                description += self._compile_missing_data_alert(f[0], f[1])
+                file = self.file_dao.get(f[0])
+                file.missingFilesAlertSent = 1
+                self.file_dao.update(file)
+                description += self._compile_missing_data_alert(
+                    file_name=file.fileName,
+                    missing_data=f[1]
+                )
             alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
@@ -1877,16 +1881,14 @@ class GenomicReconciler:
         self.file_list = [f.name for f in files]
 
         total_missing_data = []
-
         metric_touched = False
 
         # Iterate over metrics, searching the bucket for filenames
         for metric in metrics:
             member = self.member_dao.get(metric.GenomicGCValidationMetrics.genomicSetMemberId)
-
             gc_prefix = _gc_site_id.upper()
-
             missing_data_files = []
+
             for file_type in self.sequencing_file_types:
 
                 if not getattr(metric.GenomicGCValidationMetrics, file_type[0]):
@@ -1931,18 +1933,20 @@ class GenomicReconciler:
                 next_state = None
 
             # Handle for missing data files
-            if len(missing_data_files) > 0:
+            if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
-                                           missing_data_files))
+                file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
+                if not file.missingFilesAlertSent:
+                    total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
+                                               missing_data_files))
 
             # Update Member
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
         # Make a roc ticket for missing data files
-        if len(total_missing_data) > 0:
+        if total_missing_data:
             alert = GenomicAlertHandler()
 
             summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
@@ -1950,22 +1954,30 @@ class GenomicReconciler:
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
-                description += self._compile_missing_data_alert(f[0], f[1])
+                file = self.file_dao.get(f[0])
+                file.missingFilesAlertSent = 1
+                self.file_dao.update(file)
+                description += self._compile_missing_data_alert(
+                    file_name=file.fileName,
+                    missing_data=f[1]
+                )
+
             alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _compile_missing_data_alert(self, _file_processed_id, _missing_data):
+    @staticmethod
+    def _compile_missing_data_alert(file_name, missing_data):
         """
         Compiles the description to include in a GenomicAlert
-        :param _file_processed_id:
-        :param _missing_data: list of files
+        :param file_name:
+        :param missing_data: list of files
         :return: summary, description
         """
-        file = self.file_dao.get(_file_processed_id)
-
-        description = f"\n\tManifest File: {file.fileName}"
-        description += f"\n\tMissing Genotype Data: {_missing_data}"
+        file_list = '\n'.join([md for md in missing_data])
+        description = f"\nManifest File: {file_name}"
+        description += "\nMissing Genotype Data:"
+        description += f"\n{file_list}"
 
         return description
 
@@ -3483,11 +3495,11 @@ class GenomicAlertHandler:
     ROC_BOARD_ID = "ROC"
 
     def __init__(self):
+        self._jira_handler = None
         self.alert_envs = ["all-of-us-rdr-prod"]
+
         if GAE_PROJECT in self.alert_envs:
             self._jira_handler = JiraTicketHandler()
-        else:
-            self._jira_handler = None
 
     def make_genomic_alert(self, summary: str, description: str):
         """
