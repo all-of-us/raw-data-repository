@@ -306,17 +306,25 @@ class GenerateManifestClass(GenomicManifestBase):
             self.export_manifest_to_local_file(
                 new_set_id,
                 str_type=_type,
-                project=_type
+                project=_type,
+                update=False,
             )
 
         return 0
 
-    def export_manifest_to_local_file(self, set_id, str_type=None, project=None):
+    def export_manifest_to_local_file(
+        self,
+        set_id,
+        str_type=None,
+        project=None,
+        update=True,
+    ):
         """
         Processes samples into a local AW0, Cohort 2 manifest file
         :param set_id:
         :param str_type:
         :param project:
+        :param update:
         :return:
         """
 
@@ -340,11 +348,12 @@ class GenerateManifestClass(GenomicManifestBase):
             )
 
         # Handle Genomic States for manifests
-        member_dao = GenomicSetMemberDao()
-        new_members = member_dao.get_members_from_set_id(set_id)
+        if update:
+            member_dao = GenomicSetMemberDao()
+            new_members = member_dao.get_members_from_set_id(set_id)
 
-        for member in new_members:
-            self.update_member_genomic_state(member, 'manifest-generated')
+            for member in new_members:
+                self.update_member_genomic_state(member, 'manifest-generated')
 
         local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{_filename}'
         print()
