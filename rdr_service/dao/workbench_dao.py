@@ -298,7 +298,11 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         if workspace:
             session.delete(workspace)
 
-    def get_redcap_audit_workspaces(self, last_snapshot_id, snapshot_id):
+    def get_redcap_audit_workspaces(self, **filters, ):
+        last_snapshot_id = filters.get('last_snapshot_id', None)
+        snapshot_id = filters.get('snapshot_id', None)
+        workspace_id = filters.get('workspace_id', None)
+
         results = []
         with self.session() as session:
             query = (
@@ -307,13 +311,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                              joinedload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
                             WorkbenchWorkspaceSnapshot.id == WorkbenchWorkspaceUserHistory.workspaceId)
-                    .order_by(WorkbenchWorkspaceSnapshot.id)
             )
 
-            if snapshot_id is not None:
+            if workspace_id is not None:
+                query = query.filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id)\
+                    .order_by(desc(WorkbenchWorkspaceSnapshot.id)).limit(1)
+            elif snapshot_id is not None:
                 query = query.filter(WorkbenchWorkspaceSnapshot.id == snapshot_id)
             elif last_snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)
+                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)\
+                    .order_by(WorkbenchWorkspaceSnapshot.id)
 
             items = query.all()
             for workspace, researcher in items:

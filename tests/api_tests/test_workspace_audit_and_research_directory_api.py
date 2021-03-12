@@ -1148,6 +1148,54 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
         self.assertEqual(len(result), 1)
 
+        # test get latest snapshot by workspace id
+        updated_request_json = [
+            {
+                "workspaceId": 1,
+                "name": "workspace name str 3",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-26T17:43:41.085Z",
+                "status": "INACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str 2",
+                "otherPurposeDetails": "other purpose details str 2",
+                "methodsDevelopment": False,
+                "controlSet": False,
+                "ancestry": False,
+                "socialBehavioral": False,
+                "populationHealth": False,
+                "drugDevelopment": False,
+                "commercialPurpose": False,
+                "educational": False,
+                "otherPurpose": False,
+                "scientificApproaches": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "cdrVersionName": cdr_version
+            }
+        ]
+        self.send_post('workbench/directory/workspaces', request_data=updated_request_json)
+        result = self.send_get('workbench/audit/workspace/snapshots')
+        self.assertEqual(len(result), 3)
+        result = self.send_get('workbench/audit/workspace/snapshots?workspace_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['name'], 'workspace name str 3')
+
+
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
         researchers_json = [
