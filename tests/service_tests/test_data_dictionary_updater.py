@@ -233,7 +233,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [self._empty_cell],
             [self._empty_cell],
             [self._empty_cell],
-            *rows
+            *[[self._empty_cell, *row] for row in rows]
         )
 
     def test_version_added_display(self):
