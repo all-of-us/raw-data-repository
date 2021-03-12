@@ -198,28 +198,29 @@ class DeployAppClass(object):
             if 'CIRCLE_BUILD_URL' in os.environ:
                 circle_ci_url = os.environ.get('CIRCLE_BUILD_URL')
 
-            descr = descr + """
-            \nh3. Change Management Description
-            \nSystem: All of Us DRC, Raw Data Repository (RDR)
-            \nDevelopers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
-            \nNeeded By Date/Event: <target release date>
-            \nPriority: <Low, Medium, High>
-            \nConfiguration/Change Manager: Bhinnata Piya
-            \n
-            \nAnticipated Impact: <None, Low, Medium, High>
-            \nSoftware Impact: <Software Impact>
-            \nTraining Impact: <Training Impact>
-            \nData Impact: <Data Impact>
-            \n
-            \nTesting
-            \nTester: Yu Wang, Robert Abram, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
-            \nDate Test Was Completed: <today's date>
-            \nImplementation/Deployment Date: Ongoing
-            \n
-            \nSecurity Impact: <None, Low, Medium, High>
-            \n
-            \nCircleCI Output: {}
-            """.format(circle_ci_url)
+            today = datetime.datetime.today()
+            descr = descr + f"""
+            h3. Change Management Description
+            System: All of Us DRC, Raw Data Repository (RDR)
+            Developers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
+            Needed By Date/Event: <target release date>
+            Priority: <Low, Medium, High>
+            Configuration/Change Manager: Bhinnata Piya
+
+            Anticipated Impact: <None, Low, Medium, High>
+            Software Impact: <Software Impact>
+            Training Impact: <Training Impact>
+            Data Impact: <Data Impact>
+
+            Testing
+            Tester: Yu Wang, Robert Abram, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
+            Date Test Was Completed: {today.strftime("%b %-d, %Y")}
+            Implementation/Deployment Date: Ongoing
+
+            Security Impact: <None, Low, Medium, High>
+
+            CircleCI Output: {circle_ci_url}
+            """
 
         if not board_id:
             board_id = self.jira_board
