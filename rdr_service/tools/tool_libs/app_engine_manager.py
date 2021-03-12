@@ -14,16 +14,19 @@ import difflib
 import yaml
 from yaml import Loader as yaml_loader
 
+from rdr_service.dao import database_factory
+from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater, dictionary_tab_id,\
+    internal_tables_tab_id
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
     git_checkout_branch, is_git_branch_clean, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP
+from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, RdrEnvironment
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
-from rdr_service.config import READTHEDOCS_CREDS
+from rdr_service.config import DATA_DICTIONARY_DOCUMENT_ID, READTHEDOCS_CREDS
 
 
 _logger = logging.getLogger("rdr_logger")
@@ -60,6 +63,8 @@ class DeployAppClass(object):
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
+
+        self.environment = RdrEnvironment(self.gcp_env.project)
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -326,11 +331,50 @@ class DeployAppClass(object):
         except (ValueError, RuntimeError) as e:
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
+    def update_data_dictionary(self, server_config, rdr_version):
+        self.gcp_env.activate_sql_proxy()
+        with database_factory.make_server_cursor_database(alembic=True).session() as session:
+            updater = DataDictionaryUpdater(
+                self.gcp_env.service_key_id,
+                server_config.get_config_item(DATA_DICTIONARY_DOCUMENT_ID),
+                rdr_version,
+                session
+            )
+
+            changelog = updater.find_data_dictionary_diff()
+            if any(changelog.values()):
+                for tab_id, tab_changelog in changelog.items():
+                    if tab_changelog:
+                        if tab_id in [dictionary_tab_id, internal_tables_tab_id]:
+                            # The schema tabs are the only ones that list out detailed changes
+                            _logger.info(f'The following changes were found on the "{tab_id}" tab')
+                            for (table_name, column_name), changes in tab_changelog.items():
+                                if isinstance(changes, str):  # Adding or removing a column will give a string
+                                    _logger.info(f'{changes} {table_name}.{column_name}')
+                                else:
+                                    _logger.info('')
+                                    _logger.info(f'changes for {table_name}.{column_name}:')
+                                    for change_description in changes:
+                                        _logger.info(change_description)
+                                    _logger.info('')
+                        else:
+                            _logger.info(f'The "{tab_id}" tab has been updated')
+
+                update_message = input('What is a summary of the above changes?: ')
+                _logger.info('uploading data-dictionary updates')
+                updater.upload_changes(update_message, self.gcp_env.account)
+            else:
+                _logger.info('No changes detected')
+
     def deploy_app(self):
         """
         Deploy the app
         """
-        if not self.jira_ready and self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
+
+        if self.environment == RdrEnvironment.PROD and self.gcp_env.service_key_id is None:
+            raise Exception('SA account needed to update the data-dictionary when deploying to production.')
+
+        if not self.jira_ready and self.environment in (RdrEnvironment.PROD, RdrEnvironment.STABLE):
             _logger.error('Jira credentials not set, aborting.')
             return 1
 
@@ -363,9 +407,12 @@ class DeployAppClass(object):
         result = gcp_deploy_app(self.gcp_env.project, config_files, self.deploy_version, not self.args.no_promote)
 
         _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
-        if self.gcp_env.project == 'all-of-us-rdr-stable':
+        if self.environment == RdrEnvironment.STABLE:
             self.tag_people()
             self.create_jira_roc_ticket()
+        elif self.environment == RdrEnvironment.PROD:
+            _logger.info('Comparing production database schema to data-dictionary...')
+            self.update_data_dictionary(app_config, self.deploy_version)
 
         # Automatic doc build limited to stable or prod deploy (unless overridden)
         if self.args.no_docs:

@@ -137,6 +137,8 @@ SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
 
 CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
 
+DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
