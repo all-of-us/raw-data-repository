@@ -6,6 +6,7 @@ from datetime import datetime
 
 import pytz
 from sendgrid import sendgrid
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
@@ -19,11 +20,12 @@ from rdr_service.config import (
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
+from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
-    GenomicJob)
+    GenomicJob, GenomicWorkflowState)
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -33,9 +35,10 @@ from rdr_service.genomic.genomic_job_components import (
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao)
+    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
+from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields
 
 
 class GenomicJobController:
@@ -50,6 +53,7 @@ class GenomicJobController:
                  storage_provider=None,
                  bq_project_id=None,
                  task_data=None,
+                 server_config=None,
                  ):
 
         self.job_id = job_id
@@ -63,6 +67,7 @@ class GenomicJobController:
         self.task_data = task_data
         self.bypass_record_count = False
         self.skip_updates = False
+        self.server_config = server_config
 
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
@@ -238,6 +243,133 @@ class GenomicJobController:
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
+
+    def ingest_member_ids_from_aw1_raw_table(self, member_ids):
+        """
+        Pulls AW1 data from genomi_aw1_raw and loads to genomic_set_member
+        :param member_ids: list of genomic_set_member_ids to ingest
+        :return:
+        """
+        member_dao = GenomicSetMemberDao()
+        raw_dao = GenomicAW1RawDao()
+
+        # Get member records
+        members = member_dao.get_members_from_member_ids(member_ids)
+
+        update_recs = []
+        multiples = []
+        missing = []
+
+        for m in members:
+            # add prefix to biobank_id
+            try:
+                pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
+            except KeyError:
+                # Set default for unit tests
+                pre = "A"
+
+            bid = f"{pre}{m.biobankId}"
+
+            # Get Raw AW1 Records for biobank IDs and genome_type
+            try:
+                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, m.genomeType)
+
+            except MultipleResultsFound:
+                multiples.append(m)
+
+            except NoResultFound:
+                missing.append(m)
+
+            else:
+                update_recs.append((m, raw_rec))
+
+        if update_recs:
+            # Get unique file_paths
+            paths = self.get_unique_file_paths_for_raw_records([rec[1] for rec in update_recs])
+
+            file_proc_map = self.map_file_paths_to_fp_id(paths)
+
+            # Process records
+            with member_dao.session() as s:
+
+                for r in update_recs:
+
+                    # Set RDR attributes: aw1_file_processed_id, job_run_id, gc_site
+                    self.set_rdr_aw1_attributes_from_raw(r, file_proc_map)
+
+                    # Set attributes
+                    member = self.set_aw1_attributes_from_raw(r)
+
+                    s.merge(member)
+
+    def set_aw1_attributes_from_raw(self, rec: tuple):
+        """
+        :param rec: GenomicSetMember, GenomicAW1Raw
+        :return:
+        """
+        # get gc_site_id
+        member, raw = rec
+
+        # Iterate through mapped fields
+
+        _map = raw_aw1_to_genomic_set_member_fields
+
+        for key in _map.keys():
+            member.__setattr__(_map[key], getattr(raw, key))
+
+        return member
+
+    @staticmethod
+    def get_unique_file_paths_for_raw_records(raw_records):
+        paths = set()
+        for r in raw_records:
+            paths.add(r.file_path)
+
+        return paths
+
+    def map_file_paths_to_fp_id(self, paths):
+        path_map = {}
+
+        for p in paths:
+            file_obj = self.file_processed_dao.get_max_file_processed_for_filepath(f'/{p}')
+            path_map[p] = file_obj.id
+
+        return path_map
+
+    def set_rdr_aw1_attributes_from_raw(self, rec: tuple, file_proc_map: dict):
+        member = rec[0]
+        raw = rec[1]
+
+        # Set job run and file processed IDs
+        member.reconcileGCManifestJobRunId = self.job_run.id
+
+        # Don't overwrite aw1_file_processed_id when ingesting an AW1F
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            member.aw1FileProcessedId = file_proc_map[raw.file_path]
+
+        # Set the GC site ID (sourced from file-name)
+        member.gcSiteId = raw.file_path.split('/')[-1].split("_")[0].lower()
+
+        # Only update the state if it was AW0 or AW1 (if in failure manifest workflow)
+        # We do not want to regress a state for reingested data
+        state_to_update = GenomicWorkflowState.AW0
+
+        if self.job_id == GenomicJob.AW1F_MANIFEST:
+            state_to_update = GenomicWorkflowState.AW1
+
+        if member.genomicWorkflowState == state_to_update:
+            _signal = "aw1-reconciled"
+
+            # Set the signal for a failed sample
+            if raw.failure_mode not in [None, '']:
+                _signal = 'aw1-failed'
+
+            member.genomicWorkflowState = GenomicStateHandler.get_new_state(
+                member.genomicWorkflowState,
+                signal=_signal)
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        return member
 
     def run_reconciliation_to_data(self, genome_type):
         """

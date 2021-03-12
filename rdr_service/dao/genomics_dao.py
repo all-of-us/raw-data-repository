@@ -35,7 +35,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
     genomic_manifest_file_update
-
+from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_file_prefix as genome_type_map
 
 class GenomicSetDao(UpdatableDao):
     """ Stub for GenomicSet model """
@@ -390,6 +390,13 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
             ).first()
         return member
+
+    def get_members_from_member_ids(self, member_ids):
+        with self.session() as session:
+            return session.query(GenomicSetMember).filter(
+                GenomicSetMember.id.in_(member_ids)
+            ).all()
+
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
@@ -1487,6 +1494,14 @@ class GenomicAW1RawDao(BaseDao):
             ).filter(
                 GenomicAW1Raw.file_path == filepath
             ).one_or_none()
+
+    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
+
+        with self.session() as session:
+            return session.query(GenomicAW1Raw).filter(
+                GenomicAW1Raw.biobank_id == biobank_id,
+                GenomicAW1Raw.file_path.like(f"%{genome_type_map[genome_type]}%")
+            ).one()
 
 
 class GenomicAW2RawDao(BaseDao):
