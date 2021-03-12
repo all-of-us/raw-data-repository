@@ -464,6 +464,7 @@ class DataDictionaryUpdater:
             self.gcp_service_key_id,
             tab_offsets={
                 changelog_tab_id: 'A2',
+                dictionary_tab_id: 'B1',
                 internal_tables_tab_id: 'B1',
                 hpo_key_tab_id: 'A2',
                 questionnaire_key_tab_id: 'A2',
