@@ -306,7 +306,7 @@ def scan_and_complete_feedback_records():
     """
     with GenomicJobController(GenomicJob.FEEDBACK_SCAN) as controller:
         # Get feedback records that are complete
-        fb_recs = controller.get_feedback_complete_records()
+        fb_recs = controller.get_feedback_records_to_send()
 
         for f in fb_recs:
             create_aw2f_manifest(f)

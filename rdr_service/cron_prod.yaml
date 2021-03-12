@@ -39,3 +39,8 @@ cron:
   timezone: America/New_York
   schedule: every day 03:15
   target: offline
+- description: Genomic AW2F Manifest Workflow
+  url: /offline/GenomicAW2ManifestWorkflow
+  timezone: America/New_York
+  schedule: every monday 00:00
+  target: offline

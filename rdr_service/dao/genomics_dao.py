@@ -1446,7 +1446,27 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
 
-        return list(results)
+        return results
+
+    def get_feedback_count_within_threshold(self, theta):
+        """
+        Retrieves feedback records where feedback count is >= a threshold of record_count
+        :param theta: threshold
+        :return: list of feedback records
+        """
+        with self.session() as session:
+            results = session.query(GenomicManifestFeedback).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
+            ).filter(
+                GenomicManifestFeedback.ignoreFlag == 0,
+                GenomicManifestFeedback.feedbackComplete == 0,
+                GenomicManifestFeedback.feedbackRecordCount != 0,
+                GenomicManifestFeedback.feedbackRecordCount >= GenomicManifestFile.recordCount * theta,
+                GenomicManifestFeedback.feedbackManifestFileId.is_(None),
+            ).all()
+
+        return results
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:
