@@ -181,11 +181,16 @@ class ResponseValidator:
                 logging.warning(
                     f'Answer for {question_code} gives a value code id when no options are defined'
                 )
-            elif number_of_selectable_options > 0 and answer.valueCodeId is None:
-                logging.warning(
-                    f'Answer for {question_code} gives no value code id '
-                    f'when the question has options defined'
-                )
+            elif number_of_selectable_options > 0:
+                if answer.valueCodeId is None:
+                    logging.warning(
+                        f'Answer for {question_code} gives no value code id '
+                        f'when the question has options defined'
+                    )
+                elif answer.valueCodeId not in [option.codeId for option in question.options]:
+                    # todo: int test, would this code be filled in?
+                    logging.warning(f'{answer.code.value} is an invalid answer to {question_code}')
+
         elif question.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
             if answer.valueString is None and question.validation is None:
                 logging.warning(f'No valueString answer given for text-based question {question_code}')
@@ -237,9 +242,6 @@ class ResponseValidator:
                 self._check_answer_has_expected_data_type(answer, survey_question)
 
         # TODO: check that
-        #   answers of the expected type (date, code for multi-select, integer, free-text)
-        #   multi-select answers give an option that is valid for the question
-        #    e
         #   that there aren't more answers than expected (there could be fewer answers than what's in the survey)
         #   (checkbox questions get multiple answers)
         #    e

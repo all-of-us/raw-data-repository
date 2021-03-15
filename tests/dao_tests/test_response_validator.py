@@ -114,7 +114,7 @@ class ResponseValidatorTest(BaseTestCase):
         ])
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
-    def test_option_select_validation(self, mock_logging):
+    def test_option_select_data_type_validation(self, mock_logging):
         """
         Survey questions that are defined with options should be answered with valueCodeId
         """
@@ -301,3 +301,32 @@ class ResponseValidatorTest(BaseTestCase):
                 f'Unable to parse validation string for question {broken_integer_question_code.value}', exc_info=True
             )
         ])
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_option_select_option_validation(self, mock_logging):
+        """
+        Survey questions that are defined with options should be answered with one of those options
+        """
+        dropdown_question_code = self.data_generator.create_database_code(value='multi_select')
+        unrecognized_answer_code = self.data_generator.create_database_code(value='completely_different_option')
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                dropdown_question_code: QuestionDefinition(question_type=SurveyQuestionType.DROPDOWN, options=[
+                    self.data_generator.create_database_code(value='option_a'),
+                    self.data_generator.create_database_code(value='option_b')
+                ])
+            },
+            answers={
+                dropdown_question_code: QuestionnaireResponseAnswer(
+                    valueCodeId=unrecognized_answer_code.codeId,
+                    code=unrecognized_answer_code
+                )
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        mock_logging.warning.assert_called_with(
+            f'{unrecognized_answer_code.value} is an invalid answer to {dropdown_question_code.value}'
+        )

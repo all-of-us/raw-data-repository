@@ -15,6 +15,7 @@ from sqlalchemy.sql import text
 from typing import List
 
 from rdr_service.model.base import Base
+from rdr_service.model.code import Code
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.questionnaire import QuestionnaireQuestion
@@ -126,6 +127,7 @@ class QuestionnaireResponseAnswer(Base):
     """
 
     question = relationship(QuestionnaireQuestion)
+    code = relationship(Code)
 
 
 class QuestionnaireResponseExtension(Base):
