@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from dateutil import parser
 
 import pytz
 from sqlalchemy import or_
@@ -149,7 +150,27 @@ class ResponseValidator:
         return {survey_question.code.codeId: survey_question for survey_question in self.survey.questions}
 
     @classmethod
+    def _validate_min_max(cls, answer, min_str, max_str, parser_function, question_code):
+        try:
+            if min_str:
+                min_parsed = parser_function(min_str)
+                if answer < min_parsed:
+                    logging.warning(
+                        f'Given answer "{answer}" is less than expected min "{min_str}" for question {question_code}'
+                    )
+            if max_str:
+                max_parsed = parser_function(max_str)
+                if answer > max_parsed:
+                    logging.warning(
+                        f'Given answer "{answer}" is greater than expected max "{max_str}" for question {question_code}'
+                    )
+        except (parser.ParserError, ValueError):
+            logging.error(f'Unable to parse validation string for question {question_code}', exc_info=True)
+
+    @classmethod
     def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer, question: SurveyQuestion):
+        question_code = answer.question.code.value
+
         if question.questionType in (SurveyQuestionType.UNKNOWN,
                                      SurveyQuestionType.DROPDOWN,
                                      SurveyQuestionType.RADIO,
@@ -158,19 +179,48 @@ class ResponseValidator:
             if number_of_selectable_options == 0 and answer.valueCodeId is not None:
                 # TODO: int test that the questionId is set for the answer
                 logging.warning(
-                    f'Answer for {answer.question.code.value} gives a value code id when no options are defined'
+                    f'Answer for {question_code} gives a value code id when no options are defined'
                 )
             elif number_of_selectable_options > 0 and answer.valueCodeId is None:
                 logging.warning(
-                    f'Answer for {answer.question.code.value} gives no value code id '
+                    f'Answer for {question_code} gives no value code id '
                     f'when the question has options defined'
                 )
         elif question.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
-            if answer.valueString is None:
-                logging.warning(f'No valueString answer given for text-based question {answer.question.code.value}')
+            if answer.valueString is None and question.validation is None:
+                logging.warning(f'No valueString answer given for text-based question {question_code}')
+            elif question.validation is not None:
+                if question.validation.startswith('date'):
+                    if answer.valueDate is None:
+                        logging.warning(f'No valueDate answer given for date-based question {question_code}')
+                    else:
+                        cls._validate_min_max(
+                            answer.valueDate,
+                            question.validation_min,
+                            question.validation_max,
+                            parser.parse,
+                            question_code
+                        )
+                elif question.validation == 'integer':
+                    if answer.valueInteger is None:
+                        logging.warning(
+                            f'No valueInteger answer given for integer-based question {question_code}'
+                        )
+                    else:
+                        cls._validate_min_max(
+                            answer.valueInteger,
+                            question.validation_min,
+                            question.validation_max,
+                            int,
+                            question_code
+                        )
+                else:
+                    logging.warning(
+                        f'Unrecognized validation string "{question.validation}" for question {question_code}'
+                    )
         else:
             # There aren't alot of surveys in redcap right now, so it's unclear how these would be answered
-            logging.warning(f'No validation check implemented for answer to {answer.question.code.value} '
+            logging.warning(f'No validation check implemented for answer to {question_code} '
                             f'with question type {question.questionType}')
 
     def check_response(self, response: QuestionnaireResponse):
@@ -194,6 +244,7 @@ class ResponseValidator:
         #   (checkbox questions get multiple answers)
         #    e
         #   a question isn't answered multiple times
+        #      (except check box types)
         #   if there isn't branching logic on a question, then we should reasonably be able to assume that it
         #                   was answered
         #   does every answer match a response on the survey

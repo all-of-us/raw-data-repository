@@ -16,6 +16,9 @@ from tests.helpers.unittest_base import BaseTestCase
 class QuestionDefinition:
     question_type: SurveyQuestionType = None
     options: List[Code] = field(default_factory=list)
+    validation: str = None
+    validation_min: str = None
+    validation_max: str = None
 
 
 class ResponseValidatorTest(BaseTestCase):
@@ -35,7 +38,10 @@ class ResponseValidatorTest(BaseTestCase):
             survey_questions.append(self.data_generator.create_database_survey_question(
                 code=question_code,
                 options=survey_question_options,
-                questionType=definition.question_type
+                questionType=definition.question_type,
+                validation=definition.validation,
+                validation_min=definition.validation_min,
+                validation_max=definition.validation_max
             ))
         self.data_generator.create_database_survey(
             importTime=survey_import_time,
@@ -210,3 +216,88 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(f'No valueString answer given for text-based question {note_question_code.value}')
         ])
 
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_question_validation_data_type(self, mock_logging):
+        """Validation strings give that a TEXT question should be another datatype"""
+        date_question_code = self.data_generator.create_database_code(value='date_question')
+        integer_question_code = self.data_generator.create_database_code(value='integer_question')
+        unknown_question_code = self.data_generator.create_database_code(value='unknown_question')
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                date_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='date_mdy'
+                ),
+                integer_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='integer'
+                ),
+                unknown_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='abc'
+                ),
+            },
+            answers={
+                date_question_code: QuestionnaireResponseAnswer(valueString='test'),
+                integer_question_code: QuestionnaireResponseAnswer(valueString='test'),
+                unknown_question_code: QuestionnaireResponseAnswer(valueString='test')
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        mock_logging.warning.assert_has_calls([
+            mock.call(f'No valueDate answer given for date-based question {date_question_code.value}'),
+            mock.call(f'No valueInteger answer given for integer-based question {integer_question_code.value}'),
+            mock.call(f'Unrecognized validation string "abc" for question {unknown_question_code.value}')
+        ])
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_question_validation_min_max(self, mock_logging):
+        date_question_code = self.data_generator.create_database_code(value='date_question')
+        integer_question_code = self.data_generator.create_database_code(value='integer_question')
+        broken_date_question_code = self.data_generator.create_database_code(value='broken_date_question')
+        broken_integer_question_code = self.data_generator.create_database_code(value='broken_integer_question')
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                date_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='date_mdy', validation_min='2020-09-01'
+                ),
+                integer_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='integer', validation_min='0', validation_max='10'
+                ),
+                broken_date_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='date', validation_min='test_bad_date'
+                ),
+                broken_integer_question_code: QuestionDefinition(
+                    question_type=SurveyQuestionType.TEXT, validation='integer', validation_min='five'
+                )
+            },
+            answers={
+                date_question_code: QuestionnaireResponseAnswer(valueDate=datetime(2020, 7, 4)),
+                integer_question_code: QuestionnaireResponseAnswer(valueInteger=11),
+                broken_date_question_code: QuestionnaireResponseAnswer(valueDate=datetime(2020, 7, 4)),
+                broken_integer_question_code: QuestionnaireResponseAnswer(valueInteger=11),
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        mock_logging.warning.assert_has_calls([
+            mock.call(
+                f'Given answer "2020-07-04 00:00:00" is less than expected min '
+                f'"2020-09-01" for question {date_question_code.value}'
+            ),
+            mock.call(
+                f'Given answer "11" is greater than expected max "10" for question {integer_question_code.value}'
+            )
+        ])
+        mock_logging.error.assert_has_calls([
+            mock.call(
+                f'Unable to parse validation string for question {broken_date_question_code.value}', exc_info=True
+            ),
+            mock.call(
+                f'Unable to parse validation string for question {broken_integer_question_code.value}', exc_info=True
+            )
+        ])
