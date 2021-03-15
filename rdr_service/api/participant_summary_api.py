@@ -113,3 +113,37 @@ class ParticipantSummaryModifiedApi(BaseApi):
                 )
 
         return response
+
+
+class ParticipantSummaryCheckLoginApi(BaseApi):
+    """
+  API to return status if data is found / not found on participant summary
+  """
+
+    def __init__(self):
+        super(ParticipantSummaryCheckLoginApi, self).__init__(ParticipantSummaryDao())
+
+    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    def post(self):
+        """
+        Return status of IN_USE / NOT_IN_USE if participant found / not found
+    """
+        req_data = request.get_json()
+        accepted = ['email', 'login_phone_number']
+        statuses = ['IN_USE', 'NOT_IN_USE']
+
+        if any([k in req_data for k in accepted]):
+            is_found = False
+            with self.dao.session() as session:
+                for k, v in req_data.items():
+                    query = session.query(ParticipantSummary)
+                    query = query.filter(getattr(ParticipantSummary, k) == v)
+                    is_found = len(query.all())
+
+            status = {'status': statuses[0] if is_found else statuses[1]}
+            return status
+
+        raise BadRequest("Missing email or login_phone_number in request")
+
+
+

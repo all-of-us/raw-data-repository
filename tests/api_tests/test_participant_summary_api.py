@@ -17,6 +17,7 @@ from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERM
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
@@ -348,13 +349,68 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(participant_id, rec["participantId"])
         self.assertEqual(last_modified, rec["lastModified"])
 
+    def test_check_login(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant['participantId'].split('P')[1]
+        participant_obj = ParticipantDao().get(participant_id)
+        participant_obj.loginPhoneNumber = '444-123-4567'
+        participant_summary = ParticipantSummaryDao()\
+            .insert(self.participant_summary(participant_obj))
+
+        real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                      {"email": participant_summary.email})
+        real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": participant_summary.loginPhoneNumber})
+        real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                      {"email": participant_summary.email,
+                                       "login_phone_number": participant_summary.loginPhoneNumber})
+
+        self.assertEqual(len(real_email_result), 1)
+        self.assertEqual(len(real_phone_result), 1)
+        self.assertEqual(len(real_combo_result), 1)
+
+        self.assertEqual(real_email_result['status'], 'IN_USE')
+        self.assertEqual(real_phone_result['status'], 'IN_USE')
+        self.assertEqual(real_combo_result['status'], 'IN_USE')
+
+        fake_email = self.fake.email()
+        fake_phone = '123-456-7890'
+
+        fake_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email})
+        fake_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": fake_phone})
+        fake_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email,
+                                            "login_phone_number": fake_phone})
+
+        self.assertEqual(fake_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_combo_result['status'], 'NOT_IN_USE')
+
+        bad_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                         {"bad_email_key": fake_email},
+                                         expected_status=http.client.BAD_REQUEST)
+        bad_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                         {"bad_phone_key": fake_phone},
+                                         expected_status=http.client.BAD_REQUEST)
+        null_result = self.send_post("ParticipantSummary/CheckLogin",
+                                     expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(bad_email_result.status_code, 400)
+        self.assertEqual(bad_phone_result.status_code, 400)
+        self.assertEqual(null_result.status_code, 400)
+
+        self.assertEqual(bad_email_result.json['message'],
+                         'Missing email or login_phone_number in request')
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
         path = "Participant/%s" % participant_id
         participant["awardee"] = "PITT"
-        particpant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
-        self.assertEqual(particpant_update["awardee"], participant["awardee"])
+        participant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+        self.assertEqual(participant_update["awardee"], participant["awardee"])
         participant["organization"] = "AZ_TUCSON_BANNER_HEALTH"
         participant_update_2 = self.send_put(path, participant, headers={"If-Match": 'W/"2"'})
         self.assertEqual(participant_update_2["organization"], participant["organization"])
