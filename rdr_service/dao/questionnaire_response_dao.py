@@ -155,20 +155,21 @@ class ResponseValidator:
             # question definition specifies that there are options
             number_of_selectable_options = len(question.options)
             if number_of_selectable_options == 0 and answer.valueCodeId is not None:
+                # TODO: int test that the questionId is set for the answer
                 logging.warning(
-                    f'Answer for question {answer.questionId} gives a value code id when no options are defined'
+                    f'Answer for {answer.question.code.value} gives a value code id when no options are defined'
                 )
             elif number_of_selectable_options > 0 and answer.valueCodeId is None:
                 logging.warning(
-                    f'Answer for question {answer.questionId} gives no value code id '
-                    'when the question has options defined'
+                    f'Answer for {answer.question.code.value} gives no value code id '
+                    f'when the question has options defined'
                 )
 
     def check_response(self, response: QuestionnaireResponse):
         if self.survey is None:
             return None
 
-        for answer in response.answers:
+        for answer in response.answers:  # todo: int test that the answers relationship is set
             survey_question = self._code_to_question_map.get(answer.question.codeId)
             if not survey_question:
                 # TODO: write test for this
