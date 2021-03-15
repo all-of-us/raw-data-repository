@@ -1550,7 +1550,9 @@ class IngestionClass(GenomicManifestBase):
 
                         controller.bypass_record_count = self.args.bypass_record_count
 
-                        controller.ingest_member_ids_from_aw1_raw_table(member_ids)
+                        results = controller.ingest_member_ids_from_aw1_raw_table(member_ids)
+
+                        logging.info(results)
 
                 if bucket_name:
                     # ingest AW1 data using controller

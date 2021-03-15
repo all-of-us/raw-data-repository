@@ -247,9 +247,9 @@ class GenomicJobController:
 
     def ingest_member_ids_from_aw1_raw_table(self, member_ids):
         """
-        Pulls AW1 data from genomi_aw1_raw and loads to genomic_set_member
+        Pulls AW1 data from genomic_aw1_raw and loads to genomic_set_member
         :param member_ids: list of genomic_set_member_ids to ingest
-        :return:
+        :return: ingestion results as string
         """
         member_dao = GenomicSetMemberDao()
         raw_dao = GenomicAW1RawDao()
@@ -258,6 +258,7 @@ class GenomicJobController:
         members = member_dao.get_members_from_member_ids(member_ids)
 
         update_recs = []
+        completed = []
         multiples = []
         missing = []
 
@@ -276,10 +277,10 @@ class GenomicJobController:
                 raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, m.genomeType)
 
             except MultipleResultsFound:
-                multiples.append(m)
+                multiples.append(m.id)
 
             except NoResultFound:
-                missing.append(m)
+                missing.append(m.id)
 
             else:
                 update_recs.append((m, raw_rec))
@@ -302,6 +303,16 @@ class GenomicJobController:
                     member = self.set_aw1_attributes_from_raw(r)
 
                     s.merge(member)
+                    completed.append(member.id)
+
+        # Output results
+        result_msg = ''
+        result_msg += 'Ingestion From Raw Results:'
+        result_msg += f'    Updated IDs: {completed}'
+        result_msg += f'    Missing IDs: {missing}'
+        result_msg += f'    Multipls found for IDs: {multiples}'
+
+        return result_msg
 
     def set_aw1_attributes_from_raw(self, rec: tuple):
         """
