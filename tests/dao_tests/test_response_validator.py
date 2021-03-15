@@ -107,3 +107,52 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(f'Answer for {free_text_question_code.value} gives a value code id when no options are defined')
         ])
 
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_simple_survey_response_validation(self, mock_logging):
+        """
+        Survey questions that are defined with options should be answered with valueCodeId
+        """
+        dropdown_question_code = self.data_generator.create_database_code(value='multi_select')
+        radio_question_code = self.data_generator.create_database_code(value='radio_select')
+        checkbox_question_code = self.data_generator.create_database_code(value='checkbox_select')
+
+        yesno_question_code = self.data_generator.create_database_code(value='yesno_select')
+        truefalse_question_code = self.data_generator.create_database_code(value='truefalse_select')
+        # todo: check how these are answered in the cope surveys (if they're there)
+
+        # The validator only checks to see if there are options and doesn't really mind what they are,
+        # using the same options for all the questions for simplicity
+        options = [
+            self.data_generator.create_database_code(value=option_value)
+            for option_value in ['option_a', 'option_b']
+        ]
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                dropdown_question_code: QuestionDefinition(question_type=SurveyQuestionType.DROPDOWN, options=options),
+                radio_question_code: QuestionDefinition(question_type=SurveyQuestionType.RADIO, options=options),
+                checkbox_question_code: QuestionDefinition(question_type=SurveyQuestionType.CHECKBOX, options=options),
+                yesno_question_code: QuestionDefinition(question_type=SurveyQuestionType.YESNO, options=options),
+                truefalse_question_code: QuestionDefinition(question_type=SurveyQuestionType.TRUEFALSE, options=options)
+            },
+            answers={
+                dropdown_question_code: QuestionnaireResponseAnswer(valueString='text answer'),
+                radio_question_code: QuestionnaireResponseAnswer(valueString='text answer'),
+                checkbox_question_code: QuestionnaireResponseAnswer(valueString='text answer'),
+                yesno_question_code: QuestionnaireResponseAnswer(valueString='text answer'),
+                truefalse_question_code: QuestionnaireResponseAnswer(valueString='text answer')
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        no_value_code_id_used_message = 'Answer for {} gives no value code id when the question has options defined'
+        mock_logging.warning.assert_has_calls([
+            mock.call(no_value_code_id_used_message.format(dropdown_question_code.value)),
+            mock.call(no_value_code_id_used_message.format(radio_question_code.value)),
+            mock.call(no_value_code_id_used_message.format(checkbox_question_code.value)),
+            mock.call(no_value_code_id_used_message.format(yesno_question_code.value)),
+            mock.call(no_value_code_id_used_message.format(truefalse_question_code.value)),
+        ])
+

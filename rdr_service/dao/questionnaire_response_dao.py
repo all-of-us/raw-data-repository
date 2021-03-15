@@ -150,9 +150,12 @@ class ResponseValidator:
 
     @classmethod
     def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer, question: SurveyQuestion):
-        if question.questionType == SurveyQuestionType.UNKNOWN:
-            # The only data type validation check that can be made is to see if the
-            # question definition specifies that there are options
+        if question.questionType in (SurveyQuestionType.UNKNOWN,
+                                     SurveyQuestionType.DROPDOWN,
+                                     SurveyQuestionType.RADIO,
+                                     SurveyQuestionType.CHECKBOX,
+                                     SurveyQuestionType.YESNO,
+                                     SurveyQuestionType.TRUEFALSE):
             number_of_selectable_options = len(question.options)
             if number_of_selectable_options == 0 and answer.valueCodeId is not None:
                 # TODO: int test that the questionId is set for the answer
