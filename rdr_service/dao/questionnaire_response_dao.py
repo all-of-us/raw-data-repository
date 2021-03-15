@@ -4,9 +4,9 @@ import os
 import re
 from datetime import datetime
 from dateutil import parser
-
 import pytz
 from sqlalchemy import or_
+from typing import Dict
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -146,7 +146,7 @@ class ResponseValidator:
             # TODO: does this join load the questions and codes, and question options?
         return survey_query.first()
 
-    def _build_code_to_question_map(self):
+    def _build_code_to_question_map(self) -> Dict[int, SurveyQuestion]:
         return {survey_question.code.codeId: survey_question for survey_question in self.survey.questions}
 
     @classmethod
@@ -232,26 +232,20 @@ class ResponseValidator:
         if self.survey is None:
             return None
 
+        question_codes_answered = set()
         for answer in response.answers:  # todo: int test that the answers relationship is set
             survey_question = self._code_to_question_map.get(answer.question.codeId)
             if not survey_question:
-                # TODO: write test for this
+                # TODO: write test for this?
                 logging.error(f'Question code used by the answer for question {answer.questionId} does not match a '
                               f'code found on the survey definition')
             else:
                 self._check_answer_has_expected_data_type(answer, survey_question)
 
-        # TODO: check that
-        #   that there aren't more answers than expected (there could be fewer answers than what's in the survey)
-        #   (checkbox questions get multiple answers)
-        #    e
-        #   a question isn't answered multiple times
-        #      (except check box types)
-        #   if there isn't branching logic on a question, then we should reasonably be able to assume that it
-        #                   was answered
-        #   does every answer match a response on the survey
-
-        logging.info('this is valid')
+            if survey_question.codeId in question_codes_answered:
+                logging.error(f'Too many answers given for {survey_question.code.value}')
+            elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
+                question_codes_answered.add(survey_question.codeId)
 
 
 class QuestionnaireResponseDao(BaseDao):

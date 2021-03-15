@@ -118,7 +118,7 @@ class ResponseValidatorTest(BaseTestCase):
         """
         Survey questions that are defined with options should be answered with valueCodeId
         """
-        dropdown_question_code = self.data_generator.create_database_code(value='multi_select')
+        dropdown_question_code = self.data_generator.create_database_code(value='dropdown_select')
         radio_question_code = self.data_generator.create_database_code(value='radio_select')
         checkbox_question_code = self.data_generator.create_database_code(value='checkbox_select')
 
@@ -307,7 +307,7 @@ class ResponseValidatorTest(BaseTestCase):
         """
         Survey questions that are defined with options should be answered with one of those options
         """
-        dropdown_question_code = self.data_generator.create_database_code(value='multi_select')
+        dropdown_question_code = self.data_generator.create_database_code(value='dropdown_select')
         unrecognized_answer_code = self.data_generator.create_database_code(value='completely_different_option')
         questionnaire_history, response = self._build_questionnaire_and_response(
             questions={
@@ -330,3 +330,41 @@ class ResponseValidatorTest(BaseTestCase):
         mock_logging.warning.assert_called_with(
             f'{unrecognized_answer_code.value} is an invalid answer to {dropdown_question_code.value}'
         )
+
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_questions_answered_multiple_times(self, mock_logging):
+        """We should only get one answer for a question (except Checkbox questions)"""
+        dropdown_question_code = self.data_generator.create_database_code(value='dropdown_select')
+        checkbox_question_code = self.data_generator.create_database_code(value='checkbox_select')
+
+        # The validator only checks to see if there are options and doesn't really mind what they are,
+        # using the same options for all the questions for simplicity
+        option_a_code = self.data_generator.create_database_code(value='option_a')
+        option_b_code = self.data_generator.create_database_code(value='option_b')
+        options = [option_a_code, option_b_code]
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                dropdown_question_code: QuestionDefinition(question_type=SurveyQuestionType.DROPDOWN, options=options),
+                checkbox_question_code: QuestionDefinition(question_type=SurveyQuestionType.CHECKBOX, options=options)
+            },
+            answers={
+                dropdown_question_code: QuestionnaireResponseAnswer(
+                    code=option_a_code, valueCodeId=option_a_code.codeId
+                ),
+                checkbox_question_code: QuestionnaireResponseAnswer(
+                    code=option_a_code, valueCodeId=option_a_code.codeId
+                )
+            }
+        )
+        # Add extra answers to the response for each question
+        for question in questionnaire_history.questions:
+            response.answers.append(QuestionnaireResponseAnswer(
+                questionId=question.questionnaireQuestionId, question=question,
+                valueCodeId=option_b_code.codeId, code=option_b_code
+            ))
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        mock_logging.error.assert_called_once_with(f'Too many answers given for {dropdown_question_code.value}')
