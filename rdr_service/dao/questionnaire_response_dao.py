@@ -165,6 +165,9 @@ class ResponseValidator:
                     f'Answer for {answer.question.code.value} gives no value code id '
                     f'when the question has options defined'
                 )
+        elif question.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
+            if answer.valueString is None:
+                logging.warning(f'No valueString answer given for text-based question {answer.question.code.value}')
         elif question.questionType in (SurveyQuestionType.CALC,
                                        SurveyQuestionType.YESNO,
                                        SurveyQuestionType.TRUEFALSE,

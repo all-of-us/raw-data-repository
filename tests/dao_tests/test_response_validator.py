@@ -196,3 +196,27 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(no_validation_check_message.format(slider_question_code.value)),
         ])
 
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_log_for_text_questions_not_answered_with_text(self, mock_logging):
+        text_question_code = self.data_generator.create_database_code(value='text_question')
+        note_question_code = self.data_generator.create_database_code(value='note_question')
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                text_question_code: QuestionDefinition(question_type=SurveyQuestionType.TEXT),
+                note_question_code: QuestionDefinition(question_type=SurveyQuestionType.NOTES)
+            },
+            answers={
+                text_question_code: QuestionnaireResponseAnswer(valueInteger=1),
+                note_question_code: QuestionnaireResponseAnswer(valueInteger=1)
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        mock_logging.warning.assert_has_calls([
+            mock.call(f'No valueString answer given for text-based question {text_question_code.value}'),
+            mock.call(f'No valueString answer given for text-based question {note_question_code.value}')
+        ])
+
