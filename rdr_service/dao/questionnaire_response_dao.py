@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 
 import pytz
+from sqlalchemy import or_
 from sqlalchemy.orm import subqueryload
 from werkzeug.exceptions import BadRequest
 
@@ -59,6 +60,7 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -109,6 +111,82 @@ def get_first_completed_baseline_time(participant_summary):
             if field_value > baseline_time:
                 baseline_time = field_value
     return baseline_time
+
+
+class ResponseValidator:
+    def __init__(self, questionnaire_history: QuestionnaireHistory, session):
+        self.session = session
+
+        self.survey = self._get_survey_for_questionnaire_history(questionnaire_history)
+        self._code_to_question_map = self._build_code_to_question_map()
+
+    def _get_survey_for_questionnaire_history(self, questionnaire_history: QuestionnaireHistory):
+        survey_query = self.session.query(Survey).filter(
+            Survey.codeId.in_([concept.codeId for concept in questionnaire_history.concepts]),
+            Survey.importTime < questionnaire_history.created,
+            or_(
+                Survey.replacedTime.is_(None),
+                Survey.replacedTime > questionnaire_history.created
+            )
+        )
+        num_surveys_found = survey_query.count()
+        if num_surveys_found == 0:
+            logging.warning(
+                f'No survey definition found for questionnaire id "{questionnaire_history.questionnaireId}" '
+                f'version "{questionnaire_history.version}"'
+            )
+        elif num_surveys_found > 1:
+            logging.warning(
+                f'Multiple survey definitions found for questionnaire id "{questionnaire_history.questionnaireId}" '
+                f'version "{questionnaire_history.version}"'
+            )
+        # TODO: test these logs
+
+            # TODO: does this join load the questions and codes, and question options?
+        return survey_query.first()
+
+    def _build_code_to_question_map(self):
+        return {survey_question.code.codeId: survey_question for survey_question in self.survey.questions}
+
+    @classmethod
+    def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer, question: SurveyQuestion):
+        if question.questionType == SurveyQuestionType.UNKNOWN:
+            # The only data type validation check that can be made is to see if the
+            # question definition specifies that there are options
+            number_of_selectable_options = len(question.options)
+            if number_of_selectable_options == 0 and answer.valueCodeId is not None:
+                logging.warning(
+                    f'Answer for question {answer.questionId} gives a value code id when no options are defined'
+                )
+            elif number_of_selectable_options > 0 and answer.valueCodeId is None:
+                logging.warning(
+                    f'Answer for question {answer.questionId} gives no value code id '
+                    'when the question has options defined'
+                )
+
+    def check_response(self, response: QuestionnaireResponse):
+        if self.survey is None:
+            return None
+
+        for answer in response.answers:
+            survey_question = self._code_to_question_map.get(answer.question.codeId)
+            if not survey_question:
+                # TODO: write test for this
+                logging.error(f'Question code used by the answer for question {answer.questionId} does not match a '
+                              f'code found on the survey definition')
+            else:
+                self._check_answer_has_expected_data_type(answer, survey_question)
+
+        # TODO: check that
+        #   answers of the expected type (date, code for multi-select, integer, free-text)
+        #   multi-select answers give an option that is valid for the question
+        #   that there aren't more answers than expected (there could be fewer answers than what's in the survey)
+        #   a question isn't answered multiple times
+        #   if there isn't branching logic on a question, then we should reasonably be able to assume that it
+        #                   was answered
+        #   does every answer match a response on the survey
+
+        logging.info('this is valid')
 
 
 class QuestionnaireResponseDao(BaseDao):

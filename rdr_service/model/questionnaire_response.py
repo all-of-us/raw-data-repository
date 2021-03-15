@@ -12,10 +12,12 @@ from sqlalchemy import (
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import text
+from typing import List
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
+from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.participant_enums import QuestionnaireResponseStatus
 
 
@@ -48,7 +50,9 @@ class QuestionnaireResponse(Base):
         default=QuestionnaireResponseStatus.COMPLETED,
         server_default=text(str(int(QuestionnaireResponseStatus.COMPLETED)))
     )
-    answers = relationship("QuestionnaireResponseAnswer", cascade="all, delete-orphan")
+    answers: List['QuestionnaireResponseAnswer'] = relationship(
+        "QuestionnaireResponseAnswer", cascade="all, delete-orphan"
+    )
     extensions = relationship('QuestionnaireResponseExtension')
 
     __table_args__ = (
@@ -120,6 +124,8 @@ class QuestionnaireResponseAnswer(Base):
     When the response is a Uniform Resource Identifier Reference (RFC 3986 ).
     Note: URIs are case sensitive. For UUID (urn:uuid:53fefa32-fcbb-4ff8-8a92-55ee120877b7) use all lowercase
     """
+
+    question = relationship(QuestionnaireQuestion)
 
 
 class QuestionnaireResponseExtension(Base):
