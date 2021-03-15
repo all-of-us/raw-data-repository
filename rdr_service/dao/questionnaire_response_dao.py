@@ -168,13 +168,10 @@ class ResponseValidator:
         elif question.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
             if answer.valueString is None:
                 logging.warning(f'No valueString answer given for text-based question {answer.question.code.value}')
-        elif question.questionType in (SurveyQuestionType.CALC,
-                                       SurveyQuestionType.YESNO,
-                                       SurveyQuestionType.TRUEFALSE,
-                                       SurveyQuestionType.FILE,
-                                       SurveyQuestionType.SLIDER):
+        else:
             # There aren't alot of surveys in redcap right now, so it's unclear how these would be answered
-            logging.warning(f'No validation implemented for answer to {answer.question.code.value}')
+            logging.warning(f'No validation check implemented for answer to {answer.question.code.value} '
+                            f'with question type {question.questionType}')
 
     def check_response(self, response: QuestionnaireResponse):
         if self.survey is None:

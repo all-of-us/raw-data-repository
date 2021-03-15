@@ -177,13 +177,13 @@ class ResponseValidatorTest(BaseTestCase):
         validator = ResponseValidator(questionnaire_history, self.session)
         validator.check_response(response)
 
-        no_validation_check_message = 'No validation implemented for answer to {}'
+        no_validation_check_message = 'No validation check implemented for answer to {} with question type {}'
         mock_logging.warning.assert_has_calls([
-            mock.call(no_validation_check_message.format(calc_question_code.value)),
-            mock.call(no_validation_check_message.format(yesno_question_code.value)),
-            mock.call(no_validation_check_message.format(truefalse_question_code.value)),
-            mock.call(no_validation_check_message.format(file_question_code.value)),
-            mock.call(no_validation_check_message.format(slider_question_code.value)),
+            mock.call(no_validation_check_message.format(calc_question_code.value, SurveyQuestionType.CALC)),
+            mock.call(no_validation_check_message.format(yesno_question_code.value, SurveyQuestionType.YESNO)),
+            mock.call(no_validation_check_message.format(truefalse_question_code.value, SurveyQuestionType.TRUEFALSE)),
+            mock.call(no_validation_check_message.format(file_question_code.value, SurveyQuestionType.FILE)),
+            mock.call(no_validation_check_message.format(slider_question_code.value, SurveyQuestionType.SLIDER))
         ])
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
