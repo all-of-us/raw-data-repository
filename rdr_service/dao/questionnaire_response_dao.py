@@ -153,9 +153,7 @@ class ResponseValidator:
         if question.questionType in (SurveyQuestionType.UNKNOWN,
                                      SurveyQuestionType.DROPDOWN,
                                      SurveyQuestionType.RADIO,
-                                     SurveyQuestionType.CHECKBOX,
-                                     SurveyQuestionType.YESNO,
-                                     SurveyQuestionType.TRUEFALSE):
+                                     SurveyQuestionType.CHECKBOX):
             number_of_selectable_options = len(question.options)
             if number_of_selectable_options == 0 and answer.valueCodeId is not None:
                 # TODO: int test that the questionId is set for the answer
@@ -167,6 +165,13 @@ class ResponseValidator:
                     f'Answer for {answer.question.code.value} gives no value code id '
                     f'when the question has options defined'
                 )
+        elif question.questionType in (SurveyQuestionType.CALC,
+                                       SurveyQuestionType.YESNO,
+                                       SurveyQuestionType.TRUEFALSE,
+                                       SurveyQuestionType.FILE,
+                                       SurveyQuestionType.SLIDER):
+            # There aren't alot of surveys in redcap right now, so it's unclear how these would be answered
+            logging.warning(f'No validation implemented for answer to {answer.question.code.value}')
 
     def check_response(self, response: QuestionnaireResponse):
         if self.survey is None:
@@ -184,7 +189,10 @@ class ResponseValidator:
         # TODO: check that
         #   answers of the expected type (date, code for multi-select, integer, free-text)
         #   multi-select answers give an option that is valid for the question
+        #    e
         #   that there aren't more answers than expected (there could be fewer answers than what's in the survey)
+        #   (checkbox questions get multiple answers)
+        #    e
         #   a question isn't answered multiple times
         #   if there isn't branching logic on a question, then we should reasonably be able to assume that it
         #                   was answered

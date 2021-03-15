@@ -156,3 +156,43 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(no_value_code_id_used_message.format(truefalse_question_code.value)),
         ])
 
+    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
+    def test_log_for_unimplemented_validation(self, mock_logging):
+        calc_question_code = self.data_generator.create_database_code(value='calc_question')
+        yesno_question_code = self.data_generator.create_database_code(value='yesno_question')
+        truefalse_question_code = self.data_generator.create_database_code(value='truefalse_question')
+        file_question_code = self.data_generator.create_database_code(value='file_question')
+        slider_question_code = self.data_generator.create_database_code(value='slider_question')
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                calc_question_code: QuestionDefinition(question_type=SurveyQuestionType.CALC),
+                yesno_question_code: QuestionDefinition(question_type=SurveyQuestionType.YESNO),
+                truefalse_question_code: QuestionDefinition(question_type=SurveyQuestionType.TRUEFALSE),
+                file_question_code: QuestionDefinition(question_type=SurveyQuestionType.FILE),
+                slider_question_code: QuestionDefinition(question_type=SurveyQuestionType.SLIDER)
+            },
+            answers={
+                question_code: QuestionnaireResponseAnswer()
+                for question_code in [
+                    calc_question_code,
+                    yesno_question_code,
+                    truefalse_question_code,
+                    file_question_code,
+                    slider_question_code
+                ]
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        no_validation_check_message = 'No validation implemented for answer to {}'
+        mock_logging.warning.assert_has_calls([
+            mock.call(no_validation_check_message.format(calc_question_code.value)),
+            mock.call(no_validation_check_message.format(yesno_question_code.value)),
+            mock.call(no_validation_check_message.format(truefalse_question_code.value)),
+            mock.call(no_validation_check_message.format(file_question_code.value)),
+            mock.call(no_validation_check_message.format(slider_question_code.value)),
+        ])
+
