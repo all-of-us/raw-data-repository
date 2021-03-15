@@ -20,6 +20,7 @@ from rdr_service.config import (
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
+from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
 from rdr_service.participant_enums import (
@@ -344,6 +345,10 @@ class GenomicJobController:
 
         for p in paths:
             file_obj = self.file_processed_dao.get_max_file_processed_for_filepath(f'/{p}')
+
+            if not file_obj:
+                raise DataError(f"No genomic_file_processed record for {p}")
+
             path_map[p] = file_obj.id
 
         return path_map

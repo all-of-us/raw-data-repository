@@ -2186,9 +2186,6 @@ def run():
         except Exception as e:
             _logger.info('Error has occured, {}. For help use "genomic --help".').format(e.message)
             exit_code = 1
-        else:
-            _logger.info('Please select a utility option to run. For help use "genomic --help".')
-            exit_code = 1
 
         return exit_code
 
