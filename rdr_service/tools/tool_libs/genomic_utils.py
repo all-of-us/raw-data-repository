@@ -1542,8 +1542,17 @@ class IngestionClass(GenomicManifestBase):
                 # Run AW1 ingestion on sample list
                 _logger.info("Ingesting AW1 data for ids.")
 
-                # TODO: Future enhancements:
-                #  look up AW1 file for sample if none supplied
+                if self.args.use_raw:
+
+                    with GenomicJobController(GenomicJob.AW1_MANIFEST,
+                                              bq_project_id=self.gcp_env.project,
+                                              server_config=self.get_server_config()) as controller:
+
+                        controller.bypass_record_count = self.args.bypass_record_count
+
+                        results = controller.ingest_member_ids_from_aw1_raw_table(member_ids)
+
+                        logging.info(results)
 
                 if bucket_name:
                     # ingest AW1 data using controller
@@ -1560,6 +1569,9 @@ class IngestionClass(GenomicManifestBase):
             elif self.args.data_type.lower() == "aw2":
                 # Run AW2 ingestion on sample list
                 _logger.info("Ingesting AW2 data for ids.")
+
+                if self.args.use_raw:
+                    pass
 
                 if bucket_name:
                     # ingest AW1 data using controller
@@ -2085,6 +2097,8 @@ def run():
                                          default=None, required=False)  # noqa
     sample_ingestion_parser.add_argument("--bypass-record-count", help="Flag to skip counting ingested records",
                                          default=False, required=False, action="store_true")  # noqa
+    sample_ingestion_parser.add_argument("--use-raw", help="Flag to process records using `raw` table",
+                                         default=False, required=False, action="store_true")  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")
@@ -2171,9 +2185,6 @@ def run():
             exit_code = process.run()
         except Exception as e:
             _logger.info('Error has occured, {}. For help use "genomic --help".').format(e.message)
-            exit_code = 1
-        else:
-            _logger.info('Please select a utility option to run. For help use "genomic --help".')
             exit_code = 1
 
         return exit_code
