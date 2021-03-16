@@ -350,28 +350,56 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(last_modified, rec["lastModified"])
 
     def test_check_login(self):
-        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
-        participant_id = participant['participantId'].split('P')[1]
-        participant_obj = ParticipantDao().get(participant_id)
-        participant_obj.loginPhoneNumber = '444-123-4567'
-        participant_summary = ParticipantSummaryDao()\
-            .insert(self.participant_summary(participant_obj))
+        participant_one = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_two = self.send_post("Participant", {"providerLink": [self.provider_link]})
 
-        real_email_result = self.send_post("ParticipantSummary/CheckLogin",
-                                      {"email": participant_summary.email})
-        real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
-                                           {"login_phone_number": participant_summary.loginPhoneNumber})
-        real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
-                                      {"email": participant_summary.email,
-                                       "login_phone_number": participant_summary.loginPhoneNumber})
+        participant_one_id = participant_one['participantId'].split('P')[1]
+        participant_two_id = participant_two['participantId'].split('P')[1]
 
-        self.assertEqual(len(real_email_result), 1)
-        self.assertEqual(len(real_phone_result), 1)
-        self.assertEqual(len(real_combo_result), 1)
+        participant_one = ParticipantDao().get(participant_one_id)
+        participant_two = ParticipantDao().get(participant_two_id)
 
-        self.assertEqual(real_email_result['status'], 'IN_USE')
-        self.assertEqual(real_phone_result['status'], 'IN_USE')
-        self.assertEqual(real_combo_result['status'], 'IN_USE')
+        participant_two.withdrawalStatus = 2
+
+        participant_summary_one = ParticipantSummaryDao()\
+            .insert(self.participant_summary(participant_one))
+        participant_summary_one.loginPhoneNumber = '444-123-4567'
+        ParticipantSummaryDao().update(participant_summary_one)
+
+        participant_summary_two = ParticipantSummaryDao() \
+            .insert(self.participant_summary(participant_two))
+
+        one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                      {"email": participant_summary_one.email})
+        one_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": participant_summary_one.loginPhoneNumber})
+        one_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                      {"email": participant_summary_one.email,
+                                       "login_phone_number": participant_summary_one.loginPhoneNumber})
+
+        two_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email})
+        two_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"login_phone_number": participant_summary_two.loginPhoneNumber})
+        two_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email,
+                                                "login_phone_number": participant_summary_two.loginPhoneNumber})
+
+        self.assertEqual(len(one_real_email_result), 1)
+        self.assertEqual(len(one_real_phone_result), 1)
+        self.assertEqual(len(one_real_combo_result), 1)
+
+        self.assertEqual(one_real_email_result['status'], 'IN_USE')
+        self.assertEqual(one_real_phone_result['status'], 'IN_USE')
+        self.assertEqual(one_real_combo_result['status'], 'IN_USE')
+
+        self.assertEqual(len(two_real_email_result), 1)
+        self.assertEqual(len(two_real_phone_result), 1)
+        self.assertEqual(len(two_real_combo_result), 1)
+
+        self.assertEqual(two_real_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_combo_result['status'], 'NOT_IN_USE')
 
         fake_email = self.fake.email()
         fake_phone = '123-456-7890'
@@ -388,20 +416,38 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(fake_phone_result['status'], 'NOT_IN_USE')
         self.assertEqual(fake_combo_result['status'], 'NOT_IN_USE')
 
-        bad_email_result = self.send_post("ParticipantSummary/CheckLogin",
+        bad_key_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                          {"bad_email_key": fake_email},
                                          expected_status=http.client.BAD_REQUEST)
-        bad_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+        bad_key_phone_result = self.send_post("ParticipantSummary/CheckLogin",
                                          {"bad_phone_key": fake_phone},
                                          expected_status=http.client.BAD_REQUEST)
-        null_result = self.send_post("ParticipantSummary/CheckLogin",
+        null_key_result = self.send_post("ParticipantSummary/CheckLogin",
                                      expected_status=http.client.BAD_REQUEST)
 
-        self.assertEqual(bad_email_result.status_code, 400)
-        self.assertEqual(bad_phone_result.status_code, 400)
-        self.assertEqual(null_result.status_code, 400)
+        self.assertEqual(bad_key_email_result.status_code, 400)
+        self.assertEqual(bad_key_phone_result.status_code, 400)
+        self.assertEqual(null_key_result.status_code, 400)
 
-        self.assertEqual(bad_email_result.json['message'],
+        self.assertEqual(bad_key_email_result.json['message'],
+                         'Missing email or login_phone_number in request')
+
+        null_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"email": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": '',
+                                            "login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(null_email_result.status_code, 400)
+        self.assertEqual(null_phone_result.status_code, 400)
+        self.assertEqual(null_combo_result.status_code, 400)
+
+        self.assertEqual(null_email_result.json['message'],
                          'Missing email or login_phone_number in request')
 
     def test_pairing_summary(self):

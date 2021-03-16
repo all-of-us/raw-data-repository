@@ -10,6 +10,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
+from rdr_service.participant_enums import WithdrawalStatus
 
 
 class ParticipantSummaryApi(BaseApi):
@@ -135,12 +136,17 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
         }
         statuses = ['IN_USE', 'NOT_IN_USE']
 
-        if req_data and any([k in req_data for k in accepted_map]):
+        if req_data \
+            and any([k in req_data for k in accepted_map])\
+                and all([v for _, v in req_data.items() if v is not None]):
+
             is_found = False
             with self.dao.session() as session:
                 for k, v in req_data.items():
-                    query = session.query(ParticipantSummary.biobankId)
-                    query = query.filter(getattr(ParticipantSummary, accepted_map[k]) == v)
+                    query = session.query(ParticipantSummary.biobankId)\
+                        .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                                getattr(ParticipantSummary, accepted_map[k]) == v,
+                                getattr(ParticipantSummary, accepted_map[k]).isnot(None))
                     is_found = query.all()
 
             status = {'status': statuses[0] if is_found else statuses[1]}
