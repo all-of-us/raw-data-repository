@@ -173,7 +173,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
             engine.execute("USE rdr")
             database.create_schema()
-            # alert charset like what db migration do
+            # alter table charset like what db migration do
             engine.execute("ALTER TABLE `questionnaire_response_answer` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
                            "utf8mb4_unicode_ci")
             engine.execute("ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
