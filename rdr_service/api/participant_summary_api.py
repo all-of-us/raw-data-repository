@@ -2,7 +2,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
-from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE
+from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE, RDR_AND_PTC
 from rdr_service.app_util import auth_required, get_validated_user_info
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -123,22 +123,25 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryCheckLoginApi, self).__init__(ParticipantSummaryDao())
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    @auth_required(RDR_AND_PTC)
     def post(self):
         """
         Return status of IN_USE / NOT_IN_USE if participant found / not found
     """
         req_data = request.get_json()
-        accepted = ['email', 'login_phone_number']
+        accepted_map = {
+            'email': 'email',
+            'login_phone_number': 'loginPhoneNumber'
+        }
         statuses = ['IN_USE', 'NOT_IN_USE']
 
-        if any([k in req_data for k in accepted]):
+        if req_data and any([k in req_data for k in accepted_map]):
             is_found = False
             with self.dao.session() as session:
                 for k, v in req_data.items():
-                    query = session.query(ParticipantSummary)
-                    query = query.filter(getattr(ParticipantSummary, k) == v)
-                    is_found = len(query.all())
+                    query = session.query(ParticipantSummary.biobankId)
+                    query = query.filter(getattr(ParticipantSummary, accepted_map[k]) == v)
+                    is_found = query.all()
 
             status = {'status': statuses[0] if is_found else statuses[1]}
             return status
