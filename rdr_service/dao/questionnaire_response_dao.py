@@ -148,7 +148,6 @@ class ResponseValidator:
                 f'Multiple survey definitions found for questionnaire id "{questionnaire_history.questionnaireId}" '
                 f'version "{questionnaire_history.version}"'
             )
-        # TODO: test these logs
         return survey_query.first()
 
     def _build_code_to_question_map(self) -> Dict[int, SurveyQuestion]:
@@ -340,18 +339,14 @@ class QuestionnaireResponseDao(BaseDao):
             session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
         )
 
-        if questionnaire_history:
-            answer_validator = ResponseValidator(questionnaire_history, session)
-            answer_validator.check_response(questionnaire_response)
-        else:
-            logging.error('No questionnaire_history available for validation')
-        # todo: see if the validation following this call is still needed (or if it can be fixed up a bit)
-
         if not questionnaire_history:
             raise BadRequest(
                 f"Questionnaire with ID {questionnaire_response.questionnaireId}, \
                 semantic version {questionnaire_response.questionnaireSemanticVersion} is not found"
             )
+
+        answer_validator = ResponseValidator(questionnaire_history, session)
+        answer_validator.check_response(questionnaire_response)
 
         # Get the questions from the questionnaire history record.
         q_question_ids = set([question.questionnaireQuestionId for question in questionnaire_history.questions])
@@ -360,6 +355,8 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest(
                     f"Questionnaire response contains question ID {answer.questionId} not in questionnaire."
                 )
+        # TODO: this check can integrate with the validator
+        #  when we start rejecting responses based on the validators results
 
         questionnaire_response.created = clock.CLOCK.now()
         if not questionnaire_response.authored:
