@@ -15,10 +15,8 @@ from sqlalchemy.sql import text
 from typing import List
 
 from rdr_service.model.base import Base
-from rdr_service.model.code import Code
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
-from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.participant_enums import QuestionnaireResponseStatus
 
 
@@ -125,9 +123,6 @@ class QuestionnaireResponseAnswer(Base):
     When the response is a Uniform Resource Identifier Reference (RFC 3986 ).
     Note: URIs are case sensitive. For UUID (urn:uuid:53fefa32-fcbb-4ff8-8a92-55ee120877b7) use all lowercase
     """
-
-    question = relationship(QuestionnaireQuestion)
-    code = relationship(Code)
 
 
 class QuestionnaireResponseExtension(Base):

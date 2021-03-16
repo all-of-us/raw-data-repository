@@ -117,9 +117,11 @@ def get_first_completed_baseline_time(participant_summary):
 class ResponseValidator:
     def __init__(self, questionnaire_history: QuestionnaireHistory, session):
         self.session = session
+        self._questionnaire_question_map = self._build_question_id_map(questionnaire_history)
 
         self.survey = self._get_survey_for_questionnaire_history(questionnaire_history)
-        self._code_to_question_map = self._build_code_to_question_map()
+        if self.survey is not None:
+            self._code_to_question_map = self._build_code_to_question_map()
 
     def _get_survey_for_questionnaire_history(self, questionnaire_history: QuestionnaireHistory):
         survey_query = self.session.query(Survey).filter(
@@ -150,6 +152,10 @@ class ResponseValidator:
         return {survey_question.code.codeId: survey_question for survey_question in self.survey.questions}
 
     @classmethod
+    def _build_question_id_map(cls, questionnaire_history: QuestionnaireHistory) -> Dict[int, QuestionnaireQuestion]:
+        return {question.questionnaireId: question for question in questionnaire_history.questions}
+
+    @classmethod
     def _validate_min_max(cls, answer, min_str, max_str, parser_function, question_code):
         try:
             if min_str:
@@ -168,84 +174,92 @@ class ResponseValidator:
             logging.error(f'Unable to parse validation string for question {question_code}', exc_info=True)
 
     @classmethod
-    def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer, question: SurveyQuestion):
-        question_code = answer.question.code.value
+    def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer,
+                                             question_definition: SurveyQuestion,
+                                             questionnaire_question: QuestionnaireQuestion):
 
-        if question.questionType in (SurveyQuestionType.UNKNOWN,
-                                     SurveyQuestionType.DROPDOWN,
-                                     SurveyQuestionType.RADIO,
-                                     SurveyQuestionType.CHECKBOX):
-            number_of_selectable_options = len(question.options)
+        question_code_value = questionnaire_question.code.value
+        # todo: are the codes preloaded?
+
+        if question_definition.questionType in (SurveyQuestionType.UNKNOWN,
+                                                SurveyQuestionType.DROPDOWN,
+                                                SurveyQuestionType.RADIO,
+                                                SurveyQuestionType.CHECKBOX):
+            number_of_selectable_options = len(question_definition.options)
             if number_of_selectable_options == 0 and answer.valueCodeId is not None:
-                # TODO: int test that the questionId is set for the answer
                 logging.warning(
-                    f'Answer for {question_code} gives a value code id when no options are defined'
+                    f'Answer for {question_code_value} gives a value code id when no options are defined'
                 )
             elif number_of_selectable_options > 0:
                 if answer.valueCodeId is None:
                     logging.warning(
-                        f'Answer for {question_code} gives no value code id '
+                        f'Answer for {question_code_value} gives no value code id '
                         f'when the question has options defined'
                     )
-                elif answer.valueCodeId not in [option.codeId for option in question.options]:
+                elif answer.valueCodeId not in [option.codeId for option in question_definition.options]:
                     # todo: int test, would this code be filled in?
-                    logging.warning(f'{answer.code.value} is an invalid answer to {question_code}')
+                    logging.warning(f'Code ID {answer.valueCodeId} is an invalid answer to {question_code_value}')
 
-        elif question.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
-            if answer.valueString is None and question.validation is None:
-                logging.warning(f'No valueString answer given for text-based question {question_code}')
-            elif question.validation is not None:
-                if question.validation.startswith('date'):
+        elif question_definition.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
+            if answer.valueString is None and question_definition.validation is None:
+                logging.warning(f'No valueString answer given for text-based question {question_code_value}')
+            elif question_definition.validation is not None:
+                if question_definition.validation.startswith('date'):
                     if answer.valueDate is None:
-                        logging.warning(f'No valueDate answer given for date-based question {question_code}')
+                        logging.warning(f'No valueDate answer given for date-based question {question_code_value}')
                     else:
                         cls._validate_min_max(
                             answer.valueDate,
-                            question.validation_min,
-                            question.validation_max,
+                            question_definition.validation_min,
+                            question_definition.validation_max,
                             parser.parse,
-                            question_code
+                            question_code_value
                         )
-                elif question.validation == 'integer':
+                elif question_definition.validation == 'integer':
                     if answer.valueInteger is None:
                         logging.warning(
-                            f'No valueInteger answer given for integer-based question {question_code}'
+                            f'No valueInteger answer given for integer-based question {question_code_value}'
                         )
                     else:
                         cls._validate_min_max(
                             answer.valueInteger,
-                            question.validation_min,
-                            question.validation_max,
+                            question_definition.validation_min,
+                            question_definition.validation_max,
                             int,
-                            question_code
+                            question_code_value
                         )
                 else:
                     logging.warning(
-                        f'Unrecognized validation string "{question.validation}" for question {question_code}'
+                        f'Unrecognized validation string "{question_definition.validation}" '
+                        f'for question {question_code_value}'
                     )
         else:
             # There aren't alot of surveys in redcap right now, so it's unclear how these would be answered
-            logging.warning(f'No validation check implemented for answer to {question_code} '
-                            f'with question type {question.questionType}')
+            logging.warning(f'No validation check implemented for answer to {question_code_value} '
+                            f'with question type {question_definition.questionType}')
 
     def check_response(self, response: QuestionnaireResponse):
         if self.survey is None:
             return None
 
         question_codes_answered = set()
-        for answer in response.answers:  # todo: int test that the answers relationship is set
-            survey_question = self._code_to_question_map.get(answer.question.codeId)
-            if not survey_question:
-                # TODO: write test for this?
-                logging.error(f'Question code used by the answer for question {answer.questionId} does not match a '
-                              f'code found on the survey definition')
+        for answer in response.answers:
+            questionnaire_question = self._questionnaire_question_map.get(answer.questionId)
+            if questionnaire_question is None:
+                # This is less validation, and more getting the object that should ideally already be linked
+                logging.error(f'Unable to find question {answer.questionId} in questionnaire history')
             else:
-                self._check_answer_has_expected_data_type(answer, survey_question)
+                survey_question = self._code_to_question_map.get(questionnaire_question.codeId)
+                if not survey_question:
+                    logging.error(f'Question code used by the answer to question {answer.questionId} does not match a '
+                                  f'code found on the survey definition')
+                else:
+                    self._check_answer_has_expected_data_type(answer, survey_question)
 
-            if survey_question.codeId in question_codes_answered:
-                logging.error(f'Too many answers given for {survey_question.code.value}')
-            elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
-                question_codes_answered.add(survey_question.codeId)
+                if survey_question.codeId in question_codes_answered:
+                    logging.error(f'Too many answers given for {survey_question.code.value}')
+                elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
+                    question_codes_answered.add(survey_question.codeId)
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -325,6 +339,11 @@ class QuestionnaireResponseDao(BaseDao):
         questionnaire_history = QuestionnaireHistoryDao().get_with_children_with_session(
             session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
         )
+
+        answer_validator = ResponseValidator(questionnaire_history, session)
+        answer_validator.check_response(questionnaire_response)
+        # todo: check that this integration works as expected
+        #  and see if the validation following this call is still needed (or if it can be fixed up a bit)
 
         if not questionnaire_history:
             raise BadRequest(
