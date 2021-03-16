@@ -7,7 +7,7 @@ from dateutil import parser
 import pytz
 from sqlalchemy import or_
 from typing import Dict
-from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import joinedload, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
@@ -61,7 +61,7 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
-from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -131,6 +131,11 @@ class ResponseValidator:
                 Survey.replacedTime.is_(None),
                 Survey.replacedTime > questionnaire_history.created
             )
+        ).options(
+            joinedload(Survey.questions),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.code),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.options),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
         )
         num_surveys_found = survey_query.count()
         if num_surveys_found == 0:
@@ -144,8 +149,6 @@ class ResponseValidator:
                 f'version "{questionnaire_history.version}"'
             )
         # TODO: test these logs
-
-            # TODO: does this join load the questions and codes, and question options?
         return survey_query.first()
 
     def _build_code_to_question_map(self) -> Dict[int, SurveyQuestion]:
@@ -177,9 +180,7 @@ class ResponseValidator:
     def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer,
                                              question_definition: SurveyQuestion,
                                              questionnaire_question: QuestionnaireQuestion):
-
         question_code_value = questionnaire_question.code.value
-        # todo: are the codes preloaded?
 
         if question_definition.questionType in (SurveyQuestionType.UNKNOWN,
                                                 SurveyQuestionType.DROPDOWN,
@@ -193,15 +194,13 @@ class ResponseValidator:
             elif number_of_selectable_options > 0:
                 if answer.valueCodeId is None:
                     logging.warning(
-                        f'Answer for {question_code_value} gives no value code id '
-                        f'when the question has options defined'
+                        f'Answer for {question_code_value} gives no value code id when the question has options defined'
                     )
                 elif answer.valueCodeId not in [option.codeId for option in question_definition.options]:
-                    # todo: int test, would this code be filled in?
                     logging.warning(f'Code ID {answer.valueCodeId} is an invalid answer to {question_code_value}')
 
         elif question_definition.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
-            if answer.valueString is None and question_definition.validation is None:
+            if question_definition.validation is None and answer.valueString is None:
                 logging.warning(f'No valueString answer given for text-based question {question_code_value}')
             elif question_definition.validation is not None:
                 if question_definition.validation.startswith('date'):
@@ -234,7 +233,8 @@ class ResponseValidator:
                         f'for question {question_code_value}'
                     )
         else:
-            # There aren't alot of surveys in redcap right now, so it's unclear how these would be answered
+            # There aren't alot of surveys in redcap right now, so it's unclear how
+            # some of the other types would be answered
             logging.warning(f'No validation check implemented for answer to {question_code_value} '
                             f'with question type {question_definition.questionType}')
 
