@@ -153,7 +153,7 @@ class ResponseValidator:
 
     @classmethod
     def _build_question_id_map(cls, questionnaire_history: QuestionnaireHistory) -> Dict[int, QuestionnaireQuestion]:
-        return {question.questionnaireId: question for question in questionnaire_history.questions}
+        return {question.questionnaireQuestionId: question for question in questionnaire_history.questions}
 
     @classmethod
     def _validate_min_max(cls, answer, min_str, max_str, parser_function, question_code):
@@ -254,7 +254,7 @@ class ResponseValidator:
                     logging.error(f'Question code used by the answer to question {answer.questionId} does not match a '
                                   f'code found on the survey definition')
                 else:
-                    self._check_answer_has_expected_data_type(answer, survey_question)
+                    self._check_answer_has_expected_data_type(answer, survey_question, questionnaire_question)
 
                 if survey_question.codeId in question_codes_answered:
                     logging.error(f'Too many answers given for {survey_question.code.value}')

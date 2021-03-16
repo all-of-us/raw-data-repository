@@ -5,9 +5,8 @@ from typing import Dict, List
 
 from rdr_service.dao.questionnaire_response_dao import ResponseValidator
 from rdr_service.model.code import Code
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireQuestion,\
-    QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.survey import SurveyQuestionType
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -51,13 +50,13 @@ class ResponseValidatorTest(BaseTestCase):
 
         # Build related QuestionnaireHistory for the response
         questionnaire_questions = [
-            QuestionnaireQuestion(
+            self.data_generator._questionnaire_question(
                 codeId=question_code.codeId,
                 code=question_code
             )
             for question_code in questions.keys()
         ]
-        questionnaire_history = QuestionnaireHistory(
+        questionnaire_history = self.data_generator.create_database_questionnaire_history(
             questions=questionnaire_questions,
             concepts=[QuestionnaireConcept(codeId=module_code.codeId)],
             created=questionnaire_created_time
@@ -318,8 +317,7 @@ class ResponseValidatorTest(BaseTestCase):
             },
             answers={
                 dropdown_question_code: QuestionnaireResponseAnswer(
-                    valueCodeId=unrecognized_answer_code.codeId,
-                    code=unrecognized_answer_code
+                    valueCodeId=unrecognized_answer_code.codeId
                 )
             }
         )
@@ -328,7 +326,7 @@ class ResponseValidatorTest(BaseTestCase):
         validator.check_response(response)
 
         mock_logging.warning.assert_called_with(
-            f'{unrecognized_answer_code.value} is an invalid answer to {dropdown_question_code.value}'
+            f'Code ID {unrecognized_answer_code.codeId} is an invalid answer to {dropdown_question_code.value}'
         )
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
@@ -349,19 +347,15 @@ class ResponseValidatorTest(BaseTestCase):
                 checkbox_question_code: QuestionDefinition(question_type=SurveyQuestionType.CHECKBOX, options=options)
             },
             answers={
-                dropdown_question_code: QuestionnaireResponseAnswer(
-                    code=option_a_code, valueCodeId=option_a_code.codeId
-                ),
-                checkbox_question_code: QuestionnaireResponseAnswer(
-                    code=option_a_code, valueCodeId=option_a_code.codeId
-                )
+                dropdown_question_code: QuestionnaireResponseAnswer(valueCodeId=option_a_code.codeId),
+                checkbox_question_code: QuestionnaireResponseAnswer(valueCodeId=option_a_code.codeId)
             }
         )
         # Add extra answers to the response for each question
         for question in questionnaire_history.questions:
             response.answers.append(QuestionnaireResponseAnswer(
-                questionId=question.questionnaireQuestionId, question=question,
-                valueCodeId=option_b_code.codeId, code=option_b_code
+                questionId=question.questionnaireQuestionId,
+                valueCodeId=option_b_code.codeId
             ))
 
         validator = ResponseValidator(questionnaire_history, self.session)
