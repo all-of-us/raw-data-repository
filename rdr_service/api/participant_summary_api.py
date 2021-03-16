@@ -10,7 +10,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
-from rdr_service.participant_enums import WithdrawalStatus
+from rdr_service.participant_enums import ParticipantSummaryRecord
 
 
 class ParticipantSummaryApi(BaseApi):
@@ -134,23 +134,22 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
             'email': 'email',
             'login_phone_number': 'loginPhoneNumber'
         }
-        statuses = ['IN_USE', 'NOT_IN_USE']
 
         if req_data \
-            and any([k in req_data for k in accepted_map])\
-                and all([v for _, v in req_data.items() if v is not None]):
+            and any([key in req_data for key in accepted_map])\
+                and all([val for val in req_data.values() if val is not None]):
 
-            is_found = False
-            with self.dao.session() as session:
-                for k, v in req_data.items():
-                    query = session.query(ParticipantSummary.biobankId)\
-                        .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                                getattr(ParticipantSummary, accepted_map[k]) == v,
-                                getattr(ParticipantSummary, accepted_map[k]).isnot(None))
-                    is_found = query.all()
+            status = ParticipantSummaryRecord.NOT_IN_USE
+            for key, value in req_data.items():
+                found_result = self.dao.get_record_from_attr(
+                    attr=accepted_map[key],
+                    value=value
+                )
+                if found_result:
+                    status = ParticipantSummaryRecord.IN_USE
+                    break
 
-            status = {'status': statuses[0] if is_found else statuses[1]}
-            return status
+            return {'status': status.name}
 
         raise BadRequest("Missing email or login_phone_number in request")
 

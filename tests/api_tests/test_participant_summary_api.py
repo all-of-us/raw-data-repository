@@ -17,7 +17,6 @@ from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERM
 from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
@@ -350,24 +349,18 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(last_modified, rec["lastModified"])
 
     def test_check_login(self):
-        participant_one = self.send_post("Participant", {"providerLink": [self.provider_link]})
-        participant_two = self.send_post("Participant", {"providerLink": [self.provider_link]})
-
-        participant_one_id = participant_one['participantId'].split('P')[1]
-        participant_two_id = participant_two['participantId'].split('P')[1]
-
-        participant_one = ParticipantDao().get(participant_one_id)
-        participant_two = ParticipantDao().get(participant_two_id)
-
+        participant_one = self.data_generator.create_database_participant()
+        participant_two = self.data_generator.create_database_participant()
         participant_two.withdrawalStatus = 2
 
-        participant_summary_one = ParticipantSummaryDao()\
-            .insert(self.participant_summary(participant_one))
+        participant_summary_one = self.data_generator \
+            .create_database_participant_summary(participant=participant_one)
         participant_summary_one.loginPhoneNumber = '444-123-4567'
+        participant_summary_one.email = self.fake.email()
         ParticipantSummaryDao().update(participant_summary_one)
 
-        participant_summary_two = ParticipantSummaryDao() \
-            .insert(self.participant_summary(participant_two))
+        participant_summary_two = self.data_generator \
+            .create_database_participant_summary(participant=participant_two)
 
         one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                       {"email": participant_summary_one.email})

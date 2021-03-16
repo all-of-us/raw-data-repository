@@ -815,7 +815,8 @@ class ParticipantSummaryDao(UpdatableDao):
         is_distinct_visit = not (day_has_order or day_has_measurement)
         return is_distinct_visit
 
-    def get_client_id(self):
+    @staticmethod
+    def get_client_id():
         from rdr_service import app_util, api_util
         email = app_util.get_oauth_id()
         user_info = app_util.lookup_user_info(email)
@@ -823,6 +824,14 @@ class ParticipantSummaryDao(UpdatableDao):
         if email == api_util.DEV_MAIL and client_id is None:
             client_id = 'example'  # account for temp configs that dont create the key
         return client_id
+
+    def get_record_from_attr(self, *, attr, value):
+        with self.session() as session:
+            record = session.query(ParticipantSummary)\
+                .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    getattr(ParticipantSummary, attr) == value,
+                    getattr(ParticipantSummary, attr).isnot(None))
+            return record.all()
 
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()

@@ -713,7 +713,6 @@ class GenomicWorkflowState(messages.Enum):
     LR_REJECTED = 36
     LR_ACCEPTED = 37
 
-
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""
     QUEUED = 0
@@ -775,6 +774,11 @@ class GenomicIncidentStatus(messages.Enum):
     OPEN = 0
     RESOLVED = 1
     UNABLE_TO_RESOLVE = 2
+
+
+class ParticipantSummaryRecord(messages.Enum):
+    NOT_IN_USE = 0
+    IN_USE = 1
 
 
 class WorkbenchWorkspaceStatus(messages.Enum):
