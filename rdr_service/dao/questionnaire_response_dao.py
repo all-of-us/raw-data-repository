@@ -340,10 +340,12 @@ class QuestionnaireResponseDao(BaseDao):
             session, [questionnaire_response.questionnaireId, questionnaire_response.questionnaireSemanticVersion]
         )
 
-        answer_validator = ResponseValidator(questionnaire_history, session)
-        answer_validator.check_response(questionnaire_response)
-        # todo: check that this integration works as expected
-        #  and see if the validation following this call is still needed (or if it can be fixed up a bit)
+        if questionnaire_history:
+            answer_validator = ResponseValidator(questionnaire_history, session)
+            answer_validator.check_response(questionnaire_response)
+        else:
+            logging.error('No questionnaire_history available for validation')
+        # todo: see if the validation following this call is still needed (or if it can be fixed up a bit)
 
         if not questionnaire_history:
             raise BadRequest(
