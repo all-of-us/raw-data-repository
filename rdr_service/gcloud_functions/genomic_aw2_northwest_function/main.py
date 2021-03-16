@@ -34,7 +34,6 @@ class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
         """ Handle storage object created event. """
         # Verify this is a file that we want to process.
         if '_data_manifests' not in self.event.name.lower():
-            _logger.info(f'Skipping file {self.event.name}, name does not match Data Manifest file.')
             return
 
         _logger.info(f"file found: {self.event.name}")
