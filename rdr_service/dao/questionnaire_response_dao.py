@@ -6,8 +6,8 @@ from datetime import datetime
 from dateutil import parser
 import pytz
 from sqlalchemy import or_
-from typing import Dict
 from sqlalchemy.orm import joinedload, subqueryload
+from typing import Dict
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
@@ -132,9 +132,6 @@ class ResponseValidator:
                 Survey.replacedTime > questionnaire_history.created
             )
         ).options(
-            joinedload(Survey.questions),
-            joinedload(Survey.questions).joinedload(SurveyQuestion.code),
-            joinedload(Survey.questions).joinedload(SurveyQuestion.options),
             joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
         )
         num_surveys_found = survey_query.count()

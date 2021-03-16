@@ -20,6 +20,7 @@ class QuestionDefinition:
     validation_max: str = None
 
 
+@mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
 class ResponseValidatorTest(BaseTestCase):
     def _build_questionnaire_and_response(self, questions: Dict[Code, QuestionDefinition],
                                           answers: Dict[Code, QuestionnaireResponseAnswer],
@@ -76,7 +77,6 @@ class ResponseValidatorTest(BaseTestCase):
 
         return questionnaire_history, questionnaire_response
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_simple_survey_response_validation(self, mock_logging):
         """
         For surveys derived from the legacy code system, we can only verify that questions that
@@ -112,7 +112,6 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(f'Answer for {free_text_question_code.value} gives a value code id when no options are defined')
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_option_select_data_type_validation(self, mock_logging):
         """
         Survey questions that are defined with options should be answered with valueCodeId
@@ -151,7 +150,6 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(no_value_code_id_used_message.format(checkbox_question_code.value))
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_log_for_unimplemented_validation(self, mock_logging):
         calc_question_code = self.data_generator.create_database_code(value='calc_question')
         yesno_question_code = self.data_generator.create_database_code(value='yesno_question')
@@ -191,7 +189,6 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(no_validation_check_message.format(slider_question_code.value, SurveyQuestionType.SLIDER))
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_log_for_text_questions_not_answered_with_text(self, mock_logging):
         text_question_code = self.data_generator.create_database_code(value='text_question')
         note_question_code = self.data_generator.create_database_code(value='note_question')
@@ -215,7 +212,6 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(f'No valueString answer given for text-based question {note_question_code.value}')
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_question_validation_data_type(self, mock_logging):
         """Validation strings give that a TEXT question should be another datatype"""
         date_question_code = self.data_generator.create_database_code(value='date_question')
@@ -250,7 +246,6 @@ class ResponseValidatorTest(BaseTestCase):
             mock.call(f'Unrecognized validation string "abc" for question {unknown_question_code.value}')
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_question_validation_min_max(self, mock_logging):
         date_question_code = self.data_generator.create_database_code(value='date_question')
         integer_question_code = self.data_generator.create_database_code(value='integer_question')
@@ -301,7 +296,6 @@ class ResponseValidatorTest(BaseTestCase):
             )
         ])
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_option_select_option_validation(self, mock_logging):
         """
         Survey questions that are defined with options should be answered with one of those options
@@ -329,7 +323,6 @@ class ResponseValidatorTest(BaseTestCase):
             f'Code ID {unrecognized_answer_code.codeId} is an invalid answer to {dropdown_question_code.value}'
         )
 
-    @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
     def test_questions_answered_multiple_times(self, mock_logging):
         """We should only get one answer for a question (except Checkbox questions)"""
         dropdown_question_code = self.data_generator.create_database_code(value='dropdown_select')
