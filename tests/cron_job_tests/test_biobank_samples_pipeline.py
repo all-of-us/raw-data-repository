@@ -50,7 +50,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
         config.override_setting(BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report 60d')
 
-        self.questionnaire = None
+        self.withdrawal_questionnaire = None
 
     mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
 
@@ -474,48 +474,50 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             )])
 
     def _get_questionnaire(self):
-        if self.questionnaire is None:
+        if self.withdrawal_questionnaire is None:
             race_question = self.data_generator.create_database_questionnaire_question(
                 codeId=self.race_question_code.codeId
             )
             ceremony_question = self.data_generator.create_database_questionnaire_question(
                 codeId=self.ceremony_question_code.codeId
             )
-            self.questionnaire = self.data_generator.create_database_questionnaire_history(
+            self.withdrawal_questionnaire = self.data_generator.create_database_questionnaire_history(
                 # As of writing this, the pipeline only checks for the answers, regardless of questionnaire
                 # so putting them in the same questionnaire for convenience of the test code
                 questions=[race_question, ceremony_question]
             )
 
-        return self.questionnaire
+        return self.withdrawal_questionnaire
 
     def _create_participant(self, is_native_american: bool, requests_ceremony: bool, withdrawal_time):
         participant = self.data_generator.create_database_participant(
             withdrawalTime=withdrawal_time
         )
 
+        # Withdrawal report only includes participants that have stored samples
+        self.data_generator.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
+
         # Create a questionnaire response that satisfies the parameters for the test participant
         questionnaire = self._get_questionnaire()
         answers = []
         for question in questionnaire.questions:
+            answer_code_id = None
             if question.codeId == self.race_question_code.codeId and is_native_american:
                 answer_code_id = self.native_answer_code.codeId
             elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
                 answer_code_id = self.ceremony_yes_answer_code.codeId
-            else:
-                answer_code_id = self.data_generator.create_database_code().codeId  # Any other answer
-            answers.append(
-                QuestionnaireResponseAnswer(questionId=question.questionnaireQuestionId, valueCodeId=answer_code_id)
-            )
+
+            if answer_code_id:
+                answers.append(QuestionnaireResponseAnswer(
+                    questionId=question.questionnaireQuestionId,
+                    valueCodeId=answer_code_id
+                ))
         self.data_generator.create_database_questionnaire_response(
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
             answers=answers,
             participantId=participant.participantId
         )
-
-        # Withdrawal report only includes participants that have stored samples
-        self.data_generator.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
 
         return participant
 

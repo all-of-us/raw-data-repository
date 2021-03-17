@@ -9,7 +9,7 @@ import logging
 import math
 import os
 import pytz
-from sqlalchemy import case, literal_column
+from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func
 from sqlalchemy.sql.functions import concat
@@ -319,7 +319,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     (as biobank samples for Native Americans are disposed of differently)
     """
     withdrawal_report_query = Query([
-        concat(literal_column(f'"{get_biobank_id_prefix()}"'), Participant.biobankId).label('biobank_id'),
+        concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
         func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
         _NATIVE_AMERICAN_YN,
         _CEREMONY_REQUESTED_YN,
@@ -331,11 +331,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
         ).exists()
     )
 
-    exporter.run_export(
-        file_path,
-        withdrawal_report_query,
-        backup=True,
-    )
+    exporter.run_export(file_path, withdrawal_report_query, backup=True)
     logging.info(f"Completed {file_path} report.")
 
 
@@ -563,22 +559,22 @@ def _participant_has_answer(question_code_value, answer_value):
         .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
         .filter(
             QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
-            question_code.value == literal_column(f'"{question_code_value}"'),
-            answer_code.value == literal_column(f'"{answer_value}"'),
+            question_code.value == question_code_value,
+            answer_code.value == answer_value,
             QuestionnaireResponseAnswer.endTime.is_(None)
         ).exists()
     )
 
 
 _NATIVE_AMERICAN_YN = case(
-    [(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), literal_column('"Y"'))],
-    else_=literal_column('"N"')
+    [(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')],
+    else_='N'
 ).label('is_native_american')
 
 
 _CEREMONY_REQUESTED_YN = case(
-    [(_participant_has_answer(WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES), literal_column('"Y"'))],
-    else_=literal_column('"N"')
+    [(_participant_has_answer(WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES), 'Y')],
+    else_='N'
 ).label('needs_disposal_ceremony')
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
