@@ -532,20 +532,29 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def send_get(self, *args, **kwargs):
         return self.send_request("GET", *args, **kwargs)
 
-    def send_request(self, method, local_path, request_data=None, query_string=None,
+    def send_request(self,
+                     method,
+                     local_path,
+                     request_data=None,
+                     query_string=None,
                      expected_status=http.client.OK,
                      headers=None,
                      expected_response_headers=None,
                      test_client=None,
                      prefix=main.API_PREFIX
                      ):
-        """Makes a JSON API call against the test client and returns its response data.
-
+        """
+        Makes a JSON API call against the test client and returns its response data.
     Args:
       method: HTTP method, as a string.
       local_path: The API endpoint's URL (excluding main.PREFIX).
       request_data: Parsed JSON payload for the request.
       expected_status: What HTTP status to assert, if not 200 (OK).
+      query_string:
+      headers:
+      expected_response_headers:
+      test_client:
+      prefix:
     """
         if test_client is None:
             test_client = self.app

@@ -39,7 +39,8 @@ from rdr_service.api.metrics_api import MetricsApi
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
-from rdr_service.api.participant_summary_api import ParticipantSummaryApi, ParticipantSummaryModifiedApi
+from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
+    ParticipantSummaryModifiedApi, ParticipantSummaryCheckLoginApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
 from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from rdr_service.api.public_metrics_api import PublicMetricsApi
@@ -114,6 +115,13 @@ api.add_resource(
     API_PREFIX + "ParticipantSummary/Modified",
     endpoint="participant.summary.modified",
     methods=["GET"],
+)
+
+api.add_resource(
+    ParticipantSummaryCheckLoginApi,
+    API_PREFIX + "ParticipantSummary/CheckLogin",
+    endpoint="participant.summary.check_login",
+    methods=["POST"],
 )
 
 api.add_resource(

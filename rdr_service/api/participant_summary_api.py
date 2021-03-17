@@ -2,7 +2,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
-from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE
+from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE, RDR_AND_PTC
 from rdr_service.app_util import auth_required, get_validated_user_info
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -10,6 +10,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
+from rdr_service.participant_enums import ParticipantSummaryRecord
 
 
 class ParticipantSummaryApi(BaseApi):
@@ -113,3 +114,44 @@ class ParticipantSummaryModifiedApi(BaseApi):
                 )
 
         return response
+
+
+class ParticipantSummaryCheckLoginApi(BaseApi):
+    """
+  API to return status if data is found / not found on participant summary
+  """
+
+    def __init__(self):
+        super(ParticipantSummaryCheckLoginApi, self).__init__(ParticipantSummaryDao())
+
+    @auth_required(RDR_AND_PTC)
+    def post(self):
+        """
+        Return status of IN_USE / NOT_IN_USE if participant found / not found
+    """
+        req_data = request.get_json()
+        accepted_map = {
+            'email': 'email',
+            'login_phone_number': 'loginPhoneNumber'
+        }
+
+        if req_data:
+            if len(req_data.keys() - accepted_map.keys()):
+                raise BadRequest("Only email or login_phone_number are allowed in request")
+
+            if any([key in req_data for key in accepted_map]) \
+                    and all([val for val in req_data.values() if val is not None]):
+
+                status = ParticipantSummaryRecord.NOT_IN_USE
+                for key, value in req_data.items():
+                    found_result = self.dao.get_record_from_attr(
+                        attr=accepted_map[key],
+                        value=value
+                    )
+                    if found_result:
+                        status = ParticipantSummaryRecord.IN_USE
+                        break
+
+                return {'status': status.name}
+
+        raise BadRequest("Missing email or login_phone_number in request")

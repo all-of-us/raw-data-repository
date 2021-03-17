@@ -348,13 +348,130 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(participant_id, rec["participantId"])
         self.assertEqual(last_modified, rec["lastModified"])
 
+    def test_check_login(self):
+        participant_one = self.data_generator.create_database_participant()
+        participant_two = self.data_generator.create_database_participant()
+        participant_two.withdrawalStatus = 2
+
+        participant_summary_one = self.data_generator \
+            .create_database_participant_summary(participant=participant_one)
+        participant_summary_one.loginPhoneNumber = '444-123-4567'
+        participant_summary_one.email = self.fake.email()
+        ParticipantSummaryDao().update(participant_summary_one)
+
+        participant_summary_two = self.data_generator \
+            .create_database_participant_summary(participant=participant_two)
+
+        one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_one.email})
+        one_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"login_phone_number": participant_summary_one.loginPhoneNumber})
+        one_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_one.email,
+                                                "login_phone_number": participant_summary_one.loginPhoneNumber})
+
+        two_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email})
+        two_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"login_phone_number": participant_summary_two.loginPhoneNumber})
+        two_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email,
+                                                "login_phone_number": participant_summary_two.loginPhoneNumber})
+
+        self.assertEqual(len(one_real_email_result), 1)
+        self.assertEqual(len(one_real_phone_result), 1)
+        self.assertEqual(len(one_real_combo_result), 1)
+
+        self.assertEqual(one_real_email_result['status'], 'IN_USE')
+        self.assertEqual(one_real_phone_result['status'], 'IN_USE')
+        self.assertEqual(one_real_combo_result['status'], 'IN_USE')
+
+        self.assertEqual(len(two_real_email_result), 1)
+        self.assertEqual(len(two_real_phone_result), 1)
+        self.assertEqual(len(two_real_combo_result), 1)
+
+        self.assertEqual(two_real_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_combo_result['status'], 'NOT_IN_USE')
+
+        fake_email = self.fake.email()
+        fake_phone = '123-456-7890'
+        fake_first_name = self.fake.first_name()
+        fake_last_name = self.fake.last_name()
+        fake_street_address = self.fake.street_address()
+
+        fake_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email})
+        fake_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": fake_phone})
+        fake_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email,
+                                            "login_phone_number": fake_phone})
+
+        self.assertEqual(fake_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_combo_result['status'], 'NOT_IN_USE')
+
+        bad_key_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"bad_email_key": fake_email},
+                                              expected_status=http.client.BAD_REQUEST)
+        bad_key_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"bad_phone_key": fake_phone},
+                                              expected_status=http.client.BAD_REQUEST)
+        null_key_result = self.send_post("ParticipantSummary/CheckLogin",
+                                         expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(bad_key_email_result.status_code, 400)
+        self.assertEqual(bad_key_phone_result.status_code, 400)
+        self.assertEqual(null_key_result.status_code, 400)
+
+        self.assertEqual(bad_key_email_result.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(bad_key_phone_result.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+
+        not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                         {"first_name": fake_first_name,
+                                          "last_name": fake_last_name,
+                                          "email": fake_email},
+                                         expected_status=http.client.BAD_REQUEST)
+        another_not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                                 {"street_address": fake_street_address},
+                                                 expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(not_allowed_key.status_code, 400)
+        self.assertEqual(another_not_allowed_key.status_code, 400)
+
+        self.assertEqual(not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(another_not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+
+        null_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": '',
+                                            "login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(null_email_result.status_code, 400)
+        self.assertEqual(null_phone_result.status_code, 400)
+        self.assertEqual(null_combo_result.status_code, 400)
+
+        self.assertEqual(null_email_result.json['message'],
+                         'Missing email or login_phone_number in request')
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
         path = "Participant/%s" % participant_id
         participant["awardee"] = "PITT"
-        particpant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
-        self.assertEqual(particpant_update["awardee"], participant["awardee"])
+        participant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+        self.assertEqual(participant_update["awardee"], participant["awardee"])
         participant["organization"] = "AZ_TUCSON_BANNER_HEALTH"
         participant_update_2 = self.send_put(path, participant, headers={"If-Match": 'W/"2"'})
         self.assertEqual(participant_update_2["organization"], participant["organization"])
