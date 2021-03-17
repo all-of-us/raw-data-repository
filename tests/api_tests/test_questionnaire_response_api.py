@@ -412,6 +412,20 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         qr = questionnaire_response_dao.get(response['id'])
         self.assertEqual(qr.nonParticipantAuthor, 'CATI')
 
+    def test_emoji_questionnaire_responses(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            string_answers = [
+                ("firstName", 'test1'),
+                ("lastName", 'test2'),
+                ("email", 'test@example.com'),
+                ("streetAddress", 'test address'),
+                ("streetAddress2", 'Colombia 🇨🇴'),
+            ]
+            self.send_consent(participant_id, string_answers=string_answers)
+        response = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(response['streetAddress2'], 'Colombia 🇨🇴')
+
     def test_demographic_questionnaire_responses(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
