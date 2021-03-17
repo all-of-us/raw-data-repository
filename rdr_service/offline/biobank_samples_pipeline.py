@@ -305,6 +305,21 @@ def _get_report_paths(report_datetime, report_type="daily"):
     ]
 
 
+def _query_and_write_withdrawal_report(exporter, file_path, codes, report_cover_range, now):
+    exporter.run_export(
+        file_path,
+        replace_isodate(_WITHDRAWAL_REPORT_SQL),
+        {
+            "race_question_code_id": codes['race_question'].codeId,
+            "native_american_race_code_id": codes['native_american_race'].codeId,
+            "n_days_ago": now - datetime.timedelta(days=report_cover_range),
+            "biobank_id_prefix": get_biobank_id_prefix(),
+        },
+        backup=True,
+    )
+    logging.info(f"Completed {file_path} report.")
+
+
 def _query_and_write_reports(exporter, now, report_type, path_received,
                              path_missing, path_modified,
                              path_withdrawals, path_salivary_missing=None):
@@ -369,18 +384,10 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
         logging.info(f"Completed {report_path} report.")
 
     # Now generate the withdrawal report, within the past n days.
-    exporter.run_export(
-        path_withdrawals,
-        replace_isodate(_WITHDRAWAL_REPORT_SQL),
-        {
-            "race_question_code_id": race_question_code.codeId,
-            "native_american_race_code_id": native_american_race_code.codeId,
-            "n_days_ago": now - datetime.timedelta(days=report_cover_range),
-            "biobank_id_prefix": get_biobank_id_prefix(),
-        },
-        backup=True,
-    )
-    logging.info(f"Completed {path_withdrawals} report.")
+    _query_and_write_withdrawal_report(exporter, path_withdrawals, {
+        'race_question': race_question_code,
+        'native_american_race': native_american_race_code
+    }, report_cover_range, now)
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
