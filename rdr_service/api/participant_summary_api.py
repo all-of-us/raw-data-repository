@@ -136,7 +136,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
         }
 
         if req_data:
-            if not any([key in req_data for key in accepted_map]):
+            if len(req_data.keys() - accepted_map.keys()):
                 raise BadRequest("Only email or login_phone_number are allowed in request")
 
             if any([key in req_data for key in accepted_map]) \
