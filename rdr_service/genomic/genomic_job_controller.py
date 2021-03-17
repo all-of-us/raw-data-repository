@@ -330,7 +330,7 @@ class GenomicJobController:
                 genomic_gc_validation_metrics_batch_update(metrics)
 
             # Members
-            bq_genomic_set_member_batch_update(metrics,project_id=self.bq_project_id)
+            bq_genomic_set_member_batch_update(metrics, project_id=self.bq_project_id)
             genomic_set_member_batch_update(completed_members)
 
         return self.compile_raw_ingestion_results(completed_members, missing, multiples, metrics)
