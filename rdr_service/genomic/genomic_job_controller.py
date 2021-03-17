@@ -18,7 +18,8 @@ from rdr_service.config import (
     GENOME_TYPE_ARRAY,
     MissingConfigException)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
-    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
+    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
+    bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -40,7 +41,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao,
     GenomicAW2RawDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
-    genomic_manifest_file_update, genomic_manifest_feedback_update
+    genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
+    genomic_set_member_batch_update
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields
 
@@ -263,9 +265,10 @@ class GenomicJobController:
         members = member_dao.get_members_from_member_ids(member_ids)
 
         update_recs = []
-        completed = []
+        completed_members = []
         multiples = []
         missing = []
+        metrics = []  # for PDR inserts
 
         for m in members:
             # add prefix to biobank_id
@@ -313,14 +316,24 @@ class GenomicJobController:
 
                         metrics_obj = self.set_validation_metrics_from_raw(r)
 
-                        s.merge(metrics_obj)
-
-                        print(r)
+                        metrics_obj = s.merge(metrics_obj)
+                        s.commit()
+                        metrics.append(metrics_obj.id)
 
                     s.merge(r[0])
-                    completed.append(r[0].id)
+                    completed_members.append(r[0].id)
 
-        return self.compile_raw_ingestion_results(completed, missing, multiples)
+            # BQ Updates
+            if n == 2:
+                # Metrics
+                bq_genomic_gc_validation_metrics_batch_update(metrics, project_id=self.bq_project_id)
+                genomic_gc_validation_metrics_batch_update(metrics)
+
+            # Members
+            bq_genomic_set_member_batch_update(metrics,project_id=self.bq_project_id)
+            genomic_set_member_batch_update(completed_members)
+
+        return self.compile_raw_ingestion_results(completed_members, missing, multiples, metrics)
 
     def set_aw1_attributes_from_raw(self, rec: tuple):
         """
@@ -391,12 +404,13 @@ class GenomicJobController:
         raw.contamination_category = category
 
     @staticmethod
-    def compile_raw_ingestion_results(completed, missing, multiples):
+    def compile_raw_ingestion_results(completed, missing, multiples, metrics):
         result_msg = ''
         result_msg += 'Ingestion From Raw Results:'
-        result_msg += f'    Updated IDs: {completed}'
-        result_msg += f'    Missing IDs: {missing}'
-        result_msg += f'    Multiples found for IDs: {multiples}'
+        result_msg += f'    Updated Member IDs: {completed}'
+        result_msg += f'    Missing Member IDs: {missing}'
+        result_msg += f'    Multiples found for Member IDs: {multiples}'
+        result_msg += f'    Inserted Metrics IDs: {metrics}' if metrics else ""
 
         return result_msg
 
