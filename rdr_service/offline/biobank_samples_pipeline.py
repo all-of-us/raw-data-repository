@@ -16,7 +16,8 @@ from sqlalchemy.sql.functions import concat
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
-from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE
+from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES,\
+    WITHDRAWAL_CEREMONY_QUESTION_CODE
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
@@ -321,6 +322,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
         concat(literal_column(f'"{get_biobank_id_prefix()}"'), Participant.biobankId).label('biobank_id'),
         func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
         _NATIVE_AMERICAN_YN,
+        _CEREMONY_REQUESTED_YN,
         Participant.participantOrigin.label('participant_origin')
     ]).filter(
         Participant.withdrawalTime >= now - datetime.timedelta(days=report_cover_range),
@@ -549,22 +551,35 @@ _NATIVE_AMERICAN_SQL = """
         AND qra.value_code_id = :native_american_race_code_id
         AND qra.end_time IS NULL) is_native_american"""
 
-race_question_code_alias = aliased(Code)
-race_answer_code_alias = aliased(Code)
-_NATIVE_AMERICAN_YN = case([(
-    Query([QuestionnaireResponse])
-    .join(QuestionnaireResponseAnswer)
-    .join(QuestionnaireQuestion)
-    .join(race_question_code_alias, race_question_code_alias.codeId == QuestionnaireQuestion.codeId)
-    .join(race_answer_code_alias, race_answer_code_alias.codeId == QuestionnaireResponseAnswer.valueCodeId)
-    .filter(
-        QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
-        race_question_code_alias.value == literal_column(f'"{RACE_QUESTION_CODE}"'),
-        race_answer_code_alias.value == literal_column(f'"{RACE_AIAN_CODE}"'),
-        QuestionnaireResponseAnswer.endTime.is_(None)
-    ).exists(),
-    literal_column('"Y"')
-)], else_=literal_column('"N"')).label('is_native_american')
+
+def _participant_has_answer(question_code_value, answer_value):
+    question_code = aliased(Code)
+    answer_code = aliased(Code)
+    return (
+        Query([QuestionnaireResponse])
+        .join(QuestionnaireResponseAnswer)
+        .join(QuestionnaireQuestion)
+        .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
+        .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+        .filter(
+            QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
+            question_code.value == literal_column(f'"{question_code_value}"'),
+            answer_code.value == literal_column(f'"{answer_value}"'),
+            QuestionnaireResponseAnswer.endTime.is_(None)
+        ).exists()
+    )
+
+
+_NATIVE_AMERICAN_YN = case(
+    [(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), literal_column('"Y"'))],
+    else_=literal_column('"N"')
+).label('is_native_american')
+
+
+_CEREMONY_REQUESTED_YN = case(
+    [(_participant_has_answer(WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES), literal_column('"Y"'))],
+    else_=literal_column('"N"')
+).label('needs_disposal_ceremony')
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
