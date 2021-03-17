@@ -8,8 +8,11 @@ import datetime
 import logging
 import math
 import os
-
 import pytz
+from sqlalchemy import case, literal_column
+from sqlalchemy.orm import aliased, Query
+from sqlalchemy.sql import func
+from sqlalchemy.sql.functions import concat
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
@@ -18,12 +21,15 @@ from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.database_utils import parse_datetime, replace_isodate
+from rdr_service.dao.database_utils import MYSQL_ISO_DATE_FORMAT, parse_datetime, replace_isodate
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.code import Code
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
+from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
@@ -305,16 +311,27 @@ def _get_report_paths(report_datetime, report_type="daily"):
     ]
 
 
-def _query_and_write_withdrawal_report(exporter, file_path, codes, report_cover_range, now):
+def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, now):
+    """
+    Generates a report on participants that have withdrawn in the past n days and have samples collected,
+    including their biobank ID, withdrawal time, their origin, and whether they are Native American
+    (as biobank samples for Native Americans are disposed of differently)
+    """
+    withdrawal_report_query = Query([
+        concat(literal_column(f'"{get_biobank_id_prefix()}"'), Participant.biobankId).label('biobank_id'),
+        func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
+        _NATIVE_AMERICAN_YN,
+        Participant.participantOrigin.label('participant_origin')
+    ]).filter(
+        Participant.withdrawalTime >= now - datetime.timedelta(days=report_cover_range),
+        Query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankId == Participant.biobankId
+        ).exists()
+    )
+
     exporter.run_export(
         file_path,
-        replace_isodate(_WITHDRAWAL_REPORT_SQL),
-        {
-            "race_question_code_id": codes['race_question'].codeId,
-            "native_american_race_code_id": codes['native_american_race'].codeId,
-            "n_days_ago": now - datetime.timedelta(days=report_cover_range),
-            "biobank_id_prefix": get_biobank_id_prefix(),
-        },
+        withdrawal_report_query,
         backup=True,
     )
     logging.info(f"Completed {file_path} report.")
@@ -384,10 +401,7 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
         logging.info(f"Completed {report_path} report.")
 
     # Now generate the withdrawal report, within the past n days.
-    _query_and_write_withdrawal_report(exporter, path_withdrawals, {
-        'race_question': race_question_code,
-        'native_american_race': native_american_race_code
-    }, report_cover_range, now)
+    _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
@@ -534,6 +548,23 @@ _NATIVE_AMERICAN_SQL = """
         AND qq.code_id = :race_question_code_id
         AND qra.value_code_id = :native_american_race_code_id
         AND qra.end_time IS NULL) is_native_american"""
+
+race_question_code_alias = aliased(Code)
+race_answer_code_alias = aliased(Code)
+_NATIVE_AMERICAN_YN = case([(
+    Query([QuestionnaireResponse])
+    .join(QuestionnaireResponseAnswer)
+    .join(QuestionnaireQuestion)
+    .join(race_question_code_alias, race_question_code_alias.codeId == QuestionnaireQuestion.codeId)
+    .join(race_answer_code_alias, race_answer_code_alias.codeId == QuestionnaireResponseAnswer.valueCodeId)
+    .filter(
+        QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
+        race_question_code_alias.value == literal_column(f'"{RACE_QUESTION_CODE}"'),
+        race_answer_code_alias.value == literal_column(f'"{RACE_AIAN_CODE}"'),
+        QuestionnaireResponseAnswer.endTime.is_(None)
+    ).exists(),
+    literal_column('"Y"')
+)], else_=literal_column('"N"')).label('is_native_american')
 
 # Joins orders and samples, and computes some derived values (elapsed_hours, counts).
 # MySQL does not support FULL OUTER JOIN, so instead we UNION ALL a LEFT OUTER JOIN
@@ -726,25 +757,6 @@ _RECONCILIATION_REPORT_SQL = (
   ORDER BY
     ISODATE[MAX(collected)], ISODATE[MAX(confirmed)], GROUP_CONCAT(DISTINCT biobank_order_id),
     GROUP_CONCAT(DISTINCT biobank_stored_sample_id)
-"""
-)
-
-# Generates a report on participants that have withdrawn in the past n days,
-# including their biobank ID, withdrawal time, and whether they are Native American
-# (as biobank samples for Native Americans are disposed of differently.)
-# only send Biobank IDs of participants that had samples collected.
-_WITHDRAWAL_REPORT_SQL = (
-    """
-  SELECT
-    CONCAT(:biobank_id_prefix, participant.biobank_id) biobank_id,
-    ISODATE[participant.withdrawal_time] withdrawal_time,"""
-    + _NATIVE_AMERICAN_SQL
-    + """,
-    participant.participant_origin
-  FROM participant
-  WHERE participant.withdrawal_time >= :n_days_ago
-  AND
-  (SELECT COUNT(*) FROM biobank_stored_sample WHERE biobank_id=participant.biobank_id)>0
 """
 )
 

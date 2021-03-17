@@ -8,7 +8,7 @@ from rdr_service.dao.database_factory import get_database
 
 _DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 # MySQL uses %i for minutes
-_MYSQL_DATE_FORMAT = "%Y-%m-%dT%H:%i:%SZ"
+MYSQL_ISO_DATE_FORMAT = "%Y-%m-%dT%H:%i:%SZ"
 _ISODATE_PATTERN = "ISODATE\[([^\]]+)\]"
 _YEARS_OLD_PATTERN = "YEARS_OLD\[([^\],]+), +([^\],]+)\]"
 _NULL_SAFE_PATTERN = "<=>"
@@ -50,7 +50,7 @@ def replace_years_old(sql):
 def replace_isodate(sql):
     if _is_sqlite():
         return re.sub(_ISODATE_PATTERN, r"strftime('{}', \1)".format(_DATE_FORMAT), sql)
-    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(_MYSQL_DATE_FORMAT), sql)
+    return re.sub(_ISODATE_PATTERN, r"DATE_FORMAT(\1, '{}')".format(MYSQL_ISO_DATE_FORMAT), sql)
 
 
 def replace_null_safe_equals(sql):

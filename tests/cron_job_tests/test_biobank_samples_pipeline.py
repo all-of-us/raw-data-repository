@@ -534,12 +534,10 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         # mocking the upload method to keep it from trying to upload something
         with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
                 mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
-            exporter = SqlExporter('test_bucket_name')
             day_range_of_report = 10
-            biobank_samples_pipeline._query_and_write_withdrawal_report(exporter, 'test_file_path', {
-                'race_question': self.race_question_code,
-                'native_american_race': self.native_answer_code
-            }, day_range_of_report, datetime.now())
+            biobank_samples_pipeline._query_and_write_withdrawal_report(
+                SqlExporter(''), '', day_range_of_report, datetime.now()
+            )
 
             # Check that the participants are written to the export with the expected values
             withdrawal_iso_str = two_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
