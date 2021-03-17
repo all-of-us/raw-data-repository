@@ -396,6 +396,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         fake_email = self.fake.email()
         fake_phone = '123-456-7890'
+        fake_first_name = self.fake.first_name()
+        fake_street_address = self.fake.street_address()
 
         fake_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                            {"email": fake_email})
@@ -423,7 +425,24 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(null_key_result.status_code, 400)
 
         self.assertEqual(bad_key_email_result.json['message'],
-                         'Missing email or login_phone_number in request')
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(bad_key_phone_result.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+
+        not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"first_name": fake_first_name},
+                                              expected_status=http.client.BAD_REQUEST)
+        another_not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                         {"street_address": fake_street_address},
+                                         expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(not_allowed_key.status_code, 400)
+        self.assertEqual(another_not_allowed_key.status_code, 400)
+
+        self.assertEqual(not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(another_not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
 
         null_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                               {"email": ''},

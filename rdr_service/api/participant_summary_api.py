@@ -135,21 +135,24 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
             'login_phone_number': 'loginPhoneNumber'
         }
 
-        if req_data \
-            and any([key in req_data for key in accepted_map])\
-                and all([val for val in req_data.values() if val is not None]):
+        if req_data:
+            if not any([key in req_data for key in accepted_map]):
+                raise BadRequest("Only email or login_phone_number are allowed in request")
 
-            status = ParticipantSummaryRecord.NOT_IN_USE
-            for key, value in req_data.items():
-                found_result = self.dao.get_record_from_attr(
-                    attr=accepted_map[key],
-                    value=value
-                )
-                if found_result:
-                    status = ParticipantSummaryRecord.IN_USE
-                    break
+            if any([key in req_data for key in accepted_map])\
+                    and all([val for val in req_data.values() if val is not None]):
 
-            return {'status': status.name}
+                status = ParticipantSummaryRecord.NOT_IN_USE
+                for key, value in req_data.items():
+                    found_result = self.dao.get_record_from_attr(
+                        attr=accepted_map[key],
+                        value=value
+                    )
+                    if found_result:
+                        status = ParticipantSummaryRecord.IN_USE
+                        break
+
+                return {'status': status.name}
 
         raise BadRequest("Missing email or login_phone_number in request")
 
