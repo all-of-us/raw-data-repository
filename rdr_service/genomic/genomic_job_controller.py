@@ -22,7 +22,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
+from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
+    GenomicGCValidationMetrics
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
@@ -36,10 +37,12 @@ from rdr_service.genomic.genomic_job_components import (
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao)
+    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao,
+    GenomicAW2RawDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
-from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields
+from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
+    raw_aw2_to_genomic_set_member_fields
 
 
 class GenomicJobController:
@@ -246,14 +249,15 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_member_ids_from_aw1_raw_table(self, member_ids):
+    def ingest_member_ids_from_awn_raw_table(self, n, member_ids):
         """
         Pulls AW1 data from genomic_aw1_raw and loads to genomic_set_member
+        :param n: 1 or 2 for AW1, AW2
         :param member_ids: list of genomic_set_member_ids to ingest
         :return: ingestion results as string
         """
         member_dao = GenomicSetMemberDao()
-        raw_dao = GenomicAW1RawDao()
+        raw_dao = GenomicAW1RawDao() if n == 1 else GenomicAW2RawDao()
 
         # Get member records
         members = member_dao.get_members_from_member_ids(member_ids)
@@ -297,40 +301,104 @@ class GenomicJobController:
 
                 for r in update_recs:
 
-                    # Set RDR attributes: aw1_file_processed_id, job_run_id, gc_site
-                    self.set_rdr_aw1_attributes_from_raw(r, file_proc_map)
+                    # AW1
+                    if n == 1:
+                        self.set_rdr_aw1_attributes_from_raw(r, file_proc_map)
 
-                    # Set attributes
-                    member = self.set_aw1_attributes_from_raw(r)
+                        self.set_aw1_attributes_from_raw(r)
 
-                    s.merge(member)
-                    completed.append(member.id)
+                    # AW2
+                    else:
+                        self.preprocess_aw2_attributes_from_raw(r, file_proc_map)
 
-        # Output results
-        result_msg = ''
-        result_msg += 'Ingestion From Raw Results:'
-        result_msg += f'    Updated IDs: {completed}'
-        result_msg += f'    Missing IDs: {missing}'
-        result_msg += f'    Multipls found for IDs: {multiples}'
+                        metrics_obj = self.set_validation_metrics_from_raw(r)
 
-        return result_msg
+                        s.merge(metrics_obj)
+
+                        print(r)
+
+                    s.merge(r[0])
+                    completed.append(r[0].id)
+
+        return self.compile_raw_ingestion_results(completed, missing, multiples)
 
     def set_aw1_attributes_from_raw(self, rec: tuple):
         """
         :param rec: GenomicSetMember, GenomicAW1Raw
         :return:
         """
-        # get gc_site_id
         member, raw = rec
 
         # Iterate through mapped fields
-
         _map = raw_aw1_to_genomic_set_member_fields
 
         for key in _map.keys():
             member.__setattr__(_map[key], getattr(raw, key))
 
         return member
+
+    def set_validation_metrics_from_raw(self, rec: tuple):
+        """
+        :param rec: GenomicSetMember, GenomicAW1Raw
+        :return:
+        """
+        member, raw = rec
+
+        metric = GenomicGCValidationMetrics()
+
+        metric.genomicSetMemberId = member.id
+        metric.contaminationCategory = raw.contamination_category
+
+        # Iterate mapped fields
+        _map = raw_aw2_to_genomic_set_member_fields
+
+        for key in _map.keys():
+            metric.__setattr__(_map[key], getattr(raw, key))
+
+        return metric
+
+    def preprocess_aw2_attributes_from_raw(self, rec: tuple, file_proc_map: dict):
+        member, raw = rec
+
+        member.aw2FileProcessedId = file_proc_map[raw.file_path]
+
+        # Only update the state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Truncate call rate
+        try:
+            raw.call_rate = raw.call_rate[:10]
+        except TypeError:
+            # ignore if missing
+            pass
+
+        # Validate and clean contamination data
+        try:
+            raw.contamination = float(raw.contamination)
+
+            # Percentages shouldn't be less than 0
+            if raw.contamination < 0:
+                raw.contamination = 0
+        except ValueError:
+            raise ValueError(f'contamination must be a number for member_id: {member.id}')
+
+        # Calculate contamination_category using an ingester
+        ingester = GenomicFileIngester(_controller=self)
+        category = ingester.calculate_contamination_category(member.collectionTubeId,
+                                                             raw.contamination, member)
+        raw.contamination_category = category
+
+    @staticmethod
+    def compile_raw_ingestion_results(completed, missing, multiples):
+        result_msg = ''
+        result_msg += 'Ingestion From Raw Results:'
+        result_msg += f'    Updated IDs: {completed}'
+        result_msg += f'    Missing IDs: {missing}'
+        result_msg += f'    Multiples found for IDs: {multiples}'
+
+        return result_msg
 
     @staticmethod
     def get_unique_file_paths_for_raw_records(raw_records):

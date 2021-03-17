@@ -14,7 +14,7 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicAW1Raw,
-    GenomicFileProcessed)
+    GenomicFileProcessed, GenomicAW2Raw)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -548,6 +548,14 @@ class DataGenerator:
 
     def _genomic_aw1_raw(self, **kwargs):
         return GenomicAW1Raw(**kwargs)
+
+    def create_database_genomic_aw2_raw(self, **kwargs):
+        raw = self._genomic_aw2_raw(**kwargs)
+        self._commit_to_database(raw)
+        return raw
+
+    def _genomic_aw2_raw(self, **kwargs):
+        return GenomicAW2Raw(**kwargs)
 
     def create_database_genomic_file_processed(self, **kwargs):
         file = self._genomic_file_processed(**kwargs)
