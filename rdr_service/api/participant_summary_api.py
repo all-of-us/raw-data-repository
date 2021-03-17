@@ -139,7 +139,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
             if not any([key in req_data for key in accepted_map]):
                 raise BadRequest("Only email or login_phone_number are allowed in request")
 
-            if any([key in req_data for key in accepted_map])\
+            if any([key in req_data for key in accepted_map]) \
                     and all([val for val in req_data.values() if val is not None]):
 
                 status = ParticipantSummaryRecord.NOT_IN_USE
@@ -155,6 +155,3 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
                 return {'status': status.name}
 
         raise BadRequest("Missing email or login_phone_number in request")
-
-
-

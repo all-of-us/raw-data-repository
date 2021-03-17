@@ -363,12 +363,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
             .create_database_participant_summary(participant=participant_two)
 
         one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
-                                      {"email": participant_summary_one.email})
+                                               {"email": participant_summary_one.email})
         one_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
-                                           {"login_phone_number": participant_summary_one.loginPhoneNumber})
+                                               {"login_phone_number": participant_summary_one.loginPhoneNumber})
         one_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
-                                      {"email": participant_summary_one.email,
-                                       "login_phone_number": participant_summary_one.loginPhoneNumber})
+                                               {"email": participant_summary_one.email,
+                                                "login_phone_number": participant_summary_one.loginPhoneNumber})
 
         two_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
                                                {"email": participant_summary_two.email})
@@ -412,13 +412,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(fake_combo_result['status'], 'NOT_IN_USE')
 
         bad_key_email_result = self.send_post("ParticipantSummary/CheckLogin",
-                                         {"bad_email_key": fake_email},
-                                         expected_status=http.client.BAD_REQUEST)
+                                              {"bad_email_key": fake_email},
+                                              expected_status=http.client.BAD_REQUEST)
         bad_key_phone_result = self.send_post("ParticipantSummary/CheckLogin",
-                                         {"bad_phone_key": fake_phone},
-                                         expected_status=http.client.BAD_REQUEST)
+                                              {"bad_phone_key": fake_phone},
+                                              expected_status=http.client.BAD_REQUEST)
         null_key_result = self.send_post("ParticipantSummary/CheckLogin",
-                                     expected_status=http.client.BAD_REQUEST)
+                                         expected_status=http.client.BAD_REQUEST)
 
         self.assertEqual(bad_key_email_result.status_code, 400)
         self.assertEqual(bad_key_phone_result.status_code, 400)
@@ -430,11 +430,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          'Only email or login_phone_number are allowed in request')
 
         not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
-                                              {"first_name": fake_first_name},
-                                              expected_status=http.client.BAD_REQUEST)
-        another_not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
-                                         {"street_address": fake_street_address},
+                                         {"first_name": fake_first_name},
                                          expected_status=http.client.BAD_REQUEST)
+        another_not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                                 {"street_address": fake_street_address},
+                                                 expected_status=http.client.BAD_REQUEST)
 
         self.assertEqual(not_allowed_key.status_code, 400)
         self.assertEqual(another_not_allowed_key.status_code, 400)
@@ -445,10 +445,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
                          'Only email or login_phone_number are allowed in request')
 
         null_email_result = self.send_post("ParticipantSummary/CheckLogin",
-                                              {"email": ''},
+                                           {"email": ''},
                                            expected_status=http.client.BAD_REQUEST)
         null_phone_result = self.send_post("ParticipantSummary/CheckLogin",
-                                              {"login_phone_number": ''},
+                                           {"login_phone_number": ''},
                                            expected_status=http.client.BAD_REQUEST)
         null_combo_result = self.send_post("ParticipantSummary/CheckLogin",
                                            {"email": '',
