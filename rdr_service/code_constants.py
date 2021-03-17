@@ -70,6 +70,9 @@ RACE_HISPANIC_CODE = "WhatRaceEthnicity_Hispanic"
 RACE_FREETEXT_CODE = "WhatRaceEthnicity_FreeText"
 RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 
+WITHDRAWAL_CEREMONY_QUESTION_CODE = "withdrawalaianceremony"
+WITHDRAWAL_CEREMONY_YES = "withdrawalaianceremony_yes"
+
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
