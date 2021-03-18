@@ -768,6 +768,7 @@ class GenomicIncidentCode(messages.Enum):
     UNSET = 0
     UNKNOWN = 1
     UNABLE_TO_FIND_MEMBER = 2
+    MISSING_FILES = 3
 
 
 class GenomicIncidentStatus(messages.Enum):

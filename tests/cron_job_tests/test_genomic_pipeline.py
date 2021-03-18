@@ -124,6 +124,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.manifest_file_dao = GenomicManifestFileDao()
         self.manifest_feedback_dao = GenomicManifestFeedbackDao()
         self.file_processed_dao = GenomicFileProcessedDao()
+        self.incident_dao = GenomicIncidentDao()
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
@@ -914,7 +915,7 @@ class GenomicPipelineTest(BaseTestCase):
         return self.code_dao.insert(code_to_insert).codeId
 
     @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
-    def test_gc_metrics_reconciliation_vs_genotyping_data(self, patched_handler):
+    def test_gc_metrics_reconciliation_vs_array_data(self, patched_handler):
         mock_alert_handler = patched_handler.return_value
         mock_alert_handler._jira_handler = 'fake_jira_handler'
         mock_alert_handler.make_genomic_alert.return_value = 1
@@ -972,9 +973,6 @@ class GenomicPipelineTest(BaseTestCase):
         with self.member_dao.session() as s:
             s.merge(member)
 
-        processed_file = self.file_processed_dao.get(1)
-        self.assertEqual(0, processed_file.missingFilesAlertSent)
-
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
 
         gc_record = self.metrics_dao.get(1)
@@ -1027,14 +1025,15 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
         processed_file = self.file_processed_dao.get(1)
-        self.assertEqual(1, processed_file.missingFilesAlertSent)
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
+        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
 
         run_obj = self.job_run_dao.get(2)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
-    def test_aw2_wgs_reconciliation_vs_sequencing_data(self, patched_handler):
+    def test_aw2_wgs_reconciliation_vs_wgs_data(self, patched_handler):
         mock_alert_handler = patched_handler.return_value
         mock_alert_handler._jira_handler = 'fake_jira_handler'
         mock_alert_handler.make_genomic_alert.return_value = 1
@@ -1069,9 +1068,6 @@ class GenomicPipelineTest(BaseTestCase):
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
-
-        processed_file = self.file_processed_dao.get(1)
-        self.assertEqual(0, processed_file.missingFilesAlertSent)
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
 
@@ -1113,7 +1109,8 @@ class GenomicPipelineTest(BaseTestCase):
         mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
         processed_file = self.file_processed_dao.get(1)
-        self.assertEqual(1, processed_file.missingFilesAlertSent)
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
+        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
 
         run_obj = self.job_run_dao.get(2)
 

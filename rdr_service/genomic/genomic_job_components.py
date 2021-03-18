@@ -1836,9 +1836,13 @@ class GenomicReconciler:
             if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                file = self.file_dao.get(metric.genomicFileProcessedId)
-                if not file.missingFilesAlertSent:
-                    total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
+                incident = self.controller.incident_dao.get_by_source_file_id(metric.genomicFileProcessedId)
+                #more filter?
+                if not incident:
+                    total_missing_data.append((metric.genomicFileProcessedId,
+                                               missing_data_files,
+                                               member
+                                               ))
 
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
@@ -1853,12 +1857,21 @@ class GenomicReconciler:
 
             for f in total_missing_data:
                 file = self.file_dao.get(f[0])
-                file.missingFilesAlertSent = 1
-                self.file_dao.update(file)
                 description += self._compile_missing_data_alert(
                     file_name=file.fileName,
                     missing_data=f[1]
                 )
+                self.controller.create_incident(
+                    source_job_run_id=self.run_id,
+                    source_file_processed_id=file.id,
+                    code=GenomicIncidentCode.MISSING_FILES.name,
+                    message=description,
+                    genomic_set_member_id=f[2].id,
+                    biobank_id=f[2].biobankId,
+                    sample_id=f[2].sampleId if f[2].sampleId else "",
+                    collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+                )
+
             alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
@@ -1936,10 +1949,15 @@ class GenomicReconciler:
             if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-                if not file.missingFilesAlertSent:
+                incident = self.controller.incident_dao.get_by_source_file_id(
+                    metric.GenomicGCValidationMetrics.genomicFileProcessedId)
+
+                # more filter?
+                if not incident:
                     total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
-                                               missing_data_files))
+                                               missing_data_files,
+                                               member
+                                               ))
 
             # Update Member
             if next_state is not None and next_state != member.genomicWorkflowState:
@@ -1955,13 +1973,20 @@ class GenomicReconciler:
 
             for f in total_missing_data:
                 file = self.file_dao.get(f[0])
-                file.missingFilesAlertSent = 1
-                self.file_dao.update(file)
                 description += self._compile_missing_data_alert(
                     file_name=file.fileName,
                     missing_data=f[1]
                 )
-
+                self.controller.create_incident(
+                    source_job_run_id=self.run_id,
+                    source_file_processed_id=file.id,
+                    code=GenomicIncidentCode.MISSING_FILES.name,
+                    message=description,
+                    genomic_set_member_id=f[2].id,
+                    biobank_id=f[2].biobankId,
+                    sample_id=f[2].sampleId if f[2].sampleId else "",
+                    collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+                )
             alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS

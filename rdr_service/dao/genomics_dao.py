@@ -1563,3 +1563,11 @@ class GenomicIncidentDao(UpdatableDao):
 
     def from_client_json(self):
         pass
+
+    def get_by_source_file_id(self, file_id):
+        with self.session() as session:
+            return session.query(
+                GenomicIncident
+            ).filter(
+                GenomicIncident.source_file_processed_id == file_id
+            ).all()
