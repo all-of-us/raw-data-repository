@@ -24,7 +24,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept,
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
-from rdr_service.model.survey import Survey
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import (
     DeceasedNotification,
@@ -508,6 +508,22 @@ class DataGenerator:
             module_code = self.create_database_code()
             kwargs['codeId'] = module_code.codeId
         return Survey(**kwargs)
+
+    def create_database_survey_question(self, **kwargs):
+        survey_question = self._survey_question(**kwargs)
+        self._commit_to_database(survey_question)
+        return survey_question
+
+    def _survey_question(self, **kwargs):
+        return SurveyQuestion(**kwargs)
+
+    def create_database_survey_question_option(self, **kwargs):
+        survey_question_option = self._survey_question_option(**kwargs)
+        self._commit_to_database(survey_question_option)
+        return survey_question_option
+
+    def _survey_question_option(self, **kwargs):
+        return SurveyQuestionOption(**kwargs)
 
     def create_database_genomic_manifest_file(self, **kwargs):
         manifest = self._genomic_manifest_file(**kwargs)

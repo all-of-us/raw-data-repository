@@ -9,8 +9,10 @@ from sqlalchemy import (
 )
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
+from typing import List
 
 from rdr_service.model.base import Base
+from rdr_service.model.code import Code
 from rdr_service.model.utils import Enum, UTCDateTime
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus
 from rdr_service.model.field_types import BlobUTF8
@@ -65,8 +67,8 @@ class Questionnaire(QuestionnaireBase, Base):
 class QuestionnaireHistory(QuestionnaireBase, Base):
     __tablename__ = "questionnaire_history"
     version = Column("version", Integer, primary_key=True)
-    concepts = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
-    questions = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
+    concepts: List['QuestionnaireConcept'] = relationship("QuestionnaireConcept", cascade="all, delete-orphan")
+    questions: List['QuestionnaireQuestion'] = relationship("QuestionnaireQuestion", cascade="all, delete-orphan")
 
 
 class QuestionnaireConcept(Base):
@@ -127,3 +129,5 @@ class QuestionnaireQuestion(Base):
         ),
         UniqueConstraint("questionnaire_id", "questionnaire_version", "link_id"),
     )
+
+    code = relationship(Code)
