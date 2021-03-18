@@ -1329,6 +1329,8 @@ Index(
     ParticipantSummary.withdrawalTime,
 )
 Index("participant_summary_last_modified", ParticipantSummary.hpoId, ParticipantSummary.lastModified)
+Index("participant_summary_email", ParticipantSummary.email)
+Index("participant_summary_login_phone_number", ParticipantSummary.loginPhoneNumber)
 
 
 class ParticipantGenderAnswers(Base):
