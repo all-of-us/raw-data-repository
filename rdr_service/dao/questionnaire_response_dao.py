@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
-from rdr_service.app_util import get_account_origin_id
+from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -817,7 +817,9 @@ def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
         raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
-
+    # skip checking for self request from fake participant generating
+    if is_self_request():
+        return True
     # We now lookup up consent bucket names by participant origin id.
     p_origin = get_account_origin_id()
     consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)

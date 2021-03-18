@@ -182,6 +182,10 @@ def get_account_origin_id():
     return client_id
 
 
+def is_self_request():
+    return _is_self_request()
+
+
 def _is_self_request():
     return (
         request.remote_addr is None
