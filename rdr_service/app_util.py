@@ -166,6 +166,7 @@ def check_cron():
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
+
 def get_account_origin_id():
     """
     Returns the clientId value set in the config for the user.
@@ -183,10 +184,6 @@ def get_account_origin_id():
 
 
 def is_self_request():
-    return _is_self_request()
-
-
-def _is_self_request():
     return (
         request.remote_addr is None
         and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
@@ -275,7 +272,7 @@ def auth_required(role_whitelist):
             # are allowed through (when enabled).
             acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
             # logging.info(str(request.headers))
-            if not _is_self_request():
+            if not is_self_request():
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
                     raise Unauthorized(f"HTTPS is required for {appid}", www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
