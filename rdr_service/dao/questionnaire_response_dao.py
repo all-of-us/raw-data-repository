@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
-from rdr_service.app_util import get_account_origin_id
+from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -994,8 +994,9 @@ def _validate_consent_pdfs(resource):
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
         found_pdf = True
 
-    if config.GAE_PROJECT == 'localhost':
+    if config.GAE_PROJECT == 'localhost' or is_self_request():
         # Pretend we found a valid consent if we're running on a development machine
+        # skip checking for self request from fake participant generating
         return True
     else:
         return found_pdf
