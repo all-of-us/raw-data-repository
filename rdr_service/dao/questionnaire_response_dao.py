@@ -817,9 +817,7 @@ def _validate_consent_pdfs(resource):
     """Checks for any consent-form-signed-pdf extensions and validates their PDFs in GCS."""
     if resource.get("resourceType") != "QuestionnaireResponse":
         raise ValueError(f'Expected QuestionnaireResponse for "resourceType" in {resource}.')
-    # skip checking for self request from fake participant generating
-    if is_self_request():
-        return True
+
     # We now lookup up consent bucket names by participant origin id.
     p_origin = get_account_origin_id()
     consent_bucket_config = config.getSettingJson(config.CONSENT_PDF_BUCKET)
@@ -844,8 +842,9 @@ def _validate_consent_pdfs(resource):
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
         found_pdf = True
 
-    if config.GAE_PROJECT == 'localhost':
+    if config.GAE_PROJECT == 'localhost' or is_self_request():
         # Pretend we found a valid consent if we're running on a development machine
+        # skip checking for self request from fake participant generating
         return True
     else:
         return found_pdf
