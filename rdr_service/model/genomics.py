@@ -619,6 +619,11 @@ class GenomicIncident(Base):
     message = Column(String(255))
     status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
 
+    slack_notification = Column(SmallInteger, nullable=False, default=0)
+    slack_notification_date = Column(DateTime, nullable=True)
+    jira_notification = Column(SmallInteger, nullable=False, default=0)
+    jira_notification_date = Column(DateTime, nullable=True)
+
     source_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     source_file_processed_id = Column(Integer, ForeignKey("genomic_file_processed.id"))
     audit_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
