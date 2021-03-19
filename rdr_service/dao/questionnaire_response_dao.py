@@ -345,16 +345,6 @@ class QuestionnaireResponseDao(BaseDao):
         answer_validator = ResponseValidator(questionnaire_history, session)
         answer_validator.check_response(questionnaire_response)
 
-        # Get the questions from the questionnaire history record.
-        q_question_ids = set([question.questionnaireQuestionId for question in questionnaire_history.questions])
-        for answer in questionnaire_response.answers:
-            if answer.questionId not in q_question_ids:
-                raise BadRequest(
-                    f"Questionnaire response contains question ID {answer.questionId} not in questionnaire."
-                )
-        # TODO: this check can integrate with the validator
-        #  when we start rejecting responses based on the validators results
-
         questionnaire_response.created = clock.CLOCK.now()
         if not questionnaire_response.authored:
             questionnaire_response.authored = questionnaire_response.created
