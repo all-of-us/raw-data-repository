@@ -139,6 +139,8 @@ CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
 
 DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
 
+RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
