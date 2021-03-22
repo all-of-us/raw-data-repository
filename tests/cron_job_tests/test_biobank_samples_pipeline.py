@@ -10,7 +10,8 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, RACE_QUESTION_CODE, RACE_AIAN_CODE
+from rdr_service.code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_AIAN_CODE,\
+    WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -23,7 +24,9 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.offline import biobank_samples_pipeline
+from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
     SampleCollectionMethod
 from tests import test_data
@@ -46,6 +49,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
         config.override_setting(BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report 60d')
+
+        self.withdrawal_questionnaire = None
 
     mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
 
@@ -388,8 +393,11 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             self.assertTrue(path.endswith(".csv"))
 
     def _init_report_codes(self):
-        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_QUESTION_CODE)
-        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_AIAN_CODE)
+        self.race_question_code = self.data_generator.create_database_code(value=RACE_QUESTION_CODE)
+        self.native_answer_code = self.data_generator.create_database_code(value=RACE_AIAN_CODE)
+
+        self.ceremony_question_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_QUESTION_CODE)
+        self.ceremony_yes_answer_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_YES)
 
     @staticmethod
     def _datetime_days_ago(num_days_ago):
@@ -464,3 +472,117 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 None,  # order origin
                 'example'  # Participant origin
             )])
+
+    def _get_questionnaire(self):
+        if self.withdrawal_questionnaire is None:
+            race_question = self.data_generator.create_database_questionnaire_question(
+                codeId=self.race_question_code.codeId
+            )
+            ceremony_question = self.data_generator.create_database_questionnaire_question(
+                codeId=self.ceremony_question_code.codeId
+            )
+            self.withdrawal_questionnaire = self.data_generator.create_database_questionnaire_history(
+                # As of writing this, the pipeline only checks for the answers, regardless of questionnaire
+                # so putting them in the same questionnaire for convenience of the test code
+                questions=[race_question, ceremony_question]
+            )
+
+        return self.withdrawal_questionnaire
+
+    def _create_participant(self, is_native_american: bool, requests_ceremony: bool, withdrawal_time):
+        participant = self.data_generator.create_database_participant(
+            withdrawalTime=withdrawal_time
+        )
+
+        # Withdrawal report only includes participants that have stored samples
+        self.data_generator.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
+
+        # Create a questionnaire response that satisfies the parameters for the test participant
+        questionnaire = self._get_questionnaire()
+        answers = []
+        for question in questionnaire.questions:
+            answer_code_id = None
+            if question.codeId == self.race_question_code.codeId and is_native_american:
+                answer_code_id = self.native_answer_code.codeId
+            elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
+                answer_code_id = self.ceremony_yes_answer_code.codeId
+
+            if answer_code_id:
+                answers.append(QuestionnaireResponseAnswer(
+                    questionId=question.questionnaireQuestionId,
+                    valueCodeId=answer_code_id
+                ))
+        self.data_generator.create_database_questionnaire_response(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            answers=answers,
+            participantId=participant.participantId
+        )
+
+        return participant
+
+    def assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_str,
+                                          as_native_american: bool, needs_ceremony: bool):
+        self.assertIn((
+            f'Z{participant.biobankId}',
+            withdrawal_str,
+            'Y' if as_native_american else 'N',
+            'Y' if needs_ceremony else 'N',
+            participant.participantOrigin
+        ), rows)
+
+    def test_data_in_withdrawal_report(self):
+        # Set up data for withdrawal report
+        self._init_report_codes()
+        two_days_ago = self._datetime_days_ago(2)
+        no_ceremony_native_american_participant = self._create_participant(
+            is_native_american=True, requests_ceremony=False, withdrawal_time=two_days_ago
+        )
+        ceremony_native_american_participant = self._create_participant(
+            is_native_american=True, requests_ceremony=True, withdrawal_time=two_days_ago
+        )
+        non_native_american_participant = self._create_participant(
+            is_native_american=False, requests_ceremony=False, withdrawal_time=two_days_ago
+        )
+
+        # Mocking the file writer to catch what gets exported and
+        # mocking the upload method to keep it from trying to upload something
+        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
+                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+
+            # Generate the withdrawal report
+            day_range_of_report = 10
+            biobank_samples_pipeline._query_and_write_withdrawal_report(
+                SqlExporter(''), '', day_range_of_report, datetime.now()
+            )
+
+            # Check the header values written
+            mock_writer_class.return_value.writerow.assert_called_with(
+                ['biobank_id', 'withdrawal_time', 'is_native_american', 'needs_disposal_ceremony', 'participant_origin']
+            )
+
+            # Check that the participants are written to the export with the expected values
+            withdrawal_iso_str = two_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+            mock_write_rows = mock_writer_class.return_value.writerows
+            rows_written = mock_write_rows.call_args[0][0]
+            self.assert_participant_in_report_rows(
+                non_native_american_participant,
+                rows_written,
+                withdrawal_iso_str,
+                as_native_american=False,
+                needs_ceremony=False
+            )
+            self.assert_participant_in_report_rows(
+                ceremony_native_american_participant,
+                rows_written,
+                withdrawal_iso_str,
+                as_native_american=True,
+                needs_ceremony=True
+            )
+            self.assert_participant_in_report_rows(
+                no_ceremony_native_american_participant,
+                rows_written,
+                withdrawal_iso_str,
+                as_native_american=True,
+                needs_ceremony=False
+            )

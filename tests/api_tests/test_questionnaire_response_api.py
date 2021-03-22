@@ -612,12 +612,12 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant_id = self.create_participant()
         questionnaire_id = self.create_questionnaire("questionnaire1.json")
         q = QuestionnaireDao()
-        quesstionnaire = q.get(questionnaire_id)
-        make_transient(quesstionnaire)
-        quesstionnaire.status = QuestionnaireDefinitionStatus.INVALID
+        questionnaire = q.get(questionnaire_id)
+        make_transient(questionnaire)
+        questionnaire.status = QuestionnaireDefinitionStatus.INVALID
         with q.session() as session:
-            existing_obj = q.get_for_update(session, q.get_id(quesstionnaire))
-            q._do_update(session, quesstionnaire, existing_obj)
+            existing_obj = q.get_for_update(session, q.get_id(questionnaire))
+            q._do_update(session, questionnaire, existing_obj)
         q.get(questionnaire_id)
 
         with open(data_path("questionnaire_response3.json")) as fd:
@@ -1099,7 +1099,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(bqrs[0].status_id, 0)
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
-    def test_link_id_validation(self, mock_logging):
+    def test_link_id_does_not_exist(self, mock_logging):
         # Get a participant set up for the test
         participant_id = self.create_participant()
         self.send_consent(participant_id)
