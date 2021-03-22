@@ -371,9 +371,6 @@ class DeployAppClass(object):
         Deploy the app
         """
 
-        if self.environment == RdrEnvironment.PROD and self.gcp_env.service_key_id is None:
-            raise Exception('SA account needed to update the data-dictionary when deploying to production.')
-
         if not self.jira_ready and self.environment in (RdrEnvironment.PROD, RdrEnvironment.STABLE):
             _logger.error('Jira credentials not set, aborting.')
             return 1
@@ -410,9 +407,6 @@ class DeployAppClass(object):
         if self.environment == RdrEnvironment.STABLE:
             self.tag_people()
             self.create_jira_roc_ticket()
-        elif self.environment == RdrEnvironment.PROD:
-            _logger.info('Comparing production database schema to data-dictionary...')
-            self.update_data_dictionary(app_config, self.deploy_version)
 
         # Automatic doc build limited to stable or prod deploy (unless overridden)
         if self.args.no_docs:
