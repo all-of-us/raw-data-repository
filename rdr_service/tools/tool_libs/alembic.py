@@ -4,6 +4,7 @@
 #
 
 import argparse
+from datetime import datetime
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
@@ -73,6 +74,7 @@ class AlembicManagerClass(object):
         if se:
             _logger.error(se)
 
+        _logger.info(f'Alembic command finished at {datetime.now()}')
         return code
 
 
