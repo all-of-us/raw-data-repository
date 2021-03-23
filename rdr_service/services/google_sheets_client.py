@@ -45,7 +45,7 @@ class GoogleSheetsClient:
         # The Google API client uses sockets, and the requests can take longer than the default timeout.
         # The proposed solution is to increase the default timeout manually
         # https://github.com/googleapis/google-api-python-client/issues/632
-        # The socket seems to be created when calling discover.build, so this temporarily increases the timout for
+        # The socket seems to be created when calling discover.build, so this temporarily increases the timeout for
         # new sockets when the Google service creates its socket.
         default_socket_timeout = socket.getdefaulttimeout()
         num_seconds_in_five_minutes = 300
@@ -54,7 +54,7 @@ class GoogleSheetsClient:
         # Set up for being able to interact with the sheet in Drive
         sheets_api_service = discovery.build('sheets', 'v4', credentials=self._api_credentials)
 
-        # Set the timout back for anything else in the code that would use sockets
+        # Set the timeout back for anything else in the code that would use sockets
         socket.setdefaulttimeout(default_socket_timeout)
 
         return sheets_api_service
