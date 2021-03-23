@@ -988,8 +988,8 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         if gen_job_name in ('METRICS_INGESTION', 'AW4_ARRAY_WORKFLOW', 'AW4_WGS_WORKFLOW'):
             try:
-                if self.args.manifest_file or self.args.csv:
-                    _logger.info(f'File(s) Specified: {self.args.file or self.args.csv}')
+                if self.args.manifest_file:
+                    _logger.info(f'File(s) Specified: {self.args.manifest_file}')
                     return self.run_manifest_ingestion()
 
                 elif self.args.csv:

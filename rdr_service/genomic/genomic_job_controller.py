@@ -398,7 +398,7 @@ class GenomicJobController:
             raise ValueError(f'contamination must be a number for member_id: {member.id}')
 
         # Calculate contamination_category using an ingester
-        ingester = GenomicFileIngester(_controller=self)
+        ingester = GenomicFileIngester(_controller=self, job_id=self.job_id)
         category = ingester.calculate_contamination_category(member.collectionTubeId,
                                                              raw.contamination, member)
         raw.contamination_category = category
