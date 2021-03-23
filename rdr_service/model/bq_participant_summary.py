@@ -295,8 +295,6 @@ class BQParticipantSummarySchema(BQSchema):
     deceased_authored = BQField('deceased_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     deceased_status = BQField('deceased_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     deceased_status_id = BQField('deceased_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
-    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
     # PDR-178:  Add cabor_authored to align with RDR consent_for_cabor / consent_for_cabor_authored
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
@@ -304,6 +302,16 @@ class BQParticipantSummarySchema(BQSchema):
 
     # PDR-236:  Support for new RDR participant_summary.enrollment_core_minus_pm_time field in PDR data
     enrollment_core_minus_pm = BQField('enrollment_core_minus_pm', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+    # PDR-252:  Need to provide AIAN withdrawal ceremony status in PDR data
+    withdrawal_aian_ceremony_status = \
+        BQField('withdrawal_aian_ceremony_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    withdrawal_aian_ceremony_status_id = \
+        BQField('withdrawal_aian_ceremony_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR. Add to
+    # end of field list if enabled later
+    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

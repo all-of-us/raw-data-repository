@@ -383,6 +383,17 @@ class WithdrawalReason(messages.Enum):
     DUPLICATE = 2
     TEST = 3
 
+# PDR-252:  This information will initially be required in PDR data for providing metrics.  There are no
+# initial requirements to include this information in RDR GET API responses
+class WithdrawalAIANCeremonyStatus(messages.Enum):
+    """Whether an AIAN participant requested a last rites ceremony for their samples when withdrawing.
+     If value is UNSET it means that a participant was not presented with or did not indicate a ceremony choice. """
+
+    UNSET = 0
+    DECLINED = 1
+    REQUESTED = 2
+    COMPLETED = 3
+
 
 class ConsentExpireStatus(messages.Enum):
     UNSET = 0
