@@ -34,49 +34,61 @@ def batch_rebuild_participants_task(payload, project_id=None):
     count = 0
 
     batch = payload['batch']
+    # Boolean/flag fields indicating which elements to rebuild.  Default to True if not specified in payload
+    # This is intended to improve performance/efficiency for targeted PDR rebuilds which may only affect (for example)
+    # the participant summary data but do not require all the module response data to be rebuilt (or vice versa)
+    # TODO: Pass a list of specific modules to build (empty if skipping all modules) instead of a flag
+    build_participant_summary = payload['build_participant_summary'] if 'build_participant_summary' in payload else True
+    build_modules = payload['build_modules'] if 'build_modules' in payload else True
 
     logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
     # logging.info(json.dumps(batch, indent=2))
+    if not build_participant_summary:
+        logging.info('Skipping rebuild of participant_summary data')
+    if not build_modules:
+        logging.info('Skipping rebuild of participant module responses')
 
     for item in batch:
         p_id = item['pid']
         patch_data = item['patch'] if 'patch' in item else None
         count += 1
 
-        rebuild_participant_summary_resource(p_id, res_gen=res_gen, pdr_gen=pdr_gen, patch_data=patch_data)
+        if build_participant_summary:
+            rebuild_participant_summary_resource(p_id, res_gen=res_gen, pdr_gen=pdr_gen, patch_data=patch_data)
 
-        ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data,
-                                        project_id=project_id)
-        # Test to see if participant record has been filtered or we are just patching.
-        if not ps_bqr or patch_data:
-            continue
-
-        # Generate participant questionnaire module response data
-        modules = (
-            BQPDRConsentPII,
-            BQPDRTheBasics,
-            BQPDRLifestyle,
-            BQPDROverallHealth,
-            BQPDREHRConsentPII,
-            BQPDRDVEHRSharing,
-            BQPDRCOPEMay,
-            BQPDRCOPENov,
-            BQPDRCOPEDec,
-            BQPDRCOPEFeb,
-            BQPDRFamilyHistory,
-            BQPDRPersonalMedicalHistory,
-            BQPDRHealthcareAccess
-        )
-        for module in modules:
-            mod = module()
-            table, mod_bqrs = mod_bqgen.make_bqrecord(p_id, mod.get_schema().get_module_name())
-            if not table:
+            ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data,
+                                            project_id=project_id)
+            # Test to see if participant record has been filtered or we are just patching.
+            if not ps_bqr or patch_data:
                 continue
 
-            w_dao = BigQuerySyncDao()
-            with w_dao.session() as w_session:
-                for mod_bqr in mod_bqrs:
-                    mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                            w_dao=w_dao, w_session=w_session, project_id=project_id)
+        if build_modules:
+            # Generate participant questionnaire module response data
+            modules = (
+                BQPDRConsentPII,
+                BQPDRTheBasics,
+                BQPDRLifestyle,
+                BQPDROverallHealth,
+                BQPDREHRConsentPII,
+                BQPDRDVEHRSharing,
+                BQPDRCOPEMay,
+                BQPDRCOPENov,
+                BQPDRCOPEDec,
+                BQPDRCOPEFeb,
+                BQPDRFamilyHistory,
+                BQPDRPersonalMedicalHistory,
+                BQPDRHealthcareAccess
+            )
+            for module in modules:
+                mod = module()
+                table, mod_bqrs = mod_bqgen.make_bqrecord(p_id, mod.get_schema().get_module_name())
+                if not table:
+                    continue
+
+                w_dao = BigQuerySyncDao()
+                with w_dao.session() as w_session:
+                    for mod_bqr in mod_bqrs:
+                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                w_dao=w_dao, w_session=w_session, project_id=project_id)
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt BigQuery data for {count} participants.')
