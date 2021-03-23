@@ -3717,11 +3717,16 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         incident_dao = GenomicIncidentDao()
-
         incidents = incident_dao.get_all()
 
-        self.assertEqual(2, len(incidents))
+        for i, incident in enumerate(incidents):
+            message = f'Cannot find genomic set member for bid, sample_id: T{i+1}, 100{i+1}'
+            self.assertIsNotNone(incident.message)
+            self.assertEqual(message, incident.message)
+            self.assertEqual(1, incident.slack_notification)
+            self.assertIsNotNone(incident.slack_notification_date)
 
+        self.assertEqual(2, len(incidents))
         self.assertEqual("1", incidents[0].biobank_id)
         self.assertEqual("1001", incidents[0].sample_id)
         self.assertEqual(2, incidents[0].source_job_run_id)
