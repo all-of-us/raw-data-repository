@@ -815,6 +815,12 @@ class GenomicFileProcessedDao(UpdatableDao):
     def get_id(self, obj):
         return obj.id
 
+    def get_record_from_filename(self, file_name):
+        with self.session() as session:
+            return session.query(GenomicFileProcessed).filter(
+                GenomicFileProcessed.fileName == file_name
+            ).order_by(GenomicFileProcessed.id.desc()).first()
+
     def get_max_file_processed_for_filepath(self, filepath):
         """
         Looks up the latest GenomicFileProcessed object associated to the filepath
@@ -1236,7 +1242,6 @@ class GenomicOutreachDao(BaseDao):
 
         return member
 
-
     def to_client_json(self, result):
         report_statuses = list()
 
@@ -1554,12 +1559,15 @@ class GenomicAW2RawDao(BaseDao):
 
 
 class GenomicIncidentDao(UpdatableDao):
+
+    validate_version_match = False
+
     def __init__(self):
         super(GenomicIncidentDao, self).__init__(
             GenomicIncident, order_by_ending=['id'])
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def from_client_json(self):
         pass

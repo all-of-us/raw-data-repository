@@ -38,6 +38,6 @@ class SlackMessageHandler:
             return slack_response
         else:
             logging.info('Suppressing slack message for non-prod environment')
-            return
+            return 1
 
 
