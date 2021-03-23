@@ -66,7 +66,11 @@ from rdr_service.participant_enums import (
     QuestionnaireStatus,
     GenomicWorkflowState,
     WithdrawalStatus,
-    GenomicQcStatus, GenomicManifestTypes, GenomicContaminationCategory)
+    GenomicContaminationCategory,
+    GenomicIncidentCode,
+    GenomicManifestTypes,
+    GenomicQcStatus
+)
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -95,6 +99,10 @@ _UTC = pytz.utc
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
         super(GenomicPipelineTest, self).setUp()
+
+        self.slack_webhooks = {
+            "rdr_genomic_alerts": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+        }
         # Everything is stored as a list, so override bucket name as a 1-element list.
         config.override_setting(config.GENOMIC_SET_BUCKET_NAME, [_FAKE_BUCKET])
         config.override_setting(config.BIOBANK_SAMPLES_BUCKET_NAME, [_FAKE_BIOBANK_SAMPLE_BUCKET])
@@ -116,6 +124,7 @@ class GenomicPipelineTest(BaseTestCase):
                                 [_FAKE_CVL_MANIFEST_FOLDER])
         config.override_setting(config.GENOMIC_GEM_BUCKET_NAME, [_FAKE_GEM_BUCKET])
         config.override_setting(config.GENOMIC_AW1F_SUBFOLDER, [_FAKE_FAILURE_FOLDER])
+        config.override_setting(config.RDR_SLACK_WEBHOOKS, self.slack_webhooks)
 
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -608,17 +617,21 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # test file processing queue
-        files_processed = self.file_processed_dao.get_all()
+        processed_file = self.file_processed_dao.get(1)
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+
+        self.assertEqual(1, incident.slack_notification)
+        self.assertIsNotNone(incident.slack_notification_date)
+        self.assertEqual(incident.code,GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
 
         # Test bad filename, invalid columns
-        for f in files_processed:
-            if "TestBadFilename" in f.fileName:
-                self.assertEqual(f.fileResult,
-                                 GenomicSubProcessResult.INVALID_FILE_NAME)
-            if "TestBadStructure" in f.fileName:
-                self.assertEqual(f.fileResult,
+        if "TestBadFilename" in processed_file.fileName:
+            self.assertEqual(processed_file.fileResult,
+                                GenomicSubProcessResult.INVALID_FILE_NAME)
+        if "TestBadStructure" in processed_file.fileName:
+            self.assertEqual(processed_file.fileResult,
                                  GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
-        # Test Unsuccessful run
+        # # Test Unsuccessful run
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
@@ -1053,6 +1066,7 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
         manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
@@ -3244,12 +3258,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
-
         manifest_record = self.manifest_file_dao.get(1)
         feedback_record = self.manifest_feedback_dao.get(1)
 
-        # Test data was inserted correctly
-        # manifest_file
+        # # Test data was inserted correctly
+        # # manifest_file
         self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
         self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
         self.assertEqual(0, manifest_record.recordCount)
