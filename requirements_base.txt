@@ -54,7 +54,7 @@ imagesize==1.2.0          # via sphinx
 isodate==0.6.0            # via fhirclient
 isort==4.3.21             # via pylint
 itsdangerous==1.1.0       # via flask
-jinja2==2.11.2            # via flask, sphinx
+jinja2==2.11.3            # via flask, sphinx
 jira==2.0.0               # via -r requirements.in
 lazy-object-proxy==1.4.3  # via astroid
 locust==1.0.2             # via -r requirements.in
