@@ -1,10 +1,10 @@
 """
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
-import logging
 from datetime import datetime
-
+import logging
 import pytz
+
 from sendgrid import sendgrid
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
@@ -16,30 +16,33 @@ from rdr_service.config import (
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
-    MissingConfigException)
+    MissingConfigException,
+    RDR_SLACK_WEBHOOKS,
+)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
+from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields
+from rdr_service.genomic.genomic_job_components import (
+    GenomicBiobankSamplesCoupler,
+    GenomicFileIngester,
+    GenomicReconciler,
+    ManifestCompiler,
+)
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
     GenomicJob, GenomicWorkflowState)
-from rdr_service.genomic.genomic_job_components import (
-    GenomicFileIngester,
-    GenomicReconciler,
-    GenomicBiobankSamplesCoupler,
-    ManifestCompiler,
-)
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
     GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
-from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields
+from rdr_service.services.slack_utils import SlackMessageHandler
 
 
 class GenomicJobController:
@@ -70,10 +73,8 @@ class GenomicJobController:
         self.skip_updates = False
         self.server_config = server_config
         self.feedback_threshold = 2/3
-
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
-
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
 
         # Components
@@ -88,6 +89,9 @@ class GenomicJobController:
         self.biobank_coupler = None
         self.manifest_compiler = None
         self.storage_provider = storage_provider
+        self.genomic_alert_slack = SlackMessageHandler(
+            webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_alerts')
+        )
 
     def __enter__(self):
         logging.info(f'Beginning {self.job_id.name} workflow')
@@ -765,15 +769,30 @@ class GenomicJobController:
 
     def create_incident(self, **kwargs):
         """
-        Creates an
-        :return: GenomicIncident
+        Creates an GenomicIncident and sends alert via Slack if default
+        for slack kwarg is not overridden
+        :return:
         """
-        with self.incident_dao.session() as session:
-            return session.add(GenomicIncident(**kwargs))
+        insert_kwargs = {key: value for key, value in kwargs.items()
+                         if key in GenomicIncident.__table__.columns.keys()}
+        incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
+
+        if kwargs.get('slack') is False:
+            return
+
+        message_data = {'text': kwargs.get('message', None)}
+        slack_alert = self.genomic_alert_slack.send_message_to_webhook(
+            message_data=message_data
+        )
+        if slack_alert:
+            incident.slack_notification = 1
+            incident.slack_notification_date = datetime.utcnow()
+            self.incident_dao.update(incident)
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
-        self.job_run_dao.update_run_record(self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
+        self.job_run_dao.update_run_record(
+            self.job_run.id, self.job_result, GenomicSubProcessStatus.COMPLETED)
 
         # Update run for PDR
         bq_genomic_job_run_update(self.job_run.id, self.bq_project_id)
@@ -781,7 +800,7 @@ class GenomicJobController:
 
         # Insert incident if job isn't successful
         if self.job_result.number > 2:
-            # TODO: implement speficic codes for each job result
+            # TODO: implement specific codes for each job result
             self.create_incident(
                 code="UNKNOWN",
                 message=self.job_result.name,
