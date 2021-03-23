@@ -38,8 +38,8 @@ def batch_rebuild_participants_task(payload, project_id=None):
     # This is intended to improve performance/efficiency for targeted PDR rebuilds which may only affect (for example)
     # the participant summary data but do not require all the module response data to be rebuilt (or vice versa)
     # TODO: Pass a list of specific modules to build (empty if skipping all modules) instead of a flag
-    build_participant_summary = payload['build_participant_summary'] if 'build_participant_summary' in payload else True
-    build_modules = payload['build_modules'] if 'build_modules' in payload else True
+    build_participant_summary = payload.get('build_participant_summary', True)
+    build_modules = payload.get('build_modules', True)
 
     logging.info(f'Start time: {datetime.utcnow()}, batch size: {len(batch)}')
     # logging.info(json.dumps(batch, indent=2))
@@ -50,7 +50,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
 
     for item in batch:
         p_id = item['pid']
-        patch_data = item['patch'] if 'patch' in item else None
+        patch_data = item.get('patch', None)
         count += 1
 
         if build_participant_summary:
