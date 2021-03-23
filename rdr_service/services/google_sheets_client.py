@@ -1,5 +1,6 @@
 from googleapiclient import discovery
 from oauth2client.service_account import ServiceAccountCredentials
+import socket
 
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 
@@ -28,13 +29,9 @@ class GoogleSheetsClient:
 
         # Load credentials from service key file
         service_key_info = gcp_get_iam_service_key_info(service_key_id)
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+        self._api_credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
 
-        # Set up for being able to interact with the sheet in Drive
-        self._service = discovery.build('sheets', 'v4', credentials=credentials)
         self._spreadsheet_id = spreadsheet_id
-
-        # Initialize internal fields
         self._default_tab_id = None
         self._tabs = None
         self._empty_cell_value = ''
@@ -43,6 +40,24 @@ class GoogleSheetsClient:
             'col': ord(offset[:1].upper()) - ord('A'),  # Get column number (A = 0, B = 1, ...)
             'offset_str': offset
         } for tab_name, offset in tab_offsets.items()} if tab_offsets else {}
+
+    def _build_service(self):
+        # The Google API client uses sockets, and the requests can take longer than the default timeout.
+        # The proposed solution is to increase the default timeout manually
+        # https://github.com/googleapis/google-api-python-client/issues/632
+        # The socket seems to be created when calling discover.build, so this temporarily increases the timout for
+        # new sockets when the Google service creates its socket.
+        default_socket_timeout = socket.getdefaulttimeout()
+        num_seconds_in_five_minutes = 300
+        socket.setdefaulttimeout(num_seconds_in_five_minutes)
+
+        # Set up for being able to interact with the sheet in Drive
+        sheets_api_service = discovery.build('sheets', 'v4', credentials=self._api_credentials)
+
+        # Set the timout back for anything else in the code that would use sockets
+        socket.setdefaulttimeout(default_socket_timeout)
+
+        return sheets_api_service
 
     def __enter__(self):
         self.download_values()
@@ -78,7 +93,7 @@ class GoogleSheetsClient:
         self._tabs = {}
 
         # API call documented at https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/get
-        request = self._service.spreadsheets().get(spreadsheetId=self._spreadsheet_id, includeGridData=True)
+        request = self._build_service().spreadsheets().get(spreadsheetId=self._spreadsheet_id, includeGridData=True)
         response = request.execute()
 
         # Parse the retrieved spreadsheet
@@ -231,7 +246,7 @@ class GoogleSheetsClient:
         Upload the local data to the google drive spreadsheet.
         Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
         """
-        request = self._service.spreadsheets().values().batchUpdate(
+        request = self._build_service().spreadsheets().values().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
             body={
                 'valueInputOption': 'RAW',
