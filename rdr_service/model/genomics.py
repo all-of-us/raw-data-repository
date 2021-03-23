@@ -614,7 +614,7 @@ class GenomicIncident(Base):
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     dev_note = Column(String(255))
     code = Column(String(80), default=GenomicIncidentCode.UNSET.name)
-    message = Column(String(255))
+    message = Column(String(512))
     status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
     slack_notification = Column(SmallInteger, nullable=False, default=0)
     slack_notification_date = Column(DateTime, nullable=True)
