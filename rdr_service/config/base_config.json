@@ -62,5 +62,8 @@
     "broad": "bi",
     "northwest": "uw",
     "rdr": "rdr"
+  },
+  "rdr_slack_webhooks": {
+    "rdr_genomic_alerts": "https://hooks.slack.com/services/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"
   }
 }
