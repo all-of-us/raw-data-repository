@@ -140,7 +140,10 @@ class ParticipantResourceClass(object):
             count += 1
 
             if count == batch_size:
-                payload = {'batch': batch}
+                payload = {'batch': batch,
+                           'build_modules': not self.args.no_modules,
+                           'build_participant_summary': not self.args.modules_only
+                           }
 
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
@@ -163,7 +166,10 @@ class ParticipantResourceClass(object):
 
         # send last batch if needed.
         if count:
-            payload = {'batch': batch}
+            payload = {'batch': batch,
+                       'build_modules': not self.args.no_modules,
+                       'build_participant_summary': not self.args.modules_only
+                       }
             batch_count += 1
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
@@ -512,7 +518,7 @@ class EHRReceiptClass(object):
             count += 1
 
             if count == batch_size:
-                payload = {'batch': batch}
+                payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': False}
 
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
@@ -535,7 +541,7 @@ class EHRReceiptClass(object):
 
         # send last batch if needed.
         if count:
-            payload = {'batch': batch}
+            payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': False}
             batch_count += 1
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
