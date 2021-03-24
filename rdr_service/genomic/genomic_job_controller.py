@@ -253,7 +253,12 @@ class GenomicJobController:
 
     def ingest_member_ids_from_awn_raw_table(self, n, member_ids):
         """
-        Pulls AW1 data from genomic_aw1_raw and loads to genomic_set_member
+        Pulls data from genomic_aw1_raw or genomic_aw2_raw based on the value
+        of 'n'.
+        In the case of n=1, this loads AW1 data to genomic_set_member.
+        In the case of n=2, this loads AW2 data to genomic_set_member
+        and genomic_gc_validation_metrics.
+
         :param n: 1 or 2 for AW1, AW2
         :param member_ids: list of genomic_set_member_ids to ingest
         :return: ingestion results as string
@@ -270,7 +275,7 @@ class GenomicJobController:
         missing = []
         metrics = []  # for PDR inserts
 
-        for m in members:
+        for member in members:
             # add prefix to biobank_id
             try:
                 pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
@@ -278,20 +283,20 @@ class GenomicJobController:
                 # Set default for unit tests
                 pre = "A"
 
-            bid = f"{pre}{m.biobankId}"
+            bid = f"{pre}{member.biobankId}"
 
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, m.genomeType)
+                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, member.genomeType)
 
             except MultipleResultsFound:
-                multiples.append(m.id)
+                multiples.append(member.id)
 
             except NoResultFound:
-                missing.append(m.id)
+                missing.append(member.id)
 
             else:
-                update_recs.append((m, raw_rec))
+                update_recs.append((member, raw_rec))
 
         if update_recs:
             # Get unique file_paths
@@ -300,28 +305,28 @@ class GenomicJobController:
             file_proc_map = self.map_file_paths_to_fp_id(paths)
 
             # Process records
-            with member_dao.session() as s:
+            with member_dao.session() as session:
 
-                for r in update_recs:
+                for record_to_update in update_recs:
 
                     # AW1
                     if n == 1:
-                        self.set_rdr_aw1_attributes_from_raw(r, file_proc_map)
+                        self.set_rdr_aw1_attributes_from_raw(record_to_update, file_proc_map)
 
-                        self.set_aw1_attributes_from_raw(r)
+                        self.set_aw1_attributes_from_raw(record_to_update)
 
                     # AW2
                     else:
-                        self.preprocess_aw2_attributes_from_raw(r, file_proc_map)
+                        self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
 
-                        metrics_obj = self.set_validation_metrics_from_raw(r)
+                        metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
 
-                        metrics_obj = s.merge(metrics_obj)
-                        s.commit()
+                        metrics_obj = session.merge(metrics_obj)
+                        session.commit()
                         metrics.append(metrics_obj.id)
 
-                    s.merge(r[0])
-                    completed_members.append(r[0].id)
+                    session.merge(record_to_update[0])
+                    completed_members.append(record_to_update[0].id)
 
             # BQ Updates
             if n == 2:
@@ -352,7 +357,9 @@ class GenomicJobController:
 
     def set_validation_metrics_from_raw(self, rec: tuple):
         """
-        :param rec: GenomicSetMember, GenomicAW1Raw
+        Sets attributes on GenomicGCValidationMetrics from
+        GenomicAW2Raw object.
+        :param rec: GenomicSetMember, GenomicAW2Raw
         :return:
         """
         member, raw = rec
