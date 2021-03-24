@@ -72,7 +72,7 @@ RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 
 WITHDRAWAL_CEREMONY_QUESTION_CODE = "withdrawalaianceremony"
 WITHDRAWAL_CEREMONY_YES = "withdrawalaianceremony_yes"
-WITHDRAWAL_CEREMONY_NO = "withdrawalaian_ceremony_no"
+WITHDRAWAL_CEREMONY_NO = "withdrawalaianceremony_no"
 
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"

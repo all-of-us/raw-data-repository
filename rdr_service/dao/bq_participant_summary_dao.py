@@ -43,7 +43,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
@@ -271,14 +271,15 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.
         # Find the most recently authored answer that matches one of the possible answer codes
-        # TODO:  When RDR implements manifests from biobank, update to look for completed ceremony notifications and
-        # set status to WithdrawalAIAINCeremonyStatus.COMPLETED
+        # TODO:  When RDR implements manifests from biobank, must determine how to track ceremony completion for PDR.
+        #  May be a separate flag field?
         withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
         code_filter = Code.value.in_([WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_YES])
         ceremony_response = ro_session.query(Code.value).\
             join(QuestionnaireResponseAnswer, QuestionnaireResponseAnswer.valueCodeId == Code.codeId).\
             join(QuestionnaireResponse,
                  QuestionnaireResponse.questionnaireResponseId == QuestionnaireResponseAnswer.questionnaireResponseId).\
+            join(QuestionnaireQuestion.questionnaireQuestionId == QuestionnaireResponseAnswer.questionId).\
             filter(code_filter, QuestionnaireResponse.participantId == p_id).\
             order_by(desc(QuestionnaireResponse.authored)).one_or_none()
 
