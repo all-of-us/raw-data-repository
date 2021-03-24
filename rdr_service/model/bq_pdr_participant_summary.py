@@ -230,12 +230,15 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
         ])
     )
 
-class BQPDRParticipantSummaryWithdrawnView(BQView):
-    __viewname__ = 'v_pdr_participant_withdrawn'
-    __viewdescr__ = 'PDR Participant Summary Withdrawn View'
-    __table__ = BQPDRParticipantSummary
-    __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
-                                                          'ps.withdrawal_status_id != 1')
+# TODO:  This is now a custom view in PDR BigQuery (as of PDR-262).  Needs to be disabled here so it will not be
+# updated by migrate-bq tool.   Consider moving all custom views into our model?  Some (like this one) will have
+# extremely complicated SQL definitions, so unclear if that is a viable/best solution
+#class BQPDRParticipantSummaryWithdrawnView(BQView):
+#   __viewname__ = 'v_pdr_participant_withdrawn'
+#   __viewdescr__ = 'PDR Participant Summary Withdrawn View'
+#   __table__ = BQPDRParticipantSummary
+#   __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
+#                                                         'ps.withdrawal_status_id != 1')
 
 
 class BQPDRPMView(BQView):
@@ -363,6 +366,9 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_processed_site_id,
              nt.bbo_finalized_site,
              nt.bbo_finalized_site_id,
+             nt.bbo_finalized_time,
+             nt.bbo_finalized_status,
+             nt.bbo_finalized_status_id,
              nt.bbo_tests_ordered,
              nt.bbo_tests_stored
         FROM (

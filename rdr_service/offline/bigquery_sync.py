@@ -70,7 +70,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
         count += 1
 
         if count == batch_size:
-            payload = {'batch': batch}
+            payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': True}
 
             if build_locally:
                 batch_rebuild_participants_task(payload, project_id=project_id)
@@ -85,7 +85,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
 
     # send last batch if needed.
     if count:
-        payload = {'batch': batch}
+        payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': True}
         batch_count += 1
         if build_locally:
             batch_rebuild_participants_task(payload, project_id=project_id)
