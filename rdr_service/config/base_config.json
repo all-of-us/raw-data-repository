@@ -64,6 +64,6 @@
     "rdr": "rdr"
   },
   "rdr_slack_webhooks": {
-    "rdr_genomic_alerts": "https://hooks.slack.com/services/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"
+    "rdr_genomic_alerts": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
   }
 }
