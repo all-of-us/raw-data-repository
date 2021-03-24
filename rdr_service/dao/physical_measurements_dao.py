@@ -4,6 +4,7 @@ import logging
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import observation as fhir_observation
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.sql import or_
 from sqlalchemy.orm.attributes import flag_modified
 from werkzeug.exceptions import BadRequest
 
@@ -309,9 +310,6 @@ class PhysicalMeasurementsDao(UpdatableDao):
         ):
 
             participant_summary.physicalMeasurementsStatus = PhysicalMeasurementsStatus.CANCELLED
-            participant_summary.physicalMeasurementsTime = None
-            participant_summary.physicalMeasurementsFinalizedTime = None
-            participant_summary.physicalMeasurementsFinalizedSiteId = None
 
         # These fields set on any measurement not cancelled
         elif obj.status != PhysicalMeasurementsStatus.CANCELLED:
@@ -344,26 +342,26 @@ class PhysicalMeasurementsDao(UpdatableDao):
     def get_latest_pm(self, session, participant):
         return (
             session.query(PhysicalMeasurements)
-            .filter_by(participantId=participant.participantId)
-            .filter(PhysicalMeasurements.finalized != None)
+            .filter(PhysicalMeasurements.participantId == participant.participantId,
+                    PhysicalMeasurements.finalized != None,
+                    or_(PhysicalMeasurements.status != PhysicalMeasurementsStatus.CANCELLED,
+                        PhysicalMeasurements.status == None)
+                    )
             .order_by(PhysicalMeasurements.finalized.desc())
             .first()
         )
 
     def has_uncancelled_pm(self, session, participant):
         """return True if participant has at least one physical measurement that is not cancelled"""
-        query = (
-            session.query(PhysicalMeasurements.status)
-            .filter_by(participantId=participant.participantId)
-            .filter(PhysicalMeasurements.finalized != None)
-            .all()
-        )
-        valid_pm = False
-        for pm in query:
-            if pm.status != PhysicalMeasurementsStatus.CANCELLED:
-                valid_pm = True
+        query = session.query(PhysicalMeasurements)\
+            .filter(PhysicalMeasurements.participantId == participant.participantId,
+                    PhysicalMeasurements.finalized != None,
+                    or_(PhysicalMeasurements.status != PhysicalMeasurementsStatus.CANCELLED,
+                        PhysicalMeasurements.status == None)
+                    )
+        uncancelled_pm = query.scalar()
 
-        return valid_pm
+        return True if uncancelled_pm is not None else False
 
     def insert(self, obj):
         if obj.physicalMeasurementsId:
