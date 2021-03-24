@@ -3261,8 +3261,8 @@ class GenomicPipelineTest(BaseTestCase):
         manifest_record = self.manifest_file_dao.get(1)
         feedback_record = self.manifest_feedback_dao.get(1)
 
-        # # Test data was inserted correctly
-        # # manifest_file
+        # Test data was inserted correctly
+        # manifest_file
         self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
         self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
         self.assertEqual(0, manifest_record.recordCount)
