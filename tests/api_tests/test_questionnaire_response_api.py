@@ -800,6 +800,29 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
+        # Confirm the PDR bigquery_sync data generator builds the correct races item, e.g.
+        # bqs_data['races'] = [
+        #   { 'race':  'WhatRaceEthnicity_White', 'race_id': <code_id integer> },
+        #   { 'race': 'WhatRaceEthnicity_Hispanic', 'race_id': <code_id integer> }
+        # ]
+        p_id = int(participant_id[1:])
+        ps_bqs_gen = BQParticipantSummaryGenerator()
+        bqs_data = ps_bqs_gen.make_bqrecord(p_id).to_dict(serialize=True)
+        self.assertEqual(len(bqs_data['races']), 2)
+        for answer in bqs_data['races']:
+            self.assertIn(answer.get('race'), [code1.value, code2.value])
+            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
+
+        # Repeat the PDR data test for the resource generator output
+        ps_rsrc_gen = ParticipantSummaryGenerator()
+        ps_rsrc_data = ps_rsrc_gen.make_resource(p_id).get_data()
+
+        self.assertEqual(len(ps_rsrc_data['races']), 2)
+        for answer in ps_rsrc_data['races']:
+            self.assertIn(answer.get('race'), [code1.value, code2.value])
+            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
+
+
         # resubmit the answers, old value should be removed
         with open(data_path("questionnaire_the_basics_resp_multiple_race_2.json")) as f:
             resource = json.load(f)

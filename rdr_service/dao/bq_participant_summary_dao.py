@@ -647,6 +647,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # get TheBasics questionnaire response answers
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
         data = {}
+        # Turn a comma-separate list of answer codes for race and gender into their nested arrays
         if qnan.get('Race_WhatRaceEthnicity'):
             rl = list()
             for val in qnan.get('Race_WhatRaceEthnicity').split(','):
@@ -1406,7 +1407,12 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                 qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
                 # Save answers into data dict.
                 for qnan in qnans:
-                    data[qnan.code_name] = qnan.answer
+                    # For question codes with multiple responses, created comma-separated list of answers
+                    if qnan.code_name in data:
+                        data[qnan.code_name] += f',{qnan.answer}'
+                    else:
+                        data[qnan.code_name] = qnan.answer
+
                     # Special handling of GROR deprecated responses
                     if module == 'GROR' \
                        and data['questionnaire_id'] == _deprecated_gror_consent_questionnaire_id \
