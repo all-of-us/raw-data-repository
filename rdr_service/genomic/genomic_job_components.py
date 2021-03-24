@@ -1857,7 +1857,6 @@ class GenomicReconciler:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
                 incident = self.controller.incident_dao.get_by_source_file_id(metric.genomicFileProcessedId)
-                #more filter?
                 if not incident:
                     total_missing_data.append((metric.genomicFileProcessedId,
                                                missing_data_files,
@@ -1971,8 +1970,6 @@ class GenomicReconciler:
 
                 incident = self.controller.incident_dao.get_by_source_file_id(
                     metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-
-                # more filter?
                 if not incident:
                     total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
                                                missing_data_files,
