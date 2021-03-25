@@ -383,6 +383,16 @@ class WithdrawalReason(messages.Enum):
     DUPLICATE = 2
     TEST = 3
 
+# PDR-252:  This information will initially be required in PDR data for providing metrics.  There are no
+# initial requirements to include this information in RDR GET API responses
+class WithdrawalAIANCeremonyStatus(messages.Enum):
+    """Whether an AIAN participant requested a last rites ceremony for their samples when withdrawing.
+     UNSET indicates no response exists (question did not apply or AIAN participant never submitted a valid response)"""
+
+    UNSET = 0
+    DECLINED = 1
+    REQUESTED = 2
+
 
 class ConsentExpireStatus(messages.Enum):
     UNSET = 0
@@ -768,6 +778,8 @@ class GenomicIncidentCode(messages.Enum):
     UNSET = 0
     UNKNOWN = 1
     UNABLE_TO_FIND_MEMBER = 2
+    MISSING_FILES = 3
+    FILE_VALIDATION_FAILED = 4
 
 
 class GenomicIncidentStatus(messages.Enum):

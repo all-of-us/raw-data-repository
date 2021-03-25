@@ -72,6 +72,7 @@ RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 
 WITHDRAWAL_CEREMONY_QUESTION_CODE = "withdrawalaianceremony"
 WITHDRAWAL_CEREMONY_YES = "withdrawalaianceremony_yes"
+WITHDRAWAL_CEREMONY_NO = "withdrawalaianceremony_no"
 
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
@@ -114,6 +115,8 @@ HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # A new survey was developed for November 2020
 COPE_MODULE = 'COPE'
 COPE_NOV_MODULE = 'cope_nov'
+COPE_DEC_MODULE = "cope_dec"
+COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 
 # DVEHR ANSWERS
@@ -125,7 +128,6 @@ DVEHRSHARING_CONSENT_CODE_NOT_SURE = "DVEHRSharing_NotSure"
 GENETIC_ANCESTRY_CONSENT_CODE_YES = "ConsentAncestryTraits_Yes"
 GENETIC_ANCESTRY_CONSENT_CODE_NO = "ConsentAncestryTraits_No"
 GENETIC_ANCESTRY_CONSENT_CODE_NOT_SURE = "ConsentAncestryTraits_NotSure"
-
 
 BIOBANK_TESTS = [
     "1ED10",
