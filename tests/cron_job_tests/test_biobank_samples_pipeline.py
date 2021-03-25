@@ -11,13 +11,16 @@ import pytz
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_AIAN_CODE,\
-    WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES
+    WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, WITHDRAWAL_CEREMONY_NO
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+# For testing PDR Bigquery / resource data generators
+from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -28,7 +31,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
-    SampleCollectionMethod
+    SampleCollectionMethod, WithdrawalAIANCeremonyStatus
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -398,6 +401,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
         self.ceremony_question_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_QUESTION_CODE)
         self.ceremony_yes_answer_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_YES)
+        self.ceremony_no_answer_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_NO)
 
     @staticmethod
     def _datetime_days_ago(num_days_ago):
@@ -489,7 +493,7 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
         return self.withdrawal_questionnaire
 
-    def _create_participant(self, is_native_american: bool, requests_ceremony: bool, withdrawal_time):
+    def _create_participant(self, is_native_american=False, requests_ceremony=None, withdrawal_time=datetime.utcnow()):
         participant = self.data_generator.create_database_participant(
             withdrawalTime=withdrawal_time
         )
@@ -505,7 +509,10 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             if question.codeId == self.race_question_code.codeId and is_native_american:
                 answer_code_id = self.native_answer_code.codeId
             elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
-                answer_code_id = self.ceremony_yes_answer_code.codeId
+                if requests_ceremony == WithdrawalAIANCeremonyStatus.REQUESTED:
+                    answer_code_id = self.ceremony_yes_answer_code.codeId
+                elif requests_ceremony == WithdrawalAIANCeremonyStatus.DECLINED:
+                    answer_code_id = self.ceremony_no_answer_code.codeId
 
             if answer_code_id:
                 answers.append(QuestionnaireResponseAnswer(
@@ -536,13 +543,20 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         self._init_report_codes()
         two_days_ago = self._datetime_days_ago(2)
         no_ceremony_native_american_participant = self._create_participant(
-            is_native_american=True, requests_ceremony=False, withdrawal_time=two_days_ago
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.DECLINED,
+            withdrawal_time=two_days_ago
         )
         ceremony_native_american_participant = self._create_participant(
-            is_native_american=True, requests_ceremony=True, withdrawal_time=two_days_ago
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.REQUESTED,
+            withdrawal_time=two_days_ago
         )
+        # Non-AIAN should not have been presented with a ceremony choice
         non_native_american_participant = self._create_participant(
-            is_native_american=False, requests_ceremony=False, withdrawal_time=two_days_ago
+            is_native_american=False,
+            requests_ceremony=None,
+            withdrawal_time=two_days_ago
         )
 
         # Mocking the file writer to catch what gets exported and
@@ -586,3 +600,46 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 as_native_american=True,
                 needs_ceremony=False
             )
+
+        # Test PDR BigQuery and resource participant summary data generators
+        ps_bqs_gen = BQParticipantSummaryGenerator()
+        ps_rsrc_gen = ParticipantSummaryGenerator()
+
+        p_id = no_ceremony_native_american_participant.participantId
+        ps_bqs_data = ps_bqs_gen.make_bqrecord(p_id).to_dict(serialize=True)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.DECLINED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.DECLINED))
+
+        ps_rsrc_data = ps_rsrc_gen.make_resource(p_id).get_data()
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.DECLINED))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.DECLINED))
+
+        p_id = ceremony_native_american_participant.participantId
+        ps_bqs_data = ps_bqs_gen.make_bqrecord(p_id).to_dict(serialize=True)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.REQUESTED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.REQUESTED))
+
+        ps_rsrc_data = ps_rsrc_gen.make_resource(p_id).get_data()
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.REQUESTED))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.REQUESTED))
+
+        p_id = non_native_american_participant.participantId
+        ps_bqs_data = ps_bqs_gen.make_bqrecord(p_id).to_dict(serialize=True)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.UNSET))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.UNSET))
+
+        ps_rsrc_data = ps_rsrc_gen.make_resource(p_id).get_data()
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.UNSET))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.UNSET))

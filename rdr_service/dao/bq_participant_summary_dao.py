@@ -25,6 +25,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_DEFERRED_CODE,
     CABOR_SIGNATURE_QUESTION_CODE,
     PMI_SKIP_CODE,
+    WITHDRAWAL_CEREMONY_QUESTION_CODE,
     WITHDRAWAL_CEREMONY_YES,
     WITHDRAWAL_CEREMONY_NO
 )
@@ -270,22 +271,28 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         suspension_status = SuspensionStatus(p.suspensionStatus)
 
         # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.
-        # Find the most recently authored answer that matches one of the possible answer codes
-        # TODO:  When RDR implements manifests from biobank, must determine how to track ceremony completion for PDR.
-        #  May be a separate flag field?
-        withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
-        code_filter = Code.value.in_([WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_YES])
+        # Find the most recently authored answer to the withdrawal ceremony question
+        # TODO:  When RDR implements manifests from biobank, must determine how to track ceremony completion for PDR and
+        #  align with RDR for data quality checks.  May be tracked separately from ceremony decision in RDR to account
+        # for AIAN participants who withdrew before being offered ceremony yet were included in  ceremony by default?
+        ceremony_question_code = ro_session.query(Code.codeId).filter(Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE)
+        answer_code_filter = Code.value.in_([WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_YES])
         ceremony_response = ro_session.query(Code.value).\
-            join(QuestionnaireResponseAnswer, QuestionnaireResponseAnswer.valueCodeId == Code.codeId).\
+            join(QuestionnaireResponseAnswer,
+                 QuestionnaireResponseAnswer.valueCodeId == Code.codeId).\
             join(QuestionnaireResponse,
                  QuestionnaireResponse.questionnaireResponseId == QuestionnaireResponseAnswer.questionnaireResponseId).\
-            join(QuestionnaireQuestion.questionnaireQuestionId == QuestionnaireResponseAnswer.questionId).\
-            filter(code_filter, QuestionnaireResponse.participantId == p_id).\
+            join(QuestionnaireQuestion,
+                 QuestionnaireResponseAnswer.questionId == QuestionnaireQuestion.questionnaireQuestionId).\
+            filter(QuestionnaireResponse.participantId == p_id,
+                   QuestionnaireQuestion.codeId == ceremony_question_code, answer_code_filter).\
             order_by(desc(QuestionnaireResponse.authored)).one_or_none()
 
         if ceremony_response:
             withdrawal_aian_ceremony_status = \
                 _withdrawal_aian_ceremony_status_map.get(ceremony_response.value, WithdrawalAIANCeremonyStatus.UNSET)
+        else:
+            withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
 
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
