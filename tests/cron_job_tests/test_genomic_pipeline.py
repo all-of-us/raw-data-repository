@@ -3723,8 +3723,8 @@ class GenomicPipelineTest(BaseTestCase):
             message = f'Cannot find genomic set member for bid, sample_id: T{i+1}, 100{i+1}'
             self.assertIsNotNone(incident.message)
             self.assertEqual(message, incident.message)
-            self.assertEqual(1, incident.slack_notification)
-            self.assertIsNotNone(incident.slack_notification_date)
+            self.assertEqual(0, incident.slack_notification)
+            self.assertIsNone(incident.slack_notification_date)
 
         self.assertEqual(2, len(incidents))
         self.assertEqual("1", incidents[0].biobank_id)

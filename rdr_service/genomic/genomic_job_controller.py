@@ -864,17 +864,16 @@ class GenomicJobController:
                          if key in GenomicIncident.__table__.columns.keys()}
         incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
 
-        if kwargs.get('slack') is False:
-            return
+        if kwargs.get('slack') is True:
+            message_data = {'text': kwargs.get('message', None)}
+            slack_alert = self.genomic_alert_slack.send_message_to_webhook(
+                message_data=message_data
+            )
 
-        message_data = {'text': kwargs.get('message', None)}
-        slack_alert = self.genomic_alert_slack.send_message_to_webhook(
-            message_data=message_data
-        )
-        if slack_alert:
-            incident.slack_notification = 1
-            incident.slack_notification_date = datetime.utcnow()
-            self.incident_dao.update(incident)
+            if slack_alert:
+                incident.slack_notification = 1
+                incident.slack_notification_date = datetime.utcnow()
+                self.incident_dao.update(incident)
 
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""

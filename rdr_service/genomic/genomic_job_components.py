@@ -1505,6 +1505,7 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED.name,
                 message=invalid_message,
+                slack=True
             )
             logging.info(invalid_message)
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
