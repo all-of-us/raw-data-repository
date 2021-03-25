@@ -88,7 +88,6 @@ from rdr_service.config import (
     BIOBANK_AW2F_SUBFOLDER,
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
-from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 
 class GenomicFileIngester:
@@ -2697,7 +2696,8 @@ class GenomicBiobankSamplesCoupler:
                 Code.value == 'WhatRaceEthnicity_Black',
                 GenomicSetMember.genomeType.in_(['aou_wgs']),
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                or_(GenomicGCValidationMetrics.contamination <= 0.01, GenomicGCValidationMetrics.contamination == ""),
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+                GenomicGCValidationMetrics.contamination <= 0.01,
                 ParticipantSummary.participantOrigin == 'vibrent',
                 ParticipantSummary.ehrUpdateTime.isnot(None),
                 gsm_alias.id.is_(None),
