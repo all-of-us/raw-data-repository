@@ -25,13 +25,17 @@ from rdr_service.code_constants import (
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
     CABOR_SIGNATURE_QUESTION_CODE,
-    PMI_SKIP_CODE
+    PMI_SKIP_CODE,
+    WITHDRAWAL_CEREMONY_QUESTION_CODE,
+    WITHDRAWAL_CEREMONY_YES,
+    WITHDRAWAL_CEREMONY_NO
 )
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, \
     BQModuleStatusEnum, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
+from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
@@ -41,11 +45,11 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory
-from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -98,6 +102,14 @@ _consent_answer_status_map = {
     'ConsentAncestryTraits_Yes': BQModuleStatusEnum.SUBMITTED,
     'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE
+}
+
+# PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
+# will be given options for a last rites ceremony for their biobank samples.  Map answer codes to the status enum value
+# included with the PDR participant data
+_withdrawal_aian_ceremony_status_map = {
+    WITHDRAWAL_CEREMONY_YES: WithdrawalAIANCeremonyStatus.REQUESTED,
+    WITHDRAWAL_CEREMONY_NO: WithdrawalAIANCeremonyStatus.DECLINED
 }
 
 # See hotfix ticket ROC-447 / backfill ticket ROC-475.  The first GROR consent questionnaire was immediately
@@ -259,6 +271,28 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         withdrawal_reason = WithdrawalReason(p.withdrawalReason if p.withdrawalReason else 0)
         suspension_status = SuspensionStatus(p.suspensionStatus)
 
+
+        # PDR-252:  The AIAN withdrawal ceremony decision needs to be made available to PDR.  Look for the latest
+        # authored answer code, if one exists
+        ceremony_question_code = ro_session.query(Code.codeId).filter(Code.value == WITHDRAWAL_CEREMONY_QUESTION_CODE)
+        answer_code_filter = Code.value.in_([WITHDRAWAL_CEREMONY_NO, WITHDRAWAL_CEREMONY_YES])
+        ceremony_response = ro_session.query(Code.value).\
+            join(QuestionnaireResponseAnswer, QuestionnaireResponseAnswer.valueCodeId == Code.codeId).\
+            join(QuestionnaireResponse,
+                 QuestionnaireResponse.questionnaireResponseId == QuestionnaireResponseAnswer.questionnaireResponseId).\
+            join(QuestionnaireQuestion,
+                 QuestionnaireResponseAnswer.questionId == QuestionnaireQuestion.questionnaireQuestionId).\
+            filter(QuestionnaireResponse.participantId == p_id,
+                   QuestionnaireQuestion.codeId == ceremony_question_code, answer_code_filter).\
+            order_by(desc(QuestionnaireResponse.authored)).one_or_none()
+
+        if ceremony_response:
+            withdrawal_aian_ceremony_status = \
+                _withdrawal_aian_ceremony_status_map.get(ceremony_response.value, WithdrawalAIANCeremonyStatus.UNSET)
+        else:
+            withdrawal_aian_ceremony_status = WithdrawalAIANCeremonyStatus.UNSET
+
+
         # The cohort_2_pilot_flag field values in participant_summary were set via a one-time backfill based on a
         # list of participant IDs provided by PTSC and archived in the participant_cohort_pilot table.  See:
         # https://precisionmedicineinitiative.atlassian.net/browse/DA-1622
@@ -291,6 +325,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'withdrawal_time': p.withdrawalTime,
             'withdrawal_authored': p.withdrawalAuthored,
             'withdrawal_reason_justification': p.withdrawalReasonJustification,
+            'withdrawal_aian_ceremony_status': str(withdrawal_aian_ceremony_status),
+            'withdrawal_aian_ceremony_status_id': int(withdrawal_aian_ceremony_status),
 
             'suspension_status': str(suspension_status),
             'suspension_status_id': int(suspension_status),

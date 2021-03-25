@@ -8,7 +8,8 @@ from marshmallow import validate
 
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
-    SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag
+    SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
+    WithdrawalAIANCeremonyStatus
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -234,6 +235,12 @@ class ParticipantSchema(Schema):
     withdrawal_reason = fields.EnumString(enum=WithdrawalReason)
     withdrawal_reason_id = fields.EnumInteger(enum=WithdrawalReason)
     withdrawal_reason_justification = fields.Text()
+    # PDR-252:  Must include AIAN ceremony decision in PDR data
+    withdrawal_aian_ceremony_status = fields.EnumString(enum=WithdrawalAIANCeremonyStatus)
+    withdrawal_aian_ceremony_status_id = fields.EnumInteger(enum=WithdrawalAIANCeremonyStatus)
+    suspension_status = fields.EnumString(enum=SuspensionStatus)
+    suspension_status_id = fields.EnumInteger(enum=SuspensionStatus)
+    suspension_time = fields.DateTime()
     suspension_status = fields.EnumString(enum=SuspensionStatus)
     suspension_status_id = fields.EnumInteger(enum=SuspensionStatus)
     suspension_time = fields.DateTime()
