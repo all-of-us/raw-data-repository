@@ -1,10 +1,10 @@
 """
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
-from datetime import datetime
 import logging
-import pytz
+from datetime import datetime
 
+import pytz
 from sendgrid import sendgrid
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
@@ -16,32 +16,35 @@ from rdr_service.config import (
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
-    MissingConfigException,
-    RDR_SLACK_WEBHOOKS,
-)
+    MissingConfigException, RDR_SLACK_WEBHOOKS)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
-    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
+    bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
+    bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields
-from rdr_service.genomic.genomic_job_components import (
-    GenomicBiobankSamplesCoupler,
-    GenomicFileIngester,
-    GenomicReconciler,
-    ManifestCompiler,
-)
-from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident
+from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
+    GenomicGCValidationMetrics
 from rdr_service.participant_enums import (
     GenomicSubProcessResult,
     GenomicSubProcessStatus,
     GenomicJob, GenomicWorkflowState)
+from rdr_service.genomic.genomic_job_components import (
+    GenomicFileIngester,
+    GenomicReconciler,
+    GenomicBiobankSamplesCoupler,
+    ManifestCompiler,
+)
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao)
+    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao,
+    GenomicAW2RawDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
-    genomic_manifest_file_update, genomic_manifest_feedback_update
+    genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
+    genomic_set_member_batch_update
+from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
+    raw_aw2_to_genomic_set_member_fields
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -250,24 +253,31 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_member_ids_from_aw1_raw_table(self, member_ids):
+    def ingest_member_ids_from_awn_raw_table(self, n, member_ids):
         """
-        Pulls AW1 data from genomic_aw1_raw and loads to genomic_set_member
+        Pulls data from genomic_aw1_raw or genomic_aw2_raw based on the value
+        of 'n'.
+        In the case of n=1, this loads AW1 data to genomic_set_member.
+        In the case of n=2, this loads AW2 data to genomic_set_member
+        and genomic_gc_validation_metrics.
+
+        :param n: 1 or 2 for AW1, AW2
         :param member_ids: list of genomic_set_member_ids to ingest
         :return: ingestion results as string
         """
         member_dao = GenomicSetMemberDao()
-        raw_dao = GenomicAW1RawDao()
+        raw_dao = GenomicAW1RawDao() if n == 1 else GenomicAW2RawDao()
 
         # Get member records
         members = member_dao.get_members_from_member_ids(member_ids)
 
         update_recs = []
-        completed = []
+        completed_members = []
         multiples = []
         missing = []
+        metrics = []  # for PDR inserts
 
-        for m in members:
+        for member in members:
             # add prefix to biobank_id
             try:
                 pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
@@ -275,20 +285,20 @@ class GenomicJobController:
                 # Set default for unit tests
                 pre = "A"
 
-            bid = f"{pre}{m.biobankId}"
+            bid = f"{pre}{member.biobankId}"
 
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, m.genomeType)
+                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, member.genomeType)
 
             except MultipleResultsFound:
-                multiples.append(m.id)
+                multiples.append(member.id)
 
             except NoResultFound:
-                missing.append(m.id)
+                missing.append(member.id)
 
             else:
-                update_recs.append((m, raw_rec))
+                update_recs.append((member, raw_rec))
 
         if update_recs:
             # Get unique file_paths
@@ -297,44 +307,121 @@ class GenomicJobController:
             file_proc_map = self.map_file_paths_to_fp_id(paths)
 
             # Process records
-            with member_dao.session() as s:
+            with member_dao.session() as session:
 
-                for r in update_recs:
+                for record_to_update in update_recs:
 
-                    # Set RDR attributes: aw1_file_processed_id, job_run_id, gc_site
-                    self.set_rdr_aw1_attributes_from_raw(r, file_proc_map)
+                    # AW1
+                    if n == 1:
+                        self.set_rdr_aw1_attributes_from_raw(record_to_update, file_proc_map)
 
-                    # Set attributes
-                    member = self.set_aw1_attributes_from_raw(r)
+                        self.set_aw1_attributes_from_raw(record_to_update)
 
-                    s.merge(member)
-                    completed.append(member.id)
+                    # AW2
+                    else:
+                        self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
 
-        # Output results
-        result_msg = ''
-        result_msg += 'Ingestion From Raw Results:'
-        result_msg += f'    Updated IDs: {completed}'
-        result_msg += f'    Missing IDs: {missing}'
-        result_msg += f'    Multipls found for IDs: {multiples}'
+                        metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
 
-        return result_msg
+                        metrics_obj = session.merge(metrics_obj)
+                        session.commit()
+                        metrics.append(metrics_obj.id)
+
+                    session.merge(record_to_update[0])
+                    completed_members.append(record_to_update[0].id)
+
+            # BQ Updates
+            if n == 2:
+                # Metrics
+                bq_genomic_gc_validation_metrics_batch_update(metrics, project_id=self.bq_project_id)
+                genomic_gc_validation_metrics_batch_update(metrics)
+
+            # Members
+            bq_genomic_set_member_batch_update(metrics, project_id=self.bq_project_id)
+            genomic_set_member_batch_update(completed_members)
+
+        return self.compile_raw_ingestion_results(completed_members, missing, multiples, metrics)
 
     def set_aw1_attributes_from_raw(self, rec: tuple):
         """
         :param rec: GenomicSetMember, GenomicAW1Raw
         :return:
         """
-        # get gc_site_id
         member, raw = rec
 
         # Iterate through mapped fields
-
         _map = raw_aw1_to_genomic_set_member_fields
 
         for key in _map.keys():
             member.__setattr__(_map[key], getattr(raw, key))
 
         return member
+
+    def set_validation_metrics_from_raw(self, rec: tuple):
+        """
+        Sets attributes on GenomicGCValidationMetrics from
+        GenomicAW2Raw object.
+        :param rec: GenomicSetMember, GenomicAW2Raw
+        :return:
+        """
+        member, raw = rec
+
+        metric = GenomicGCValidationMetrics()
+
+        metric.genomicSetMemberId = member.id
+        metric.contaminationCategory = raw.contamination_category
+
+        # Iterate mapped fields
+        _map = raw_aw2_to_genomic_set_member_fields
+
+        for key in _map.keys():
+            metric.__setattr__(_map[key], getattr(raw, key))
+
+        return metric
+
+    def preprocess_aw2_attributes_from_raw(self, rec: tuple, file_proc_map: dict):
+        member, raw = rec
+
+        member.aw2FileProcessedId = file_proc_map[raw.file_path]
+
+        # Only update the state if it was AW1
+        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
+            member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+
+        # Truncate call rate
+        try:
+            raw.call_rate = raw.call_rate[:10]
+        except TypeError:
+            # ignore if missing
+            pass
+
+        # Validate and clean contamination data
+        try:
+            raw.contamination = float(raw.contamination)
+
+            # Percentages shouldn't be less than 0
+            if raw.contamination < 0:
+                raw.contamination = 0
+        except ValueError:
+            raise ValueError(f'contamination must be a number for member_id: {member.id}')
+
+        # Calculate contamination_category using an ingester
+        ingester = GenomicFileIngester(_controller=self, job_id=self.job_id)
+        category = ingester.calculate_contamination_category(member.collectionTubeId,
+                                                             raw.contamination, member)
+        raw.contamination_category = category
+
+    @staticmethod
+    def compile_raw_ingestion_results(completed, missing, multiples, metrics):
+        result_msg = ''
+        result_msg += 'Ingestion From Raw Results:'
+        result_msg += f'    Updated Member IDs: {completed}'
+        result_msg += f'    Missing Member IDs: {missing}'
+        result_msg += f'    Multiples found for Member IDs: {multiples}'
+        result_msg += f'    Inserted Metrics IDs: {metrics}' if metrics else ""
+
+        return result_msg
 
     @staticmethod
     def get_unique_file_paths_for_raw_records(raw_records):

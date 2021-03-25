@@ -2,7 +2,7 @@
 This module provides central location for all genomics_mappings
 """
 
-genome_type_to_aw1_file_prefix = {
+genome_type_to_aw1_aw2_file_prefix = {
             "aou_array": "_GEN_",
             "aou_wgs": "_SEQ_",
         }
@@ -31,4 +31,20 @@ raw_aw1_to_genomic_set_member_fields = {
     "test_name": "gcManifestTestName",
     "failure_mode": "gcManifestFailureMode",
     "failure_mode_desc": "gcManifestFailureDescription"
+}
+
+raw_aw2_to_genomic_set_member_fields = {
+    "lims_id": "limsId",
+    "chipwellbarcode": "chipwellbarcode",
+    "call_rate": "callRate",
+    "mean_coverage": "meanCoverage",
+    "genome_coverage": "genomeCoverage",
+    "aouhdr_coverage": "aouHdrCoverage",
+    "contamination": "contamination",
+    "sex_concordance": "sexConcordance",
+    "sex_ploidy": "sexPloidy",
+    "aligned_q30_bases": "alignedQ30Bases",
+    "array_concordance": "arrayConcordance",
+    "processing_status": "processingStatus",
+    "notes": "notes",
 }
