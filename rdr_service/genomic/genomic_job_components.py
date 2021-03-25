@@ -90,6 +90,7 @@ from rdr_service.config import (
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
 
+
 class GenomicFileIngester:
     """
     This class ingests a file from a source GC bucket into the destination table
@@ -116,7 +117,10 @@ class GenomicFileIngester:
         self.sub_folder_name = sub_folder
 
         # Sub Components
-        self.file_validator = GenomicFileValidator(job_id=self.job_id)
+        self.file_validator = GenomicFileValidator(
+            job_id=self.job_id,
+            controller=self.controller
+        )
         self.file_mover = GenomicFileMover(archive_folder=self.archive_folder_name)
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_processed_dao = GenomicFileProcessedDao()
@@ -1090,16 +1094,16 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
                                                                                   self.file_validator.genome_type)
                 if not member:
-                    logging.warning(f'can not find genomic member record for biobank_id: '
-                                    f'{biobank_id} and sample_id: {sample_id}, skip this one')
+                    logging.warning(f'Can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
                     continue
 
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
                 if existing_metrics_obj is not None:
                     metric_id = existing_metrics_obj.id
                 else:
-                    logging.warning(f'can not find metrics record for member id: '
-                                    f'{member.id}, skip this one')
+                    logging.warning(f'Can not find metrics record for member id: '
+                                    f'{member.id}, skipping...')
                     continue
 
                 updated_obj = self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy,
@@ -1297,12 +1301,13 @@ class GenomicFileValidator:
         'seq': GENOME_TYPE_WGS,
     }
 
-    def __init__(self, filename=None, data=None, schema=None, job_id=None):
+    def __init__(self, filename=None, data=None, schema=None, job_id=None, controller=None):
         self.filename = filename
         self.data_to_validate = data
         self.valid_schema = schema
         self.job_id = job_id
         self.genome_type = None
+        self.controller = controller
 
         self.GC_METRICS_SCHEMAS = {
             'seq': (
@@ -1479,17 +1484,30 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
+        file_processed = self.controller.\
+            file_processed_dao.get_record_from_filename(filename)
+
         if not self.validate_filename(filename):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        struct_valid_result = self._check_file_structure_valid(
+        struct_valid_result, missing_fields = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
 
         if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         if not struct_valid_result:
-            logging.info("file structure of {} not valid.".format(filename))
+            invalid_message = "File structure of {} not valid.".format(filename)
+            if missing_fields:
+                invalid_message += ' Missing fields: {}'.format(missing_fields)
+            self.controller.create_incident(
+                source_job_run_id=self.controller.job_run.id,
+                source_file_processed_id=file_processed.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_FAILED.name,
+                message=invalid_message,
+                slack=True
+            )
+            logging.info(invalid_message)
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 
         return GenomicSubProcessResult.SUCCESS
@@ -1646,6 +1664,7 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
+        missing_fields = None
         if not self.valid_schema:
             self.valid_schema = self._set_schema(self.filename)
 
@@ -1656,8 +1675,10 @@ class GenomicFileValidator:
                        for field in fields])
         all_file_columns_valid = all([c in self.valid_schema for c in cases])
         all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
+        if not all_expected_columns_in_file:
+            missing_fields = list(set(self.valid_schema) - set(cases))
 
-        return all([all_file_columns_valid, all_expected_columns_in_file])
+        return all([all_file_columns_valid, all_expected_columns_in_file]), missing_fields
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
@@ -1836,9 +1857,12 @@ class GenomicReconciler:
             if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                file = self.file_dao.get(metric.genomicFileProcessedId)
-                if not file.missingFilesAlertSent:
-                    total_missing_data.append((metric.genomicFileProcessedId, missing_data_files))
+                incident = self.controller.incident_dao.get_by_source_file_id(metric.genomicFileProcessedId)
+                if not incident:
+                    total_missing_data.append((metric.genomicFileProcessedId,
+                                               missing_data_files,
+                                               member
+                                               ))
 
             if next_state is not None and next_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
@@ -1853,12 +1877,21 @@ class GenomicReconciler:
 
             for f in total_missing_data:
                 file = self.file_dao.get(f[0])
-                file.missingFilesAlertSent = 1
-                self.file_dao.update(file)
                 description += self._compile_missing_data_alert(
                     file_name=file.fileName,
                     missing_data=f[1]
                 )
+                self.controller.create_incident(
+                    source_job_run_id=self.run_id,
+                    source_file_processed_id=file.id,
+                    code=GenomicIncidentCode.MISSING_FILES.name,
+                    message=description,
+                    genomic_set_member_id=f[2].id,
+                    biobank_id=f[2].biobankId,
+                    sample_id=f[2].sampleId if f[2].sampleId else "",
+                    collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+                )
+
             alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
@@ -1936,10 +1969,13 @@ class GenomicReconciler:
             if missing_data_files:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
-                file = self.file_dao.get(metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-                if not file.missingFilesAlertSent:
+                incident = self.controller.incident_dao.get_by_source_file_id(
+                    metric.GenomicGCValidationMetrics.genomicFileProcessedId)
+                if not incident:
                     total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
-                                               missing_data_files))
+                                               missing_data_files,
+                                               member
+                                               ))
 
             # Update Member
             if next_state is not None and next_state != member.genomicWorkflowState:
@@ -1955,11 +1991,19 @@ class GenomicReconciler:
 
             for f in total_missing_data:
                 file = self.file_dao.get(f[0])
-                file.missingFilesAlertSent = 1
-                self.file_dao.update(file)
                 description += self._compile_missing_data_alert(
                     file_name=file.fileName,
                     missing_data=f[1]
+                )
+                self.controller.create_incident(
+                    source_job_run_id=self.run_id,
+                    source_file_processed_id=file.id,
+                    code=GenomicIncidentCode.MISSING_FILES.name,
+                    message=description,
+                    genomic_set_member_id=f[2].id,
+                    biobank_id=f[2].biobankId,
+                    sample_id=f[2].sampleId if f[2].sampleId else "",
+                    collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
                 )
 
             alert.make_genomic_alert(summary, description)
@@ -2040,7 +2084,8 @@ class GenomicReconciler:
                 self.member_dao.update_member_state(member, new_state)
                 self.member_dao.update_report_consent_removal_date(member, None)
 
-    def _check_genotyping_file_exists(self, bucket_name, filename):
+    @staticmethod
+    def _check_genotyping_file_exists(bucket_name, filename):
         files = list_blobs('/' + bucket_name)
         filenames = [f.name for f in files if f.name.endswith(filename)]
         return 1 if len(filenames) > 0 else 0
@@ -3392,7 +3437,9 @@ class ManifestCompiler:
             "record_count": integer
         """
         self.def_provider = ManifestDefinitionProvider(
-            job_run_id=self.run_id, bucket_name=self.bucket_name, kwargs=kwargs
+            job_run_id=self.run_id,
+            bucket_name=self.bucket_name,
+            kwargs=kwargs
         )
 
         self.manifest_def = self.def_provider.get_def(manifest_type)

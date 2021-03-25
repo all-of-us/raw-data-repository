@@ -611,22 +611,19 @@ class GenomicIncident(Base):
 
     created = Column('created', DateTime)
     modified = Column('modified', DateTime)
-
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     dev_note = Column(String(255))
-
     code = Column(String(80), default=GenomicIncidentCode.UNSET.name)
-    message = Column(String(255))
+    message = Column(String(512))
     status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
-
+    slack_notification = Column(SmallInteger, nullable=False, default=0)
+    slack_notification_date = Column(DateTime, nullable=True)
     source_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     source_file_processed_id = Column(Integer, ForeignKey("genomic_file_processed.id"))
     audit_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
-
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
     gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
-
     biobank_id = Column(String(128), index=True)
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
