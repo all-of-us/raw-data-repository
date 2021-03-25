@@ -2327,16 +2327,18 @@ class GenomicBiobankSamplesCoupler:
 
         if len(participants) > 0:
             return self.process_genomic_members_into_manifest(
-                participants=participants
+                participants=participants,
+                genome_type=self._LR_GENOME_TYPE
             )
 
         logging.info(f'Long Read Participant Workflow: No participants to process.')
         return GenomicSubProcessResult.NO_FILES
 
-    def process_genomic_members_into_manifest(self, *, participants):
+    def process_genomic_members_into_manifest(self, *, participants, genome_type):
         """
         Compiles AW0 Manifest from already submitted genomic members.
         :param participants:
+        :param genome_type
         :return:
         """
 
@@ -2356,7 +2358,7 @@ class GenomicBiobankSamplesCoupler:
                     validationStatus=participant.validationStatus,
                     validationFlags=participant.validationFlags,
                     ai_an=participant.ai_an,
-                    genomeType=self._LR_GENOME_TYPE,
+                    genomeType=genome_type,
                     genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
@@ -2726,6 +2728,9 @@ class GenomicBiobankSamplesCoupler:
             ).join(
                 Code,
                 ParticipantRaceAnswers.codeId == Code.codeId,
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId,
             ).outerjoin(
                 gsm_alias,
                 sqlalchemy.and_(
@@ -2736,6 +2741,8 @@ class GenomicBiobankSamplesCoupler:
                 Code.value == 'WhatRaceEthnicity_Black',
                 GenomicSetMember.genomeType.in_(['aou_wgs']),
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+                GenomicGCValidationMetrics.contamination <= 0.01,
                 ParticipantSummary.participantOrigin == 'vibrent',
                 ParticipantSummary.ehrUpdateTime.isnot(None),
                 gsm_alias.id.is_(None),
