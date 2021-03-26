@@ -49,7 +49,7 @@ from rdr_service.code_constants import (
     COHORT_1_REVIEW_CONSENT_YES_CODE)
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
     ParticipantRaceAnswersDao,
@@ -477,11 +477,8 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest(
                     f"Unable to find signed consent-for-enrollment file for participant"
                 )
-            raise_if_withdrawn(participant)
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
             something_changed = True
-        else:
-            raise_if_withdrawn(participant_summary)
 
         # Fetch the codes for all questions and concepts
         codes = code_dao.get_with_ids(code_ids)

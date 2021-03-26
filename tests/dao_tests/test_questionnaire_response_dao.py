@@ -238,23 +238,6 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with self.assertRaises(BadRequest):
             self._insert_questionnaire_response(qr)
 
-    def test_insert_participant_withdrawn(self):
-        self.insert_codes()
-        p = Participant(participantId=1, biobankId=2, withdrawalStatus=WithdrawalStatus.NO_USE)
-        self.participant_dao.insert(p)
-        self._setup_questionnaire()
-        qr = self.data_generator._questionnaire_response(
-            questionnaireResponseId=1,
-            questionnaireId=1,
-            questionnaireVersion=1,
-            questionnaireSemanticVersion='V1',
-            participantId=1,
-            resource=QUESTIONNAIRE_RESPONSE_RESOURCE
-        )
-        qr.answers.extend(self._names_and_email_answers())
-        with self.assertRaises(Forbidden):
-            self._insert_questionnaire_response(qr)
-
     def test_insert_not_name_answers(self):
         self.insert_codes()
         p = Participant(participantId=1, biobankId=2)

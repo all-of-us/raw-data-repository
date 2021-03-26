@@ -1,10 +1,9 @@
 import datetime
+from dateutil.parser import parse
 import http.client
 import json
 import mock
-
 import pytz
-from dateutil.parser import parse
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
@@ -20,8 +19,8 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnsw
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.utils import from_client_participant_id
+from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
+from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
 # For testing PDR generator content
@@ -1183,6 +1182,22 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         )
         self.assertEqual(0, extension_query.count(),
                          'The extension was created, but the valueUri field is expected to be unrecognized')
+
+    def test_response_for_withdrawn_participant(self):
+        participant = self.data_generator.create_database_participant(withdrawalStatus=WithdrawalStatus.NO_USE)
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        with open(data_path("questionnaire_response3.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id_str)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        self._save_codes(resource)
+
+        # Send questionnaire response expecting a 403 response status
+        self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=403)
 
 def _add_code_answer(code_answers, link_id, code):
     if code:
