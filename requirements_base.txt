@@ -87,7 +87,7 @@ python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
 python-http-client==3.2.7  # via sendgrid
 pytz==2020.1              # via babel, flask-restful, google-api-core, google-cloud-firestore
-pyyaml==5.3.1             # via google-python-cloud-debugger
+pyyaml==5.4             # via google-python-cloud-debugger
 pyzmq==19.0.1             # via locust
 requests-oauthlib==1.3.0  # via jira
 requests-toolbelt==0.9.1  # via jira
