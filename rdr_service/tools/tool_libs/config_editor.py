@@ -44,16 +44,17 @@ class ProgramTemplateClass(object):
         :param config: Configuration text to edit.
         :return: Edited configuration text.
         """
-        vim = which('vim')
-        if not vim:
-            raise FileNotFoundError('VIM executable not found.')
+        editor_executable_name = os.getenv('RDR_TEXT_EDITOR') or 'vim'
+        editor = which(editor_executable_name)
+        if not editor:
+            raise FileNotFoundError(f'{editor_executable_name} executable not found.')
 
         with tempfile.NamedTemporaryFile(prefix=f'{self.args.key}.{config_root}.', suffix='.json', delete=False) as h:
             filename = h.name
             h.write(config.encode('utf-8'))
             h.flush()
-        # Launch vim for editing config.
-        args = [vim, filename]
+        # Launch editor for editing config.
+        args = [editor, filename]
         call(args)
         # Now read vim-edited file and return
         with open(filename, mode='r+b') as h:
