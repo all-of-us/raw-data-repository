@@ -597,7 +597,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertEqual(ep.organizationId, p2.organizationId)
 
     @mock.patch('rdr_service.dao.base_dao.logging')
-    def test_inserts_retry_after_lock_wait_timout(self, mock_logging):
+    def test_inserts_retry_after_lock_wait_timeout(self, mock_logging):
         """
         Check to make sure inserts will retry when encountering a lock wait timeout error.
         Any dao should be able to do this, but this test uses ParticipantDao
@@ -607,7 +607,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.session.execute('set global innodb_lock_wait_timeout = 1')
         self.session.query(Participant).with_for_update().all()
 
-        # Use the error logging to know when the lock timout was triggered,
+        # Use the error logging to know when the lock timeout was triggered,
         # unlock the participant table after the first failure
         mock_logging.warning.side_effect = lambda *_, **__: self.session.commit()
 
