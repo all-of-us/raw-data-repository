@@ -291,8 +291,6 @@ class GenomicFileProcessed(Base):
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
-    missingFilesAlertSent = Column('missing_files_alert_sent',
-                                   SmallInteger, nullable=False, default=0)
 
 
 class GenomicManifestFile(Base):
