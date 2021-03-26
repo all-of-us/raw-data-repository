@@ -1858,7 +1858,7 @@ class GenomicReconciler:
                 next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
 
                 incident = self.controller.incident_dao.get_by_source_file_id(metric.genomicFileProcessedId)
-                if not incident:
+                if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
                     total_missing_data.append((metric.genomicFileProcessedId,
                                                missing_data_files,
                                                member
@@ -1890,6 +1890,7 @@ class GenomicReconciler:
                     biobank_id=f[2].biobankId,
                     sample_id=f[2].sampleId if f[2].sampleId else "",
                     collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+                    slack=True
                 )
 
             alert.make_genomic_alert(summary, description)
@@ -1971,7 +1972,7 @@ class GenomicReconciler:
 
                 incident = self.controller.incident_dao.get_by_source_file_id(
                     metric.GenomicGCValidationMetrics.genomicFileProcessedId)
-                if not incident:
+                if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
                     total_missing_data.append((metric.GenomicGCValidationMetrics.genomicFileProcessedId,
                                                missing_data_files,
                                                member
@@ -2004,6 +2005,7 @@ class GenomicReconciler:
                     biobank_id=f[2].biobankId,
                     sample_id=f[2].sampleId if f[2].sampleId else "",
                     collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+                    slack=True
                 )
 
             alert.make_genomic_alert(summary, description)

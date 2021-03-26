@@ -1040,6 +1040,8 @@ class GenomicPipelineTest(BaseTestCase):
         processed_file = self.file_processed_dao.get(1)
         incident = self.incident_dao.get_by_source_file_id(processed_file.id)
         self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
+        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
+        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
 
         run_obj = self.job_run_dao.get(2)
 
@@ -1125,6 +1127,8 @@ class GenomicPipelineTest(BaseTestCase):
         processed_file = self.file_processed_dao.get(1)
         incident = self.incident_dao.get_by_source_file_id(processed_file.id)
         self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
+        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
+        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
 
         run_obj = self.job_run_dao.get(2)
 
