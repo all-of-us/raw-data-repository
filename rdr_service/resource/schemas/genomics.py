@@ -277,6 +277,10 @@ class GenomicGCValidationMetricsSchema(Schema):
     idat_red_md5_deleted = fields.Int16()
     vcf_md5_deleted = fields.Int16()
     vcf_tbi_deleted = fields.Int16()
+    drc_sex_concordance = fields.String(validate=validate.Length(max=128))
+    drc_contamination = fields.String(validate=validate.Length(max=128))
+    drc_mean_coverage = fields.String(validate=validate.Length(max=128))
+    drc_fp_concordance = fields.String(validate=validate.Length(max=128))
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics

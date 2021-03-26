@@ -420,6 +420,12 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     vcf_md5_deleted = BQField('vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     vcf_tbi_deleted = BQField('vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    drc_sex_concordance = BQField('drc_sex_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_contamination = BQField('drc_contamination', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_mean_coverage = BQField('drc_mean_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_fp_concordance = BQField('drc_fp_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
+
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_gc_validation_metrics'
