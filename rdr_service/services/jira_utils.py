@@ -225,10 +225,8 @@ class JiraTicketHandler:
         #args = ['git', 'log', f'{git_tag}..', '--pretty=format:"%h||%aN, %ad||%s"']
         # They want pretty, we'll give them pretty !
         args = ['git', 'log', f'{deployed_tag}..{target_tag}', '--graph', '--decorate',
-                "--format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) "
-                "%C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)'"]
-        # pylint: disable=unused-variable
-        code, so, se = run_external_program(args=args)
+                "--format=format:'%C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)'"]
+        code, so, _ = run_external_program(args=args)
 
         if code != 0:
             return None
