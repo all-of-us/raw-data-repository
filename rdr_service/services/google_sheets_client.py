@@ -28,8 +28,7 @@ class GoogleSheetsClient:
         """
 
         # Load credentials from service key file
-        service_key_info = gcp_get_iam_service_key_info(service_key_id)
-        self._api_credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+        self.service_key_id = service_key_id
 
         self._spreadsheet_id = spreadsheet_id
         self._default_tab_id = None
@@ -42,6 +41,9 @@ class GoogleSheetsClient:
         } for tab_name, offset in tab_offsets.items()} if tab_offsets else {}
 
     def _build_service(self):
+        service_key_info = gcp_get_iam_service_key_info(self.service_key_id)
+        api_credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
+
         # The Google API client uses sockets, and the requests can take longer than the default timeout.
         # The proposed solution is to increase the default timeout manually
         # https://github.com/googleapis/google-api-python-client/issues/632
@@ -52,7 +54,7 @@ class GoogleSheetsClient:
         socket.setdefaulttimeout(num_seconds_in_five_minutes)
 
         # Set up for being able to interact with the sheet in Drive
-        sheets_api_service = discovery.build('sheets', 'v4', credentials=self._api_credentials)
+        sheets_api_service = discovery.build('sheets', 'v4', credentials=api_credentials)
 
         # Set the timeout back for anything else in the code that would use sockets
         socket.setdefaulttimeout(default_socket_timeout)

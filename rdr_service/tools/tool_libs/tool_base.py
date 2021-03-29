@@ -6,7 +6,7 @@ from typing import Type
 from rdr_service.dao import database_factory
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
-from rdr_service.tools.tool_libs.app_engine_manager import AppConfigClass
+import rdr_service.tools.tool_libs.app_engine_manager as app_engine_manager
 
 logger = logging.getLogger("rdr_logger")
 
@@ -43,7 +43,7 @@ class ToolBase(object):
         self.args.git_project = self.gcp_env.git_project
 
         # Get the server config
-        app_config_manager = AppConfigClass(self.args, self.gcp_env)
+        app_config_manager = app_engine_manager.AppConfigClass(self.args, self.gcp_env)
         return app_config_manager.get_bucket_app_config()
 
     @staticmethod
