@@ -252,10 +252,10 @@ class ResponseValidator:
                 else:
                     self._check_answer_has_expected_data_type(answer, survey_question, questionnaire_question)
 
-                if survey_question.codeId in question_codes_answered:
-                    logging.error(f'Too many answers given for {survey_question.code.value}')
-                elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
-                    question_codes_answered.add(survey_question.codeId)
+                    if survey_question.codeId in question_codes_answered:
+                        logging.error(f'Too many answers given for {survey_question.code.value}')
+                    elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
+                        question_codes_answered.add(survey_question.codeId)
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -342,8 +342,11 @@ class QuestionnaireResponseDao(BaseDao):
                 semantic version {questionnaire_response.questionnaireSemanticVersion} is not found"
             )
 
-        answer_validator = ResponseValidator(questionnaire_history, session)
-        answer_validator.check_response(questionnaire_response)
+        try:
+            answer_validator = ResponseValidator(questionnaire_history, session)
+            answer_validator.check_response(questionnaire_response)
+        except (AttributeError, ValueError, TypeError, LookupError):
+            logging.error('Code error encountered when validating the response', exc_info=True)
 
         questionnaire_response.created = clock.CLOCK.now()
         if not questionnaire_response.authored:
