@@ -1575,11 +1575,14 @@ class IngestionClass(GenomicManifestBase):
                     with GenomicJobController(GenomicJob.METRICS_INGESTION,
                                               bq_project_id=self.gcp_env.project,
                                               server_config=self.get_server_config()) as controller:
+
+                        _logger.info(f"Job Run Id: {controller.job_run.id}")
+
                         controller.bypass_record_count = self.args.bypass_record_count
 
                         results = controller.ingest_member_ids_from_awn_raw_table(2, member_ids)
 
-                        logging.info(results)
+                        print(results)
 
                 if bucket_name:
                     # ingest AW1 data using controller

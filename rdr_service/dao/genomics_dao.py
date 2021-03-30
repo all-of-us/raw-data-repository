@@ -1526,7 +1526,7 @@ class GenomicAW1RawDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == biobank_id,
-                GenomicAW1Raw.file_path.like(f"%{genome_type_map[genome_type]}%"),
+                GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
             ).one()
 
@@ -1563,7 +1563,7 @@ class GenomicAW2RawDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.biobank_id == biobank_id,
-                GenomicAW2Raw.file_path.like(f"%{genome_type_map[genome_type]}%"),
+                GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
             ).one()
 
