@@ -398,6 +398,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
         logger = logging.getLogger()
         stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
         logger.addHandler(stream_handler)
 
         # Change this to logging.ERROR when you want to see API server errors.
