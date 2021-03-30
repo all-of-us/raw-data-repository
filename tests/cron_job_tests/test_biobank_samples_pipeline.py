@@ -552,6 +552,11 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             requests_ceremony=WithdrawalAIANCeremonyStatus.REQUESTED,
             withdrawal_time=two_days_ago
         )
+        native_american_participant_without_answer = self._create_participant(
+            is_native_american=True,
+            requests_ceremony=None,
+            withdrawal_time=two_days_ago
+        )
         # Non-AIAN should not have been presented with a ceremony choice
         non_native_american_participant = self._create_participant(
             is_native_american=False,
@@ -588,6 +593,13 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             )
             self.assert_participant_in_report_rows(
                 ceremony_native_american_participant,
+                rows_written,
+                withdrawal_iso_str,
+                as_native_american=True,
+                needs_ceremony=True
+            )
+            self.assert_participant_in_report_rows(
+                native_american_participant_without_answer,
                 rows_written,
                 withdrawal_iso_str,
                 as_native_american=True,
