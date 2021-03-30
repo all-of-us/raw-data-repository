@@ -318,24 +318,23 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     including their biobank ID, withdrawal time, their origin, and whether they are Native American
     (as biobank samples for Native Americans are disposed of differently)
     """
-    race_answer_subquery = _participant_answer_subquery(RACE_QUESTION_CODE)
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
     withdrawal_report_query = (
         Query([
             concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
-            case([(race_answer_subquery.c.value == RACE_AIAN_CODE, 'Y')], else_='N').label('is_native_american'),
+            case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')], else_='N')
+                .label('is_native_american'),
             case([
                     (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
                     (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
                 ], else_=(
-                    case([(race_answer_subquery.c.value == RACE_AIAN_CODE, 'Y')], else_='N')
+                    case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')], else_='N')
                 )
             ).label('needs_disposal_ceremony'),
             Participant.participantOrigin.label('participant_origin')
         ])
         .select_from(Participant)
-        .outerjoin(race_answer_subquery, race_answer_subquery.c.participant_id == Participant.participantId)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
         .filter(
             Participant.withdrawalTime >= now - datetime.timedelta(days=report_cover_range),
@@ -573,10 +572,29 @@ def _participant_answer_subquery(question_code_value):
         .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
         .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
         .filter(
-            QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
+            QuestionnaireResponse.participantId == Participant.participantId,
             question_code.value == question_code_value,
             QuestionnaireResponseAnswer.endTime.is_(None)
-        ).subquery()
+        )
+        .subquery()
+    )
+
+
+def _participant_has_answer(question_code_value, answer_value):
+    question_code = aliased(Code)
+    answer_code = aliased(Code)
+    return (
+        Query([QuestionnaireResponse])
+        .join(QuestionnaireResponseAnswer)
+        .join(QuestionnaireQuestion)
+        .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
+        .join(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+        .filter(
+            QuestionnaireResponse.participantId == Participant.participantId,  # Expected from outer query
+            question_code.value == question_code_value,
+            answer_code.value == answer_value,
+            QuestionnaireResponseAnswer.endTime.is_(None)
+        ).exists()
     )
 
 
