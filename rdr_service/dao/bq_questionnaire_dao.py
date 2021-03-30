@@ -48,12 +48,27 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # Query to get a list of questionnaire_response_id values for this participant and module
         # The list will be from most recently received/replayed response to earliest.  This mirrors how the
         # deprecated stored procedure sp_get_questionnaire_answers used to order its results
+        #
+        # PDR-248:  Updating the module response data to include test_participant flag as a common pdr_mod_* field
+        # Intended to make filtering module response data by test_participant status more efficient in BigQuery
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id, qh2.external_id, qr.status
+                   qr.participant_id, qh2.external_id, qr.status,
+                   -- TODO:  Can remove second WHEN clause once PTSC is reliably using RDR API to flag all test pids
+                   CASE
+                       -- Conditions which would result in resource data generators setting test_participant value to 1
+                       WHEN p.is_test_participant or p.is_ghost_id THEN 1
+                       -- The participant data generators may have identified additional participants as test pids,
+                       -- via logic that will be deprecated once PTSC has officially flagged all their test pids
+                       WHEN JSON_EXTRACT(bqs.resource, "$.test_participant") = 1 THEN 1
+                       ELSE 0
+                   END as test_participant
             from questionnaire_response qr
             inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
                        and qh2.version = qr.questionnaire_version
+            inner join participant p on p.participant_id = qr.participant_id
+            -- TODO:  This join can be removed once PTSC is reliably identifying all test pids through RDR API
+            inner join bigquery_sync bqs on bqs.pk_id = qr.participant_id and bqs.table_id = 'pdr_participant'
             where qr.participant_id = :p_id and qr.questionnaire_id IN (
                 select q.questionnaire_id from questionnaire q
                 inner join questionnaire_history qh on q.version = qh.version
@@ -174,7 +189,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'questionnaire_id',
                         'external_id',
                         'status',
-                        'status_id'
+                        'status_id',
+                        'test_participant'
                     ):
                         continue
 
