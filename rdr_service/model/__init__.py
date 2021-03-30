@@ -48,7 +48,8 @@ BQ_VIEWS = [
     # PDR Views
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryAllView'),
-    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
+    # Disabling this as a managed view;  maintained as a custom view in BigQuery
+    # ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPMView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRGenderView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRRaceView'),

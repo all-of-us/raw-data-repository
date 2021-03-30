@@ -57,7 +57,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                    -- TODO:  Can remove second WHEN clause once PTSC is reliably using RDR API to flag all test pids
                    CASE
                        -- Conditions which would result in resource data generators setting test_participant value to 1
-                       WHEN p.is_test_participant or p.is_ghost_id THEN 1
+                       WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 THEN 1
                        -- The participant data generators may have identified additional participants as test pids,
                        -- via logic that will be deprecated once PTSC has officially flagged all their test pids
                        WHEN JSON_EXTRACT(bqs.resource, "$.test_participant") = 1 THEN 1
