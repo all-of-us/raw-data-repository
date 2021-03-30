@@ -3,8 +3,8 @@ This module provides central location for all genomics_mappings
 """
 
 genome_type_to_aw1_aw2_file_prefix = {
-            "aou_array": "_GEN_",
-            "aou_wgs": "_SEQ_",
+            "aou_array": "GEN",
+            "aou_wgs": "SEQ",
         }
 
 raw_aw1_to_genomic_set_member_fields = {
