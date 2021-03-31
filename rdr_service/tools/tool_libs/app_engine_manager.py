@@ -330,12 +330,12 @@ class DeployAppClass(tool_base.ToolBase):
         except (ValueError, RuntimeError) as e:
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
-    def update_data_dictionary(self, rdr_version):
+    def update_data_dictionary(self, server_config, rdr_version):
         configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
         with self.initialize_process_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
                 gcp_env.service_key_id,
-                self.get_server_config()[DATA_DICTIONARY_DOCUMENT_ID],
+                server_config[DATA_DICTIONARY_DOCUMENT_ID],
                 rdr_version
             )
             updater.download_dictionary_values()
@@ -364,14 +364,14 @@ class DeployAppClass(tool_base.ToolBase):
                             else:
                                 _logger.info(f'The "{tab_id}" tab has been updated')
 
-        with self.initialize_process_context(service_account=configurator_account) as gcp_env:
-            if any(changelog.values()):
+        if any(changelog.values()):
+            with self.initialize_process_context(service_account=configurator_account) as gcp_env:
                 update_message = input('What is a summary of the above changes?: ')
                 _logger.info('uploading data-dictionary updates')
                 updater.gcp_service_key_id = gcp_env.service_key_id
                 updater.upload_changes(update_message, self.gcp_env.account)
-            else:
-                _logger.info('No data-dictionary changes needed')
+        else:
+            _logger.info('No data-dictionary changes needed')
 
     def deploy_app(self):
         """
@@ -553,8 +553,11 @@ class DeployAppClass(tool_base.ToolBase):
             git_checkout_branch(self._current_git_branch)
             _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)
 
-        _logger.info('Comparing production database schema to data-dictionary...')
-        self.update_data_dictionary(self.deploy_version)
+            server_config = self.get_server_config()
+
+        if self.environment == RdrEnvironment.PROD:
+            _logger.info('Comparing production database schema to data-dictionary...')
+            self.update_data_dictionary(server_config, self.deploy_version)
 
         return result
 
