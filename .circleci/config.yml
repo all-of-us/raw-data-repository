@@ -6,7 +6,7 @@ version: 2.1
 
 job_defaults: &job_defaults
   docker:
-    - image: circleci/python:3.7.7
+    - image: circleci/python:3.7.5
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
