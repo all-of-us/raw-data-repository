@@ -64,7 +64,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
 
-        self.mayolinkapi_patcher_start = mayolinkapi_patcher.start()
+        self.mock_mayolinkapi = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def test_insert_biobank_order(self):
@@ -100,7 +100,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["barcode"], version_one_barcode)
         self.assertEqual(put_response["order_id"], 999999)
 
-        mayo_order_payload = self.mayolinkapi_patcher_start.return_value.post.call_args.args[0]
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
         mayo_order_payload = mayo_order_payload['order']
         mayo_payload_fields = ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments']
 
@@ -133,7 +133,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
 
         self.assertEqual(put_response["barcode"], version_two_barcode)
 
-        mayo_order_payload = self.mayolinkapi_patcher_start.return_value.post.call_args.args[0]
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
         mayo_order_payload = mayo_order_payload['order']
         mayo_payload_fields = ['collected', 'account', 'patient', 'physician', 'report_notes', 'tests', 'client_passthrough_fields','comments']
 

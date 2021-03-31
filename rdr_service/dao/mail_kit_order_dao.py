@@ -86,6 +86,7 @@ class MailKitOrderDao(UpdatableDao):
         collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
         collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
 
+        # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
         order = {
             "order": {
                 "collected": str(collected_time_central),
