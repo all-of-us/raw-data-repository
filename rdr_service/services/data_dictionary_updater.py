@@ -472,7 +472,7 @@ class DataDictionaryUpdater:
             }
         )
 
-    def upload_to_new_sheet(self):
+    def run_update(self):
         with self._build_sheet() as sheet:
             self._sheet = sheet
             self._modify_sheet()
