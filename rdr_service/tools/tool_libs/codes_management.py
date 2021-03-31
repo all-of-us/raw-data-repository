@@ -67,11 +67,11 @@ class CodesExportClass(ToolBase):
         drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
 
     @staticmethod
-    def initialize_gcp_context(tool_name, project, account, service_account):
+    def initialize_process_context(tool_name, project, account, service_account):
         if project == '_all':
             project = 'all-of-us-rdr-prod'
 
-        return ToolBase.initialize_gcp_context(tool_name, project, account, service_account)
+        return ToolBase.initialize_process_context(tool_name, project, account, service_account)
 
     def run(self):
         # Intentionally not calling super's run
@@ -155,8 +155,8 @@ class CodesSyncClass(ToolBase):
 
         if self.args.project == '_all':
             for project in GCP_INSTANCES.keys():
-                with self.initialize_gcp_context(self.tool_cmd, project, self.args.account,
-                                                 self.args.service_account) as gcp_env:
+                with self.initialize_process_context(self.tool_cmd, project, self.args.account,
+                                                     self.args.service_account) as gcp_env:
                     self.gcp_env = gcp_env
                     self.run(skip_file_export_write=('prod' not in project))
             return 0

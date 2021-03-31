@@ -332,7 +332,7 @@ class DeployAppClass(tool_base.ToolBase):
 
     def update_data_dictionary(self, _, rdr_version):
         configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
-        with self.initialize_gcp_context(service_account=configurator_account) as gcp_env:
+        with self.initialize_process_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
                 gcp_env.service_key_id,
                 '1cmFnjyIqBHNbRmJ677WJjkAcGc0y2I7yfcUfpoOm1X4',
@@ -340,7 +340,7 @@ class DeployAppClass(tool_base.ToolBase):
             )
             updater.download_dictionary_values()
 
-        with self.initialize_gcp_context() as gcp_env:
+        with self.initialize_process_context() as gcp_env:
             self.gcp_env = gcp_env
             self.gcp_env.activate_sql_proxy()
             with database_factory.make_server_cursor_database(alembic=True).session() as session:
@@ -364,7 +364,7 @@ class DeployAppClass(tool_base.ToolBase):
                             else:
                                 _logger.info(f'The "{tab_id}" tab has been updated')
 
-        with self.initialize_gcp_context(service_account=configurator_account) as gcp_env:
+        with self.initialize_process_context(service_account=configurator_account) as gcp_env:
             if any(changelog.values()):
                 update_message = input('What is a summary of the above changes?: ')
                 _logger.info('uploading data-dictionary updates')
@@ -479,7 +479,7 @@ class DeployAppClass(tool_base.ToolBase):
         Main program process
         :return: Exit code value
         """
-        with self.initialize_gcp_context() as gcp_env:
+        with self.initialize_process_context() as gcp_env:
             self.gcp_env = gcp_env
             self.environment = RdrEnvironment(self.gcp_env.project)
 
