@@ -115,6 +115,13 @@ class MailKitOrderDao(UpdatableDao):
                 "comments": "Salivary Kit Order, direct from participant",
             }
         }
+
+        if barcode and len(barcode) > 14:
+            client_fields = {"client_passthrough_fields": {
+                "field1": barcode
+            }}
+            order['order'].update(client_fields)
+            del order["order"]["number"]
         return order
 
     def to_client_json(self, model, for_update=False):
@@ -139,8 +146,7 @@ class MailKitOrderDao(UpdatableDao):
             result["participantId"] = to_client_participant_id(result["participantId"])
         return result
 
-    def from_client_json(
-        self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
+    def from_client_json(self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
     ):  # pylint: disable=unused-argument
         """Initial loading of the DV order table does not include all attributes."""
         fhir_resource = SimpleFhirR4Reader(resource_json)

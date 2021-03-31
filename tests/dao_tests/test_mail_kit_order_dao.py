@@ -35,8 +35,8 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.put_delivery = load_test_data_json("dv_order_api_put_supply_delivery.json")
         self.post_request = load_test_data_json("dv_order_api_post_supply_request.json")
         self.put_request = load_test_data_json("dv_order_api_put_supply_request.json")
-        self.dao = MailKitOrderDao()
 
+        self.dao = MailKitOrderDao()
         self.code_dao = CodeDao()
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -53,7 +53,9 @@ class MailKitOrderDaoTestBase(BaseTestCase):
                     "reference_number": self.mayolink_barcode,
                     "received": "2019-04-05 12:00:00",
                     "number": "12345",
-                    "patient": {"medical_record_number": "WEB1ABCD1234"},
+                    "patient": {
+                        "medical_record_number": "WEB1ABCD1234"
+                    },
                 }
             }
         }
@@ -65,26 +67,71 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def test_insert_biobank_order(self):
-        payload = self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
         request_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
         payload = self.send_post(
-            "SupplyDelivery", request_data=self.post_delivery, expected_status=http.client.CREATED
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
         )
         post_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        put_response = self.send_put("SupplyDelivery/{}".format(location), request_data=self.put_delivery)
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
         self.assertEqual(request_response["version"], 1)
         self.assertEqual(post_response["version"], 3)
         self.assertEqual(post_response["meta"]["versionId"].strip("W/"), '"3"')
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
-        self.assertEqual(put_response["barcode"], "SABR90160121INA")
+        self.assertEqual(put_response["barcode"], "SABR90160121IN")
         self.assertEqual(put_response["order_id"], 999999)
 
+    def test_insert_biobank_order_version_two_barcode(self):
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+        version_two_barcode = 'SABR901601##21IN'
+        # update barcode
+        self.put_request['extension'][0]['valueString'] = version_two_barcode
+        # barcode inserted
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
+        # payload sent to mayo
+        payload = self.send_post(
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
+        self.assertEqual(put_response["barcode"], version_two_barcode)
+
     def test_biobank_order_finalized_and_identifier_created(self):
-        self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        #mailkitdao => send order => mayolinkapi
         payload = self.send_post(
             "SupplyDelivery",
             request_data=load_test_data_json("dv_order_api_post_supply_delivery_alt.json"),
