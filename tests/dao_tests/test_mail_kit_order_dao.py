@@ -106,14 +106,11 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         )
         location = payload.location.rsplit("/", 1)[-1]
         version_two_barcode = 'SABR901601##21IN'
-        # update barcode
         self.put_request['extension'][0]['valueString'] = version_two_barcode
-        # barcode inserted
         self.send_put(
             f"SupplyRequest/{location}",
             request_data=self.put_request
         )
-        # payload sent to mayo
         payload = self.send_post(
             "SupplyDelivery",
             request_data=self.post_delivery,
@@ -132,7 +129,6 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             request_data=self.post_request,
             expected_status=http.client.CREATED
         )
-        #mailkitdao => send order => mayolinkapi
         payload = self.send_post(
             "SupplyDelivery",
             request_data=load_test_data_json("dv_order_api_post_supply_delivery_alt.json"),

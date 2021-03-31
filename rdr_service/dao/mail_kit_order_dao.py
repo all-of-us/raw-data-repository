@@ -114,7 +114,7 @@ class MailKitOrderDao(UpdatableDao):
             }
         }
 
-        if len(barcode) > 14:
+        if barcode and len(barcode) > 14:
             del order["order"]["number"]
             client_fields = {"client_passthrough_fields": {
                 "field1": barcode
