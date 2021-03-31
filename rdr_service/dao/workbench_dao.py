@@ -3,7 +3,7 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc, or_, func, distinct
+from sqlalchemy import desc, or_, and_, func, distinct
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
@@ -452,8 +452,24 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            subquery = (
+                session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
+                    .filter(WorkbenchWorkspaceUser.isCreator == 1)
+                    .subquery()
+            )
             count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
-                           .filter(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                           .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
+                           .filter(WorkbenchWorkspaceUser.workspaceId == WorkbenchWorkspaceApproved.id,
+                                   WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
+                                   WorkbenchInstitutionalAffiliations.researcherId == WorkbenchResearcher.id,
+                                   WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                                   WorkbenchWorkspaceApproved.status == 1,
+                                   WorkbenchInstitutionalAffiliations.isVerified == 1,
+                                   or_(WorkbenchWorkspaceUser.isCreator == 1,
+                                       and_(
+                                           WorkbenchWorkspaceUser.role == 3,
+                                           WorkbenchWorkspaceApproved.id.notin_(subquery)
+                                       )),
                                    or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                                        WorkbenchWorkspaceApproved.isReviewed == 1))
                            )
@@ -516,15 +532,19 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         )
                         if affiliation.isVerified is True:
                             researcher_has_verified_institution = True
-                owner_user_id = None
+                owner_user_ids = []
+                creator_user_id = None
                 for workspace_user in workspace.workbenchWorkspaceUser:
                     if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
-                        owner_user_id = workspace_user.userId
+                        owner_user_ids.append(workspace_user.userId)
                     if workspace_user.isCreator is True:
-                        owner_user_id = workspace_user.userId
-                        break
-                if owner_user_id == researcher.userSourceId and researcher_has_verified_institution:
+                        creator_user_id = workspace_user.userId
+                # if has creator, calculate by creator; if no creator, calculate by owners
+                if creator_user_id == researcher.userSourceId and researcher_has_verified_institution:
                     workspace_has_verified_institution = True
+                elif creator_user_id is None and researcher.userSourceId in owner_user_ids:
+                    workspace_has_verified_institution = True
+
                 user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
@@ -556,7 +576,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         result['workspaceUsers'].append(user)
                         if hit_search:
                             result['hitSearch'] = True
-                        if user.get('userId') == owner_user_id:
+                        if user.get('userId') in owner_user_ids:
                             result['workspaceOwner'].append(user)
                         if workspace_has_verified_institution:
                             result['hasVerifiedInstitution'] = True
@@ -574,7 +594,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     'modifiedTime': workspace.modifiedTime,
                     'status': str(WorkbenchWorkspaceStatus(workspace.status)),
                     'workspaceUsers': [user] if user else [],
-                    'workspaceOwner': [user] if user.get('userId') == owner_user_id else [],
+                    'workspaceOwner': [user] if user.get('userId') in owner_user_ids else [],
                     'hasVerifiedInstitution': workspace_has_verified_institution,
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
                     "ethicalLegalSocialImplications": workspace.ethicalLegalSocialImplications,
