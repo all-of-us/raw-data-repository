@@ -27,7 +27,7 @@ from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
 import rdr_service.tools.tool_libs.tool_base as tool_base
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
-from rdr_service.config import READTHEDOCS_CREDS
+from rdr_service.config import DATA_DICTIONARY_DOCUMENT_ID, READTHEDOCS_CREDS
 
 
 _logger = logging.getLogger("rdr_logger")
@@ -330,12 +330,12 @@ class DeployAppClass(tool_base.ToolBase):
         except (ValueError, RuntimeError) as e:
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
-    def update_data_dictionary(self, _, rdr_version):
+    def update_data_dictionary(self, rdr_version):
         configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
         with self.initialize_process_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
                 gcp_env.service_key_id,
-                '1cmFnjyIqBHNbRmJ677WJjkAcGc0y2I7yfcUfpoOm1X4',
+                self.get_server_config()[DATA_DICTIONARY_DOCUMENT_ID],
                 rdr_version
             )
             updater.download_dictionary_values()
@@ -495,7 +495,7 @@ class DeployAppClass(tool_base.ToolBase):
 
             if not is_git_branch_clean():
                 _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
-                # return 1
+                return 1
 
             if not self.setup_services():
                 return 1
@@ -554,7 +554,7 @@ class DeployAppClass(tool_base.ToolBase):
             _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)
 
         _logger.info('Comparing production database schema to data-dictionary...')
-        self.update_data_dictionary('app_config', self.deploy_version)
+        self.update_data_dictionary(self.deploy_version)
 
         return result
 
