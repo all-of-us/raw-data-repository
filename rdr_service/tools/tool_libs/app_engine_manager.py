@@ -331,7 +331,7 @@ class DeployAppClass(tool_base.ToolBase):
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
     def update_data_dictionary(self, _, rdr_version):
-        configurator_account = 'configurator@${PROJECT}.iam.gserviceaccount.com'
+        configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
         with self.initialize_gcp_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
                 gcp_env.service_key_id,
@@ -547,7 +547,7 @@ class DeployAppClass(tool_base.ToolBase):
                     _logger.warning('Aborting deployment.')
                     return 1
 
-            # result = self.deploy_app()
+            result = self.deploy_app()
             self.manage_cloud_version_numbers()
 
             git_checkout_branch(self._current_git_branch)
@@ -556,7 +556,7 @@ class DeployAppClass(tool_base.ToolBase):
         _logger.info('Comparing production database schema to data-dictionary...')
         self.update_data_dictionary('app_config', self.deploy_version)
 
-        return 0
+        return result
 
 
 class ListServicesClass(object):
@@ -960,7 +960,7 @@ def run():
     args = parser.parse_args()
 
     if args.action == 'deploy':
-        exit_code = DeployAppClass(args).run()
+        exit_code = DeployAppClass(args, tool_name=tool_cmd).run()
     else:
         with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
             _check_for_git_project(args, gcp_env)
