@@ -1,3 +1,4 @@
 -r requirements_base.txt
 
 mysqlclient==1.4.6        # via -r requirements.in
+google-python-cloud-debugger
