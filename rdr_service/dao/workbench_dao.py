@@ -459,10 +459,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             )
             count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
                            .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
-                           .filter(WorkbenchWorkspaceUser.workspaceId == WorkbenchWorkspaceApproved.id,
-                                   WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
-                                   WorkbenchInstitutionalAffiliations.researcherId == WorkbenchResearcher.id,
-                                   WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                           .filter(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
                                    WorkbenchWorkspaceApproved.status == 1,
                                    WorkbenchInstitutionalAffiliations.isVerified == 1,
                                    or_(WorkbenchWorkspaceUser.isCreator == 1,
