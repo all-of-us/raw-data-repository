@@ -86,7 +86,6 @@ class MailKitOrderDao(UpdatableDao):
         collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
         collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
 
-        # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
         order = {
             "order": {
                 "collected": str(collected_time_central),
@@ -112,16 +111,17 @@ class MailKitOrderDao(UpdatableDao):
                 "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
                 "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
                 "tests": [{"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}}],
-                "comments": "Salivary Kit Order, direct from participant",
             }
         }
 
-        if barcode and len(barcode) > 14:
+        if len(barcode) > 14:
+            del order["order"]["number"]
             client_fields = {"client_passthrough_fields": {
                 "field1": barcode
             }}
             order['order'].update(client_fields)
-            del order["order"]["number"]
+
+        order['order']['comments'] = "Salivary Kit Order, direct from participant"
         return order
 
     def to_client_json(self, model, for_update=False):

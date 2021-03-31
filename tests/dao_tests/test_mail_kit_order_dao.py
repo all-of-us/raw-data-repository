@@ -63,7 +63,8 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         mayolinkapi_patcher = mock.patch(
             "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
-        mayolinkapi_patcher.start()
+
+        self.mock_patcher_start = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def test_insert_biobank_order(self):
