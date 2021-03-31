@@ -472,8 +472,7 @@ class DataDictionaryUpdater:
             }
         )
 
-    def run_update(self):
-        """This will run the complete update, finding differences and uploading the new values to the data-dictionary"""
+    def upload_to_new_sheet(self):
         with self._build_sheet() as sheet:
             self._sheet = sheet
             self._modify_sheet()

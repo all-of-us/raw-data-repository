@@ -79,7 +79,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             self.fail(f'{table_name}.{column_name} not found in results')
 
     def test_updating_data_dictionary_tab(self):
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check for some generic columns and definitions
@@ -104,7 +104,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         # Create some data for checking the dictionary values list
         self.data_generator.create_database_participant(participantOrigin='test')
 
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check that enumerations show the value meanings and unique value count
@@ -127,7 +127,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         )
 
     def test_primary_and_foreign_key_columns(self):
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check the primary key column indicator
@@ -144,7 +144,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         )
 
     def test_internal_tab_values(self):
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         internal_tab_rows = self._get_tab_rows(internal_tables_tab_id)
 
         # Check that ORM mapped tables can appear in the internal tab when marked as internal
@@ -163,7 +163,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             siteId=4000, siteName='Test', googleGroup='test_site_group', organizationId=test_org.organizationId
         )
 
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
 
         # Check that the expected hpo row gets into the spreadsheet
         hpo_rows = self._get_tab_rows(hpo_key_tab_id)
@@ -202,7 +202,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         )
 
         # Check that the questionnaire values output as expected
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         questionnaire_values = self._get_tab_rows(questionnaire_key_tab_id)
         self.assertIn(
             [str(no_response_questionnaire.questionnaireId), code.display, code.shortValue, 'N', 'Y'],
@@ -246,7 +246,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
              *([self._empty_cell] * 12), self._mock_cell('1.2.1')]
         )
 
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check that a column that wasn't already on the spreadsheet shows the new version number
@@ -266,7 +266,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [self._mock_cell('participant_summary'), self._mock_cell('ehr_status')]
         )
 
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check that previous RDR version values are maintained
@@ -288,7 +288,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
              *([self._empty_cell] * 11), self._mock_cell(deprecation_note_with_version)]
         )
 
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
         dictionary_tab_rows = self._get_tab_rows(dictionary_tab_id)
 
         # Check that previous RDR version values are maintained
@@ -302,7 +302,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         self._mock_data_dictionary_rows(
             [self._mock_cell('table_that_never_existed'), self._mock_cell('id')]
         )
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
 
         # Check that the changelog shows that we're adding something that is in our current schema, and
         # removing the dictionary record that isn't
@@ -320,7 +320,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
              self._mock_cell('VARCHAR'), self._mock_cell('Random string'), *([self._empty_cell] * 5),
              self._mock_cell('Yes')]
         )
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
 
         # Check the change log and verify the changes shown for the participant_id column
         data_dictionary_change_log = self.updater.changelog[dictionary_tab_id]
@@ -333,7 +333,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         self.assertIn('FOREIGN_KEY_INDICATOR: changing from: "Yes" to "No"', list_of_participant_id_changes)
 
     def test_key_tab_change_indicator(self):
-        self.updater.run_update()
+        self.updater.upload_to_new_sheet()
 
         # For now the changelog just says whether something was changed on the key tabs.
         # Check to make sure it's set appropriately.
@@ -352,6 +352,8 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [self._mock_cell('6'), self._mock_cell('removing all fields'), self._mock_cell('10/31/20'),
              self._mock_cell('1.70.1'), self._mock_cell('test@two.com')]
         )
+
+        self.updater.download_dictionary_values()
         self.updater.find_data_dictionary_diff()
         self.updater.upload_changes('adding them back again', 'test@three.com')
 

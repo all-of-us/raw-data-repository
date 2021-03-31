@@ -331,7 +331,8 @@ class DeployAppClass(tool_base.ToolBase):
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
     def update_data_dictionary(self, _, rdr_version):
-        with GCPProcessContext(tool_cmd, self.args.project, self.args.account, 'configurator') as gcp_env:
+        configurator_account = 'configurator@${PROJECT}.iam.gserviceaccount.com'
+        with self.initialize_gcp_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
                 gcp_env.service_key_id,
                 '1cmFnjyIqBHNbRmJ677WJjkAcGc0y2I7yfcUfpoOm1X4',
@@ -339,7 +340,7 @@ class DeployAppClass(tool_base.ToolBase):
             )
             updater.download_dictionary_values()
 
-        with GCPProcessContext(tool_cmd, self.args.project, self.args.account, self.args.service_account) as gcp_env:
+        with self.initialize_gcp_context() as gcp_env:
             self.gcp_env = gcp_env
             self.gcp_env.activate_sql_proxy()
             with database_factory.make_server_cursor_database(alembic=True).session() as session:
@@ -363,7 +364,7 @@ class DeployAppClass(tool_base.ToolBase):
                             else:
                                 _logger.info(f'The "{tab_id}" tab has been updated')
 
-        with GCPProcessContext(tool_cmd, self.args.project, self.args.account, 'configurator') as gcp_env:
+        with self.initialize_gcp_context(service_account=configurator_account) as gcp_env:
             if any(changelog.values()):
                 update_message = input('What is a summary of the above changes?: ')
                 _logger.info('uploading data-dictionary updates')
@@ -478,9 +479,11 @@ class DeployAppClass(tool_base.ToolBase):
         Main program process
         :return: Exit code value
         """
-        with GCPProcessContext(tool_cmd, self.args.project, self.args.account, self.args.service_account) as gcp_env:
+        with self.initialize_gcp_context() as gcp_env:
             self.gcp_env = gcp_env
             self.environment = RdrEnvironment(self.gcp_env.project)
+
+            _check_for_git_project(self.args, self.gcp_env)
 
             clr = self.gcp_env.terminal_colors
 
@@ -886,6 +889,16 @@ class RunGCPUtilCommand:
         return return_code
 
 
+def _check_for_git_project(args, gcp_env):
+    # determine the git project root directory.
+    if not args.git_project:
+        if gcp_env.git_project:
+            args.git_project = gcp_env.git_project
+        else:
+            _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
+            exit(1)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -947,38 +960,30 @@ def run():
     args = parser.parse_args()
 
     if args.action == 'deploy':
-        process = DeployAppClass(args)
-        exit_code = process.run()
+        exit_code = DeployAppClass(args).run()
+    else:
+        with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+            _check_for_git_project(args, gcp_env)
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+            if args.action == 'list':
+                process = ListServicesClass(args, gcp_env)
+                exit_code = process.run()
 
-        # determine the git project root directory.
-        if not args.git_project:
-            if gcp_env.git_project:
-                args.git_project = gcp_env.git_project
+            elif args.action == 'split-traffic':
+                process = SplitTrafficClass(args, gcp_env)
+                exit_code = process.run()
+
+            elif args.action == 'config':
+                process = AppConfigClass(args, gcp_env)
+                exit_code = process.run()
+
+            elif args.action == 'test':
+                process = RunGCPUtilCommand(args, gcp_env)
+                exit_code = process.run()
+
             else:
-                _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
-                exit(1)
-
-        if args.action == 'list':
-            process = ListServicesClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'split-traffic':
-            process = SplitTrafficClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'config':
-            process = AppConfigClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'test':
-            process = RunGCPUtilCommand(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action != 'deploy':
-            _logger.info('Please select a service option to run. For help use "app-engine --help".')
-            exit_code = 1
+                _logger.info('Please select a service option to run. For help use "app-engine --help".')
+                exit_code = 1
 
     return exit_code
 
