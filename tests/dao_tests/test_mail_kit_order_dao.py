@@ -64,10 +64,11 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
 
-        self.mock_patcher_start = mayolinkapi_patcher.start()
+        self.mayolinkapi_patcher_start = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def test_insert_biobank_order(self):
+        version_one_barcode = self.put_request['extension'][0]['valueString']
         payload = self.send_post(
             "SupplyRequest",
             request_data=self.post_request,
@@ -90,23 +91,31 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             f"SupplyDelivery/{location}",
             request_data=self.put_delivery
         )
+
         self.assertEqual(request_response["version"], 1)
         self.assertEqual(post_response["version"], 3)
         self.assertEqual(post_response["meta"]["versionId"].strip("W/"), '"3"')
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
-        self.assertEqual(put_response["barcode"], "SABR90160121IN")
+        self.assertEqual(put_response["barcode"], version_one_barcode)
         self.assertEqual(put_response["order_id"], 999999)
 
+        mayo_order_payload = self.mayolinkapi_patcher_start.return_value.post.call_args.args[0]
+        mayo_order_payload = mayo_order_payload['order']
+        mayo_payload_fields = ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments']
+
+        self.assertEqual(mayo_order_payload['number'], version_one_barcode)
+        self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
+
     def test_insert_biobank_order_version_two_barcode(self):
+        version_two_barcode = 'SABR901601##21IN'
+        self.put_request['extension'][0]['valueString'] = version_two_barcode
         payload = self.send_post(
             "SupplyRequest",
             request_data=self.post_request,
             expected_status=http.client.CREATED
         )
         location = payload.location.rsplit("/", 1)[-1]
-        version_two_barcode = 'SABR901601##21IN'
-        self.put_request['extension'][0]['valueString'] = version_two_barcode
         self.send_put(
             f"SupplyRequest/{location}",
             request_data=self.put_request
@@ -121,7 +130,15 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             f"SupplyDelivery/{location}",
             request_data=self.put_delivery
         )
+
         self.assertEqual(put_response["barcode"], version_two_barcode)
+
+        mayo_order_payload = self.mayolinkapi_patcher_start.return_value.post.call_args.args[0]
+        mayo_order_payload = mayo_order_payload['order']
+        mayo_payload_fields = ['collected', 'account', 'patient', 'physician', 'report_notes', 'tests', 'client_passthrough_fields','comments']
+
+        self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], version_two_barcode)
+        self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
 
     def test_biobank_order_finalized_and_identifier_created(self):
         self.send_post(
