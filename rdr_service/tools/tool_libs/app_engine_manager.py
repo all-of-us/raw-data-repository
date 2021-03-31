@@ -197,7 +197,7 @@ class DeployAppClass(object):
             change_log = self._jira_handler.get_release_notes_since_tag(deployed_version, self.args.git_target)
 
             today = datetime.datetime.today()
-            descr = descr + f"""h1. Release Notes for {self.args.git_target}
+            descr = f"""h1. Release Notes for {self.args.git_target}
             h2.deployed to {self.gcp_env.project}, listing changes since {deployed_version}:
             {change_log}
 
