@@ -6,6 +6,5 @@ python3 -m venv venv
 source venv/bin/activate
 export PYTHONPATH=`pwd`
 echo "PYTHONPATH=${PYTHONPATH}"
-pip install --upgrade pip
 pip install -r requirements.txt
 pip install safety
