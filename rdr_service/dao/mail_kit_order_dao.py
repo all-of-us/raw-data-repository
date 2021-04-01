@@ -112,9 +112,17 @@ class MailKitOrderDao(UpdatableDao):
                 "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
                 "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
                 "tests": [{"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}}],
-                "comments": "Salivary Kit Order, direct from participant",
             }
         }
+
+        if barcode and len(barcode) > 14:
+            del order["order"]["number"]
+            client_fields = {"client_passthrough_fields": {
+                "field1": barcode
+            }}
+            order['order'].update(client_fields)
+
+        order['order']['comments'] = "Salivary Kit Order, direct from participant"
         return order
 
     def to_client_json(self, model, for_update=False):
@@ -139,8 +147,7 @@ class MailKitOrderDao(UpdatableDao):
             result["participantId"] = to_client_participant_id(result["participantId"])
         return result
 
-    def from_client_json(
-        self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
+    def from_client_json(self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
     ):  # pylint: disable=unused-argument
         """Initial loading of the DV order table does not include all attributes."""
         fhir_resource = SimpleFhirR4Reader(resource_json)
