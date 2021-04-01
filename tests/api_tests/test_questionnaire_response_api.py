@@ -1199,6 +1199,53 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # Send questionnaire response expecting a 403 response status
         self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=403)
 
+    def test_storing_response_identifier(self):
+        """Verifying saving the identifier sent with the response, and make sure unexpected values don't crash"""
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant = self.data_generator.create_database_participant_summary().participant
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        # Load a response with an identifier
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id_str)
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id_str), resource)
+
+        # Verify that the external identifier was stored
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(resource['identifier']['value'], response_obj.externalId)
+
+    def test_receiving_long_identifier_fails_gracefully(self):
+        """If the identifier is unexpectedly long, we should be able to skip it and still store the response"""
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant = self.data_generator.create_database_participant_summary().participant
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        # Load a response with an identifier
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id_str)
+        resource['identifier']['value'] = '1234' * 15
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=200)
+
+        # Verify that the response was saved, and that the identifier was skipped
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertIsNone(response_obj.externalId)
+
+    @classmethod
+    def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
+        with open(data_path(template_file_name)) as fd:
+            resource = json.load(fd)
+
+        resource["subject"]["reference"] = f'Patient/{participant_id_str}'
+        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+
+        return resource
+
 def _add_code_answer(code_answers, link_id, code):
     if code:
         code_answers.append((link_id, Concept(PPI_SYSTEM, code)))

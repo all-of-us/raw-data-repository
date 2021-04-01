@@ -769,6 +769,14 @@ class QuestionnaireResponseDao(BaseDao):
         return QuestionnaireResponseExtension(**filtered_values)
 
     @classmethod
+    def _parse_external_identifier(cls, fhir_qr):
+        external_id = fhir_qr.identifier.value
+        if external_id and len(external_id) > QuestionnaireResponse.externalId.type.length:
+            logging.warning('External id was larger than expected, unable to save it to the database.')
+            external_id = None
+        return external_id
+
+    @classmethod
     def extension_models_from_fhir_objects(cls, fhir_extensions):
         if fhir_extensions:
             try:
@@ -814,7 +822,8 @@ class QuestionnaireResponseDao(BaseDao):
             authored=authored,
             language=language,
             resource=json.dumps(resource_json),
-            status=self.read_status(fhir_qr)
+            status=self.read_status(fhir_qr),
+            externalId=self._parse_external_identifier(fhir_qr)
         )
 
         if fhir_qr.group is not None:
