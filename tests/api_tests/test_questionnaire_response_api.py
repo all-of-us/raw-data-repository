@@ -110,12 +110,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         summary_dao.update(summary_obj)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_3):
             resource["authored"] = TIME_3.isoformat()
             self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -395,14 +390,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
             response = self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -432,14 +420,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
             self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -503,22 +484,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # verify if the response is not consent, the primary language will not change
         questionnaire_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
 
-        with open(data_path("consent_for_genomic_ror_resp.json")) as f:
-            resource = json.load(f)
-            resource["subject"]["reference"] = f'Patient/{participant_id}'
-            resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_resp.json", questionnaire_id, participant_id)
 
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
 
-            summary = self.send_get("Participant/%s/Summary" % participant_id)
-            self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
 
-        with open(data_path("consent_for_genomic_ror_dont_know.json")) as f:
-            dont_know_resp = json.load(f)
-
-        dont_know_resp["subject"]["reference"] = f'Patient/{participant_id}'
-        dont_know_resp["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        dont_know_resp = self._load_response_json(
+            "consent_for_genomic_ror_dont_know.json",
+            questionnaire_id,
+            participant_id
+        )
 
         with FakeClock(TIME_2):
             self._save_codes(dont_know_resp)
@@ -530,11 +508,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED_NOT_SURE')
 
-        with open(data_path("consent_for_genomic_ror_no.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = f'Patient/{participant_id}'
-        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_no.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             self._save_codes(resource)
@@ -547,11 +521,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
 
         # Test Bad Code Value Sent returns 400
-        with open(data_path("consent_for_genomic_ror_bad_request.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = f'Patient/{participant_id}'
-        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_bad_request.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             self._save_codes(resource)
@@ -592,19 +562,11 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # verify if the response is not consent, the primary language will not change
         questionnaire_id = self.create_questionnaire("questionnaire_family_history.json")
 
-        with open(data_path("questionnaire_family_history_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-        with FakeClock(TIME_2):
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
+        resource = self._load_response_json("questionnaire_family_history_resp.json", questionnaire_id, participant_id)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-
         self.assertEqual(expected["primaryLanguage"], summary["primaryLanguage"])
 
     def test_invalid_questionnaire(self):
@@ -636,33 +598,22 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        resource = self._load_response_json("questionnaire_response_empty.json", questionnaire_id, participant_id)
 
-        with open(data_path("questionnaire_response_empty.json")) as fd:
-            resource = json.load(fd)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = "Questionnaire/%s" % questionnaire_id
         self.send_post(_questionnaire_response_url(participant_id), resource)  # will fail if status 200 isn't returned
 
     def test_invalid_questionnaire_linkid(self):
         """
-    DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
-    Per a PTSC group request, only log a message for invalid link ids.
-    In the future if questionnaires with bad link ids trigger a BadRequest, the code below
-    can be uncommented.
-    """
+        DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
+        Per a PTSC group request, only log a message for invalid link ids.
+        In the future if questionnaires with bad link ids trigger a BadRequest, the code below
+        can be uncommented.
+        """
         participant_id = self.create_participant()
         self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_family_history.json")
-
-        with open(data_path("questionnaire_family_history_resp.json")) as fd:
-            resource = json.load(fd)
-
-        # update resource json to set participant and questionnaire ids.
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_family_history_resp.json", questionnaire_id, participant_id)
 
         self._save_codes(resource)
         self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.OK)
@@ -681,13 +632,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -731,13 +679,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -752,12 +697,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.assertIn(answer.codeId, expected_gender_code_ids)
 
         # resubmit the answers, old value should be removed
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender_2.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender_2.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -776,13 +719,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_race.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -823,12 +763,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
 
         # resubmit the answers, old value should be removed
-        with open(data_path("questionnaire_the_basics_resp_multiple_race_2.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race_2.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -851,14 +789,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         resource["group"]["question"][2]["answer"][0]["valueCoding"]["code"] = "PMI_PreferNotToAnswer"
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
@@ -894,12 +826,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
         resource["group"]["question"][2]["answer"][1]["valueCoding"]["code"] = "PMI_Skip"
 
@@ -937,14 +867,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
@@ -1071,15 +994,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         # Set up a questionnaire that usually changes participant summary
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        # Get questionnaire to match participant and questionnaire
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
 
         # Submit response as in-progress
         resource['status'] = 'in-progress'
@@ -1162,12 +1077,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.send_consent(participant_id)
 
         # Check that POST doesn't fail on unknown extension fields
-        with open(data_path("questionnaire_response3.json")) as fd:
-            resource = json.load(fd)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id)
         resource['extension'] = [{
             'url': 'test-unknown',
             'valueUri': 'testing'
