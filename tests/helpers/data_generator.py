@@ -1,6 +1,5 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
-from rdr_service.etl.model.src_clean import TemporaryQuestionnaireResponse
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
     BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
@@ -108,11 +107,6 @@ class DataGenerator:
         self._commit_to_database(questionnaire_response)
         return questionnaire_response
 
-    def create_database_duplicate_temp_questionnaire_response(self, questionnaire_response, **kwargs):
-        tmp_questionnaire_response = self._tmp_questionnaire_response(questionnaire_response, **kwargs)
-        self._commit_to_database(tmp_questionnaire_response)
-        return tmp_questionnaire_response
-
     def _questionnaire_response(self, **kwargs):
         for field, default in [('created', datetime.now()),
                                ('resource', 'test'),
@@ -125,19 +119,6 @@ class DataGenerator:
             kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
 
         return QuestionnaireResponse(**kwargs)
-
-    def _tmp_questionnaire_response(self, questionnaire_response, **kwargs):
-        for field, default in [('created', datetime.now()),
-                               ('duplicate', 1),
-                               ('removed', None),
-                               ('identifier', 'test-id')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireResponseId' not in kwargs:
-            kwargs['questionnaireResponseId'] = questionnaire_response.questionnaireResponseId
-
-        return TemporaryQuestionnaireResponse(**kwargs)
 
     def create_database_questionnaire_question(self, **kwargs):
         questionnaire_question = self._questionnaire_question(**kwargs)
