@@ -770,10 +770,12 @@ class QuestionnaireResponseDao(BaseDao):
 
     @classmethod
     def _parse_external_identifier(cls, fhir_qr):
-        external_id = fhir_qr.identifier.value
-        if external_id and len(external_id) > QuestionnaireResponse.externalId.type.length:
-            logging.warning('External id was larger than expected, unable to save it to the database.')
-            external_id = None
+        external_id = None
+        if fhir_qr.identifier:
+            external_id = fhir_qr.identifier.value
+            if external_id and len(external_id) > QuestionnaireResponse.externalId.type.length:
+                logging.warning('External id was larger than expected, unable to save it to the database.')
+                external_id = None
         return external_id
 
     @classmethod
