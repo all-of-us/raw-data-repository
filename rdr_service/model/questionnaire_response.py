@@ -47,7 +47,7 @@ class QuestionnaireResponse(Base):
     answerHash = Column('answer_hash', String(32), nullable=True)
     """@rdr_dictionary_internal_column"""
 
-    isDuplicate = Column("is_duplicate", Boolean, default=False, server_default=expression.false())
+    isDuplicate = Column("is_duplicate", Boolean, server_default=expression.false())
     """Indicates that the response is a duplicate of another that was previously received and should be ignored"""
 
     resource = Column("resource", BlobUTF8, nullable=False)

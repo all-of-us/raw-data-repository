@@ -111,7 +111,8 @@ class DataGenerator:
         for field, default in [('created', datetime.now()),
                                ('resource', 'test'),
                                ('nonParticipantAuthor', None),
-                               ('status', QuestionnaireResponseStatus.COMPLETED)]:
+                               ('status', QuestionnaireResponseStatus.COMPLETED),
+                               ('isDuplicate', False)]:
             if field not in kwargs:
                 kwargs[field] = default
 
