@@ -4,7 +4,7 @@ Workflows for the Genomics Data Quality Pipeline
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 
 
-def data_quality_workflow(job, project):
+def data_quality_workflow(job, project=None):
     """
     Entrypoint for a daily quality pipeline job
     :param job: GenomicJob

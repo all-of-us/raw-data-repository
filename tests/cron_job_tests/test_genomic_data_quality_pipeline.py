@@ -131,5 +131,26 @@ class GenomicDataQualityComponentTest(BaseTestCase):
             self.assertEqual(0, row['INVALID_FILE_STRUCTURE'])
 
 
+class GenomicDataQualityReportTest(BaseTestCase):
+    def setUp(self, with_data=False, with_consent_codes=False) -> None:
+        super().setUp()
 
+    def test_daily_ingestion_summary(self):
+        rc = ReportingComponent()
 
+        # Report defs to test (QUERY, LEVEL, TARGET, TIME_FRAME)
+        test_definitions = (
+            ("dq_report_ingestions_summary", "SUMMARY", "INGESTIONS", "D"),
+        )
+
+        for test_def in test_definitions:
+
+            query_class = 'rdr_service.genomic.genomic_queries.GenomicQueryClass'
+            query_class += f".{test_def[0]}"
+
+            with mock.patch(query_class) as query_mock:
+
+                query_mock.return_value = ("", {})
+                rc.get_report_def(*test_def[1:])
+
+                query_mock.assert_called()

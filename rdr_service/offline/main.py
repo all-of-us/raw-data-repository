@@ -1,5 +1,8 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 import os
+
+from rdr_service.participant_enums import GenomicJob
+
 if os.getenv('GAE_ENV', '').startswith('standard'):
     try:
         import googleclouddebugger
@@ -22,7 +25,7 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline
+    antibody_study_pipeline, genomic_data_quality_pipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
@@ -426,6 +429,13 @@ def genomic_aw4_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def bigquery_rebuild_cron():
     """ this should always be a manually run job, but we have to schedule it at least once a year. """
     now = datetime.utcnow()
@@ -703,6 +713,14 @@ def _build_pipeline_app():
         view_func=genomic_aw4_workflow, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
+
+    # BEGIN Genomic Data Quality Jobs
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyIngestionSummary",
+        endpoint="genomic_data_quality_daily_ingestion_summary",
+        view_func=genomic_data_quality_daily_ingestion_summary, methods=["GET"]
+    )
+    # END Genomic Data Quality Jobs
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron,

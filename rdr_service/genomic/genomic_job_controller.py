@@ -370,6 +370,7 @@ class GenomicJobController:
 
         metric.genomicSetMemberId = member.id
         metric.contaminationCategory = raw.contamination_category
+        metric.genomicFileProcessedId = member.aw2FileProcessedId
 
         # Iterate mapped fields
         _map = raw_aw2_to_genomic_set_member_fields
