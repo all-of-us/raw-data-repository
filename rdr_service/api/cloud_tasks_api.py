@@ -21,7 +21,7 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
-from rdr_service.participant_enums import GenomicJob, GenomicManifestTypes
+from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_gc_validation_metrics_batch_update, genomic_file_processed_batch_update, \

@@ -2,7 +2,7 @@
 import mock, datetime, pytz
 
 from rdr_service import clock
-from rdr_service.participant_enums import GenomicJob, GenomicSubProcessResult, GenomicSubProcessStatus
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent

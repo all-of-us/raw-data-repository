@@ -38,8 +38,8 @@ from rdr_service.resource.generators.genomics import genomic_set_member_update, 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
-    GenomicWorkflowState, GenomicSetMemberStatus
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+    GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.services.system_utils import JSONObject
 

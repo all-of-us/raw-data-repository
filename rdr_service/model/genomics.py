@@ -8,17 +8,9 @@ from sqlalchemy.dialects.mysql import JSON
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState,
-    GenomicQcStatus,
-    GenomicManifestTypes,
-    GenomicContaminationCategory, GenomicIncidentCode, GenomicIncidentStatus)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
+    GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
 
 
 class GenomicSet(Base):

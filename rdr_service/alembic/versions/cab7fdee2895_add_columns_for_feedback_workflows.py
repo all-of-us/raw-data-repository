@@ -8,7 +8,7 @@ Create Date: 2020-12-02 10:41:37.735608
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
-from rdr_service.participant_enums import GenomicContaminationCategory
+from rdr_service.genomic_enums import GenomicContaminationCategory
 
 # revision identifiers, used by Alembic.
 revision = 'cab7fdee2895'

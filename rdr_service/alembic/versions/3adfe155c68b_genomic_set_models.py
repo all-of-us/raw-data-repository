@@ -11,7 +11,7 @@ from alembic import op
 from sqlalchemy.dialects import mysql
 
 from rdr_service.model.base import add_table_history_table, drop_table_history_table
-from rdr_service.participant_enums import GenomicSetStatus, GenomicValidationStatus
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicValidationStatus
 
 # revision identifiers, used by Alembic.
 revision = "3adfe155c68b"
