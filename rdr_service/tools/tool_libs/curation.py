@@ -14,7 +14,7 @@ from typing import Type
 from rdr_service import config
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
-from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, TemporaryQuestionnaireResponse
+from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
@@ -232,9 +232,6 @@ class CurationExportClass(ToolBase):
                 QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
                 QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
             )
-        ).outerjoin(
-            TemporaryQuestionnaireResponse,
-            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             Code,
             Code.codeId == QuestionnaireConcept.codeId
@@ -251,8 +248,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
-                TemporaryQuestionnaireResponse.duplicate == 0)
+            QuestionnaireResponse.isDuplicate.is_(False)
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -321,9 +317,6 @@ class CurationExportClass(ToolBase):
             HPO
         ).join(
             QuestionnaireResponse
-        ).outerjoin(
-            TemporaryQuestionnaireResponse,
-            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             QuestionnaireConcept,
             and_(
@@ -366,8 +359,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
-                TemporaryQuestionnaireResponse.duplicate == 0)
+            QuestionnaireResponse.isDuplicate.is_(False)
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code
