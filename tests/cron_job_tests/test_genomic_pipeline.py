@@ -316,7 +316,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
         self.assertEqual(
             file_processed.filePath,
-            f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+            f'{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
             f'{config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])}/'
             f'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
         )
@@ -559,7 +559,7 @@ class GenomicPipelineTest(BaseTestCase):
                 )
                 self.assertEqual(
                     f.filePath,
-                    f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+                    f'{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
                     f'{config.GENOMIC_AW2_SUBFOLDERS[0]}/'
                     f'/RDR_AoU_SEQ_TestDataManifest_11192019.csv'
                 )
@@ -570,7 +570,7 @@ class GenomicPipelineTest(BaseTestCase):
                 )
                 self.assertEqual(
                     f.filePath,
-                    f'/{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
+                    f'{_FAKE_GENOMIC_CENTER_BUCKET_A}/'
                     f'{config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])}/'
                     f'RDR_AoU_GEN_TestDataManifest_11192019_1.csv'
                 )

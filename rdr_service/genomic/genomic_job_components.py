@@ -224,6 +224,7 @@ class GenomicFileIngester:
                     genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
+                    self.file_queue.popleft()
                     logging.info('No files left in file queue.')
 
             return GenomicSubProcessResult.SUCCESS if all(results) \
@@ -829,10 +830,10 @@ class GenomicFileIngester:
         """
         Retrieves the last genomic data file from a bucket
         :param path: The source file to ingest
-        :return: CSV data as a dicitonary
+        :return: CSV data as a dictionary
         """
         try:
-            filename = path.split('/')[2]
+            filename = path.split('/')[1]
             logging.info(
                 'Opening CSV file from queue {}: {}.'
                 .format(path.split('/')[1], filename)
