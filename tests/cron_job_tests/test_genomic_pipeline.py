@@ -2396,7 +2396,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.filePath)
+        self.assertEqual(f'{bucket_name}/{sub_folder}/AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.filePath)
         self.assertEqual('AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv', file_record.fileName)
 
         # Test the job result
@@ -2615,7 +2615,7 @@ class GenomicPipelineTest(BaseTestCase):
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
 
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/RDR_AoU_CVL_RequestValidation_20200519.csv',
+        self.assertEqual(f'{bucket_name}/{sub_folder}/RDR_AoU_CVL_RequestValidation_20200519.csv',
                          file_record.filePath)
 
         self.assertEqual('RDR_AoU_CVL_RequestValidation_20200519.csv', file_record.fileName)
@@ -3122,7 +3122,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/{file_name}',
+        self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
 
@@ -3187,7 +3187,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
         self.assertEqual(2, file_record.runId)
-        self.assertEqual(f'/{bucket_name}/{sub_folder}/{file_name}',
+        self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
 
