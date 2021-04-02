@@ -9,11 +9,7 @@ from rdr_service.genomic import (
     genomic_center_manifest_handler
 )
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicJob,
-    GenomicManifestTypes,
-    GenomicSubProcessResult)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
 import rdr_service.config as config
 
 

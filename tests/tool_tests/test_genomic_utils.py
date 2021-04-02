@@ -2,7 +2,7 @@ from unittest import mock
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
-from rdr_service.participant_enums import GenomicJob, GenomicContaminationCategory, GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase

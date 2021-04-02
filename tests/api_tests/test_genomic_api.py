@@ -24,11 +24,10 @@ from rdr_service.model.genomics import (
 )
 
 from rdr_service.participant_enums import (
-    GenomicJob,
     SampleStatus,
-    WithdrawalStatus,
-    GenomicWorkflowState
+    WithdrawalStatus
 )
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 
 
 class GenomicApiTestBase(BaseTestCase):

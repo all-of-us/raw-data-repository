@@ -5,18 +5,12 @@
 from enum import Enum
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum
 
-from rdr_service.participant_enums import (
-    GenomicSetStatus as _GenomicSetStatus,
-    GenomicSetMemberStatus as _GenomicSetMemberStatus,
-    GenomicValidationFlag as _GenomicValidationFlag,
-    GenomicSubProcessStatus as _GenomicSubProcessStatus,
-    GenomicSubProcessResult as _GenomicSubProcessResult,
-    GenomicJob as _GenomicJob,
-    GenomicWorkflowState as _GenomicWorkflowState,
-    GenomicQcStatus as _GenomicQcStatus,
-    GenomicContaminationCategory as _GenomicContaminationCategory,
-    GenomicManifestTypes as _GenomicManifestTypes
-)
+from rdr_service.genomic_enums import GenomicSetStatus as _GenomicSetStatus, \
+    GenomicSetMemberStatus as _GenomicSetMemberStatus, GenomicValidationFlag as _GenomicValidationFlag, \
+    GenomicJob as _GenomicJob, GenomicWorkflowState as _GenomicWorkflowState, \
+    GenomicSubProcessStatus as _GenomicSubProcessStatus, GenomicSubProcessResult as _GenomicSubProcessResult, \
+    GenomicManifestTypes as _GenomicManifestTypes, GenomicContaminationCategory as _GenomicContaminationCategory, \
+    GenomicQcStatus as _GenomicQcStatus
 
 # Convert weird participant_enums to standard python enums.
 GenomicSetStatusEnum = Enum('GenomicSetStatusEnum', _GenomicSetStatus.to_dict())

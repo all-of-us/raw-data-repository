@@ -9,7 +9,7 @@ import model.utils
 import sqlalchemy as sa
 from alembic import op
 
-from rdr_service.participant_enums import GenomicValidationFlag
+from rdr_service.genomic_enums import GenomicValidationFlag
 
 # revision identifiers, used by Alembic.
 revision = "2697860e93f0"
