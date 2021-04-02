@@ -155,10 +155,9 @@ class GenomicFileIngester:
             return files
         else:
             for file_data in files:
-                file_path = "/" + self.bucket_name + "/" + file_data[0]
                 new_file_record = self.file_processed_dao.insert_file_record(
                     self.job_run_id,
-                    file_path,
+                    f'{self.bucket_name}/{file_data[0]}',
                     self.bucket_name,
                     file_data[0].split('/')[-1],
                     upload_date=file_data[1],
