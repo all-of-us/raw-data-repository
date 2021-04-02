@@ -1,7 +1,7 @@
 """hash and duplicate flag on questionnaire response
 
 Revision ID: 1dff4309d707
-Revises: 00786d61be2e
+Revises: a6c3846e5eae
 Create Date: 2021-04-01 12:55:33.967305
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = '1dff4309d707'
-down_revision = '00786d61be2e'
+down_revision = 'a6c3846e5eae'
 branch_labels = None
 depends_on = None
 
