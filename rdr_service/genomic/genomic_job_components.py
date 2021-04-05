@@ -205,7 +205,7 @@ class GenomicFileIngester:
         else:
             logging.info('Processing files in queue.')
             results = []
-            while len(self.file_queue) > 0:
+            while len(self.file_queue):
                 try:
                     ingestion_result = self._ingest_genomic_file(
                         self.file_queue[0])
@@ -224,7 +224,6 @@ class GenomicFileIngester:
                     genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
-                    self.file_queue.popleft()
                     logging.info('No files left in file queue.')
 
             return GenomicSubProcessResult.SUCCESS if all(results) \
