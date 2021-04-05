@@ -3,6 +3,7 @@ from datetime import datetime
 import mock
 from typing import Dict, List
 
+from rdr_service.code_constants import PMI_SKIP_CODE
 from rdr_service.dao.questionnaire_response_dao import ResponseValidator
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireQuestion
@@ -22,6 +23,10 @@ class QuestionDefinition:
 
 @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
 class ResponseValidatorTest(BaseTestCase):
+    def setUp(self, **kwargs) -> None:
+        super(ResponseValidatorTest, self).setUp(**kwargs)
+        self.skip_answer_code = self.data_generator.create_database_code(value=PMI_SKIP_CODE)
+
     def _build_questionnaire_and_response(self, questions: Dict[Code, QuestionDefinition],
                                           answers: Dict[Code, QuestionnaireResponseAnswer],
                                           survey_import_time=datetime(2020, 12, 4),
@@ -323,6 +328,33 @@ class ResponseValidatorTest(BaseTestCase):
             f'Code ID {unrecognized_answer_code.codeId} is an invalid answer to {dropdown_question_code.value}'
         )
 
+    def test_any_question_can_be_skipped(self, mock_logging):
+        """
+        Any question should be able to be skipped, even if it doesn't take option codes
+        """
+        select_code = self.data_generator.create_database_code(value='select')
+        text_question_code = self.data_generator.create_database_code(value='text')
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                select_code: QuestionDefinition(question_type=SurveyQuestionType.DROPDOWN, options=[
+                    self.data_generator.create_database_code(value='option_a'),
+                    self.data_generator.create_database_code(value='option_b')
+                ]),
+                text_question_code: QuestionDefinition(question_type=SurveyQuestionType.TEXT)
+            },
+            answers={
+                select_code: QuestionnaireResponseAnswer(valueCodeId=self.skip_answer_code.codeId),
+                text_question_code: QuestionnaireResponseAnswer(valueCodeId=self.skip_answer_code.codeId)
+            }
+        )
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        # No logs should have been made because of the skip codes
+        mock_logging.warning.assert_not_called()
+        mock_logging.error.assert_not_called()
+
     def test_questions_answered_multiple_times(self, mock_logging):
         """We should only get one answer for a question (except Checkbox questions)"""
         dropdown_question_code = self.data_generator.create_database_code(value='dropdown_select')
@@ -355,3 +387,37 @@ class ResponseValidatorTest(BaseTestCase):
         validator.check_response(response)
 
         mock_logging.error.assert_called_once_with(f'Too many answers given for {dropdown_question_code.value}')
+
+    def test_unknown_types_can_be_checkboxes(self, mock_logging):
+        """
+        We should assume the best and allow for unknown types to be answered multiple times (they could be checkboxes)
+        """
+        multi_select = self.data_generator.create_database_code(value='dropdown_select')
+
+        # The validator only checks to see if there are options and doesn't really mind what they are,
+        # using the same options for all the questions for simplicity
+        option_a_code = self.data_generator.create_database_code(value='option_a')
+        option_b_code = self.data_generator.create_database_code(value='option_b')
+        options = [option_a_code, option_b_code]
+
+        questionnaire_history, response = self._build_questionnaire_and_response(
+            questions={
+                multi_select: QuestionDefinition(question_type=SurveyQuestionType.UNKNOWN, options=options)
+            },
+            answers={
+                multi_select: QuestionnaireResponseAnswer(valueCodeId=option_a_code.codeId)
+            }
+        )
+        # Add extra answers to the response for each question
+        for question in questionnaire_history.questions:
+            response.answers.append(QuestionnaireResponseAnswer(
+                questionId=question.questionnaireQuestionId,
+                valueCodeId=option_b_code.codeId
+            ))
+
+        validator = ResponseValidator(questionnaire_history, self.session)
+        validator.check_response(response)
+
+        # No logs should have been made because of the additional answers
+        mock_logging.warning.assert_not_called()
+        mock_logging.error.assert_not_called()
