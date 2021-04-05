@@ -1281,21 +1281,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
-                        "userId": 0,
-                        "role": "OWNER",
-                        "status": "ACTIVE"
-                    },
-                    {
                         "userId": 1,
                         "role": "OWNER",
                         "status": "ACTIVE"
                     }
                 ],
-                "creator": {
-                    "userId": 1,
-                    "givenName": "aaa",
-                    "familyName": "bbb"
-                },
                 "excludeFromPublicDirectory": False,
                 "ethicalLegalSocialImplications": True,
                 "diseaseFocusedResearch": True,
