@@ -5,6 +5,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     Text
@@ -70,6 +71,7 @@ class QuestionnaireResponse(Base):
             ["questionnaire_id", "questionnaire_version"],
             ["questionnaire_history.questionnaire_id", "questionnaire_history.version"],
         ),
+        Index('idx_response_identifier_answers', externalId, answerHash)
     )
 
 
