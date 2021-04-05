@@ -13,7 +13,8 @@ class ResponseDuplicationDetector:
         Used to check the database for any new questionnaire response duplicates.
 
         :param duplication_threshold: The number of matching responses needed in a group before any of them will be
-            considered duplicates. Defaults to 10.
+            considered duplicates. Any responses that have already been marked as duplicates count toward this total.
+            Defaults to 10.
         """
         self.duplication_threshold = duplication_threshold
 
@@ -32,11 +33,11 @@ class ResponseDuplicationDetector:
             older_duplicate = aliased(QuestionnaireResponse)  # joined as older responses to be updated as duplicates
             newer_duplicate = aliased(QuestionnaireResponse)  # used to keep isDuplicate = 0 on the latest response
             other_duplicate = aliased(QuestionnaireResponse)  # used to find the number of other duplicates there are
-            duplicated_response_ids = (
+            duplicated_response_data = (
                 session.query(
-                    QuestionnaireResponse.questionnaireResponseId,
-                    func.group_concat(older_duplicate.questionnaireResponseId.distinct()),
-                    func.count(other_duplicate.questionnaireResponseId.distinct())
+                    QuestionnaireResponse.questionnaireResponseId,  # The latest one
+                    func.group_concat(older_duplicate.questionnaireResponseId.distinct()),  # Responses to mark as dups
+                    func.count(other_duplicate.questionnaireResponseId.distinct())  # Total number of duplicates
                 ).join(
                     older_duplicate,
                     and_(
@@ -57,7 +58,7 @@ class ResponseDuplicationDetector:
             ).all()
 
             questionnaire_ids_to_mark_as_duplicates = []
-            for latest_duplicate_response_id, previous_duplicate_ids_str, duplication_count in duplicated_response_ids:
+            for latest_duplicate_response_id, previous_duplicate_ids_str, duplication_count in duplicated_response_data:
                 duplicates_needed = self.duplication_threshold - 1
                 if duplication_count >= duplicates_needed:  # duplicate_count doesn't count the latest response
                     previous_duplicate_ids = previous_duplicate_ids_str.split(',')

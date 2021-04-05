@@ -33,7 +33,7 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
             response=one,
             created=datetime(2021, 3, 2)
         )
-        another_duplicate_of_one = self._make_duplicate_of(
+        last_duplicate_of_one = self._make_duplicate_of(
             response=one,
             authored=datetime.now(),  # Sometimes the authored date can shift when duplications happen,
             created=datetime(2021, 3, 3)
@@ -54,13 +54,13 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         # Reload responses in the current session so we can get the updated info on the isDuplicate field
         self.session.refresh(one)
         self.session.refresh(duplicate_of_one)
-        self.session.refresh(another_duplicate_of_one)
+        self.session.refresh(last_duplicate_of_one)
         self.session.refresh(two)
 
         # Check that the isDuplicate flags were set correctly
         self.assertTrue(one.isDuplicate)
         self.assertTrue(duplicate_of_one.isDuplicate)
-        self.assertFalse(another_duplicate_of_one.isDuplicate)
+        self.assertFalse(last_duplicate_of_one.isDuplicate)
         self.assertFalse(two.isDuplicate)
 
     @mock.patch('rdr_service.services.response_duplication_detector.logging')
@@ -117,7 +117,10 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
 
         # Check that nothing is marked as a duplicate of anything else
         detector.flag_duplicate_responses()
-        mock_logging.warning.assert_not_called()
+        duplicate_response = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.isDuplicate.is_(True)
+        ).first()
+        self.assertIsNone(duplicate_response)
 
         # Make one more duplicate and make sure the duplication is found
         latest_duplicate = self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 8))
