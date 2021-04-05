@@ -1,14 +1,10 @@
-**Resolves** *(link to ticket)*
+## Resolves *[ticket #](link to ticket)*
 
 
+## Description of changes/additions
 
 
-**Description of changes/additions**
-
-
-
-
-**Tests** *(below selection and/or description)*
+## Tests
 - [] unit tests
 
 
