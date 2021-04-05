@@ -24,6 +24,11 @@ cron:
   schedule: 2 of month 00:00
   timezone: America/New_York
   target: offline
+- description: Mark any new duplicates of questionnaire responses as duplicates if they match previous groups of responses
+  url: /offline/FlagResponseDuplication
+  schedule: every day 03:00
+  timezone: America/New_York
+  target: offline
 - description: BigQuery Sync
   url: /offline/BigQuerySync
   timezone: America/New_York

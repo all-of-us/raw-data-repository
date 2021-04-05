@@ -36,6 +36,7 @@ from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
@@ -470,6 +471,12 @@ def check_enrollment_status():
 
 
 @app_util.auth_required_cron
+def flag_response_duplication():
+    detector = ResponseDuplicationDetector()
+    detector.flag_duplicate_responses()
+
+
+@app_util.auth_required_cron
 @_alert_on_exceptions
 def import_deceased_reports():
     importer = DeceasedReportImporter(config.get_config())
@@ -505,6 +512,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "EnrollmentStatusCheck",
         endpoint="enrollmentStatusCheck",
         view_func=check_enrollment_status,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "FlagResponseDuplication",
+        endpoint="flagResponseDuplication",
+        view_func=flag_response_duplication,
         methods=["GET"],
     )
 
