@@ -598,32 +598,42 @@ class GenomicPipelineTest(BaseTestCase):
         # Create the fake Google Cloud CSV files to ingest
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         end_to_end_test_files = (
+            'RDR_AoU_SEQ_TestNoHeadersDataManifest.csv',
             'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
             'RDR-AoU-TestBadFilename-DataManifest.csv',
             'test_empty_wells.csv'
         )
         for test_file in end_to_end_test_files:
-            self._create_ingestion_test_file(test_file, bucket_name,
-                                             folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+            self._create_ingestion_test_file(
+                test_file,
+                bucket_name,
+                folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+            )
 
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # test file processing queue
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+        processed_files = self.file_processed_dao.get_all()
 
-        self.assertEqual(1, incident.slack_notification)
-        self.assertIsNotNone(incident.slack_notification_date)
-        self.assertEqual(incident.code,GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
-
-        # Test bad filename, invalid columns
-        if "TestBadFilename" in processed_file.fileName:
-            self.assertEqual(processed_file.fileResult,
-                                GenomicSubProcessResult.INVALID_FILE_NAME)
-        if "TestBadStructure" in processed_file.fileName:
-            self.assertEqual(processed_file.fileResult,
+        for processed in processed_files:
+            # Test bad filename, invalid columns
+            incident = self.incident_dao.get_by_source_file_id(processed.id)[0]
+            if "TestBadFilename" in processed.fileName:
+                self.assertEqual(processed.fileResult,
+                                 GenomicSubProcessResult.INVALID_FILE_NAME)
+            if processed.fileName in ["TestNoHeaders", "TestBadStructure"]:
+                self.assertEqual(processed.fileResult,
                                  GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
+            if "TestNoHeaders" in processed.fileName:
+                self.assertEqual(0, incident.slack_notification)
+                self.assertIsNone(incident.slack_notification_date)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
+            if "TestBadStructure" in processed.fileName:
+                self.assertEqual(1, incident.slack_notification)
+                self.assertIsNotNone(incident.slack_notification_date)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
+
         # # Test Unsuccessful run
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)

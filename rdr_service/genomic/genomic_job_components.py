@@ -245,8 +245,11 @@ class GenomicFileIngester:
             logging.info(f'Ingesting data from {self.file_obj.fileName}')
             logging.info("Validating file.")
             self.file_validator.valid_schema = None
+
             validation_result = self.file_validator.validate_ingestion_file(
-                self.file_obj.fileName, data_to_ingest)
+                filename=self.file_obj.fileName,
+                data_to_validate=data_to_ingest
+            )
 
             if validation_result != GenomicSubProcessResult.SUCCESS:
                 return validation_result
@@ -1471,7 +1474,7 @@ class GenomicFileValidator:
             "vcfmd5",
         }
 
-    def validate_ingestion_file(self, filename, data_to_validate):
+    def validate_ingestion_file(self, *, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
         :param filename:
@@ -1485,22 +1488,26 @@ class GenomicFileValidator:
         if not self.validate_filename(filename):
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
-        struct_valid_result, missing_fields = self._check_file_structure_valid(
+        # if not data_to_validate
+        struct_valid_result, missing_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
 
         if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         if not struct_valid_result:
+            slack = True
             invalid_message = "File structure of {} not valid.".format(filename)
             if missing_fields:
                 invalid_message += ' Missing fields: {}'.format(missing_fields)
+                if len(missing_fields) == len(expected):
+                    slack = False
             self.controller.create_incident(
                 source_job_run_id=self.controller.job_run.id,
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED.name,
                 message=invalid_message,
-                slack=True
+                slack=slack
             )
             logging.info(invalid_message)
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
@@ -1668,12 +1675,14 @@ class GenomicFileValidator:
 
         cases = tuple([field.lower().replace('\ufeff', '').replace(' ', '').replace('_', '')
                        for field in fields])
+
         all_file_columns_valid = all([c in self.valid_schema for c in cases])
         all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
+
         if not all_expected_columns_in_file:
             missing_fields = list(set(self.valid_schema) - set(cases))
 
-        return all([all_file_columns_valid, all_expected_columns_in_file]), missing_fields
+        return all([all_file_columns_valid, all_expected_columns_in_file]), missing_fields, self.valid_schema
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
