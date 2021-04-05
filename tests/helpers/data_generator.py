@@ -118,6 +118,10 @@ class DataGenerator:
 
         if 'questionnaireResponseId' not in kwargs:
             kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
+        if 'questionnaireId' not in kwargs:
+            questionnaire = self.create_database_questionnaire_history()
+            kwargs['questionnaireId'] = questionnaire.questionnaireId
+            kwargs['questionnaireVersion'] = questionnaire.version
 
         return QuestionnaireResponse(**kwargs)
 
