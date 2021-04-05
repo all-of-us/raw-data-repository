@@ -5,6 +5,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     Text
@@ -47,8 +48,11 @@ class QuestionnaireResponse(Base):
     answerHash = Column('answer_hash', String(32), nullable=True)
     """@rdr_dictionary_internal_column"""
 
+    externalId = Column('external_id', String(30), nullable=True)
+    """@rdr_dictionary_internal_column"""
+
     isDuplicate = Column("is_duplicate", Boolean, server_default=expression.false())
-    """Indicates that the response is a duplicate of another that was previously received and should be ignored"""
+    """Indicates that the response is a duplicate of another that was received and should be ignored"""
 
     resource = Column("resource", BlobUTF8, nullable=False)
     status = Column(
@@ -67,6 +71,7 @@ class QuestionnaireResponse(Base):
             ["questionnaire_id", "questionnaire_version"],
             ["questionnaire_history.questionnaire_id", "questionnaire_history.version"],
         ),
+        Index('idx_response_identifier_answers', externalId, answerHash)
     )
 
 
