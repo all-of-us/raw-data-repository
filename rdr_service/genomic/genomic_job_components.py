@@ -2881,26 +2881,7 @@ class ManifestDefinitionProvider:
         self.bucket_name = bucket_name
         self.kwargs = kwargs
         self.query = GenomicQueryClass()
-
-    def _get_source_data_query(self, manifest_type):
-        """
-        Returns the query to use for manifest's source data
-        :param manifest_type:
-        :return: query object
-        """
-        try:
-            return self.query.genomic_data_config[manifest_type]
-        except KeyError:
-            logging.warning(f"Manifest type {manifest_type} does not resolve query")
-
-    @staticmethod
-    def _get_manifest_columns(manifest_type):
-        """
-        Defines the columns of each manifest-type
-        :param manifest_type:
-        :return: column tuple
-        """
-        column_config = {
+        self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
                     "genomic_set_name",
                     "biobank_id",
@@ -3015,7 +2996,17 @@ class ManifestDefinitionProvider:
                 "CONSENT_FOR_ROR",
             ),
         }
-        return column_config[manifest_type]
+
+    def _get_source_data_query(self, manifest_type):
+        """
+        Returns the query to use for manifest's source data
+        :param manifest_type:
+        :return: query object
+        """
+        try:
+            return self.query.genomic_data_config[manifest_type]
+        except KeyError:
+            logging.warning(f"Manifest type {manifest_type} does not resolve query")
 
     def get_def(self, manifest_type):
         """
@@ -3032,7 +3023,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W1),
+                columns=self.manifest_columns_config[manifest_type],
                 signal=self.DEFAULT_SIGNAL,
             )
 
@@ -3043,7 +3034,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A1),
+                columns=self.manifest_columns_config[manifest_type],
                 signal=self.DEFAULT_SIGNAL,
             )
         # Color A3 Manifest
@@ -3053,7 +3044,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.GEM_A3),
+                columns=self.manifest_columns_config[manifest_type],
                 signal=self.DEFAULT_SIGNAL,
             )
 
@@ -3064,7 +3055,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W3),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.CVL_W3),
+                columns=self.manifest_columns_config[manifest_type],
                 signal=self.DEFAULT_SIGNAL,
             )
 
@@ -3075,7 +3066,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.AW3_ARRAY),
+                columns=self.manifest_columns_config[manifest_type],
                 signal="bypass",
             )
 
@@ -3086,7 +3077,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.AW3_WGS),
+                columns=self.manifest_columns_config[manifest_type],
                 signal="bypass",
             )
 
@@ -3097,7 +3088,7 @@ class ManifestDefinitionProvider:
                 source_data=self._get_source_data_query(GenomicManifestTypes.AW2F),
                 destination_bucket=f'{self.bucket_name}',
                 output_filename=f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
-                columns=self._get_manifest_columns(GenomicManifestTypes.AW2F),
+                columns=self.manifest_columns_config[manifest_type],
                 signal="bypass",
             )
 
