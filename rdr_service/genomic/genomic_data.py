@@ -1,12 +1,311 @@
-from rdr_service.genomic_enums import GenomicSubProcessResult
+import sqlalchemy
+
+from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
+from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
+    GenomicContaminationCategory
+from rdr_service.model.config_utils import get_biobank_id_prefix
+from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember, GenomicSet, GenomicFileProcessed
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, QuestionnaireStatus
 
 
 class GenomicQueryClass:
 
     def __init__(self):
-        pass
+        self.genomic_data_config = {
+            GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
+                [
+                    GenomicGCValidationMetrics.chipwellbarcode,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+                    GenomicSetMember.sampleId,
+                    GenomicSetMember.sexAtBirth,
+                    GenomicSetMember.gcSiteId,
+                    GenomicGCValidationMetrics.idatRedPath,
+                    GenomicGCValidationMetrics.idatRedMd5Path,
+                    GenomicGCValidationMetrics.idatGreenPath,
+                    GenomicGCValidationMetrics.idatGreenMd5Path,
+                    GenomicGCValidationMetrics.vcfPath,
+                    GenomicGCValidationMetrics.vcfTbiPath,
+                    GenomicGCValidationMetrics.vcfMd5Path,
+                    GenomicGCValidationMetrics.callRate,
+                    GenomicGCValidationMetrics.sexConcordance,
+                    GenomicGCValidationMetrics.contamination,
+                    GenomicGCValidationMetrics.processingStatus,
+                    Participant.researchId,
+                ]
+            ).select_from(
+                sqlalchemy.join(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ),
+                    Participant,
+                    Participant.participantId == ParticipantSummary.participantId
+                )
+            ).where(
+                (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                (GenomicGCValidationMetrics.ignoreFlag != 1) &
+                (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
+                (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                (GenomicGCValidationMetrics.idatRedReceived == 1) &
+                (GenomicGCValidationMetrics.idatGreenReceived == 1) &
+                (GenomicGCValidationMetrics.idatRedMd5Received == 1) &
+                (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
+                (GenomicGCValidationMetrics.vcfReceived == 1) &
+                (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None))
+            )),
+            GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
+                [
+                    GenomicSetMember.biobankId,
+                    GenomicSetMember.sampleId,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                           GenomicSetMember.biobankId, '_',
+                                           GenomicSetMember.sampleId),
+                    GenomicSetMember.sexAtBirth,
+                    GenomicSetMember.gcSiteId,
+                    GenomicGCValidationMetrics.hfVcfPath,
+                    GenomicGCValidationMetrics.hfVcfTbiPath,
+                    GenomicGCValidationMetrics.hfVcfMd5Path,
+                    GenomicGCValidationMetrics.rawVcfPath,
+                    GenomicGCValidationMetrics.rawVcfTbiPath,
+                    GenomicGCValidationMetrics.rawVcfMd5Path,
+                    GenomicGCValidationMetrics.cramPath,
+                    GenomicGCValidationMetrics.cramMd5Path,
+                    GenomicGCValidationMetrics.craiPath,
+                    GenomicGCValidationMetrics.contamination,
+                    GenomicGCValidationMetrics.sexConcordance,
+                    GenomicGCValidationMetrics.processingStatus,
+                    GenomicGCValidationMetrics.meanCoverage,
+                    Participant.researchId,
+                    GenomicSetMember.sampleId,
+                ]
+            ).select_from(
+                sqlalchemy.join(
+                    sqlalchemy.join(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ),
+                    Participant,
+                    Participant.participantId == ParticipantSummary.participantId
+                )
+            ).where(
+                (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                (GenomicGCValidationMetrics.ignoreFlag != 1) &
+                (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
+                (GenomicGCValidationMetrics.hfVcfReceived == 1) &
+                (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
+                (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &
+                (GenomicGCValidationMetrics.rawVcfReceived == 1) &
+                (GenomicGCValidationMetrics.rawVcfTbiReceived == 1) &
+                (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
+                (GenomicGCValidationMetrics.cramReceived == 1) &
+                (GenomicGCValidationMetrics.cramMd5Received == 1) &
+                (GenomicGCValidationMetrics.craiReceived == 1)
+            )),
+            GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
+                        [
+                            GenomicSet.genomicSetName,
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.sampleId,
+                            GenomicSetMember.sexAtBirth,
+                            GenomicSetMember.nyFlag,
+                            GenomicGCValidationMetrics.siteId,
+                            sqlalchemy.bindparam('secondary_validation', None),
+                            sqlalchemy.bindparam('date_submitted', None),
+                            sqlalchemy.bindparam('test_name', 'aou_wgs'),
+                        ]
+                    ).select_from(
+                        sqlalchemy.join(
+                            sqlalchemy.join(GenomicSet, GenomicSetMember,
+                                            GenomicSetMember.genomicSetId == GenomicSet.id),
+                            GenomicGCValidationMetrics,
+                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        )
+                    ).where(
+                        (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                        (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY) &
+                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                        (GenomicSetMember.genomeType == "aou_wgs")
+            )),
+            GenomicManifestTypes.CVL_W3: (sqlalchemy.select(
+                        [
+                            sqlalchemy.bindparam('value', ''),
+                            GenomicSetMember.sampleId,
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.collectionTubeId.label("collection_tubeid"),
+                            GenomicSetMember.sexAtBirth,
+                            sqlalchemy.bindparam('genome_type', 'aou_wgs'),
+                            GenomicSetMember.nyFlag,
+                            sqlalchemy.bindparam('request_id', ''),
+                            sqlalchemy.bindparam('package_id', ''),
+                            GenomicSetMember.ai_an,
+                            GenomicSetMember.gcSiteId.label('site_id'),
+                        ]
+                    ).select_from(
+                        sqlalchemy.join(
+                            GenomicSetMember,
+                            ParticipantSummary,
+                            GenomicSetMember.participantId == ParticipantSummary.participantId
+                        )
+                    ).where(
+                        (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.W2) &
+                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                        (GenomicSetMember.genomeType == "aou_cvl") &
+                        (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
+            )),
+            GenomicManifestTypes.GEM_A1: (sqlalchemy.select(
+                        [
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.sampleId,
+                            GenomicSetMember.sexAtBirth,
+                            sqlalchemy.func.IF(
+                                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                               sqlalchemy.sql.expression.literal("yes"),
+                                               sqlalchemy.sql.expression.literal("no")),
+                            ParticipantSummary.consentForGenomicsRORAuthored,
+                            GenomicGCValidationMetrics.chipwellbarcode,
+                            sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
+                        ]
+                    ).select_from(
+                        sqlalchemy.join(
+                            sqlalchemy.join(ParticipantSummary,
+                                            GenomicSetMember,
+                                            GenomicSetMember.participantId == ParticipantSummary.participantId),
+                            GenomicGCValidationMetrics,
+                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        )
+                    ).where(
+                        (GenomicGCValidationMetrics.processingStatus == 'pass') &
+                        (GenomicGCValidationMetrics.ignoreFlag != 1) &
+                        (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
+                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                        (GenomicSetMember.genomeType == "aou_array") &
+                        (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
+                        (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
+                        (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
+                        (ParticipantSummary.participantOrigin != 'careevolution')
+                    ).group_by(
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.sampleId,
+                            GenomicSetMember.sexAtBirth,
+                            sqlalchemy.func.IF(
+                                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                                               sqlalchemy.sql.expression.literal("yes"),
+                                               sqlalchemy.sql.expression.literal("no")),
+                            ParticipantSummary.consentForGenomicsRORAuthored,
+                            GenomicGCValidationMetrics.chipwellbarcode,
+                            sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
+                               ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
+            ),
+            GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
+                        [
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.sampleId,
+                            sqlalchemy.func.date_format(GenomicSetMember.reportConsentRemovalDate, '%Y-%m-%dT%TZ'),
+                        ]
+                    ).select_from(
+                        sqlalchemy.join(ParticipantSummary,
+                                        GenomicSetMember,
+                                        GenomicSetMember.participantId == ParticipantSummary.participantId)
+                    ).where(
+                        (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_RPT_PENDING_DELETE) &
+                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                        (GenomicSetMember.genomeType == "aou_array")
+                    )
+            ),
+            GenomicManifestTypes.AW2F: (
+                    sqlalchemy.select(
+                        [
+                            GenomicSetMember.packageId,
+                            sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                                   GenomicSetMember.biobankId, "_", GenomicSetMember.sampleId),
+                            GenomicSetMember.gcManifestBoxStorageUnitId,
+                            GenomicSetMember.gcManifestBoxPlateId,
+                            GenomicSetMember.gcManifestWellPosition,
+                            GenomicSetMember.sampleId,
+                            GenomicSetMember.gcManifestParentSampleId,
+                            GenomicSetMember.collectionTubeId,
+                            GenomicSetMember.gcManifestMatrixId,
+                            sqlalchemy.bindparam('collection_date', ''),
+                            GenomicSetMember.biobankId,
+                            GenomicSetMember.sexAtBirth,
+                            sqlalchemy.bindparam('age', ''),
+                            sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
+                                               sqlalchemy.sql.expression.literal("Y"),
+                                               sqlalchemy.sql.expression.literal("N")),
+                            sqlalchemy.bindparam('sample_type', 'DNA'),
+                            GenomicSetMember.gcManifestTreatments,
+                            GenomicSetMember.gcManifestQuantity_ul,
+                            GenomicSetMember.gcManifestTotalConcentration_ng_per_ul,
+                            GenomicSetMember.gcManifestTotalDNA_ng,
+                            GenomicSetMember.gcManifestVisitDescription,
+                            GenomicSetMember.gcManifestSampleSource,
+                            GenomicSetMember.gcManifestStudy,
+                            GenomicSetMember.gcManifestTrackingNumber,
+                            GenomicSetMember.gcManifestContact,
+                            GenomicSetMember.gcManifestEmail,
+                            GenomicSetMember.gcManifestStudyPI,
+                            GenomicSetMember.gcManifestTestName,
+                            GenomicSetMember.gcManifestFailureMode,
+                            GenomicSetMember.gcManifestFailureDescription,
+                            GenomicGCValidationMetrics.processingStatus,
+                            GenomicGCValidationMetrics.contamination,
+                            sqlalchemy.case(
+                                [
+                                    (GenomicGCValidationMetrics.contaminationCategory ==
+                                     GenomicContaminationCategory.EXTRACT_WGS, "extract wgs"),
 
-    # BEGIN AW0 Queries
+                                    (GenomicGCValidationMetrics.contaminationCategory ==
+                                     GenomicContaminationCategory.NO_EXTRACT, "no extract"),
+
+                                    (GenomicGCValidationMetrics.contaminationCategory ==
+                                     GenomicContaminationCategory.EXTRACT_BOTH, "extract both"),
+
+                                    (GenomicGCValidationMetrics.contaminationCategory ==
+                                     GenomicContaminationCategory.TERMINAL_NO_EXTRACT, "terminal no extract"),
+                                ], else_=""
+                            ),
+                            sqlalchemy.func.IF(ParticipantSummary.consentForGenomicsROR
+                                               == QuestionnaireStatus.SUBMITTED,
+                                               sqlalchemy.sql.expression.literal("yes"),
+                                               sqlalchemy.sql.expression.literal("no")),
+                        ]
+                    ).select_from(
+                        sqlalchemy.join(
+                            ParticipantSummary,
+                            GenomicSetMember,
+                            GenomicSetMember.participantId == ParticipantSummary.participantId
+                        ).join(
+                            GenomicGCValidationMetrics,
+                            GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                        ).join(
+                            GenomicFileProcessed,
+                            GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+                        )
+                    ).where(
+                        (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                        (GenomicGCValidationMetrics.ignoreFlag == 0) &
+                        (GenomicGCValidationMetrics.contamination.isnot(None)) &
+                        (GenomicGCValidationMetrics.contamination != '')
+                        # (GenomicFileProcessed.genomicManifestFileId == self.input_manifest.get('id'))
+                    )
+                )
+        }
+
     @staticmethod
     def remaining_c2_participants():
         return  """
@@ -75,8 +374,7 @@ class GenomicQueryClass:
 
     @staticmethod
     def remaining_saliva_participants(config):
-
-        is_ror = ""
+        is_ror = None
         originated = {
             # at home
             1: {
@@ -443,3 +741,5 @@ class GenomicQueryClass:
     def dq_report_ingestions_summary(from_date):
         # TODO: Not implemented yet
         pass
+
+
