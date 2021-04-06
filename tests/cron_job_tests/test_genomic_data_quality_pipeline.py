@@ -53,7 +53,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 
         with clock.FakeClock(self.fake_time):
 
-            query_module = 'rdr_service.genomic.genomic_queries.GenomicQueryClass.dq_report_runs_summary'
+            query_module = 'rdr_service.genomic.genomic_data.GenomicQueryClass.dq_report_runs_summary'
 
             with mock.patch(query_module) as query_def:
 
@@ -79,7 +79,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 
         for test_def in test_definitions:
 
-            query_class = 'rdr_service.genomic.genomic_queries.GenomicQueryClass'
+            query_class = 'rdr_service.genomic.genomic_data.GenomicQueryClass'
             query_class += f".{test_def[0]}"
 
             with mock.patch(query_class) as query_mock:
