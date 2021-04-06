@@ -155,10 +155,9 @@ class GenomicFileIngester:
             return files
         else:
             for file_data in files:
-                file_path = "/" + self.bucket_name + "/" + file_data[0]
                 new_file_record = self.file_processed_dao.insert_file_record(
                     self.job_run_id,
-                    file_path,
+                    f'{self.bucket_name}/{file_data[0]}',
                     self.bucket_name,
                     file_data[0].split('/')[-1],
                     upload_date=file_data[1],
@@ -206,7 +205,7 @@ class GenomicFileIngester:
         else:
             logging.info('Processing files in queue.')
             results = []
-            while len(self.file_queue) > 0:
+            while len(self.file_queue):
                 try:
                     ingestion_result = self._ingest_genomic_file(
                         self.file_queue[0])
@@ -830,10 +829,10 @@ class GenomicFileIngester:
         """
         Retrieves the last genomic data file from a bucket
         :param path: The source file to ingest
-        :return: CSV data as a dicitonary
+        :return: CSV data as a dictionary
         """
         try:
-            filename = path.split('/')[2]
+            filename = path.split('/')[1]
             logging.info(
                 'Opening CSV file from queue {}: {}.'
                 .format(path.split('/')[1], filename)
