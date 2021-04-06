@@ -1513,38 +1513,36 @@ class GenomicFileValidator:
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
+        filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
 
         # Naming Rule Definitions
-        def bb_result_name_rule(fn):
+        def bb_result_name_rule():
             """Biobank to DRC Result name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("-")]
+            bb_filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
             return (
-                filename_components[0] == 'genomic' and
-                filename_components[1] == 'manifest' and
-                filename_components[2] in ('aou_array', 'aou_wgs')
+                bb_filename_components[0] == 'genomic' and
+                bb_filename_components[1] == 'manifest' and
+                bb_filename_components[2] in ('aou_array', 'aou_wgs')
             )
 
-        def gc_validation_metrics_name_rule(fn):
+        def gc_validation_metrics_name_rule():
             """GC metrics file name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] in self.GC_METRICS_SCHEMAS.keys()
             )
 
-        def bb_to_gc_manifest_name_rule(fn):
+        def bb_to_gc_manifest_name_rule():
             """Biobank to GCs manifest name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] in ('seq', 'gen')
             )
 
-        def aw1f_manifest_name_rule(fn):
+        def aw1f_manifest_name_rule():
             """Biobank to GCs Failure (AW1F) manifest name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_GENOME_CENTERS and
@@ -1555,12 +1553,11 @@ class GenomicFileValidator:
                 filename_components[4] == 'failure.csv'
             )
 
-        def cvl_w2_manifest_name_rule(fn):
+        def cvl_w2_manifest_name_rule():
             """
             CVL W2 (secondary validation) manifest name rule
             UW_AoU_CVL_RequestValidation_Date.csv
             """
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 5 and
                 filename_components[0] in self.VALID_CVL_FACILITIES and
@@ -1569,9 +1566,8 @@ class GenomicFileValidator:
                 filename_components[3] == 'requestvalidation'
             )
 
-        def gem_a2_manifest_name_rule(fn):
+        def gem_a2_manifest_name_rule():
             """GEM A2 manifest name rule: i.e. AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 len(filename_components) == 5 and
                 filename_components[0] == 'aou' and
@@ -1579,18 +1575,16 @@ class GenomicFileValidator:
                 filename_components[2] == 'a2'
             )
 
-        def cvl_aw1c_manifest_name_rule(fn):
+        def cvl_aw1c_manifest_name_rule():
             """AW1C Biobank to CVLs manifest name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl'
             )
 
-        def cvl_aw1cf_manifest_name_rule(fn):
+        def cvl_aw1cf_manifest_name_rule():
             """AW1F Biobank to CVLs manifest name rule"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
@@ -1598,40 +1592,37 @@ class GenomicFileValidator:
                 filename_components[4] == 'failure.csv'
             )
 
-        def gem_metrics_name_rule(fn):
+        def gem_metrics_name_rule():
             """GEM Metrics name rule: i.e. AoU_GEM_metrics_aggregate_2020-07-11-00-00-00.csv"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
                 filename_components[2] == 'metrics'
             )
 
-        def aw4_arr_manifest_name_rule(fn):
+        def aw4_arr_manifest_name_rule():
             """DRC Broad AW4 Array manifest name rule: i.e. AoU_DRCB_GEN_2020-07-11-00-00-00.csv"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'drcb' and
                 filename_components[2] == 'gen'
             )
 
-        def aw4_wgs_manifest_name_rule(fn):
+        def aw4_wgs_manifest_name_rule():
             """DRC Broad AW4 WGS manifest name rule: i.e. AoU_DRCB_SEQ_2020-07-11-00-00-00.csv"""
-            filename_components = [x.lower() for x in fn.split('/')[-1].split("_")]
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'drcb' and
                 filename_components[2] == 'seq'
             )
 
-        def aw5_wgs_manifest_name_rule(fn):
+        def aw5_wgs_manifest_name_rule():
             # don't have name convention right now, if have in the future, add here
-            return fn.lower().endswith('csv')
+            return filename.lower().endswith('csv')
 
-        def aw5_array_manifest_name_rule(fn):
+        def aw5_array_manifest_name_rule():
             # don't have name convention right now, if have in the future, add here
-            return fn.lower().endswith('csv')
+            return filename.lower().endswith('csv')
 
         name_rules = {
             GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
@@ -1649,7 +1640,7 @@ class GenomicFileValidator:
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
-        return name_rules[self.job_id](filename)
+        return name_rules[self.job_id]()
 
     def _check_file_structure_valid(self, fields):
         """
@@ -1692,26 +1683,19 @@ class GenomicFileValidator:
                 return self.GEM_A2_SCHEMA
             if self.job_id == GenomicJob.AW1F_MANIFEST:
                 return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
-
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
-
             if self.job_id == GenomicJob.W2_INGEST:
                 return self.CVL_W2_SCHEMA
-
             if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                 return self.AW4_ARRAY_SCHEMA
-
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
-
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
                 return self.GC_MANIFEST_SCHEMA
-
             if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
                 return self.AW5_WGS_SCHEMA
-
             if self.job_id == GenomicJob.AW5_ARRAY_MANIFEST:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS['gen']
                 return self.AW5_ARRAY_SCHEMA
@@ -2868,8 +2852,6 @@ class ManifestDefinitionProvider:
                                              "columns",
                                              "signal"])
 
-    DEFAULT_SIGNAL = 'manifest-generated'
-
     def __init__(
         self,
         job_run_id=None,
@@ -3015,82 +2997,51 @@ class ManifestDefinitionProvider:
         :return: ManifestDef()
         """
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-        # DRC Broad CVL WGS Manifest
-        if manifest_type == GenomicManifestTypes.CVL_W1:
-            return self.ManifestDef(
-                job_run_field='cvlW1ManifestJobRunId',
-                source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W1),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal=self.DEFAULT_SIGNAL,
-            )
-
-        # Color Array A1 Manifest
-        if manifest_type == GenomicManifestTypes.GEM_A1:
-            return self.ManifestDef(
-                job_run_field='gemA1ManifestJobRunId',
-                source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A1),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal=self.DEFAULT_SIGNAL,
-            )
-        # Color A3 Manifest
-        if manifest_type == GenomicManifestTypes.GEM_A3:
-            return self.ManifestDef(
-                job_run_field='gemA3ManifestJobRunId',
-                source_data=self._get_source_data_query(GenomicManifestTypes.GEM_A3),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal=self.DEFAULT_SIGNAL,
-            )
-
-        # DRC to CVL W3 Manifest
-        if manifest_type == GenomicManifestTypes.CVL_W3:
-            return self.ManifestDef(
-                job_run_field='cvlW3ManifestJobRunID',
-                source_data=self._get_source_data_query(GenomicManifestTypes.CVL_W3),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal=self.DEFAULT_SIGNAL,
-            )
-
-        # DRC to Broad AW3 Array Manifest
-        if manifest_type == GenomicManifestTypes.AW3_ARRAY:
-            return self.ManifestDef(
-                job_run_field='aw3ManifestJobRunID',
-                source_data=self._get_source_data_query(GenomicManifestTypes.AW3_ARRAY),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal="bypass",
-            )
-
-        # DRC to Broad AW3 WGS Manifest
-        if manifest_type == GenomicManifestTypes.AW3_WGS:
-            return self.ManifestDef(
-                job_run_field='aw3ManifestJobRunID',
-                source_data=self._get_source_data_query(GenomicManifestTypes.AW3_WGS),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal="bypass",
-            )
-
-        # DRC to Biobank AW2F Feedback/Contamination Manifest
-        if manifest_type == GenomicManifestTypes.AW2F:
-            return self.ManifestDef(
-                job_run_field=None,
-                source_data=self._get_source_data_query(GenomicManifestTypes.AW2F),
-                destination_bucket=f'{self.bucket_name}',
-                output_filename=f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
-                columns=self.manifest_columns_config[manifest_type],
-                signal="bypass",
-            )
+        def_config = {
+            GenomicManifestTypes.CVL_W1: {
+                'job_run_field': 'cvlW1ManifestJobRunId',
+                'output_filename': f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
+                'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.GEM_A1: {
+                'job_run_field': 'gemA1ManifestJobRunId',
+                'output_filename': f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
+                'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.GEM_A3: {
+                'job_run_field': 'gemA3ManifestJobRunId',
+                'output_filename': f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
+                'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.CVL_W3: {
+                'job_run_field': 'cvlW3ManifestJobRunID',
+                'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
+                'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.AW3_ARRAY: {
+                'job_run_field': 'aw3ManifestJobRunID',
+                'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
+                'signal': 'bypass'
+            },
+            GenomicManifestTypes.AW3_WGS: {
+                'job_run_field': 'aw3ManifestJobRunID',
+                'output_filename': f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
+                'signal': 'bypass'
+            },
+            GenomicManifestTypes.AW2F: {
+                'job_run_field': None,
+                'output_filename': f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
+                'signal': 'bypass'
+            }
+        }
+        return self.ManifestDef(
+            job_run_field=def_config[manifest_type]['job_run_field'],
+            source_data=self._get_source_data_query(manifest_type),
+            destination_bucket=f'{self.bucket_name}',
+            output_filename=def_config[manifest_type]['output_filename'],
+            columns=self.manifest_columns_config[manifest_type],
+            signal=def_config[manifest_type]['signal'],
+        )
 
 
 class ManifestCompiler:
