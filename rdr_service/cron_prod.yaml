@@ -44,3 +44,8 @@ cron:
   timezone: America/New_York
   schedule: every monday 00:00
   target: offline
+- description: Genomic Daily Ingestion Summary
+  url: /offline/GenomicDataQualityDailyIngestionSummary
+  timezone: America/New_York
+  schedule: every day 08:00
+  target: offline
