@@ -376,11 +376,11 @@ class BiobankAliquotDao(BiobankDaoBase):
                 BiobankSpecimen.rlimsId == parent_rlims_id
             ).one_or_none()
 
-        # If the direct parent is a specimen, give back that rlims_id and no parent aliquot
+        # If the direct parent is a specimen, give that back and no parent aliquot
         if parent_specimen:
             return parent_specimen, None
         else:
-            # The given rlims should be an aliquot then. So find the aliquot and give back the specimen and aliquot ids
+            # The given rlims should be an aliquot then. So find the aliquot and give back the aliquot and specimen
             if self.preloader:
                 parent_aliquot = self.preloader.get_object(BiobankAliquot(rlimsId=parent_rlims_id))
                 parent_specimen = self.preloader.get_object(BiobankSpecimen(rlimsId=parent_aliquot.specimen_rlims_id))
@@ -418,9 +418,6 @@ class BiobankAliquotDao(BiobankDaoBase):
 
     def from_client_json(self, resource, session=None, parent_rlims_id=None, specimen_rlims_id=None,
                          parent_aliquot_rlims_id=None, **_):
-        # if parent_rlims_id is None:
-        #     raise BadRequest("A parent rlims id is required for aliquots")
-
         if session is None:
             with self.session() as session:
                 aliquot_from_json = self._from_client_json_with_session(
@@ -500,9 +497,8 @@ class BiobankAliquotDao(BiobankDaoBase):
         return result
 
     @staticmethod
-    def get_with_rlims_id(rlims_id, session, allow_none=False):
-        query = session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id)
-        return query.one_or_none() if allow_none else query.one()
+    def get_with_rlims_id(rlims_id, session):
+        return session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == rlims_id).one()
 
     def get_id_with_session(self, obj, session):
         if self.preloader and self.preloader.is_hydrated:

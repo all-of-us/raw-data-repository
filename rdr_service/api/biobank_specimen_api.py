@@ -184,25 +184,6 @@ class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
         return 200
 
 
-class BiobankAliquotTargetedUpdateBase(BiobankTargetedUpdateBase):
-    def __init__(self):
-        super(BiobankAliquotTargetedUpdateBase, self).__init__(BiobankAliquotDao())
-
-    def get_model_with_rlims_id(self, rlims_id, session):
-        try:
-            return self.dao.get_with_rlims_id(rlims_id, session)
-        except NoResultFound:
-            raise NotFound(f'No aliquot found for the given rlims_id: {rlims_id}')
-
-
-class BiobankAliquotStatusApi(BiobankStatusApiMixin, BiobankAliquotTargetedUpdateBase):
-    pass
-
-
-class BiobankAliquotDisposalApi(BiobankDisposalApiMixin, BiobankAliquotTargetedUpdateBase):
-    pass
-
-
 class BiobankAliquotApi(BiobankApiBase):
     def __init__(self):
         super(BiobankAliquotApi, self).__init__(BiobankAliquotDao())
@@ -229,6 +210,25 @@ class BiobankAliquotApi(BiobankApiBase):
     def _parse_aliquot_json(self, resource):
         resource['rlimsID'] = self.aliquot_rlims_id
         return self.dao.from_client_json(resource, parent_rlims_id=self.parent_rlims_id)
+
+
+class BiobankAliquotTargetedUpdateBase(BiobankTargetedUpdateBase):
+    def __init__(self):
+        super(BiobankAliquotTargetedUpdateBase, self).__init__(BiobankAliquotDao())
+
+    def get_model_with_rlims_id(self, rlims_id, session):
+        try:
+            return self.dao.get_with_rlims_id(rlims_id, session)
+        except NoResultFound:
+            raise NotFound(f'No aliquot found for the given rlims_id: {rlims_id}')
+
+
+class BiobankAliquotStatusApi(BiobankStatusApiMixin, BiobankAliquotTargetedUpdateBase):
+    pass
+
+
+class BiobankAliquotDisposalApi(BiobankDisposalApiMixin, BiobankAliquotTargetedUpdateBase):
+    pass
 
 
 class BiobankAliquotDatasetApi(BiobankAliquotTargetedUpdateBase):
