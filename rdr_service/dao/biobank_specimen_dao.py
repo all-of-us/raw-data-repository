@@ -160,6 +160,10 @@ class BiobankDaoBase(UpdatableDao):
         with self.session() as session:
             return self.get_id_with_session(obj, session)
 
+    def get_etag(self, *_):
+        # Because the UpdatableApi class requires this when processing a PUT request
+        return None
+
 
 class BiobankSpecimenDao(BiobankDaoBase):
 
@@ -397,15 +401,16 @@ class BiobankAliquotDao(BiobankDaoBase):
         return aliquot
 
     def from_client_json(self, resource, parent_rlims_id=None, session=None, **_):
-
         if parent_rlims_id is None:
             raise BadRequest("A parent rlims id is required for aliquots")
 
         if session is None:
             with self.session() as session:
-                return self._from_client_json_with_session(resource, parent_rlims_id, session)
+                aliquot_from_json = self._from_client_json_with_session(resource, parent_rlims_id, session)
         else:
-            return self._from_client_json_with_session(resource, parent_rlims_id, session)
+            aliquot_from_json = self._from_client_json_with_session(resource, parent_rlims_id, session)
+
+        return aliquot_from_json
 
     def read_aliquot_data(self, aliquot, resource, specimen_rlims_id, session):
         for client_field, model_field in [('sampleType', None),

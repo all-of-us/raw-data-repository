@@ -1040,6 +1040,17 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual(parent_rlims_id, aliquot.parent_aliquot_rlims_id)
         self.assertEqual(specimen.rlimsId, aliquot.specimen_rlims_id)
 
+        # Make an update to the aliquot and make sure the API modifies the existing aliquot
+        updated_sample_type = 'new updated sample type'
+        from tests.helpers.diagnostics import LoggingDatabaseActivity
+        with LoggingDatabaseActivity():
+            self.send_put(f'Biobank/specimens/{parent_rlims_id}/aliquots/{child_rlims_id}', {
+                'sampleType': updated_sample_type
+            })
+        with self.dao.session() as session:
+            aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.id == aliquot.id).one()
+            self.assertEqual(updated_sample_type, aliquot.sampleType)
+
     def _create_minimal_specimen_with_aliquot(self, rlims_id='sabrina', aliquot_rlims_id='salem'):
         payload = self.get_minimal_specimen_json(rlims_id)
         payload['aliquots'] = [{

@@ -22,7 +22,7 @@ class BiobankSpecimenApi(BiobankApiBase):
         super().__init__(BiobankSpecimenDao(), get_returns_children=True)
 
     @auth_required(BIOBANK)
-    def put(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def put(self, *_, **kwargs):
         resource = request.get_json(force=True)
 
         if 'rlims_id' in kwargs:
@@ -117,11 +117,9 @@ class BiobankTargetedUpdateBase(BiobankApiBase):
             return self._make_response(model)
 
     def get_model_with_rlims_id(self, rlims_id, session):
-        # pylint: disable=unused-argument
         raise NotImplementedError(f"get_model_with_rlims_id not implemented in {self.__class__}")
 
     def update_model(self, model, resource, session):
-        # pylint: disable=unused-argument
         raise NotImplementedError(f"update_model not implemented in {self.__class__}")
 
 
@@ -221,13 +219,14 @@ class BiobankAliquotApi(BiobankApiBase):
             super(BiobankAliquotApi, self).post()
         else:
             super(BiobankAliquotApi, self).put(aliquot_id, skip_etag=True)
-            # TODO: test the update too
 
     def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
-        resource['rlimsID'] = self.aliquot_rlims_id
-        return self.dao.from_client_json(resource, parent_rlims_id=self.parent_rlims_id)
+        return self._parse_aliquot_json(resource)
 
     def _get_model_to_insert(self, resource, participant_id=None):
+        return self._parse_aliquot_json(resource)
+
+    def _parse_aliquot_json(self, resource):
         resource['rlimsID'] = self.aliquot_rlims_id
         return self.dao.from_client_json(resource, parent_rlims_id=self.parent_rlims_id)
 
