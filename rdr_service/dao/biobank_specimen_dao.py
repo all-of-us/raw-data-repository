@@ -393,22 +393,38 @@ class BiobankAliquotDao(BiobankDaoBase):
 
             return parent_aliquot.specimen_rlims_id, parent_aliquot.rlimsId
 
-    def _from_client_json_with_session(self, resource, parent_rlims_id, session):
-        specimen_rlims_id, parent_aliquot_rlims_id = self._get_parent_ids(parent_rlims_id, session)
+    def _from_client_json_with_session(self, resource, session, parent_rlims_id=None, specimen_rlims_id=None,
+                                       parent_aliquot_rlims_id=None):
+        # If not given a parent_rlims_id, then the specimen_rlims_id is expected to be the parent
+        if parent_rlims_id is not None:
+            specimen_rlims_id, parent_aliquot_rlims_id = self._get_parent_ids(parent_rlims_id, session)
         aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id,
                                  parent_aliquot_rlims_id=parent_aliquot_rlims_id)
         self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
         return aliquot
 
-    def from_client_json(self, resource, parent_rlims_id=None, session=None, **_):
-        if parent_rlims_id is None:
-            raise BadRequest("A parent rlims id is required for aliquots")
+    def from_client_json(self, resource, session=None, parent_rlims_id=None, specimen_rlims_id=None,
+                         parent_aliquot_rlims_id=None, **_):
+        # if parent_rlims_id is None:
+        #     raise BadRequest("A parent rlims id is required for aliquots")
 
         if session is None:
             with self.session() as session:
-                aliquot_from_json = self._from_client_json_with_session(resource, parent_rlims_id, session)
+                aliquot_from_json = self._from_client_json_with_session(
+                    resource,
+                    session,
+                    parent_rlims_id=parent_rlims_id,
+                    specimen_rlims_id=specimen_rlims_id,
+                    parent_aliquot_rlims_id=parent_aliquot_rlims_id
+                )
         else:
-            aliquot_from_json = self._from_client_json_with_session(resource, parent_rlims_id, session)
+            aliquot_from_json = self._from_client_json_with_session(
+                resource,
+                session,
+                parent_rlims_id=parent_rlims_id,
+                specimen_rlims_id=specimen_rlims_id,
+                parent_aliquot_rlims_id=parent_aliquot_rlims_id
+            )
 
         return aliquot_from_json
 
