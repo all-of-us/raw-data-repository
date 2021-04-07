@@ -1,7 +1,7 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
 import os
 
-from rdr_service.participant_enums import GenomicJob
+from rdr_service.genomic_enums import GenomicJob
 
 if os.getenv('GAE_ENV', '').startswith('standard'):
     try:
