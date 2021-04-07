@@ -1094,10 +1094,12 @@ class DataQualityJobController:
 
         report_level, report_target, time_frame = rc.set_report_parameters(**kwargs)
 
-        report = rc.generate_report(level=report_level,
-                                    target=report_target,
-                                    time_frame=time_frame)
+        report_data = rc.generate_report_data(level=report_level,
+                                         target=report_target,
+                                         time_frame=time_frame)
+
+        report_string = rc.format_report(report_data)
 
         self.job_run_result = GenomicSubProcessResult.SUCCESS
 
-        return report
+        return report_string

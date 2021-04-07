@@ -441,34 +441,41 @@ class GenomicQueryClass:
 
     @staticmethod
     def dq_report_ingestions_summary(from_date):
+        # TODO: This query only supports the AW1 ingestions
+        #  A future PR will expand this support for the AW2 ingestions
 
         query_sql = """
-                    SELECT job_id
-                        , SUM(IF(run_result = :unset, run_count, 0)) AS 'UNSET'
-                        , SUM(IF(run_result = :success, run_count, 0)) AS 'SUCCESS'
-                        , SUM(IF(run_result = :error, run_count, 0)) AS 'ERROR'    
-                        , SUM(IF(run_result = :no_files, run_count, 0)) AS 'NO_FILES'
-                        , SUM(IF(run_result = :invalid_name, run_count, 0)) AS 'INVALID_FILE_NAME'
-                        , SUM(IF(run_result = :invalid_structure, run_count, 0)) AS 'INVALID_FILE_STRUCTURE'
-                    FROM 
-                        (
-                            SELECT count(id) run_count
-                                , job_id
-                                , run_result	
-                            FROM genomic_job_run
-                            WHERE start_time > :from_date
-                            group by job_id, run_result
-                        ) sub
-                    group by job_id
-                """
+            SELECT count(distinct raw.id) record_count
+                , count(distinct m.id) as ingested_count
+                , count(distinct i.id) as incident_count
+                , "aw1" as file_type
+                , LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 1)) as gc_site_id
+                , CASE
+                    WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
+                        ) = "SEQ" 
+                    THEN "aou_wgs"
+                    WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(raw.file_path, "/", -1), "_", 3), "_", -1
+                        ) = "GEN" 
+                    THEN "aou_array"			
+                  END AS genome_type
+                , raw.file_path
+            FROM genomic_aw1_raw raw
+                LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
+                LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
+                LEFT JOIN genomic_set_member m ON m.aw1_file_processed_id = f.id
+                LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
+            WHERE TRUE
+                AND raw.created >=  :from_date
+                AND raw.ignore_flag = 0
+                AND raw.biobank_id <> ""
+            #	AND m.genomic_workflow_state <> 33
+            GROUP BY raw.file_path, file_type
+        """
 
         query_params = {
-            "unset": GenomicSubProcessResult.UNSET.number,
-            "success": GenomicSubProcessResult.SUCCESS.number,
-            "error": GenomicSubProcessResult.ERROR.number,
-            "no_files": GenomicSubProcessResult.NO_FILES.number,
-            "invalid_name": GenomicSubProcessResult.INVALID_FILE_NAME.number,
-            "invalid_structure": GenomicSubProcessResult.INVALID_FILE_STRUCTURE.number,
             "from_date": from_date
         }
+
         return query_sql, query_params
