@@ -367,7 +367,7 @@ class BiobankAliquotDao(BiobankDaoBase):
     def __init__(self, preloader=None):
         super().__init__(BiobankAliquot, preloader=preloader)
 
-    def _get_parent_ids(self, parent_rlims_id, session):
+    def _get_parents(self, parent_rlims_id, session) -> (BiobankSpecimen, BiobankAliquot):
         # See if the given parent_rlims_id is a specimen
         if self.preloader:
             parent_specimen = self.preloader.get_object(BiobankSpecimen(rlimsId=parent_rlims_id))
@@ -378,29 +378,42 @@ class BiobankAliquotDao(BiobankDaoBase):
 
         # If the direct parent is a specimen, give back that rlims_id and no parent aliquot
         if parent_specimen:
-            return parent_specimen.rlimsId, None
+            return parent_specimen, None
         else:
             # The given rlims should be an aliquot then. So find the aliquot and give back the specimen and aliquot ids
             if self.preloader:
                 parent_aliquot = self.preloader.get_object(BiobankAliquot(rlimsId=parent_rlims_id))
+                parent_specimen = self.preloader.get_object(BiobankSpecimen(rlimsId=parent_aliquot.specimen_rlims_id))
             else:
                 parent_aliquot = session.query(BiobankAliquot).filter(
                     BiobankAliquot.rlimsId == parent_rlims_id
+                ).one_or_none()
+                parent_specimen = session.query(BiobankSpecimen).filter(
+                    BiobankSpecimen.rlimsId == parent_aliquot.specimen_rlims_id
                 ).one_or_none()
 
             if parent_aliquot is None:
                 raise NotFound(f'Unable to find specimen or aliquot with rlimsId {parent_rlims_id}')
 
-            return parent_aliquot.specimen_rlims_id, parent_aliquot.rlimsId
+            return parent_specimen, parent_aliquot
 
     def _from_client_json_with_session(self, resource, session, parent_rlims_id=None, specimen_rlims_id=None,
                                        parent_aliquot_rlims_id=None):
+        specimen, parent_aliquot = None, None
+
         # If not given a parent_rlims_id, then the specimen_rlims_id is expected to be the parent
         if parent_rlims_id is not None:
-            specimen_rlims_id, parent_aliquot_rlims_id = self._get_parent_ids(parent_rlims_id, session)
+            specimen, parent_aliquot = self._get_parents(parent_rlims_id, session)
+            specimen_rlims_id = specimen.rlimsId if specimen else None
+            parent_aliquot_rlims_id = parent_aliquot.rlimsId if parent_aliquot else None
         aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id,
                                  parent_aliquot_rlims_id=parent_aliquot_rlims_id)
         self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
+
+        if specimen:
+            aliquot.specimen_id = specimen.id
+        if parent_aliquot:
+            aliquot.parent_aliquot_id = parent_aliquot.id
         return aliquot
 
     def from_client_json(self, resource, session=None, parent_rlims_id=None, specimen_rlims_id=None,
