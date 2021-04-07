@@ -57,20 +57,13 @@ from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
     Race,
     QuestionnaireStatus,
-    GenomicWorkflowState,
-    WithdrawalStatus,
-    GenomicContaminationCategory,
-    GenomicIncidentCode,
-    GenomicManifestTypes,
-    GenomicQcStatus
+    WithdrawalStatus
 )
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+    GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
+    GenomicQcStatus, GenomicIncidentCode
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path

@@ -22,14 +22,11 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics,
     GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw, GenomicIncident)
 from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicSubProcessResult,
     QuestionnaireStatus,
     WithdrawalStatus,
-    SuspensionStatus,
-    GenomicWorkflowState,
-    GenomicManifestTypes)
+    SuspensionStatus)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
+    GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -1526,7 +1523,7 @@ class GenomicAW1RawDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == biobank_id,
-                GenomicAW1Raw.file_path.like(f"%{genome_type_map[genome_type]}%"),
+                GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
             ).one()
 
@@ -1563,7 +1560,7 @@ class GenomicAW2RawDao(BaseDao):
         with self.session() as session:
             return session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.biobank_id == biobank_id,
-                GenomicAW2Raw.file_path.like(f"%{genome_type_map[genome_type]}%"),
+                GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
             ).one()
 

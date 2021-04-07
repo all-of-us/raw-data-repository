@@ -9,7 +9,7 @@ import logging
 import os
 import pytz
 
-from rdr_service.participant_enums import GenomicWorkflowState
+from ..genomic_enums import GenomicWorkflowState
 from .genomic_set_file_handler import DataError, timestamp_from_filename
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file

@@ -42,20 +42,15 @@ from rdr_service.model.genomics import (
     GenomicAW1Raw,
     GenomicAW2Raw)
 from rdr_service.participant_enums import (
-    GenomicSubProcessResult,
     WithdrawalStatus,
     QuestionnaireStatus,
     SampleStatus,
-    GenomicSetStatus,
-    GenomicManifestTypes,
-    GenomicJob,
-    GenomicSubProcessStatus,
     Race,
-    GenomicValidationFlag,
-    GenomicSetMemberStatus,
     SuspensionStatus,
-    GenomicWorkflowState,
-    ParticipantCohort, GenomicQcStatus, GenomicContaminationCategory, GenomicIncidentCode)
+    ParticipantCohort)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
+    GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode
 from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicSetMemberDao,

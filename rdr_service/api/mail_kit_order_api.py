@@ -116,10 +116,15 @@ class MailKitOrderApi(UpdatableApi):
             self.dao.insert_biobank_order(p_id, merged_resource)
             self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
 
-        response = super(MailKitOrderApi, self).put(
-            bo_id, participant_id=p_id, skip_etag=True, resource=merged_resource
-        )
-        response[2]["Location"] = "/rdr/v1/SupplyDelivery/{}".format(bo_id)
+        response = super(MailKitOrderApi, self)\
+            .put(
+                bo_id,
+                participant_id=p_id,
+                skip_etag=True,
+                resource=merged_resource
+            )
+
+        response[2]["Location"] = f"/rdr/v1/SupplyDelivery/{bo_id}"
         response[2]['auth_user'] = resource['auth_user']
         if response[1] == 200:
             created_response = list(response)
@@ -167,7 +172,11 @@ class MailKitOrderApi(UpdatableApi):
             raise BadRequest("missing FHIR order document")
 
         method = self._lookup_resource_type_method(
-            {"SupplyRequest": self._put_supply_request, "SupplyDelivery": self._put_supply_delivery}, resource
+            {
+                "SupplyRequest": self._put_supply_request,
+                "SupplyDelivery": self._put_supply_delivery
+            },
+            resource
         )
         return method(resource, bo_id)
 

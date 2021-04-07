@@ -58,7 +58,7 @@
   "extension": [
     {
       "url": "http://joinallofus.org/fhir/barcode",
-      "valueString": "SABR90160121INA"
+      "valueString": "SABR90160121IN"
     },
     {
       "url": "http://joinallofus.org/fhir/order-type",

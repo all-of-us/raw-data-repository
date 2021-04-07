@@ -1,6 +1,6 @@
 import abc
 
-from rdr_service.participant_enums import GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicWorkflowState
 
 
 class GenomicStateBase:

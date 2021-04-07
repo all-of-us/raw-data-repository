@@ -11,7 +11,7 @@ from sqlalchemy import (
 )
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, expression
 from typing import List
 
 from rdr_service.model.base import Base
@@ -42,6 +42,14 @@ class QuestionnaireResponse(Base):
     """The actual time the participant completed the questionnaire"""
     language = Column("language", String(2), nullable=True)
     """Language that the response was completed in"""
+
+    # Can be used to indicate equality between sets of answers
+    answerHash = Column('answer_hash', String(32), nullable=True)
+    """@rdr_dictionary_internal_column"""
+
+    isDuplicate = Column("is_duplicate", Boolean, server_default=expression.false())
+    """Indicates that the response is a duplicate of another that was previously received and should be ignored"""
+
     resource = Column("resource", BlobUTF8, nullable=False)
     status = Column(
         EnumZeroBased(QuestionnaireResponseStatus),

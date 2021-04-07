@@ -38,8 +38,8 @@ from rdr_service.resource.generators.genomics import genomic_set_member_update, 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import GenomicManifestTypes, GenomicSetStatus, GenomicJob, GenomicSubProcessResult, \
-    GenomicWorkflowState, GenomicSetMemberStatus
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+    GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.services.system_utils import JSONObject
 
@@ -1575,11 +1575,14 @@ class IngestionClass(GenomicManifestBase):
                     with GenomicJobController(GenomicJob.METRICS_INGESTION,
                                               bq_project_id=self.gcp_env.project,
                                               server_config=self.get_server_config()) as controller:
+
+                        _logger.info(f"Job Run Id: {controller.job_run.id}")
+
                         controller.bypass_record_count = self.args.bypass_record_count
 
                         results = controller.ingest_member_ids_from_awn_raw_table(2, member_ids)
 
-                        logging.info(results)
+                        print(results)
 
                 if bucket_name:
                     # ingest AW1 data using controller

@@ -7,18 +7,9 @@ from marshmallow import validate
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-#    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState,
-    GenomicQcStatus,
-    GenomicContaminationCategory,
-    GenomicManifestTypes
-)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+    GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
+    GenomicQcStatus
 
 
 class GenomicSetSchema(Schema):

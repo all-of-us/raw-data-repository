@@ -1,4 +1,4 @@
-from rdr_service.participant_enums import GenomicSubProcessResult
+from rdr_service.genomic_enums import GenomicSubProcessResult
 
 
 class GenomicQueryClass:
@@ -412,15 +412,15 @@ class GenomicQueryClass:
             SELECT job_id
                 , SUM(IF(run_result = :unset, run_count, 0)) AS 'UNSET'
                 , SUM(IF(run_result = :success, run_count, 0)) AS 'SUCCESS'
-                , SUM(IF(run_result = :error, run_count, 0)) AS 'ERROR'    
+                , SUM(IF(run_result = :error, run_count, 0)) AS 'ERROR'
                 , SUM(IF(run_result = :no_files, run_count, 0)) AS 'NO_FILES'
                 , SUM(IF(run_result = :invalid_name, run_count, 0)) AS 'INVALID_FILE_NAME'
                 , SUM(IF(run_result = :invalid_structure, run_count, 0)) AS 'INVALID_FILE_STRUCTURE'
-            FROM 
+            FROM
                 (
                     SELECT count(id) run_count
                         , job_id
-                        , run_result	
+                        , run_result
                     FROM genomic_job_run
                     WHERE start_time > :from_date
                     group by job_id, run_result

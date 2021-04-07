@@ -191,20 +191,16 @@ class DeployAppClass(object):
             deployed_version = resp.get('version_id', 'unknown').replace('-', '.')
 
         if not descr:
-            notes = self._jira_handler.get_release_notes_since_tag(deployed_version, self.args.git_target)
-            descr = "h1. Release Notes for {0}\nh2.deployed to {1}, listing changes since {2}:\n{3}".format(
-                self.args.git_target,
-                self.gcp_env.project,
-                deployed_version,
-                notes
-            )
-
             circle_ci_url = '<CircleCI URL>'
             if 'CIRCLE_BUILD_URL' in os.environ:
                 circle_ci_url = os.environ.get('CIRCLE_BUILD_URL')
+            change_log = self._jira_handler.get_release_notes_since_tag(deployed_version, self.args.git_target)
 
             today = datetime.datetime.today()
-            descr = descr + f"""
+            descr = f"""h1. Release Notes for {self.args.git_target}
+            h2.deployed to {self.gcp_env.project}, listing changes since {deployed_version}:
+            {change_log}
+
             h3. Change Management Description
             System: All of Us DRC, Raw Data Repository (RDR)
             Developers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
