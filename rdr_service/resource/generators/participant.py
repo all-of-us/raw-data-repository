@@ -49,7 +49,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
     DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
-    TEST_HPO_ID
+    TEST_HPO_NAME
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -284,7 +284,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
 
         # If RDR paired the pid to hpo TEST or flagged as either ghost or test participant, treat as test participant
-        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or p.hpoId == TEST_HPO_ID
+        # An additional check will be made later at the end of the participant summary data setup, after we've
+        # added details like email and phone numbers to the summary data dict, in case they have fake participant
+        # credentials but are not correctly flagged in the participant table
+        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or hpo.name == TEST_HPO_NAME
 
         data = {
             'participant_id': f'P{p_id}',
