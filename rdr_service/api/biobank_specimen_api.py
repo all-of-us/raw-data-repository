@@ -8,6 +8,7 @@ from rdr_service.api_util import BIOBANK
 from rdr_service.app_util import auth_required
 from rdr_service.dao.biobank_specimen_dao import BiobankSpecimenDao, BiobankSpecimenAttributeDao, BiobankAliquotDao,\
     BiobankAliquotDatasetDao
+from rdr_service.model.biobank_order import BiobankAliquot
 
 
 class BiobankApiBase(UpdatableApi):
@@ -104,7 +105,7 @@ class BiobankSpecimenApi(BiobankApiBase):
 
 class BiobankTargetedUpdateBase(BiobankApiBase):
     @auth_required(BIOBANK)
-    def put(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def put(self, *_, **kwargs):
         rlims_id = kwargs['rlims_id']
         with self.dao.session() as session:
             model = self.get_model_with_rlims_id(rlims_id, session)
@@ -185,29 +186,6 @@ class BiobankSpecimenAttributeApi(BiobankSpecimenTargetedUpdateBase):
         return 200
 
 
-class BiobankSpecimenAliquotApi(BiobankSpecimenTargetedUpdateBase):
-    def __init__(self):
-        super(BiobankSpecimenAliquotApi, self).__init__()
-        self.aliquot_rlims_id = None
-
-    @auth_required(BIOBANK)
-    def put(self, *args, **kwargs):
-        self.aliquot_rlims_id = kwargs['aliquot_rlims_id']
-        super(BiobankSpecimenAliquotApi, self).put(*args, **kwargs)
-
-    def update_model(self, model, resource, session):
-        resource['rlimsID'] = self.aliquot_rlims_id
-
-        aliquot_dao = BiobankAliquotDao()
-        aliquot = aliquot_dao.from_client_json(resource, specimen_rlims_id=model.rlimsId, session=session)
-
-        aliquot.specimen_id = model.id
-        if aliquot.id is None:
-            aliquot_dao.insert_with_session(session, aliquot)
-        else:
-            aliquot_dao.update_with_session(session, aliquot)
-
-
 class BiobankAliquotTargetedUpdateBase(BiobankTargetedUpdateBase):
     def __init__(self):
         super(BiobankAliquotTargetedUpdateBase, self).__init__(BiobankAliquotDao())
@@ -225,6 +203,33 @@ class BiobankAliquotStatusApi(BiobankStatusApiMixin, BiobankAliquotTargetedUpdat
 
 class BiobankAliquotDisposalApi(BiobankDisposalApiMixin, BiobankAliquotTargetedUpdateBase):
     pass
+
+
+class BiobankAliquotApi(BiobankApiBase):
+    def __init__(self):
+        super(BiobankAliquotApi, self).__init__(BiobankAliquotDao())
+        self.aliquot_rlims_id = None
+        self.parent_rlims_id = None
+
+    @auth_required(BIOBANK)
+    def put(self, *_, **kwargs):
+        self.aliquot_rlims_id = kwargs['rlims_id']
+        self.parent_rlims_id = kwargs['parent_rlims_id']
+
+        aliquot_id = self.dao.get_id(BiobankAliquot(rlimsId=self.aliquot_rlims_id))
+        if aliquot_id is None:
+            super(BiobankAliquotApi, self).post()
+        else:
+            super(BiobankAliquotApi, self).put(aliquot_id, skip_etag=True)
+            # TODO: test the update too
+
+    def _get_model_to_update(self, resource, id_, expected_version, participant_id=None):
+        resource['rlimsID'] = self.aliquot_rlims_id
+        return self.dao.from_client_json(resource, parent_rlims_id=self.parent_rlims_id)
+
+    def _get_model_to_insert(self, resource, participant_id=None):
+        resource['rlimsID'] = self.aliquot_rlims_id
+        return self.dao.from_client_json(resource, parent_rlims_id=self.parent_rlims_id)
 
 
 class BiobankAliquotDatasetApi(BiobankAliquotTargetedUpdateBase):

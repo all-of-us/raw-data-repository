@@ -25,9 +25,10 @@ from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
-from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpecimenStatusApi,\
-    BiobankSpecimenDisposalApi, BiobankSpecimenAttributeApi, BiobankSpecimenAliquotApi, BiobankAliquotStatusApi,\
-    BiobankAliquotDisposalApi, BiobankAliquotDatasetApi
+from rdr_service.api.biobank_specimen_api import BiobankAliquotApi, BiobankAliquotDatasetApi,\
+    BiobankAliquotDisposalApi, BiobankAliquotStatusApi, BiobankSpecimenApi, BiobankSpecimenAttributeApi,\
+    BiobankSpecimenDisposalApi, BiobankSpecimenStatusApi
+
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
@@ -258,8 +259,8 @@ api.add_resource(
     )
 
 api.add_resource(
-    BiobankSpecimenAliquotApi,
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string:aliquot_rlims_id>",
+    BiobankAliquotApi,
+    API_PREFIX + "Biobank/specimens/<string:parent_rlims_id>/aliquots/<string:rlims_id>",
     endpoint="biobank.parent_aliquot",
     methods=["PUT"],
     )
