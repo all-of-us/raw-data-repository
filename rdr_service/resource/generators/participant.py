@@ -49,7 +49,8 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
+    TEST_HPO_ID
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -170,8 +171,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status (if it was not already set by _prep_participant() )
-            # TODO:  If a backfill for the DA-1800 Participant.isTestParticipant field is done, we may be able to
-            # remove this call/method entirely and rely solely on value assigned by _prep_participant()
+            # TODO:  Can this be removed in favor of determination from _prep_participant()?
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
 
@@ -306,6 +306,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         cohort_2_pilot_flag = \
             ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
+
+        # If RDR paired the pid to hpo TEST or flagged as either ghost or test participant, treat as test participant
+        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or p.hpoId == TEST_HPO_ID
+
         data = {
             'participant_id': f'P{p_id}',
             'biobank_id': p.biobankId,
@@ -335,7 +339,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'site': self._lookup_site_name(p.siteId, ro_session),
             'site_id': p.siteId,
             'is_ghost_id': 1 if p.isGhostId is True else 0,
-            'test_participant': 1 if p.isTestParticipant else 0,
+            'test_participant': 1 if test_participant else 0,
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
             'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag),
             'deceased_status': str(deceased_status),
