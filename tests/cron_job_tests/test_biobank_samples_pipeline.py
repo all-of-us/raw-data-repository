@@ -529,12 +529,12 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         return participant
 
     def assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_str,
-                                          as_native_american: bool, needs_ceremony: bool):
+                                          as_native_american: bool, needs_ceremony_indicator: str):
         self.assertIn((
             f'Z{participant.biobankId}',
             withdrawal_str,
             'Y' if as_native_american else 'N',
-            'Y' if needs_ceremony else 'N',
+            needs_ceremony_indicator,
             participant.participantOrigin
         ), rows)
 
@@ -550,6 +550,11 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         ceremony_native_american_participant = self._create_participant(
             is_native_american=True,
             requests_ceremony=WithdrawalAIANCeremonyStatus.REQUESTED,
+            withdrawal_time=two_days_ago
+        )
+        native_american_participant_without_answer = self._create_participant(
+            is_native_american=True,
+            requests_ceremony=None,
             withdrawal_time=two_days_ago
         )
         # Non-AIAN should not have been presented with a ceremony choice
@@ -584,21 +589,28 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 rows_written,
                 withdrawal_iso_str,
                 as_native_american=False,
-                needs_ceremony=False
+                needs_ceremony_indicator='NA'
             )
             self.assert_participant_in_report_rows(
                 ceremony_native_american_participant,
                 rows_written,
                 withdrawal_iso_str,
                 as_native_american=True,
-                needs_ceremony=True
+                needs_ceremony_indicator='Y'
+            )
+            self.assert_participant_in_report_rows(
+                native_american_participant_without_answer,
+                rows_written,
+                withdrawal_iso_str,
+                as_native_american=True,
+                needs_ceremony_indicator='U'
             )
             self.assert_participant_in_report_rows(
                 no_ceremony_native_american_participant,
                 rows_written,
                 withdrawal_iso_str,
                 as_native_american=True,
-                needs_ceremony=False
+                needs_ceremony_indicator='N'
             )
 
         # Test PDR BigQuery and resource participant summary data generators

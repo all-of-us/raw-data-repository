@@ -8,7 +8,7 @@ from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao
 from rdr_service.data_gen.generators.base_gen import BaseGen
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember
-from rdr_service.participant_enums import GenomicSetStatus
+from rdr_service.genomic_enums import GenomicSetStatus
 
 _logger = logging.getLogger("rdr_logger")
 

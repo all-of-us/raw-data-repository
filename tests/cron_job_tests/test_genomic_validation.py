@@ -12,8 +12,8 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
 )
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import SampleStatus, WithdrawalStatus, GenomicSetStatus, GenomicSetMemberStatus, \
-    GenomicValidationFlag
+from rdr_service.participant_enums import SampleStatus, WithdrawalStatus
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag
 from tests.helpers.unittest_base import BaseTestCase
 
 

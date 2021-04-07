@@ -180,7 +180,7 @@ class MailKitOrderApiTestPutSupplyRequest(MailKitOrderApiTestBase):
         orders = self.get_orders()
         self.assertEqual(1, len(orders))
         for i in orders:
-            self.assertEqual(i.barcode, "SABR90160121INA")
+            self.assertEqual(i.barcode, "SABR90160121IN")
             self.assertEqual(i.id, int(1))
             self.assertEqual(i.order_id, int(999999))
             self.assertEqual(i.biobankOrderId, "WEB1ABCD1234")

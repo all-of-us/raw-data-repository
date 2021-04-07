@@ -22,14 +22,11 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics,
     GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw, GenomicIncident)
 from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicSubProcessResult,
     QuestionnaireStatus,
     WithdrawalStatus,
-    SuspensionStatus,
-    GenomicWorkflowState,
-    GenomicManifestTypes)
+    SuspensionStatus)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
+    GenomicSubProcessResult, GenomicManifestTypes
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query

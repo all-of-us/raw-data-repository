@@ -10,7 +10,7 @@ import sqlalchemy as sa
 import rdr_service.model.utils
 
 # revision identifiers, used by Alembic.
-from rdr_service.participant_enums import GenomicManifestTypes
+from rdr_service.genomic_enums import GenomicManifestTypes
 
 revision = '4318d20e8422'
 down_revision = 'ba05cd337cdc'

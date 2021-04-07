@@ -8,17 +8,9 @@ from sqlalchemy.dialects.mysql import JSON
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState,
-    GenomicQcStatus,
-    GenomicManifestTypes,
-    GenomicContaminationCategory, GenomicIncidentCode, GenomicIncidentStatus)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
+    GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
 
 
 class GenomicSet(Base):
@@ -281,7 +273,7 @@ class GenomicFileProcessed(Base):
 
     # TODO: file_path, bucket_name, file_name, and upload_date to be removed
     # after genomic_manifest_file created, backfilled, and downstream partners notified.
-    filePath = Column('file_path', String(255), nullable=False)
+    filePath = Column('file_path', String(255), nullable=False, index=True)
     bucketName = Column('bucket_name', String(128), nullable=False)
     fileName = Column('file_name', String(128), nullable=False)
     fileStatus = Column('file_status',

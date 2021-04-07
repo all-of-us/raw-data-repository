@@ -25,10 +25,7 @@ from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
     GenomicGCValidationMetrics
-from rdr_service.participant_enums import (
-    GenomicSubProcessResult,
-    GenomicSubProcessStatus,
-    GenomicJob, GenomicWorkflowState)
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,

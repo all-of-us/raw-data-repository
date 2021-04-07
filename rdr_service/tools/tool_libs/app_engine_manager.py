@@ -197,7 +197,7 @@ class DeployAppClass(object):
             change_log = self._jira_handler.get_release_notes_since_tag(deployed_version, self.args.git_target)
 
             today = datetime.datetime.today()
-            descr = descr + f"""h1. Release Notes for {self.args.git_target}
+            descr = f"""h1. Release Notes for {self.args.git_target}
             h2.deployed to {self.gcp_env.project}, listing changes since {deployed_version}:
             {change_log}
 
@@ -382,10 +382,12 @@ class DeployAppClass(object):
 
         # Run database migration
         _logger.info('Applying database migrations...')
-        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'heads'])
         if alembic.run() != 0:
             _logger.warning('Deploy process stopped.')
             return 1
+        else:
+            self.add_jira_comment(f'Migration results:\n{alembic.output}')
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_service_config_files()
