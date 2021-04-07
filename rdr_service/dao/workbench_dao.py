@@ -539,7 +539,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 # if has creator, calculate by creator; if no creator, calculate by owners
                 if creator_user_id == researcher.userSourceId and researcher_has_verified_institution:
                     workspace_has_verified_institution = True
-                elif creator_user_id is None and researcher.userSourceId in owner_user_ids:
+                elif creator_user_id is None and researcher.userSourceId in owner_user_ids and \
+                    researcher_has_verified_institution:
                     workspace_has_verified_institution = True
 
                 user = {
@@ -927,6 +928,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 for attr_name in researcher.__dict__.keys():
                     if not attr_name.startswith('_') and attr_name != 'created':
                         setattr(exist, attr_name, getattr(researcher, attr_name))
+                researcher.id = exist.id
             else:
                 session.add(researcher)
             new_researchers.append(researcher)

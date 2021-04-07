@@ -382,10 +382,12 @@ class DeployAppClass(object):
 
         # Run database migration
         _logger.info('Applying database migrations...')
-        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'head'])
+        alembic = AlembicManagerClass(self.args, self.gcp_env, ['upgrade', 'heads'])
         if alembic.run() != 0:
             _logger.warning('Deploy process stopped.')
             return 1
+        else:
+            self.add_jira_comment(f'Migration results:\n{alembic.output}')
 
         _logger.info('Preparing configuration files...')
         config_files = self.setup_service_config_files()
