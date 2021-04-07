@@ -191,3 +191,26 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report += "\n"
 
         self.assertEqual(expected_report, report_output)
+
+    @mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook')
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.generate_report_data')
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
+    def test_report_slack_integration(self, format_mock, report_data_mock, slack_handler_mock):
+
+        # Mock the generated report
+        expected_report = "record_count    ingested_count    incident_count    "
+        expected_report += "file_type    gc_site_id    genome_type    file_path\n"
+        expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        expected_report += "test-bucket/AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        expected_report += "\n"
+
+        report_data_mock.return_value = None  # skip running the report query
+        format_mock.return_value = expected_report
+
+        # Run the workflow
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+            controller.execute_workflow(slack=True)
+
+        # Test the slack API was called correctly
+        slack_handler_mock.assert_called_with(message_data={'text': expected_report})
+
