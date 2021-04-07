@@ -9,7 +9,7 @@ from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII,
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
 from rdr_service.code_constants import PPI_SYSTEM
-from rdr_service.participant_enums import QuestionnaireResponseStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_ID
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -55,7 +55,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
                    qr.participant_id, qh2.external_id, qr.status,
                    CASE
-                       WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 or p.hpo_id = 21 THEN 1
+                       WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 or p.hpo_id = :test_hpo THEN 1
                        ELSE 0
                    END as test_participant
             from questionnaire_response qr
@@ -124,6 +124,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
             responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
+                                                                            'test_hpo': TEST_HPO_ID,
                                                                             'system': PPI_SYSTEM})
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
