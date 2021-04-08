@@ -54,6 +54,8 @@ class _BQModuleSchema(BQSchema):
                        'mode': BQFieldModeEnum.NULLABLE.name})
         fields.append({'name': 'status_id', 'type': BQFieldTypeEnum.INTEGER.name,
                        'mode': BQFieldModeEnum.NULLABLE.name})
+        fields.append({'name': 'test_participant', 'type': BQFieldTypeEnum.INTEGER.name,
+                      'mode': BQFieldModeEnum.NULLABLE.name})
 
 
         dao = BigQuerySyncDao(backup=True)
