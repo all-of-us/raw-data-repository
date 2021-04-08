@@ -352,6 +352,8 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
             [self._mock_cell('6'), self._mock_cell('removing all fields'), self._mock_cell('10/31/20'),
              self._mock_cell('1.70.1'), self._mock_cell('test@two.com')]
         )
+
+        self.updater.download_dictionary_values()
         self.updater.find_data_dictionary_diff()
         self.updater.upload_changes('adding them back again', 'test@three.com')
 

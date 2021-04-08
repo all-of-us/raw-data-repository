@@ -24,6 +24,7 @@ from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
+import rdr_service.tools.tool_libs.tool_base as tool_base
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
 from rdr_service.config import DATA_DICTIONARY_DOCUMENT_ID, READTHEDOCS_CREDS
@@ -37,7 +38,7 @@ tool_cmd = "app-engine"
 tool_desc = "manage google app engine services"
 
 
-class DeployAppClass(object):
+class DeployAppClass(tool_base.ToolBase):
 
     deploy_type = 'prod'
     deploy_sub_type = 'default'
@@ -46,25 +47,23 @@ class DeployAppClass(object):
     deploy_version = None
     deploy_root = None
 
-
     _current_git_branch = None
 
     _jira_handler = None
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+    def __init__(self, args, gcp_env=None, tool_name=None):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
-        self.args = args
-        self.gcp_env = gcp_env
+        super(DeployAppClass, self).__init__(args, gcp_env, tool_name)
 
         self.deploy_root = args.git_project
         self._current_git_branch = git_current_branch()
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
 
-        self.environment = RdrEnvironment(self.gcp_env.project)
+        self.environment = None
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -328,39 +327,47 @@ class DeployAppClass(object):
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
     def update_data_dictionary(self, server_config, rdr_version):
-        self.gcp_env.activate_sql_proxy()
-        with database_factory.make_server_cursor_database(alembic=True).session() as session:
+        configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
+        with self.initialize_process_context(service_account=configurator_account) as gcp_env:
             updater = DataDictionaryUpdater(
-                self.gcp_env.service_key_id,
-                server_config.get_config_item(DATA_DICTIONARY_DOCUMENT_ID),
-                rdr_version,
-                session
+                gcp_env.service_key_id,
+                server_config[DATA_DICTIONARY_DOCUMENT_ID],
+                rdr_version
             )
+            updater.download_dictionary_values()
 
-            changelog = updater.find_data_dictionary_diff()
-            if any(changelog.values()):
-                for tab_id, tab_changelog in changelog.items():
-                    if tab_changelog:
-                        if tab_id in [dictionary_tab_id, internal_tables_tab_id]:
-                            # The schema tabs are the only ones that list out detailed changes
-                            _logger.info(f'The following changes were found on the "{tab_id}" tab')
-                            for (table_name, column_name), changes in tab_changelog.items():
-                                if isinstance(changes, str):  # Adding or removing a column will give a string
-                                    _logger.info(f'{changes} {table_name}.{column_name}')
-                                else:
-                                    _logger.info('')
-                                    _logger.info(f'changes for {table_name}.{column_name}:')
-                                    for change_description in changes:
-                                        _logger.info(change_description)
-                                    _logger.info('')
-                        else:
-                            _logger.info(f'The "{tab_id}" tab has been updated')
+        with self.initialize_process_context() as gcp_env:
+            self.gcp_env = gcp_env
+            self.gcp_env.activate_sql_proxy()
+            with database_factory.make_server_cursor_database(alembic=True).session() as session:
+                updater.session = session
+                changelog = updater.find_data_dictionary_diff()
+                if any(changelog.values()):
+                    for tab_id, tab_changelog in changelog.items():
+                        if tab_changelog:
+                            if tab_id in [dictionary_tab_id, internal_tables_tab_id]:
+                                # The schema tabs are the only ones that list out detailed changes
+                                _logger.info(f'The following changes were found on the "{tab_id}" tab')
+                                for (table_name, column_name), changes in tab_changelog.items():
+                                    if isinstance(changes, str):  # Adding or removing a column will give a string
+                                        _logger.info(f'{changes} {table_name}.{column_name}')
+                                    else:
+                                        _logger.info('')
+                                        _logger.info(f'changes for {table_name}.{column_name}:')
+                                        for change_description in changes:
+                                            _logger.info(change_description)
+                                        _logger.info('')
+                            else:
+                                _logger.info(f'The "{tab_id}" tab has been updated')
 
+        if any(changelog.values()):
+            with self.initialize_process_context(service_account=configurator_account) as gcp_env:
                 update_message = input('What is a summary of the above changes?: ')
                 _logger.info('uploading data-dictionary updates')
+                updater.gcp_service_key_id = gcp_env.service_key_id
                 updater.upload_changes(update_message, self.gcp_env.account)
-            else:
-                _logger.info('No changes detected')
+        else:
+            _logger.info('No data-dictionary changes needed')
 
     def deploy_app(self):
         """
@@ -470,73 +477,85 @@ class DeployAppClass(object):
         Main program process
         :return: Exit code value
         """
-        clr = self.gcp_env.terminal_colors
+        with self.initialize_process_context() as gcp_env:
+            self.gcp_env = gcp_env
+            self.environment = RdrEnvironment(self.gcp_env.project)
 
-        # Installing the app config makes API calls and needs an oauth token to succeed.
-        if not self.args.quiet and not gcp_application_default_creds_exist() and not self.args.service_account:
-            _logger.error('\n*** Google application default credentials were not found. ***')
-            _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
-            return 1
+            _check_for_git_project(self.args, self.gcp_env)
 
-        if not is_git_branch_clean():
-            _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
-            return 1
+            clr = self.gcp_env.terminal_colors
 
-        if not self.setup_services():
-            return 1
-
-        self.deploy_version = self.args.deploy_as if self.args.deploy_as else \
-                                self.args.git_target.replace('.', '-')
-
-        running_services = gcp_get_app_versions(running_only=True)
-        if not running_services:
-            running_services = {}
-
-        _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
-        _logger.info(clr.fmt(''))
-        _logger.info('=' * 90)
-        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
-        _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_target)))
-        _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
-        _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
-
-        if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
-            self.jira_ready = True
-            self._jira_handler = JiraTicketHandler()
-
-        if self.jira_ready:
-            _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
-        else:
-            if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
-                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('*** Not Set ***', clr.fg_bright_red)))
-
-        for service in self.services:
-            _logger.info('\n  Service : {0}'.format(service))
-            _logger.info('-' * 90)
-            if service in running_services:
-                cur_services = running_services[service]
-                for cur_service in cur_services:
-                    _logger.info('    Deployed Version    : {0}, split : {1}, deployed : {2}'.
-                                 format(clr.fmt(cur_service['version'], clr.bold, clr.fg_bright_blue),
-                                        clr.fmt(cur_service['split'], clr.bold, clr.fg_bright_blue),
-                                        clr.fmt(cur_service['deployed'], clr.bold, clr.fg_bright_blue)))
-
-                _logger.info('    Target Version      : {0}'.format(clr.fmt(self.deploy_version)))
-
-        _logger.info('')
-        _logger.info('=' * 90)
-
-        if not self.args.quiet:
-            confirm = input('\nStart deployment (Y/n)? : ')
-            if confirm and confirm.lower().strip() != 'y':
-                _logger.warning('Aborting deployment.')
+            # Installing the app config makes API calls and needs an oauth token to succeed.
+            if not self.args.quiet and not gcp_application_default_creds_exist() and not self.args.service_account:
+                _logger.error('\n*** Google application default credentials were not found. ***')
+                _logger.error("Run 'gcloud auth application-default login' and then try deploying again.\n")
                 return 1
 
-        result = self.deploy_app()
-        self.manage_cloud_version_numbers()
+            if not is_git_branch_clean():
+                _logger.error('*** There are uncommitted changes in current branch, aborting. ***\n')
+                return 1
 
-        git_checkout_branch(self._current_git_branch)
-        _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)
+            if not self.setup_services():
+                return 1
+
+            self.deploy_version = self.args.deploy_as if self.args.deploy_as else \
+                                    self.args.git_target.replace('.', '-')
+
+            running_services = gcp_get_app_versions(running_only=True)
+            if not running_services:
+                running_services = {}
+
+            _logger.info(clr.fmt('Deployment Information:', clr.custom_fg_color(156)))
+            _logger.info(clr.fmt(''))
+            _logger.info('=' * 90)
+            _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+            _logger.info('  Branch/Tag To Deploy  : {0}'.format(clr.fmt(self.args.git_target)))
+            _logger.info('  App Source Path       : {0}'.format(clr.fmt(self.deploy_root)))
+            _logger.info('  Promote               : {0}'.format(clr.fmt('No' if self.args.no_promote else 'Yes')))
+
+            if 'JIRA_API_USER_NAME' in os.environ and 'JIRA_API_USER_PASSWORD' in os.environ:
+                self.jira_ready = True
+                self._jira_handler = JiraTicketHandler()
+
+            if self.jira_ready:
+                _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('Set')))
+            else:
+                if self.gcp_env.project in ('all-of-us-rdr-prod', 'all-of-us-rdr-stable'):
+                    _logger.info('  JIRA Credentials      : {0}'.format(clr.fmt('*** Not Set ***', clr.fg_bright_red)))
+
+            for service in self.services:
+                _logger.info('\n  Service : {0}'.format(service))
+                _logger.info('-' * 90)
+                if service in running_services:
+                    cur_services = running_services[service]
+                    for cur_service in cur_services:
+                        _logger.info('    Deployed Version    : {0}, split : {1}, deployed : {2}'.
+                                     format(clr.fmt(cur_service['version'], clr.bold, clr.fg_bright_blue),
+                                            clr.fmt(cur_service['split'], clr.bold, clr.fg_bright_blue),
+                                            clr.fmt(cur_service['deployed'], clr.bold, clr.fg_bright_blue)))
+
+                    _logger.info('    Target Version      : {0}'.format(clr.fmt(self.deploy_version)))
+
+            _logger.info('')
+            _logger.info('=' * 90)
+
+            if not self.args.quiet:
+                confirm = input('\nStart deployment (Y/n)? : ')
+                if confirm and confirm.lower().strip() != 'y':
+                    _logger.warning('Aborting deployment.')
+                    return 1
+
+            result = self.deploy_app()
+            self.manage_cloud_version_numbers()
+
+            git_checkout_branch(self._current_git_branch)
+            _logger.info('Returned to git branch/tag: %s ...', self._current_git_branch)
+
+            server_config = self.get_server_config()
+
+        if self.environment == RdrEnvironment.PROD:
+            _logger.info('Comparing production database schema to data-dictionary...')
+            self.update_data_dictionary(server_config, self.deploy_version)
 
         return result
 
@@ -871,6 +890,16 @@ class RunGCPUtilCommand:
         return return_code
 
 
+def _check_for_git_project(args, gcp_env):
+    # determine the git project root directory.
+    if not args.git_project:
+        if gcp_env.git_project:
+            args.git_project = gcp_env.git_project
+        else:
+            _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
+            exit(1)
+
+
 def run():
     # Set global debug value and setup application logging.
     setup_logging(
@@ -931,41 +960,33 @@ def run():
 
     args = parser.parse_args()
 
-    with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+    if args.action == 'deploy':
+        exit_code = DeployAppClass(args, tool_name=tool_cmd).run()
+    else:
+        with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
+            _check_for_git_project(args, gcp_env)
 
-        # determine the git project root directory.
-        if not args.git_project:
-            if gcp_env.git_project:
-                args.git_project = gcp_env.git_project
+            if args.action == 'list':
+                process = ListServicesClass(args, gcp_env)
+                exit_code = process.run()
+
+            elif args.action == 'split-traffic':
+                process = SplitTrafficClass(args, gcp_env)
+                exit_code = process.run()
+
+            elif args.action == 'config':
+                process = AppConfigClass(args, gcp_env)
+                exit_code = process.run()
+
+            elif args.action == 'test':
+                process = RunGCPUtilCommand(args, gcp_env)
+                exit_code = process.run()
+
             else:
-                _logger.error("No project root found, set '--git-project' arg or set RDR_PROJECT environment var.")
-                exit(1)
+                _logger.info('Please select a service option to run. For help use "app-engine --help".')
+                exit_code = 1
 
-
-        if args.action == 'deploy':
-            process = DeployAppClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'list':
-            process = ListServicesClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'split-traffic':
-            process = SplitTrafficClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'config':
-            process = AppConfigClass(args, gcp_env)
-            exit_code = process.run()
-
-        elif args.action == 'test':
-            process = RunGCPUtilCommand(args, gcp_env)
-            exit_code = process.run()
-
-        else:
-            _logger.info('Please select a service option to run. For help use "app-engine --help".')
-            exit_code = 1
-        return exit_code
+    return exit_code
 
 
 # --- Main Program Call ---
