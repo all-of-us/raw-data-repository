@@ -49,7 +49,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
     DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
-    TEST_HPO_NAME
+    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -164,9 +164,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status (if it was not already set by _prep_participant() )
-            # TODO:  Can this be removed in favor of determination from _prep_participant()?
             if summary['test_participant'] == 0:
-                summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
+                summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
@@ -1275,28 +1274,31 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['distinct_visits'] = len(dates)
         return data
 
-    def _calculate_test_participant(self, summary):
+    def _check_for_test_credentials(self, summary):
         """
-        Calculate if this participant is a test participant or not.
+        Check if this participant is a test participant or not based on email or phone number values
+        that are only supposed to be used for test participant creation.  Note:  test participant status
+        is primarily determined by checking RDR participant table fields (is_ghost_id, is_test_participant, or HPO
+        pairing to TEST) which is done in _prep_participant().  This method is only called if it was not already
+        determined by those primary indicators that the participant is a test participant.
         :param summary: summary data
         :return: dict
         """
-        test_participant = summary['is_ghost_id']
-
-        # Check for @example.com in email address
-        if not test_participant:
-            if summary.get('test_participant') == 1:
-                test_participant = 1
-            # Check to see if the participant is in the Test HPO.
-            elif (summary.get('hpo') or 'None').lower() == 'test':
-                test_participant = 1
-            # Test if @example.com is in email address.
-            elif '@example.com' in (summary.get('email') or ''):
-                test_participant = 1
-            # Check for SMS phone number for test participants.
-            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')).startswith('4442'):
-                test_participant = 1
-            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')).startswith('4442'):
+        test_participant = 0
+        # Test if @example.com is in email address.
+        if '@example.com' in (summary.get('email') or ''):
+            test_participant = 1
+        else:
+            # Check for SMS phone number for test participants.  To mirror RDR, the phone number verification
+            # has an order of precedence between login_phone_number and phone_number values and only the
+            # login_phone_number is verified if it exists
+            # See questionnaire_response_dao.py:
+            #   # switch account to test account if the phone number starts with 4442
+            #   # this is a requirement from PTSC
+            #    ph = getattr(participant_summary, 'loginPhoneNumber') or \
+            #        getattr(participant_summary, 'phoneNumber') or 'None'
+            phone = summary.get('login_phone_number', None) or summary.get('phone_number', None) or 'None'
+            if phone and re.sub('[\(|\)|\-|\s]', '', phone).startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
                 test_participant = 1
 
         data = {'test_participant': test_participant}
