@@ -1019,6 +1019,36 @@ class BiobankOrderApiTest(BaseTestCase):
         self.assertEqual('updated', aliquot['sampleType'])
         self.assertEqual('tube', aliquot['containerTypeID'])
 
+    def test_simplified_aliquot_nesting(self):
+        """The aliquots endpoint should allow for defining a new aliquot as a child of an existing aliquot"""
+        generic_aliquot_data = {
+            'sampleType': 'first sample',
+            'containerTypeID': 'tube'
+        }
+
+        # Create a parent aliquot to test with
+        specimen = self.data_generator.create_database_biobank_specimen()
+        parent_rlims_id = 'parent_aliquot'
+        self.send_put(f'Biobank/specimens/{specimen.rlimsId}/aliquots/{parent_rlims_id}', generic_aliquot_data)
+
+        # Create another aliquot that is nested within the first aliquot (specimen -> aliquot -> aliquot)
+        child_rlims_id = 'child_aliquot'
+        self.send_put(f'Biobank/specimens/{parent_rlims_id}/aliquots/{child_rlims_id}', generic_aliquot_data)
+
+        # Verify that the aliquot was successfully created and has the correct nesting structure
+        aliquot = self.session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == child_rlims_id).one()
+        self.assertEqual(parent_rlims_id, aliquot.parent_aliquot_rlims_id)
+        self.assertEqual(specimen.rlimsId, aliquot.specimen_rlims_id)
+
+        # Make an update to the aliquot and make sure the API modifies the existing aliquot
+        updated_sample_type = 'new updated sample type'
+        self.send_put(f'Biobank/specimens/{parent_rlims_id}/aliquots/{child_rlims_id}', {
+            'sampleType': updated_sample_type
+        })
+        with self.dao.session() as session:
+            aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.id == aliquot.id).one()
+            self.assertEqual(updated_sample_type, aliquot.sampleType)
+
     def _create_minimal_specimen_with_aliquot(self, rlims_id='sabrina', aliquot_rlims_id='salem'):
         payload = self.get_minimal_specimen_json(rlims_id)
         payload['aliquots'] = [{
