@@ -2,7 +2,8 @@
 import mock, datetime, pytz
 
 from rdr_service import clock
-from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
+    GenomicManifestTypes
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
@@ -112,7 +113,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
         report_ran_time = self.fake_time + datetime.timedelta(hours=6)
 
         with clock.FakeClock(report_ran_time):
-            report_data = rc.generate_report("SUMMARY", "RUNS", "D")
+            report_data = rc.generate_report_data("SUMMARY", "RUNS", "D")
 
         # Get the genomic_job_run records
         for row in report_data:
@@ -131,5 +132,85 @@ class GenomicDataQualityComponentTest(BaseTestCase):
             self.assertEqual(0, row['INVALID_FILE_STRUCTURE'])
 
 
+class GenomicDataQualityReportTest(BaseTestCase):
+    def setUp(self, with_data=False, with_consent_codes=False) -> None:
+        super().setUp()
 
+    def test_daily_ingestion_summary(self):
+        # Set up test data
+        bucket_name = "test-bucket"
+        file_name = "AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        manifest_path = f"{bucket_name}/{file_name}"
+
+        # Create file_processed and job_run IDs
+        job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        # Create genomic_aw1_raw record
+        self.data_generator.create_database_genomic_aw1_raw(
+            file_path=manifest_path,
+            package_id="PKG-2104-026571",
+            biobank_id="A10001",
+        )
+
+        # Create genomic_manifest_file record
+        manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.BIOBANK_GC,
+            filePath=manifest_path,
+            fileName=file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        # Insert raw data record for AW1
+        # Create file_processed and job_run IDs
+        self.data_generator.create_database_genomic_file_processed(
+            runId=job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=manifest_file.id,
+            filePath=f"/{manifest_path}",
+            bucketName=bucket_name,
+            fileName=file_name,
+        )
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow()
+
+        expected_report = "record_count    ingested_count    incident_count    "
+        expected_report += "file_type    gc_site_id    genome_type    file_path\n"
+        expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        expected_report += "test-bucket/AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        expected_report += "\n"
+
+        self.assertEqual(expected_report, report_output)
+
+    @mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook')
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.generate_report_data')
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
+    def test_report_slack_integration(self, format_mock, report_data_mock, slack_handler_mock):
+
+        # Mock the generated report
+        expected_report = "record_count    ingested_count    incident_count    "
+        expected_report += "file_type    gc_site_id    genome_type    file_path\n"
+        expected_report += "1    0    0    aw1    rdr    aou_wgs    "
+        expected_report += "test-bucket/AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        expected_report += "\n"
+
+        report_data_mock.return_value = None  # skip running the report query
+        format_mock.return_value = expected_report
+
+        # Run the workflow
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+            controller.execute_workflow(slack=True)
+
+        # Test the slack API was called correctly
+        slack_handler_mock.assert_called_with(message_data={'text': expected_report})
 

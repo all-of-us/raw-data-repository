@@ -367,6 +367,7 @@ class GenomicJobController:
 
         metric.genomicSetMemberId = member.id
         metric.contaminationCategory = raw.contamination_category
+        metric.genomicFileProcessedId = member.aw2FileProcessedId
 
         # Iterate mapped fields
         _map = raw_aw2_to_genomic_set_member_fields
@@ -1000,6 +1001,9 @@ class DataQualityJobController:
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
+        self.genomic_report_slack = SlackMessageHandler(
+            webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_reports')
+        )
 
     def __enter__(self):
         logging.info(f'Workflow Initiated: {self.job.name}')
@@ -1090,10 +1094,19 @@ class DataQualityJobController:
 
         report_level, report_target, time_frame = rc.set_report_parameters(**kwargs)
 
-        report = rc.generate_report(level=report_level,
-                                    target=report_target,
-                                    time_frame=time_frame)
+        report_data = rc.generate_report_data(level=report_level,
+                                              target=report_target,
+                                              time_frame=time_frame)
+
+        report_string = rc.format_report(report_data)
+
+        # Send report to slack #rdr-genomics channel
+        if kwargs.get('slack') is True:
+            message_data = {'text': report_string}
+            self.genomic_report_slack.send_message_to_webhook(
+                message_data=message_data
+            )
 
         self.job_run_result = GenomicSubProcessResult.SUCCESS
 
-        return report
+        return report_string
