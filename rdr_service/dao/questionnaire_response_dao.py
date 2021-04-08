@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime
 from dateutil import parser
+from hashlib import md5
 import pytz
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
@@ -757,6 +758,12 @@ class QuestionnaireResponseDao(BaseDao):
             return status_map[fhir_response.status]
 
     @classmethod
+    def calculate_answer_hash(cls, response_json):
+        answer_list_json = response_json.get('group', '')
+        answer_list_str = json.dumps(answer_list_json)
+        return md5(answer_list_str.encode('utf-8')).hexdigest()
+
+    @classmethod
     def _extension_from_fhir_object(cls, fhir_extension):
         # Get the non-empty values from the FHIR extension object for the url field and
         # any field with a name that starts with "value"
@@ -825,6 +832,7 @@ class QuestionnaireResponseDao(BaseDao):
             language=language,
             resource=json.dumps(resource_json),
             status=self.read_status(fhir_qr),
+            answerHash=self.calculate_answer_hash(resource_json),
             externalId=self._parse_external_identifier(fhir_qr)
         )
 
