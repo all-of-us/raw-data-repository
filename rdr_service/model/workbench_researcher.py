@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint, JSON, event, Boolean
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, UniqueConstraint, JSON, event, Boolean
 from sqlalchemy.orm import relationship
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
@@ -100,6 +100,8 @@ class WorkbenchResearcherHistory(WorkbenchResearcherBase, Base):
     when that record was created in the history table specifically (if main table is updated; previous version
     if/when a record is updated; if never changed, it appears as it was originally created)
     """
+
+    __table_args__ = (Index('idx_researcher_history_user_id', WorkbenchResearcherBase.userSourceId),)
 
 
 class WorkbenchInstitutionalAffiliationsHistory(Base):
