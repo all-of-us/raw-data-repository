@@ -221,9 +221,9 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
     def get_generated_items(item_list, item_key=None, item_value=None, sort_key=None):
         """
             Extracts requested items from a provided list of dicts (e.g., ps_json['consents'])
-            Returns a filtered list of dict entries that match the item name, sorted if requested
+            Returns a filtered list of dict entries that match the item key/value, sorted if requested
             Example:
-                get_items(ps_json['modules'], item_key='mod_module', item_value='OverallHealth',
+                get_generated_items(ps_json['modules'], item_key='mod_module', item_value='OverallHealth',
                                   sort_key='mod_authored')
         """
         if not (item_key and item_value and isinstance(item_list, list)):
