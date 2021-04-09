@@ -7,7 +7,7 @@
 alabaster==0.7.12         # via sphinx
 alembic==1.4.2            # via -r requirements.in
 aniso8601==8.0.0          # via flask-restful
-astroid==2.4.1            # via pylint
+astroid==2.5.2            # via pylint
 babel==2.8.0              # via sphinx
 backoff==1.10.0           # via -r requirements.in
 blinker==1.4              # via -r requirements.in
