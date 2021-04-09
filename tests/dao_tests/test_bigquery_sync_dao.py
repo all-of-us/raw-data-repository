@@ -471,5 +471,4 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         # This field should be None for consent payloads that don't contain the expiration hidden question code
         self.assertIsNone(ehr_consents[2].get('consent_expired', ''))
 
-        self.assertIsNotNone(ps_json)
 
