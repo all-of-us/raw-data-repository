@@ -1585,3 +1585,11 @@ class GenomicIncidentDao(UpdatableDao):
             ).filter(
                 GenomicIncident.source_file_processed_id == file_id
             ).all()
+
+    def insert(self, incident: GenomicIncident) -> GenomicIncident:
+        maximum_message_length = GenomicIncident.message.type.length
+        if len(incident.message) > maximum_message_length:
+            logging.warning('Truncating incident message when storing (too many characters for database column)')
+            incident.message = incident.message[:maximum_message_length]
+
+        return super(GenomicIncidentDao, self).insert(incident)
