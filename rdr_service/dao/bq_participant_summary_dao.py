@@ -122,14 +122,13 @@ _withdrawal_aian_ceremony_status_map = {
 _deprecated_gror_consent_questionnaire_id = 415
 _deprecated_gror_consent_question_code_names = ('CheckDNA_Yes', 'CheckDNA_No', 'CheckDNA_NotSure')
 
-# The use case initially detected for these unlayered question codes was participants whose EHR consents
-# had expired and RDR received a payload with the EHRConsentPII_ConsentExpired hidden question code and
-# EHRConsentPII_ConsentExpired_Yes answer code; but then a renewed EHR Consent without that hidden question code
-# was subsequently received.  We don't want the EHRConsentPII_ConsentExpired_Yes value layered onto the new consent
-# See: get_module_answers() method
-_unlayered_question_codes = (
-    'EHRConsentPII_ConsentExpired'
-)
+# For cases where we don't want to carry forward previous answers if a subsequent response to the same module is a
+# partial.  For example, the only time we see the EHRConsentPII_ConsentExpired hidden question code / answer is for an
+# expired consent.   Don't want to carry the EHRConsentPII_ConsentExpired_Yes answer to a subsequent renewed consent
+# See: get_module_answers() method.
+_unlayered_question_codes_map = {
+    'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
+}
 
 
 class BQParticipantSummaryGenerator(BigQueryGenerator):
@@ -298,7 +297,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         # An additional check will be made later at the end of the participant summary data setup, after we've
         # added details like email and phone numbers to the summary data dict, in case they have fake participant
         # credentials but are not correctly flagged in the participant table
-        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or hpo.name == TEST_HPO_NAME
+        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or (hpo and hpo.name == TEST_HPO_NAME)
 
 
         data = {
@@ -1413,10 +1412,11 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
 
         # Apply answers to data dict, response by response, until we reach the end or the specific response id.
         data = dict()
+        unlayered_codes = _unlayered_question_codes_map.get(module, [])
         for questionnaire_response_id, qnans in answers.items():
-            # This "overwrites"/removes previous payload's answer codes for answers that should not be carried forward
-            # (layered) from previously processed responses if the question code was not in the more recent payload
-            for q_code in _unlayered_question_codes:
+            # This excludes the layering of prior answers to certain question codes if they do not exist in the more
+            # recent response
+            for q_code in unlayered_codes:
                 if q_code in data.keys() and q_code not in qnans.keys():
                     del data[q_code]
 

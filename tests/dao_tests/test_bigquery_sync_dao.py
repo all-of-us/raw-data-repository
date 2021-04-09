@@ -218,16 +218,22 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         return biobank_order
 
     @staticmethod
-    def get_modules_by_name(module_name=None, module_list=None):
+    def get_generated_items(item_list, item_key=None, item_value=None, sort_key=None):
         """
-            Extracts module entries from the participant resource generator data modules list
-            Returns a filtered list of entries that match the module name, sorted by authored date
+            Extracts requested items from a provided list of dicts (e.g., ps_json['consents'])
+            Returns a filtered list of dict entries that match the item name, sorted if requested
+            Example:
+                get_items(ps_json['modules'], item_key='mod_module', item_value='OverallHealth',
+                                  sort_key='mod_authored')
         """
-        if not (module_name and isinstance(module_list, list)):
-            return module_list
+        if not (item_key and item_value and isinstance(item_list, list)):
+            return item_list
 
-        modules = list(filter(lambda x: x['mod_module'] == module_name, module_list))
-        return sorted(modules, key=(lambda d: d['mod_authored']))
+        items = list(filter(lambda x: x[item_key] == item_value, item_list))
+        if sort_key:
+            items = sorted(items, key=(lambda s: s[sort_key]))
+        return items
+
 
     def test_registered_participant_gen(self):
         """ Test a BigQuery after initial participant creation """
@@ -372,7 +378,7 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
 
         # This verifies the module submitted status from the participant generator data for each of the GROR modules
         # Also checks that an external id key/value pair exists (but value likely None for test data modules)
-        gror_modules = self.get_modules_by_name('GROR', ps_json['modules'])
+        gror_modules = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR')
         self.assertIn('mod_external_id', gror_modules[0])
         self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
@@ -408,7 +414,8 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
 
         # This verifies the module submitted status from the participant generator data for ehr modules
         # Also checks that an external id key/value pair exists (but value likely None for test data modules)
-        ehr_modules = self.get_modules_by_name('EHRConsentPII', ps_json['modules'])
+        ehr_modules = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='EHRConsentPII',
+                                               sort_key="mod_authored")
         self.assertIn('mod_external_id',ehr_modules[0])
         self.assertEqual('SUBMITTED', ehr_modules[0]['mod_status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', ehr_modules[1]['mod_status'])
@@ -429,3 +436,40 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
         ps_json = gen.make_bqrecord(self.participant_id)
         self.assertEqual('PARTICIPANT', ps_json['enrollment_status'])
+
+    def test_ehr_consent_expired_and_renewed(self):
+        self._set_up_participant_data(fake_time=self.TIME_1)
+        # send ehr consent expired response
+        self._submit_ehrconsent_expired(self.participant_id, response_time=self.TIME_2)
+        # send a new ehr consent (renewal/reconsent)
+        self._submit_ehrconsent(self.participant_id,
+                                response_code=CONSENT_PERMISSION_YES_CODE,
+                                response_time=self.TIME_3)
+        gen = BQParticipantSummaryGenerator()
+        ps_json = gen.make_bqrecord(self.participant_id)
+
+        self.assertIsNotNone(ps_json)
+        ehr_consents = self.get_generated_items(ps_json['consents'], item_key='consent_module',
+                                                item_value='EHRConsentPII', sort_key='consent_module_authored')
+
+        # Confirm a total of three EHR Consent responses
+        self.assertEqual(len(ehr_consents), 3)
+        # Verify the initial EHR consent details (sent by _set_up_participant_data)
+        self.assertEqual(ehr_consents[0].get('consent_module_authored', None), self.TIME_1)
+        self.assertEqual(ehr_consents[0].get('consent_value', None), CONSENT_PERMISSION_YES_CODE)
+        # This field should be None for consent payloads that don't contain the expiration hidden question code
+        self.assertIsNone(ehr_consents[0].get('consent_expired', ''))
+
+        # Verify the expired consent response details (contains the hidden expiration question code / answer value)
+        self.assertEqual(ehr_consents[1].get('consent_module_authored', None), self.TIME_2)
+        self.assertEqual(ehr_consents[1].get('consent_value', None), CONSENT_PERMISSION_NO_CODE)
+        self.assertEqual(ehr_consents[1].get('consent_expired', None), EHR_CONSENT_EXPIRED_YES)
+
+        # Verify the last EHR consent renewal;  'consent_expired' value should not be carried forward from last consent
+        self.assertEqual(ehr_consents[2].get('consent_module_authored', None), self.TIME_3)
+        self.assertEqual(ehr_consents[2].get('consent_value', None), CONSENT_PERMISSION_YES_CODE)
+        # This field should be None for consent payloads that don't contain the expiration hidden question code
+        self.assertIsNone(ehr_consents[2].get('consent_expired', ''))
+
+        self.assertIsNotNone(ps_json)
+
