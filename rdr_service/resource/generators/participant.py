@@ -119,6 +119,16 @@ _withdrawal_aian_ceremony_status_map = {
 _deprecated_gror_consent_questionnaire_id = 415
 _deprecated_gror_consent_question_code_names = ('CheckDNA_Yes', 'CheckDNA_No', 'CheckDNA_NotSure')
 
+# The use case initially detected for these unlayered question codes was participants whose EHR consents
+# had expired and RDR received a payload with the EHRConsentPII_ConsentExpired hidden question code and
+# EHRConsentPII_ConsentExpired_Yes answer code; but then a renewed EHR Consent without that hidden question code
+# was subsequently received.  We don't want the EHRConsentPII_ConsentExpired_Yes value layered onto the new consent
+# See: get_module_answers() method
+_unlayered_question_codes = (
+    'EHRConsentPII_ConsentExpired'
+)
+
+
 class ParticipantSummaryGenerator(generators.BaseGenerator):
     """
     Generate a Participant Summary Resource object
@@ -1405,6 +1415,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # Apply answers to data dict, response by response, until we reach the end or the specific response id.
         data = dict()
         for questionnaire_response_id, qnans in answers.items():
+            # This "overwrites"/removes previous payload's answer codes for answers that should not be carried forward
+            # (layered) from previously processed responses if the question code was not in the more recent payload
+            for q_code in _unlayered_question_codes:
+                if q_code in data.keys() and q_code not in qnans.keys():
+                    del data[q_code]
+
             data.update(qnans)
             if qr_id and qr_id == questionnaire_response_id:
                 break
