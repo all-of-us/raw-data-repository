@@ -42,7 +42,7 @@ commands:
           command: ./ci/run_unittests.sh
       - run:
           name: Safety Check
-          command: source venv/bin/activate & safety check
+          command: source venv/bin/activate & python -m safety check
 
   deploy-app-steps:
     parameters:
