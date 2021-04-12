@@ -7,13 +7,6 @@ from rdr_service.tools.tool_libs.tool_base import ToolBase
 class ToolTestMixin:
 
     @staticmethod
-    def _build_env():
-        gcp_env = mock.MagicMock()
-        gcp_env.project = 'localhost'
-
-        return gcp_env
-
-    @staticmethod
     def _build_args(args):
         args_obj = mock.MagicMock()
         if args is not None:
@@ -24,7 +17,9 @@ class ToolTestMixin:
 
     @classmethod
     def run_tool(cls, tool_class: Type[ToolBase], tool_args: dict = None, server_config: dict = None):
-        gcp_env = ToolTestMixin._build_env()
+        gcp_env = mock.MagicMock()
+        gcp_env.project = 'localhost'
+
         tool_args = ToolTestMixin._build_args(tool_args)
 
         with mock.patch.object(ToolBase, 'initialize_process_context') as mock_init_env,\

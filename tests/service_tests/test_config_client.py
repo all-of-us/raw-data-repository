@@ -15,7 +15,7 @@ class ConfigClientTest(BaseTestCase):
         self.mock_gcp_env.project = self.test_environment_name
         self.config_client = ConfigClient(self.mock_gcp_env)
 
-    def _mock_config_data(self, base_config_data_str, test_config_data_str):
+    def _mock_server_config_data(self, base_config_data_str, test_config_data_str):
         def get_config_data(config_root, _):
             if config_root == self.test_environment_name:
                 return test_config_data_str, config_root
@@ -31,7 +31,7 @@ class ConfigClientTest(BaseTestCase):
         Test that the client builds config data from the base config file
         as well as the file for the specific environment.
         """
-        self._mock_config_data(
+        self._mock_server_config_data(
             base_config_data_str=json.dumps({
                 'base_setting': 'default'
             }),
@@ -49,7 +49,7 @@ class ConfigClientTest(BaseTestCase):
     def test_environment_settings_override_base(self):
         """Verify that the environment configs override values from the base file"""
         config_key = 'config_key_to_override'
-        self._mock_config_data(
+        self._mock_server_config_data(
             base_config_data_str=json.dumps({
                 config_key: 'default'
             }),
