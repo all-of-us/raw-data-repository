@@ -40,6 +40,9 @@ commands:
       - run:
           name: Running Unittests
           command: ./ci/run_unittests.sh
+      - run:
+          name: Safety Check
+          command: source venv/bin/activate && safety check
 
   deploy-app-steps:
     parameters:
