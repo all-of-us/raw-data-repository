@@ -53,7 +53,7 @@ class BQRWBResearcher(BQTable):
 class BQRWBResearcherView(BQView):
     __viewname__ = 'v_rwb_researcher'
     __viewdescr__ = 'Research Workbench Researcher View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'user_source_id'
     __table__ = BQRWBResearcher
     # We need to build a SQL statement with all fields except sub-tables and remove duplicates.
     __sql__ = """
@@ -61,7 +61,7 @@ class BQRWBResearcherView(BQView):
                 %%FIELD_LIST%%
             FROM (
                 SELECT *, 
-                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
+                    ROW_NUMBER() OVER (PARTITION BY user_source_id ORDER BY modified desc) AS rn
                   FROM `{project}`.{dataset}.rwb_researcher 
               ) t
               WHERE t.rn = 1
@@ -78,13 +78,13 @@ class BQRWBResearcherView(BQView):
 class BQRWBResearcherGenderView(BQView):
     __viewname__ = 'v_rwb_researcher_gender'
     __viewdescr__ = 'Research Workbench Researcher Gender View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'user_source_id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.user_source_id, nt.*
           FROM (
             SELECT *, 
-                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
+                ROW_NUMBER() OVER (PARTITION BY user_source_id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(genders) as nt
           WHERE t.rn = 1
@@ -94,13 +94,13 @@ class BQRWBResearcherGenderView(BQView):
 class BQRWBResearcherRaceView(BQView):
     __viewname__ = 'v_rwb_researcher_race'
     __viewdescr__ = 'Research Workbench Researcher Race View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'user_source_id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.user_source_id, nt.*
           FROM (
             SELECT *, 
-                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
+                ROW_NUMBER() OVER (PARTITION BY user_source_id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(races) as nt
           WHERE t.rn = 1
@@ -110,13 +110,13 @@ class BQRWBResearcherRaceView(BQView):
 class BQRWBResearcherSexAtBirthView(BQView):
     __viewname__ = 'v_rwb_researcher_sex_at_birth'
     __viewdescr__ = 'Research Workbench Researcher Sex at Birth View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'user_source_id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.user_source_id, nt.*
           FROM (
             SELECT *, 
-                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
+                ROW_NUMBER() OVER (PARTITION BY user_source_id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(sex_at_birth) as nt
           WHERE t.rn = 1
@@ -126,13 +126,13 @@ class BQRWBResearcherSexAtBirthView(BQView):
 class BQRWBResearcherDegreeView(BQView):
     __viewname__ = 'v_rwb_researcher_degree'
     __viewdescr__ = 'Research Workbench Researcher Degree View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'user_source_id'
     __table__ = BQRWBResearcher
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.user_source_id, nt.*
           FROM (
             SELECT *, 
-                ROW_NUMBER() OVER (PARTITION BY id ORDER BY modified desc) AS rn
+                ROW_NUMBER() OVER (PARTITION BY user_source_id ORDER BY modified desc) AS rn
               FROM `{project}`.{dataset}.rwb_researcher 
           ) t cross join unnest(degrees) as nt
           WHERE t.rn = 1

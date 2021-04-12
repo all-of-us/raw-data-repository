@@ -928,6 +928,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 for attr_name in researcher.__dict__.keys():
                     if not attr_name.startswith('_') and attr_name != 'created':
                         setattr(exist, attr_name, getattr(researcher, attr_name))
+                researcher.id = exist.id
             else:
                 session.add(researcher)
             new_researchers.append(researcher)

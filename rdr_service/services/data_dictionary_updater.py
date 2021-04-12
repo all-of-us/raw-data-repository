@@ -83,7 +83,7 @@ class KeyTabUpdateHelper:
 
 
 class DataDictionaryUpdater:
-    def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session):
+    def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session=None):
         self.gcp_service_key_id = gcp_service_key_id
         self.dictionary_sheet_id = dictionary_sheet_id
         self.session = session
@@ -478,21 +478,23 @@ class DataDictionaryUpdater:
             self._sheet = sheet
             self._modify_sheet()
 
+    def download_dictionary_values(self):
+        self._sheet = self._build_sheet()
+        self._sheet.download_values()
+
     def find_data_dictionary_diff(self):
         """
         This will find the updates needed for the data-dictionary and return the changes.
         Use the `upload_changes` method to write them to the data-dictionary spreadsheet.
         """
-        self._sheet = self._build_sheet()
-        self._sheet.download_values()
         self._modify_sheet()
-
         return self.changelog
 
     def upload_changes(self, message, author):
         if not self._sheet:
             raise Exception('Must call `find_data_dictionary_diff` first')
 
+        self._sheet.service_key_id = self.gcp_service_key_id
         self._sheet.set_current_tab(changelog_tab_id)
 
         # Go through the existing change log rows until we get to a new row

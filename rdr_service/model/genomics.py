@@ -273,7 +273,7 @@ class GenomicFileProcessed(Base):
 
     # TODO: file_path, bucket_name, file_name, and upload_date to be removed
     # after genomic_manifest_file created, backfilled, and downstream partners notified.
-    filePath = Column('file_path', String(255), nullable=False)
+    filePath = Column('file_path', String(255), nullable=False, index=True)
     bucketName = Column('bucket_name', String(128), nullable=False)
     fileName = Column('file_name', String(128), nullable=False)
     fileStatus = Column('file_status',

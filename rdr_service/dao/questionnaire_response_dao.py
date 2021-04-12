@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime
 from dateutil import parser
+from hashlib import md5
 import pytz
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
@@ -31,6 +32,7 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
+    PMI_SKIP_CODE,
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
@@ -57,7 +59,7 @@ from rdr_service.dao.participant_summary_dao import (
 )
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
-from rdr_service.model.code import CodeType
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
@@ -123,6 +125,11 @@ class ResponseValidator:
         if self.survey is not None:
             self._code_to_question_map = self._build_code_to_question_map()
 
+        # Get the skip code id
+        self.skip_code_id = self.session.query(Code.codeId).filter(Code.value == PMI_SKIP_CODE).scalar()
+        if self.skip_code_id is None:
+            logging.error('Unable to load PMI_SKIP code')
+
     def _get_survey_for_questionnaire_history(self, questionnaire_history: QuestionnaireHistory):
         survey_query = self.session.query(Survey).filter(
             Survey.codeId.in_([concept.codeId for concept in questionnaire_history.concepts]),
@@ -172,11 +179,14 @@ class ResponseValidator:
         except (parser.ParserError, ValueError):
             logging.error(f'Unable to parse validation string for question {question_code}', exc_info=True)
 
-    @classmethod
-    def _check_answer_has_expected_data_type(cls, answer: QuestionnaireResponseAnswer,
+    def _check_answer_has_expected_data_type(self, answer: QuestionnaireResponseAnswer,
                                              question_definition: SurveyQuestion,
                                              questionnaire_question: QuestionnaireQuestion):
         question_code_value = questionnaire_question.code.value
+
+        if answer.valueCodeId == self.skip_code_id:
+            # Any questions can be answered with a skip, there's isn't anything to check in that case
+            return
 
         if question_definition.questionType in (SurveyQuestionType.UNKNOWN,
                                                 SurveyQuestionType.DROPDOWN,
@@ -203,7 +213,7 @@ class ResponseValidator:
                     if answer.valueDate is None:
                         logging.warning(f'No valueDate answer given for date-based question {question_code_value}')
                     else:
-                        cls._validate_min_max(
+                        self._validate_min_max(
                             answer.valueDate,
                             question_definition.validation_min,
                             question_definition.validation_max,
@@ -216,7 +226,7 @@ class ResponseValidator:
                             f'No valueInteger answer given for integer-based question {question_code_value}'
                         )
                     else:
-                        cls._validate_min_max(
+                        self._validate_min_max(
                             answer.valueInteger,
                             question_definition.validation_min,
                             question_definition.validation_max,
@@ -255,7 +265,10 @@ class ResponseValidator:
                     if survey_question.codeId in question_codes_answered:
                         logging.error(f'Too many answers given for {survey_question.code.value}')
                     elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
-                        question_codes_answered.add(survey_question.codeId)
+                        if not (
+                            survey_question.questionType == SurveyQuestionType.UNKNOWN and len(survey_question.options)
+                        ):  # UNKNOWN question types could be for a Checkbox, so multiple answers should be allowed
+                            question_codes_answered.add(survey_question.codeId)
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -757,6 +770,12 @@ class QuestionnaireResponseDao(BaseDao):
             return status_map[fhir_response.status]
 
     @classmethod
+    def calculate_answer_hash(cls, response_json):
+        answer_list_json = response_json.get('group', '')
+        answer_list_str = json.dumps(answer_list_json)
+        return md5(answer_list_str.encode('utf-8')).hexdigest()
+
+    @classmethod
     def _extension_from_fhir_object(cls, fhir_extension):
         # Get the non-empty values from the FHIR extension object for the url field and
         # any field with a name that starts with "value"
@@ -825,6 +844,7 @@ class QuestionnaireResponseDao(BaseDao):
             language=language,
             resource=json.dumps(resource_json),
             status=self.read_status(fhir_qr),
+            answerHash=self.calculate_answer_hash(resource_json),
             externalId=self._parse_external_identifier(fhir_qr)
         )
 

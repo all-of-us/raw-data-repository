@@ -329,7 +329,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
                     (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
                     (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
                 ], else_=(
-                    case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')], else_='N')
+                    case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'U')], else_='NA')
                 )
             ).label('needs_disposal_ceremony'),
             Participant.participantOrigin.label('participant_origin')

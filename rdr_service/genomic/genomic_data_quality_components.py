@@ -52,13 +52,13 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
             return clock.CLOCK.now() - dd
 
-    def generate_report(self, level, target, time_frame):
+    def generate_report_data(self, level, target, time_frame):
         """
         Genearates a report based on target and time frame
         :param level: str, "SUMMARY" or "DETAIL"
         :param target: str, "RUNS", "INGESTIONS" etc.
         :param time_frame: 'd' or 'w'
-        :return: dict of report data
+        :return: ResultProxy for report data
         """
 
         report_def = self.get_report_def(level, target, time_frame)
@@ -117,7 +117,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         """
         Returns the report by executing the report definition query
         :param report_def: ReportDef object
-        :return: dict of report data
+        :return: ResultProxy
         """
 
         # Execute the query_def's source_data_query
@@ -126,10 +126,24 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         with dao.session() as session:
             result = session.execute(
                 report_def.source_data_query, report_def.source_data_params
-            ).fetchall()
+            )
 
         return result
 
-    def format_report(self, data):
-        # TODO: For use when notifications are implemented
-        pass
+    @staticmethod
+    def format_report(data):
+        """
+        Converts the report query ResultProxy object to tab-delimited string
+        :param data: ResultProxy
+        :return: string
+        """
+
+        # Header row
+        report_string = "    ".join(data.keys())
+        report_string += "\n"
+
+        for row in data.fetchall():
+            report_string += "    ".join(tuple(map(str, row)))
+            report_string += "\n"
+
+        return report_string

@@ -8,7 +8,7 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 
 class RlimsIdLoadingStrategy(LoadingStrategy):
@@ -159,6 +159,10 @@ class BiobankDaoBase(UpdatableDao):
     def get_id(self, obj):
         with self.session() as session:
             return self.get_id_with_session(obj, session)
+
+    def get_etag(self, *_):
+        # Because the UpdatableApi class requires this when processing a PUT request
+        return None
 
 
 class BiobankSpecimenDao(BiobankDaoBase):
@@ -363,23 +367,76 @@ class BiobankAliquotDao(BiobankDaoBase):
     def __init__(self, preloader=None):
         super().__init__(BiobankAliquot, preloader=preloader)
 
-    #pylint: disable=unused-argument
-    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
-                         specimen_rlims_id=None, parent_aliquot_rlims_id=None, session=None):
+    def _get_parents(self, parent_rlims_id, session) -> (BiobankSpecimen, BiobankAliquot):
+        # See if the given parent_rlims_id is a specimen
+        if self.preloader:
+            parent_specimen = self.preloader.get_object(BiobankSpecimen(rlimsId=parent_rlims_id))
+        else:
+            parent_specimen = session.query(BiobankSpecimen).filter(
+                BiobankSpecimen.rlimsId == parent_rlims_id
+            ).one_or_none()
 
-        if specimen_rlims_id is None:
-            raise BadRequest("Specimen rlims id required for aliquots")
+        # If the direct parent is a specimen, give that back and no parent aliquot
+        if parent_specimen:
+            return parent_specimen, None
+        else:
+            # The given rlims should be an aliquot then. So find the aliquot and give back the aliquot and specimen
+            if self.preloader:
+                parent_aliquot = self.preloader.get_object(BiobankAliquot(rlimsId=parent_rlims_id))
+                parent_specimen = self.preloader.get_object(BiobankSpecimen(rlimsId=parent_aliquot.specimen_rlims_id))
+            else:
+                parent_aliquot = session.query(BiobankAliquot).filter(
+                    BiobankAliquot.rlimsId == parent_rlims_id
+                ).one_or_none()
+                parent_specimen = session.query(BiobankSpecimen).filter(
+                    BiobankSpecimen.rlimsId == parent_aliquot.specimen_rlims_id
+                ).one_or_none()
 
+            if parent_aliquot is None:
+                raise NotFound(f'Unable to find specimen or aliquot with rlimsId {parent_rlims_id}')
+
+            return parent_specimen, parent_aliquot
+
+    def _from_client_json_with_session(self, resource, session, parent_rlims_id=None, specimen_rlims_id=None,
+                                       parent_aliquot_rlims_id=None):
+        specimen, parent_aliquot = None, None
+
+        # If not given a parent_rlims_id, then the specimen_rlims_id is expected to be the parent
+        if parent_rlims_id is not None:
+            specimen, parent_aliquot = self._get_parents(parent_rlims_id, session)
+            specimen_rlims_id = specimen.rlimsId if specimen else None
+            parent_aliquot_rlims_id = parent_aliquot.rlimsId if parent_aliquot else None
         aliquot = BiobankAliquot(rlimsId=resource['rlimsID'], specimen_rlims_id=specimen_rlims_id,
                                  parent_aliquot_rlims_id=parent_aliquot_rlims_id)
+        self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
 
+        if specimen:
+            aliquot.specimen_id = specimen.id
+        if parent_aliquot:
+            aliquot.parent_aliquot_id = parent_aliquot.id
+        return aliquot
+
+    def from_client_json(self, resource, session=None, parent_rlims_id=None, specimen_rlims_id=None,
+                         parent_aliquot_rlims_id=None, **_):
         if session is None:
             with self.session() as session:
-                self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
+                aliquot_from_json = self._from_client_json_with_session(
+                    resource,
+                    session,
+                    parent_rlims_id=parent_rlims_id,
+                    specimen_rlims_id=specimen_rlims_id,
+                    parent_aliquot_rlims_id=parent_aliquot_rlims_id
+                )
         else:
-            self.read_aliquot_data(aliquot, resource, specimen_rlims_id, session)
+            aliquot_from_json = self._from_client_json_with_session(
+                resource,
+                session,
+                parent_rlims_id=parent_rlims_id,
+                specimen_rlims_id=specimen_rlims_id,
+                parent_aliquot_rlims_id=parent_aliquot_rlims_id
+            )
 
-        return aliquot
+        return aliquot_from_json
 
     def read_aliquot_data(self, aliquot, resource, specimen_rlims_id, session):
         for client_field, model_field in [('sampleType', None),

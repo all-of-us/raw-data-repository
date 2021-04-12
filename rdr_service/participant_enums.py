@@ -35,7 +35,7 @@ UNSET_HPO_ID = 0
 TEST_EMAIL_PATTERN = "%@example.com"
 # The name of the 'test' HPO that test participants are normally affiliated with.
 TEST_HPO_NAME = "TEST"
-TEST_HPO_ID = 19
+TEST_HPO_ID = 21
 # Test login phone number prefix
 TEST_LOGIN_PHONE_NUMBER_PREFIX = "4442"
 PARTICIPANT_COHORT_2_START_TIME = datetime(2018, 4, 24, 0, 0, 0)

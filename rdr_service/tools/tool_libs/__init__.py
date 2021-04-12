@@ -178,7 +178,7 @@ class GCPEnvConfigObject(object):
         # If localhost project, just point to the local instance of mysql.
         if (project and project == 'localhost') or (self.project and self.project == 'localhost'):
             passwd = 'root' if user == 'root' else 'rdr!pwd'
-            os.environ['DB_CONNECTION_STRING'] = f'mysql+mysqldb://{user}:{passwd}@127.0.0.1:3306/rdr?charset=utf8'
+            os.environ['DB_CONNECTION_STRING'] = f'mysql+mysqldb://{user}:{passwd}@127.0.0.1:3306/rdr?charset=utf8mb4'
             return 1
 
         _logger.debug("Starting google sql proxy...")
@@ -192,7 +192,7 @@ class GCPEnvConfigObject(object):
             time.sleep(6)  # allow time for sql connection to be made.
             cfg_user = 'root' if user == 'root' else 'rdr'
             passwd = db_config[f'{cfg_user}_db_password']
-            os.environ['DB_CONNECTION_STRING'] = f'mysql+mysqldb://{user}:{passwd}@127.0.0.1:{port}/rdr?charset=utf8'
+            os.environ['DB_CONNECTION_STRING'] = f'mysql+mysqldb://{user}:{passwd}@127.0.0.1:{port}/rdr?charset=utf8mb4'
             return self._sql_proxy_process.pid
 
         _logger.error('Failed to activate sql proxy.')

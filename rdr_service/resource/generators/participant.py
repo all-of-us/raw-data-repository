@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import MySQLdb
 import re
 
 from collections import OrderedDict
@@ -49,7 +48,8 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus
+    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
+    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.constants import SchemaID
 
@@ -123,10 +123,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
     """
     Generate a Participant Summary Resource object
     """
-
-    # Temporary
-    cdm_db_exists = False
-
     ro_dao = None
     # Retrieve module and sample test lists from config.
     _baseline_modules = [mod.replace('questionnaireOn', '')
@@ -144,8 +140,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             self.ro_dao = ResourceDataDao(backup=True)
 
         with self.ro_dao.session() as ro_session:
-            # Temporary
-            self.cdm_db_exists = self._test_cdm_db_exists(ro_session)
             # prep participant info from Participant record
             summary = self._prep_participant(p_id, ro_session)
             # prep additional participant profile info
@@ -170,10 +164,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate test participant status (if it was not already set by _prep_participant() )
-            # TODO:  If a backfill for the DA-1800 Participant.isTestParticipant field is done, we may be able to
-            # remove this call/method entirely and rely solely on value assigned by _prep_participant()
             if summary['test_participant'] == 0:
-                summary = self._merge_schema_dicts(summary, self._calculate_test_participant(summary))
+                summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
 
@@ -214,23 +206,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
         return None
-
-    def _test_cdm_db_exists(self, ro_session):
-        """
-        Temporary function to detect if the 'cdm' database and 'tmp_questionnaire_response' table exists.
-        :param ro_session: Readonly DAO session object
-        :return: True if 'cdm' database exists otherwise False.
-        """
-        sql = "SELECT * FROM cdm.tmp_questionnaire_response LIMIT 1"
-        try:
-            ro_session.execute(sql)
-            return True
-        except exc.ProgrammingError:
-            pass
-        except (exc.OperationalError, MySQLdb._exceptions.OperationalError):
-            msg = 'Unexpected error found when checking for tmp_questionnaire_response table'
-            logging.warning(msg, exc_info=False)
-        return False
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -306,6 +281,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         cohort_2_pilot_flag = \
             ParticipantCohortPilotFlag.COHORT_2_PILOT if cohort_2_pilot else ParticipantCohortPilotFlag.UNSET
+
+        # If RDR paired the pid to hpo TEST or flagged as either ghost or test participant, treat as test participant
+        # An additional check will be made later at the end of the participant summary data setup, after we've
+        # added details like email and phone numbers to the summary data dict, in case they have fake participant
+        # credentials but are not correctly flagged in the participant table
+        test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or hpo.name == TEST_HPO_NAME
+
         data = {
             'participant_id': f'P{p_id}',
             'biobank_id': p.biobankId,
@@ -335,7 +317,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'site': self._lookup_site_name(p.siteId, ro_session),
             'site_id': p.siteId,
             'is_ghost_id': 1 if p.isGhostId is True else 0,
-            'test_participant': 1 if p.isTestParticipant else 0,
+            'test_participant': 1 if test_participant else 0,
             'cohort_2_pilot_flag': str(cohort_2_pilot_flag),
             'cohort_2_pilot_flag_id': int(cohort_2_pilot_flag),
             'deceased_status': str(deceased_status),
@@ -439,8 +421,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # PDR-178:  Retrieve both the processed (layered) answers result, and the raw responses. This allows us to
         # do some extra processing of the ConsentPII data without having to query all over again.
-        qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True,
-                                                   cdm_db_exists=self.cdm_db_exists)
+        qnans, responses = self.get_module_answers(self.ro_dao, 'ConsentPII', p_id, return_responses=True)
         if not qnans:
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
@@ -499,52 +480,21 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
+        code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
+            filter(QuestionnaireResponse.questionnaireId ==
+                   QuestionnaireConcept.questionnaireId).label('codeId')
 
-        if not self.cdm_db_exists:
-            code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
-                filter(QuestionnaireResponse.questionnaireId ==
-                       QuestionnaireConcept.questionnaireId).label('codeId')
-
-            # Responses are sorted by authored date ascending and then created date descending
-            # This should result in a list where any replays of a response are adjacent (most recently created first)
-            query = ro_session.query(
-                    QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
-                    QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
-                    QuestionnaireResponse.status, code_id_query). \
-                join(QuestionnaireHistory). \
-                filter(QuestionnaireResponse.participantId == p_id). \
-                order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
-            # sql = self.ro_dao.query_to_text(query)
-            results = query.all()
-
-        # Temporary: Use raw sql instead to facilitate joining across databases to the cdm.tmp_questionnaire_response
-        # table where we have flagged duplicate response payloads sent by PTSC for filtering out during PDR data
-        # rebuilds.  See:  ROC-825
-        else:
-            # This SQL statement is based off of the query_to_text() output for the SQLAlchemy query above, and then
-            # modified to add the additional filtering when joined with cdm.temp_questionnaire_response (and match
-            # expected column names to what the SQLAlchemy query also returns)
-            _raw_sql = """
-                 SELECT qr.questionnaire_response_id questionnaireResponseId,
-                        qr.authored,
-                        qr.created,
-                        qr.language,
-                        qh.external_id externalId,
-                        qr.status,
-                   (SELECT max(questionnaire_concept.code_id) AS max_1
-                    FROM questionnaire_concept
-                    WHERE qr.questionnaire_id = questionnaire_concept.questionnaire_id) AS `codeId`
-                 FROM questionnaire_response qr
-                 INNER JOIN questionnaire_history qh
-                       ON qh.questionnaire_id = qr.questionnaire_id
-                       AND qh.version = qr.questionnaire_version
-                 LEFT OUTER JOIN cdm.tmp_questionnaire_response tqr
-                       ON qr.questionnaire_response_id = tqr.questionnaire_response_id
-                 WHERE qr.participant_id = :pid
-                       AND (tqr.duplicate is NULL or tqr.duplicate = 0)
-                 ORDER BY qr.authored, qr.created DESC;
-             """
-            results = ro_session.execute(_raw_sql, {'pid': p_id})
+        # Responses are sorted by authored date ascending and then created date descending
+        # This should result in a list where any replays of a response are adjacent (most recently created first)
+        query = ro_session.query(
+                QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
+                QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
+                QuestionnaireResponse.status, code_id_query). \
+            join(QuestionnaireHistory). \
+            filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
+            order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
+        # sql = self.ro_dao.query_to_text(query)
+        results = query.all()
 
         data = {
             'consent_cohort': BQConsentCohort.UNSET.name,
@@ -672,8 +622,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, return_responses=False,
-                                        cdm_db_exists=self.cdm_db_exists)
+        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, return_responses=False)
         if not qnans or len(qnans) == 0:
             return {}
 
@@ -1325,35 +1274,38 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['distinct_visits'] = len(dates)
         return data
 
-    def _calculate_test_participant(self, summary):
+    def _check_for_test_credentials(self, summary):
         """
-        Calculate if this participant is a test participant or not.
+        Check if this participant is a test participant or not based on email or phone number values
+        that are only supposed to be used for test participant creation.  Note:  test participant status
+        is primarily determined by checking RDR participant table fields (is_ghost_id, is_test_participant, or HPO
+        pairing to TEST) which is done in _prep_participant().  This method is only called if it was not already
+        determined by those primary indicators that the participant is a test participant.
         :param summary: summary data
         :return: dict
         """
-        test_participant = summary['is_ghost_id']
-
-        # Check for @example.com in email address
-        if not test_participant:
-            if summary.get('test_participant') == 1:
-                test_participant = 1
-            # Check to see if the participant is in the Test HPO.
-            elif (summary.get('hpo') or 'None').lower() == 'test':
-                test_participant = 1
-            # Test if @example.com is in email address.
-            elif '@example.com' in (summary.get('email') or ''):
-                test_participant = 1
-            # Check for SMS phone number for test participants.
-            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('login_phone_number') or 'None')).startswith('4442'):
-                test_participant = 1
-            elif re.sub('[\(|\)|\-|\s]', '', (summary.get('phone_number') or 'None')).startswith('4442'):
+        test_participant = 0
+        # Test if @example.com is in email address.
+        if '@example.com' in (summary.get('email') or ''):
+            test_participant = 1
+        else:
+            # Check for SMS phone number for test participants.  To mirror RDR, the phone number verification
+            # has an order of precedence between login_phone_number and phone_number values and only the
+            # login_phone_number is verified if it exists
+            # See questionnaire_response_dao.py:
+            #   # switch account to test account if the phone number starts with 4442
+            #   # this is a requirement from PTSC
+            #    ph = getattr(participant_summary, 'loginPhoneNumber') or \
+            #        getattr(participant_summary, 'phoneNumber') or 'None'
+            phone = summary.get('login_phone_number', None) or summary.get('phone_number', None) or 'None'
+            if phone and re.sub('[\(|\)|\-|\s]', '', phone).startswith(TEST_LOGIN_PHONE_NUMBER_PREFIX):
                 test_participant = 1
 
         data = {'test_participant': test_participant}
         return data
 
     @staticmethod
-    def get_module_answers(ro_dao, module, p_id, qr_id=None, return_responses=False, cdm_db_exists=False):
+    def get_module_answers(ro_dao, module, p_id, qr_id=None, return_responses=False):
         """
         Retrieve the questionnaire module answers for the given participant id.  This retrieves all responses to
         the module and applies/layers the answers from each response to the final data dict returned.
@@ -1362,7 +1314,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param p_id: participant id.
         :param qr_id: questionnaire response id
         :param return_responses:  Return the responses (unlayered) in addition to the processed answer data
-        :param cdm_db_exists: Temporary arg.
         :return: dicts
         """
         _module_info_sql = """
@@ -1377,21 +1328,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             FROM questionnaire_response qr
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
+            WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
+                AND qr.is_duplicate = FALSE
+            ORDER BY qr.created;
         """
-        # Temporary
-        if cdm_db_exists:
-            _module_info_sql += """
-                LEFT OUTER JOIN cdm.tmp_questionnaire_response tqr
-                    ON qr.questionnaire_response_id = tqr.questionnaire_response_id
-                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod) AND
-                   (tqr.duplicate is null or tqr.duplicate = 0)
-                ORDER BY qr.created;
-            """
-        else:
-            _module_info_sql += """
-                WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                ORDER BY qr.created;
-            """
 
         _answers_sql = """
             SELECT qr.questionnaire_id,
