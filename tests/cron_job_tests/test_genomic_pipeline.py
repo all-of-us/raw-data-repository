@@ -370,8 +370,8 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('0', gc_metrics[1].contamination)
 
     def test_ingest_specific_aw2_file(self):
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=(1, 2),
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=(1, 3),
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         self._update_test_sample_ids()

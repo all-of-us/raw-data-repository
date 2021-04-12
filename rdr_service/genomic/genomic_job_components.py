@@ -677,8 +677,19 @@ class GenomicFileIngester:
                 row['contamination'] = 0
 
         except ValueError:
-            logging.error(f'contamination must be a number for sample_id: {row["sampleid"]}')
-            return GenomicSubProcessResult.ERROR
+            if row['processingstatus'].lower() != 'pass':
+                return row
+
+            _message = f'contamination must be a number for sample_id: {row["sampleid"]}'
+
+            self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                            source_file_processed_id=self.file_obj.id,
+                                            code=GenomicIncidentCode.DATA_VALIDATION_FAILED.name,
+                                            message=_message,
+                                            biobank_id=member.biobankId,
+                                            sample_id=row['sampleid'],
+                                            )
+
 
         # Calculate contamination_category
         contamination_value = float(row['contamination'])
