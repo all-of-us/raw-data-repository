@@ -4,14 +4,14 @@ import sys
 from typing import Type
 
 from rdr_service.dao import database_factory
+from rdr_service.services.config_client import ConfigClient
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext
-import rdr_service.tools.tool_libs.app_engine_manager as app_engine_manager
 
 logger = logging.getLogger("rdr_logger")
 
 
-class ToolBase(object):
+class ToolBase:
     def __init__(self, args, gcp_env=None, tool_name=None):
         self.args = args
         self.tool_cmd = tool_name
@@ -46,13 +46,8 @@ class ToolBase(object):
             return 1
 
     def get_server_config(self):
-        # The AppConfig class uses the git_project field from args when initializing,
-        # looks like it uses it as a root directory for other purposes.
-        self.args.git_project = self.gcp_env.git_project
-
-        # Get the server config
-        app_config_manager = app_engine_manager.AppConfigClass(self.args, self.gcp_env)
-        return app_config_manager.get_bucket_app_config()
+        client = ConfigClient(self.gcp_env)
+        return client.get_server_config()
 
     @staticmethod
     def get_session(database_name='rdr', alembic=False, **kwargs):
