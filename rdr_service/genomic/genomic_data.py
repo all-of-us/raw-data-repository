@@ -12,7 +12,8 @@ from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, Qu
 
 class GenomicQueryClass:
 
-    def __init__(self):
+    def __init__(self, input_manifest=None):
+        self.input_manifest = input_manifest
         self.genomic_data_config = {
             GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
                 [
@@ -300,8 +301,8 @@ class GenomicQueryClass:
                         (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                         (GenomicGCValidationMetrics.ignoreFlag == 0) &
                         (GenomicGCValidationMetrics.contamination.isnot(None)) &
-                        (GenomicGCValidationMetrics.contamination != '')
-                        # (GenomicFileProcessed.genomicManifestFileId == self.input_manifest.get('id'))
+                        (GenomicGCValidationMetrics.contamination != '') &
+                        (GenomicFileProcessed.genomicManifestFileId == (self.input_manifest and self.input_manifest.id))
                     )
                 )
         }

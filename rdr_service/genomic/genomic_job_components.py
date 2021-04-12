@@ -2870,7 +2870,9 @@ class ManifestDefinitionProvider:
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
         self.kwargs = kwargs
-        self.query = GenomicQueryClass()
+        self.query = GenomicQueryClass(
+            input_manifest=self.kwargs['kwargs'].get('input_manifest')
+        )
         self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
                     "genomic_set_name",
