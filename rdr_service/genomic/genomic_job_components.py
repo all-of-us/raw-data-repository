@@ -642,9 +642,6 @@ class GenomicFileIngester:
 
         self.update_member_for_aw2(member)
 
-        # Update member in DB
-        self.member_dao.update(member)
-
         # Update AW1 manifest feedback record count
         if existing_metrics_obj is None and not self.controller.bypass_record_count:
             # For feedback manifest loop
@@ -715,14 +712,9 @@ class GenomicFileIngester:
         :param member:
         """
 
+        state = GenomicWorkflowState.AW2
         member.aw2FileProcessedId = self.file_obj.id
-
-        # Only update the state if it was AW1
-        if member.genomicWorkflowState == GenomicWorkflowState.AW1:
-            member.genomicWorkflowState = GenomicWorkflowState.AW2
-            member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-
-        self.member_dao.update(member)
+        self.member_dao.update_member_state(member, state)
 
     def _ingest_gem_a2_manifest(self, file_data):
         """
