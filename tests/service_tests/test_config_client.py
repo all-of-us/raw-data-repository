@@ -9,7 +9,7 @@ class ConfigClientTest(BaseTestCase):
     def setUp(self, **kwargs) -> None:
         super(ConfigClientTest, self).setUp(**kwargs)
 
-        self.test_environment_name = 'test-project'
+        self.test_environment_name = 'localhost'
 
         self.mock_gcp_env = mock.MagicMock()
         self.mock_gcp_env.project = self.test_environment_name
@@ -41,7 +41,6 @@ class ConfigClientTest(BaseTestCase):
         )
 
         test_config = self.config_client.get_server_config()
-        del test_config['geocode_api_key']  # Geocode API key purpose is unclear, ignoring it in the test for now
         self.assertEqual({
             'base_setting': 'default',
             'test_key': 'test_value'
@@ -60,7 +59,6 @@ class ConfigClientTest(BaseTestCase):
         )
 
         test_config = self.config_client.get_server_config()
-        del test_config['geocode_api_key']  # Geocode API key purpose is unclear, ignoring it in the test for now
         self.assertEqual({
             config_key: 'new_value'
         }, test_config)
