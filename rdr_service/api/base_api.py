@@ -249,6 +249,7 @@ class BaseApi(Resource):
                     field_filters.append(field_filter)
                 elif not field_filter and key not in invalid_exclusion:
                     invalid_filters.append(key)
+
         return Query(
             field_filters,
             order_by,

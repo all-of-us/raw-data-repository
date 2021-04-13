@@ -326,13 +326,14 @@ class BaseDao(object):
         return result
 
     def query(self, query_def):
+        if query_def.invalid_filters and not query_def.field_filters:
+            raise BadRequest("No valid fields provided")
+
         if not self.order_by_ending:
             raise BadRequest(f"Can't query on type {self.model_type} -- no order by ending specified")
 
         with self.session() as session:
             total = None
-            if query_def.invalid_filters and not query_def.field_filters:
-                return Results([], total=total)
 
             query, field_names = self._make_query(session, query_def)
             items = query.all()

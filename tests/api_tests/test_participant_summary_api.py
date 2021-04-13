@@ -465,7 +465,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(null_email_result.json['message'],
                          'Missing email or login_phone_number in request')
 
-    def test_invalid_filters_return_null(self):
+    def test_invalid_filters_return(self):
         generate_num_summary = 10
         for num in range(generate_num_summary):
             if num == 1:
@@ -490,8 +490,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(resource['firstName'], 'Testy')
         self.assertEqual(resource['lastName'], 'Tester')
 
-        response_bad_filter = self.send_get("ParticipantSummary?foobarbaz=1")
-        self.assertEqual(len(response_bad_filter['entry']), 0)
+        response_bad_filter = self.send_get(
+            "ParticipantSummary?foobarbaz=1",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response_bad_filter.status_code, 400)
+        self.assertEqual(response_bad_filter.json['message'], 'No valid fields provided')
 
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), generate_num_summary)
