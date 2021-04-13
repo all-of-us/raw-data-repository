@@ -690,6 +690,7 @@ class GenomicFileIngester:
                                             sample_id=row['sampleid'],
                                             )
 
+            return GenomicSubProcessResult.ERROR
 
         # Calculate contamination_category
         contamination_value = float(row['contamination'])
@@ -994,6 +995,9 @@ class GenomicFileIngester:
 
             if member is not None:
                 row_copy = self.prep_aw2_row_attributes(row_copy, member)
+
+                if row_copy == GenomicSubProcessResult.ERROR:
+                    return GenomicSubProcessResult.ERROR
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
