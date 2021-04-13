@@ -677,7 +677,19 @@ class GenomicFileIngester:
                 row['contamination'] = 0
 
         except ValueError:
-            logging.error(f'contamination must be a number for sample_id: {row["sampleid"]}')
+            if row['processingstatus'].lower() != 'pass':
+                return row
+
+            _message = f'contamination must be a number for sample_id: {row["sampleid"]}'
+
+            self.controller.create_incident(source_job_run_id=self.job_run_id,
+                                            source_file_processed_id=self.file_obj.id,
+                                            code=GenomicIncidentCode.DATA_VALIDATION_FAILED.name,
+                                            message=_message,
+                                            biobank_id=member.biobankId,
+                                            sample_id=row['sampleid'],
+                                            )
+
             return GenomicSubProcessResult.ERROR
 
         # Calculate contamination_category
@@ -983,6 +995,9 @@ class GenomicFileIngester:
 
             if member is not None:
                 row_copy = self.prep_aw2_row_attributes(row_copy, member)
+
+                if row_copy == GenomicSubProcessResult.ERROR:
+                    continue
 
                 # check whether metrics object exists for that member
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)

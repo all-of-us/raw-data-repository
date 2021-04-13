@@ -370,8 +370,8 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('0', gc_metrics[1].contamination)
 
     def test_ingest_specific_aw2_file(self):
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=(1, 2),
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=(1, 3),
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         self._update_test_sample_ids()
@@ -3342,7 +3342,7 @@ class GenomicPipelineTest(BaseTestCase):
         new_record = deepcopy(metrics_record_2)
         metrics_record_2.ignoreFlag = 1
 
-        new_record.id = 3
+        new_record.id = 4
         new_record.contamination = '0.1346'
 
         with self.metrics_dao.session() as session:
@@ -3733,7 +3733,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, incident.slack_notification)
             self.assertIsNone(incident.slack_notification_date)
 
-        self.assertEqual(2, len(incidents))
+        self.assertEqual(3, len(incidents))
         self.assertEqual("1", incidents[0].biobank_id)
         self.assertEqual("1001", incidents[0].sample_id)
         self.assertEqual(2, incidents[0].source_job_run_id)
