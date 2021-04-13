@@ -3699,13 +3699,13 @@ class GenomicPipelineTest(BaseTestCase):
     def test_aw2_genomic_incident_inserted(self):
         # set up test file
         test_file = 'RDR_AoU_GEN_TestDataManifest.csv'
-
         subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
-
-        test_file_name = self._create_ingestion_test_file(test_file,
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=subfolder,
-                                                          include_sub_num=True)
+        test_file_name = self._create_ingestion_test_file(
+            test_file,
+            _FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=subfolder,
+            include_sub_num=True
+        )
 
         # run the GC Metrics Ingestion workflow via cloud task
         # Set up file/JSON
@@ -3745,3 +3745,41 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(2, incidents[1].source_job_run_id)
         self.assertEqual(1, incidents[1].source_file_processed_id)
         self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[1].code)
+
+    def test_aw1_genomic_missing_header_cleaned_inserted(self):
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Missing-Header.csv")
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        # Test the data was ingested OK
+        files_processed = self.file_processed_dao.get_all()
+        self.assertEqual(files_processed[0].fileName, gc_manifest_filename)
+        self.assertEqual(files_processed[0].fileResult, GenomicSubProcessResult.SUCCESS)
+        # Check record count for manifest record
+        manifest_record = self.manifest_file_dao.get(1)
+        self.assertEqual(file_name.split('/')[1], manifest_record.fileName)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
