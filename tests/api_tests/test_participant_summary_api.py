@@ -465,6 +465,37 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(null_email_result.json['message'],
                          'Missing email or login_phone_number in request')
 
+    def test_invalid_filters_return_null(self):
+        generate_num_summary = 10
+        for num in range(generate_num_summary):
+            if num == 1:
+                self.data_generator \
+                    .create_database_participant_summary(
+                        firstName="Testy",
+                        lastName="Tester"
+                    )
+            else:
+                self.data_generator \
+                    .create_database_participant_summary()
+
+        response_good_bad_filter = self.send_get("ParticipantSummary?foobarbaz=1&lastName=Tester")
+        self.assertEqual(len(response_good_bad_filter['entry']), 1)
+        resource = response_good_bad_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_good_filter = self.send_get("ParticipantSummary?lastName=Tester")
+        self.assertEqual(len(response_good_filter['entry']), 1)
+        resource = response_good_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_bad_filter = self.send_get("ParticipantSummary?foobarbaz=1")
+        self.assertEqual(len(response_bad_filter['entry']), 0)
+
+        response_no_filter = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response_no_filter['entry']), generate_num_summary)
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]

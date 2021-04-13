@@ -100,6 +100,7 @@ class Query(object):
         include_total=False,
         offset=False,
         options=None,
+        invalid_filters=None
     ):
         self.field_filters = field_filters
         self.order_by = order_by
@@ -110,6 +111,7 @@ class Query(object):
         self.always_return_token = always_return_token
         self.include_total = include_total
         self.options = options
+        self.invalid_filters = invalid_filters
 
 
 class Results(object):
