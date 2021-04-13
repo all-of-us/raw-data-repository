@@ -104,9 +104,7 @@ class GenomicFileIngester:
         self.job_run_id = job_run_id
         self.file_obj = None
         self.file_queue = deque()
-
         self.target_file = target_file
-
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
         self.sub_folder_name = sub_folder
@@ -245,6 +243,7 @@ class GenomicFileIngester:
             logging.info("Validating file.")
 
             self.file_validator.valid_schema = None
+
             validation_result = self.file_validator.validate_ingestion_file(
                 filename=self.file_obj.fileName,
                 data_to_validate=data_to_ingest
@@ -869,6 +868,9 @@ class GenomicFileIngester:
         csv_reader = csv.DictReader(csv_file, delimiter=",")
         data_to_ingest['fieldnames'] = csv_reader.fieldnames
         for row in csv_reader:
+            for key in row:
+                if not key:
+                    del row[key]
             data_to_ingest['rows'].append(row)
         return data_to_ingest
 
