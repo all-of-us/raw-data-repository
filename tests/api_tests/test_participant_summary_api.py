@@ -495,7 +495,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             expected_status=http.client.BAD_REQUEST
         )
         self.assertEqual(response_bad_filter.status_code, 400)
-        self.assertEqual(response_bad_filter.json['message'], 'No valid fields provided')
+        self.assertEqual(response_bad_filter.json['message'], 'No valid fields were provided')
 
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), generate_num_summary)
