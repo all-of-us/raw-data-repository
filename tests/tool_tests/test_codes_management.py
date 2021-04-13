@@ -1,16 +1,12 @@
 import mock
-import os
 from typing import List
 
-import rdr_service
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType, SurveyQuestionOption
 from rdr_service.tools.tool_libs.codes_management import CodesSyncClass, DRIVE_EXPORT_FOLDER_ID,\
     EXPORT_SERVICE_ACCOUNT_NAME, REDCAP_PROJECT_KEYS
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 
 class CodesManagementTest(ToolTestMixin, BaseTestCase):

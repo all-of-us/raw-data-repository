@@ -20,11 +20,12 @@ from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater, 
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
     git_checkout_branch, is_git_branch_clean, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
+from rdr_service.services.config_client import ConfigClient
 from rdr_service.services.gcp_config import GCP_SERVICES, GCP_SERVICE_CONFIG_MAP, RdrEnvironment
 from rdr_service.services.gcp_utils import gcp_get_app_versions, gcp_deploy_app, gcp_app_services_split_traffic, \
     gcp_application_default_creds_exist, gcp_restart_instances, gcp_delete_versions
 from rdr_service.tools.tool_libs.alembic import AlembicManagerClass
-import rdr_service.tools.tool_libs.tool_base as tool_base
+from rdr_service.tools.tool_libs.tool_base import ToolBase
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.services.documentation_utils import ReadTheDocsHandler
 from rdr_service.config import DATA_DICTIONARY_DOCUMENT_ID, READTHEDOCS_CREDS
@@ -38,7 +39,7 @@ tool_cmd = "app-engine"
 tool_desc = "manage google app engine services"
 
 
-class DeployAppClass(tool_base.ToolBase):
+class DeployAppClass(ToolBase):
 
     deploy_type = 'prod'
     deploy_sub_type = 'default'
@@ -692,26 +693,8 @@ class AppConfigClass(object):
         Combine saved bucket app config files and return it.
         :return: dict
         """
-        # pylint: disable=unused-variable
-        base_config_str, filename = self.gcp_env.get_latest_config_from_bucket('base-config', self.args.key)
-        if not base_config_str:
-            raise FileNotFoundError('Error: base app configuration not found in bucket.')
-        base_config = json.loads(base_config_str)
-        # pylint: disable=unused-variable
-        proj_config_str, filename = self.gcp_env.get_latest_config_from_bucket(self.gcp_env.project, self.args.key)
-        if not base_config_str:
-            raise FileNotFoundError(f'Error: {self.gcp_env.project} configuration not found in bucket.')
-        proj_config = json.loads(proj_config_str)
-
-        config = {**base_config, **proj_config}
-
-        if self.gcp_env.project != 'localhost':
-            # insert the geocode key from 'pmi-drc-api-test' into this config.
-            geocode_config = self._provider.load('geocode_key', project='pmi-drc-api-test')
-            if geocode_config:
-                config['geocode_api_key'] = [geocode_config['api_key']]
-
-        return config
+        client = ConfigClient(self.gcp_env)
+        return client.get_server_config()
 
     def get_config_from_file(self):
         """

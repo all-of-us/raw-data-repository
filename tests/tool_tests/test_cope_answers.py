@@ -1,15 +1,11 @@
 from collections import namedtuple
 import json
 import mock
-import os
 
-import rdr_service
 from rdr_service import config
 from rdr_service.tools.tool_libs.cope_answers import CopeAnswersClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(rdr_service.__file__))
 
 FakeFile = namedtuple('FakeFile', ['name', 'updated'])
 
