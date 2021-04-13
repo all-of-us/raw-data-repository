@@ -214,7 +214,7 @@ class BaseApi(Resource):
         logging.info("Returning response.")
         return response
 
-    def _make_query(self):
+    def _make_query(self, check_invalid=False):
         field_filters = []
         invalid_filters = []
         max_results = DEFAULT_MAX_RESULTS
@@ -247,7 +247,9 @@ class BaseApi(Resource):
                 field_filter = self.dao.make_query_filter(key, value)
                 if field_filter:
                     field_filters.append(field_filter)
-                elif not field_filter and key not in invalid_exclusion:
+                elif not field_filter \
+                        and key not in invalid_exclusion \
+                        and check_invalid:
                     invalid_filters.append(key)
 
         return Query(

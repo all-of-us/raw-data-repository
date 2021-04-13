@@ -53,8 +53,8 @@ class ParticipantSummaryApi(BaseApi):
                     raise Forbidden
             return super(ParticipantSummaryApi, self)._query("participantId")
 
-    def _make_query(self):
-        query = super(ParticipantSummaryApi, self)._make_query()
+    def _make_query(self, check_invalid=True):
+        query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
         query.backfill_sync = self._get_request_arg_bool("_backfill", True)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
