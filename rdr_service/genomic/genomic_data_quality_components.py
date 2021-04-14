@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicJobRunDao
-from rdr_service.genomic.genomic_queries import GenomicQueryClass
+from rdr_service.genomic.genomic_data import GenomicQueryClass
 
 
 class GenomicDataQualityComponentBase:

@@ -370,8 +370,8 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('0', gc_metrics[1].contamination)
 
     def test_ingest_specific_aw2_file(self):
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=(1, 2),
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=(1, 3),
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
         self._update_test_sample_ids()
@@ -930,11 +930,7 @@ class GenomicPipelineTest(BaseTestCase):
             codeType=CodeType.ANSWER, mapped=True)
         return self.code_dao.insert(code_to_insert).codeId
 
-    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
-    def test_gc_metrics_reconciliation_vs_array_data(self, patched_handler):
-        mock_alert_handler = patched_handler.return_value
-        mock_alert_handler._jira_handler = 'fake_jira_handler'
-        mock_alert_handler.make_genomic_alert.return_value = 1
+    def test_gc_metrics_reconciliation_vs_array_data(self):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
@@ -954,7 +950,6 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-        manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
         # Upload files for RDR sample
@@ -1030,16 +1025,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
-        # Fake alert
-        summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
-        description = "The following AW2 manifests are missing data files."
-        description += "\nGenomic Job Run ID: 2"
-        description += f"\nManifest File: {manifest_file.fileName}"
-        description += "\nMissing Genotype Data:"
-        description += "\n10001_R01C01_grn.idat.md5sum"
-
-        mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
-
         processed_file = self.file_processed_dao.get(1)
         incident = self.incident_dao.get_by_source_file_id(processed_file.id)
         self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
@@ -1050,11 +1035,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    @mock.patch('rdr_service.genomic.genomic_job_components.GenomicAlertHandler')
-    def test_aw2_wgs_reconciliation_vs_wgs_data(self, patched_handler):
-        mock_alert_handler = patched_handler.return_value
-        mock_alert_handler._jira_handler = 'fake_jira_handler'
-        mock_alert_handler.make_genomic_alert.return_value = 1
+    def test_aw2_wgs_reconciliation_vs_wgs_data(self):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
@@ -1071,8 +1052,6 @@ class GenomicPipelineTest(BaseTestCase):
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
-
-        manifest_file = self.file_processed_dao.get(1)
 
         # Test the reconciliation process
         sequencing_test_files = (
@@ -1116,16 +1095,6 @@ class GenomicPipelineTest(BaseTestCase):
         member = self.member_dao.get(2)
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
-
-        # Fake alert
-        summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
-        description = "The following AW2 manifests are missing data files."
-        description += "\nGenomic Job Run ID: 2"
-        description += f"\nManifest File: {manifest_file.fileName}"
-        description += "\nMissing Genotype Data:"
-        description += "\nRDR_2_1002_10002_1.cram.crai"
-
-        mock_alert_handler.make_genomic_alert.assert_called_with(summary, description)
 
         processed_file = self.file_processed_dao.get(1)
         incident = self.incident_dao.get_by_source_file_id(processed_file.id)
@@ -3342,7 +3311,7 @@ class GenomicPipelineTest(BaseTestCase):
         new_record = deepcopy(metrics_record_2)
         metrics_record_2.ignoreFlag = 1
 
-        new_record.id = 3
+        new_record.id = 4
         new_record.contamination = '0.1346'
 
         with self.metrics_dao.session() as session:
@@ -3733,7 +3702,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, incident.slack_notification)
             self.assertIsNone(incident.slack_notification_date)
 
-        self.assertEqual(2, len(incidents))
+        self.assertEqual(3, len(incidents))
         self.assertEqual("1", incidents[0].biobank_id)
         self.assertEqual("1001", incidents[0].sample_id)
         self.assertEqual(2, incidents[0].source_job_run_id)
