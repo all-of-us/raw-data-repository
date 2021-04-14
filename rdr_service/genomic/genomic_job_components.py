@@ -102,9 +102,7 @@ class GenomicFileIngester:
         self.job_run_id = job_run_id
         self.file_obj = None
         self.file_queue = deque()
-
         self.target_file = target_file
-
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
         self.sub_folder_name = sub_folder
@@ -241,6 +239,7 @@ class GenomicFileIngester:
         elif data_to_ingest:
             logging.info(f'Ingesting data from {self.file_obj.fileName}')
             logging.info("Validating file.")
+
             self.file_validator.valid_schema = None
 
             validation_result = self.file_validator.validate_ingestion_file(
@@ -251,35 +250,55 @@ class GenomicFileIngester:
             if validation_result != GenomicSubProcessResult.SUCCESS:
                 return validation_result
 
+            ingestion_config = {
+                GenomicJob.AW1_MANIFEST: {
+                    'method': self._ingest_aw1_manifest
+                },
+                GenomicJob.AW1F_MANIFEST: {
+                    'method': self._ingest_aw1_manifest
+                },
+                GenomicJob.METRICS_INGESTION: {
+                    'method': self._process_gc_metrics_data_for_insert
+                },
+                GenomicJob.GEM_A2_MANIFEST: {
+                    'method': self._ingest_gem_a2_manifest
+                },
+                GenomicJob.GEM_METRICS_INGEST: {
+                    'method': self._ingest_gem_metrics_manifest
+                },
+                GenomicJob.W2_INGEST: {
+                    'method': self._ingest_cvl_w2_manifest
+                },
+                GenomicJob.AW4_ARRAY_WORKFLOW: {
+                    'method': self._ingest_aw4_manifest
+                },
+                GenomicJob.AW4_WGS_WORKFLOW: {
+                    'method': self._ingest_aw4_manifest
+                },
+                GenomicJob.AW1C_INGEST: {
+                    'method': self._ingest_aw1c_manifest
+                },
+                GenomicJob.AW1CF_INGEST: {
+                    'method': self._ingest_aw1c_manifest
+                },
+                GenomicJob.AW5_ARRAY_MANIFEST: {
+                    'method': self._ingest_aw5_manifest
+                },
+                GenomicJob.AW5_WGS_MANIFEST: {
+                    'method': self._ingest_aw5_manifest
+                },
+            }
+
+            ingestion_type = ingestion_config[self.job_id]['method']
+
             if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
                 gc_site_id = self._get_site_from_aw1()
-                return self._ingest_aw1_manifest(data_to_ingest, gc_site_id)
-
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                return self._process_gc_metrics_data_for_insert(data_to_ingest)
-
-            if self.job_id == GenomicJob.GEM_A2_MANIFEST:
-                return self._ingest_gem_a2_manifest(data_to_ingest)
-
-            if self.job_id == GenomicJob.GEM_METRICS_INGEST:
-                return self._ingest_gem_metrics_manifest(data_to_ingest)
-
-            if self.job_id == GenomicJob.W2_INGEST:
-                return self._ingest_cvl_w2_manifest(data_to_ingest)
-
-            if self.job_id in (GenomicJob.AW4_ARRAY_WORKFLOW, GenomicJob.AW4_WGS_WORKFLOW):
-                return self._ingest_aw4_manifest(data_to_ingest)
-
-            if self.job_id in [GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST]:
-                return self._ingest_aw1c_manifest(data_to_ingest)
-
-            if self.job_id in [GenomicJob.AW5_ARRAY_MANIFEST, GenomicJob.AW5_WGS_MANIFEST]:
-                return self._ingest_aw5_manifest(data_to_ingest)
-
+                return ingestion_type(data_to_ingest, gc_site_id)
+            else:
+                return ingestion_type(data_to_ingest)
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
-        return GenomicSubProcessResult.ERROR
 
     @staticmethod
     def get_aw1_manifest_column_mappings():
@@ -874,6 +893,9 @@ class GenomicFileIngester:
         csv_reader = csv.DictReader(csv_file, delimiter=",")
         data_to_ingest['fieldnames'] = csv_reader.fieldnames
         for row in csv_reader:
+            for key in row:
+                if not key:
+                    del row[key]
             data_to_ingest['rows'].append(row)
         return data_to_ingest
 
