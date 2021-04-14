@@ -666,6 +666,13 @@ class GenomicFileIngester:
         except KeyError:
             pass
 
+        # Convert blank alignedq30bases to none
+        try:
+            if row['alignedq30bases'] == '':
+                row['alignedq30bases'] = None
+        except KeyError:
+            pass
+
         # Validate and clean contamination data
         try:
             row['contamination'] = float(row['contamination'])
