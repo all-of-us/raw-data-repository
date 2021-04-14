@@ -17,10 +17,16 @@ progname = "gcp-db-daemon"
 
 
 @dataclass
+class DatabaseProxy:
+    name: str
+    port: int
+
+
+@dataclass
 class ProxyPortData:
     """Class for bundling primary and replica proxy ports for an environment"""
-    primary: int
-    replica: int = None  # Not every environment has a replica db
+    primary: DatabaseProxy
+    replica: DatabaseProxy = None  # Not every environment has a replica db
 
 
 def run():
@@ -34,15 +40,40 @@ def run():
 
             self.host = '127.0.0.1'
             self.environment_proxy_port_map = {
-                RdrEnvironment.PROD:            ProxyPortData(primary=9900, replica=9905),
-                RdrEnvironment.STABLE:          ProxyPortData(primary=9910, replica=9915),
-                RdrEnvironment.STAGING:         ProxyPortData(primary=9920, replica=9925),
-                RdrEnvironment.SANDBOX:         ProxyPortData(primary=9930),
-                RdrEnvironment.TEST:            ProxyPortData(primary=9940, replica=9945),
-                RdrEnvironment.CAREEVO_TEST:    ProxyPortData(primary=9950, replica=9955),
-                RdrEnvironment.PTSC_1_TEST:     ProxyPortData(primary=9960, replica=9965),
-                RdrEnvironment.PTSC_2_TEST:     ProxyPortData(primary=9970, replica=9975),
-                RdrEnvironment.PTSC_3_TEST:     ProxyPortData(primary=9980, replica=9985)
+                RdrEnvironment.PROD:            ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9900),
+                                                    replica=DatabaseProxy(name='rdrbackupdb-a', port=9905)
+                                                ),
+                RdrEnvironment.STABLE:          ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9910),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9915)
+                                                ),
+                RdrEnvironment.STAGING:         ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9920),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9925)
+                                                ),
+                RdrEnvironment.SANDBOX:         ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9930)),
+                RdrEnvironment.TEST:            ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9940),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9945)
+                                                ),
+                RdrEnvironment.CAREEVO_TEST:    ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9950),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9955)
+                                                ),
+                RdrEnvironment.PTSC_1_TEST:     ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9960),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9965)
+                                                ),
+                RdrEnvironment.PTSC_2_TEST:     ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9970),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9975)
+                                                ),
+                RdrEnvironment.PTSC_3_TEST:     ProxyPortData(
+                                                    primary=DatabaseProxy(name='rdrmaindb', port=9980),
+                                                    replica=DatabaseProxy(name='rdrbackupdb', port=9985)
+                                                )
             }
 
             self.environments_to_activate = [RdrEnvironment.PROD, RdrEnvironment.STABLE, RdrEnvironment.STAGING]
@@ -66,25 +97,25 @@ def run():
 
         def print_instances(self):
             for environment in self.environments_to_activate:
-                proxy_port = self.environment_proxy_port_map[environment]
-                self._print_instance_line(environment.value, 'primary', proxy_port.primary)
-                if self._args.enable_replica and proxy_port.replica is not None:
-                    self._print_instance_line(environment.value, 'replica', proxy_port.replica)
+                proxy_data = self.environment_proxy_port_map[environment]
+                self._print_instance_line(environment.value, 'primary', proxy_data.primary.port)
+                if self._args.enable_replica and proxy_data.replica is not None:
+                    self._print_instance_line(environment.value, 'replica', proxy_data.replica.port)
 
         def _get_instance_arg_list_for_environment(self, environment: RdrEnvironment):
-            proxy_port = self.environment_proxy_port_map[environment]
+            proxy_data = self.environment_proxy_port_map[environment]
             instance_arg_list = [build_gcp_instance_connection_name(
                 project_name=environment.value,
-                port=proxy_port.primary,
-                database_name='rdrmaindb'
+                port=proxy_data.primary.port,
+                database_name=proxy_data.primary.name
             )]
 
-            if self._args.enable_replica and proxy_port.replica is not None:
+            if self._args.enable_replica and proxy_data.replica is not None:
                 instance_arg_list.append(
                     build_gcp_instance_connection_name(
                         project_name=environment.value,
-                        port=proxy_port.replica,
-                        database_name='rdrbackupdb-a' if environment == RdrEnvironment.PROD else 'rdrbackupdb')
+                        port=proxy_data.replica.port,
+                        database_name=proxy_data.replica.name)
                 )
 
             return instance_arg_list
