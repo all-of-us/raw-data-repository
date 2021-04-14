@@ -54,6 +54,10 @@ class ParticipantSummaryApi(BaseApi):
             return super(ParticipantSummaryApi, self)._query("participantId")
 
     def _make_query(self, check_invalid=True):
+        pair_constraint, message = self._check_constraints()
+        if pair_constraint:
+            raise BadRequest(f"{message}")
+
         query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
         query.backfill_sync = self._get_request_arg_bool("_backfill", True)
@@ -65,6 +69,33 @@ class ParticipantSummaryApi(BaseApi):
         if self._get_request_arg_bool("_sync"):
             return make_sync_results_for_request(self.dao, results)
         return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
+
+    @staticmethod
+    def _check_constraints():
+        message = None
+        invalid = False
+
+        pairs = {
+            'lastName': {
+                'fields': ['lastName', 'dateOfBirth'],
+                'message': ''
+            },
+            'dateOfBirth': {
+                'fields': ['lastName', 'dateOfBirth'],
+                'message': ''
+            }
+        }
+
+        for arg in request.args:
+            if arg in pairs.keys():
+                constraint = pairs[arg]
+                missing = [val for val in constraint['fields'] if val not in request.args]
+                if missing:
+                    invalid = True
+                    message = f'Missing {missing[0]} in request'
+                    break
+
+        return invalid, message
 
 
 class ParticipantSummaryModifiedApi(BaseApi):
