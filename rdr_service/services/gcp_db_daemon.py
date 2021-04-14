@@ -45,12 +45,27 @@ def run():
                 RdrEnvironment.PTSC_3_TEST:     ProxyPortData(primary=9980, replica=9985)
             }
 
+            self.environments_to_activate = [RdrEnvironment.PROD, RdrEnvironment.STABLE, RdrEnvironment.STAGING]
+
+            if self._args.enable_sandbox:
+                self.environments_to_activate.append(RdrEnvironment.SANDBOX)
+            if self._args.enable_test:
+                self.environments_to_activate.append(RdrEnvironment.TEST)
+            if self._args.enable_care_evo:
+                self.environments_to_activate.append(RdrEnvironment.CAREEVO_TEST)
+            if self._args.enable_ptsc_1_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_1_TEST)
+            if self._args.enable_ptsc_2_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_2_TEST)
+            if self._args.enable_ptsc_3_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_3_TEST)
+
         def _print_instance_line(self, project_name, db_type, port_number):
             project_name_display = f'{project_name}:'.ljust(30)
             _logger.info(f'    {project_name_display}{db_type.ljust(15)}-> tcp: {self.host}:{port_number}')
 
         def print_instances(self):
-            for environment in RdrEnvironment:
+            for environment in self.environments_to_activate:
                 proxy_port = self.environment_proxy_port_map[environment]
                 self._print_instance_line(environment.value, 'primary', proxy_port.primary)
                 if self._args.enable_replica and proxy_port.replica is not None:
@@ -79,24 +94,8 @@ def run():
             Build all instances we are going to connect to
             :return: string
             """
-
-            environments_to_activate = [RdrEnvironment.PROD, RdrEnvironment.STABLE, RdrEnvironment.STAGING]
-
-            if self._args.enable_sandbox:
-                environments_to_activate.append(RdrEnvironment.SANDBOX)
-            if self._args.enable_test:
-                environments_to_activate.append(RdrEnvironment.TEST)
-            if self._args.enable_care_evo:
-                environments_to_activate.append(RdrEnvironment.CAREEVO_TEST)
-            if self._args.enable_ptsc_1_test:
-                environments_to_activate.append(RdrEnvironment.PTSC_1_TEST)
-            if self._args.enable_ptsc_2_test:
-                environments_to_activate.append(RdrEnvironment.PTSC_2_TEST)
-            if self._args.enable_ptsc_3_test:
-                environments_to_activate.append(RdrEnvironment.PTSC_3_TEST)
-
             instance_string_list = []
-            for environment in environments_to_activate:
+            for environment in self.environments_to_activate:
                 instance_string_list.extend(self._get_instance_arg_list_for_environment(environment))
 
             return ','.join(instance_string_list)
