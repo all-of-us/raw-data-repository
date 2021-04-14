@@ -139,46 +139,86 @@ class GenomicDataQualityReportTest(BaseTestCase):
     def test_daily_ingestion_summary(self):
         # Set up test data
         bucket_name = "test-bucket"
-        file_name = "AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
-        manifest_path = f"{bucket_name}/{file_name}"
+        aw1_file_name = "AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        aw1_manifest_path = f"{bucket_name}/{aw1_file_name}"
 
-        # Create file_processed and job_run IDs
-        job_run = self.data_generator.create_database_genomic_job_run(
+        aw2_file_name = "AW2_wgs_data_manifests/RDR_AoU_SEQ_DataManifest_04092021.csv"
+        aw2_manifest_path = f"{bucket_name}/{aw2_file_name}"
+
+        # Create AW1 job_run
+        aw1_job_run = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        # Create AW2 job_run
+        aw2_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_INGESTION,
             startTime=clock.CLOCK.now(),
             runResult=GenomicSubProcessResult.SUCCESS
         )
 
         # Create genomic_aw1_raw record
         self.data_generator.create_database_genomic_aw1_raw(
-            file_path=manifest_path,
+            file_path=aw1_manifest_path,
             package_id="PKG-2104-026571",
             biobank_id="A10001",
         )
+        # Create genomic_aw2_raw record
+        self.data_generator.create_database_genomic_aw2_raw(
+            file_path=aw2_manifest_path,
+            biobank_id="A10001",
+            sample_id="100001",
+            biobankidsampleid="A10001_100001",
+        )
 
-        # Create genomic_manifest_file record
-        manifest_file = self.data_generator.create_database_genomic_manifest_file(
+        # Create AW1 genomic_manifest_file record
+        aw1_manifest_file = self.data_generator.create_database_genomic_manifest_file(
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             uploadDate=clock.CLOCK.now(),
             manifestTypeId=GenomicManifestTypes.BIOBANK_GC,
-            filePath=manifest_path,
-            fileName=file_name,
+            filePath=aw1_manifest_path,
+            fileName=aw1_file_name,
             bucketName=bucket_name,
             recordCount=1,
             rdrProcessingComplete=1,
             rdrProcessingCompleteDate=clock.CLOCK.now(),
         )
 
-        # Insert raw data record for AW1
-        # Create file_processed and job_run IDs
-        self.data_generator.create_database_genomic_file_processed(
-            runId=job_run.id,
-            startTime=clock.CLOCK.now(),
-            genomicManifestFileId=manifest_file.id,
-            filePath=f"/{manifest_path}",
+        # Create AW2 genomic_manifest_file record
+        aw2_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.GC_DRC,
+            filePath=aw2_manifest_path,
+            fileName=aw2_file_name,
             bucketName=bucket_name,
-            fileName=file_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        # Create AW1 file_processed
+        self.data_generator.create_database_genomic_file_processed(
+            runId=aw1_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=aw1_manifest_file.id,
+            filePath=f"/{aw1_manifest_path}",
+            bucketName=bucket_name,
+            fileName=aw1_file_name,
+        )
+
+        # Create AW2 file_processed
+        self.data_generator.create_database_genomic_file_processed(
+            runId=aw2_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=aw2_manifest_file.id,
+            filePath=f"/{aw2_manifest_path}",
+            bucketName=bucket_name,
+            fileName=aw2_file_name,
         )
 
         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
@@ -188,7 +228,9 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report += "record_count    ingested_count    incident_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
         expected_report += "1    0    0    aw1    rdr    aou_wgs    "
-        expected_report += "test-bucket/AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        expected_report += f"{aw1_manifest_path}\n"
+        expected_report += "1    0    0    aw2    rdr    aou_wgs    "
+        expected_report += f"{aw2_manifest_path}"
         expected_report += "\n"
 
         self.assertEqual(expected_report, report_output)
