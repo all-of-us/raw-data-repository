@@ -588,6 +588,10 @@ def gcp_format_sql_instance(project, port=3320, replica=False):
     return instance
 
 
+def build_gcp_instance_connection_name(project_name, port, database_name, location='us-central1'):
+    return f'{project_name}:{location}:{database_name}=tcp:{port}'
+
+
 def gcp_activate_sql_proxy(instances):
     """
   Call cloud_sql_proxy to make a connection to the given instance.

@@ -8,7 +8,8 @@ import time
 
 from rdr_service.services.daemon import Daemon
 from rdr_service.services.gcp_config import RdrEnvironment
-from rdr_service.services.gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
+from rdr_service.services.gcp_utils import build_gcp_instance_connection_name, gcp_activate_account,\
+    gcp_activate_sql_proxy
 from rdr_service.services.system_utils import is_valid_email, setup_logging, setup_i18n, which
 
 _logger = logging.getLogger("rdr_logger")
@@ -57,11 +58,18 @@ def run():
 
         def _get_instance_arg_list_for_environment(self, environment: RdrEnvironment):
             proxy_port = self.environment_proxy_port_map[environment]
-            instance_arg_list = [gcp_format_sql_instance(environment.value, proxy_port.primary)]
+            instance_arg_list = [build_gcp_instance_connection_name(
+                project_name=environment.value,
+                port=proxy_port.primary,
+                database_name='rdrmaindb'
+            )]
 
             if self._args.enable_replica and proxy_port.replica is not None:
                 instance_arg_list.append(
-                    gcp_format_sql_instance(environment.value, proxy_port.replica, replica=True)
+                    build_gcp_instance_connection_name(
+                        project_name=environment.value,
+                        port=proxy_port.replica,
+                        database_name='rdrbackupdb-a' if environment == RdrEnvironment.PROD else 'rdrbackupdb')
                 )
 
             return instance_arg_list
