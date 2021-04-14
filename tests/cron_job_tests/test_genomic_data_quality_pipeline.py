@@ -184,7 +184,8 @@ class GenomicDataQualityReportTest(BaseTestCase):
         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow()
 
-        expected_report = "record_count    ingested_count    incident_count    "
+        expected_report = "Daily Ingestions Summary\n"
+        expected_report += "record_count    ingested_count    incident_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
         expected_report += "1    0    0    aw1    rdr    aou_wgs    "
         expected_report += "test-bucket/AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
