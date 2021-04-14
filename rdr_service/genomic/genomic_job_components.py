@@ -1887,9 +1887,6 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            alert = GenomicAlertHandler()
-
-            summary = '[Genomic System Alert] Missing AW2 Array Manifest Files'
             description = "The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
@@ -1910,8 +1907,6 @@ class GenomicReconciler:
                     collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
                     slack=True
                 )
-
-            alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -2002,9 +1997,6 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            alert = GenomicAlertHandler()
-
-            summary = '[Genomic System Alert] Missing AW2 WGS Manifest Files'
             description = "The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
@@ -2025,8 +2017,6 @@ class GenomicReconciler:
                     collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
                     slack=True
                 )
-
-            alert.make_genomic_alert(summary, description)
 
         return GenomicSubProcessResult.SUCCESS
 
