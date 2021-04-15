@@ -151,7 +151,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         :return: string
         """
         # Report title
-        report_string = display_name + '\n'
+        report_string = "```" + display_name + '\n'
 
         # Header row
         report_string += "    ".join(data.keys())
@@ -160,5 +160,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         for row in data.fetchall():
             report_string += "    ".join(tuple(map(str, row)))
             report_string += "\n"
+
+        report_string += "```"
 
         return report_string
