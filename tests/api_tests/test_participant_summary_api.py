@@ -6,8 +6,8 @@ import threading
 import unittest
 from urllib.parse import urlencode
 
-from rdr_service import config
-from rdr_service import main, clock
+from rdr_service import clock, config, main
+from rdr_service.api_util import PTC
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -212,6 +212,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
         new_user_info['example@example.com']['roles'] = roles
         new_user_info['example@example.com']['awardee'] = awardee
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def create_demographics_questionnaire(self):
@@ -532,9 +537,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(response_dob_last_name['entry']), 1)
         resource = response_dob_last_name['entry'][0]['resource']
         self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
 
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+        self.overwrite_test_user_roles([PTC])
+
+        response_only_dob = self.send_get(
+            f"ParticipantSummary?dateOfBirth={_date}",
+        )
+        self.assertEqual(len(response_only_dob['entry']), 3)
+        resource = response_only_dob['entry'][0]['resource']
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        response_only_last_name = self.send_get(
+            f"ParticipantSummary?lastName={last_name}",
+        )
+
+        self.assertEqual(len(response_only_last_name['entry']), 1)
+        resource = response_only_last_name['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
