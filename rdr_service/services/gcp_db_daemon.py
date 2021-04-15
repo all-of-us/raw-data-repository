@@ -1,14 +1,5 @@
-#
-# !!! This file is python 3.x compliant !!!
-#
-#
-
-# Note: disable specific pylint checks globally here.
-# superfluous-parens
-# pylint: disable=C0325
-
-
 import argparse
+from dataclasses import dataclass
 import logging
 import os
 import signal
@@ -16,12 +7,26 @@ import sys
 import time
 
 from rdr_service.services.daemon import Daemon
-from rdr_service.services.gcp_utils import gcp_activate_account, gcp_activate_sql_proxy, gcp_format_sql_instance
+from rdr_service.services.gcp_config import RdrEnvironment
+from rdr_service.services.gcp_utils import build_gcp_instance_connection_name, gcp_activate_account,\
+    gcp_activate_sql_proxy
 from rdr_service.services.system_utils import is_valid_email, setup_logging, setup_i18n, which
 
 _logger = logging.getLogger("rdr_logger")
-
 progname = "gcp-db-daemon"
+
+
+@dataclass
+class DatabaseProxy:
+    """Class for bundling primary and replica proxy ports for an environment"""
+    name: str
+    port: int
+
+
+@dataclass
+class ProxyData:
+    primary: DatabaseProxy
+    replica: DatabaseProxy = None  # Not every environment has a replica db
 
 
 def run():
@@ -33,106 +38,100 @@ def run():
             self._args = kwargs.pop("args", None)
             super(SQLProxyDaemon, self).__init__(*args, **kwargs)
 
+            self.host = '127.0.0.1'
+            self.environment_proxy_port_map = {
+                RdrEnvironment.PROD:ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9900),
+                    replica=DatabaseProxy(name='rdrbackupdb-a', port=9905)
+                ),
+                RdrEnvironment.STABLE: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9910),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9915)
+                ),
+                RdrEnvironment.STAGING: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9920),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9925)
+                ),
+                RdrEnvironment.SANDBOX: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9930)
+                ),
+                RdrEnvironment.TEST: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9940),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9945)
+                ),
+                RdrEnvironment.CAREEVO_TEST: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9950),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9955)
+                ),
+                RdrEnvironment.PTSC_1_TEST: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9960),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9965)
+                ),
+                RdrEnvironment.PTSC_2_TEST: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9970),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9975)
+                ),
+                RdrEnvironment.PTSC_3_TEST: ProxyData(
+                    primary=DatabaseProxy(name='rdrmaindb', port=9980),
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9985)
+                )
+            }
+
+            self.environments_to_activate = [RdrEnvironment.PROD, RdrEnvironment.STABLE, RdrEnvironment.STAGING]
+
+            if self._args.enable_sandbox:
+                self.environments_to_activate.append(RdrEnvironment.SANDBOX)
+            if self._args.enable_test:
+                self.environments_to_activate.append(RdrEnvironment.TEST)
+            if self._args.enable_care_evo:
+                self.environments_to_activate.append(RdrEnvironment.CAREEVO_TEST)
+            if self._args.enable_ptsc_1_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_1_TEST)
+            if self._args.enable_ptsc_2_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_2_TEST)
+            if self._args.enable_ptsc_3_test:
+                self.environments_to_activate.append(RdrEnvironment.PTSC_3_TEST)
+
+        def _print_instance_line(self, project_name, db_type, port_number):
+            project_name_display = f'{project_name}:'.ljust(30)
+            _logger.info(f'    {project_name_display}{db_type.ljust(15)}-> tcp: {self.host}:{port_number}')
+
         def print_instances(self):
+            for environment in self.environments_to_activate:
+                proxy_data = self.environment_proxy_port_map[environment]
+                self._print_instance_line(environment.value, 'primary', proxy_data.primary.port)
+                if self._args.enable_replica and proxy_data.replica is not None:
+                    self._print_instance_line(environment.value, 'replica', proxy_data.replica.port)
 
-            _logger.info("    all-of_us-rdr-prod:     primary    -> tcp: 127.0.0.1:9900")
-            if self._args.enable_replica:
-                _logger.info("    all-of_us-rdr-prod:     replica    -> tcp: 127.0.0.1:9905")
+        def _get_instance_arg_list_for_environment(self, environment: RdrEnvironment):
+            proxy_data = self.environment_proxy_port_map[environment]
+            instance_arg_list = [build_gcp_instance_connection_name(
+                project_name=environment.value,
+                port=proxy_data.primary.port,
+                database_name=proxy_data.primary.name
+            )]
 
-            _logger.info("    all-of_us-rdr-stable:   primary    -> tcp: 127.0.0.1:9910")
-            if self._args.enable_replica:
-                _logger.info("    all-of_us-rdr-stable:   replica    -> tcp: 127.0.0.1:9915")
+            if self._args.enable_replica and proxy_data.replica is not None:
+                instance_arg_list.append(
+                    build_gcp_instance_connection_name(
+                        project_name=environment.value,
+                        port=proxy_data.replica.port,
+                        database_name=proxy_data.replica.name
+                    )
+                )
 
-            _logger.info("    all-of_us-rdr-staging:  primary    -> tcp: 127.0.0.1:9920")
-            if self._args.enable_replica:
-                _logger.info("    all-of_us-rdr-staging:  replica    -> tcp: 127.0.0.1:9925")
+            return instance_arg_list
 
-            if self._args.enable_sandbox is True:
-                _logger.info("    all-of_us-rdr-sandbox:  primary    -> tcp: 127.0.0.1:9930")
-                # Sandbox does not currently have a replica enabled
-                # if self._args.enable_replica:
-                #   _logger.info('    all-of_us-rdr-sandbox:     replica    -> tcp: 127.0.0.1:9935')
-
-            if self._args.enable_test is True:
-                _logger.info("    pmi-drc-api-test:       primary    -> tcp: 127.0.0.1:9940")
-                if self._args.enable_replica:
-                    _logger.info("    pmi-drc-api-test:       replica    -> tcp: 127.0.0.1:9945")
-
-            if self._args.enable_care_evo is True:
-                _logger.info('    all-of-us-rdr-careevo-test:       primary    -> tcp: 127.0.0.1:9950')
-                if self._args.enable_replica:
-                    _logger.info('    all-of-us-rdr-careevo-test:       replica    -> tcp: 127.0.0.1:9955')
-
-            if self._args.enable_ptsc_1_test is True:
-                _logger.info('    all-of-us-rdr-ptsc-1-test:       primary    -> tcp: 127.0.0.1:9960')
-                if self._args.enable_replica:
-                    _logger.info('    all-of-us-rdr-ptsc-1-test:       replica    -> tcp: 127.0.0.1:9965')
-
-            if self._args.enable_ptsc_2_test is True:
-                _logger.info('    all-of-us-rdr-ptsc-2-test:       primary    -> tcp: 127.0.0.1:9970')
-                if self._args.enable_replica:
-                    _logger.info('    all-of-us-rdr-ptsc-2-test:       replica    -> tcp: 127.0.0.1:9975')
-
-            if self._args.enable_ptsc_3_test is True:
-                _logger.info('    all-of-us-rdr-ptsc-3-test:       primary    -> tcp: 127.0.0.1:9980')
-                if self._args.enable_replica:
-                    _logger.info('    all-of-us-rdr-ptsc-3-test:       replica    -> tcp: 127.0.0.1:9985')
-
-        def get_instances(self):
+        def get_instances_arg_str(self):
             """
-      Build all instances we are going to connect to
-      :return: string
-      """
+            Build all instances we are going to connect to
+            :return: string
+            """
+            instance_string_list = []
+            for environment in self.environments_to_activate:
+                instance_string_list.extend(self._get_instance_arg_list_for_environment(environment))
 
-            instances = ""
-
-            instances += gcp_format_sql_instance("all-of-us-rdr-prod", 9900) + ","
-            if self._args.enable_replica:
-                instances += gcp_format_sql_instance("all-of-us-rdr-prod", 9905, True) + ","
-
-            instances += gcp_format_sql_instance("all-of-us-rdr-stable", 9910) + ","
-            if self._args.enable_replica:
-                instances += gcp_format_sql_instance("all-of-us-rdr-stable", 9915, True) + ","
-
-            instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9920) + ","
-            if self._args.enable_replica:
-                instances += gcp_format_sql_instance("all-of-us-rdr-staging", 9925, True) + ","
-
-            if self._args.enable_sandbox is True:
-                instances += gcp_format_sql_instance("all-of-us-rdr-sandbox", 9930) + ","
-                # Sandbox does not currently have a replica enabled
-                # if self._args.enable_replica:
-                #   instances += gcp_format_sql_instance('all-of-us-rdr-sandbox', 9935, True) + ','
-
-            if self._args.enable_test is True:
-                instances += gcp_format_sql_instance("pmi-drc-api-test", 9940) + ","
-                if self._args.enable_replica:
-                    instances += gcp_format_sql_instance("pmi-drc-api-test", 9945, True) + ","
-
-            if self._args.enable_care_evo is True:
-                instances += gcp_format_sql_instance('all-of-us-rdr-careevo-test', 9950) + ','
-                if self._args.enable_replica:
-                    instances += gcp_format_sql_instance('all-of-us-rdr-careevo-test', 9955, True) + ','
-
-            if self._args.enable_ptsc_1_test is True:
-                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9960) + ','
-                if self._args.enable_replica:
-                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-1-test', 9965, True) + ','
-
-            if self._args.enable_ptsc_2_test is True:
-                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-2-test', 9970) + ','
-                if self._args.enable_replica:
-                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-2-test', 9975, True) + ','
-
-            if self._args.enable_ptsc_3_test is True:
-                instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-3-test', 9980) + ','
-                if self._args.enable_replica:
-                    instances += gcp_format_sql_instance('all-of-us-rdr-ptsc-3-test', 9985, True) + ','
-
-            # remove trailing comma
-            instances = instances[:-1]
-
-            return instances
+            return ','.join(instance_string_list)
 
         def run(self):
             """
@@ -149,7 +148,7 @@ def run():
                 _logger.error("failed to set authentication account, aborting.")
                 return 1
 
-            po_proxy = gcp_activate_sql_proxy(self.get_instances())
+            po_proxy = gcp_activate_sql_proxy(self.get_instances_arg_str())
             if not po_proxy:
                 _logger.error("cloud_sql_proxy process failed, aborting.")
                 return 1
