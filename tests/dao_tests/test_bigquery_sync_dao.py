@@ -378,7 +378,8 @@ class BigQuerySyncDaoTest(BaseTestCase, QuestionnaireTestMixin):
 
         # This verifies the module submitted status from the participant generator data for each of the GROR modules
         # Also checks that an external id key/value pair exists (but value likely None for test data modules)
-        gror_modules = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR')
+        gror_modules = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR',
+                                                sort_key='mod_authored')
         self.assertIn('mod_external_id', gror_modules[0])
         self.assertEqual('SUBMITTED', gror_modules[0]['mod_status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['mod_status'])
