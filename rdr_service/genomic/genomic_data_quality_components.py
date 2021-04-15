@@ -146,6 +146,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
     def format_report(self, display_name, data):
         """
         Converts the report query ResultProxy object to tab-delimited string
+        :param display_name: string
         :param data: ResultProxy
         :return: string
         """
