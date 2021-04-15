@@ -224,14 +224,14 @@ class GenomicDataQualityReportTest(BaseTestCase):
         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
             report_output = controller.execute_workflow()
 
-        expected_report = "Daily Ingestions Summary\n"
+        expected_report = "```Daily Ingestions Summary\n"
         expected_report += "record_count    ingested_count    incident_count    "
         expected_report += "file_type    gc_site_id    genome_type    file_path\n"
         expected_report += "1    0    0    aw1    rdr    aou_wgs    "
         expected_report += f"{aw1_manifest_path}\n"
         expected_report += "1    0    0    aw2    rdr    aou_wgs    "
         expected_report += f"{aw2_manifest_path}"
-        expected_report += "\n"
+        expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
 
