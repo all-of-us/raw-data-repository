@@ -503,22 +503,22 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
     def test_constraints_dob_and_lastname(self):
         num_summary = 3
-        date_str = datetime.date(1978, 10, 9)
+        _date = datetime.date(1978, 10, 9)
         last_name = "Tester_1"
         for num in range(num_summary):
             self.data_generator \
                 .create_database_participant_summary(
                     firstName=f"Testy_{num}",
                     lastName=f"Tester_{num}",
-                    dateOfBirth=date_str,
+                    dateOfBirth=_date,
                 )
 
         response_only_dob = self.send_get(
-                f"ParticipantSummary?dateOfBirth={date_str}",
+                f"ParticipantSummary?dateOfBirth={_date}",
                 expected_status=http.client.BAD_REQUEST
             )
         self.assertEqual(response_only_dob.status_code, 400)
-        self.assertEqual(response_only_dob.json['message'], 'Missing lastName in request')
+        self.assertEqual(response_only_dob.json['message'], 'Argument lastName is required with dateOfBirth')
 
         response_only_last_name = self.send_get(
                 f"ParticipantSummary?lastName={last_name}",
@@ -526,9 +526,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             )
 
         self.assertEqual(response_only_last_name.status_code, 400)
-        self.assertEqual(response_only_last_name.json['message'], 'Missing dateOfBirth in request')
+        self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
 
-        response_dob_last_name = self.send_get(f"ParticipantSummary?dateOfBirth={date_str}&lastName={last_name}")
+        response_dob_last_name = self.send_get(f"ParticipantSummary?dateOfBirth={_date}&lastName={last_name}")
         self.assertEqual(len(response_dob_last_name['entry']), 1)
         resource = response_dob_last_name['entry'][0]['resource']
         self.assertEqual(resource['lastName'], last_name)

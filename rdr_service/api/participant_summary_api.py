@@ -54,8 +54,8 @@ class ParticipantSummaryApi(BaseApi):
             return super(ParticipantSummaryApi, self)._query("participantId")
 
     def _make_query(self, check_invalid=True):
-        pair_constraint, message = self._check_constraints()
-        if pair_constraint:
+        constraint_failed, message = self._check_constraints()
+        if constraint_failed:
             raise BadRequest(f"{message}")
 
         query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
@@ -78,11 +78,9 @@ class ParticipantSummaryApi(BaseApi):
         pairs = {
             'lastName': {
                 'fields': ['lastName', 'dateOfBirth'],
-                'message': ''
             },
             'dateOfBirth': {
                 'fields': ['lastName', 'dateOfBirth'],
-                'message': ''
             }
         }
 
@@ -92,7 +90,7 @@ class ParticipantSummaryApi(BaseApi):
                 missing = [val for val in constraint['fields'] if val not in request.args]
                 if missing:
                     invalid = True
-                    message = f'Missing {missing[0]} in request'
+                    message = f'Argument {missing[0]} is required with {arg}'
                     break
 
         return invalid, message
