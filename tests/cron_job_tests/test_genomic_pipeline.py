@@ -146,7 +146,8 @@ class GenomicPipelineTest(BaseTestCase):
                          _FAKE_BIOBANK_SAMPLE_BUCKET + os.sep + _FAKE_BUCKET_RESULT_FOLDER
                          ]
 
-    def _write_cloud_csv(self, file_name, contents_str, bucket=None, folder=None):
+    @staticmethod
+    def _write_cloud_csv(file_name, contents_str, bucket=None, folder=None):
         bucket = _FAKE_BUCKET if bucket is None else bucket
         if folder is None:
             path = "/%s/%s" % (bucket, file_name)
@@ -169,11 +170,12 @@ class GenomicPipelineTest(BaseTestCase):
         i = self._participant_i
         self._participant_i += 1
         bid = kwargs.pop('biobankId', i)
-        participant = Participant(participantId=i, biobankId=bid, researchId=1000000+i, **kwargs)
+        participant = Participant(participantId=i, biobankId=bid, researchId=1000000 + i, **kwargs)
         self.participant_dao.insert(participant)
         return participant
 
-    def _make_biobank_order(self, **kwargs):
+    @staticmethod
+    def _make_biobank_order(**kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.
 
     Kwargs pass through to BiobankOrder constructor, overriding defaults.
@@ -181,21 +183,21 @@ class GenomicPipelineTest(BaseTestCase):
         participant_id = kwargs["participantId"]
 
         for k, default_value in (
-                ("biobankOrderId", "1"),
-                ("created", clock.CLOCK.now()),
-                ("sourceSiteId", 1),
-                ("sourceUsername", "fred@pmi-ops.org"),
-                ("collectedSiteId", 1),
-                ("collectedUsername", "joe@pmi-ops.org"),
-                ("processedSiteId", 1),
-                ("processedUsername", "sue@pmi-ops.org"),
-                ("finalizedSiteId", 2),
-                ("finalizedUsername", "bob@pmi-ops.org"),
-                ("finalizedTime",  clock.CLOCK.now()),
-                ("version", 1),
-                ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
-                ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
-                ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, version=1)]),
+            ("biobankOrderId", "1"),
+            ("created", clock.CLOCK.now()),
+            ("sourceSiteId", 1),
+            ("sourceUsername", "fred@pmi-ops.org"),
+            ("collectedSiteId", 1),
+            ("collectedUsername", "joe@pmi-ops.org"),
+            ("processedSiteId", 1),
+            ("processedUsername", "sue@pmi-ops.org"),
+            ("finalizedSiteId", 2),
+            ("finalizedUsername", "bob@pmi-ops.org"),
+            ("finalizedTime", clock.CLOCK.now()),
+            ("version", 1),
+            ("identifiers", [BiobankOrderIdentifier(system="a", value="c")]),
+            ("samples", [BiobankOrderedSample(test="1SAL2", description="description", processingRequired=True)]),
+            ("mailKitOrders", [BiobankMailKitOrder(participantId=participant_id, version=1)]),
         ):
             if k not in kwargs:
                 kwargs[k] = default_value
@@ -203,11 +205,13 @@ class GenomicPipelineTest(BaseTestCase):
         biobank_order = BiobankOrderDao().insert(BiobankOrder(**kwargs))
         return biobank_order
 
-    def _make_stored_sample(self, **kwargs):
+    @staticmethod
+    def _make_stored_sample(**kwargs):
         """Makes BiobankStoredSamples for a biobank_id"""
         return BiobankStoredSampleDao().insert(BiobankStoredSample(**kwargs))
 
-    def _make_ordered_sample(self, _test='1SAL2', _description='description',
+    @staticmethod
+    def _make_ordered_sample(_test='1SAL2', _description='description',
                              _processing_req=True, _collected=None, _processed=None,
                              _finalized=None):
         """Makes BiobankOrderedSample for insert with biobank order"""
@@ -216,7 +220,6 @@ class GenomicPipelineTest(BaseTestCase):
                                     processingRequired=_processing_req,
                                     collected=_collected, processed=_processed,
                                     finalized=_finalized)
-
 
     def _make_summary(self, participant, **override_kwargs):
         """
@@ -261,6 +264,241 @@ class GenomicPipelineTest(BaseTestCase):
             genome_type=genome_type,
             genomic_workflow_state=GenomicWorkflowState.CONTROL_SAMPLE,
         )
+
+    def _create_ingestion_test_file(
+        self,
+        test_data_filename,
+        bucket_name,
+        folder=None,
+        include_timestamp=True,
+        include_sub_num=False,
+        skip_input_format=False
+    ):
+        test_data_file = test_data.open_genomic_set_file(test_data_filename)
+
+        if skip_input_format:
+            input_filename = test_data_filename
+        else:
+            input_filename = '{}{}{}.csv'.format(
+                test_data_filename.replace('.csv', ''),
+                '_11192019' if include_timestamp else '',
+                '_1' if include_sub_num else ''
+            )
+
+        self._write_cloud_csv(
+            input_filename,
+            test_data_file,
+            folder=folder,
+            bucket=bucket_name
+        )
+
+        return input_filename
+
+    @staticmethod
+    def _create_fake_genomic_set(
+        genomic_set_name,
+        genomic_set_criteria,
+        genomic_set_filename
+    ):
+        now = clock.CLOCK.now()
+        genomic_set = GenomicSet()
+        genomic_set.genomicSetName = genomic_set_name
+        genomic_set.genomicSetCriteria = genomic_set_criteria
+        genomic_set.genomicSetFile = genomic_set_filename
+        genomic_set.genomicSetFileTime = now
+        genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
+
+        set_dao = GenomicSetDao()
+        genomic_set.genomicSetVersion = set_dao.get_new_version_number(genomic_set.genomicSetName)
+
+        set_dao.insert(genomic_set)
+
+        return genomic_set
+
+    @staticmethod
+    def _create_fake_genomic_member(
+        genomic_set_id,
+        participant_id,
+        validation_status=GenomicSetMemberStatus.VALID,
+        validation_flags=None,
+        sex_at_birth="F",
+        biobankId=None,
+        sample_id=None,
+        genome_type="aou_array",
+        ny_flag="Y",
+        sequencing_filename=None,
+        recon_bb_manifest_job_id=None,
+        recon_gc_manifest_job_id=None,
+        recon_sequencing_job_id=None,
+        recon_cvl_job_id=None,
+        cvl_manifest_wgs_job_id=None,
+        gem_a1_manifest_job_id=None,
+        cvl_w1_manifest_job_id=None,
+        genomic_workflow_state=None,
+        genome_center=None,
+        aw3_job_id=None,
+    ):
+        genomic_set_member = GenomicSetMember()
+        genomic_set_member.genomicSetId = genomic_set_id
+        genomic_set_member.validationStatus = validation_status
+        genomic_set_member.validationFlags = validation_flags
+        genomic_set_member.participantId = participant_id
+        genomic_set_member.sampleId = sample_id
+        genomic_set_member.sexAtBirth = sex_at_birth
+        genomic_set_member.biobankId = biobankId
+        genomic_set_member.collectionTubeId = participant_id
+        genomic_set_member.genomeType = genome_type
+        genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
+        genomic_set_member.sequencingFileName = sequencing_filename
+        genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
+        genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
+        genomic_set_member.reconcileMetricsSequencingJobRunId = recon_sequencing_job_id
+        genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
+        genomic_set_member.cvlW1ManifestJobRunId = cvl_manifest_wgs_job_id
+        genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
+        genomic_set_member.cvlW1ManifestJobRunId = cvl_w1_manifest_job_id
+        genomic_set_member.genomicWorkflowState = genomic_workflow_state
+        genomic_set_member.gcSiteId = genome_center
+        genomic_set_member.aw3ManifestJobRunID = aw3_job_id
+
+        member_dao = GenomicSetMemberDao()
+        member_dao.insert(genomic_set_member)
+
+    @staticmethod
+    def _naive_utc_to_naive_central(naive_utc_date):
+        utc_date = pytz.utc.localize(naive_utc_date)
+        central_date = utc_date.astimezone(pytz.timezone("US/Central"))
+        return central_date.replace(tzinfo=None)
+
+    @staticmethod
+    def _find_latest_genomic_set_csv(cloud_bucket_name, keyword=None):
+        bucket_stat_list = list_blobs(cloud_bucket_name)
+        if not bucket_stat_list:
+            raise RuntimeError("No files in cloud bucket %r." % cloud_bucket_name)
+        bucket_stat_list = [s for s in bucket_stat_list if s.name.lower().endswith(".csv")]
+        if not bucket_stat_list:
+            raise RuntimeError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
+        if keyword:
+            buckt_stat_keyword_list = []
+            for item in bucket_stat_list:
+                if keyword in item.name:
+                    buckt_stat_keyword_list.append(item)
+            if buckt_stat_keyword_list:
+                buckt_stat_keyword_list.sort(key=lambda s: s.updated)
+                return buckt_stat_keyword_list[-1].name
+            else:
+                raise RuntimeError(
+                    "No CSVs in cloud bucket %r with keyword %s (all files: %s)."
+                    % (cloud_bucket_name, keyword, bucket_stat_list)
+                )
+        bucket_stat_list.sort(key=lambda s: s.updated)
+        return bucket_stat_list[-1].name
+
+    def _create_fake_datasets_for_gc_tests(self, count,
+                                           arr_override=False,
+                                           **kwargs):
+        # pylint: disable=unused-variable
+        # fake genomic_set
+        genomic_test_set = self._create_fake_genomic_set(
+            genomic_set_name="genomic-test-set-cell-line",
+            genomic_set_criteria=".",
+            genomic_set_filename="genomic-test-set-cell-line.csv"
+        )
+        # make necessary fake participant data
+        id_start_from = kwargs.get('id_start_from', 0)
+        for p in range(1 + id_start_from, count + 1 + id_start_from):
+            participant = self._make_participant()
+            self._make_summary(participant)
+            self._make_biobank_order(participantId=participant.participantId,
+                                     biobankOrderId=p,
+                                     identifiers=[BiobankOrderIdentifier(
+                                         system=u'c', value=u'e{}'.format(
+                                             participant.participantId))])
+            sample_args = {
+                'test': '1SAL2',
+                'confirmed': clock.CLOCK.now(),
+                'created': clock.CLOCK.now(),
+                'biobankId': p,
+                'biobankOrderIdentifier': f'e{participant.participantId}',
+                'biobankStoredSampleId': p,
+            }
+            with clock.FakeClock(clock.CLOCK.now()):
+                self._make_stored_sample(**sample_args)
+            # Fake genomic set members.
+            gt = 'aou_wgs'
+            if arr_override and p in kwargs.get('array_participants'):
+                gt = 'aou_array'
+            if kwargs.get('cvl'):
+                gt = 'aou_cvl'
+            self._create_fake_genomic_member(
+                genomic_set_id=genomic_test_set.id,
+                participant_id=participant.participantId,
+                validation_status=GenomicSetMemberStatus.VALID,
+                validation_flags=None,
+                biobankId=p,
+                sex_at_birth='F', genome_type=gt, ny_flag='Y',
+                sequencing_filename=kwargs.get('sequencing_filename'),
+                recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
+                recon_sequencing_job_id=kwargs.get('recon_seq_id'),
+                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
+                gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
+                cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
+                genomic_workflow_state=kwargs.get('genomic_workflow_state'),
+                genome_center=kwargs.get('genome_center'),
+                aw3_job_id=kwargs.get('aw3_job_id'),
+            )
+
+    def _update_site_states(self):
+        sites = [self.site_dao.get(i) for i in range(1, 3)]
+        sites[0].state = 'NY'
+        sites[1].state = 'AZ'
+        for site in sites:
+            self.site_dao.update(site)
+
+    def _setup_fake_sex_at_birth_codes(self, sex_code='n'):
+        if sex_code.lower() == 'f':
+            c_val = "SexAtBirth_Female"
+        elif sex_code.lower() == 'm':
+            c_val = "SexAtBirth_Male"
+        else:
+            c_val = "SexAtBirth_Intersex"
+        code_to_insert = Code(
+            system="a",
+            value=c_val,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
+    def _setup_fake_race_codes(self, native=False):
+        c_val = "WhatRaceEthnicity_Hispanic"
+        if native:
+            c_val = "WhatRaceEthnicity_AIAN"
+        code_to_insert = Code(
+            system="a",
+            value=c_val,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
+    def _setup_fake_reconsent_question_code(self):
+        code_to_insert = Code(
+            system="a",
+            value="ReviewConsentAgree_Question",
+            display="c",
+            topic="d",
+            codeType=CodeType.QUESTION, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
+
+    def _setup_fake_reconsent_codes(self, reconsent=True):
+        code_to_insert = Code(
+            system="a",
+            value=COHORT_1_REVIEW_CONSENT_YES_CODE if reconsent else COHORT_1_REVIEW_CONSENT_NO_CODE,
+            display="c",
+            topic="d",
+            codeType=CodeType.ANSWER, mapped=True)
+        return self.code_dao.insert(code_to_insert).codeId
 
     def test_ingest_array_aw2_end_to_end(self):
         # Create the fake Google Cloud CSV files to ingest
@@ -657,8 +895,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(test_date):
             test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                               bucket_name,
-                                                               folder=subfolder)
+                                                              bucket_name,
+                                                              folder=subfolder)
 
         self._update_test_sample_ids()
 
@@ -706,229 +944,6 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
-
-    def _create_ingestion_test_file(self,
-                                    test_data_filename,
-                                    bucket_name,
-                                    folder=None,
-                                    include_timestamp=True,
-                                    include_sub_num=False,):
-        test_data_file = test_data.open_genomic_set_file(test_data_filename)
-
-        input_filename = '{}{}{}.csv'.format(
-            test_data_filename.replace('.csv', ''),
-            '_11192019' if include_timestamp else '',
-            '_1' if include_sub_num else ''
-        )
-
-        self._write_cloud_csv(input_filename,
-                              test_data_file,
-                              folder=folder,
-                              bucket=bucket_name)
-        return input_filename
-
-    def _create_fake_genomic_set(self,
-                                 genomic_set_name,
-                                 genomic_set_criteria,
-                                 genomic_set_filename
-                                 ):
-        now = clock.CLOCK.now()
-        genomic_set = GenomicSet()
-        genomic_set.genomicSetName = genomic_set_name
-        genomic_set.genomicSetCriteria = genomic_set_criteria
-        genomic_set.genomicSetFile = genomic_set_filename
-        genomic_set.genomicSetFileTime = now
-        genomic_set.genomicSetStatus = GenomicSetStatus.INVALID
-
-        set_dao = GenomicSetDao()
-        genomic_set.genomicSetVersion = set_dao.get_new_version_number(genomic_set.genomicSetName)
-
-        set_dao.insert(genomic_set)
-
-        return genomic_set
-
-    def _create_fake_genomic_member(
-        self,
-        genomic_set_id,
-        participant_id,
-        validation_status=GenomicSetMemberStatus.VALID,
-        validation_flags=None,
-        sex_at_birth="F",
-        biobankId=None,
-        sample_id=None,
-        genome_type="aou_array",
-        ny_flag="Y",
-        sequencing_filename=None,
-        recon_bb_manifest_job_id=None,
-        recon_gc_manifest_job_id=None,
-        recon_sequencing_job_id=None,
-        recon_cvl_job_id=None,
-        cvl_manifest_wgs_job_id=None,
-        gem_a1_manifest_job_id=None,
-        cvl_w1_manifest_job_id=None,
-        genomic_workflow_state=None,
-        genome_center=None,
-        aw3_job_id=None,
-    ):
-        genomic_set_member = GenomicSetMember()
-        genomic_set_member.genomicSetId = genomic_set_id
-        genomic_set_member.validationStatus = validation_status
-        genomic_set_member.validationFlags = validation_flags
-        genomic_set_member.participantId = participant_id
-        genomic_set_member.sampleId = sample_id
-        genomic_set_member.sexAtBirth = sex_at_birth
-        genomic_set_member.biobankId = biobankId
-        genomic_set_member.collectionTubeId = participant_id
-        genomic_set_member.genomeType = genome_type
-        genomic_set_member.nyFlag = 1 if ny_flag == "Y" else 0
-        genomic_set_member.sequencingFileName = sequencing_filename
-        genomic_set_member.reconcileMetricsBBManifestJobRunId = recon_bb_manifest_job_id
-        genomic_set_member.reconcileGCManifestJobRunId = recon_gc_manifest_job_id
-        genomic_set_member.reconcileMetricsSequencingJobRunId = recon_sequencing_job_id
-        genomic_set_member.reconcileCvlJobRunId = recon_cvl_job_id
-        genomic_set_member.cvlW1ManifestJobRunId = cvl_manifest_wgs_job_id
-        genomic_set_member.gemA1ManifestJobRunId = gem_a1_manifest_job_id
-        genomic_set_member.cvlW1ManifestJobRunId = cvl_w1_manifest_job_id
-        genomic_set_member.genomicWorkflowState = genomic_workflow_state
-        genomic_set_member.gcSiteId = genome_center
-        genomic_set_member.aw3ManifestJobRunID = aw3_job_id
-
-        member_dao = GenomicSetMemberDao()
-        member_dao.insert(genomic_set_member)
-
-    def _naive_utc_to_naive_central(self, naive_utc_date):
-        utc_date = pytz.utc.localize(naive_utc_date)
-        central_date = utc_date.astimezone(pytz.timezone("US/Central"))
-        return central_date.replace(tzinfo=None)
-
-    def _find_latest_genomic_set_csv(self, cloud_bucket_name, keyword=None):
-        bucket_stat_list = list_blobs(cloud_bucket_name)
-        if not bucket_stat_list:
-            raise RuntimeError("No files in cloud bucket %r." % cloud_bucket_name)
-        bucket_stat_list = [s for s in bucket_stat_list if s.name.lower().endswith(".csv")]
-        if not bucket_stat_list:
-            raise RuntimeError("No CSVs in cloud bucket %r (all files: %s)." % (cloud_bucket_name, bucket_stat_list))
-        if keyword:
-            buckt_stat_keyword_list = []
-            for item in bucket_stat_list:
-                if keyword in item.name:
-                    buckt_stat_keyword_list.append(item)
-            if buckt_stat_keyword_list:
-                buckt_stat_keyword_list.sort(key=lambda s: s.updated)
-                return buckt_stat_keyword_list[-1].name
-            else:
-                raise RuntimeError(
-                    "No CSVs in cloud bucket %r with keyword %s (all files: %s)."
-                    % (cloud_bucket_name, keyword, bucket_stat_list)
-                )
-        bucket_stat_list.sort(key=lambda s: s.updated)
-        return bucket_stat_list[-1].name
-
-    def _create_fake_datasets_for_gc_tests(self, count,
-                                           arr_override=False,
-                                           **kwargs):
-        # pylint: disable=unused-variable
-        # fake genomic_set
-        genomic_test_set = self._create_fake_genomic_set(
-            genomic_set_name="genomic-test-set-cell-line",
-            genomic_set_criteria=".",
-            genomic_set_filename="genomic-test-set-cell-line.csv"
-        )
-        # make necessary fake participant data
-        id_start_from = kwargs.get('id_start_from', 0)
-        for p in range(1+id_start_from, count + 1 + id_start_from):
-            participant = self._make_participant()
-            self._make_summary(participant)
-            self._make_biobank_order(participantId=participant.participantId,
-                                     biobankOrderId=p,
-                                     identifiers=[BiobankOrderIdentifier(
-                                         system=u'c', value=u'e{}'.format(
-                                             participant.participantId))])
-            sample_args = {
-                'test': '1SAL2',
-                'confirmed': clock.CLOCK.now(),
-                'created': clock.CLOCK.now(),
-                'biobankId': p,
-                'biobankOrderIdentifier': f'e{participant.participantId}',
-                'biobankStoredSampleId': p,
-            }
-            with clock.FakeClock(clock.CLOCK.now()):
-                self._make_stored_sample(**sample_args)
-            # Fake genomic set members.
-            gt = 'aou_wgs'
-            if arr_override and p in kwargs.get('array_participants'):
-                gt = 'aou_array'
-            if kwargs.get('cvl'):
-                gt = 'aou_cvl'
-            self._create_fake_genomic_member(
-                genomic_set_id=genomic_test_set.id,
-                participant_id=participant.participantId,
-                validation_status=GenomicSetMemberStatus.VALID,
-                validation_flags=None,
-                biobankId=p,
-                sex_at_birth='F', genome_type=gt, ny_flag='Y',
-                sequencing_filename=kwargs.get('sequencing_filename'),
-                recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
-                recon_sequencing_job_id=kwargs.get('recon_seq_id'),
-                recon_gc_manifest_job_id=kwargs.get('recon_gc_man_id'),
-                gem_a1_manifest_job_id=kwargs.get('gem_a1_run_id'),
-                cvl_w1_manifest_job_id=kwargs.get('cvl_w1_run_id'),
-                genomic_workflow_state=kwargs.get('genomic_workflow_state'),
-                genome_center=kwargs.get('genome_center'),
-                aw3_job_id=kwargs.get('aw3_job_id'),
-            )
-
-    def _update_site_states(self):
-        sites = [self.site_dao.get(i) for i in range(1, 3)]
-        sites[0].state = 'NY'
-        sites[1].state = 'AZ'
-        for site in sites:
-            self.site_dao.update(site)
-
-    def _setup_fake_sex_at_birth_codes(self, sex_code='n'):
-        if sex_code.lower() == 'f':
-            c_val = "SexAtBirth_Female"
-        elif sex_code.lower() == 'm':
-            c_val = "SexAtBirth_Male"
-        else:
-            c_val = "SexAtBirth_Intersex"
-        code_to_insert = Code(
-            system="a",
-            value=c_val,
-            display="c",
-            topic="d",
-            codeType=CodeType.ANSWER, mapped=True)
-        return self.code_dao.insert(code_to_insert).codeId
-
-    def _setup_fake_race_codes(self, native=False):
-        c_val = "WhatRaceEthnicity_Hispanic"
-        if native:
-            c_val = "WhatRaceEthnicity_AIAN"
-        code_to_insert = Code(
-            system="a",
-            value=c_val,
-            display="c",
-            topic="d",
-            codeType=CodeType.ANSWER, mapped=True)
-        return self.code_dao.insert(code_to_insert).codeId
-
-    def _setup_fake_reconsent_question_code(self):
-        code_to_insert = Code(
-            system="a",
-            value="ReviewConsentAgree_Question",
-            display="c",
-            topic="d",
-            codeType=CodeType.QUESTION, mapped=True)
-        return self.code_dao.insert(code_to_insert).codeId
-
-    def _setup_fake_reconsent_codes(self, reconsent=True):
-        code_to_insert = Code(
-            system="a",
-            value=COHORT_1_REVIEW_CONSENT_YES_CODE if reconsent else COHORT_1_REVIEW_CONSENT_NO_CODE,
-            display="c",
-            topic="d",
-            codeType=CodeType.ANSWER, mapped=True)
-        return self.code_dao.insert(code_to_insert).codeId
 
     def test_gc_metrics_reconciliation_vs_array_data(self):
 
