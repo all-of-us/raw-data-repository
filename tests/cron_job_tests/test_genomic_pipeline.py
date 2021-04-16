@@ -272,18 +272,16 @@ class GenomicPipelineTest(BaseTestCase):
         folder=None,
         include_timestamp=True,
         include_sub_num=False,
-        skip_input_format=False
+        extension=None
     ):
         test_data_file = test_data.open_genomic_set_file(test_data_filename)
 
-        if skip_input_format:
-            input_filename = test_data_filename
-        else:
-            input_filename = '{}{}{}.csv'.format(
-                test_data_filename.replace('.csv', ''),
-                '_11192019' if include_timestamp else '',
-                '_1' if include_sub_num else ''
-            )
+        input_filename = '{}{}{}{}'.format(
+            test_data_filename.replace('.csv', ''),
+            '_11192019' if include_timestamp else '',
+            '_1' if include_sub_num else '',
+            '.csv' if not extension else extension
+        )
 
         self._write_cloud_csv(
             input_filename,
@@ -839,13 +837,15 @@ class GenomicPipelineTest(BaseTestCase):
             'RDR_AoU_SEQ_TestNoHeadersDataManifest.csv',
             'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
             'RDR-AoU-TestBadFilename-DataManifest.csv',
-            'test_empty_wells.csv'
+            'test_empty_wells.csv',
+            'RDR_AoU_GEN_TestExt_DataManifest.csv',
         )
         for test_file in end_to_end_test_files:
             self._create_ingestion_test_file(
                 test_file,
                 bucket_name,
-                folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+                folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]),
+                extension='.tsv' if 'TestExt' in test_file else None
             )
 
         # run the GC Metrics Ingestion workflow
@@ -854,23 +854,25 @@ class GenomicPipelineTest(BaseTestCase):
         # test file processing queue
         processed_files = self.file_processed_dao.get_all()
 
+        # test for not in processed
+        # if "TestBadFilename" in processed.fileName:
+        #     self.assertEqual(processed.fileResult,
+        #                      GenomicSubProcessResult.INVALID_FILE_NAME)
+
         for processed in processed_files:
             # Test bad filename, invalid columns
             incident = self.incident_dao.get_by_source_file_id(processed.id)[0]
-            if "TestBadFilename" in processed.fileName:
-                self.assertEqual(processed.fileResult,
-                                 GenomicSubProcessResult.INVALID_FILE_NAME)
             if processed.fileName in ["TestNoHeaders", "TestBadStructure"]:
                 self.assertEqual(processed.fileResult,
                                  GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
             if "TestNoHeaders" in processed.fileName:
                 self.assertEqual(0, incident.slack_notification)
                 self.assertIsNone(incident.slack_notification_date)
-                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name)
             if "TestBadStructure" in processed.fileName:
                 self.assertEqual(1, incident.slack_notification)
                 self.assertIsNotNone(incident.slack_notification_date)
-                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED.name)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name)
 
         # # Test Unsuccessful run
         run_obj = self.job_run_dao.get(1)

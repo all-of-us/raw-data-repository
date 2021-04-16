@@ -852,23 +852,25 @@ class GenomicJobController:
 
         self.job_result = self.ingester.load_raw_awn_file()
 
-    def create_incident(self, **kwargs):
+    def create_incident(self, create_incident=True, slack=False, **kwargs):
         """
         Creates an GenomicIncident and sends alert via Slack if default
         for slack kwarg is not overridden
         :return:
         """
-        insert_kwargs = {key: value for key, value in kwargs.items()
-                         if key in GenomicIncident.__table__.columns.keys()}
-        incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
+        incident = None
+        if create_incident:
+            insert_kwargs = {key: value for key, value in kwargs.items()
+                             if key in GenomicIncident.__table__.columns.keys()}
+            incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
 
-        if kwargs.get('slack') is True:
+        if slack:
             message_data = {'text': kwargs.get('message', None)}
             slack_alert = self.genomic_alert_slack.send_message_to_webhook(
                 message_data=message_data
             )
 
-            if slack_alert:
+            if slack_alert and incident:
                 incident.slack_notification = 1
                 incident.slack_notification_date = datetime.utcnow()
                 self.incident_dao.update(incident)

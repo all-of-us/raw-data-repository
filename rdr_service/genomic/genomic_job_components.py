@@ -180,7 +180,7 @@ class GenomicFileIngester:
 
         files = [(s.name, s.updated) for s in files
                  if s.updated > date_limit_obj
-                 and self.file_validator.validate_filename(s.name.lower())]
+                 and self.file_validator.validate_filename(s.name)]
 
         if not files:
             logging.info('No files in cloud bucket {}'.format(self.bucket_name))
@@ -1538,7 +1538,7 @@ class GenomicFileValidator:
 
         if not struct_valid_result:
             slack = True
-            invalid_message = "File structure of {} not valid.".format(filename)
+            invalid_message = f"File structure of {filename} is not valid."
             if missing_fields:
                 invalid_message += ' Missing fields: {}'.format(missing_fields)
                 if len(missing_fields) == len(expected):
@@ -1546,7 +1546,7 @@ class GenomicFileValidator:
             self.controller.create_incident(
                 source_job_run_id=self.controller.job_run.id,
                 source_file_processed_id=file_processed.id,
-                code=GenomicIncidentCode.FILE_VALIDATION_FAILED.name,
+                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name,
                 message=invalid_message,
                 slack=slack
             )
@@ -1572,7 +1572,8 @@ class GenomicFileValidator:
             return (
                 bb_filename_components[0] == 'genomic' and
                 bb_filename_components[1] == 'manifest' and
-                bb_filename_components[2] in ('aou_array', 'aou_wgs')
+                bb_filename_components[2] in ('aou_array', 'aou_wgs') and
+                filename.lower().endswith('csv')
             )
 
         def gc_validation_metrics_name_rule():
@@ -1580,7 +1581,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in self.GC_METRICS_SCHEMAS.keys()
+                filename_components[2] in self.GC_METRICS_SCHEMAS.keys() and
+                filename.lower().endswith('csv')
             )
 
         def bb_to_gc_manifest_name_rule():
@@ -1588,7 +1590,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in ('seq', 'gen')
+                filename_components[2] in ('seq', 'gen') and
+                filename.lower().endswith('csv')
             )
 
         def aw1f_manifest_name_rule():
@@ -1600,7 +1603,8 @@ class GenomicFileValidator:
                 filename_components[2] in ('seq', 'gen') and
                 re.search(r"pkg-[0-9]{4}-[0-9]{5,}$",
                           filename_components[3]) is not None and
-                filename_components[4] == 'failure.csv'
+                filename_components[4] == 'failure.csv' and
+                filename.lower().endswith('csv')
             )
 
         def cvl_w2_manifest_name_rule():
@@ -1613,7 +1617,8 @@ class GenomicFileValidator:
                 filename_components[0] in self.VALID_CVL_FACILITIES and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl' and
-                filename_components[3] == 'requestvalidation'
+                filename_components[3] == 'requestvalidation' and
+                filename.lower().endswith('csv')
             )
 
         def gem_a2_manifest_name_rule():
@@ -1622,7 +1627,8 @@ class GenomicFileValidator:
                 len(filename_components) == 5 and
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
-                filename_components[2] == 'a2'
+                filename_components[2] == 'a2' and
+                filename.lower().endswith('csv')
             )
 
         def cvl_aw1c_manifest_name_rule():
@@ -1630,7 +1636,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl'
+                filename_components[2] == 'cvl' and
+                filename.lower().endswith('csv')
             )
 
         def cvl_aw1cf_manifest_name_rule():
@@ -1639,7 +1646,8 @@ class GenomicFileValidator:
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl' and
-                filename_components[4] == 'failure.csv'
+                filename_components[4] == 'failure.csv' and
+                filename.lower().endswith('csv')
             )
 
         def gem_metrics_name_rule():
@@ -1647,7 +1655,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
-                filename_components[2] == 'metrics'
+                filename_components[2] == 'metrics' and
+                filename.lower().endswith('csv')
             )
 
         def aw4_arr_manifest_name_rule():
@@ -1655,7 +1664,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'drcb' and
-                filename_components[2] == 'gen'
+                filename_components[2] == 'gen' and
+                filename.lower().endswith('csv')
             )
 
         def aw4_wgs_manifest_name_rule():
@@ -1663,7 +1673,8 @@ class GenomicFileValidator:
             return (
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'drcb' and
-                filename_components[2] == 'seq'
+                filename_components[2] == 'seq' and
+                filename.lower().endswith('csv')
             )
 
         def aw5_wgs_manifest_name_rule():
@@ -1690,7 +1701,18 @@ class GenomicFileValidator:
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
-        return name_rules[self.job_id]()
+        is_valid_filename = name_rules[self.job_id]()
+
+        if not is_valid_filename:
+            invalid_message = f"File name {filename.split('/')[1]} has failed validation."
+            self.controller.create_incident(
+                create_incident=False,
+                slack=True,
+                message=invalid_message,
+            )
+            logging.info(invalid_message)
+
+        return is_valid_filename
 
     def _check_file_structure_valid(self, fields):
         """
