@@ -64,7 +64,7 @@ class DeployAppClass(ToolBase):
         self.jira_board = 'PD'
         self.docs_version = 'stable'  # Use as default version slug for readthedocs
 
-        self.environment = None
+        self.environment = RdrEnvironment(self.args.project)
 
     def write_config_file(self, key: str, config: list, filename: str = None):
         """
@@ -127,7 +127,7 @@ class DeployAppClass(ToolBase):
                 config = service['default']
 
             # check to see if we are deploying this service.
-            if service['type'] == 'service'and key not in self.services:
+            if service['type'] == 'service' and key not in self.services:
                 continue
 
             config_file = self.write_config_file(key, config, service.get('config_file', None))
@@ -165,6 +165,8 @@ class DeployAppClass(ToolBase):
                 self.deploy_sub_type = 'sandbox'
             elif 'stable' in self.gcp_env.project:
                 self.deploy_sub_type = 'stable'
+            elif 'drc-api-test' in self.gcp_env.project:  # TODO: replace subtype references with environment
+                self.deploy_sub_type = 'test'
         else:
             self.docs_version = 'latest'  # readthedocs version slug for production releases
 
@@ -480,7 +482,6 @@ class DeployAppClass(ToolBase):
         """
         with self.initialize_process_context() as gcp_env:
             self.gcp_env = gcp_env
-            self.environment = RdrEnvironment(self.gcp_env.project)
 
             _check_for_git_project(self.args, self.gcp_env)
 

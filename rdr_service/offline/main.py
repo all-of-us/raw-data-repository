@@ -21,6 +21,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER, RDR
+from rdr_service.app_util import nonprod
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.model.requests_log import RequestsLog
@@ -37,6 +38,7 @@ from rdr_service.offline.participant_counts_over_time import calculate_participa
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
+from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
@@ -484,6 +486,7 @@ def check_enrollment_status():
 def flag_response_duplication():
     detector = ResponseDuplicationDetector()
     detector.flag_duplicate_responses()
+    return '{ "success": "true" }'
 
 
 @app_util.auth_required_cron
@@ -501,6 +504,7 @@ def import_hpo_lite_pairing():
     importer.import_pairing_data()
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def clean_up_request_logs():
@@ -510,6 +514,13 @@ def clean_up_request_logs():
         session.query(RequestsLog).filter(
             RequestsLog.created < six_months_ago
         ).delete(synchronize_session=False)
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+@nonprod
+def migrate_requests_logs(target_db):
+    RequestsLogMigrator.migrate_latest_requests_logs(target_db)
     return '{ "success": "true" }'
 
 
@@ -777,6 +788,13 @@ def _build_pipeline_app():
         endpoint="request_log_cleanup",
         view_func=clean_up_request_logs,
         methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'MigrateRequestsLog/<string:target_db>',
+        endpoint='migrate_requests_log',
+        view_func=migrate_requests_logs,
+        methods=['GET']
     )
 
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
