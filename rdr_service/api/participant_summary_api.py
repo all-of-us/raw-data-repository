@@ -16,6 +16,7 @@ from rdr_service.participant_enums import ParticipantSummaryRecord
 class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
+        self.user_info = None
 
     @auth_required(PTC_HEALTHPRO_AWARDEE)
     def get(self, p_id=None):
@@ -24,6 +25,7 @@ class ParticipantSummaryApi(BaseApi):
             raise NotFound(f"Participant with ID {p_id} is not found.")
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
+        self.user_info = user_info
         if AWARDEE in user_info["roles"]:
             # if `user_email == DEV_MAIL and user_info.get("awardee") is not None` is True,
             # that means the value of `awardee` is mocked in the test cases, we need to read it from user_info
@@ -53,8 +55,12 @@ class ParticipantSummaryApi(BaseApi):
                     raise Forbidden
             return super(ParticipantSummaryApi, self)._query("participantId")
 
-    def _make_query(self):
-        query = super(ParticipantSummaryApi, self)._make_query()
+    def _make_query(self, check_invalid=True):
+        constraint_failed, message = self._check_constraints()
+        if constraint_failed:
+            raise BadRequest(f"{message}")
+
+        query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
         query.backfill_sync = self._get_request_arg_bool("_backfill", True)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
@@ -65,6 +71,34 @@ class ParticipantSummaryApi(BaseApi):
         if self._get_request_arg_bool("_sync"):
             return make_sync_results_for_request(self.dao, results)
         return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
+
+    def _check_constraints(self):
+        message = None
+        invalid = False
+        valid_roles = ['healthpro']
+
+        if not any(role in valid_roles for role in self.user_info.get('roles')):
+            return invalid, message
+
+        pairs = {
+            'lastName': {
+                'fields': ['lastName', 'dateOfBirth'],
+            },
+            'dateOfBirth': {
+                'fields': ['lastName', 'dateOfBirth'],
+            }
+        }
+
+        for arg in request.args:
+            if arg in pairs.keys():
+                constraint = pairs[arg]
+                missing = [val for val in constraint['fields'] if val not in request.args]
+                if missing:
+                    invalid = True
+                    message = f'Argument {missing[0]} is required with {arg}'
+                    break
+
+        return invalid, message
 
 
 class ParticipantSummaryModifiedApi(BaseApi):

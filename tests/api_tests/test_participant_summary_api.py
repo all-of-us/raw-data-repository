@@ -6,8 +6,8 @@ import threading
 import unittest
 from urllib.parse import urlencode
 
-from rdr_service import config
-from rdr_service import main, clock
+from rdr_service import clock, config, main
+from rdr_service.api_util import PTC
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -212,6 +212,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
         new_user_info['example@example.com']['roles'] = roles
         new_user_info['example@example.com']['awardee'] = awardee
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def create_demographics_questionnaire(self):
@@ -464,6 +469,95 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(null_email_result.json['message'],
                          'Missing email or login_phone_number in request')
+
+    def test_invalid_filters_return(self):
+        num_summary = 10
+        first_name = "Testy"
+        for num in range(num_summary):
+            if num == 1:
+                self.data_generator \
+                    .create_database_participant_summary(
+                        firstName=first_name,
+                        lastName="Tester"
+                    )
+            else:
+                self.data_generator \
+                    .create_database_participant_summary()
+
+        response_good_bad_filter = self.send_get(f"ParticipantSummary?foobarbaz=1&firstName={first_name}")
+        self.assertEqual(len(response_good_bad_filter['entry']), 1)
+        resource = response_good_bad_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_good_filter = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertEqual(len(response_good_filter['entry']), 1)
+        resource = response_good_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_bad_filter = self.send_get(
+            "ParticipantSummary?foobarbaz=1",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response_bad_filter.status_code, 400)
+        self.assertEqual(response_bad_filter.json['message'], 'No valid fields were provided')
+
+        response_no_filter = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+    def test_constraints_dob_and_lastname(self):
+        num_summary = 3
+        _date = datetime.date(1978, 10, 9)
+        last_name = "Tester_1"
+        for num in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=f"Testy_{num}",
+                    lastName=f"Tester_{num}",
+                    dateOfBirth=_date,
+                )
+
+        response_only_dob = self.send_get(
+                f"ParticipantSummary?dateOfBirth={_date}",
+                expected_status=http.client.BAD_REQUEST
+            )
+        self.assertEqual(response_only_dob.status_code, 400)
+        self.assertEqual(response_only_dob.json['message'], 'Argument lastName is required with dateOfBirth')
+
+        response_only_last_name = self.send_get(
+                f"ParticipantSummary?lastName={last_name}",
+                expected_status=http.client.BAD_REQUEST
+            )
+
+        self.assertEqual(response_only_last_name.status_code, 400)
+        self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
+
+        response_dob_last_name = self.send_get(f"ParticipantSummary?dateOfBirth={_date}&lastName={last_name}")
+        self.assertEqual(len(response_dob_last_name['entry']), 1)
+        resource = response_dob_last_name['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        response_no_filter = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+        self.overwrite_test_user_roles([PTC])
+
+        response_only_dob = self.send_get(
+            f"ParticipantSummary?dateOfBirth={_date}",
+        )
+        self.assertEqual(len(response_only_dob['entry']), 3)
+        resource = response_only_dob['entry'][0]['resource']
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        response_only_last_name = self.send_get(
+            f"ParticipantSummary?lastName={last_name}",
+        )
+
+        self.assertEqual(len(response_only_last_name['entry']), 1)
+        resource = response_only_last_name['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -2415,7 +2509,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&awardee=PITT", [[ps_1, ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH", [])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&zipCode=78752", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&loginPhoneNumber=215-222-2222", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, ps_2], [ps_3]])
@@ -2443,16 +2536,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
-            self.assertResponses(
-                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
-            )
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2554,7 +2637,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=hpoId", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&firstName=Mary", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, new_ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2840,7 +2922,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             )
             self.assertResponses("ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH", [])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&zipCode=78752", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&loginPhoneNumber=215-222-2222", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, ps_2], [ps_3]])
@@ -2862,16 +2943,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
-            self.assertResponses(
-                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
-            )
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2912,6 +2983,20 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04", [[]])
             self.assertResponses("ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
+
+            self.overwrite_test_user_roles([PTC])
+
+            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
+            self.assertResponses(
+                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
+            )
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
+
         # Two days after participant 2 withdraws, their fields are not set for anything but
         # participant ID, HPO ID, withdrawal status, and withdrawal time
         with FakeClock(TIME_5):
@@ -2970,13 +3055,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=hpoId", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&firstName=Mary", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, new_ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
 
     @unittest.skip("Only used for manual testing, should not be included in automated test suite")

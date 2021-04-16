@@ -214,12 +214,14 @@ class BaseApi(Resource):
         logging.info("Returning response.")
         return response
 
-    def _make_query(self):
+    def _make_query(self, check_invalid=False):
         field_filters = []
+        invalid_filters = []
         max_results = DEFAULT_MAX_RESULTS
         pagination_token = None
         order_by = None
         missing_id_list = ["awardee", "organization", "site"]
+        invalid_exclusion = ["_includeTotal", "_offset", "_sync", "_backfill"]
         include_total = request.args.get("_includeTotal", False)
         offset = request.args.get("_offset", False)
 
@@ -245,8 +247,19 @@ class BaseApi(Resource):
                 field_filter = self.dao.make_query_filter(key, value)
                 if field_filter:
                     field_filters.append(field_filter)
+                elif not field_filter \
+                        and key not in invalid_exclusion \
+                        and check_invalid:
+                    invalid_filters.append(key)
+
         return Query(
-            field_filters, order_by, max_results, pagination_token, include_total=include_total, offset=offset
+            field_filters,
+            order_by,
+            max_results,
+            pagination_token,
+            include_total=include_total,
+            offset=offset,
+            invalid_filters=invalid_filters
         )
 
     def _make_bundle(self, results, id_field, participant_id):
