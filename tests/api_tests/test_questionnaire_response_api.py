@@ -529,6 +529,60 @@ class QuestionnaireResponseApiTest(BaseTestCase):
                            resource,
                            expected_status=http.client.BAD_REQUEST)
 
+    @mock.patch('rdr_service.dao.bq_participant_summary_dao.logging')
+    def test_gror_consent_with_duplicate_answers(self, mock_logging):
+        """ Simulate RDR questionnaire_response payloads that contain duplicate entries in question JSON array"""
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+
+        p_id = participant_id[1:]
+        participant = self.send_get("Participant/%s" % participant_id)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+
+        expected = dict(participant_summary_default_values_no_basics)
+        expected.update({
+            "genderIdentity": "UNSET",
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "email": self.email,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "numCompletedPPIModules": 0,
+            "numCompletedBaselinePPIModules": 0,
+            "biobankId": participant["biobankId"],
+            "participantId": participant_id,
+            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
+            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
+            "primaryLanguage": "es",
+            "signUpTime": TIME_1.isoformat(),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+        })
+        self.assertJsonResponseMatches(expected, summary)
+
+        # verify if the response is not consent, the primary language will not change
+        questionnaire_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
+
+        resource = self._load_response_json("consent_for_genomic_ror_resp.json",
+                                            questionnaire_id, participant_id)
+
+        # Repeat the question array element in the response JSON to simulate the duplication seen in RDR
+        # See: questionnaire_response_id 680418686
+        resource["group"]["question"].append(resource["group"]["question"][0])
+
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
+        # Generic verification that generator logic logged a warning.  TODO:  Test logged message using regex?
+        self.assertTrue(mock_logging.warning.called)
+
+        ps_json = BQParticipantSummaryGenerator().make_bqrecord(p_id)
+        self.assertIsNotNone(ps_json)
+
     def test_consent_with_extension_language(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
