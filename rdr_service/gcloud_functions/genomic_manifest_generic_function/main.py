@@ -2,15 +2,14 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import base64
 import logging
 import sys
-from urllib.parse import quote
 
 from aou_cloud.services.gcp_cloud_function import GCPCloudFunctionContext, \
-    FunctionStoragePubSubHandler, PubSubEventContext
+    PubSubEventContext, FunctionPubSubHandler
 from aou_cloud.services.gcp_cloud_tasks import GCPCloudTask
 from aou_cloud.services.system_utils import setup_logging
-
 
 # Function name must contain only lower case Latin letters, digits or underscore. It must
 # start with letter, must not end with a hyphen, and must be at most 63 characters long.
@@ -21,8 +20,7 @@ function_name = 'genomic_manifest_generic_function'
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
 # NOTE: Default function timeout limit is 60s, maximum can be 540s.
 deploy_args = [
-    '--trigger-resource=%%CLOUD_RESOURCE%%',
-    '--trigger-event google.storage.object.finalize',
+    '--trigger-topic aw1_ingestion_test',
     '--timeout=540',
     '--memory=512'
 ]
@@ -31,22 +29,28 @@ task_queue = 'genomics'
 _logger = logging.getLogger('function')
 
 
-class GenomicManifestGenericFunction(FunctionStoragePubSubHandler):
+class GenomicManifestGenericFunction(FunctionPubSubHandler):
 
-    def created(self):
-        """ Handle storage object created event. """
+    def run(self):
+        """ Handle Pub/Sub message events.
+        https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
+        """
+
+        _logger.info("""This Function was triggered by messageId {} published at {}
+            """.format(self.context.event_id, self.context.timestamp))
+
         # Verify this is a file that we want to process.
-        if 'aw1_genotyping_sample_manifests' not in self.event.name.lower():
+        if 'aw1_genotyping_sample_manifests' not in self.event.attributes.objectId.lower():
             return
 
-        _logger.info(f"file found: {self.event.name}")
+        _logger.info(f"file found: {self.event.attributes.objectId}")
 
-        cloud_file_path = f'{self.event.bucket}/{self.event.name}'
+        cloud_file_path = f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}'
 
         data = {
             "file_path": cloud_file_path,
-            "bucket_name": self.event.bucket,
-            "upload_date": self.event.timeCreated,
+            "bucket_name": self.event.attributes.bucketId,
+            "upload_date": self.event.attributes.eventTime,
         }
 
         _logger.info("Pushing cloud task...")
@@ -62,34 +66,29 @@ def get_deploy_args(gcp_env):
     """
     _project_suffix = gcp_env.project.split('-')[-1]
 
-    # Change these to appropriate buckets in derived functions for GCs' buckets
-    cloud_resource = 'aou-rdr-sandbox-mock-data'
-
-    if _project_suffix == 'sandbox':
-        cloud_resource = 'aou-rdr-sandbox-mock-data'
-
-    if _project_suffix == 'stable':
-        cloud_resource = 'aou-rdr-sandbox-mock-data'
-
-    if _project_suffix == 'prod':
-        cloud_resource = 'aou-rdr-sandbox-mock-data'
+    # Customize args here
 
     args = [function_name]
     for arg in deploy_args:
-        args.append(arg.replace('%%CLOUD_RESOURCE%%', cloud_resource))
+        args.append(arg)
 
     return args
 
 
 def genomic_manifest_generic_function(_event, _context):
-    """
-    GCloud Function Entry Point (Storage Pub/Sub Event).
-    https://cloud.google.com/functions/docs/concepts/events-triggers#functions_parameters-python
-    :param event: (dict):  The dictionary with data specific to this type of event.
-                       The `data` field contains a description of the event in
-                       the Cloud Storage `object` format described here:
-                       https://cloud.google.com/storage/docs/json_api/v1/objects#resource
-    :param context: (google.cloud.functions.Context): Metadata of triggering event.
+    """ Background Cloud Function to be triggered by Pub/Sub.
+    event (dict):  The dictionary with data specific to this type of
+         event. The `data` field contains the PubsubMessage message. The
+         `attributes` field will contain custom attributes if there are any.
+         context (google.cloud.functions.Context): The Cloud Functions event
+         metadata. The `event_id` field contains the Pub/Sub message ID. The
+         `timestamp` field contains the publish time.
+    https://cloud.google.com/functions/docs/calling/pubsub#sample_code
+    :param _event: (dict): The dictionary with data specific to this type of event.
+                          The `data` field contains the PubsubMessage message.
+                          The `attributes` field will contain custom attributes if there are any.
+                          format described here: https://cloud.google.com/storage/docs/json_api/v1/objects#resource
+    :param _context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
         func = GenomicManifestGenericFunction(gcp_env, _event, _context)
@@ -101,28 +100,21 @@ if __name__ == '__main__':
     """ Test code locally """
     setup_logging(_logger, function_name, debug=True)
 
-    context = PubSubEventContext(1669022966780817, 'google.storage.object.finalize')
+    context = PubSubEventContext(1669022966780817, 'google.pubsub.v1.PubsubMessage')
     file = "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218052.csv"
 
     event = {
-      "bucket": "aou-rdr-sandbox-mock-data",
-      "contentType": "text/csv",
-      "crc32c": "jXOx3g==",
-      "etag": "CIapmYSb0+wCEAE=",
-      "generation": "1603748044887174",
-      "id": f"aou-rdr-sandbox-mock-data/{quote(file)}/1603748044887174",
-      "kind": "storage#object",
-      "md5Hash": "sSsHt9P3l+WieCCevpQsjg==",
-      "mediaLink": f"https://www.googleapis.com/download/storage/v1/b/aou-rdr-sandbox-mock-data/o/{quote(file)}?"
-                   f"generation=1603748044887174&alt=media",
-      "metageneration": "1",
-      "name": file,
-      "selfLink": f"https://www.googleapis.com/storage/v1/b/aou-rdr-sandbox-mock-data/o/{quote(file)}",
-      "size": "1989",
-      "storageClass": "STANDARD",
-      "timeCreated": "2020-10-26T21:34:04.887Z",
-      "timeStorageClassUpdated": "2020-10-26T21:34:04.887Z",
-      "updated": "2020-10-26T21:34:04.887Z"
+        "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+        "attributes": {
+            "bucketId": "aou-rdr-sandbox-mock-data",
+            "eventTime": "2021-04-19T16:02:41.919922Z",
+            "eventType": "OBJECT_FINALIZE",
+            "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/34",
+            "objectGeneration": "1618848161894414",
+            "objectId": "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218054.csv",
+            "overwroteGeneration": "1618605912794149",
+            "payloadFormat": "JSON_API_V1"
+        }
     }
 
     sys.exit(genomic_manifest_generic_function(event, context))
