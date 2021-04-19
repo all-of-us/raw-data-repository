@@ -2,7 +2,6 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-import base64
 import logging
 import sys
 
@@ -67,6 +66,8 @@ def get_deploy_args(gcp_env):
     _project_suffix = gcp_env.project.split('-')[-1]
 
     # Customize args here
+    if _project_suffix == "sandbox":
+        pass
 
     args = [function_name]
     for arg in deploy_args:
