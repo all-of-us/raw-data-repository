@@ -31,12 +31,12 @@ class RequestsLogMigrator:
             postgresql_session.add(request_log)
 
         make_transient(request_log)
-        postgresql_connection = cls._get_database_connection('rdrmysql8')
-        with postgresql_connection.session() as postgresql_session:
-            postgresql_session.add(request_log)
+        mysql8_connection = cls._get_database_connection('rdrmysql8')
+        with mysql8_connection.session() as mysql8_session:
+            mysql8_session.add(request_log)
 
     def migrate_latest_requests_logs(self):
-        migration_target_connection = self._get_database_connection()
+        migration_target_connection = self._get_database_connection(self.target_instance_name)
 
         with migration_target_connection.session() as target_session:
             # Find the last request log id that was migrated
