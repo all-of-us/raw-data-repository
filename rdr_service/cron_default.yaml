@@ -62,7 +62,7 @@ cron:
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
-  schedule: every wednesday 06:30
+  schedule: every day 06:30
   target: offline
 - description: Genomic AW1 Failures Workflow
   url: /offline/GenomicFailuresWorkflow
