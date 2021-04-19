@@ -21,6 +21,7 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicManifestFil
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
+from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
@@ -427,4 +428,20 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
             bq_researcher_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
+        return '{"success": "true"}'
+
+
+class ArchiveRequestLogApi(Resource):
+    """
+    Cloud Task endpoint: Archive a request log
+    """
+
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+
+        data = request.get_json(force=True)
+        log_id = data.get('log_id')
+
+        RequestsLogMigrator.archive_log(log_id)
         return '{"success": "true"}'
