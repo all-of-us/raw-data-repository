@@ -1358,7 +1358,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
                                 ON qq.questionnaire_id = q.questionnaire_id
             WHERE qr.questionnaire_response_id = :qr_id
             -- Order by question and calculated answer so any duplicates from the same response are adjacant
-            ORDER BY qra.question_id, 4
+            ORDER BY qra.question_id, answer
         """
 
         answers = OrderedDict()

@@ -1360,7 +1360,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 ON qq.questionnaire_id = q.questionnaire_id
             WHERE qr.questionnaire_response_id = :qr_id
             -- Order by question and the calculated answer so duplicates can be caught when results are processed
-            ORDER BY qra.question_id, 4
+            ORDER BY qra.question_id, answer
         """
 
         answers = OrderedDict()
