@@ -207,12 +207,13 @@ class GenomicFileIngester:
                         self.file_queue[0])
                     file_ingested = self.file_queue.popleft()
                     results.append(ingestion_result == GenomicSubProcessResult.SUCCESS)
-                    ingestion_message = f'Ingestion attempt for {file_ingested.fileName}: {ingestion_result}'
 
-                    if 'invalid' in ingestion_result.name.lower():
-                        logging.warning(ingestion_message)
-                    else:
-                        logging.info(ingestion_message)
+                    if ingestion_result:
+                        ingestion_message = f'Ingestion attempt for {file_ingested.fileName}: {ingestion_result}'
+                        if 'invalid' in ingestion_result.name.lower():
+                            logging.warning(ingestion_message)
+                        else:
+                            logging.info(ingestion_message)
 
                     self.file_processed_dao.update_file_record(
                         file_ingested.id,
