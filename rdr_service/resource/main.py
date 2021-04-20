@@ -5,11 +5,7 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.api.cloud_tasks_api import RebuildParticipantsTaskApi, RebuildCodebookTaskApi, \
-    CopyCloudStorageObjectTaskApi, BQRebuildQuestionnaireTaskApi, GenerateBiobankSamplesTaskApi, \
-    RebuildOneParticipantTaskApi, IngestAW1ManifestTaskApi, RebuildGenomicTableRecordsApi, IngestAW2ManifestTaskApi, \
-    CalculateContaminationCategoryApi, RebuildResearchWorkbenchTableRecordsApi, CalculateRecordCountTaskApi, \
-    LoadRawAWNManifestDataAPI, IngestAW5ManifestTaskApi
+from rdr_service.api import cloud_tasks_api
 
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -24,28 +20,31 @@ def _build_resource_app():
     #
     # Cloud Task API endpoints
     #
+    _api.add_resource(cloud_tasks_api.ArchiveRequestLogApi, TASK_PREFIX + 'MigrateRequestLog',
+                      endpoint='archive_request_log', methods=['POST'])
     # Task Queue API endpoint to rebuild participant summary resources.
-    _api.add_resource(RebuildParticipantsTaskApi, TASK_PREFIX + "RebuildParticipantsTaskApi",
+    _api.add_resource(cloud_tasks_api.RebuildParticipantsTaskApi, TASK_PREFIX + "RebuildParticipantsTaskApi",
                       endpoint="rebuild_participants_task", methods=["POST"])
     # Task Queue API endpoint to rebuild ONE participant resource.
-    _api.add_resource(RebuildOneParticipantTaskApi, TASK_PREFIX + "RebuildOneParticipantTaskApi",
+    _api.add_resource(cloud_tasks_api.RebuildOneParticipantTaskApi, TASK_PREFIX + "RebuildOneParticipantTaskApi",
                       endpoint="rebuild_one_participant_task", methods=["POST"])
     # Task Queue API endpoing to rebuild codebook resources.
-    _api.add_resource(RebuildCodebookTaskApi, TASK_PREFIX + "RebuildCodebookTaskApi",
+    _api.add_resource(cloud_tasks_api.RebuildCodebookTaskApi, TASK_PREFIX + "RebuildCodebookTaskApi",
                       endpoint="rebuild_codebook_task", methods=["POST"])
-    _api.add_resource(BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "RebuildQuestionnaireTaskApi",
+    _api.add_resource(cloud_tasks_api.BQRebuildQuestionnaireTaskApi, TASK_PREFIX + "RebuildQuestionnaireTaskApi",
                       endpoint="rebuild_questionnaire_task", methods=["POST"])
 
-    _api.add_resource(CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
+    _api.add_resource(cloud_tasks_api.CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
                      endpoint="copy_cloudstorage_object_task", methods=["POST"])
 
-    _api.add_resource(GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
+    _api.add_resource(cloud_tasks_api.GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
                      endpoint="generate_bio_samples_task", methods=["POST"])
 
-    _api.add_resource(RebuildGenomicTableRecordsApi, TASK_PREFIX + "RebuildGenomicTableRecordsApi",
+    _api.add_resource(cloud_tasks_api.RebuildGenomicTableRecordsApi, TASK_PREFIX + "RebuildGenomicTableRecordsApi",
                       endpoint="rebuild_genomic_table_records_task", methods=["POST"])
 
-    _api.add_resource(RebuildResearchWorkbenchTableRecordsApi, TASK_PREFIX + "RebuildResearchWorkbenchTableRecordsApi",
+    _api.add_resource(cloud_tasks_api.RebuildResearchWorkbenchTableRecordsApi,
+                      TASK_PREFIX + "RebuildResearchWorkbenchTableRecordsApi",
                       endpoint="rebuild_research_workbench_table_records_task", methods=["POST"])
 
     #
@@ -53,27 +52,28 @@ def _build_resource_app():
     #
 
     # Load AW1/AW2 raw manifest
-    _api.add_resource(LoadRawAWNManifestDataAPI, TASK_PREFIX + "LoadRawAWNManifestDataAPI",
+    _api.add_resource(cloud_tasks_api.LoadRawAWNManifestDataAPI, TASK_PREFIX + "LoadRawAWNManifestDataAPI",
                       endpoint="load_awn_raw_data_task", methods=["POST"])
 
     # Ingest AW1 manifest
-    _api.add_resource(IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
+    _api.add_resource(cloud_tasks_api.IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
                       endpoint="ingest_aw1_manifest_task", methods=["POST"])
 
     # Ingest AW2 manifest
-    _api.add_resource(IngestAW2ManifestTaskApi, TASK_PREFIX + "IngestAW2ManifestTaskApi",
+    _api.add_resource(cloud_tasks_api.IngestAW2ManifestTaskApi, TASK_PREFIX + "IngestAW2ManifestTaskApi",
                       endpoint="ingest_aw2_manifest_task", methods=["POST"])
 
     # Ingest AW5 manifest
-    _api.add_resource(IngestAW5ManifestTaskApi, TASK_PREFIX + "IngestAW5ManifestTaskApi",
+    _api.add_resource(cloud_tasks_api.IngestAW5ManifestTaskApi, TASK_PREFIX + "IngestAW5ManifestTaskApi",
                       endpoint="ingest_aw5_manifest_task", methods=["POST"])
 
     # Calculate manifest file record count
-    _api.add_resource(CalculateRecordCountTaskApi, TASK_PREFIX + "CalculateRecordCountTaskApi",
+    _api.add_resource(cloud_tasks_api.CalculateRecordCountTaskApi, TASK_PREFIX + "CalculateRecordCountTaskApi",
                       endpoint="calculate_record_count_task", methods=["POST"])
 
     # Calculate Contamination Category
-    _api.add_resource(CalculateContaminationCategoryApi, TASK_PREFIX + "CalculateContaminationCategoryApi",
+    _api.add_resource(cloud_tasks_api.CalculateContaminationCategoryApi,
+                      TASK_PREFIX + "CalculateContaminationCategoryApi",
                       endpoint="calculate_contamination_category_task", methods=["POST"])
 
     #
