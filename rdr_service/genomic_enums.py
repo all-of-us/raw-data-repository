@@ -209,7 +209,8 @@ class GenomicIncidentCode(messages.Enum):
     UNABLE_TO_FIND_MEMBER = 2
     MISSING_FILES = 3
     DATA_VALIDATION_FAILED = 4
-    FILE_VALIDATION_FAILED_FIELDS = 5
+    FILE_VALIDATION_FAILED_NAME = 5
+    FILE_VALIDATION_FAILED_STRUCTURE = 6
 
 
 class GenomicIncidentStatus(messages.Enum):

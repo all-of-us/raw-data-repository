@@ -840,43 +840,45 @@ class GenomicPipelineTest(BaseTestCase):
             'test_empty_wells.csv',
             'RDR_AoU_GEN_TestExt_DataManifest.csv',
         )
+        test_files_names = []
         for test_file in end_to_end_test_files:
-            self._create_ingestion_test_file(
+            test_file_name = self._create_ingestion_test_file(
                 test_file,
                 bucket_name,
                 folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]),
                 extension='.tsv' if 'TestExt' in test_file else None
             )
+            test_files_names.append(test_file_name)
 
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
 
         # test file processing queue
         processed_files = self.file_processed_dao.get_all()
+        should_be_processed = [test_files_names[0], test_files_names[1]]
 
-        # test for not in processed
-        # if "TestBadFilename" in processed.fileName:
-        #     self.assertEqual(processed.fileResult,
-        #                      GenomicSubProcessResult.INVALID_FILE_NAME)
+        self.assertEqual(len(processed_files), len(should_be_processed))
 
         for processed in processed_files:
             # Test bad filename, invalid columns
             incident = self.incident_dao.get_by_source_file_id(processed.id)[0]
-            if processed.fileName in ["TestNoHeaders", "TestBadStructure"]:
-                self.assertEqual(processed.fileResult,
-                                 GenomicSubProcessResult.INVALID_FILE_STRUCTURE)
             if "TestNoHeaders" in processed.fileName:
                 self.assertEqual(0, incident.slack_notification)
                 self.assertIsNone(incident.slack_notification_date)
-                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name)
             if "TestBadStructure" in processed.fileName:
                 self.assertEqual(1, incident.slack_notification)
                 self.assertIsNotNone(incident.slack_notification_date)
-                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name)
+                self.assertEqual(incident.code, GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name)
 
-        # # Test Unsuccessful run
+        # Test Unsuccessful run
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        should_not_be_processed = [test_files_names[2], test_files_names[3], test_files_names[4]]
+
+        for processed in should_not_be_processed:
+            self.assertIsNone(self.file_processed_dao.get_record_from_filename(processed))
 
     def test_gc_metrics_ingestion_no_files(self):
         # run the GC Metrics Ingestion workflow

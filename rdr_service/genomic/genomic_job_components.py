@@ -489,7 +489,6 @@ class GenomicFileIngester:
                                                     collection_tube_id=row_copy['collectiontubeid'],
                                                     sample_id=row_copy['sampleid'],
                                                     )
-                    logging.error(_message)
 
                     # Skip rest of iteration and continue processing file
                     continue
@@ -1080,7 +1079,6 @@ class GenomicFileIngester:
                                                 biobank_id=bid,
                                                 sample_id=row_copy['sampleid'],
                                                 )
-                logging.error(_message)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1552,11 +1550,10 @@ class GenomicFileValidator:
             self.controller.create_incident(
                 source_job_run_id=self.controller.job_run.id,
                 source_file_processed_id=file_processed.id,
-                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_FIELDS.name,
+                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
                 slack=slack
             )
-            logging.info(invalid_message)
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 
         return GenomicSubProcessResult.SUCCESS
@@ -1716,7 +1713,6 @@ class GenomicFileValidator:
                 slack=True,
                 message=invalid_message,
             )
-            logging.info(invalid_message)
 
         return is_valid_filename
 
