@@ -302,7 +302,7 @@ class BaseApi(Resource):
             payload = {
                 'log_id': request.log_record.id
             }
-            self._task.execute('archive_request_log_record', queue='resource-tasks', payload=payload, in_seconds=60)
+            self._task.execute('archive_request_log', queue='resource-tasks', payload=payload, in_seconds=60)
             logging.info('...task created')
 
 
