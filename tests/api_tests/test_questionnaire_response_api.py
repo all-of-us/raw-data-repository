@@ -23,15 +23,12 @@ from rdr_service.model.participant_summary import ParticipantSummary, Withdrawal
 from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
-# For testing PDR generator content
-from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
-from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
-from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
+
 
 from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
     participant_summary_default_values_no_basics
 from tests.test_data import data_path
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 from rdr_service.concepts import Concept
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -43,7 +40,7 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
-class QuestionnaireResponseApiTest(BaseTestCase):
+class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def setUp(self):
         super(QuestionnaireResponseApiTest, self).setUp()
@@ -532,11 +529,11 @@ class QuestionnaireResponseApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.bq_participant_summary_dao.logging')
     def test_gror_consent_with_duplicate_answers(self, mock_logging):
         """ Simulate RDR questionnaire_response payloads that contain duplicate entries in question JSON array"""
+
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
             self.send_consent(participant_id, language="es")
 
-        p_id = participant_id[1:]
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
@@ -577,11 +574,14 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
-        # Generic verification that generator logic logged a warning.  TODO:  Test logged message using regex?
+        # Generic verification PDR generator logged a warning.  TODO:  Possible to test logged message w/regex?
         self.assertTrue(mock_logging.warning.called)
 
-        ps_json = BQParticipantSummaryGenerator().make_bqrecord(p_id)
-        self.assertIsNotNone(ps_json)
+        ps_json = self.make_bq_participant_summary(participant_id)
+        gror = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR',
+                                        sort_key='mod_authored')
+        self.assertEqual(len(gror), 1)
+        self.assertEqual(gror[0].get('mod_status', None), 'SUBMITTED')
 
     def test_consent_with_extension_language(self):
         with FakeClock(TIME_1):
@@ -798,23 +798,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         #   { 'race':  'WhatRaceEthnicity_White', 'race_id': <code_id integer> },
         #   { 'race': 'WhatRaceEthnicity_Hispanic', 'race_id': <code_id integer> }
         # ]
-        p_id = int(participant_id[1:])
-        ps_bqs_gen = BQParticipantSummaryGenerator()
-        bqs_data = ps_bqs_gen.make_bqrecord(p_id).to_dict(serialize=True)
+        bqs_data = self.make_bq_participant_summary(participant_id)
         self.assertEqual(len(bqs_data['races']), 2)
         for answer in bqs_data['races']:
             self.assertIn(answer.get('race'), [code1.value, code2.value])
             self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
 
         # Repeat the PDR data test for the resource generator output
-        ps_rsrc_gen = ParticipantSummaryGenerator()
-        ps_rsrc_data = ps_rsrc_gen.make_resource(p_id).get_data()
+        ps_rsrc_data = self.make_participant_resource(participant_id, get_data=True)
 
         self.assertEqual(len(ps_rsrc_data['races']), 2)
         for answer in ps_rsrc_data['races']:
             self.assertIn(answer.get('race'), [code1.value, code2.value])
             self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
-
 
         # resubmit the answers, old value should be removed
         resource = self._load_response_json(
@@ -1062,29 +1058,24 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         # PDR- 235 Add checks of the PDR generator data for module
         # response status of the "in progress" TheBasics test response
-        ps_rsrc_gen = ParticipantSummaryGenerator()
-        ps_bqs_gen = BQParticipantSummaryGenerator()
-
-        ps_rsrc_data = ps_rsrc_gen.make_resource(participant_summary.participantId).get_data()
-        ps_bqs_data = ps_bqs_gen.make_bqrecord(participant_summary.participantId).to_dict(serialize=True)
+        ps_rsrc_data = self.make_participant_resource(participant_summary.participantId)
 
         # Check data from the resource generator
-        pdr_module_dict = _get_pdr_module_dict(ps_rsrc_data, 'TheBasics', key_name='module')
-        self.assertEqual(pdr_module_dict.get('response_status'), 'IN_PROGRESS')
-        self.assertEqual(pdr_module_dict.get('response_status_id'), 0)
+        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module', item_value='TheBasics')
+        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
+        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
 
         # Check data from the bigquery_sync participant summary DAO / generator
-        pdr_module_dict = _get_pdr_module_dict(ps_bqs_data, 'TheBasics', key_name='mod_module')
-        self.assertEqual(pdr_module_dict.get('mod_response_status'), 'IN_PROGRESS')
-        self.assertEqual(pdr_module_dict.get('mod_response_status_id'), 0)
+        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module',
+                                                   item_value='TheBasics')
+        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
+        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
 
         # Check the bigquery_sync questionnaire response DAO / generator
         # TODO:  Validate Resource generator data for questionnaire response when implemented
-        qr_gen = BQPDRQuestionnaireResponseGenerator()
-        table, bqrs = qr_gen.make_bqrecord(participant_summary.participantId, 'TheBasics', latest=True)
+        bqrs = self.make_bq_questionnaire_response(participant_summary.participantId, 'TheBasics', latest=True)
 
-        self.assertIsNotNone(table)
-        # bqrs is a list of BQRecord types
+        # bqrs is a list of BQRecord types;  validating the field name values
         self.assertEqual(len(bqrs), 1)
         self.assertEqual(bqrs[0].status, 'IN_PROGRESS')
         self.assertEqual(bqrs[0].status_id, 0)

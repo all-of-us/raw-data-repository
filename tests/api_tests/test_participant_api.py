@@ -22,19 +22,15 @@ from rdr_service.participant_enums import (
     TEST_HPO_NAME,
     WithdrawalStatus,
 )
-# For validating PDR /resource data generators
-from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
-from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
-from rdr_service.resource.generators import ParticipantSummaryGenerator, PDRParticipantSummaryGenerator
 
-from tests.helpers.unittest_base import BaseTestCase, QUESTIONNAIRE_NONE_ANSWER
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin, QUESTIONNAIRE_NONE_ANSWER
 from tests.test_data import load_biobank_order_json
 
 TIME_1 = datetime.datetime(2018, 1, 1)
 TIME_2 = datetime.datetime(2018, 1, 3)
 
 
-class ParticipantApiTest(BaseTestCase):
+class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self):
         super(ParticipantApiTest, self).setUp()
         provider_link = {"primary": False, "organization": {"reference": "columbia"}}
@@ -471,21 +467,6 @@ class ParticipantApiTest(BaseTestCase):
     def test_switch_to_test_account(self):
         participant_id, questionnaire_id = self._setup_initial_participant_data()
 
-        # To test all data generator results for correct test_participant setting:
-        # BQParticipantSummaryGenerator:   bigquery_sync resource JSON generator for pdr_participant table in BQ
-        # ParticipantSummaryGenerator:  Full participant (including PII) for resource_data table (type_name:
-        # participant)
-        # PDRParticipantSummaryGenerator:  PDR participant data for resource_data table (type_name: pdr_participant),
-        # takes the ParticipantSummaryGenerator.make_resource() output as an input parameter
-        # BQPDRQuestionnaireResponseGenerator:  bigquery_sync resource JSON generator for pdr_mod_* table in BQ (e.g.
-        # pdr_mod_consentpii or pdr_mod_thebasics).  Note:  no resource_data table content yet for module data
-        ps_bq_gen = BQParticipantSummaryGenerator()
-        ps_rsrc_gen = ParticipantSummaryGenerator()
-        pdr_rsrc_gen = PDRParticipantSummaryGenerator()
-        pdr_mod_bq_gen = BQPDRQuestionnaireResponseGenerator()
-        # Strip 'P' from the test participant ID string (data generators use the bigint value)
-        p_id = participant_id[1:]
-
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual("215-222-2222", ps_1["loginPhoneNumber"])
         self.assertEqual("PITT", ps_1["hpoId"])
@@ -496,19 +477,17 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual('W/"1"', p_1["meta"]["versionId"])
 
         # Test all the PDR / resource generator results while participant not considered a test participant
-        ps_bqs_data = ps_bq_gen.make_bqrecord(p_id).to_dict(serialize=True)
-        ps_rsc = ps_rsrc_gen.make_resource(p_id)
-        pdr_rsc_data = pdr_rsrc_gen.make_resource(p_id, ps_rsc)
+        ps_bqs_data = self.make_bq_participant_summary(participant_id)
+        ps_rsc = self.make_participant_resource(participant_id)
+        pdr_rsc_data = self.make_pdr_participant_summary(participant_id)
         self.assertEqual(ps_bqs_data.get('test_participant'), 0)
-        self.assertEqual(ps_rsc.get_data().get('test_participant'), 0)
-        self.assertEqual(pdr_rsc_data.get_data().get('test_participant'), 0)
+        self.assertEqual(ps_rsc.get('test_participant'), 0)
+        self.assertEqual(pdr_rsc_data.get('test_participant'), 0)
 
-        table, pdr_mod_bqsr = pdr_mod_bq_gen.make_bqrecord(p_id, 'ConsentPII', latest=True)
-        self.assertIsNotNone(table)
-        self.assertEqual(pdr_mod_bqsr[0].test_participant, 0)
-        table, pdr_mod_bqsr = pdr_mod_bq_gen.make_bqrecord(p_id, 'TheBasics', latest=True)
-        self.assertIsNotNone(table)
-        self.assertEqual(pdr_mod_bqsr[0].test_participant, 0)
+        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
+        self.assertEqual(pdr_mod_responses[0].test_participant, 0)
+        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'TheBasics', latest=True)
+        self.assertEqual(pdr_mod_responses[0].test_participant, 0)
 
         # change login phone number to 444-222-2222
         self.submit_questionnaire_response(
@@ -550,19 +529,17 @@ class ParticipantApiTest(BaseTestCase):
         self.assertEqual('W/"2"', p_1["meta"]["versionId"])
 
         # Retest all the PDR / resource generator results after participant is updated with test participant data
-        ps_bqs_data = ps_bq_gen.make_bqrecord(p_id).to_dict(serialize=True)
-        ps_rsc = ps_rsrc_gen.make_resource(p_id)
-        pdr_rsc_data = pdr_rsrc_gen.make_resource(p_id, ps_rsc)
+        ps_bqs_data = self.make_bq_participant_summary(participant_id)
+        ps_rsc = self.make_participant_resource(participant_id)
+        pdr_rsc_data = self.make_pdr_participant_summary(participant_id)
         self.assertEqual(ps_bqs_data.get('test_participant'), 1)
-        self.assertEqual(ps_rsc.get_data().get('test_participant'), 1)
-        self.assertEqual(pdr_rsc_data.get_data().get('test_participant'), 1)
+        self.assertEqual(ps_rsc.get('test_participant'), 1)
+        self.assertEqual(pdr_rsc_data.get('test_participant'), 1)
 
-        table, pdr_mod_bqsr = pdr_mod_bq_gen.make_bqrecord(p_id, 'ConsentPII', latest=True)
-        self.assertIsNotNone(table)
-        self.assertEqual(pdr_mod_bqsr[0].test_participant, 1)
-        table, pdr_mod_bqsr = pdr_mod_bq_gen.make_bqrecord(p_id, 'TheBasics', latest=True)
-        self.assertIsNotNone(table)
-        self.assertEqual(pdr_mod_bqsr[0].test_participant, 1)
+        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
+        self.assertEqual(pdr_mod_responses[0].test_participant, 1)
+        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'TheBasics', latest=True)
+        self.assertEqual(pdr_mod_responses[0].test_participant, 1)
 
 
     def test_street_address_two_clears_on_address_update(self):

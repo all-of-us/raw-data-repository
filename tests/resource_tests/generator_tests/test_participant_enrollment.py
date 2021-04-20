@@ -9,12 +9,11 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
-from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin
+from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin
 from tests.test_data import load_measurement_json
 
-
-class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
+# The BaseTestCase includes the QuestionnaireTestMixin, CodebookTestMixin, and PDRGeneratorTestMixin by default
+class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin):
     TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
 
@@ -169,24 +168,11 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
             self._make_default_biobank_order(self.participant_id)
 
-    @staticmethod
-    def get_modules_by_name(module_name=None, module_list=None):
-        """
-            Extracts module entries from the participant resource generator data modules list
-            Returns a filtered list of entries that match the module name, sorted by authored date
-        """
-        if not (module_name and isinstance(module_list, list)):
-            return module_list
-
-        modules = list(filter(lambda x: x['module'] == module_name, module_list))
-        return sorted(modules, key=(lambda d: d['module_authored']))
-
 
     def test_full_participant_status(self):
         """ Full Participant Test"""
         self._set_up_participant_data()
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
 
         self.assertIsNotNone(ps_data)
         self.assertEqual('COHORT_2', ps_data['consent_cohort'], 'Test is built assuming cohort 2')
@@ -199,8 +185,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
 
     def test_cohort_3_without_gror(self):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
 
         self.assertIsNotNone(ps_data)
         self.assertEqual('COHORT_3', ps_data['consent_cohort'], 'Test is built assuming cohort 3')
@@ -210,9 +195,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         self._set_up_participant_data(fake_time=datetime(2020, 6, 1))
         self._submit_genomics_ror(self.participant_id)
 
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
-
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertIsNotNone(ps_data)
         self.assertEqual('COHORT_3', ps_data['consent_cohort'], 'Test is built assuming cohort 3')
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
@@ -223,8 +206,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
                                   consent_response=CONSENT_GROR_YES_CODE,
                                   response_time=datetime(2020, 7, 1))
 
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('COHORT_3', ps_data['consent_cohort'], 'Test is built assuming cohort 3')
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'],
                          'Test is built assuming participant starts as core')
@@ -233,11 +215,12 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         self._submit_genomics_ror(self.participant_id,
                                   consent_response=CONSENT_GROR_NO_CODE,
                                   response_time=datetime(2020, 9, 1))
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
 
         # This verifies the module submitted status from the participant generator data for each of the GROR modules
-        gror_modules = self.get_modules_by_name('GROR', ps_data['modules'])
+        gror_modules = self.get_generated_items(ps_data['modules'], item_key='module', item_value='GROR',
+                                                sort_key='module_authored')
         self.assertEqual('SUBMITTED', gror_modules[0]['status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', gror_modules[1]['status'])
 
@@ -247,8 +230,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         # If EHR consent is changed to No, they should remain Core
         self._set_up_participant_data(skip_ehr=True)
 
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('COHORT_2', ps_data['consent_cohort'],
                          'Test is built assuming cohort 2 (and that GROR consent is not required for Core status')
         self.assertNotEqual('CORE_PARTICIPANT', ps_data['enrollment_status'],
@@ -259,7 +241,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
                                 response_code=CONSENT_PERMISSION_YES_CODE,
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'],
                          'Test is built assuming participant achieves Core status')
 
@@ -267,11 +249,12 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         self._submit_ehrconsent(self.participant_id,
                                 response_code=CONSENT_PERMISSION_NO_CODE,
                                 response_time=datetime(2019, 7, 1))
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('CORE_PARTICIPANT', ps_data['enrollment_status'])
 
         # This checks the module submitted status for each of the EHR consent module responses
-        ehr_modules = self.get_modules_by_name('EHRConsentPII', ps_data['modules'])
+        ehr_modules = self.get_generated_items(ps_data['modules'], item_key='module', item_value='EHRConsentPII',
+                                               sort_key='module_authored')
         self.assertEqual('SUBMITTED', ehr_modules[0]['status'])
         self.assertEqual('SUBMITTED_NO_CONSENT', ehr_modules[1]['status'])
 
@@ -280,8 +263,7 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
         # No on EHR should supersede a yes on DV_EHR.
         self._set_up_participant_data(skip_ehr=True)
 
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('COHORT_2', ps_data['consent_cohort'],
                          'Test is built assuming cohort 2 (and that GROR consent is not required for Core status')
 
@@ -289,5 +271,5 @@ class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin):
                                 response_code=CONSENT_PERMISSION_NO_CODE,
                                 response_time=datetime(2019, 2, 14))
         self._submit_dvehrconsent(self.participant_id, response_time=datetime(2019, 4, 1))
-        ps_data = gen.make_resource(self.participant_id).get_data()
+        ps_data = self.make_participant_resource(self.participant_id)
         self.assertEqual('PARTICIPANT', ps_data['enrollment_status'])

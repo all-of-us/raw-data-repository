@@ -26,13 +26,18 @@ from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory
+from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
+from rdr_service.resource.generators.pdr_participant import PDRParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
@@ -377,6 +382,100 @@ class BiobankTestMixin:
                 # pylint: disable=unused-variable
                 bss = self._create_biobank_stored_sample(biobank_id=biobank_id, biobankOrderId=bbo_order_id, test=test)
         return bbo
+
+
+class PDRGeneratorTestMixin:
+    """ Base class for invoking PDR / resource data generators from any unittest """
+
+    # Create generator objects for each of the generated data types
+    bq_participant_summary_gen = BQParticipantSummaryGenerator()
+    bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
+    participant_resource_gen = ParticipantSummaryGenerator()
+    pdr_participant_gen = PDRParticipantSummaryGenerator()
+
+    def make_bq_participant_summary(self, participant_id, to_dict=True):
+        """ Create generated resource data for bigquery_sync table pdr_participant records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        gen = self.bq_participant_summary_gen.make_bqrecord(participant_id)
+        # Return data as a dict by default; caller can override to get the BQRecord object
+        if to_dict:
+            return gen.to_dict(serialize=True)
+        else:
+            return gen
+
+    def make_participant_resource(self, participant_id, get_data=True):
+        """ Create generated resource data for resource table participant records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        gen_data = self.participant_resource_gen.make_resource(participant_id)
+        # Return data as a dict by default; caller can override to get the ResourceRecordSet object
+        if get_data:
+            return gen_data.get_data()
+        else:
+            return gen_data
+
+    def make_pdr_participant_summary(self, participant_id, ps_rsc=None, get_data=True):
+        """ Create generated resource data for resource table pdr_participant records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        gen_data = self.pdr_participant_gen.make_resource(participant_id, ps_rsc)
+        # Return data as a dict by default; caller can override to get the ResourceRecordSet object
+        if get_data:
+            return gen_data.get_data()
+        else:
+            return gen_data
+
+    def make_bq_questionnaire_response(self, participant_id, module_id, latest=False, convert_to_enum=False):
+        """ Create generated resource data for bigquery_sync pdr_mod_<module_id> table records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        # The BQQuestionnaireResponseGenerator make_bqrecord() method returns a table and the generated data;
+        # Only the generated data is returned for the unittest validation
+        _, gen_data = self.bq_questionnaire_response_gen.make_bqrecord(participant_id, module_id, latest,
+                                                                       convert_to_enum)
+        # Return data is a list of BQRecord objects
+        return gen_data
+
+    # TODO: Refactor tests where API calls would already have built PDR data to verify the records built to read
+    # the most recently generated resource data from the bigquery_sync table?
+    def get_bq_participant_summary(self, participant_id):
+        participant_id = self.cast_pid_to_int(participant_id)
+        with self.dao.session() as session:
+            rec = session.query(BigQuerySync.resource).filter(BigQuerySync.pk_id == participant_id)\
+                          .filter(BigQuerySync.tableId == 'pdr_participant').first()
+            if not rec:
+                raise ValueError(f'Failed to lookup pdr_participant record for {participant_id} in bigquery_sync')
+
+        return rec.resource
+
+    @staticmethod
+    def cast_pid_to_int(participant_id):
+        """ Cast the participant_id as an integer, automatically stripping leading 'P' if present
+            :raises ValueError: if the value cannot be successfully cast as an integer
+        """
+        pid = participant_id
+        try:
+            if isinstance(pid, str) and pid[0].lower() == 'p':
+                pid = pid[1:]
+            pid = int(pid)
+        except ValueError:
+            raise ValueError(f'Invalid participant_id: {participant_id}')
+
+        return pid
+
+    @staticmethod
+    def get_generated_items(item_list, item_key=None, item_value=None, sort_key=None):
+        """
+            Extracts requested items from a provided list of dicts (e.g., ps_json['consents'])
+            Returns a filtered list of dict entries that match the item key/value, sorted if requested
+            Example:
+                get_generated_items(ps_json['modules'], item_key='mod_module', item_value='OverallHealth',
+                                  sort_key='mod_authored')
+        """
+        if not (item_key and item_value and isinstance(item_list, list)):
+            return item_list
+
+        items = list(filter(lambda x: x[item_key] == item_value, item_list))
+        if sort_key:
+            items = sorted(items, key=(lambda s: s[sort_key]))
+        return items
 
 
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
