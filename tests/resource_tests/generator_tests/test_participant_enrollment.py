@@ -12,7 +12,6 @@ from rdr_service.model.site import Site
 from tests.helpers.unittest_base import BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin
 from tests.test_data import load_measurement_json
 
-# The BaseTestCase includes the QuestionnaireTestMixin, CodebookTestMixin, and PDRGeneratorTestMixin by default
 class ParticipantEnrollmentTest(BaseTestCase, BiobankTestMixin, PDRGeneratorTestMixin):
     TIME_1 = datetime(2018, 9, 20, 5, 49, 11)
     TIME_2 = datetime(2018, 9, 24, 14, 21, 1)
