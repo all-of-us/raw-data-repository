@@ -387,7 +387,7 @@ class BiobankTestMixin:
 class PDRGeneratorTestMixin:
     """ Base class for invoking PDR / resource data generators from any unittest """
 
-    # Create generator objects for each of the generated data types
+    # Create generator objects for each of the supported generated data types
     bq_participant_summary_gen = BQParticipantSummaryGenerator()
     bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
     participant_resource_gen = ParticipantSummaryGenerator()
@@ -396,12 +396,12 @@ class PDRGeneratorTestMixin:
     def make_bq_participant_summary(self, participant_id, to_dict=True):
         """ Create generated resource data for bigquery_sync table pdr_participant records """
         participant_id = self.cast_pid_to_int(participant_id)
-        gen = self.bq_participant_summary_gen.make_bqrecord(participant_id)
+        gen_data = self.bq_participant_summary_gen.make_bqrecord(participant_id)
         # Return data as a dict by default; caller can override to get the BQRecord object
         if to_dict:
-            return gen.to_dict(serialize=True)
+            return gen_data.to_dict(serialize=True)
         else:
-            return gen
+            return gen_data
 
     def make_participant_resource(self, participant_id, get_data=True):
         """ Create generated resource data for resource table participant records """
@@ -414,7 +414,9 @@ class PDRGeneratorTestMixin:
             return gen_data
 
     def make_pdr_participant_summary(self, participant_id, ps_rsc=None, get_data=True):
-        """ Create generated resource data for resource table pdr_participant records """
+        """ Create generated resource data for resource table pdr_participant records
+            Caller can provide a ps_rsc ResourceRecordObject to pass into the PDRParticipantSummarGenerator
+        """
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.pdr_participant_gen.make_resource(participant_id, ps_rsc)
         # Return data as a dict by default; caller can override to get the ResourceRecordSet object
@@ -426,15 +428,14 @@ class PDRGeneratorTestMixin:
     def make_bq_questionnaire_response(self, participant_id, module_id, latest=False, convert_to_enum=False):
         """ Create generated resource data for bigquery_sync pdr_mod_<module_id> table records """
         participant_id = self.cast_pid_to_int(participant_id)
-        # The BQQuestionnaireResponseGenerator make_bqrecord() method returns a table and the generated data;
-        # Only the generated data is returned for the unittest validation
+        # The BQQuestionnaireResponseGenerator method returns two values: and table object and a list of BQRecords;
+        # For the purposes of the unittest uses, the table object is ignored
         _, gen_data = self.bq_questionnaire_response_gen.make_bqrecord(participant_id, module_id, latest,
                                                                        convert_to_enum)
         # Return data is a list of BQRecord objects
         return gen_data
 
-    # TODO: Refactor tests where API calls would already have built PDR data to verify the records built to read
-    # the most recently generated resource data from the bigquery_sync table?
+    # TODO: Refactor tests where API calls could read the record resulting from the API call from bigquery_sync?
     def get_bq_participant_summary(self, participant_id):
         participant_id = self.cast_pid_to_int(participant_id)
         with self.dao.session() as session:
@@ -451,12 +452,14 @@ class PDRGeneratorTestMixin:
             :raises ValueError: if the value cannot be successfully cast as an integer
         """
         pid = participant_id
-        try:
-            if isinstance(pid, str) and pid[0].lower() == 'p':
-                pid = pid[1:]
-            pid = int(pid)
-        except ValueError:
-            raise ValueError(f'Invalid participant_id: {participant_id}')
+        # Skip if pid is already an int
+        if not isinstance(pid, int):
+            try:
+                if isinstance(pid, str) and pid[0].lower() == 'p':
+                    pid = pid[1:]
+                pid = int(pid)
+            except ValueError:
+                raise ValueError(f'Invalid participant_id: {participant_id}')
 
         return pid
 
