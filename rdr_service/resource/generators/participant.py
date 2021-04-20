@@ -1344,6 +1344,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         _answers_sql = """
             SELECT qr.questionnaire_id,
+                   qra.question_id,
                    qq.code_id,
                    (select c.value from code c where c.code_id = qq.code_id) as code_name,
                    COALESCE((SELECT c.value from code c where c.code_id = qra.value_code_id),
@@ -1357,7 +1358,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 ON qra.question_id = qq.questionnaire_question_id
                      INNER JOIN questionnaire q
                                 ON qq.questionnaire_id = q.questionnaire_id
-            WHERE qr.questionnaire_response_id = :qr_id;
+            WHERE qr.questionnaire_response_id = :qr_id
+            -- Order by question and the calculated answer so duplicates can be caught when results are processed
+            ORDER BY qra.question_id, answer
         """
 
         answers = OrderedDict()
@@ -1391,8 +1394,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # Save parent record field values into data dict.
                 data = ro_dao.to_dict(row, result_proxy=results)
                 qnans = session.execute(_answers_sql, {'qr_id': row.questionnaire_response_id})
-                # Save answers into data dict.
+                # Save answers into data dict. Ignore duplicate answers to the same question from the same response
+                # (See: questionnaire_response_id 680418686 as an example)
+                last_question_id = None
+                last_answer = None
+                skipped_duplicates = 0
                 for qnan in qnans:
+                    if last_question_id == qnan.question_id and last_answer == qnan.answer:
+                        skipped_duplicates += 1
+                        continue
                     # For question codes with multiple responses, created comma-separated list of answers
                     if qnan.code_name in data:
                         data[qnan.code_name] += f',{qnan.answer}'
@@ -1410,6 +1420,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                 # Insert data dict into answers list.
                 answers[row.questionnaire_response_id] = data
+                if skipped_duplicates:
+                    logging.warning('Questionnaire response {0} contained {1} duplicate answers. Please investigate' \
+                                    .format(row.questionnaire_response_id, skipped_duplicates))
 
         # Apply answers to data dict, response by response, until we reach the end or the specific response id.
         data = dict()
