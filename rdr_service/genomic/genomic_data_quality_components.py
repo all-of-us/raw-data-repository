@@ -69,6 +69,9 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         return self.get_report_data(report_def)
 
     def set_report_parameters(self, **kwargs):
+        # Default Report Name
+        display_name = self.get_report_display_name()
+
         # Set report level (SUMMARY, DETAIL, etc)
         try:
             report_level = kwargs['report_level']
@@ -90,7 +93,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         except KeyError:
             time_frame = self.controller.job.name[0]
 
-        return report_level, report_target, time_frame
+        return report_level, report_target, time_frame, display_name
+
+    def get_report_display_name(self):
+
+        job_name_list = self.controller.job.name.split('_')
+
+        display_name = job_name_list[0].capitalize() + " "
+        display_name += job_name_list[-1].capitalize() + " "
+        display_name += job_name_list[1].capitalize()
+
+        return display_name
 
     def get_report_def(self, level, target, time_frame):
         """
@@ -130,20 +143,24 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return result
 
-    @staticmethod
-    def format_report(data):
+    def format_report(self, display_name, data):
         """
         Converts the report query ResultProxy object to tab-delimited string
+        :param display_name: string
         :param data: ResultProxy
         :return: string
         """
+        # Report title
+        report_string = "```" + display_name + '\n'
 
         # Header row
-        report_string = "    ".join(data.keys())
+        report_string += "    ".join(data.keys())
         report_string += "\n"
 
         for row in data.fetchall():
             report_string += "    ".join(tuple(map(str, row)))
             report_string += "\n"
+
+        report_string += "```"
 
         return report_string
