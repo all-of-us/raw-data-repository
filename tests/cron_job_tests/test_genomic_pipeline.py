@@ -899,15 +899,35 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertIsNotNone(current_incidents_with_message)
 
-        genomic_pipeline.ingest_genomic_centers_metrics_files()
+        today_plus_6 = datetime.datetime.utcnow() \
+                            + datetime.timedelta(days=6)
 
-        all_incidents = self.incident_dao.get_all()
-        count = 0
-        for incident in all_incidents:
-            if incident.message == message:
-                count += 1
+        # run the GC Metrics Ingestion workflow + 6 days same bad file
+        with clock.FakeClock(today_plus_6):
+            genomic_pipeline.ingest_genomic_centers_metrics_files()
 
-        self.assertEqual(count, 1)
+            all_incidents = self.incident_dao.get_all()
+            count = 0
+            for incident in all_incidents:
+                if incident.message == message:
+                    count += 1
+
+            self.assertEqual(count, 1)
+
+        today_plus_8 = datetime.datetime.utcnow() \
+                           + datetime.timedelta(days=8)
+
+        # run the GC Metrics Ingestion workflow + 8 days same bad file
+        with clock.FakeClock(today_plus_8):
+            genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+            all_incidents = self.incident_dao.get_all()
+            count = 0
+            for incident in all_incidents:
+                if incident.message == message:
+                    count += 1
+
+            self.assertEqual(count, 2)
 
     def test_gc_metrics_ingestion_no_files(self):
         # run the GC Metrics Ingestion workflow

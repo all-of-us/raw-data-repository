@@ -870,7 +870,7 @@ class GenomicJobController:
         incident = None
         message = kwargs.get('message', None)
         created_incident = self.incident_dao.get_by_message(message) if message else None
-        today = datetime.utcnow()
+        today = clock.CLOCK.now()
 
         if created_incident and (today.date() - created_incident.created.date()).days <= num_days:
             return
