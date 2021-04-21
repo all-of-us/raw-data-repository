@@ -54,7 +54,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
     def generate_report_data(self, level, target, time_frame):
         """
-        Genearates a report based on target and time frame
+        Generates a report based on target and time frame
         :param level: str, "SUMMARY" or "DETAIL"
         :param target: str, "RUNS", "INGESTIONS" etc.
         :param time_frame: 'd' or 'w'
@@ -126,7 +126,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return report_def
 
-    def get_report_data(self, report_def):
+    @staticmethod
+    def get_report_data(report_def):
         """
         Returns the report by executing the report definition query
         :param report_def: ReportDef object
@@ -143,7 +144,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return result
 
-    def format_report(self, display_name, data):
+    @staticmethod
+    def format_report(display_name, data):
         """
         Converts the report query ResultProxy object to tab-delimited string
         :param display_name: string
