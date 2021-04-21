@@ -2,7 +2,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
-from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE, RDR_AND_PTC
+from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
 from rdr_service.app_util import auth_required, get_validated_user_info
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -18,7 +18,7 @@ class ParticipantSummaryApi(BaseApi):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
         if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
@@ -109,7 +109,7 @@ class ParticipantSummaryModifiedApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryModifiedApi, self).__init__(ParticipantSummaryDao())
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self):
         """
     Return participant_id and last_modified for all records or a subset based

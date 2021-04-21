@@ -28,6 +28,7 @@ tool_cmd = "deploy-func"
 tool_desc = "Deploy gcloud function"
 cloud_functions_dir = "gcloud_functions"
 
+
 class DeployFunctionClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, project_path, func_path):
         """

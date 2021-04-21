@@ -11,6 +11,7 @@ from rdr_service import app_util
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import save_raw_request_record
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
@@ -147,6 +148,7 @@ class BaseApi(Resource):
                     f"{self.dao.model_type.__name__} with ID {id_} is not for participant with ID {participant_id}"
                 )
         log_api_request(log=request.log_record, model_obj=obj)
+        self._archive_request_log()
         return self._make_response(obj)
 
     def _make_response(self, obj):
@@ -186,6 +188,7 @@ class BaseApi(Resource):
                                     queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=result)
+        self._archive_request_log()
         return self._make_response(result)
 
     def list(self, participant_id=None):
@@ -293,6 +296,15 @@ class BaseApi(Resource):
         else:
             return main.api.url_for(self.__class__, p_id=response_json[id_field], _external=True)
 
+    def _archive_request_log(self):
+        if GAE_PROJECT == RdrEnvironment.TEST.value:
+            logging.info('creating task for archiving request...')
+            payload = {
+                'log_id': request.log_record.id
+            }
+            self._task.execute('archive_request_log', queue='resource-tasks', payload=payload, in_seconds=60)
+            logging.info('...task created')
+
 
 class UpdatableApi(BaseApi):
     """Base class for API handlers that support PUT requests.
@@ -361,6 +373,7 @@ class UpdatableApi(BaseApi):
                                     queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=m)
+        self._archive_request_log()
         return self._make_response(m)
 
     def make_etag(self, version):
@@ -395,6 +408,7 @@ class UpdatableApi(BaseApi):
                                    queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=obj)
+        self._archive_request_log()
         return self._make_response(obj)
 
     def update_with_patch(self, id_, resource, expected_version):

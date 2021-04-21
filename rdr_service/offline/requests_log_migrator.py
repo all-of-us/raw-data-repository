@@ -16,8 +16,30 @@ class RequestsLogMigrator:
         self.target_table_name = f'{self.source_table_name}_cron'
         self.batch_size = batch_size
 
+    @classmethod
+    def archive_log(cls, log_id):
+        # Get the request log that needs archived
+        database_connection = database_factory.get_database()
+        with database_connection.session() as source_session:
+            request_log = source_session.query(RequestsLog).filter(RequestsLog.id == log_id).one()
+
+        original_table_name = RequestsLog.__tablename__
+        RequestsLog.__table__.name = f'{original_table_name}_task'
+
+        make_transient(request_log)
+        postgresql_connection = cls._get_database_connection('rdrpostgresql')
+        with postgresql_connection.session() as postgresql_session:
+            postgresql_session.add(request_log)
+
+        make_transient(request_log)
+        mysql8_connection = cls._get_database_connection('rdrmysql8')
+        with mysql8_connection.session() as mysql8_session:
+            mysql8_session.add(request_log)
+
+        RequestsLog.__table__.name = original_table_name
+
     def migrate_latest_requests_logs(self):
-        migration_target_connection = self._get_database_connection()
+        migration_target_connection = self._get_database_connection(self.target_instance_name)
 
         with migration_target_connection.session() as target_session:
             # Find the last request log id that was migrated
@@ -59,13 +81,14 @@ class RequestsLogMigrator:
         RequestsLog.__table__.name = self.target_table_name
         session.bulk_save_objects(request_logs)
 
-    def _get_database_connection(self):
+    @classmethod
+    def _get_database_connection(cls, target_instance_name):
         db_config = get_db_config()
         connection_string = db_config['db_connection_pattern'].format(
-            driver='mysql+mysqldb' if 'mysql' in self.target_instance_name else 'postgres',
+            driver='mysql+mysqldb' if 'mysql' in target_instance_name else 'postgres',
             user='rdr',
-            password=db_config[f'{self.target_instance_name}_password'],
-            db_instance_name=self.target_instance_name,
+            password=db_config[f'{target_instance_name}_password'],
+            db_instance_name=target_instance_name,
             database_name='rdr'
         )
         return Database(make_url(connection_string))

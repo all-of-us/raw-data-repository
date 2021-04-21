@@ -7,7 +7,7 @@ import unittest
 from urllib.parse import urlencode
 
 from rdr_service import clock, config, main
-from rdr_service.api_util import PTC
+from rdr_service.api_util import PTC, CURATION
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -505,6 +505,16 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+    def test_access_with_curation_role(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+
+        self.overwrite_test_user_roles([CURATION])
+        response = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response['entry']), 1)
 
     def test_constraints_dob_and_lastname(self):
         num_summary = 3
