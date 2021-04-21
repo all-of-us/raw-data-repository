@@ -880,6 +880,35 @@ class GenomicPipelineTest(BaseTestCase):
         for processed in should_not_be_processed:
             self.assertIsNone(self.file_processed_dao.get_record_from_filename(processed))
 
+    def test_ingestion_bad_files_no_incident_created_seven_days(self):
+        # Create the fake Google Cloud CSV files to ingest
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        self._create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]),
+        )
+
+        # run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        current_incident = self.incident_dao.get(1)
+        message = current_incident.message
+
+        current_incidents_with_message = self.incident_dao.get_by_message(message)
+
+        self.assertIsNotNone(current_incidents_with_message)
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        all_incidents = self.incident_dao.get_all()
+        count = 0
+        for incident in all_incidents:
+            if incident.message == message:
+                count += 1
+
+        self.assertEqual(count, 1)
+
     def test_gc_metrics_ingestion_no_files(self):
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()

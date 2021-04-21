@@ -861,11 +861,19 @@ class GenomicJobController:
         """
         Creates an GenomicIncident and sends alert via Slack if default
         for slack arg is True and saves an incident record to GenomicIncident
-        if save_incident arg is True
+        if save_incident arg is True.
+        :param save_incident: bool
+        :param slack: bool
         :return:
         """
+        num_days = 7
         incident = None
         message = kwargs.get('message', None)
+        created_incident = self.incident_dao.get_by_message(message) if message else None
+        today = datetime.utcnow()
+
+        if created_incident and (today.date() - created_incident.created.date()).days <= num_days:
+            return
 
         if save_incident:
             insert_kwargs = {key: value for key, value in kwargs.items()
@@ -880,7 +888,7 @@ class GenomicJobController:
 
             if slack_alert and incident:
                 incident.slack_notification = 1
-                incident.slack_notification_date = datetime.utcnow()
+                incident.slack_notification_date = today
                 self.incident_dao.update(incident)
 
         logging.warning(message)
