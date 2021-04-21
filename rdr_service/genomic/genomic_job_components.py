@@ -1709,7 +1709,7 @@ class GenomicFileValidator:
         if not is_valid_filename:
             invalid_message = f"File name {filename.split('/')[1]} has failed validation."
             self.controller.create_incident(
-                create_incident=False,
+                save_incident=False,
                 slack=True,
                 message=invalid_message,
             )

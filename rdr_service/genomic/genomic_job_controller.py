@@ -854,19 +854,20 @@ class GenomicJobController:
 
     def create_incident(
         self,
-        create_incident=True,
+        save_incident=True,
         slack=False,
         **kwargs
     ):
         """
         Creates an GenomicIncident and sends alert via Slack if default
-        for slack kwarg is not overridden
+        for slack arg is True and saves an incident record to GenomicIncident
+        if save_incident arg is True
         :return:
         """
         incident = None
         message = kwargs.get('message', None)
 
-        if create_incident:
+        if save_incident:
             insert_kwargs = {key: value for key, value in kwargs.items()
                              if key in GenomicIncident.__table__.columns.keys()}
             incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
