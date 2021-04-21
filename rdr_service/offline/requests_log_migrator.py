@@ -23,7 +23,8 @@ class RequestsLogMigrator:
         with database_connection.session() as source_session:
             request_log = source_session.query(RequestsLog).filter(RequestsLog.id == log_id).one()
 
-        RequestsLog.__table__.name = f'{RequestsLog.__tablename__}_task'
+        original_table_name = RequestsLog.__tablename__
+        RequestsLog.__table__.name = f'{original_table_name}_task'
 
         make_transient(request_log)
         postgresql_connection = cls._get_database_connection('rdrpostgresql')
@@ -34,6 +35,8 @@ class RequestsLogMigrator:
         mysql8_connection = cls._get_database_connection('rdrmysql8')
         with mysql8_connection.session() as mysql8_session:
             mysql8_session.add(request_log)
+
+        RequestsLog.__table__.name = original_table_name
 
     def migrate_latest_requests_logs(self):
         migration_target_connection = self._get_database_connection(self.target_instance_name)
