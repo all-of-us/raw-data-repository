@@ -105,9 +105,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
     @staticmethod
     def get_empty_report_string(display_name):
 
-        empty_report_string = f"No data to display for {display_name}"
-
-        return empty_report_string
+        return f"No data to display for {display_name}"
 
     def set_report_def(self, **kwargs):
         """
