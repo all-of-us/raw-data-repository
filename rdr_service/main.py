@@ -2,17 +2,11 @@
 
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
-import os
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    try:
-        import googleclouddebugger
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
+# pylint: disable=unused-import
+import rdr_service.activate_debugger
 
 import logging
 
-# pylint: disable=unused-import
 from flask import got_request_exception, Response
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError

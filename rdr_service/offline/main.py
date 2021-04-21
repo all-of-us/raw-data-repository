@@ -1,14 +1,7 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-import os
+import rdr_service.activate_debugger  # pylint: disable=unused-import
 
 from rdr_service.genomic_enums import GenomicJob
-
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    try:
-        import googleclouddebugger
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
 
 import json
 import logging
