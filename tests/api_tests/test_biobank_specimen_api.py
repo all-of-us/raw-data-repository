@@ -1049,6 +1049,20 @@ class BiobankOrderApiTest(BaseTestCase):
             aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.id == aliquot.id).one()
             self.assertEqual(updated_sample_type, aliquot.sampleType)
 
+    def test_aliquot_nesting_not_found_error(self):
+        """Return 404 if trying to PUT an aliquot as a child of another that doesn't exist"""
+        generic_aliquot_data = {
+            'sampleType': 'first sample',
+            'containerTypeID': 'tube'
+        }
+
+        # Try to upload an aliquot for an ID that doesn't exist, expecting a 404
+        self.send_put(
+            f'Biobank/specimens/does-not-exist/aliquots/new-aliquot',
+            generic_aliquot_data,
+            expected_status=404
+        )
+
     def _create_minimal_specimen_with_aliquot(self, rlims_id='sabrina', aliquot_rlims_id='salem'):
         payload = self.get_minimal_specimen_json(rlims_id)
         payload['aliquots'] = [{

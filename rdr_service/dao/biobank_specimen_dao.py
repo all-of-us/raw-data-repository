@@ -388,12 +388,12 @@ class BiobankAliquotDao(BiobankDaoBase):
                 parent_aliquot = session.query(BiobankAliquot).filter(
                     BiobankAliquot.rlimsId == parent_rlims_id
                 ).one_or_none()
+                if parent_aliquot is None:
+                    raise NotFound(f'No parent specimen or aliquot found with ID {parent_rlims_id}')
+
                 parent_specimen = session.query(BiobankSpecimen).filter(
                     BiobankSpecimen.rlimsId == parent_aliquot.specimen_rlims_id
                 ).one_or_none()
-
-            if parent_aliquot is None:
-                raise NotFound(f'Unable to find specimen or aliquot with rlimsId {parent_rlims_id}')
 
             return parent_specimen, parent_aliquot
 
