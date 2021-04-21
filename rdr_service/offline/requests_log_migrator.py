@@ -18,25 +18,31 @@ class RequestsLogMigrator:
 
     @classmethod
     def archive_log(cls, log_id):
-        # Get the request log that needs archived
-        database_connection = database_factory.get_database()
-        with database_connection.session() as source_session:
-            request_log = source_session.query(RequestsLog).filter(RequestsLog.id == log_id).one()
+        source_table_name = RequestsLog.__tablename__
+        archive_table_name = f'{source_table_name}_task'
 
-        original_table_name = RequestsLog.__tablename__
-        RequestsLog.__table__.name = f'{original_table_name}_task'
+        try:
+            # Get the request log that needs archived
+            database_connection = database_factory.get_database()
+            with database_connection.session() as source_session:
+                request_log = source_session.query(RequestsLog).filter(RequestsLog.id == log_id).one()
 
-        make_transient(request_log)
-        postgresql_connection = cls._get_database_connection('rdrpostgresql')
-        with postgresql_connection.session() as postgresql_session:
-            postgresql_session.add(request_log)
+            # Setting table name to what it is in the archive databases
+            RequestsLog.__table__.name = archive_table_name
 
-        make_transient(request_log)
-        mysql8_connection = cls._get_database_connection('rdrmysql8')
-        with mysql8_connection.session() as mysql8_session:
-            mysql8_session.add(request_log)
+            make_transient(request_log)
+            postgresql_connection = cls._get_database_connection('rdrpostgresql')
+            with postgresql_connection.session() as postgresql_session:
+                postgresql_session.add(request_log)
 
-        RequestsLog.__table__.name = original_table_name
+            make_transient(request_log)
+            mysql8_connection = cls._get_database_connection('rdrmysql8')
+            with mysql8_connection.session() as mysql8_session:
+                mysql8_session.add(request_log)
+
+        finally:
+            # Setting table name back to what it originally was
+            RequestsLog.__table__.name = source_table_name
 
     def migrate_latest_requests_logs(self):
         migration_target_connection = self._get_database_connection(self.target_instance_name)
@@ -83,12 +89,15 @@ class RequestsLogMigrator:
 
     @classmethod
     def _get_database_connection(cls, target_instance_name):
+        is_connecting_to_mysql = 'mysql' in target_instance_name
+
         db_config = get_db_config()
         connection_string = db_config['db_connection_pattern'].format(
-            driver='mysql+mysqldb' if 'mysql' in target_instance_name else 'postgres',
+            driver='mysql+mysqldb' if is_connecting_to_mysql else 'postgres',
             user='rdr',
             password=db_config[f'{target_instance_name}_password'],
             db_instance_name=target_instance_name,
-            database_name='rdr'
+            database_name='rdr',
+            path_parameter='unix_socket' if is_connecting_to_mysql else 'host'
         )
         return Database(make_url(connection_string))
