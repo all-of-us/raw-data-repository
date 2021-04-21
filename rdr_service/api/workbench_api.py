@@ -39,10 +39,10 @@ class WorkbenchWorkspaceApi(BaseApi):
 
             if len(workspaces_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=workspaces_payload,
-                                   in_seconds=5, queue='resource-rebuild')
+                                   in_seconds=15, queue='resource-rebuild')
             if len(workspace_users_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=workspace_users_payload,
-                                   in_seconds=5, queue='resource-rebuild')
+                                   in_seconds=15, queue='resource-rebuild')
         return workspaces
 
 
@@ -70,8 +70,8 @@ class WorkbenchResearcherApi(BaseApi):
 
             if len(researchers_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=researchers_payload,
-                                   in_seconds=5, queue='resource-rebuild')
+                                   in_seconds=15, queue='resource-rebuild')
             if len(affiliations_payload['ids']) > 0:
                 self._task.execute('rebuild_research_workbench_table_records_task', payload=affiliations_payload,
-                                   in_seconds=5, queue='resource-rebuild')
+                                   in_seconds=15, queue='resource-rebuild')
         return researchers
