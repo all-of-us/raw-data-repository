@@ -61,8 +61,8 @@ class GenomicDataQualityComponentTest(BaseTestCase):
                 query_def.return_value = ("", {})
 
                 # Report defs for reports
-                report_def_d = rc.get_report_def("SUMMARY", "RUNS", "D")
-                report_def_w = rc.get_report_def("SUMMARY", "RUNS", "W")
+                report_def_d = rc.set_report_def(level="SUMMARY", target="RUNS", time_frame="D")
+                report_def_w = rc.set_report_def(level="SUMMARY", target="RUNS", time_frame="W")
 
         exp_from_date_d = self.fake_time - datetime.timedelta(days=1)
         exp_from_date_w = self.fake_time - datetime.timedelta(days=7)
@@ -75,7 +75,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 
         # Report defs to test (QUERY, LEVEL, TARGET, TIME_FRAME)
         test_definitions = (
-            ("dq_report_runs_summary", "SUMMARY", "RUNS", "D"),
+            ("dq_report_runs_summary", {"level": "SUMMARY", "target": "RUNS", "time_frame": "D"}),
         )
 
         for test_def in test_definitions:
@@ -86,7 +86,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
             with mock.patch(query_class) as query_mock:
 
                 query_mock.return_value = ("", {})
-                rc.get_report_def(*test_def[1:])
+                rc.set_report_def(**test_def[1])
 
                 query_mock.assert_called()
 
@@ -112,8 +112,10 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 
         report_ran_time = self.fake_time + datetime.timedelta(hours=6)
 
+        rc.set_report_def(level="SUMMARY", target="RUNS", time_frame="D")
+
         with clock.FakeClock(report_ran_time):
-            report_data = rc.generate_report_data("SUMMARY", "RUNS", "D")
+            report_data = rc.get_report_data()
 
         # Get the genomic_job_run records
         for row in report_data:
@@ -236,7 +238,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
         self.assertEqual(expected_report, report_output)
 
     @mock.patch('rdr_service.services.slack_utils.SlackMessageHandler.send_message_to_webhook')
-    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.generate_report_data')
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.get_report_data')
     @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
     def test_report_slack_integration(self, format_mock, report_data_mock, slack_handler_mock):
 
@@ -257,3 +259,10 @@ class GenomicDataQualityReportTest(BaseTestCase):
         # Test the slack API was called correctly
         slack_handler_mock.assert_called_with(message_data={'text': expected_report})
 
+    def test_daily_ingestion_summary_no_files(self):
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow()
+
+        expected_report = "No data to display for Daily Ingestions Summary"
+
+        self.assertEqual(expected_report, report_output)

@@ -1104,13 +1104,13 @@ class DataQualityJobController:
 
         rc = ReportingComponent(self)
 
-        report_level, report_target, time_frame, display_name = rc.set_report_parameters(**kwargs)
+        report_params = rc.get_report_parameters(**kwargs)
 
-        report_data = rc.generate_report_data(level=report_level,
-                                              target=report_target,
-                                              time_frame=time_frame)
+        rc.set_report_def(**report_params)
 
-        report_string = rc.format_report(display_name, report_data)
+        report_data = rc.get_report_data()
+
+        report_string = rc.format_report(report_data)
 
         # Send report to slack #rdr-genomics channel
         if kwargs.get('slack') is True:
