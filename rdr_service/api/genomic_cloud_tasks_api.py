@@ -51,11 +51,8 @@ class IngestAW1ManifestTaskApi(Resource):
     @task_auth_required
     def post(self):
         log_task_headers()
-
-        # from cloud function
         data = request.get_json(force=True)
-
-        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
+        logging.info(f'Ingesting AW1 File: {data.get("file_path")}')
 
         # Set manifest_type and job
         job = GenomicJob.AW1_MANIFEST
