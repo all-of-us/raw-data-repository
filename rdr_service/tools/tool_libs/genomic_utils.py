@@ -965,6 +965,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         self.gen_enum = None
         self.is_cloud_run = None
         self.gen_job_name = None
+        self.cloud_task_endpoint = None
 
     def run(self):
         """
@@ -978,6 +979,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.is_cloud_run = self.args.cloud_task
         self.gen_job_name = self.gen_enum.name
+        self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
 
         if self.is_cloud_run and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
@@ -1112,7 +1114,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 "upload_date": _blob.updated,
             }
             return self.execute_in_cloud_task(
-                endpoint=self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint'],
+                endpoint=self.cloud_task_endpoint,
                 payload=payload,
                 queue=self.genomic_task_queue,
             )
@@ -1153,7 +1155,23 @@ class GenomicProcessRunner(GenomicManifestBase):
     def run_manifest_ingestion(self):
         bucket_name = self.args.manifest_file.split('/')[0]
         file_name = self.args.manifest_file.replace(bucket_name + '/', '')
+
+        # Get blob for file from gcs
+        _blob = self.gscp.get_blob(bucket_name, file_name)
+
         _logger.info(f'Processing: {file_name}')
+
+        if self.is_cloud_run:
+            payload = {
+                "file_path": self.args.manifest_file,
+                "bucket_name": bucket_name,
+                "upload_date": _blob.updated,
+            }
+            return self.execute_in_cloud_task(
+                endpoint=self.cloud_task_endpoint,
+                payload=payload,
+                queue=self.genomic_task_queue,
+            )
 
         # Use a Controller to run the job
         try:

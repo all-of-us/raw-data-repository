@@ -52,7 +52,7 @@ class IngestAW1ManifestTaskApi(Resource):
     def post(self):
         log_task_headers()
         data = request.get_json(force=True)
-        logging.info(f'Ingesting AW1 File: {data.get("file_path")}')
+        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
 
         # Set manifest_type and job
         job = GenomicJob.AW1_MANIFEST
