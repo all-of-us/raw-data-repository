@@ -22,12 +22,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         super().__init__(controller=controller)
 
         self.query = GenomicQueryClass()
+        self.report_def = None
 
     class ReportDef:
-        def __init__(self, level, target, time_frame):
+        def __init__(self, level=None, target=None, time_frame=None,
+                     display_name=None, empty_report_string=None):
             self.level = level
             self.target = target
             self.from_date = self.get_from_date(time_frame)
+
+            self.display_name = display_name
+            self.empty_report_string = empty_report_string
 
             self.source_data_query = None
             self.source_data_params = None
@@ -52,25 +57,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
             return clock.CLOCK.now() - dd
 
-    def generate_report_data(self, level, target, time_frame):
-        """
-        Generates a report based on target and time frame
-        :param level: str, "SUMMARY" or "DETAIL"
-        :param target: str, "RUNS", "INGESTIONS" etc.
-        :param time_frame: 'd' or 'w'
-        :return: ResultProxy for report data
-        """
-
-        report_def = self.get_report_def(level, target, time_frame)
-
-        # Useful for debugging
-        # sql = report_def.get_sql()
-
-        return self.get_report_data(report_def)
-
-    def set_report_parameters(self, **kwargs):
-        # Default Report Name
-        display_name = self.get_report_display_name()
+    def get_report_parameters(self, **kwargs):
 
         # Set report level (SUMMARY, DETAIL, etc)
         try:
@@ -93,7 +80,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         except KeyError:
             time_frame = self.controller.job.name[0]
 
-        return report_level, report_target, time_frame, display_name
+        display_name = self.get_report_display_name()
+
+        report_params = {
+            "level": report_level,
+            "target": report_target,
+            "time_frame": time_frame,
+            "display_name": display_name,
+            "empty_report_string": self.get_empty_report_string(display_name),
+        }
+
+        return report_params
 
     def get_report_display_name(self):
 
@@ -105,16 +102,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return display_name
 
-    def get_report_def(self, level, target, time_frame):
+    @staticmethod
+    def get_empty_report_string(display_name):
+
+        return f"No data to display for {display_name}"
+
+    def set_report_def(self, **kwargs):
         """
         Reports are defined in inner class ReportDef objects
         This method returns the ReportDef object based on Target
-        :param level:
-        :param target:
-        :param time_frame:
-        :return: ReportDef object
         """
-        report_def = self.ReportDef(level, target, time_frame)
+        report_def = self.ReportDef(**kwargs)
 
         # Map report targets to source data queries
         target_mappings = {
@@ -122,15 +120,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date)
         }
 
-        report_def.source_data_query, report_def.source_data_params = target_mappings[(level, target)]
+        report_def.source_data_query, report_def.source_data_params = target_mappings[
+            (report_def.level, report_def.target)
+        ]
+
+        self.report_def = report_def
 
         return report_def
 
-    @staticmethod
-    def get_report_data(report_def):
+    def get_report_data(self):
         """
         Returns the report by executing the report definition query
-        :param report_def: ReportDef object
         :return: ResultProxy
         """
 
@@ -139,30 +139,34 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         with dao.session() as session:
             result = session.execute(
-                report_def.source_data_query, report_def.source_data_params
+                self.report_def.source_data_query, self.report_def.source_data_params
             )
 
         return result
 
-    @staticmethod
-    def format_report(display_name, data):
+    def format_report(self, data):
         """
-        Converts the report query ResultProxy object to tab-delimited string
-        :param display_name: string
+        Converts the report query ResultProxy object to report string
         :param data: ResultProxy
         :return: string
         """
-        # Report title
-        report_string = "```" + display_name + '\n'
+        rows = data.fetchall()
 
-        # Header row
-        report_string += "    ".join(data.keys())
-        report_string += "\n"
+        if rows:
+            # Report title
+            report_string = "```" + self.report_def.display_name + '\n'
 
-        for row in data.fetchall():
-            report_string += "    ".join(tuple(map(str, row)))
+            # Header row
+            report_string += "    ".join(data.keys())
             report_string += "\n"
 
-        report_string += "```"
+            for row in rows:
+                report_string += "    ".join(tuple(map(str, row)))
+                report_string += "\n"
+
+            report_string += "```"
+
+        else:
+            report_string = self.report_def.empty_report_string
 
         return report_string

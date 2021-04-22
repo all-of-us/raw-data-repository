@@ -1564,6 +1564,7 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.ignore_flag == 0
             ).one()
 
+
 class GenomicIncidentDao(UpdatableDao):
 
     validate_version_match = False
@@ -1578,6 +1579,19 @@ class GenomicIncidentDao(UpdatableDao):
     def from_client_json(self):
         pass
 
+    def get_by_message(self, message):
+        maximum_message_length = GenomicIncident.message.type.length
+        _, truncated_value = self.truncate_value(
+            message,
+            maximum_message_length,
+        )
+        with self.session() as session:
+            return session.query(
+                GenomicIncident
+            ).filter(
+                GenomicIncident.message == truncated_value
+            ).first()
+
     def get_by_source_file_id(self, file_id):
         with self.session() as session:
             return session.query(
@@ -1588,8 +1602,21 @@ class GenomicIncidentDao(UpdatableDao):
 
     def insert(self, incident: GenomicIncident) -> GenomicIncident:
         maximum_message_length = GenomicIncident.message.type.length
-        if len(incident.message) > maximum_message_length:
+        is_truncated, truncated_value = self.truncate_value(
+            incident.message,
+            maximum_message_length,
+        )
+        if is_truncated:
             logging.warning('Truncating incident message when storing (too many characters for database column)')
-            incident.message = incident.message[:maximum_message_length]
+        incident.message = truncated_value
 
         return super(GenomicIncidentDao, self).insert(incident)
+
+    @staticmethod
+    def truncate_value(value, max_length):
+        is_truncated = False
+        if len(value) > max_length:
+            is_truncated = True
+            value = value[:max_length]
+
+        return is_truncated, value

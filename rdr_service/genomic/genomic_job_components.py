@@ -1544,7 +1544,7 @@ class GenomicFileValidator:
             slack = True
             invalid_message = f"File structure of {filename} is not valid."
             if missing_fields:
-                invalid_message += ' Missing fields: {}'.format(missing_fields)
+                invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
                     slack = False
             self.controller.create_incident(
@@ -1566,16 +1566,18 @@ class GenomicFileValidator:
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
-        filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        if self.job_id in [GenomicJob.BB_RETURN_MANIFEST]:
+            filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
+        else:
+            filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
 
         # Naming Rule Definitions
         def bb_result_name_rule():
             """Biobank to DRC Result name rule"""
-            bb_filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
             return (
-                bb_filename_components[0] == 'genomic' and
-                bb_filename_components[1] == 'manifest' and
-                bb_filename_components[2] in ('aou_array', 'aou_wgs') and
+                filename_components[0] == 'genomic' and
+                filename_components[1] == 'manifest' and
+                filename_components[2] in ('aou_array', 'aou_wgs') and
                 filename.lower().endswith('csv')
             )
 
