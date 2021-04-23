@@ -336,7 +336,8 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
         raise AttributeError("file_data is required to execute manifest file pipeline")
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
-                              task_data=task_data, bq_project_id=project_id) as controller:
+                              task_data=task_data,
+                              bq_project_id=project_id) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
 
         if task_data.file_data.create_feedback_record:
@@ -347,7 +348,6 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
     if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
-
     else:
         return manifest_file
 
