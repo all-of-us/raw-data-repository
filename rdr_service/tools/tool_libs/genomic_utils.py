@@ -88,7 +88,7 @@ class GenomicManifestBase(ToolBase):
                     'endpoint': '/resource/task/IngestAW1ManifestTaskApi'
                 },
                 'samples': {
-                    'endpoint': ''
+                    'endpoint': '/resource/task/IngestSamplesFromRawTaskAPI'
                 }
             },
             # AW2
@@ -97,7 +97,7 @@ class GenomicManifestBase(ToolBase):
                     'endpoint': '/resource/task/IngestAW2ManifestTaskApi'
                 },
                 'samples': {
-                    'endpoint': ''
+                    'endpoint': '/resource/task/IngestSamplesFromRawTaskAPI'
                 }
             }
         }
@@ -856,7 +856,7 @@ class ChangeCollectionTube(GenomicManifestBase):
         :return:
         """
         _logger.warning(f'{self.msg} member id {member.id}')
-        _logger.warning(f"    {member.collectionTubeId} -> {new_tube_id}")
+        _logger.warning(f"{member.collectionTubeId} -> {new_tube_id}")
 
         with self.dao.session() as session:
             if not self.args.dryrun:
@@ -1556,6 +1556,7 @@ class IngestionClass(GenomicManifestBase):
     Perform a targeted ingestion of AW1 or AW2 data
     for an arbitrary set of participants based on genomic_set_member.id
     """
+
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(IngestionClass, self).__init__(args, gcp_env)
         self.gen_enum = None
