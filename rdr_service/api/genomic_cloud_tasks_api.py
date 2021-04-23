@@ -13,6 +13,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_manifest_feedback_batch_update
 from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
@@ -34,7 +35,6 @@ class LoadRawAWNManifestDataAPI(Resource):
 
         # from cloud function
         data = request.get_json(force=True)
-
         logging.info(f'Loading {data.get("file_type").upper()} Raw Data: {data.get("filename")}')
 
         # Call pipeline function
@@ -152,6 +152,30 @@ class IngestAW5ManifestTaskApi(Resource):
         return '{"success": "true"}'
 
 
+class IngestSamplesFromRawTaskAPI(Resource):
+    """
+    Cloud Task endpoint: Ingest samples based on list
+    from Genomic RAW tables
+    """
+
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ingesting Samples From List')
+
+        # Call pipeline function
+        # genomic_pipeline.ingest_members_from_task(data)
+
+        with GenomicJobController(data['job'],
+                                  server_config=data['server_config']
+                                  ) as controller:
+            controller.ingest_member_ids_from_awn_raw_table(data['member_ids'])
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
 class CalculateRecordCountTaskApi(Resource):
     """
     Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
@@ -162,29 +186,22 @@ class CalculateRecordCountTaskApi(Resource):
 
         # from cloud function
         data = request.get_json(force=True)
-
         mid = data.get("manifest_file_id")
-
         logging.info(f'Calculating record count for manifest file ID: {mid}')
 
         manifest_file_dao = GenomicManifestFileDao()
-
         manifest_file_obj = manifest_file_dao.get(mid)
 
         if manifest_file_obj is None:
             raise NotFound(f"Manifest ID {mid} not found.")
-
         else:
             # Set up task JSON
             task_data = {
                 "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
                 "manifest_file": manifest_file_obj
             }
-
-            task_data = JSONObject(task_data)
-
             # Call pipeline function
-            genomic_pipeline.dispatch_genomic_job_from_task(task_data)
+            genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
 
         logging.info('Complete.')
         return '{"success": "true"}'

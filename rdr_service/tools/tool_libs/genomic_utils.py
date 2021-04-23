@@ -1597,7 +1597,7 @@ class IngestionClass(GenomicManifestBase):
                 for line in lines:
                     member_ids.append(line.strip())
 
-        if len(member_ids):
+        if member_ids:
             # Activate the SQL Proxy
             self.gcp_env.activate_sql_proxy()
             self.dao = GenomicSetMemberDao()
@@ -1611,21 +1611,31 @@ class IngestionClass(GenomicManifestBase):
             job_config = {
                 'AW1_MANIFEST': {
                     'job': GenomicJob.AW1_MANIFEST,
-                    'raw_type': 1,
                     'message': 'Ingesting AW1 data for ids'
                 },
                 'METRICS_INGESTION': {
                     'job': GenomicJob.METRICS_INGESTION,
-                    'raw_type': 2,
                     'message': 'Ingesting AW2 data for ids.'
                 }
             }
 
-            current_job = job_config[self.gen_job_name]
+            current_run = job_config[self.gen_job_name]
 
-            _logger.info(f"{current_job['message']}")
+            if self.is_cloud_run:
+                payload = {
+                    "job": current_run['job'],
+                    "server_config": self.get_server_config(),
+                    "member_ids": member_ids
+                }
+                return self.execute_in_cloud_task(
+                    endpoint=self.cloud_task_endpoint,
+                    payload=payload,
+                    queue=self.genomic_task_queue,
+                )
 
-            with GenomicJobController(GenomicJob.AW1_MANIFEST,
+            _logger.info(f"{current_run['message']}")
+
+            with GenomicJobController(current_run['job'],
                                       bq_project_id=self.gcp_env.project,
                                       server_config=self.get_server_config() if self.args.use_raw else None,
                                       storage_provider=self.gscp if bucket_name else None
@@ -1633,7 +1643,7 @@ class IngestionClass(GenomicManifestBase):
                 controller.bypass_record_count = self.args.bypass_record_count
 
                 if self.args.use_raw:
-                    results = controller.ingest_member_ids_from_awn_raw_table(current_job['raw_type'], member_ids)
+                    results = controller.ingest_member_ids_from_awn_raw_table(member_ids)
                     logging.info(results)
 
                 if bucket_name:
