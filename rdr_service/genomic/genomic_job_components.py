@@ -296,12 +296,8 @@ class GenomicFileIngester:
             }
 
             ingestion_type = ingestion_config[self.job_id]['method']
+            return ingestion_type(data_to_ingest)
 
-            if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
-                gc_site_id = self._get_site_from_aw1()
-                return ingestion_type(data_to_ingest, gc_site_id)
-            else:
-                return ingestion_type(data_to_ingest)
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -388,7 +384,7 @@ class GenomicFileIngester:
             "call_rate": "callrate",
         }
 
-    def _ingest_aw1_manifest(self, data, _site):
+    def _ingest_aw1_manifest(self, data):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
         If the row is determined to be a control sample,
@@ -398,6 +394,7 @@ class GenomicFileIngester:
         :return: result code
         """
         _state = GenomicWorkflowState.AW0
+        _site = self._get_site_from_aw1()
 
         for row in data['rows']:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
