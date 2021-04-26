@@ -165,8 +165,6 @@ class IngestSamplesFromRawTaskAPI(Resource):
         logging.info(f'Ingesting Samples From List')
 
         # Call pipeline function
-        # genomic_pipeline.ingest_members_from_task(data)
-
         with GenomicJobController(data['job'],
                                   server_config=data['server_config']
                                   ) as controller:

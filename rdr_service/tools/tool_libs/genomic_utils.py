@@ -79,7 +79,6 @@ class GenomicManifestBase(ToolBase):
 
         self.genomic_task_queue = 'genomics'
         self.resource_task_queue = 'resource-tasks'
-        self.is_cloud_run = self.args.cloud_task or None
         self.cloud_task_endpoint = None
 
         self.genomic_cloud_tasks = {
@@ -966,6 +965,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         super(GenomicProcessRunner, self).__init__(args, gcp_env)
         self.gen_enum = None
         self.gen_job_name = None
+        self.is_cloud_run = False
 
     def run(self):
         """
@@ -974,9 +974,9 @@ class GenomicProcessRunner(GenomicManifestBase):
         """
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.gen_job_name = self.gen_enum.name
-        self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
+        self.is_cloud_run = self.args.cloud_task
 
-        if self.is_cloud_run and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
+        if self.args.cloud_task and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
             return 1
 
@@ -1107,6 +1107,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         _blob = self.gscp.get_blob(bucket_name, file_name)
 
         if self.is_cloud_run:
+            self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
                 "bucket_name": bucket_name,
@@ -1161,6 +1162,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         _logger.info(f'Processing: {file_name}')
 
         if self.is_cloud_run:
+            self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
                 "bucket_name": bucket_name,
@@ -1561,11 +1563,12 @@ class IngestionClass(GenomicManifestBase):
         super(IngestionClass, self).__init__(args, gcp_env)
         self.gen_enum = None
         self.gen_job_name = None
+        self.is_cloud_run = False
 
     def run(self):
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.gen_job_name = self.gen_enum.name
-        self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint']
+        self.is_cloud_run = self.args.cloud_task
 
         # Validate arguments
         if self.is_cloud_run and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
@@ -1622,6 +1625,7 @@ class IngestionClass(GenomicManifestBase):
             current_run = job_config[self.gen_job_name]
 
             if self.is_cloud_run:
+                self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint']
                 payload = {
                     "job": current_run['job'],
                     "server_config": self.get_server_config(),
@@ -2117,7 +2121,7 @@ def run():
                                        required=False)
     process_runner_parser.add_argument("--cloud-task",
                                        help="Denotes whether to run workflow in Cloud task",
-                                       default=None,
+                                       default=False,
                                        required=False)
 
     # Backfill GenomicFileProcessed UploadDate
@@ -2154,7 +2158,7 @@ def run():
     sample_ingestion_parser.add_argument("--job",
                                          default=None,
                                          required=True,
-                                         choices=['AW1_MANIFEST','METRICS_INGESTION'],
+                                         choices=['AW1_MANIFEST', 'METRICS_INGESTION'],
                                          type=str)  # noqa
     sample_ingestion_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
                                          default=None, required=False)  # noqa
