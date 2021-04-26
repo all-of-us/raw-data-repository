@@ -78,19 +78,19 @@ class GenomicManifestBase(ToolBase):
         self.genomic_cloud_tasks = {
             'AW1_MANIFEST': {
                 'process': {
-                    'endpoint': '/resource/task/IngestAW1ManifestTaskApi'
+                    'endpoint': 'ingest_aw1_manifest_task'
                 },
                 'samples': {
-                    'endpoint': '/resource/task/IngestSamplesFromRawTaskAPI'
+                    'endpoint': 'ingest_samples_from_raw_task'
                 }
             },
             # AW2
             'METRICS_INGESTION': {
                 'process': {
-                    'endpoint': '/resource/task/IngestAW2ManifestTaskApi'
+                    'endpoint': 'ingest_aw2_manifest_task'
                 },
                 'samples': {
-                    'endpoint': '/resource/task/IngestSamplesFromRawTaskAPI'
+                    'endpoint': 'ingest_samples_from_raw_task'
                 }
             }
         }
@@ -968,7 +968,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.gen_job_name = self.gen_enum.name
 
-        if self.args.cloud_task and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
+        if self.args.cloud_task and self.gen_job_name not in self.genomic_cloud_tasks.keys():
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
             return 1
 
@@ -1559,7 +1559,7 @@ class IngestionClass(GenomicManifestBase):
         self.gen_job_name = self.gen_enum.name
 
         # Validate arguments
-        if self.args.cloud_task and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
+        if self.args.cloud_task and self.gen_job_name not in self.genomic_cloud_tasks.keys():
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
             return 1
 
