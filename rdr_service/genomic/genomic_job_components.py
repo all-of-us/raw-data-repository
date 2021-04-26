@@ -297,7 +297,6 @@ class GenomicFileIngester:
 
             ingestion_type = ingestion_config[self.job_id]['method']
             return ingestion_type(data_to_ingest)
-
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -844,12 +843,12 @@ class GenomicFileIngester:
 
                 if metrics:
                     metrics.drcSexConcordance = row_copy['drcsexconcordance']
-                    metrics.drcContamination = row_copy['drccontamination']
 
                     if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                         metrics.drcCallRate = row_copy['drccallrate']
 
                     elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                        metrics.drcContamination = row_copy['drccontamination']
                         metrics.drcMeanCoverage = row_copy['drcmeancoverage']
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
@@ -1454,7 +1453,6 @@ class GenomicFileValidator:
             "researchid",
             "qcstatus",
             "drcsexconcordance",
-            "drccontamination",
             "drccallrate",
         )
 

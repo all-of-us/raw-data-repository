@@ -3149,15 +3149,14 @@ class GenomicPipelineTest(BaseTestCase):
             metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
             self.assertIsNotNone(metrics.drcSexConcordance)
-            self.assertIsNotNone(metrics.drcContamination)
             self.assertIsNotNone(metrics.drcCallRate)
 
+            self.assertIsNone(metrics.drcContamination)
             self.assertIsNone(metrics.drcMeanCoverage)
             self.assertIsNone(metrics.drcFpConcordance)
 
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
-                self.assertEqual('0', metrics.drcContamination)
                 self.assertEqual('0.99689185', metrics.drcCallRate)
             if member.id == 1:
                 self.assertEqual('TRUE', metrics.drcSexConcordance)
@@ -3214,9 +3213,10 @@ class GenomicPipelineTest(BaseTestCase):
         for member in self.member_dao.get_all():
             metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
+            self.assertIsNone(metrics.drcCallRate)
+
             self.assertIsNotNone(metrics.drcSexConcordance)
             self.assertIsNotNone(metrics.drcContamination)
-            self.assertIsNone(metrics.drcCallRate)
             self.assertIsNotNone(metrics.drcMeanCoverage)
             self.assertIsNotNone(metrics.drcFpConcordance)
 
