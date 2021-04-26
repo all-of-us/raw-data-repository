@@ -62,25 +62,19 @@ class GenomicManifestBase(ToolBase):
         """
         # Tool_lib attributes
         super().__init__(args, gcp_env)
-
         self.dao = None
         self.gscp = GoogleCloudStorageProvider()
         self.lsp = LocalFilesystemStorageProvider()
-
         # Genomic attributes
         self.OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
         self.DRC_BIOBANK_PREFIX = "Genomic-Manifest-AoU"
-
         self.nowts = clock.CLOCK.now()
         self.nowf = _UTC.localize(self.nowts).astimezone(_US_CENTRAL) \
             .replace(tzinfo=None).strftime(self.OUTPUT_CSV_TIME_FORMAT)
         self.counter = 0
         self.msg = "Updated"  # Output message
-
         self.genomic_task_queue = 'genomics'
         self.resource_task_queue = 'resource-tasks'
-        self.cloud_task_endpoint = None
-
         self.genomic_cloud_tasks = {
             'AW1_MANIFEST': {
                 'process': {
@@ -1105,14 +1099,13 @@ class GenomicProcessRunner(GenomicManifestBase):
         _blob = self.gscp.get_blob(bucket_name, file_name)
 
         if self.args.cloud_task:
-            self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
                 "bucket_name": bucket_name,
                 "upload_date": _blob.updated,
             }
             return self.execute_in_cloud_task(
-                endpoint=self.cloud_task_endpoint,
+                endpoint=self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint'],
                 payload=payload,
                 queue=self.genomic_task_queue,
             )
@@ -1160,14 +1153,13 @@ class GenomicProcessRunner(GenomicManifestBase):
         _logger.info(f'Processing: {file_name}')
 
         if self.args.cloud_task:
-            self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
                 "bucket_name": bucket_name,
                 "upload_date": _blob.updated,
             }
             return self.execute_in_cloud_task(
-                endpoint=self.cloud_task_endpoint,
+                endpoint=self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint'],
                 payload=payload,
                 queue=self.genomic_task_queue,
             )
@@ -1621,14 +1613,13 @@ class IngestionClass(GenomicManifestBase):
             current_run = job_config[self.gen_job_name]
 
             if self.args.cloud_task:
-                self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint']
                 payload = {
                     "job": current_run['job'],
                     "server_config": self.get_server_config(),
                     "member_ids": member_ids
                 }
                 return self.execute_in_cloud_task(
-                    endpoint=self.cloud_task_endpoint,
+                    endpoint=self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint'],
                     payload=payload,
                     queue=self.genomic_task_queue,
                 )
