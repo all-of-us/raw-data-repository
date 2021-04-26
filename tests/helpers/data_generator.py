@@ -19,6 +19,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -30,6 +31,7 @@ from rdr_service.participant_enums import (
     DeceasedReportStatus,
     DeceasedStatus,
     EnrollmentStatus,
+    PatientStatusFlag,
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -51,6 +53,26 @@ class DataGenerator:
     def _commit_to_database(self, model):
         self.session.add(model)
         self.session.commit()
+
+    def create_database_patient_status(self, **kwargs):
+        patient_status = self._patient_status(**kwargs)
+        self._commit_to_database(patient_status)
+        return patient_status
+
+    def _patient_status(self, **kwargs):
+        for field, default in [('patientStatus', PatientStatusFlag.YES),
+                               ('user', 'test_user')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'hpoId' not in kwargs:
+            kwargs['hpoId'] = self.create_database_hpo().hpoId
+        if 'organizationId' not in kwargs:
+            kwargs['organizationId'] = self.create_database_organization().organizationId
+        if 'siteId' not in kwargs:
+            kwargs['siteId'] = self.create_database_site().siteId
+
+        return PatientStatus(**kwargs)
 
     def create_database_questionnaire(self, **kwargs):
         questionnaire = self._questionnaire(**kwargs)
@@ -177,7 +199,8 @@ class DataGenerator:
 
     def _site_with_defaults(self, **kwargs):
         defaults = {
-            'siteName': 'example_site'
+            'siteName': 'example_site',
+            'googleGroup': self.faker.pystr()
         }
         defaults.update(kwargs)
         return Site(**defaults)
@@ -189,7 +212,8 @@ class DataGenerator:
 
     def _organization_with_defaults(self, **kwargs):
         defaults = {
-            'displayName': 'example_org_display'
+            'displayName': 'example_org_display',
+            'externalId': self.faker.pystr()
         }
         defaults.update(kwargs)
 

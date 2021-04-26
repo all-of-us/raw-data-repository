@@ -7,6 +7,11 @@ from tests.helpers.unittest_base import BaseTestCase
 
 @mock.patch('rdr_service.services.data_quality.logging')
 class DataQualityCheckerTest(BaseTestCase):
+    def setUp(self, **kwargs) -> None:
+        super(DataQualityCheckerTest, self).setUp(**kwargs)
+
+        self.checker = DataQualityChecker(self.session)
+
     def test_questionnaire_response_checks(self, mock_logging):
         participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
         response_authored_before_signup = self.data_generator.create_database_questionnaire_response(
@@ -26,8 +31,7 @@ class DataQualityCheckerTest(BaseTestCase):
         )
         # None of the responses created have answers, but I'm relying on this one not getting flagged for anything else
 
-        checker = DataQualityChecker(self.session)
-        checker.run_data_quality_checks()
+        self.checker.run_data_quality_checks()
 
         mock_logging.warning.assert_has_calls([
             mock.call(
@@ -52,7 +56,81 @@ class DataQualityCheckerTest(BaseTestCase):
             created=participant.signUpTime
         )
 
-        checker = DataQualityChecker(self.session)
-        checker.run_data_quality_checks(for_data_since=response_authored_before_signup.created + timedelta(weeks=5))
+        self.checker.run_data_quality_checks(for_data_since=response_authored_before_signup.created + timedelta(weeks=5))
 
         mock_logging.warning.assert_not_called()
+
+    def test_questionnaire_question_check(self, mock_logging):
+        """Check warning for questionnaires that have no questions"""
+        questionnaire_with_no_questions = self.data_generator.create_database_questionnaire()
+        self.checker.run_data_quality_checks()
+        mock_logging.warning.assert_called_with(
+            f'Questionnaire with id {questionnaire_with_no_questions.questionnaireId} and '
+            f'version {questionnaire_with_no_questions.version} was found with no questions.'
+        )
+
+    def test_patient_status_checks(self, mock_logging):
+        """Check warnings that PatientStatus was authored with a future date or before the participant's sign up"""
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 10, 31))
+        status_with_future_authored_date = self.data_generator.create_database_patient_status(
+            participantId=participant.participantId,
+            authored=datetime.now() + timedelta(days=5)
+        )
+        status_authored_before_signup = self.data_generator.create_database_patient_status(
+            participantId=participant.participantId,
+            authored=participant.signUpTime - timedelta(weeks=2)
+        )
+
+        self.checker.run_data_quality_checks()
+
+        mock_logging.warning.assert_has_calls([
+            mock.call(
+                f'PatientStatus {status_with_future_authored_date.id} was authored with a future date'
+            ),
+            mock.call(
+                f'PatientStatus {status_authored_before_signup.id} was authored before the participant signed up'
+            )
+        ])
+
+    def test_deceased_report_checks(self, mock_logging):
+        """Check warnings that DeceasedReport was authored with a future date or before the participant's sign up"""
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2019, 10, 31))
+        report_authored_with_future_date = self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            authored=datetime.now() + timedelta(weeks=3)
+        )
+        report_authored_before_signup = self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            authored=participant.signUpTime - timedelta(weeks=5)
+        )
+        report_effective_after_authored = self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            authored=datetime(2020, 10, 1),
+            dateOfDeath=datetime(2020, 10, 31)
+        )
+        report_with_multiple_issues = self.data_generator.create_database_deceased_report(
+            participantId=participant.participantId,
+            authored=participant.signUpTime - timedelta(weeks=5),
+            dateOfDeath=participant.signUpTime
+        )
+
+        self.checker.run_data_quality_checks()
+
+        mock_logging.warning.assert_has_calls([
+            mock.call(
+                f'Issues found with DeceasedReport {report_authored_with_future_date.id}: '
+                f'was authored with a future date'
+            ),
+            mock.call(
+                f'Issues found with DeceasedReport {report_authored_before_signup.id}: '
+                f'was authored before participant signup'
+            ),
+            mock.call(
+                f'Issues found with DeceasedReport {report_effective_after_authored.id}: '
+                f'has an effective date after the authored date'
+            ),
+            mock.call(
+                f'Issues found with DeceasedReport {report_with_multiple_issues.id}: '
+                f'was authored before participant signup, has an effective date after the authored date'
+            ),
+        ])
