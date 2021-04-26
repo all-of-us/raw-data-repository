@@ -965,7 +965,6 @@ class GenomicProcessRunner(GenomicManifestBase):
         super(GenomicProcessRunner, self).__init__(args, gcp_env)
         self.gen_enum = None
         self.gen_job_name = None
-        self.is_cloud_run = False
 
     def run(self):
         """
@@ -974,7 +973,6 @@ class GenomicProcessRunner(GenomicManifestBase):
         """
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.gen_job_name = self.gen_enum.name
-        self.is_cloud_run = self.args.cloud_task
 
         if self.args.cloud_task and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
@@ -1106,7 +1104,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         # Get blob for file from gcs
         _blob = self.gscp.get_blob(bucket_name, file_name)
 
-        if self.is_cloud_run:
+        if self.args.cloud_task:
             self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
@@ -1161,7 +1159,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
         _logger.info(f'Processing: {file_name}')
 
-        if self.is_cloud_run:
+        if self.args.cloud_task:
             self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint']
             payload = {
                 "file_path": self.args.manifest_file,
@@ -1563,15 +1561,13 @@ class IngestionClass(GenomicManifestBase):
         super(IngestionClass, self).__init__(args, gcp_env)
         self.gen_enum = None
         self.gen_job_name = None
-        self.is_cloud_run = False
 
     def run(self):
         self.gen_enum = GenomicJob.__dict__[self.args.job]
         self.gen_job_name = self.gen_enum.name
-        self.is_cloud_run = self.args.cloud_task
 
         # Validate arguments
-        if self.is_cloud_run and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
+        if self.args.cloud_task and self.gen_job_name not in [self.genomic_cloud_tasks.keys()]:
             _logger.error(f'{self.gen_job_name} is not able to run in cloud task.')
             return 1
 
@@ -1624,7 +1620,7 @@ class IngestionClass(GenomicManifestBase):
 
             current_run = job_config[self.gen_job_name]
 
-            if self.is_cloud_run:
+            if self.args.cloud_task:
                 self.cloud_task_endpoint = self.genomic_cloud_tasks[self.gen_job_name]['samples']['endpoint']
                 payload = {
                     "job": current_run['job'],
@@ -2158,7 +2154,10 @@ def run():
     sample_ingestion_parser.add_argument("--job",
                                          default=None,
                                          required=True,
-                                         choices=['AW1_MANIFEST', 'METRICS_INGESTION'],
+                                         choices=[
+                                             'AW1_MANIFEST',
+                                             'METRICS_INGESTION'
+                                         ],
                                          type=str)  # noqa
     sample_ingestion_parser.add_argument("--manifest-file", help="The full 'bucket/subfolder/file.ext to process",
                                          default=None, required=False)  # noqa
