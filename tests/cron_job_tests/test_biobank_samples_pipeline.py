@@ -28,7 +28,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.offline import biobank_samples_pipeline
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
-    SampleCollectionMethod, WithdrawalAIANCeremonyStatus
+    SampleCollectionMethod, WithdrawalAIANCeremonyStatus, WithdrawalStatus
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
@@ -525,17 +525,35 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
         return participant
 
-    def assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_str,
-                                          as_native_american: bool, needs_ceremony_indicator: str):
+    def assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_date_str,
+                                          as_native_american: bool = False, needs_ceremony_indicator: str = 'NA'):
         self.assertIn((
             f'Z{participant.biobankId}',
-            withdrawal_str,
+            withdrawal_date_str,
             'Y' if as_native_american else 'N',
             needs_ceremony_indicator,
             participant.participantOrigin
         ), rows)
 
-    def test_data_in_withdrawal_report(self):
+    def _generate_withdrawal_report(self):
+        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
+                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+
+            # Generate the withdrawal report
+            day_range_of_report = 10
+            biobank_samples_pipeline._query_and_write_withdrawal_report(
+                SqlExporter(''), '', day_range_of_report, datetime.now()
+            )
+
+            # Check the header values written
+            mock_writer_class.return_value.writerow.assert_called_with(
+                ['biobank_id', 'withdrawal_time', 'is_native_american', 'needs_disposal_ceremony', 'participant_origin']
+            )
+
+            mock_write_rows = mock_writer_class.return_value.writerows
+            return mock_write_rows.call_args[0][0] if mock_write_rows.called else []
+
+    def test_native_american_data_in_withdrawal_report(self):
         # Set up data for withdrawal report
         self._init_report_codes()
         two_days_ago = self._datetime_days_ago(2)
@@ -561,54 +579,38 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             withdrawal_time=two_days_ago
         )
 
-        # Mocking the file writer to catch what gets exported and
-        # mocking the upload method to keep it from trying to upload something
-        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
-                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
 
-            # Generate the withdrawal report
-            day_range_of_report = 10
-            biobank_samples_pipeline._query_and_write_withdrawal_report(
-                SqlExporter(''), '', day_range_of_report, datetime.now()
-            )
-
-            # Check the header values written
-            mock_writer_class.return_value.writerow.assert_called_with(
-                ['biobank_id', 'withdrawal_time', 'is_native_american', 'needs_disposal_ceremony', 'participant_origin']
-            )
-
-            # Check that the participants are written to the export with the expected values
-            withdrawal_iso_str = two_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
-            mock_write_rows = mock_writer_class.return_value.writerows
-            rows_written = mock_write_rows.call_args[0][0]
-            self.assert_participant_in_report_rows(
-                non_native_american_participant,
-                rows_written,
-                withdrawal_iso_str,
-                as_native_american=False,
-                needs_ceremony_indicator='NA'
-            )
-            self.assert_participant_in_report_rows(
-                ceremony_native_american_participant,
-                rows_written,
-                withdrawal_iso_str,
-                as_native_american=True,
-                needs_ceremony_indicator='Y'
-            )
-            self.assert_participant_in_report_rows(
-                native_american_participant_without_answer,
-                rows_written,
-                withdrawal_iso_str,
-                as_native_american=True,
-                needs_ceremony_indicator='U'
-            )
-            self.assert_participant_in_report_rows(
-                no_ceremony_native_american_participant,
-                rows_written,
-                withdrawal_iso_str,
-                as_native_american=True,
-                needs_ceremony_indicator='N'
-            )
+        # Check that the participants are written to the export with the expected values
+        withdrawal_iso_str = two_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+        rows_written = self._generate_withdrawal_report()
+        self.assert_participant_in_report_rows(
+            non_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=False,
+            needs_ceremony_indicator='NA'
+        )
+        self.assert_participant_in_report_rows(
+            ceremony_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='Y'
+        )
+        self.assert_participant_in_report_rows(
+            native_american_participant_without_answer,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='U'
+        )
+        self.assert_participant_in_report_rows(
+            no_ceremony_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='N'
+        )
 
         p_id = no_ceremony_native_american_participant.participantId
         ps_bqs_data = self.make_bq_participant_summary(p_id)
@@ -648,3 +650,32 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
                          str(WithdrawalAIANCeremonyStatus.UNSET))
         self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
                          int(WithdrawalAIANCeremonyStatus.UNSET))
+
+    def test_withdrawal_report_includes_participants_with_recent_samples(self):
+        """
+        Occasionally a participant will send a saliva kit and then immediately withdraw. In this scenario
+        they would never be on a withdrawal manifest because they didn't have any samples until after the
+        10-day window.
+        """
+        self._init_report_codes()
+        twenty_days_ago = self._datetime_days_ago(20)
+        five_days_ago = self._datetime_days_ago(5)
+
+        # Create a participant that has a withdrawal time outside of the report range, but recently had a sample created
+        withdrawn_participant = self.data_generator.create_database_participant(
+            withdrawalTime=twenty_days_ago,
+            withdrawalStatus=WithdrawalStatus.NO_USE
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=withdrawn_participant.biobankId,
+            created=five_days_ago
+        )
+
+        from tests.helpers.diagnostics import LoggingDatabaseActivity
+        with LoggingDatabaseActivity():
+            rows_written = self._generate_withdrawal_report()
+        self.assert_participant_in_report_rows(
+            withdrawn_participant,
+            rows=rows_written,
+            withdrawal_date_str=twenty_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+        )
