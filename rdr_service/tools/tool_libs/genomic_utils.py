@@ -1592,6 +1592,7 @@ class IngestionClass(GenomicManifestBase):
             # Activate the SQL Proxy
             self.gcp_env.activate_sql_proxy()
             self.dao = GenomicSetMemberDao()
+            server_config = self.get_server_config()
             bucket_name = None
 
             if self.args.manifest_file:
@@ -1615,7 +1616,7 @@ class IngestionClass(GenomicManifestBase):
             if self.args.cloud_task:
                 payload = {
                     "job": current_run['job'],
-                    "server_config": self.get_server_config(),
+                    "server_config": server_config,
                     "member_ids": member_ids
                 }
                 return self.execute_in_cloud_task(
@@ -1628,7 +1629,7 @@ class IngestionClass(GenomicManifestBase):
 
             with GenomicJobController(current_run['job'],
                                       bq_project_id=self.gcp_env.project,
-                                      server_config=self.get_server_config() if self.args.use_raw else None,
+                                      server_config=server_config if self.args.use_raw else None,
                                       storage_provider=self.gscp if bucket_name else None
                                       ) as controller:
                 controller.bypass_record_count = self.args.bypass_record_count
