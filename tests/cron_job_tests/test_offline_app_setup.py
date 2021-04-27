@@ -48,4 +48,4 @@ class OfflineAppTest(BaseTestCase):
     def test_request_log_migrator_route(self, mock_migrate_call):
         test_db_name = 'test_db_name'
         self.send_cron_request(f'MigrateRequestsLog/{test_db_name}')
-        mock_migrate_call.assert_called_with(test_db_name)
+        mock_migrate_call.assert_called()
