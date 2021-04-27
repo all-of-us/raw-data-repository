@@ -33,12 +33,12 @@ class RequestsLogMigrator:
             make_transient(request_log)
             postgresql_connection = cls._get_database_connection('rdrpostgresql')
             with postgresql_connection.session() as postgresql_session:
-                postgresql_session.add(request_log)
+                postgresql_session.merge(request_log)
 
             make_transient(request_log)
             mysql8_connection = cls._get_database_connection('rdrmysql8')
             with mysql8_connection.session() as mysql8_session:
-                mysql8_session.add(request_log)
+                mysql8_session.merge(request_log)
 
         finally:
             # Setting table name back to what it originally was
