@@ -513,7 +513,8 @@ def clean_up_request_logs():
 @app_util.auth_required_cron
 @nonprod
 def migrate_requests_logs(target_db):
-    RequestsLogMigrator.migrate_latest_requests_logs(target_db)
+    migrator = RequestsLogMigrator(target_instance_name=target_db)
+    migrator.migrate_latest_requests_logs()
     return '{ "success": "true" }'
 
 
