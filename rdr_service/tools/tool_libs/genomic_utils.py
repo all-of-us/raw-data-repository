@@ -1600,22 +1600,12 @@ class IngestionClass(GenomicManifestBase):
                 # Get bucket and filename from argument
                 bucket_name = self.args.manifest_file.split('/')[0]
 
-            job_config = {
-                'AW1_MANIFEST': {
-                    'job': GenomicJob.AW1_MANIFEST,
-                    'message': 'Ingesting AW1 data for ids'
-                },
-                'METRICS_INGESTION': {
-                    'job': GenomicJob.METRICS_INGESTION,
-                    'message': 'Ingesting AW2 data for ids.'
-                }
-            }
-
-            current_run = job_config[self.gen_job_name]
+            message = 'AW1' if self.gen_job_name == 'AW1_MANIFEST' else 'AW2'
+            _logger.info(f"Ingesting {message} data for ids.")
 
             if self.args.cloud_task:
                 payload = {
-                    "job": current_run['job'],
+                    "job": self.args.job,
                     "server_config": server_config,
                     "member_ids": member_ids
                 }
@@ -1625,9 +1615,7 @@ class IngestionClass(GenomicManifestBase):
                     queue=self.genomic_task_queue,
                 )
 
-            _logger.info(f"{current_run['message']}")
-
-            with GenomicJobController(current_run['job'],
+            with GenomicJobController(self.gen_enum,
                                       bq_project_id=self.gcp_env.project,
                                       server_config=server_config if self.args.use_raw else None,
                                       storage_provider=self.gscp if bucket_name else None

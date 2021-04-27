@@ -157,18 +157,19 @@ class IngestSamplesFromRawTaskAPI(Resource):
     Cloud Task endpoint: Ingest samples based on list
     from Genomic RAW tables
     """
-
     @task_auth_required
     def post(self):
         log_task_headers()
         data = request.get_json(force=True)
         logging.info(f'Ingesting Samples From List')
 
-        # Call pipeline function
-        with GenomicJobController(data['job'],
+        gen_enum = GenomicJob.__dict__[data['job']]
+        with GenomicJobController(gen_enum,
                                   server_config=data['server_config']
                                   ) as controller:
-            controller.ingest_member_ids_from_awn_raw_table(data['member_ids'])
+            results = controller.ingest_member_ids_from_awn_raw_table(data['member_ids'])
+
+        logging.info(f'{results}')
 
         logging.info('Complete.')
         return '{"success": "true"}'

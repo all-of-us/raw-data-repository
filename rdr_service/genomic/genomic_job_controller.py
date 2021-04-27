@@ -325,7 +325,12 @@ class GenomicJobController:
             bq_genomic_set_member_batch_update(metrics, project_id=self.bq_project_id)
             genomic_set_member_batch_update(completed_members)
 
-        return self.compile_raw_ingestion_results(completed_members, missing, multiples, metrics)
+        return self.compile_raw_ingestion_results(
+            completed_members,
+            missing,
+            multiples,
+            metrics
+        )
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
