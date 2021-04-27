@@ -156,5 +156,6 @@ class MetricsCacheJobStatus(Base):
     cacheTableName = Column("cache_table_name", String(100), nullable=False)
     type = Column("type", String(50))
     inProgress = Column("in_progress", Boolean, default=False, nullable=False)
-    complete = Column("complete", Boolean, default=False, nullable=False)
+    stage_one_complete = Column("stage_one_complete", Boolean, default=False, nullable=False)
+    stage_two_complete = Column("stage_two_complete", Boolean, default=False, nullable=False)
     dateInserted = Column("date_inserted", UTCDateTime, nullable=False)
