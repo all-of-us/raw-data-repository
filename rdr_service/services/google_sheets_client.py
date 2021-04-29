@@ -1,4 +1,6 @@
+import backoff
 from googleapiclient import discovery
+from googleapiclient.errors import HttpError
 from oauth2client.service_account import ServiceAccountCredentials
 import socket
 
@@ -85,6 +87,7 @@ class GoogleSheetsClient:
         })
         return tab_offset_data['offset_str']
 
+    @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
     def download_values(self):
         """
         Retrieve the values as they currently are in google drive.
@@ -243,6 +246,7 @@ class GoogleSheetsClient:
 
         return list(values_grid[row_index])
 
+    @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
     def upload_values(self):
         """
         Upload the local data to the google drive spreadsheet.
