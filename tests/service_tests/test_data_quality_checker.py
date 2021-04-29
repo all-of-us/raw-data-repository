@@ -50,10 +50,15 @@ class DataQualityCheckerTest(BaseTestCase):
         """Make sure that the checks only apply to responses after the date given"""
 
         participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        questionnaire = self.data_generator.create_database_questionnaire_history(
+            questions=[self.data_generator._questionnaire_question()]
+        )
         response_authored_before_signup = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             authored=participant.signUpTime - timedelta(weeks=5),
-            created=participant.signUpTime
+            created=participant.signUpTime,
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version
         )
 
         self.checker.run_data_quality_checks(for_data_since=response_authored_before_signup.created + timedelta(weeks=5))
