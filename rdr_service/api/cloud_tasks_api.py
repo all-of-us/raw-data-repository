@@ -277,6 +277,7 @@ class IngestAW5ManifestTaskApi(Resource):
         logging.info('Complete.')
         return '{"success": "true"}'
 
+
 class CalculateRecordCountTaskApi(Resource):
     """
     Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
