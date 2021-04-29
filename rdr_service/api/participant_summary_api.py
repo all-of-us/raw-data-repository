@@ -56,7 +56,7 @@ class ParticipantSummaryApi(BaseApi):
             return super(ParticipantSummaryApi, self)._query("participantId")
 
     def _make_query(self, check_invalid=True):
-        if not request.args.get("awardee"):
+        if not request.args.get("hpoId"):
             constraint_failed, message = self._check_constraints()
             if constraint_failed:
                 raise BadRequest(f"{message}")

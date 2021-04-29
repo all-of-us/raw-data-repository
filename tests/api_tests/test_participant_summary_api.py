@@ -565,7 +565,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         # Test constraints not called when awardee param
         with mock.patch(constraint_method) as constraint_mock:
-            self.send_get(f"ParticipantSummary?awardee=TEST&dateOfBirth={_date}&lastName={last_name}")
+            self.send_get(f"ParticipantSummary?hpoId=TEST&dateOfBirth={_date}&lastName={last_name}")
             constraint_mock.assert_not_called()
 
         self.overwrite_test_user_roles([PTC])
