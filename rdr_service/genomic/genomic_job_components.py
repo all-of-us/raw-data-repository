@@ -296,12 +296,7 @@ class GenomicFileIngester:
             }
 
             ingestion_type = ingestion_config[self.job_id]['method']
-
-            if self.job_id in [GenomicJob.AW1_MANIFEST, GenomicJob.AW1F_MANIFEST]:
-                gc_site_id = self._get_site_from_aw1()
-                return ingestion_type(data_to_ingest, gc_site_id)
-            else:
-                return ingestion_type(data_to_ingest)
+            return ingestion_type(data_to_ingest)
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
@@ -388,7 +383,7 @@ class GenomicFileIngester:
             "call_rate": "callrate",
         }
 
-    def _ingest_aw1_manifest(self, data, _site):
+    def _ingest_aw1_manifest(self, data):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
         If the row is determined to be a control sample,
@@ -398,6 +393,7 @@ class GenomicFileIngester:
         :return: result code
         """
         _state = GenomicWorkflowState.AW0
+        _site = self._get_site_from_aw1()
 
         for row in data['rows']:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
@@ -847,12 +843,12 @@ class GenomicFileIngester:
 
                 if metrics:
                     metrics.drcSexConcordance = row_copy['drcsexconcordance']
-                    metrics.drcContamination = row_copy['drccontamination']
 
                     if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                         metrics.drcCallRate = row_copy['drccallrate']
 
                     elif self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
+                        metrics.drcContamination = row_copy['drccontamination']
                         metrics.drcMeanCoverage = row_copy['drcmeancoverage']
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
@@ -1457,7 +1453,6 @@ class GenomicFileValidator:
             "researchid",
             "qcstatus",
             "drcsexconcordance",
-            "drccontamination",
             "drccallrate",
         )
 
@@ -1489,7 +1484,6 @@ class GenomicFileValidator:
             "biobankidsampleid",
             "sexatbirth",
             "siteid",
-            "aw2filename",
             "vcfhf",
             "vcfhfindex",
             "vcfhfmd5",
@@ -1509,7 +1503,6 @@ class GenomicFileValidator:
             "biobankidsampleid",
             "sexatbirth",
             "siteid",
-            "aw2filename",
             "redidat",
             "redidatmd5",
             "greenidat",
@@ -1544,7 +1537,7 @@ class GenomicFileValidator:
             slack = True
             invalid_message = f"File structure of {filename} is not valid."
             if missing_fields:
-                invalid_message += ' Missing fields: {}'.format(missing_fields)
+                invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
                     slack = False
             self.controller.create_incident(
@@ -1566,16 +1559,18 @@ class GenomicFileValidator:
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
-        filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        if self.job_id in [GenomicJob.BB_RETURN_MANIFEST]:
+            filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
+        else:
+            filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
 
         # Naming Rule Definitions
         def bb_result_name_rule():
             """Biobank to DRC Result name rule"""
-            bb_filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
             return (
-                bb_filename_components[0] == 'genomic' and
-                bb_filename_components[1] == 'manifest' and
-                bb_filename_components[2] in ('aou_array', 'aou_wgs') and
+                filename_components[0] == 'genomic' and
+                filename_components[1] == 'manifest' and
+                filename_components[2] in ('aou_array', 'aou_wgs') and
                 filename.lower().endswith('csv')
             )
 

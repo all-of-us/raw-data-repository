@@ -861,11 +861,19 @@ class GenomicJobController:
         """
         Creates an GenomicIncident and sends alert via Slack if default
         for slack arg is True and saves an incident record to GenomicIncident
-        if save_incident arg is True
+        if save_incident arg is True.
+        :param save_incident: bool
+        :param slack: bool
         :return:
         """
+        num_days = 7
         incident = None
         message = kwargs.get('message', None)
+        created_incident = self.incident_dao.get_by_message(message) if message else None
+        today = clock.CLOCK.now()
+
+        if created_incident and (today.date() - created_incident.created.date()).days <= num_days:
+            return
 
         if save_incident:
             insert_kwargs = {key: value for key, value in kwargs.items()
@@ -880,7 +888,7 @@ class GenomicJobController:
 
             if slack_alert and incident:
                 incident.slack_notification = 1
-                incident.slack_notification_date = datetime.utcnow()
+                incident.slack_notification_date = today
                 self.incident_dao.update(incident)
 
         logging.warning(message)
@@ -1104,13 +1112,13 @@ class DataQualityJobController:
 
         rc = ReportingComponent(self)
 
-        report_level, report_target, time_frame, display_name = rc.set_report_parameters(**kwargs)
+        report_params = rc.get_report_parameters(**kwargs)
 
-        report_data = rc.generate_report_data(level=report_level,
-                                              target=report_target,
-                                              time_frame=time_frame)
+        rc.set_report_def(**report_params)
 
-        report_string = rc.format_report(display_name, report_data)
+        report_data = rc.get_report_data()
+
+        report_string = rc.format_report(report_data)
 
         # Send report to slack #rdr-genomics channel
         if kwargs.get('slack') is True:

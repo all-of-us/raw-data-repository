@@ -149,7 +149,7 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
             ],
             'test': [
                 'rdr_service/cron_default.yaml',
-                'rdr_service/cron_test.yml'
+                'rdr_service/cron_test.yaml'
             ]
         },
         'queue': {

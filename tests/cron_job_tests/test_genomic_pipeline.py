@@ -880,6 +880,55 @@ class GenomicPipelineTest(BaseTestCase):
         for processed in should_not_be_processed:
             self.assertIsNone(self.file_processed_dao.get_record_from_filename(processed))
 
+    def test_ingestion_bad_files_no_incident_created_seven_days(self):
+        # Create the fake Google Cloud CSV files to ingest
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        self._create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestBadStructureDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]),
+        )
+
+        # run the GC Metrics Ingestion workflow
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        current_incident = self.incident_dao.get(1)
+        message = current_incident.message
+
+        current_incidents_with_message = self.incident_dao.get_by_message(message)
+
+        self.assertIsNotNone(current_incidents_with_message)
+
+        today_plus_6 = datetime.datetime.utcnow() \
+                            + datetime.timedelta(days=6)
+
+        # run the GC Metrics Ingestion workflow + 6 days same bad file
+        with clock.FakeClock(today_plus_6):
+            genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+            all_incidents = self.incident_dao.get_all()
+            count = 0
+            for incident in all_incidents:
+                if incident.message == message:
+                    count += 1
+
+            self.assertEqual(count, 1)
+
+        today_plus_8 = datetime.datetime.utcnow() \
+                           + datetime.timedelta(days=8)
+
+        # run the GC Metrics Ingestion workflow + 8 days same bad file
+        with clock.FakeClock(today_plus_8):
+            genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+            all_incidents = self.incident_dao.get_all()
+            count = 0
+            for incident in all_incidents:
+                if incident.message == message:
+                    count += 1
+
+            self.assertEqual(count, 2)
+
     def test_gc_metrics_ingestion_no_files(self):
         # run the GC Metrics Ingestion workflow
         genomic_pipeline.ingest_genomic_centers_metrics_files()
@@ -3090,7 +3139,7 @@ class GenomicPipelineTest(BaseTestCase):
                                          bucket_name,
                                          folder=sub_folder,
                                          include_timestamp=False
-                                        )
+                                         )
 
         # Run Workflow
         genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
@@ -3100,15 +3149,14 @@ class GenomicPipelineTest(BaseTestCase):
             metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
             self.assertIsNotNone(metrics.drcSexConcordance)
-            self.assertIsNotNone(metrics.drcContamination)
             self.assertIsNotNone(metrics.drcCallRate)
 
+            self.assertIsNone(metrics.drcContamination)
             self.assertIsNone(metrics.drcMeanCoverage)
             self.assertIsNone(metrics.drcFpConcordance)
 
             if member.id in (1, 2):
                 self.assertEqual(2, member.aw4ManifestJobRunID)
-                self.assertEqual('0', metrics.drcContamination)
                 self.assertEqual('0.99689185', metrics.drcCallRate)
             if member.id == 1:
                 self.assertEqual('TRUE', metrics.drcSexConcordance)
@@ -3165,9 +3213,10 @@ class GenomicPipelineTest(BaseTestCase):
         for member in self.member_dao.get_all():
             metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
+            self.assertIsNone(metrics.drcCallRate)
+
             self.assertIsNotNone(metrics.drcSexConcordance)
             self.assertIsNotNone(metrics.drcContamination)
-            self.assertIsNone(metrics.drcCallRate)
             self.assertIsNotNone(metrics.drcMeanCoverage)
             self.assertIsNotNone(metrics.drcFpConcordance)
 
@@ -3188,6 +3237,53 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
+
+        # Test the job result
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_sub_folder_same_file_names(self):
+        # Create AW3 array manifest job run: id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_ARRAY_WORKFLOW,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+        # Create genomic set members
+        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
+                                                array_participants=range(1, 3),
+                                                aw3_job_id=1,
+                                                genomic_workflow_state=GenomicWorkflowState.A1)
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+        file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
+
+        self._create_ingestion_test_file(file_name,
+                                         bucket_name,
+                                         folder=sub_folder,
+                                         include_timestamp=False
+                                         )
+
+        self._create_ingestion_test_file(file_name,
+                                         bucket_name,
+                                         folder='AW5_array_manifest',
+                                         include_timestamp=False
+                                         )
+        # Run Workflow
+        genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
+
+        # Test Files Processed
+        file_record = self.file_processed_dao.get(1)
+        self.assertEqual(2, file_record.runId)
+        self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
+                         file_record.filePath)
+        self.assertEqual(file_name, file_record.fileName)
+
+        self.assertNotEqual(f'{bucket_name}/AW5_array_manifest/{file_name}',
+                            file_record.filePath)
+
+        all_files = self.file_processed_dao.get_all()
+        self.assertEqual(1, len(all_files))
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

@@ -28,10 +28,9 @@ from rdr_service.participant_enums import (
     TEST_EMAIL_PATTERN,
     TEST_HPO_NAME,
     WithdrawalStatus,
+    MetricsCronJobStage
 )
 from rdr_service.dao.metrics_cache_dao import TEMP_TABLE_PREFIX
-
-CACHE_START_DATE = datetime.datetime.strptime("2017-01-01", "%Y-%m-%d").date()
 
 
 class ParticipantCountsOverTimeService(BaseDao):
@@ -39,6 +38,10 @@ class ParticipantCountsOverTimeService(BaseDao):
         super(ParticipantCountsOverTimeService, self).__init__(ParticipantSummary, alembic=True)
         self.test_hpo_id = HPODao().get_by_name(TEST_HPO_NAME).hpoId
         self.test_email_pattern = TEST_EMAIL_PATTERN
+        self.start_date = datetime.datetime.strptime("2017-05-30", "%Y-%m-%d").date()
+        self.end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
+        self.stage_number = MetricsCronJobStage.STAGE_ONE
+        self.cronjob_time = datetime.datetime.now()
 
     def init_tmp_table(self):
         with self.session() as session:
@@ -144,61 +147,66 @@ class ParticipantCountsOverTimeService(BaseDao):
                     warnings.simplefilter('ignore')
                     session.execute('DROP TABLE IF EXISTS {};'.format(temp_table_name))
 
-    def refresh_metrics_cache_data(self):
+    def refresh_metrics_cache_data(self, start_date, end_date, stage_number):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.stage_number = stage_number
 
         self.refresh_data_for_metrics_cache(MetricsEnrollmentStatusCacheDao())
         logging.info("Refresh MetricsEnrollmentStatusCache done.")
-        self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsGenderCache for Metrics2API done.")
         self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         logging.info("Refresh MetricsGenderCache for Public Metrics API done.")
-        self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsAgeCache for Metrics2API done.")
         self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         logging.info("Refresh MetricsAgeCache for Public Metrics API done.")
-        self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsRaceCache for Metrics2API done.")
         self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         logging.info("Refresh MetricsRaceCache for Public Metrics API done.")
         self.refresh_data_for_metrics_cache(MetricsRegionCacheDao())
         logging.info("Refresh MetricsRegionCache done.")
         self.refresh_data_for_metrics_cache(MetricsLanguageCacheDao())
         logging.info("Refresh MetricsLanguageCache done.")
-        self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsLifecycleCache for Metrics2API done.")
         self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
         logging.info("Refresh MetricsLifecycleCache for Public Metrics API done.")
 
+        # Cron job for METRICS_V2_API will be retired soon
+        self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
+        logging.info("Refresh MetricsGenderCache for Metrics2API done.")
+        self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
+        logging.info("Refresh MetricsAgeCache for Metrics2API done.")
+        self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
+        logging.info("Refresh MetricsRaceCache for Metrics2API done.")
+        self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
+        logging.info("Refresh MetricsLifecycleCache for Metrics2API done.")
+
     def refresh_data_for_metrics_cache(self, dao):
         status_dao = MetricsCacheJobStatusDao()
-        updated_time = datetime.datetime.now()
-        kwargs = dict(
-            cacheTableName=dao.table_name,
-            type=str(dao.cache_type),
-            inProgress=True,
-            complete=False,
-            dateInserted=updated_time,
-        )
-        job_status_obj = MetricsCacheJobStatus(**kwargs)
-        status_obj = status_dao.insert(job_status_obj)
+        if self.stage_number == MetricsCronJobStage.STAGE_ONE:
+            kwargs = dict(
+                cacheTableName=dao.table_name,
+                type=str(dao.cache_type),
+                inProgress=True,
+                stage_one_complete=False,
+                stage_two_complete=False,
+                dateInserted=self.cronjob_time,
+            )
+            job_status_obj = MetricsCacheJobStatus(**kwargs)
+            status_dao.insert(job_status_obj)
 
         hpo_dao = HPODao()
         hpo_list = hpo_dao.get_all()
         for hpo in hpo_list:
             if hpo.hpoId == self.test_hpo_id:
                 continue
-            self.insert_cache_by_hpo(dao, hpo.hpoId, updated_time)
+            self.insert_cache_by_hpo(dao, hpo.hpoId)
 
-        status_dao.set_to_complete(status_obj)
-        dao.delete_old_records()
+        status_dao.set_to_complete(dao.cache_type, dao.table_name, self.cronjob_time, self.stage_number)
+        if self.stage_number == MetricsCronJobStage.STAGE_TWO:
+            dao.delete_old_records()
 
-    def insert_cache_by_hpo(self, dao, hpo_id, updated_time):
+    def insert_cache_by_hpo(self, dao, hpo_id):
         sql_arr = dao.get_metrics_cache_sql(hpo_id)
-        start_date = CACHE_START_DATE
-        end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
 
-        params = {'hpo_id': hpo_id, 'start_date': start_date, 'end_date': end_date,
-                  'date_inserted': updated_time}
+        params = {'hpo_id': hpo_id, 'start_date': self.start_date, 'end_date': self.end_date,
+                  'date_inserted': self.cronjob_time}
         with dao.session() as session:
             for sql in sql_arr:
                 session.execute(sql, params)
