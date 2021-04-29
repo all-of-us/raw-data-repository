@@ -346,6 +346,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
                 BiobankStoredSample.created >= earliest_report_date
             )
         )
+        .distinct()
     )
 
     exporter.run_export(file_path, withdrawal_report_query, backup=True)

@@ -492,7 +492,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def _create_participant(self, is_native_american=False, requests_ceremony=None, withdrawal_time=datetime.utcnow()):
         participant = self.data_generator.create_database_participant(
-            withdrawalTime=withdrawal_time
+            withdrawalTime=withdrawal_time,
+            withdrawalStatus=WithdrawalStatus.NO_USE
         )
 
         # Withdrawal report only includes participants that have stored samples
