@@ -34,6 +34,7 @@ from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, Public
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sa_key_remove import delete_service_account_keys
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.services.data_quality import DataQualityChecker
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
@@ -511,6 +512,19 @@ def clean_up_request_logs():
 
 
 @app_util.auth_required_cron
+def check_data_quality():
+    # The cron job is scheduled for every week, so check data since the last run (with a little overlap)
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+
+    dao = BaseDao(None)
+    with dao.session() as session:
+        checker = DataQualityChecker(session)
+        checker.run_data_quality_checks(for_data_since=eight_days_ago)
+
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
 @nonprod
 def migrate_requests_logs(target_db):
     migrator = RequestsLogMigrator(target_instance_name=target_db)
@@ -782,6 +796,13 @@ def _build_pipeline_app():
         endpoint="request_log_cleanup",
         view_func=clean_up_request_logs,
         methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "DataQualityChecks",
+        endpoint="data_quality_checks",
+        view_func=check_data_quality,
+        methods=["GET"]
     )
 
     offline_app.add_url_rule(

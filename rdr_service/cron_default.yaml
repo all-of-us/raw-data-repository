@@ -139,3 +139,8 @@ cron:
   timezone: America/New_York
   schedule: every saturday 23:00
   target: offline
+- description: Run data quality checks
+  url: /offline/DataQualityChecks
+  timezone: America/New_York
+  schedule: every sunday 3:00
+  target: offline
