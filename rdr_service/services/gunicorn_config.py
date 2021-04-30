@@ -11,8 +11,9 @@ max_requests_jitter = 50
 
 if os.getenv('GAE_ENV', '').startswith('standard'):
     _port = os.environ.get('PORT', 8081)
-    workers = multiprocessing.cpu_count() * 2
-    threads = multiprocessing.cpu_count() * 2
+    workers = multiprocessing.cpu_count()
+    threads = multiprocessing.cpu_count() * 16
+
 
 bind = "0.0.0.0:{0}".format(_port)
 
@@ -36,9 +37,9 @@ def post_request(worker, request, environment, response):  # pylint: disable=unu
     memory_used_kilobytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     # Our instance is killed if it is using more than 1024 megabytes.
-    # To leave enough room to handle memory intensive requests, let's restart each instance if
-    # they're using more than 250 megabytes
-    memory_threshold_kilobytes = 256000  # 250 megabytes (250 x 1024)
+    # To leave enough room to handle memory intensive requests, let's restart each worker if
+    # they're using more than their share of memory a total of 1000 megabytes for the server.
+    memory_threshold_kilobytes = 1024000 / workers  # 1000 megabytes (1000 x 1024) shared between the number of workers
     if memory_used_kilobytes > memory_threshold_kilobytes:
         memory_used_megabytes = round(memory_used_kilobytes / 1024, 2)
         # Logs from the worker appear beside the normal app logs, but without log levels attached to them.
