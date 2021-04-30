@@ -82,7 +82,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             # Load into raw table
             if task_key in ['aw1', 'aw2']:
                 _task = GCPCloudTask()
-                _task.execute('/resource/task/LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
+                _task.execute(f'{self.task_root}LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
 
             _task = GCPCloudTask()
             _task.execute(f'{self.task_root}{self.task_mappings[task_key]}', payload=data, queue=task_queue)

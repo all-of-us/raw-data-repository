@@ -113,6 +113,20 @@ class IngestAW2ManifestTaskApi(Resource):
         return '{"success": "true"}'
 
 
+class IngestAW4ManifestTaskApi(Resource):
+    """
+    Cloud Task endpoint: Ingest AW5 Manifest.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Ingesting AW4 File: {data.get("filename")}')
+
+        logging.info('Complete.')
+        return '{"success": "true"}'
+
+
 class IngestAW5ManifestTaskApi(Resource):
     """
     Cloud Task endpoint: Ingest AW5 Manifest.
