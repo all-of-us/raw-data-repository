@@ -201,7 +201,7 @@ def aw4_array_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[0]
                               ) as controller:
         controller.run_general_ingestion_workflow()
 
@@ -212,7 +212,7 @@ def aw4_wgs_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
+                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[1],
                               ) as controller:
         controller.run_general_ingestion_workflow()
 
@@ -358,8 +358,13 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     :param _task_data: dictionary of metadata needed by the controller
     """
 
-    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION, GenomicJob.AW5_ARRAY_MANIFEST,
-                          GenomicJob.AW5_WGS_MANIFEST, GenomicJob.AW1F_MANIFEST):
+    if _task_data.job in (
+        GenomicJob.AW1_MANIFEST,
+        GenomicJob.AW1F_MANIFEST,
+        GenomicJob.METRICS_INGESTION,
+        GenomicJob.AW5_ARRAY_MANIFEST,
+        GenomicJob.AW5_WGS_MANIFEST
+    ):
 
         # Ingestion Job
         with GenomicJobController(_task_data.job,
@@ -393,7 +398,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
             )
 
     else:
-        logging.error(f'No task for {_task_data.job}')
+        logging.warning(f'No task for {_task_data.job}')
 
 
 def load_awn_manifest_into_raw_table(

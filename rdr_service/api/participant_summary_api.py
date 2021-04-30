@@ -56,9 +56,10 @@ class ParticipantSummaryApi(BaseApi):
             return super(ParticipantSummaryApi, self)._query("participantId")
 
     def _make_query(self, check_invalid=True):
-        constraint_failed, message = self._check_constraints()
-        if constraint_failed:
-            raise BadRequest(f"{message}")
+        if not request.args.get("hpoId"):
+            constraint_failed, message = self._check_constraints()
+            if constraint_failed:
+                raise BadRequest(f"{message}")
 
         query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")

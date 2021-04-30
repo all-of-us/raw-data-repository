@@ -26,6 +26,7 @@ from rdr_service.dao.metrics_cache_dao import (
     MetricsRaceCacheDao,
     MetricsRegionCacheDao
 )
+from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -1525,10 +1526,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1603,10 +1601,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1799,10 +1794,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -1870,10 +1862,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time3, time_fp_stored=self.time4
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=ENROLLMENT_STATUS
@@ -2265,9 +2254,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=GENDER_IDENTITY
@@ -2502,9 +2489,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=GENDER_IDENTITY
@@ -2820,9 +2805,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, gender_identity=5)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=GENDER_IDENTITY
@@ -3156,9 +3139,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=AGE_RANGE
@@ -3398,9 +3379,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=AGE_RANGE
@@ -3604,9 +3583,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, dob=dob3)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsAgeCacheDao())
+        calculate_participant_metrics()
 
         qs = """
           &stratification=AGE_RANGE
@@ -3725,10 +3702,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time4, time_fp_stored=self.time5
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=TOTAL
@@ -3763,10 +3737,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
                      time_fp_stored=self.time5)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
               &stratification=TOTAL
@@ -3830,10 +3801,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             p_ghost, "Ghost", "G", "AZ_TUCSON", time_int=self.time1, time_mem=self.time4, time_fp_stored=self.time5
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=TOTAL
@@ -3868,10 +3836,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_mem=self.time4,
                      time_fp_stored=self.time5)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
               &stratification=TOTAL
@@ -4192,10 +4157,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRaceCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
               &stratification=RACE
@@ -4339,10 +4301,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRaceCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
               &stratification=RACE
@@ -4452,10 +4411,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRaceCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
               &stratification=RACE
@@ -6611,10 +6567,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs1 = """
                   &stratification=FULL_STATE
@@ -7841,10 +7794,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs1 = """
                       &stratification=GEO_STATE
@@ -8569,10 +8519,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
                       &stratification=GEO_STATE
@@ -8751,10 +8698,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = """
           &stratification=GEO_STATE
@@ -9035,10 +8979,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs1 = """
                   &stratification=FULL_STATE
@@ -9956,10 +9897,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs1 = """
                           &stratification=GEO_STATE
@@ -11121,12 +11059,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
                      time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                        .METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                        .PUBLIC_METRICS_EXPORT_API))
+        calculate_participant_metrics()
 
         qs1 = """
                             &stratification=LIFECYCLE
@@ -11305,12 +11238,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
         self._insert(p_ghost, 'Ghost', 'G', 'AZ_TUCSON', time_int=self.time1, time_study=self.time1,
                      time_mem=self.time1, time_fp=self.time1, time_fp_stored=self.time1)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                        .METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType
-                                                                        .PUBLIC_METRICS_EXPORT_API))
+        calculate_participant_metrics()
 
         qs1 = """
                             &stratification=LIFECYCLE
@@ -11807,10 +11735,7 @@ class ParticipantCountsOverTimeApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsLanguageCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         # test API without awardee and enrollmentStatus parameters
         qs1 = """

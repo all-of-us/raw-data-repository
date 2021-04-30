@@ -1,3 +1,4 @@
+from googleapiclient.errors import HttpError
 import mock
 
 from rdr_service.services.google_sheets_client import GoogleSheetsClient
@@ -417,3 +418,43 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
 
             # Verify we can get the expected row
             self.assertEqual(['', '1', '2', '', '8'], sheet.get_row_at(2))
+
+    @mock.patch('time.sleep', side_effect=lambda _: None)  # Keeping the backoff retries from waiting for any time
+    def test_retry_on_google_api_error(self, _):
+        """Check that the download retries if we get an error"""
+        attempt_count = 0
+
+        def raise_api_error():
+            nonlocal attempt_count
+            attempt_count += 1
+            if attempt_count > 2:
+                return mock.DEFAULT  # return the mock's default return_value
+            else:
+                raise HttpError(..., bytes())
+
+        self.mock_spreadsheets_return.get.return_value.execute.side_effect = raise_api_error
+
+        sheet_client = GoogleSheetsClient(..., ...)
+        sheet_client.download_values()
+
+        # Make sure more than one attempt was made (that an HttpError was raised)
+        self.assertTrue(attempt_count > 2)
+
+    @mock.patch('time.sleep', side_effect=lambda _: ...)  # Keeping the backoff retries from waiting for any time
+    def test_api_error_retry_gives_up_eventually(self, _):
+        """Make sure that the retries don't go on forever, and that we eventually get the error"""
+        attempt_count = 0
+
+        def raise_api_error():
+            nonlocal attempt_count
+            attempt_count += 1
+            raise HttpError(..., bytes())
+
+        self.mock_spreadsheets_return.get.return_value.execute.side_effect = raise_api_error
+
+        sheet_client = GoogleSheetsClient(..., ...)
+        with self.assertRaises(HttpError):
+            sheet_client.download_values()
+
+        # Make sure more than one attempt was made (that a BadGateway was raised)
+        self.assertEqual(4, attempt_count)

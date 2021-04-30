@@ -48,4 +48,9 @@ class OfflineAppTest(BaseTestCase):
     def test_request_log_migrator_route(self, mock_migrate_call):
         test_db_name = 'test_db_name'
         self.send_cron_request(f'MigrateRequestsLog/{test_db_name}')
-        mock_migrate_call.assert_called_with(test_db_name)
+        mock_migrate_call.assert_called()
+
+    @mock.patch('rdr_service.services.data_quality.DataQualityChecker.run_data_quality_checks')
+    def test_data_quality_check_route(self, mock_checker):
+        self.send_cron_request(f'DataQualityChecks')
+        mock_checker.assert_called()

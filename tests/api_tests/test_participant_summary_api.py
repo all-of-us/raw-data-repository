@@ -1,6 +1,8 @@
 from copy import deepcopy
 import datetime
 import http.client
+from unittest import mock
+
 from mock import patch
 import threading
 import unittest
@@ -551,6 +553,20 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+        constraint_method = "rdr_service.api.participant_summary_api.ParticipantSummaryApi._check_constraints"
+
+        # Test constraints called when no awardee param
+        with mock.patch(constraint_method) as constraint_mock:
+            constraint_mock.return_value = False, ""
+            self.send_get(f"ParticipantSummary?dateOfBirth={_date}&lastName={last_name}")
+
+            constraint_mock.assert_called()
+
+        # Test constraints not called when awardee param
+        with mock.patch(constraint_method) as constraint_mock:
+            self.send_get(f"ParticipantSummary?hpoId=TEST&dateOfBirth={_date}&lastName={last_name}")
+            constraint_mock.assert_not_called()
 
         self.overwrite_test_user_roles([PTC])
 
