@@ -38,6 +38,8 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         self.task_mappings = {
             "aw1": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
+            "aw4": "IngestAW4ManifestTaskApi",
+            "aw5": "IngestAW5ManifestTaskApi"
         }
 
     def run(self):
@@ -78,11 +80,12 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             _logger.info("Pushing cloud tasks...")
 
             # Load into raw table
-            _task = GCPCloudTask()
-            _task.execute('/resource/task/LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
+            if task_key in ['aw1', 'aw2']:
+                _task = GCPCloudTask()
+                _task.execute('/resource/task/LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
 
             _task = GCPCloudTask()
-            _task.execute(self.task_root + self.task_mappings[task_key], payload=data, queue=task_queue)
+            _task.execute(f'{self.task_root}{self.task_mappings[task_key]}', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):
