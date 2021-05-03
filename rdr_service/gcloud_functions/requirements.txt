@@ -26,7 +26,7 @@ google-resumable-media==1.1.0  # via aou-cloud, google-cloud-bigquery, google-cl
 googleapis-common-protos[grpc]==1.52.0  # via aou-cloud, google-api-core, grpc-google-iam-v1
 grpc-google-iam-v1==0.12.3  # via aou-cloud, google-cloud-tasks
 grpcio==1.33.1            # via aou-cloud, google-api-core, googleapis-common-protos, grpc-google-iam-v1
-httplib2==0.18.1          # via aou-cloud, google-api-python-client, google-auth-httplib2
+httplib2==0.19.1          # via aou-cloud, google-api-python-client, google-auth-httplib2
 idna==2.10                # via aou-cloud, requests
 libcst==0.3.13            # via google-cloud-tasks
 mypy-extensions==0.4.3    # via typing-inspect
@@ -39,9 +39,9 @@ pyasn1==0.4.8             # via aou-cloud, pyasn1-modules, rsa
 pycparser==2.20           # via cffi
 python-dateutil==2.8.1    # via -r requirements.in, aou-cloud
 pytz==2020.1              # via aou-cloud, google-api-core, google-cloud-firestore
-pyyaml==5.3.1             # via aou-cloud, google-python-cloud-debugger, libcst
+pyyaml==5.4.1             # via aou-cloud, google-python-cloud-debugger, libcst
 requests==2.24.0          # via aou-cloud, google-api-core, google-cloud-storage
-rsa==4.6                  # via aou-cloud, google-auth
+rsa==4.7.2                  # via aou-cloud, google-auth
 six==1.15.0               # via aou-cloud, google-api-core, google-api-python-client, google-auth, google-auth-httplib2, google-cloud-bigquery, google-python-cloud-debugger, google-resumable-media, grpcio, protobuf, python-dateutil
 typing-extensions==3.7.4.3  # via libcst, typing-inspect
 typing-inspect==0.6.0     # via libcst
