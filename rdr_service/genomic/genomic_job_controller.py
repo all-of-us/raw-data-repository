@@ -250,24 +250,26 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def ingest_member_ids_from_awn_raw_table(self, n, member_ids):
+    def ingest_member_ids_from_awn_raw_table(self, member_ids):
         """
         Pulls data from genomic_aw1_raw or genomic_aw2_raw based on the value
-        of 'n'.
-        In the case of n=1, this loads AW1 data to genomic_set_member.
-        In the case of n=2, this loads AW2 data to genomic_set_member
+        of self.job_id.
+        In the case of GenomicJob.AW1_MANIFEST, this loads AW1 data to genomic_set_member.
+        In the case of GenomicJob.METRICS_INGESTION, this loads AW2 data to genomic_set_member
         and genomic_gc_validation_metrics.
 
-        :param n: 1 or 2 for AW1, AW2
         :param member_ids: list of genomic_set_member_ids to ingest
         :return: ingestion results as string
         """
+
+        if self.job_id not in [GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION]:
+            raise AttributeError(f"{self.job_id.name} is invalid for this workflow")
+
         member_dao = GenomicSetMemberDao()
-        raw_dao = GenomicAW1RawDao() if n == 1 else GenomicAW2RawDao()
+        raw_dao = GenomicAW1RawDao() if self.job_id == GenomicJob.AW1_MANIFEST else GenomicAW2RawDao()
 
         # Get member records
         members = member_dao.get_members_from_member_ids(member_ids)
-
         update_recs = []
         completed_members = []
         multiples = []
@@ -281,54 +283,40 @@ class GenomicJobController:
             except KeyError:
                 # Set default for unit tests
                 pre = "A"
-
             bid = f"{pre}{member.biobankId}"
-
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
                 raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, member.genomeType)
-
             except MultipleResultsFound:
                 multiples.append(member.id)
-
             except NoResultFound:
                 missing.append(member.id)
-
             else:
                 update_recs.append((member, raw_rec))
 
         if update_recs:
             # Get unique file_paths
             paths = self.get_unique_file_paths_for_raw_records([rec[1] for rec in update_recs])
-
             file_proc_map = self.map_file_paths_to_fp_id(paths)
-
             # Process records
             with member_dao.session() as session:
-
                 for record_to_update in update_recs:
-
                     # AW1
-                    if n == 1:
+                    if self.job_id == GenomicJob.AW1_MANIFEST:
                         self.set_rdr_aw1_attributes_from_raw(record_to_update, file_proc_map)
-
                         self.set_aw1_attributes_from_raw(record_to_update)
-
                     # AW2
-                    else:
+                    elif self.job_id == GenomicJob.METRICS_INGESTION:
                         self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
-
                         metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
-
                         metrics_obj = session.merge(metrics_obj)
                         session.commit()
                         metrics.append(metrics_obj.id)
 
                     session.merge(record_to_update[0])
                     completed_members.append(record_to_update[0].id)
-
             # BQ Updates
-            if n == 2:
+            if self.job_id == GenomicJob.METRICS_INGESTION:
                 # Metrics
                 bq_genomic_gc_validation_metrics_batch_update(metrics, project_id=self.bq_project_id)
                 genomic_gc_validation_metrics_batch_update(metrics)
@@ -337,24 +325,29 @@ class GenomicJobController:
             bq_genomic_set_member_batch_update(metrics, project_id=self.bq_project_id)
             genomic_set_member_batch_update(completed_members)
 
-        return self.compile_raw_ingestion_results(completed_members, missing, multiples, metrics)
+        return self.compile_raw_ingestion_results(
+            completed_members,
+            missing,
+            multiples,
+            metrics
+        )
 
-    def set_aw1_attributes_from_raw(self, rec: tuple):
+    @staticmethod
+    def set_aw1_attributes_from_raw(rec: tuple):
         """
         :param rec: GenomicSetMember, GenomicAW1Raw
         :return:
         """
         member, raw = rec
-
         # Iterate through mapped fields
         _map = raw_aw1_to_genomic_set_member_fields
-
         for key in _map.keys():
             member.__setattr__(_map[key], getattr(raw, key))
 
         return member
 
-    def set_validation_metrics_from_raw(self, rec: tuple):
+    @staticmethod
+    def set_validation_metrics_from_raw(rec: tuple):
         """
         Sets attributes on GenomicGCValidationMetrics from
         GenomicAW2Raw object.
@@ -362,16 +355,13 @@ class GenomicJobController:
         :return:
         """
         member, raw = rec
-
         metric = GenomicGCValidationMetrics()
-
         metric.genomicSetMemberId = member.id
         metric.contaminationCategory = raw.contamination_category
         metric.genomicFileProcessedId = member.aw2FileProcessedId
 
         # Iterate mapped fields
         _map = raw_aw2_to_genomic_set_member_fields
-
         for key in _map.keys():
             metric.__setattr__(_map[key], getattr(raw, key))
 

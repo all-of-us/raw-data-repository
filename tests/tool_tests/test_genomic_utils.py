@@ -21,14 +21,16 @@ class GenomicProcessRunnerTest(GenomicUtilsTestBase):
     def run_genomic_process_runner_tool(genomic_job,
                                         _id=None,
                                         _csv=None,
-                                        _file=None):
+                                        _file=None,
+                                        _cloud_task=None):
 
         GenomicProcessRunnerTest.run_tool(GenomicProcessRunner, tool_args={
             'command': 'process-runner',
             'job': genomic_job,
             'id': _id,
             'csv': _csv,
-            'file': _file,
+            'manifest_file': _file,
+            'cloud_task': _cloud_task
         })
 
     @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
@@ -139,11 +141,13 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         # Test AW1
         GenomicUtilsGeneralTest.run_tool(IngestionClass, tool_args={
             'command': 'sample-ingestion',
+            'job': "AW1_MANIFEST",
             'manifest_file': test_aw1,
             'data_type': 'aw1',
             'use_raw': True,
             'member_ids': "1",
             'csv': False,
+            'cloud_task': False,
         })
 
         mdao = GenomicSetMemberDao()
@@ -160,11 +164,13 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         # Test AW2
         GenomicUtilsGeneralTest.run_tool(IngestionClass, tool_args={
             'command': 'sample-ingestion',
+            'job': "METRICS_INGESTION",
             'manifest_file': test_aw2,
             'data_type': 'aw2',
             'use_raw': True,
             'member_ids': "1",
             'csv': False,
+            'cloud_task': False,
         })
 
         vdao = GenomicGCValidationMetricsDao()

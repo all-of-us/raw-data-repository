@@ -7,21 +7,23 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.api import cloud_tasks_api
+from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api
+from rdr_service.api.resource_api import ResourceRequestApi
 
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
     flask_restful_log_exception_error
-from rdr_service.api.resource_api import ResourceRequestApi
 
 
 # noinspection PyPackageRequirements
 def _build_resource_app():
     _app = Flask(__name__)
     _api = Api(_app)
+
     #
     # Cloud Task API endpoints
     #
+
     _api.add_resource(cloud_tasks_api.ArchiveRequestLogApi, TASK_PREFIX + 'MigrateRequestLog',
                       endpoint='archive_request_log', methods=['POST'])
     # Task Queue API endpoint to rebuild participant summary resources.
@@ -37,13 +39,10 @@ def _build_resource_app():
                       endpoint="rebuild_questionnaire_task", methods=["POST"])
 
     _api.add_resource(cloud_tasks_api.CopyCloudStorageObjectTaskApi, TASK_PREFIX + "CopyCloudStorageObjectTaskApi",
-                     endpoint="copy_cloudstorage_object_task", methods=["POST"])
+                      endpoint="copy_cloudstorage_object_task", methods=["POST"])
 
     _api.add_resource(cloud_tasks_api.GenerateBiobankSamplesTaskApi, TASK_PREFIX + "GenerateBiobankSamplesTaskApi",
-                     endpoint="generate_bio_samples_task", methods=["POST"])
-
-    _api.add_resource(cloud_tasks_api.RebuildGenomicTableRecordsApi, TASK_PREFIX + "RebuildGenomicTableRecordsApi",
-                      endpoint="rebuild_genomic_table_records_task", methods=["POST"])
+                      endpoint="generate_bio_samples_task", methods=["POST"])
 
     _api.add_resource(cloud_tasks_api.RebuildResearchWorkbenchTableRecordsApi,
                       TASK_PREFIX + "RebuildResearchWorkbenchTableRecordsApi",
@@ -53,33 +52,47 @@ def _build_resource_app():
     # Begin Genomic Cloud Task API Endpoints
     #
 
+    _api.add_resource(genomic_cloud_tasks_api.RebuildGenomicTableRecordsApi,
+                      TASK_PREFIX + "RebuildGenomicTableRecordsApi",
+                      endpoint="rebuild_genomic_table_records_task", methods=["POST"])
+
     # Load AW1/AW2 raw manifest
-    _api.add_resource(cloud_tasks_api.LoadRawAWNManifestDataAPI, TASK_PREFIX + "LoadRawAWNManifestDataAPI",
+    _api.add_resource(genomic_cloud_tasks_api.LoadRawAWNManifestDataAPI,
+                      TASK_PREFIX + "LoadRawAWNManifestDataAPI",
                       endpoint="load_awn_raw_data_task", methods=["POST"])
 
     # Ingest AW1 manifest
-    _api.add_resource(cloud_tasks_api.IngestAW1ManifestTaskApi, TASK_PREFIX + "IngestAW1ManifestTaskApi",
+    _api.add_resource(genomic_cloud_tasks_api.IngestAW1ManifestTaskApi,
+                      TASK_PREFIX + "IngestAW1ManifestTaskApi",
                       endpoint="ingest_aw1_manifest_task", methods=["POST"])
 
     # Ingest AW2 manifest
-    _api.add_resource(cloud_tasks_api.IngestAW2ManifestTaskApi, TASK_PREFIX + "IngestAW2ManifestTaskApi",
+    _api.add_resource(genomic_cloud_tasks_api.IngestAW2ManifestTaskApi,
+                      TASK_PREFIX + "IngestAW2ManifestTaskApi",
                       endpoint="ingest_aw2_manifest_task", methods=["POST"])
 
     # Ingest AW5 manifest
-    _api.add_resource(cloud_tasks_api.IngestAW5ManifestTaskApi, TASK_PREFIX + "IngestAW5ManifestTaskApi",
+    _api.add_resource(genomic_cloud_tasks_api.IngestAW5ManifestTaskApi,
+                      TASK_PREFIX + "IngestAW5ManifestTaskApi",
                       endpoint="ingest_aw5_manifest_task", methods=["POST"])
 
-    # Calculate manifest file record count
-    _api.add_resource(cloud_tasks_api.CalculateRecordCountTaskApi, TASK_PREFIX + "CalculateRecordCountTaskApi",
-                      endpoint="calculate_record_count_task", methods=["POST"])
+    # Ingest member samples from raw models
+    _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,
+                      TASK_PREFIX + "IngestSamplesFromRawTaskAPI",
+                      endpoint="ingest_samples_from_raw_task", methods=["POST"])
 
+    # Calculate manifest file record count
+    _api.add_resource(genomic_cloud_tasks_api.CalculateRecordCountTaskApi,
+                      TASK_PREFIX + "CalculateRecordCountTaskApi",
+
+                      endpoint="calculate_record_count_task", methods=["POST"])
     # Calculate Contamination Category
-    _api.add_resource(cloud_tasks_api.CalculateContaminationCategoryApi,
+    _api.add_resource(genomic_cloud_tasks_api.CalculateContaminationCategoryApi,
                       TASK_PREFIX + "CalculateContaminationCategoryApi",
                       endpoint="calculate_contamination_category_task", methods=["POST"])
 
     #
-    # End Task API endpoints
+    # End Genomic Cloud Task API endpoints
     #
 
     #
@@ -90,7 +103,6 @@ def _build_resource_app():
     #
     # End primary Resource API endpoint
     #
-
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 

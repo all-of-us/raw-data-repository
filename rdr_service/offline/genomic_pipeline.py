@@ -336,18 +336,16 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
         raise AttributeError("file_data is required to execute manifest file pipeline")
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
-                              task_data=task_data, bq_project_id=project_id) as controller:
+                              task_data=task_data,
+                              bq_project_id=project_id) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
-
         if task_data.file_data.create_feedback_record:
             controller.insert_genomic_manifest_feedback_record(manifest_file)
-
         controller.job_result = GenomicSubProcessResult.SUCCESS
 
     if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
-
     else:
         return manifest_file
 
@@ -375,7 +373,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
-
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:
@@ -404,8 +401,12 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         logging.warning(f'No task for {_task_data.job}')
 
 
-def load_awn_manifest_into_raw_table(file_path, manifest_type, project_id=None, provider=None):
-
+def load_awn_manifest_into_raw_table(
+    file_path,
+    manifest_type,
+    project_id=None,
+    provider=None
+):
     jobs = {
         "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
         "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
@@ -414,5 +415,4 @@ def load_awn_manifest_into_raw_table(file_path, manifest_type, project_id=None, 
     with GenomicJobController(jobs[manifest_type],
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
-
         controller.load_raw_awn_data_from_filepath(file_path)
