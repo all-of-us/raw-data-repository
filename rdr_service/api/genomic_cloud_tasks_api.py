@@ -6,7 +6,8 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
-from rdr_service.config import getSetting, GENOMIC_AW5_WGS_SUBFOLDERS, GENOMIC_AW5_ARRAY_SUBFOLDERS
+from rdr_service.config import getSetting, GENOMIC_AW5_WGS_SUBFOLDERS, GENOMIC_AW5_ARRAY_SUBFOLDERS, \
+    DRC_BROAD_AW4_SUBFOLDERS
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_job_run_batch_update, bq_genomic_file_processed_batch_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_manifest_file_batch_update, \
@@ -123,6 +124,31 @@ class IngestAW4ManifestTaskApi(Resource):
         data = request.get_json(force=True)
         logging.info(f'Ingesting AW4 File: {data.get("filename")}')
 
+        if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in data["file_path"]:
+            job_id = GenomicJob.AW4_ARRAY_WORKFLOW
+            manifest_type = GenomicManifestTypes.AW4_ARRAY
+        elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in data["file_path"]:
+            job_id = GenomicJob.AW4_WGS_WORKFLOW
+            manifest_type = GenomicManifestTypes.AW4_WGS
+        else:
+            logging.warning(f'Can not determine manifest type from file_path: {data["file_path"]}')
+            return '{"success": "false"}'
+
+        # Set up file/JSON
+        task_data = {
+            "job": job_id,
+            "bucket": data["bucket_name"],
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": data["upload_date"],
+                "manifest_type": manifest_type,
+                "file_path": data["file_path"],
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
         logging.info('Complete.')
         return '{"success": "true"}'
 
@@ -137,14 +163,14 @@ class IngestAW5ManifestTaskApi(Resource):
         data = request.get_json(force=True)
         logging.info(f'Ingesting AW5 File: {data.get("filename")}')
 
-        if getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in data["file_path"]:
-            job_id = GenomicJob.AW5_WGS_MANIFEST
-            manifest_type = GenomicManifestTypes.AW5_WGS
-        elif getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in data["file_path"]:
+        if getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in data["file_path"]:
             job_id = GenomicJob.AW5_ARRAY_MANIFEST
             manifest_type = GenomicManifestTypes.AW5_ARRAY
+        elif getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in data["file_path"]:
+            job_id = GenomicJob.AW5_WGS_MANIFEST
+            manifest_type = GenomicManifestTypes.AW5_WGS
         else:
-            logging.error(f'can not determine manifest type from file_path: {data["file_path"]}')
+            logging.warning(f'Can not determine manifest type from file_path: {data["file_path"]}')
             return '{"success": "false"}'
 
         # Set up file/JSON
