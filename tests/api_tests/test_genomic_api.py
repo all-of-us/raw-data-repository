@@ -15,19 +15,17 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
     GenomicManifestFileDao)
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 from rdr_service.model.participant import Participant
-
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicJobRun,
 )
-
 from rdr_service.participant_enums import (
     SampleStatus,
     WithdrawalStatus
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 
 
 class GenomicApiTestBase(BaseTestCase):
@@ -404,3 +402,24 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         )
 
         load_raw_awn_data_mock.assert_called_with(test_file_path, "aw2")
+
+    def test_load_samples_from_raw_data_task_api(self):
+
+        data = {'job': 'AW1_MANIFEST',
+                'server_config': {
+                    'biobank_id_prefix': ['S']
+                },
+                'member_ids': [1, 2, 3]}
+
+        from rdr_service.resource import main as resource_main
+        resource_main.app.testing = True
+        sample_results = self.send_post(
+            local_path='IngestSamplesFromRawTaskAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(sample_results)
+        self.assertEqual(sample_results['success'], True)
+

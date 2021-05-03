@@ -42,7 +42,7 @@ class LoadRawAWNManifestDataAPI(Resource):
         genomic_pipeline.load_awn_manifest_into_raw_table(data.get("file_path"), data.get("file_type"))
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class IngestAW1ManifestTaskApi(Resource):
@@ -82,7 +82,7 @@ class IngestAW1ManifestTaskApi(Resource):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class IngestAW2ManifestTaskApi(Resource):
@@ -111,7 +111,7 @@ class IngestAW2ManifestTaskApi(Resource):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class IngestAW4ManifestTaskApi(Resource):
@@ -150,7 +150,7 @@ class IngestAW4ManifestTaskApi(Resource):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class IngestAW5ManifestTaskApi(Resource):
@@ -189,7 +189,7 @@ class IngestAW5ManifestTaskApi(Resource):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class IngestSamplesFromRawTaskAPI(Resource):
@@ -212,7 +212,7 @@ class IngestSamplesFromRawTaskAPI(Resource):
         logging.info(f'{results}')
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class CalculateRecordCountTaskApi(Resource):
@@ -243,7 +243,7 @@ class CalculateRecordCountTaskApi(Resource):
             genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
 
         logging.info('Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
 
 class CalculateContaminationCategoryApi(Resource):
@@ -266,7 +266,7 @@ class CalculateContaminationCategoryApi(Resource):
             self.process_member_id_contamination_category(_mid)
 
         logging.info(f'Batch of {len(batch)} Complete.')
-        return '{"success": "true"}'
+        return {"success": True}
 
     def process_member_id_contamination_category(self, member_id):
 
@@ -332,4 +332,4 @@ class RebuildGenomicTableRecordsApi(Resource):
 
         logging.info(f'Rebuild complete.')
 
-        return '{"success": "true"}'
+        return {"success": True}
