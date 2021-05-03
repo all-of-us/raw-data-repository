@@ -122,7 +122,7 @@ cron:
 - description: Genomic AW3 Array Workflow
   url: /offline/GenomicAW3ArrayWorkflow
   timezone: America/New_York
-  schedule: every monday 06:45
+  schedule: every day 06:45
   target: offline
 - description: Genomic AW3 WGS Workflow
   url: /offline/GenomicAW3WGSWorkflow
