@@ -52,17 +52,28 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         _logger.info(f"file found: {self.event.attributes.objectId}")
 
+        object_id = self.event.attributes.objectId.lower()
+        task_key = None
+
         # AW1 files have "_sample_manifests" in file name
-        if '_sample_manifests' in self.event.attributes.objectId.lower():
+        if '_sample_manifests' in object_id:
             task_key = "aw1"
 
             # Northwest moves their AW1 files to a `downloaded` subfolder. Ignore these.
-            if 'downloaded' in self.event.attributes.objectId.lower():
+            if 'downloaded' in object_id:
                 return
 
         # AW2 files have "_data_manifests" in their file name
-        elif '_data_manifests' in self.event.attributes.objectId.lower():
+        elif '_data_manifests' in object_id:
             task_key = "aw2"
+
+        # AW4 files have "AW4" in their file path (bucket name)
+        elif 'aw4' in object_id:
+            task_key = "aw4"
+
+        # AW5 files have "AW5" in their file path (bucket name)
+        elif 'aw5' in object_id:
+            task_key = "aw5"
 
         else:
             _logger.info("No files match ingestion criteria.")
