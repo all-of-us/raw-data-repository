@@ -1,0 +1,9 @@
+[run]
+command_line = -m unittest discover -v -s tests
+branch = True
+source =
+    rdr_service
+omit =
+    # ignore fhir client libs
+    rdr_service/lib_fhir/*
+    rdr_service/alembic/*
