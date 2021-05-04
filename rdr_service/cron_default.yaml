@@ -124,16 +124,6 @@ cron:
   timezone: America/New_York
   schedule: every day 06:45
   target: offline
-- description: Genomic AW3 WGS Workflow
-  url: /offline/GenomicAW3WGSWorkflow
-  timezone: America/New_York
-  schedule: every monday 05:45
-  target: offline
-- description: Genomic AW4 Workflow
-  url: /offline/GenomicAW4Workflow
-  timezone: America/New_York
-  schedule: every day 07:45
-  target: offline
 - description: Clean up request logs
   url: /offline/CleanUpRequestLogs
   timezone: America/New_York
