@@ -41,6 +41,9 @@ commands:
           name: Running Unittests
           command: ./ci/run_unittests.sh
       - run:
+          name: Upload Coverage Report
+          command: ./ci/run_upload_coverage_report.sh
+      - run:
           name: Safety Check
           command: source venv/bin/activate && safety check
 
