@@ -259,8 +259,6 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         self.assertEqual('2020-01-05T19:43:21Z', response['issued'])
 
     def test_post_with_invalid_fields(self):
-        self.fail()
-
         # Check missing status response
         report_json = self.build_deceased_report_json()
         del report_json['status']
