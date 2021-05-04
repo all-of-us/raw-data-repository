@@ -68,11 +68,11 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             task_key = "aw2"
 
         # AW4 files have "AW4" in their file path (bucket name)
-        elif 'aw4' in object_id:
+        elif 'aw4_' in object_id:
             task_key = "aw4"
 
         # AW5 files have "AW5" in their file path (bucket name)
-        elif 'aw5' in object_id:
+        elif 'aw5_' in object_id:
             task_key = "aw5"
 
         else:
