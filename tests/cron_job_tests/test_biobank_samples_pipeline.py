@@ -247,12 +247,13 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         bqs_recs = self.session.query(BigQuerySync).filter(
             BigQuerySync.tableId == 'pdr_participant',
             BigQuerySync.pk_id.in_((on_site_1sal2_participant_id, mail_kit_1sal2_participant_id,
-                                   no_order_1sal2_participant_id))
+                                    no_order_1sal2_participant_id))
         ).all()
 
         # Establish when the participant_summary record updates were completed
         max_ps_modified_ts = max(ts for ts in
-                    [on_site_summary.lastModified, mail_kit_summary.lastModified, no_order_summary.lastModified])
+                                 [on_site_summary.lastModified, mail_kit_summary.lastModified,
+                                  no_order_summary.lastModified])
 
         # Confirm that the bigquery_sync records were built after participant_summary changes
         # (except for the no_order_summary pid)
