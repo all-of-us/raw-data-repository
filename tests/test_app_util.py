@@ -365,8 +365,8 @@ class AppUtilTest(BaseTestCase):
 
     @mock.patch('rdr_service.app_util.GAE_PROJECT', 'definitely_the_server')
     @mock.patch('rdr_service.app_util.requests')
-    def test_caching_oauth_token_validation(self, mock_requests):
-        """Make sure we only call Google's API once per request for getting the user-info for the API token."""
+    def test_caching_user_info(self, mock_requests):
+        """Make sure we only call Google's API once per request for getting the user info for the API token."""
         auth_api_response = mock.MagicMock()
         auth_api_response.status_code = 200
 
