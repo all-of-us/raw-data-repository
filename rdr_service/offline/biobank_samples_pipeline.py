@@ -87,10 +87,10 @@ def upsert_from_latest_csv():
         csv_reader = csv.DictReader(csv_file, delimiter="\t")
         written = _upsert_samples_from_csv(csv_reader)
 
-    ts = clock.CLOCK.now()
+    since_ts = clock.CLOCK.now()
     dao = ParticipantSummaryDao()
     dao.update_from_biobank_stored_samples()
-    update_bigquery_sync_participants(ts, dao)
+    update_bigquery_sync_participants(since_ts, dao)
 
     return written, timestamp
 
