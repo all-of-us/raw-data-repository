@@ -1,4 +1,4 @@
-from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import mock
 import os
@@ -21,7 +21,11 @@ EXPECTED_DOWNLOAD_DESTINATION_PATTERN = os.path.join(
     tempfile.gettempdir(),
     'temp_consents/{org_bucket_name}/{org_id}/{site_name}/P{participant_id}/{file_name}')
 
-FakeConsentFile = namedtuple('FakeConsentFile', ['name', 'updated'], defaults=['consent.pdf', None])
+
+@dataclass
+class FakeConsentFile:
+    name: str = 'consent.pdf'
+    updated: datetime = None
 
 
 @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id', lambda: 'vibrent')
@@ -53,7 +57,7 @@ class SyncConsentFilesTest(BaseTestCase):
         super(SyncConsentFilesTest, self).tearDown()
 
     def _create_participant(self, id_, org_id, site_id, consents=False, ghost=None, email=None, null_email=False,
-                            consent_time=None, ehr_consent_time=None):
+                            consent_time=None, ehr_consent_time=None, gror_consent_time=None):
         participant = self.data_generator.create_database_participant(participantId=id_, organizationId=org_id,
                                                                       siteId=site_id, isGhostId=ghost)
         summary_data = {'participant': participant}
@@ -62,7 +66,8 @@ class SyncConsentFilesTest(BaseTestCase):
             summary_data.update(consentForElectronicHealthRecords=1,
                                 consentForStudyEnrollment=1,
                                 consentForStudyEnrollmentTime=consent_time,
-                                consentForElectronicHealthRecordsTime=ehr_consent_time)
+                                consentForElectronicHealthRecordsTime=ehr_consent_time,
+                                consentForGenomicsRORTime=gror_consent_time)
         if email:
             summary.email = email
             summary_data['email'] = email
@@ -132,10 +137,39 @@ class SyncConsentFilesTest(BaseTestCase):
         sync_consent_files.do_sync_consent_files(start_date='2020-02-01', end_date='2020-03-01')
 
         org_bucket_name = self.org_buckets[self.org1.externalId]
-        mock_copy_cloud_file.called_once_with(f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
-                                              f'/{org_bucket_name}/Participant/{self.site1.googleGroup}/P2/consent.pdf')
+        mock_copy_cloud_file.assert_called_with(
+            f'/{self.source_consent_bucket}/Participant/P2/consent.pdf',
+            f'{org_bucket_name}/Participant/{self.org1.externalId}/{self.site1.googleGroup}/P2/consent.pdf'
+        )
         self.assertEqual(2, mock_copy_cloud_file.call_count,
                          'Files later than the start date should be copied for one participant')
+
+    @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
+    @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')
+    def test_sync_date_cutoff_detects_gror(self, mock_copy_cloud_file, mock_list_blobs):
+        primary_consent_time = datetime(2020, 2, 20)
+        gror_consent_time = datetime(2020, 5, 10)
+        self._mock_files_for_participants(mock_list_blobs, [
+            FakeConsentFile(updated=primary_consent_time, name='PrimaryConsent.pdf'),
+            FakeConsentFile(updated=gror_consent_time, name='GrorConsent.pdf')
+        ])
+
+        self._create_participant(
+            id_=1,
+            org_id=self.org1.organizationId,
+            site_id=self.site1.siteId,
+            consents=True,
+            consent_time=primary_consent_time,
+            gror_consent_time=gror_consent_time
+        )
+
+        sync_consent_files.do_sync_consent_files(start_date='2020-05-01', end_date='2020-06-01')
+
+        org_bucket_name = self.org_buckets[self.org1.externalId]
+        mock_copy_cloud_file.assert_called_with(
+            f'/{self.source_consent_bucket}/Participant/P1/GrorConsent.pdf',
+            f'{org_bucket_name}/Participant/{self.org1.externalId}/{self.site1.googleGroup}/P1/GrorConsent.pdf'
+        )
 
     @mock.patch('rdr_service.offline.sync_consent_files.list_blobs')
     @mock.patch('rdr_service.offline.sync_consent_files.copy_cloud_file')

@@ -117,6 +117,10 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
                 'rdr_service/app_base.yaml',
                 'rdr_service/app_nonprod.yaml'
             ],
+            'sandbox': [
+                'rdr_service/app_base.yaml',
+                'rdr_service/app_sandbox.yaml'
+            ]
         },
         'offline': {
             'type': 'service',

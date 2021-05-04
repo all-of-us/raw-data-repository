@@ -1,0 +1,7 @@
+# app_base.yaml is concatenated to the beginning of this file for deployment.
+# https://cloud.google.com/appengine/docs/standard/
+instance_class: F4
+
+# Have 0 idle instances to reduce unneeded costs
+automatic_scaling:
+  min_idle_instances: 0

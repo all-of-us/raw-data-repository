@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+from typing import Dict
 
 from rdr_service.services.daemon import Daemon
 from rdr_service.services.gcp_config import RdrEnvironment
@@ -14,6 +15,9 @@ from rdr_service.services.system_utils import is_valid_email, setup_logging, set
 
 _logger = logging.getLogger("rdr_logger")
 progname = "gcp-db-daemon"
+
+MYSQL_PROXY_KEY = 'mysql8'
+POSTGRES_PROXY_KEY = 'postgres'
 
 
 @dataclass
@@ -27,6 +31,7 @@ class DatabaseProxy:
 class ProxyData:
     primary: DatabaseProxy
     replica: DatabaseProxy = None  # Not every environment has a replica db
+    extras: Dict[str, DatabaseProxy] = None  # Some servers have extra possible connections
 
 
 def run():
@@ -40,7 +45,7 @@ def run():
 
             self.host = '127.0.0.1'
             self.environment_proxy_port_map = {
-                RdrEnvironment.PROD:ProxyData(
+                RdrEnvironment.PROD: ProxyData(
                     primary=DatabaseProxy(name='rdrmaindb', port=9900),
                     replica=DatabaseProxy(name='rdrbackupdb-a', port=9905)
                 ),
@@ -57,7 +62,11 @@ def run():
                 ),
                 RdrEnvironment.TEST: ProxyData(
                     primary=DatabaseProxy(name='rdrmaindb', port=9940),
-                    replica=DatabaseProxy(name='rdrbackupdb', port=9945)
+                    replica=DatabaseProxy(name='rdrbackupdb', port=9945),
+                    extras={
+                        MYSQL_PROXY_KEY: DatabaseProxy(name='rdrmysql8', port=9941),
+                        POSTGRES_PROXY_KEY: DatabaseProxy(name='rdrpostgresql', port=9942)
+                    }
                 ),
                 RdrEnvironment.CAREEVO_TEST: ProxyData(
                     primary=DatabaseProxy(name='rdrmaindb', port=9950),
@@ -103,6 +112,14 @@ def run():
                 if self._args.enable_replica and proxy_data.replica is not None:
                     self._print_instance_line(environment.value, 'replica', proxy_data.replica.port)
 
+            test_proxy_data = self.environment_proxy_port_map[RdrEnvironment.TEST]
+            if self._args.enable_test_mysql_8:
+                mysql8_proxy = test_proxy_data.extras[MYSQL_PROXY_KEY]
+                self._print_instance_line(RdrEnvironment.TEST.value, 'mysql8', mysql8_proxy.port)
+            if self._args.enable_test_postgres:
+                postgres_proxy = test_proxy_data.extras[POSTGRES_PROXY_KEY]
+                self._print_instance_line(RdrEnvironment.TEST.value, 'postgres', postgres_proxy.port)
+
         def _get_instance_arg_list_for_environment(self, environment: RdrEnvironment):
             proxy_data = self.environment_proxy_port_map[environment]
             instance_arg_list = [build_gcp_instance_connection_name(
@@ -130,6 +147,22 @@ def run():
             instance_string_list = []
             for environment in self.environments_to_activate:
                 instance_string_list.extend(self._get_instance_arg_list_for_environment(environment))
+
+            test_proxy_data = self.environment_proxy_port_map[RdrEnvironment.TEST]
+            if self._args.enable_test_mysql_8:
+                mysql8_proxy = test_proxy_data.extras[MYSQL_PROXY_KEY]
+                instance_string_list.append(build_gcp_instance_connection_name(
+                    project_name=RdrEnvironment.TEST.value,
+                    port=mysql8_proxy.port,
+                    database_name=mysql8_proxy.name
+                ))
+            if self._args.enable_test_postgres:
+                postgres_proxy = test_proxy_data.extras[POSTGRES_PROXY_KEY]
+                instance_string_list.append(build_gcp_instance_connection_name(
+                    project_name=RdrEnvironment.TEST.value,
+                    port=postgres_proxy.port,
+                    database_name=postgres_proxy.name
+                ))
 
             return ','.join(instance_string_list)
 
@@ -178,40 +211,33 @@ def run():
 
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=progname)
-    # pylint: disable=E0602
-    parser.add_argument("--debug", help=_("Enable debug output"), default=False, action="store_true")  # noqa
-    # pylint: disable=E0602
-    parser.add_argument("--root-only", help=_("Must run as root user"), default=False, action="store_true")  # noqa
-    # pylint: disable=E0602
-    parser.add_argument("--nodaemon", help=_("Do not daemonize process"), default=False, action="store_true")  # noqa
-    # pylint: disable=E0602
-    parser.add_argument("--account", help=_("Security account"))
-    # pylint: disable=E0602
+    parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")
+    parser.add_argument("--root-only", help="Must run as root user", default=False, action="store_true")
+    parser.add_argument("--nodaemon", help="Do not daemonize process", default=False, action="store_true")
+    parser.add_argument("--account", help="Security account")
     parser.add_argument(
-        "--enable-replica", help=_("Enable connections to replica instances"), default=False, action="store_true"
-    )  # noqa
-    # pylint: disable=E0602
+        "--enable-replica", help="Enable connections to replica instances", default=False, action="store_true"
+    )
     parser.add_argument(
-        "--enable-sandbox", help=_("Add proxy to all-of-us-rdr-sandbox"), default=False, action="store_true"
-    )  # noqa
-    # pylint: disable=E0602
+        "--enable-sandbox", help="Add proxy to all-of-us-rdr-sandbox", default=False, action="store_true"
+    )
     parser.add_argument(
-        "--enable-test", help=_("Add proxy to pmi-drc-api-test"), default=False, action="store_true"
-    )  # noqa
-    # pylint: disable=E0602
-    parser.add_argument('--enable-care-evo', help=_('Add proxy to all-of-us-rdr-careevo-test'),
-                        default=False, action='store_true')  # noqa
+        "--enable-test", help="Add proxy to pmi-drc-api-test", default=False, action="store_true"
+    )
+    parser.add_argument('--enable-care-evo', help='Add proxy to all-of-us-rdr-careevo-test',
+                        default=False, action='store_true')
+    parser.add_argument('--enable-ptsc-1-test', help='Add proxy to all-of-us-rdr-ptsc-1-test',
+                        default=False, action='store_true')
+    parser.add_argument('--enable-ptsc-2-test', help='Add proxy to all-of-us-rdr-ptsc-2-test',
+                        default=False, action='store_true')
+    parser.add_argument('--enable-ptsc-3-test', help='Add proxy to all-of-us-rdr-ptsc-3-test',
+                        default=False, action='store_true')
+    parser.add_argument('--enable-test-mysql-8', help='Add proxy to test MySQL 8 instance',
+                        default=False, action='store_true')
+    parser.add_argument('--enable-test-postgres', help='Add proxy to test PostgreSQL instance',
+                        default=False, action='store_true')
 
-    parser.add_argument('--enable-ptsc-1-test', help=_('Add proxy to all-of-us-rdr-ptsc-1-test'),
-                        default=False, action='store_true')  # noqa
-
-    parser.add_argument('--enable-ptsc-2-test', help=_('Add proxy to all-of-us-rdr-ptsc-2-test'),
-                        default=False, action='store_true')  # noqa
-
-    parser.add_argument('--enable-ptsc-3-test', help=_('Add proxy to all-of-us-rdr-ptsc-3-test'),
-                        default=False, action='store_true')  # noqa
-
-    parser.add_argument("action", choices=("start", "stop", "restart"), default="")  # noqa
+    parser.add_argument("action", choices=("start", "stop", "restart"), default="")
 
     args = parser.parse_args()
 

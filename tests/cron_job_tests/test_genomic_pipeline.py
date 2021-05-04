@@ -2952,6 +2952,8 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(1, len(rows))
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
+                             rows[0]['biobank_id'])
             self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
                              rows[0]['biobankidsampleid'])
             self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
