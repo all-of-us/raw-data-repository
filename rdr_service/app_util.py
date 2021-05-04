@@ -1,6 +1,7 @@
 import calendar
 import datetime
 import email.utils
+import flask
 import logging
 from requests.exceptions import RequestException
 from time import sleep
@@ -18,6 +19,8 @@ from rdr_service.config import GAE_PROJECT
 
 _GMT = pytz.timezone("GMT")
 SCOPE = "https://www.googleapis.com/auth/userinfo.email"
+
+GLOBAL_CLIENT_ID_KEY = 'oauth_client_id'
 
 
 def handle_database_disconnect(err):
@@ -103,11 +106,13 @@ def get_oauth_id():
     currently verifies that the provided token
     is legitimate via google API.
     - performance
-        - could be cached
         - could be validated locally instead of with API
     '''
     retries = 5
     use_tokeninfo_endpoint = False
+
+    if GLOBAL_CLIENT_ID_KEY in flask.g:
+        return getattr(flask.g, GLOBAL_CLIENT_ID_KEY)
 
     while retries:
         retries -= 1
@@ -138,6 +143,7 @@ def get_oauth_id():
                         logging.error('UserInfo endpoint did not return the email')
                         use_tokeninfo_endpoint = True
                     else:
+                        setattr(flask.g, GLOBAL_CLIENT_ID_KEY, user_email)
                         return user_email
                 else:
                     logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
