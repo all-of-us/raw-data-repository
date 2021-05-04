@@ -64,7 +64,7 @@ class GenomicQueryClass:
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
-                    GenomicSetMember.biobankId,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                     GenomicSetMember.sampleId,
                     sqlalchemy.func.concat(get_biobank_id_prefix(),
                                            GenomicSetMember.biobankId, '_',
