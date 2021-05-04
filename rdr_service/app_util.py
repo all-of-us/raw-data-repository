@@ -111,7 +111,7 @@ def get_oauth_id():
     retries = 5
     use_tokeninfo_endpoint = False
 
-    if GLOBAL_CLIENT_ID_KEY in flask.g:
+    if flask.g and GLOBAL_CLIENT_ID_KEY in flask.g:
         return getattr(flask.g, GLOBAL_CLIENT_ID_KEY)
 
     while retries:
@@ -143,7 +143,8 @@ def get_oauth_id():
                         logging.error('UserInfo endpoint did not return the email')
                         use_tokeninfo_endpoint = True
                     else:
-                        setattr(flask.g, GLOBAL_CLIENT_ID_KEY, user_email)
+                        if flask.g:
+                            setattr(flask.g, GLOBAL_CLIENT_ID_KEY, user_email)
                         return user_email
                 else:
                     logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
