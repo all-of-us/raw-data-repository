@@ -18,6 +18,7 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -241,6 +242,24 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             ParticipantSummary.participantId == no_order_1sal2_participant_id
         ).one()
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
+
+        # Check for bigquery_sync record updates.  Only expect updates for the pids with orders
+        bqs_recs = self.session.query(BigQuerySync).filter(
+            BigQuerySync.tableId == 'pdr_participant',
+            BigQuerySync.pk_id.in_((on_site_1sal2_participant_id, mail_kit_1sal2_participant_id,
+                                   no_order_1sal2_participant_id))
+        ).all()
+
+        # Establish when the participant_summary record updates were completed
+        max_ps_modified_ts = max(ts for ts in
+                    [on_site_summary.lastModified, mail_kit_summary.lastModified, no_order_summary.lastModified])
+
+        # Confirm that the bigquery_sync records were built after participant_summary changes
+        # (except for the no_order_summary pid)
+        self.assertEqual(len(bqs_recs), 2)
+        for rec in bqs_recs:
+            self.assertIn(rec.pk_id, [on_site_1sal2_participant_id, mail_kit_1sal2_participant_id])
+            self.assertTrue(rec.modified > max_ps_modified_ts)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()

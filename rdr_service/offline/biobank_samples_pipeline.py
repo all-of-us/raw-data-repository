@@ -29,6 +29,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
@@ -86,7 +87,7 @@ def upsert_from_latest_csv():
         csv_reader = csv.DictReader(csv_file, delimiter="\t")
         written = _upsert_samples_from_csv(csv_reader)
 
-    ts = datetime.datetime.now()
+    ts = clock.CLOCK.now()
     dao = ParticipantSummaryDao()
     dao.update_from_biobank_stored_samples()
     update_bigquery_sync_participants(ts, dao)
@@ -102,7 +103,8 @@ def update_bigquery_sync_participants(ts, dao):
     batch_size = 250
 
     with dao.session() as session:
-        participants = session.query(Participant.participantId).filter(Participant.lastModified > ts).all()
+        participants = session.query(ParticipantSummary.participantId) \
+                       .filter(ParticipantSummary.lastModified > ts).all()
         total_rows = len(participants)
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         logging.info('Biobank: calculated {0} tasks from {1} records with a batch size of {2}.'.
