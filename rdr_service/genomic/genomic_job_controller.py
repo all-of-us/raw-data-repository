@@ -714,21 +714,24 @@ class GenomicJobController:
 
                 now_time = datetime.utcnow()
 
-                # Insert manifest_file record
-                new_manifest_obj = GenomicManifestFile(
-                    uploadDate=now_time,
-                    manifestTypeId=manifest_type,
-                    filePath=new_file_path,
-                    bucketName=self.bucket_name,
-                    recordCount=result['record_count'],
-                    rdrProcessingComplete=1,
-                    rdrProcessingCompleteDate=now_time,
-                    fileName=new_file_path.split('/')[-1]
-                )
-                new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+                new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(new_file_path)
 
-                bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
-                genomic_manifest_file_update(new_manifest_obj.id)
+                if not new_manifest_record:
+                    # Insert manifest_file record
+                    new_manifest_obj = GenomicManifestFile(
+                        uploadDate=now_time,
+                        manifestTypeId=manifest_type,
+                        filePath=new_file_path,
+                        bucketName=self.bucket_name,
+                        recordCount=result['record_count'],
+                        rdrProcessingComplete=1,
+                        rdrProcessingCompleteDate=now_time,
+                        fileName=new_file_path.split('/')[-1]
+                    )
+                    new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+
+                    bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
+                    genomic_manifest_file_update(new_manifest_obj.id)
 
                 # update feedback records if manifest is a feedback manifest
                 if "feedback_record" in kwargs.keys():
