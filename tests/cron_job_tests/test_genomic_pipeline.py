@@ -3813,7 +3813,9 @@ class GenomicPipelineTest(BaseTestCase):
         incidents = incident_dao.get_all()
 
         for i, incident in enumerate(incidents):
-            message = f'Cannot find genomic set member for bid, sample_id: T{i+1}, 100{i+1}'
+            message = f'{GenomicJob.METRICS_INGESTION.name}: Cannot find genomic set member for bid, sample_id: ' \
+                      f'T{i+1}, ' \
+                      f'100{i+1}'
             self.assertIsNotNone(incident.message)
             self.assertEqual(message, incident.message)
             self.assertEqual(0, incident.slack_notification)

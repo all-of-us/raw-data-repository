@@ -472,7 +472,7 @@ class GenomicFileIngester:
 
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
-                    _message = f"Cannot find genomic set member: " \
+                    _message = f"{self.job_id.name}: Cannot find genomic set member: " \
                                f"collection_tube_id: {row_copy['collectiontubeid']}, "\
                                f"biobank id: {bid}, "\
                                f"genome type: {row_copy['testname']}"
@@ -705,7 +705,7 @@ class GenomicFileIngester:
             if row['processingstatus'].lower() != 'pass':
                 return row
 
-            _message = f'contamination must be a number for sample_id: {row["sampleid"]}'
+            _message = f'{self.job_id.name}: Contamination must be a number for sample_id: {row["sampleid"]}'
 
             self.controller.create_incident(source_job_run_id=self.job_run_id,
                                             source_file_processed_id=self.file_obj.id,
@@ -1065,7 +1065,7 @@ class GenomicFileIngester:
                     bid = bid[1:]
 
                 # Couldn't find genomic set member based on either biobank ID or sample ID
-                _message = f"Cannot find genomic set member for bid, sample_id: "\
+                _message = f"{self.job_id.name}: Cannot find genomic set member for bid, sample_id: "\
                            f"{row_copy['biobankid']}, {row_copy['sampleid']}"
 
                 self.controller.create_incident(source_job_run_id=self.job_run_id,
@@ -1535,7 +1535,7 @@ class GenomicFileValidator:
 
         if not struct_valid_result:
             slack = True
-            invalid_message = f"File structure of {filename} is not valid."
+            invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
             if missing_fields:
                 invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
@@ -1702,7 +1702,7 @@ class GenomicFileValidator:
         is_valid_filename = name_rules[self.job_id]()
 
         if not is_valid_filename:
-            invalid_message = f"File name {filename.split('/')[1]} has failed validation."
+            invalid_message = f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation."
             self.controller.create_incident(
                 save_incident=False,
                 slack=True,
@@ -1917,7 +1917,7 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            description = "The following AW2 manifests are missing data files."
+            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
@@ -2027,7 +2027,7 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            description = "The following AW2 manifests are missing data files."
+            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
