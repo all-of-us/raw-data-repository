@@ -66,9 +66,13 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             _logger.info("No files match ingestion criteria.")
             return
 
+        _logger.info(f"Event payload: {self.event}")
+
         cloud_file_path = f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}'
 
         data = {
+            "file_type": task_key,
+            "filename": self.event.attributes.objectId,
             "file_path": cloud_file_path,
             "bucket_name": self.event.attributes.bucketId,
             "upload_date": self.event.attributes.eventTime,
