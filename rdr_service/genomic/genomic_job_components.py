@@ -852,7 +852,10 @@ class GenomicFileIngester:
                         metrics.drcMeanCoverage = row_copy['drcmeancoverage']
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
-                    self.metrics_dao.upsert(metrics)
+                    metrics_obj = self.metrics_dao.upsert(metrics)
+
+                    bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(metrics_obj.id)
 
                 self.member_dao.update(member)
 
