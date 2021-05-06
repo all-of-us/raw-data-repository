@@ -1119,10 +1119,10 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             return session.query(
                 functions.count(GenomicGCValidationMetrics.id)
             ).join(
-                GenomicManifestFile,
-                GenomicManifestFile.id == GenomicGCValidationMetrics.genomicFileProcessedId
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicGCValidationMetrics.genomicFileProcessedId
             ).filter(
-                GenomicManifestFile.filePath == filepath,
+                GenomicFileProcessed.filePath == filepath,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             ).one_or_none()
 
