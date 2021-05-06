@@ -1771,7 +1771,10 @@ class CompareRecordsClass(GenomicManifestBase):
         }
         _dict = {}
         for i, val in paths[manifest_type].items():
-            _dict[self.main_config[manifest_type]['headers'][i]] = val(path)[0]
+            if val(path):
+                _dict[self.main_config[manifest_type]['headers'][i]] = val(path)[0]
+
+        _dict['file_path'] = path
 
         self.data_rows.append(_dict)
         return self.data_rows
@@ -1789,7 +1792,7 @@ class CompareRecordsClass(GenomicManifestBase):
                 prefix = prefix.lower()
             files = self.gscp.list(bucket, prefix)
             all_files.extend(['{}/{}'.format(f.bucket.name, f.name) for f in files if files and '.csv' in f.name])
-        return
+        return all_files
 
     def output_records(self):
         manifest_type = self.args.manifest_type.lower()
