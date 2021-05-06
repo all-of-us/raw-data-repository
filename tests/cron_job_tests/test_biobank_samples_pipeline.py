@@ -18,7 +18,6 @@ from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -144,7 +143,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
-    def test_end_to_end(self):
+    @mock.patch('rdr_service.offline.biobank_samples_pipeline.dispatch_participant_rebuild_tasks')
+    def test_end_to_end(self, mock_dispatch_rebuild):
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
 
         self.clear_default_storage()
@@ -244,23 +244,10 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
 
         # Check for bigquery_sync record updates.  Only expect updates for the pids with orders
-        bqs_recs = self.session.query(BigQuerySync).filter(
-            BigQuerySync.tableId == 'pdr_participant',
-            BigQuerySync.pk_id.in_((on_site_1sal2_participant_id, mail_kit_1sal2_participant_id,
-                                    no_order_1sal2_participant_id))
-        ).all()
-
-        # Establish when the participant_summary record updates were completed
-        max_ps_modified_ts = max(ts for ts in
-                                 [on_site_summary.lastModified, mail_kit_summary.lastModified,
-                                  no_order_summary.lastModified])
-
-        # Confirm that the bigquery_sync records were built after participant_summary changes
-        # (except for the no_order_summary pid)
-        self.assertEqual(len(bqs_recs), 2)
-        for rec in bqs_recs:
-            self.assertIn(rec.pk_id, [on_site_1sal2_participant_id, mail_kit_1sal2_participant_id])
-            self.assertTrue(rec.modified > max_ps_modified_ts)
+        rebuilt_participant_list = mock_dispatch_rebuild.call_args[0][0]
+        self.assertIn(on_site_1sal2_participant_id, rebuilt_participant_list)
+        self.assertIn(mail_kit_1sal2_participant_id, rebuilt_participant_list)
+        self.assertNotIn(no_order_1sal2_participant_id, rebuilt_participant_list)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()
