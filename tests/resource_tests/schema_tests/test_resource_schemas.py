@@ -7,43 +7,13 @@ import json
 from tests.helpers.unittest_base import BaseTestCase
 
 # -- BQ model imports
-from rdr_service.model.bq_code import BQCodeSchema
-from rdr_service.model.bq_hpo import BQHPOSchema
-from rdr_service.model.bq_organization import BQOrganizationSchema
-from rdr_service.model.bq_participant_summary import (
-    BQBiobankOrderSchema, BQAddressSchema, BQBiobankSampleSchema, BQGenderSchema, BQRaceSchema,
-    BQEhrReceiptSchema, BQPatientStatusSchema, BQConsentSchema, BQModuleStatusSchema,
-    BQPhysicalMeasurements, BQParticipantSummarySchema
-)
-from rdr_service.model.bq_site import BQSiteSchema
-from rdr_service.model.bq_genomics import (
-    BQGenomicSetSchema, BQGenomicJobRunSchema, BQGenomicFileProcessedSchema, BQGenomicManifestFeedbackSchema,
-    BQGenomicManifestFileSchema, BQGenomicSetMemberSchema, BQGenomicGCValidationMetricsSchema
-)
-from rdr_service.model.bq_workbench_researcher import BQRWBResearcherSchema, BQRWBInstitutionalAffiliationsSchema
-from rdr_service.model.bq_workbench_workspace import (
-    BQRWBWorkspaceSchema, BQRWBWorkspaceUsersSchema, BQWorkspaceAgeSchema, BQWorkspaceRaceEthnicitySchema
+from rdr_service.model import (
+    bq_code, bq_genomics, bq_hpo, bq_organization, bq_participant_summary, bq_pdr_participant_summary,
+    # bq_questionnaires  <-- to do:  add tests for schemas in these files?
+    bq_site, bq_workbench_workspace, bq_workbench_researcher
 )
 
-# -- Resource Schema Imports
-from rdr_service.resource.schemas import CodeSchema
-from rdr_service.resource.schemas import HPOSchema
-from rdr_service.resource.schemas import OrganizationSchema
-from rdr_service.resource.schemas.participant import (
-    BiobankOrderSchema, AddressSchema, BiobankSampleSchema, GenderSchema, RaceSchema, EHRReceiptSchema,
-    PatientStatusSchema, ConsentSchema, ModuleStatusSchema, PhysicalMeasurementsSchema, ParticipantSchema
-)
-from rdr_service.resource.schemas import SiteSchema
-from rdr_service.resource.schemas.genomics import (
-    GenomicSetSchema, GenomicJobRunSchema, GenomicFileProcessedSchema, GenomicManifestFeedbackSchema,
-    GenomicManifestFileSchema, GenomicSetMemberSchema, GenomicGCValidationMetricsSchema
-)
-from rdr_service.resource.schemas.workbench_researcher import (
-    WorkbenchResearcherSchema, WorkbenchInstitutionalAffiliationsSchema
-)
-from rdr_service.resource.schemas.workbench_workspace import (
-    WorkbenchWorkspaceSchema, WorkbenchWorkspaceUsersSchema, WorkspaceAgeSchema, WorkspaceRaceEthnicitySchema
-)
+from rdr_service.resource import schemas as rschemas
 
 _excluded_bq_fields = ['id', 'created', 'modified', 'orig_id', 'orig_created', 'orig_modified']
 
@@ -54,15 +24,15 @@ class ResourceSchemaTest(BaseTestCase):
     NOTE:  These tests may be deprecated if use of BigQuery PDR is discontinued
     TODO:  Add more detail about implementing test cases that include handling field name prefixes, exclusions, etc.
     """
-
     def setup(self):
         super().setup()
 
-    def _verify_resource_schema(self, rsc_schema_obj, bq_schema_obj, bq_prefix='', exclusions=_excluded_bq_fields):
+    def _verify_resource_schema(self, rsc_name, rsc_schema_obj,
+                                bq_schema_obj, bq_prefix='', exclusions=_excluded_bq_fields):
 
         bq_field_list = sorted(self._get_bq_field_list(bq_schema_obj, bq_prefix=bq_prefix, exclusions=exclusions))
         rsc_field_list = sorted(rsc_schema_obj.fields.keys())
-        self.assertListEqual(bq_field_list, rsc_field_list)
+        self.assertListEqual(bq_field_list, rsc_field_list, "\n{0}".format(rsc_name))
 
 
     @staticmethod
@@ -80,92 +50,150 @@ class ResourceSchemaTest(BaseTestCase):
 
     # Participant data schemas
     def test_address_resource_schema(self):
-        self._verify_resource_schema(AddressSchema(), BQAddressSchema())
+        self._verify_resource_schema('AddressSchema',
+                                     rschemas.participant.AddressSchema(),
+                                     bq_participant_summary.BQAddressSchema())
 
     def test_biobank_order_resource_schema(self):
-        self._verify_resource_schema(BiobankOrderSchema(), BQBiobankOrderSchema(), bq_prefix='bbo_')
+        self._verify_resource_schema('BiobankOrderSchema',
+                                     rschemas.participant.BiobankOrderSchema(),
+                                     bq_participant_summary.BQBiobankOrderSchema(), bq_prefix='bbo_')
 
     def test_biobank_sample_resource_schema(self):
-        self._verify_resource_schema(BiobankSampleSchema(), BQBiobankSampleSchema(), bq_prefix='bbs_')
+        self._verify_resource_schema('BiobankSampleSchema',
+                                     rschemas.participant.BiobankSampleSchema(),
+                                     bq_participant_summary.BQBiobankSampleSchema(), bq_prefix='bbs_')
 
     def test_code_resource_schema(self):
         # This BQ table has an additional field not present in the resource schema
         exclusions = _excluded_bq_fields + ['bq_field_name']
-        self._verify_resource_schema(CodeSchema(), BQCodeSchema(), exclusions=exclusions)
+        self._verify_resource_schema('CodeSchema',
+                                     rschemas.CodeSchema(),
+                                     bq_code.BQCodeSchema(), exclusions=exclusions)
 
     def test_consent_resource_schema(self):
-        self._verify_resource_schema(ConsentSchema(), BQConsentSchema())
+        self._verify_resource_schema('ConsentSchema',
+                                     rschemas.participant.ConsentSchema(),
+                                     bq_participant_summary.BQConsentSchema())
 
     def test_ehr_receipt_schema(self):
-        self._verify_resource_schema(EHRReceiptSchema(), BQEhrReceiptSchema())
+        self._verify_resource_schema('EHRReceiptSchema',
+                                     rschemas.participant.EHRReceiptSchema(),
+                                     bq_participant_summary.BQEhrReceiptSchema())
 
     def test_gender_resource_schema(self):
-        self._verify_resource_schema(GenderSchema(), BQGenderSchema())
+        self._verify_resource_schema('GenderSchema',
+                                     rschemas.participant.GenderSchema(),
+                                     bq_participant_summary.BQGenderSchema())
 
     def test_hpo_resource_schema(self):
-        self._verify_resource_schema(HPOSchema(), BQHPOSchema())
+        self._verify_resource_schema('HPOSchema',
+                                     rschemas.HPOSchema(),
+                                     bq_hpo.BQHPOSchema())
 
     def test_module_status_resource_schema(self):
-        self._verify_resource_schema(ModuleStatusSchema(), BQModuleStatusSchema(), bq_prefix='mod_')
+        self._verify_resource_schema('ModuleStatusSchema',
+                                     rschemas.participant.ModuleStatusSchema(),
+                                     bq_participant_summary.BQModuleStatusSchema(), bq_prefix='mod_')
 
     def test_organization_resource_schema(self):
-        self._verify_resource_schema(OrganizationSchema(), BQOrganizationSchema())
+        self._verify_resource_schema('OrganizationSchema',
+                                     rschemas.OrganizationSchema(),
+                                     bq_organization.BQOrganizationSchema())
 
     def test_patient_status_resource_schema(self):
-        self._verify_resource_schema(PatientStatusSchema(), BQPatientStatusSchema())
+        self._verify_resource_schema('PatientStatusSchema',
+                                     rschemas.participant.PatientStatusSchema(),
+                                     bq_participant_summary.BQPatientStatusSchema())
 
     def test_participant_resource_schema(self):
-        self._verify_resource_schema(ParticipantSchema(), BQParticipantSummarySchema())
+        self._verify_resource_schema('Participant',
+                                     rschemas.ParticipantSchema(),
+                                     bq_participant_summary.BQParticipantSummarySchema())
+        self._verify_resource_schema('PDRParticipant',
+                                     rschemas.PDRParticipantSchema(),
+                                     bq_pdr_participant_summary.BQPDRParticipantSummarySchema())
 
     def test_physical_measurements_resource_schema(self):
-        self._verify_resource_schema(PhysicalMeasurementsSchema(), BQPhysicalMeasurements(), bq_prefix='pm_')
+        self._verify_resource_schema('PhysicalMeasurementsSchema',
+                                     rschemas.participant.PhysicalMeasurementsSchema(),
+                                     bq_participant_summary.BQPhysicalMeasurements(), bq_prefix='pm_')
 
     def test_race_resource_schema(self):
-        self._verify_resource_schema(RaceSchema(), BQRaceSchema())
+        self._verify_resource_schema('RaceSchema',
+                                     rschemas.participant.RaceSchema(),
+                                     bq_participant_summary.BQRaceSchema())
 
     def test_site_resource_schema(self):
-        self._verify_resource_schema(SiteSchema(), BQSiteSchema())
+        self._verify_resource_schema('SiteSchema',
+                                     rschemas.SiteSchema(),
+                                     bq_site.BQSiteSchema())
 
     # TODO:  Questionnaire-related schemas
 
     # Genomic-related schemas
     def test_genomic_set_resource_schema(self):
-        self._verify_resource_schema(GenomicSetSchema(), BQGenomicSetSchema())
+        self._verify_resource_schema('GenomicSetSchema',
+                                     rschemas.GenomicSetSchema(),
+                                     bq_genomics.BQGenomicSetSchema())
 
     def test_genomic_set_member_resource_schema(self):
-        self._verify_resource_schema(GenomicSetMemberSchema(), BQGenomicSetMemberSchema())
+        self._verify_resource_schema('GenomicSetMemberSchema',
+                                     rschemas.GenomicSetMemberSchema(),
+                                     bq_genomics.BQGenomicSetMemberSchema())
 
     def test_genomic_job_run_resource_schema(self):
-        self._verify_resource_schema(GenomicJobRunSchema(), BQGenomicJobRunSchema())
+        self._verify_resource_schema('GenomicJobRunSchema',
+                                     rschemas.GenomicJobRunSchema(),
+                                     bq_genomics.BQGenomicJobRunSchema())
 
     def test_genomic_file_processed_resource_schema(self):
-        self._verify_resource_schema(GenomicFileProcessedSchema(), BQGenomicFileProcessedSchema())
+        self._verify_resource_schema('GenomicFileProcessedSchema',
+                                     rschemas.GenomicFileProcessedSchema(),
+                                     bq_genomics.BQGenomicFileProcessedSchema())
 
     def test_genomic_manifest_file_resource_schema(self):
-        self._verify_resource_schema(GenomicManifestFileSchema(), BQGenomicManifestFileSchema())
+        self._verify_resource_schema('GenomicManifestFileSchema',
+                                     rschemas.GenomicManifestFileSchema(),
+                                     bq_genomics.BQGenomicManifestFileSchema())
 
     def test_genomic_manifest_feedback_resource_schema(self):
-        self._verify_resource_schema(GenomicManifestFeedbackSchema(), BQGenomicManifestFeedbackSchema())
+        self._verify_resource_schema('GenomicManifestFeedbackSchema',
+                                     rschemas.GenomicManifestFeedbackSchema(),
+                                     bq_genomics.BQGenomicManifestFeedbackSchema())
 
     def test_genomic_gc_validation_metrics_resource_schema(self):
-        self._verify_resource_schema(GenomicGCValidationMetricsSchema(), BQGenomicGCValidationMetricsSchema())
+        self._verify_resource_schema('GenomicGCValidationMetricsSchema',
+                                     rschemas.GenomicGCValidationMetricsSchema(),
+                                     bq_genomics.BQGenomicGCValidationMetricsSchema())
 
     # Researcher workbench related schemas
     def test_rwb_researcher_resource_schema(self):
-        self._verify_resource_schema(WorkbenchResearcherSchema(), BQRWBResearcherSchema())
+        self._verify_resource_schema('WorkbenchResearcherSchema',
+                                     rschemas.workbench_researcher.WorkbenchResearcherSchema(),
+                                     bq_workbench_researcher.BQRWBResearcherSchema())
 
     def test_rwb_institutional_affiliations_resource_schema(self):
-        self._verify_resource_schema(WorkbenchInstitutionalAffiliationsSchema(),
-                                     BQRWBInstitutionalAffiliationsSchema())
+        self._verify_resource_schema('WorkbenchInstitutionalAffiliationsSchema',
+                                     rschemas.workbench_researcher.WorkbenchInstitutionalAffiliationsSchema(),
+                                     bq_workbench_researcher.BQRWBInstitutionalAffiliationsSchema())
 
     def test_workbench_workspace_resource_schema(self):
-        self._verify_resource_schema(WorkbenchWorkspaceSchema(), BQRWBWorkspaceSchema())
+        self._verify_resource_schema('WorkbenchWorkspaceSchema',
+                                     rschemas.workbench_workspace.WorkbenchWorkspaceSchema(),
+                                     bq_workbench_workspace.BQRWBWorkspaceSchema())
 
     def test_workbench_workspace_user_resource_schema(self):
-        self._verify_resource_schema(WorkbenchWorkspaceUsersSchema(), BQRWBWorkspaceUsersSchema())
+        self._verify_resource_schema('WorkbenchWorkspaceUserSchema',
+                                     rschemas.workbench_workspace.WorkbenchWorkspaceUsersSchema(),
+                                     bq_workbench_workspace.BQRWBWorkspaceUsersSchema())
 
     def test_workbench_workspace_age_resource_schema(self):
-        self._verify_resource_schema(WorkspaceAgeSchema(), BQWorkspaceAgeSchema())
+        self._verify_resource_schema('WorkspaceAgeSchema',
+                                     rschemas.workbench_workspace.WorkspaceAgeSchema(),
+                                     bq_workbench_researcher.BQWorkspaceAgeSchema())
 
     def test_workbench_workspace_race_resource_schema(self):
-        self._verify_resource_schema(WorkspaceRaceEthnicitySchema(), BQWorkspaceRaceEthnicitySchema())
+        self._verify_resource_schema('WorkspaceRaceEthnicitySchema',
+                                     rschemas.workbench_workspace.WorkspaceRaceEthnicitySchema(),
+                                     bq_workbench_researcher.BQWorkspaceRaceEthnicitySchema())
