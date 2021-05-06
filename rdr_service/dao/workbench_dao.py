@@ -916,22 +916,34 @@ class WorkbenchResearcherDao(UpdatableDao):
         return affiliations
 
     def insert_with_session(self, session, researchers):
+        new_researcher_source_ids = []
         new_researchers = []
+        new_researchers_map = {}
         researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
         for researcher in researchers:
             is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
                                                                                        researcher.modifiedTime)
             if is_snapshot_exist:
                 continue
-            exist = self.get_researcher_by_user_id_with_session(session, researcher.userSourceId)
-            if exist:
-                for attr_name in researcher.__dict__.keys():
-                    if not attr_name.startswith('_') and attr_name != 'created':
-                        setattr(exist, attr_name, getattr(researcher, attr_name))
-                researcher.id = exist.id
-            else:
-                session.add(researcher)
-            new_researchers.append(researcher)
+            new_researchers_map[researcher.userSourceId] = researcher
+            new_researcher_source_ids.append(researcher.userSourceId)
+
+        exists = self.get_researchers_by_user_id_list_with_session(session, new_researcher_source_ids)
+        exist_researcher_source_ids = []
+        for exist in exists:
+            new_researcher = new_researchers_map[exist.userSourceId]
+            for attr_name in new_researcher.__dict__.keys():
+                if not attr_name.startswith('_') and attr_name != 'created':
+                    setattr(exist, attr_name, getattr(new_researcher, attr_name))
+            new_researcher.id = exist.id
+            exist_researcher_source_ids.append(exist.userSourceId)
+            new_researchers.append(new_researcher)
+
+        not_exist_list = list(set(new_researcher_source_ids) - set(exist_researcher_source_ids))
+        for source_id in not_exist_list:
+            session.add(new_researchers_map[source_id])
+            new_researchers.append(new_researchers_map[source_id])
+
         self._insert_history(session, new_researchers)
         return new_researchers
 
@@ -968,6 +980,9 @@ class WorkbenchResearcherDao(UpdatableDao):
     def get_researcher_by_user_id_with_session(self, session, user_id):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id) \
             .order_by(desc(WorkbenchResearcher.created)).first()
+
+    def get_researchers_by_user_id_list_with_session(self, session, user_id_list):
+        return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
 
 
 class WorkbenchResearcherHistoryDao(UpdatableDao):

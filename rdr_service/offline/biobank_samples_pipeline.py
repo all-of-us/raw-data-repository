@@ -11,7 +11,7 @@ import os
 import pytz
 from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, or_
 from sqlalchemy.sql.functions import concat
 
 from rdr_service import clock, config
@@ -33,7 +33,8 @@ from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
+from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value,\
+    WithdrawalStatus
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = "%Y-%m-%d"
@@ -319,6 +320,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     (as biobank samples for Native Americans are disposed of differently)
     """
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
+    earliest_report_date = now - datetime.timedelta(days=report_cover_range)
     withdrawal_report_query = (
         Query([
             concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
@@ -336,12 +338,15 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
         ])
         .select_from(Participant)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
+        .join(BiobankStoredSample, BiobankStoredSample.biobankId == Participant.biobankId)
         .filter(
-            Participant.withdrawalTime >= now - datetime.timedelta(days=report_cover_range),
-            Query(BiobankStoredSample).filter(
-                BiobankStoredSample.biobankId == Participant.biobankId
-            ).exists()
+            Participant.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+            or_(
+                Participant.withdrawalTime >= earliest_report_date,
+                BiobankStoredSample.created >= earliest_report_date
+            )
         )
+        .distinct()
     )
 
     exporter.run_export(file_path, withdrawal_report_query, backup=True)
