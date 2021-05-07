@@ -12,9 +12,7 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException, InternalServerError
 
-from rdr_service import config_api
-from rdr_service import version_api
-from rdr_service import app_util
+from rdr_service import app_util, config_api, version_api
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
@@ -72,6 +70,8 @@ got_request_exception.connect(_log_request_exception, app)
 #
 
 api = Api(app)
+app_util.install_rate_limiting(app)
+
 
 api.add_resource(
     ParticipantApi,
