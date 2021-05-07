@@ -20,6 +20,10 @@ from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     # pylint: disable=unused-argument
     def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
         super(UpdateEhrStatusMakeJobsTestCase, self).setUp()
