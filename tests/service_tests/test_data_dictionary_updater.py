@@ -6,6 +6,10 @@ from tests.service_tests.test_google_sheets_client import GoogleSheetsTestBase
 
 
 class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = True
+
     def setUp(self, **kwargs) -> None:
         super(DataDictionaryUpdaterTest, self).setUp(**kwargs)
 
