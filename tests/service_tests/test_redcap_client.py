@@ -6,6 +6,9 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class CodesManagementTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
 
     def setUp(self, **kwargs):
         super(CodesManagementTest, self).setUp(**kwargs)

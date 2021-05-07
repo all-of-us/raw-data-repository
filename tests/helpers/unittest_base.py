@@ -491,6 +491,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
         self.config_data_to_reset = {}
+        self.uses_database = True
 
     def _set_up_test_suite(self):
         self.setup_config()
@@ -513,18 +514,20 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.setup_storage()
         self.app = main.app.test_client()
 
-        reset_mysql_instance(with_data, with_consent_codes)
-
         # Allow printing the full diff report on errors.
         self.maxDiff = None
         self._consent_questionnaire_id = None
 
-        self.session = database_factory.get_database().make_session()
-        self.data_generator = DataGenerator(self.session, self.fake)
+        if self.uses_database:
+            reset_mysql_instance(with_data, with_consent_codes)
+
+            self.session = database_factory.get_database().make_session()
+            self.data_generator = DataGenerator(self.session, self.fake)
 
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
-        self.session.close()
+        if self.uses_database:
+            self.session.close()
 
         for key, original_data in self.config_data_to_reset.items():
             config.override_setting(key, original_data)

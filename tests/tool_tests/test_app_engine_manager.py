@@ -5,6 +5,10 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class AppEngineManagerTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def test_deploy_date_calculation(self):
         expected_release_date = 'Jan 21, 2021'
 

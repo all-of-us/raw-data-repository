@@ -5,6 +5,10 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class DateCollectionTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     @staticmethod
     def _build_simple_intersection(start_of_first, end_of_first, start_of_second, end_of_second):
         first = DateCollection()

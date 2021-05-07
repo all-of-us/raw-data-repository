@@ -7,6 +7,10 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class GCPLoggingTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def test_published_severity_level(self):
         """Ensure that the severity level used is the highest of the individual logs being published"""
 

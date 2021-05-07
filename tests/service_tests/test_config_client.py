@@ -6,6 +6,10 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class ConfigClientTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def setUp(self, **kwargs) -> None:
         super(ConfigClientTest, self).setUp(**kwargs)
 
