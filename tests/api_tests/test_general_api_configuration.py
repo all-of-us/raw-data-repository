@@ -27,7 +27,7 @@ class FlaskAppConfigTest(BaseTestCase):
         """Integration test to ensure that the API requests are rate limited"""
 
         did_reach_rate_limit = False
-        for _ in range(30):
+        for _ in range(110):
             response = self.send_get('Participant', expected_status=None)
             if response.status_code == TooManyRequests.code:
                 did_reach_rate_limit = True
@@ -57,7 +57,7 @@ class FlaskAppConfigTest(BaseTestCase):
 
     def _reach_rate_limit(self, url):
         has_hit_limit = False
-        for _ in range(30):
+        for _ in range(110):
             response = self.send_get(url, expected_status=None)
             if response.status_code == TooManyRequests.code:
                 has_hit_limit = True
