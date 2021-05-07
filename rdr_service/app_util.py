@@ -395,7 +395,7 @@ def is_care_evo_and_not_prod():
 
 def install_rate_limiting(app):
     cache_location = config.getSettingJson('cache_storage_location', default='memory://')
-    default_rate_limit = config.getSettingJson('default_rate_limit', '15/second')
+    default_rate_limit = config.getSettingJson('default_rate_limit', default='15/second')
     Limiter(
         app,
         key_func=lambda: get_oauth_id() or get_remote_address(),

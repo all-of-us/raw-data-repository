@@ -17,11 +17,13 @@ class FlaskAppConfigTest(BaseTestCase):
             mock.patch('rdr_service.api.deceased_report_api.DeceasedReportApi.post', return_value='success'),
             mock.patch('rdr_service.dao.database_factory.get_database')  # Prevents errors in DAO inits
         ]
-        [patcher.start() for patcher in self.api_patches]
+        for patcher in self.api_patches:
+            patcher.start()
 
     def tearDown(self):
         super(FlaskAppConfigTest, self).tearDown()
-        [patcher.stop() for patcher in self.api_patches]
+        for patcher in self.api_patches:
+            patcher.stop()
 
     def test_api_requests_limited(self):
         """Integration test to ensure that the API requests are rate limited"""
@@ -46,7 +48,7 @@ class FlaskAppConfigTest(BaseTestCase):
         with mock.patch('rdr_service.app_util.config.LOCAL_AUTH_USER', 'another@me.com'):
             self.send_get(url, expected_status=200)
 
-    def test_endpoints_individually_limited(self):
+    def test_distinct_endpoint_limits(self):
         """Make sure that when a limit is reached on one endpoint, another is still available"""
 
         # Hit the rate limit for the Participant endpoint
