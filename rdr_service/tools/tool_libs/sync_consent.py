@@ -24,8 +24,8 @@ SOURCE_BUCKET = {
 
 
 class SyncConsentClass(ToolBase):
-    def __init__(self, args, gcp_env):
-        super(SyncConsentClass, self).__init__(args, gcp_env)
+    def __init__(self, *args, **kwargs):
+        super(SyncConsentClass, self).__init__(*args, **kwargs)
         self.file_filter = "pdf"
 
     @staticmethod
@@ -164,6 +164,10 @@ def add_additional_arguments(parser):
     parser.add_argument("--all-files", help="Transfer all file types, default is only PDF.",
                         default=False, action="store_true")
     parser.add_argument('--pid-file', help="File with list of pids to sync", default=None, type=str)
+    parser.add_argument("--debug", help="Enable debug output", default=False, action="store_true")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Do not copy files, only print the list of files that would be copied"
+    )
 
     # todo: add functionality for using the server to zip consent files
 
