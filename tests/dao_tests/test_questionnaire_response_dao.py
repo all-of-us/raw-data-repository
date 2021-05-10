@@ -1332,6 +1332,9 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
 
 
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
 
     def test_file_exists(self):
         consent_pdf_path = "/%s/Participant/somefile.pdf" % _FAKE_BUCKET['example']

@@ -143,7 +143,8 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
-    def test_end_to_end(self):
+    @mock.patch('rdr_service.offline.biobank_samples_pipeline.dispatch_participant_rebuild_tasks')
+    def test_end_to_end(self, mock_dispatch_rebuild):
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
 
         self.clear_default_storage()
@@ -241,6 +242,12 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             ParticipantSummary.participantId == no_order_1sal2_participant_id
         ).one()
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
+
+        # Check for bigquery_sync record updates.  Only expect updates for the pids with orders
+        rebuilt_participant_list = mock_dispatch_rebuild.call_args[0][0]
+        self.assertIn(on_site_1sal2_participant_id, rebuilt_participant_list)
+        self.assertIn(mail_kit_1sal2_participant_id, rebuilt_participant_list)
+        self.assertNotIn(no_order_1sal2_participant_id, rebuilt_participant_list)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()
