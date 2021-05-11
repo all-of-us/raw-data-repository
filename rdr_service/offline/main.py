@@ -740,11 +740,6 @@ def _build_pipeline_app():
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW4Workflow",
-        endpoint="genomic_aw4_workflow",
-        view_func=genomic_aw4_workflow, methods=["GET"]
-    )
     # END Genomic Pipeline Jobs
 
     # BEGIN Genomic Data Quality Jobs

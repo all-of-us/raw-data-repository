@@ -71,6 +71,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestAW2ManifestTaskApi",
                       endpoint="ingest_aw2_manifest_task", methods=["POST"])
 
+    # Ingest AW4 manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestAW4ManifestTaskApi,
+                      TASK_PREFIX + "IngestAW4ManifestTaskApi",
+                      endpoint="ingest_aw4_manifest_task", methods=["POST"])
+
     # Ingest AW5 manifest
     _api.add_resource(genomic_cloud_tasks_api.IngestAW5ManifestTaskApi,
                       TASK_PREFIX + "IngestAW5ManifestTaskApi",

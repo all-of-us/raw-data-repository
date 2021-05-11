@@ -362,6 +362,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW1_MANIFEST,
         GenomicJob.AW1F_MANIFEST,
         GenomicJob.METRICS_INGESTION,
+        GenomicJob.AW4_ARRAY_WORKFLOW,
+        GenomicJob.AW4_WGS_WORKFLOW,
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST
     ):
