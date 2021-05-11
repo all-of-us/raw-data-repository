@@ -50,7 +50,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
-        _logger.info(f"file found: {self.event.attributes.objectId}")
+        _logger.info(f"File found: {self.event.attributes.objectId}")
 
         object_id = self.event.attributes.objectId.lower()
         task_key = None

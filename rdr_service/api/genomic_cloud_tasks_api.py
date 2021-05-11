@@ -78,6 +78,8 @@ class IngestAW1ManifestTaskApi(Resource):
             }
         }
 
+        logging.info(f'AW1 task data: {task_data}')
+
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
@@ -106,6 +108,8 @@ class IngestAW2ManifestTaskApi(Resource):
                 "file_path": data["file_path"],
             }
         }
+
+        logging.info(f'AW2 task data: {task_data}')
 
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
@@ -146,6 +150,7 @@ class IngestAW4ManifestTaskApi(Resource):
             }
         }
 
+        logging.info(f'AW4 task data: {task_data}')
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
@@ -185,6 +190,7 @@ class IngestAW5ManifestTaskApi(Resource):
             }
         }
 
+        logging.info(f'AW5 task data: {task_data}')
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
@@ -239,6 +245,9 @@ class CalculateRecordCountTaskApi(Resource):
                 "job": GenomicJob.CALCULATE_RECORD_COUNT_AW1,
                 "manifest_file": manifest_file_obj
             }
+
+            logging.info(f'Calculate Record Count task data: {task_data}')
+
             # Call pipeline function
             genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
 
