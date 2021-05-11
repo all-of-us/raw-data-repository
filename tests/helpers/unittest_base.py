@@ -26,6 +26,7 @@ from rdr_service import main
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory
+from rdr_service.dao.bq_code_dao import BQCodeGenerator
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.code_dao import CodeDao
@@ -36,6 +37,7 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
+from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from rdr_service.resource.generators.pdr_participant import PDRParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
@@ -388,30 +390,36 @@ class PDRGeneratorTestMixin:
     """ Base class for invoking PDR / resource data generators from any unittest """
 
     # Create generator objects for each of the supported generated data types
+    bq_code_gen = BQCodeGenerator()
     bq_participant_summary_gen = BQParticipantSummaryGenerator()
     bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
+    code_resource_gen = CodeGenerator()
     participant_resource_gen = ParticipantSummaryGenerator()
     pdr_participant_gen = PDRParticipantSummaryGenerator()
+
+    def make_bq_code(self, code_id, to_dict=True):
+        """ Create generated resource data for bigquery_sync table 'code' records """
+        gen_data = self.bq_code_gen.make_bqrecord(code_id)
+        return gen_data.to_dict(serialize=True) if to_dict else gen_data
+
+    def make_code_resource(self, code_id, get_data=True):
+        """ Create generated resource data for code resource type """
+        gen_data = self.code_resource_gen.make_resource(code_id)
+        return gen_data.get_data() if get_data else gen_data
 
     def make_bq_participant_summary(self, participant_id, to_dict=True):
         """ Create generated resource data for bigquery_sync table pdr_participant records """
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.bq_participant_summary_gen.make_bqrecord(participant_id)
         # Return data as a dict by default; caller can override to get the BQRecord object
-        if to_dict:
-            return gen_data.to_dict(serialize=True)
-        else:
-            return gen_data
+        return gen_data.to_dict(serialize=True) if to_dict else gen_data
 
     def make_participant_resource(self, participant_id, get_data=True):
         """ Create generated resource data for resource table participant records """
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.participant_resource_gen.make_resource(participant_id)
         # Return data as a dict by default; caller can override to get the ResourceRecordSet object
-        if get_data:
-            return gen_data.get_data()
-        else:
-            return gen_data
+        return gen_data.get_data() if get_data else gen_data
 
     def make_pdr_participant_summary(self, participant_id, ps_rsc=None, get_data=True):
         """ Create generated resource data for resource table pdr_participant records
@@ -420,10 +428,7 @@ class PDRGeneratorTestMixin:
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.pdr_participant_gen.make_resource(participant_id, ps_rsc)
         # Return data as a dict by default; caller can override to get the ResourceRecordSet object
-        if get_data:
-            return gen_data.get_data()
-        else:
-            return gen_data
+        return gen_data.get_data() if get_data else gen_data
 
     def make_bq_questionnaire_response(self, participant_id, module_id, latest=False, convert_to_enum=False):
         """ Create generated resource data for bigquery_sync pdr_mod_<module_id> table records """

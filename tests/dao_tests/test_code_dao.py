@@ -5,7 +5,7 @@ from werkzeug.exceptions import BadRequest
 from rdr_service.clock import FakeClock
 from rdr_service.dao.code_dao import CodeBookDao, CodeDao, CodeHistoryDao
 from rdr_service.model.code import Code, CodeBook, CodeHistory, CodeType
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 TIME = datetime.datetime(2016, 1, 1, 10, 0)
 TIME_2 = datetime.datetime(2016, 1, 2, 10, 0)
@@ -13,7 +13,7 @@ TIME_3 = datetime.datetime(2016, 1, 3, 10, 0)
 TIME_4 = datetime.datetime(2016, 1, 4, 10, 0)
 
 
-class CodeDaoTest(BaseTestCase):
+class CodeDaoTest(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self):
         super().setUp()
         self.code_book_dao = CodeBookDao()
@@ -121,6 +121,12 @@ class CodeDaoTest(BaseTestCase):
             parentId=1,
         )
         self.assertEqual(expected_code_2.asdict(), self.code_dao.get(2).asdict())
+
+        # Test code resource generators:
+        bq_code_data = self.make_bq_code(1)
+        code_resource_data = self.make_code_resource(1)
+        self.assertNotEmpty(bq_code_data)
+        self.assertNotEmpty(code_resource_data)
 
     def test_insert_second_codebook_same_system(self):
         code_book_1 = CodeBook(name="pmi", version="v1", system="a")

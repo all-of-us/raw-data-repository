@@ -9,7 +9,7 @@ from marshmallow import validate
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
-    WithdrawalAIANCeremonyStatus
+    WithdrawalAIANCeremonyStatus, BiobankOrderStatus
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -142,8 +142,8 @@ class BiobankOrderSchema(Schema):
     """
     biobank_order_id = fields.String(validate=validate.Length(max=80))
     order_created = fields.DateTime()
-    status = fields.EnumString(enum=OrderStatus)
-    status_id = fields.EnumInteger(enum=OrderStatus)
+    status = fields.EnumString(enum=BiobankOrderStatus)
+    status_id = fields.EnumInteger(enum=BiobankOrderStatus)
     dv_order = fields.Boolean()
     collected_site = fields.String(validate=validate.Length(max=255))
     collected_site_id = fields.Int32()
@@ -154,6 +154,9 @@ class BiobankOrderSchema(Schema):
     samples = fields.Nested(BiobankSampleSchema, many=True)
     tests_ordered = fields.Int32()
     tests_stored = fields.Int32()
+    finalized_time = fields.DateTime()
+    finalized_status = fields.EnumString(enum=OrderStatus)
+    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
 
     class Meta:
         schema_id = SchemaID.participant_biobank_orders

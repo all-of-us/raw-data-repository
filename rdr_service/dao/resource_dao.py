@@ -57,12 +57,12 @@ class ResourceDataDao(UpsertableDao):
             if schema:
                 # Check for Enum column type and convert to Enum if needed.
                 _field = schema.get_field(key)
-                if type(_field) in (EnumString, EnumInteger):
+                if type(_field) == EnumString:
                     value = _field.enum(value)
                     # check for a (key + '_id') field to support for both EnumString and EnumInteger columns in schema.
                     _field = schema.get_field(key + '_id')
-                    if _field and type(_field) in (EnumString, EnumInteger):
-                        data[key + '_id'] = value
+                    if _field and type(_field) == EnumInteger:
+                        data[key + '_id'] = int(_field.enum(value))
 
             data[key] = value
 

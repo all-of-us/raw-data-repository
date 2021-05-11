@@ -11,7 +11,7 @@ class BQCodeSchema(BQSchema):
     value = BQField('value', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     display = BQField('display', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     topic = BQField('topic', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    code_type = BQField('code_type', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    code_type = BQField('code_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mapped = BQField('mapped', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     code_book_id = BQField('code_book_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     parent_id = BQField('parent_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -21,6 +21,7 @@ class BQCodeSchema(BQSchema):
     # requirements, bq_field_name may be a slightly modified version of value/short_value (e.g., spaces or /
     # replaced with _) that can be used in a BigQuery schema instead
     bq_field_name = BQField('bq_field_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    code_type_id = BQField('code_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQCode(BQTable):
