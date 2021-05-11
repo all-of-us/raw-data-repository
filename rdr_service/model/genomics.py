@@ -559,7 +559,7 @@ class GenomicGCValidationMetrics(Base):
 
     gvcfReceived = Column('gvcf_received', SmallInteger, nullable=False, default=0)
     gvcfDeleted = Column('gvcf_deleted', SmallInteger, nullable=False, default=0)
-    gvcfPath = Column('gvcf_path', String(255), nullable=True)
+    gvcfPath = Column('gvcf_path', String(512), nullable=True)
 
     gvcfMd5Received = Column('gvcf_md5_received', SmallInteger, nullable=False, default=0)
     gvcfMd5Deleted = Column('gvcf_md5_deleted', SmallInteger, nullable=False, default=0)
@@ -567,7 +567,7 @@ class GenomicGCValidationMetrics(Base):
 
     # Ignore Record
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
-    devNote = Column('dev_note', String(255), nullable=True)
+    devNote = Column('dev_note', String(512), nullable=True)
 
     # Contamination category
     contaminationCategory = Column('contamination_category',
