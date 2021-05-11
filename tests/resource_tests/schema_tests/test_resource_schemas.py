@@ -97,7 +97,6 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.participant.ConsentSchema(),
                                      bq_participant_summary.BQConsentSchema())
 
-    @unittest.skip("EHRReceiptSchema deltas not resolved")
     def test_ehr_receipt_schema(self):
         self._verify_resource_schema('EHRReceiptSchema',
                                      rschemas.participant.EHRReceiptSchema(),
@@ -108,7 +107,6 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.participant.GenderSchema(),
                                      bq_participant_summary.BQGenderSchema())
 
-    @unittest.skip("HPOSchema deltas not resolved")
     def test_hpo_resource_schema(self):
         self._verify_resource_schema('HPOSchema',
                                      rschemas.HPOSchema(),

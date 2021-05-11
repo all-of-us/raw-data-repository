@@ -191,7 +191,8 @@ class EHRReceiptSchema(Schema):
     """
     Participant EHR status records.
     """
-    participant_ehr_receipt_id = fields.Int32()
+    # TODO:  Confirm if this can be removed?
+    # participant_ehr_receipt_id = fields.Int32()
     file_timestamp = fields.DateTime()
     first_seen = fields.DateTime()
     last_seen = fields.DateTime()

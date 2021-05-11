@@ -4,8 +4,9 @@ from sqlalchemy.sql import text
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_hpo import BQHPOSchema, BQHPO
+from rdr_service.model.bq_hpo import BQHPOSchema, BQHPO, BQOrganizationTypeEnum, BQObsoleteStatusEnum
 from rdr_service.model.hpo import HPO
+
 
 
 class BQHPOGenerator(BigQueryGenerator):
@@ -25,6 +26,10 @@ class BQHPOGenerator(BigQueryGenerator):
         with ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from hpo where hpo_id = :id'), {'id': hpo_id}).first()
             data = ro_dao.to_dict(row)
+            data['is_obsolete_id'] = int(BQObsoleteStatusEnum(data['is_obsolete']))
+            data['is_obsolete'] = str(BQObsoleteStatusEnum(data['is_obsolete_id']))
+            data['organization_type_id'] = int(BQOrganizationTypeEnum(data['organization_type']))
+            data['organization_type'] = str(BQOrganizationTypeEnum(data['organization_type_id']))
             return BQRecord(schema=BQHPOSchema, data=data, convert_to_enum=convert_to_enum)
 
 
