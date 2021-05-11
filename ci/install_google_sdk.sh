@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #
 # Install the Google Cloud SDK
 #
