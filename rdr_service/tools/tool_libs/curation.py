@@ -266,6 +266,7 @@ class CurationExportClass(ToolBase):
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
+            SrcClean.external_id: Participant.externalId,
             SrcClean.survey_name: module_code.value,
             SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
             SrcClean.question_ppi_code: question_code.shortValue,
