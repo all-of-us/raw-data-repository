@@ -9,22 +9,36 @@ from tests.helpers.unittest_base import BaseTestCase
 
 # -- BQ model imports
 from rdr_service.model import (
-    bq_code, bq_genomics, bq_hpo, bq_organization, bq_participant_summary, bq_pdr_participant_summary,
+    bq_code, bq_genomics, bq_hpo, bq_organization, bq_participant_summary,
     # bq_questionnaires  <-- to do:  add tests for schemas in these files?
     bq_site, bq_workbench_workspace, bq_workbench_researcher
 )
 
 from rdr_service.resource import schemas as rschemas
 
-# Fields from the BQ schemas which should be excluded from comparison.  If the resource schema contains these
+# Common fields from all the BQ schemas which should be excluded from comparison.  If the resource schema contains these
 # field names, the names will be translated automatically by the pipeline to add an 'orig_' prefix for the
 # BigQuery or PostgreSQL tables
-_excluded_bq_fields = ['id', 'created', 'modified']
+_default_excluded_fields = ['id', 'created', 'modified']
+
+# Any additional "per schema" exclusions that may not be present in the corresponding resource schema
+bq_field_exclusions = {
+    'CodeSchema': ['bq_field_name']
+}
+
+# Fields from the resource schemas that do not exist in the BQ schema
+rsc_field_exclusions = {
+    'EhrReceiptSchema': ['participant_ehr_receipt_id'],
+    'HPOSchema': ['comment'],
+    'PatientStatusSchema': ['comment', 'patient_status_history_id', 'user'],
+    'PhysicalMeasurementsSchema': ['physical_measurements_id']
+
+}
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
-# and the resource schemas, so that the tests will not flag them as failures
+# and the resource schemas
 bq_field_name_mappings = {
-    # Each item is a dict where key is the bq field name and value is the related resource schema field
+    # Each item is a dict where key is the bq field name and value is the related resource schema field name
     'BiobankOrderSchema': {
         'bbo_created': 'order_created'
     },
@@ -45,13 +59,25 @@ class ResourceSchemaTest(BaseTestCase):
         super().setup()
 
     def _verify_resource_schema(self, rsc_name, rsc_schema_obj,
-                                bq_schema_obj, bq_prefix='', exclusions=_excluded_bq_fields):
+                                bq_schema_obj, bq_prefix=''):
+
+        # Some schemas may have fields we don't intend to include in the resource schemas; otherwise, use
+        # the default exclusions list
+        if rsc_name in bq_field_exclusions.keys():
+            exclusions = _default_excluded_fields + bq_field_exclusions[rsc_name]
+        else:
+            exclusions = _default_excluded_fields
 
         bq_field_list = sorted(self._get_bq_field_list(bq_schema_obj, rsc_name,
                                                        bq_prefix=bq_prefix, exclusions=exclusions))
         rsc_field_list = sorted(rsc_schema_obj.fields.keys())
-        self.assertListEqual(bq_field_list, rsc_field_list, "\n{0}".format(rsc_name))
 
+        # Some resource schemas may have fields that are not part of the BQ schemas (especially for resource schemas
+        # that relate to BQ nested record schemas);  filter those out of the resource schema field list to be compared
+        if rsc_name in rsc_field_exclusions.keys():
+            rsc_field_list = list(filter(lambda x: x not in list(rsc_field_exclusions[rsc_name]), rsc_field_list))
+
+        self.assertListEqual(bq_field_list, rsc_field_list, "\n{0}".format(rsc_name))
 
     @staticmethod
     def _get_bq_field_list(bq_schema, rsc_name, bq_prefix='', exclusions=[]):
@@ -90,11 +116,9 @@ class ResourceSchemaTest(BaseTestCase):
                                      bq_participant_summary.BQBiobankSampleSchema(), bq_prefix='bbs_')
 
     def test_code_resource_schema(self):
-        # This BQ table has an additional field not present in the resource schema
-        exclusions = _excluded_bq_fields + ['bq_field_name']
         self._verify_resource_schema('CodeSchema',
                                      rschemas.CodeSchema(),
-                                     bq_code.BQCodeSchema(), exclusions=exclusions)
+                                     bq_code.BQCodeSchema())
 
     def test_consent_resource_schema(self):
         self._verify_resource_schema('ConsentSchema',
@@ -102,8 +126,8 @@ class ResourceSchemaTest(BaseTestCase):
                                      bq_participant_summary.BQConsentSchema())
 
     def test_ehr_receipt_schema(self):
-        self._verify_resource_schema('EHRReceiptSchema',
-                                     rschemas.participant.EHRReceiptSchema(),
+        self._verify_resource_schema('EhrReceiptSchema',
+                                     rschemas.participant.EhrReceiptSchema(),
                                      bq_participant_summary.BQEhrReceiptSchema())
 
     def test_gender_resource_schema(self):
@@ -126,22 +150,17 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.OrganizationSchema(),
                                      bq_organization.BQOrganizationSchema())
 
-    @unittest.skip("PatientStatusSchema deltas not resolved")
     def test_patient_status_resource_schema(self):
         self._verify_resource_schema('PatientStatusSchema',
                                      rschemas.participant.PatientStatusSchema(),
                                      bq_participant_summary.BQPatientStatusSchema())
 
-    @unittest.skip("PDRParticipantSchema deltas not resolved")
     def test_participant_resource_schema(self):
-        self._verify_resource_schema('ParticipantSchmea',
+        self._verify_resource_schema('ParticipantSchema',
                                      rschemas.ParticipantSchema(),
                                      bq_participant_summary.BQParticipantSummarySchema())
-        self._verify_resource_schema('PDRParticipantSchema',
-                                     rschemas.PDRParticipantSchema(),
-                                     bq_pdr_participant_summary.BQPDRParticipantSummarySchema())
 
-    @unittest.skip("PhysicalMeasurementsSchema deltas not resolved")
+
     def test_physical_measurements_resource_schema(self):
         self._verify_resource_schema('PhysicalMeasurementsSchema',
                                      rschemas.participant.PhysicalMeasurementsSchema(),
@@ -151,7 +170,7 @@ class ResourceSchemaTest(BaseTestCase):
         self._verify_resource_schema('RaceSchema',
                                      rschemas.participant.RaceSchema(),
                                      bq_participant_summary.BQRaceSchema())
-    @unittest.skip("SiteSchema deltas not resolved")
+
     def test_site_resource_schema(self):
         self._verify_resource_schema('SiteSchema',
                                      rschemas.SiteSchema(),

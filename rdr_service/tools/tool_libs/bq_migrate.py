@@ -288,7 +288,7 @@ class BQMigration(object):
                                 if not hasattr(ls_obj, attr):
                                     _logger.error(f'\tField {attr} missing from local {table_id} schema ')
                             for attr in dir(ls_obj):
-                                if attr in ['_fields', '_module', '_excluded_fields'] or \
+                                if attr in ['_fields', '_module', '_default_excluded_fields'] or \
                                 callable(getattr(ls_obj, attr)):
                                     continue
                                 if not hasattr(rs_obj, attr):

@@ -25,11 +25,11 @@ class BQHPOSchema(BQSchema):
     organization_type = BQField('organization_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                 fld_enum=BQOrganizationTypeEnum)
     organization_type_id = BQField('organization_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                                fld_enum=BQOrganizationTypeEnum)
+                                   fld_enum=BQOrganizationTypeEnum)
     is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQObsoleteStatusEnum)
     is_obsolete_id = BQField('is_obsolete_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
-                          fld_enum=BQObsoleteStatusEnum)
+                             fld_enum=BQObsoleteStatusEnum)
 
 
 

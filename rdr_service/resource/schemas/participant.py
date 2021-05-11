@@ -133,7 +133,7 @@ class BiobankSampleSchema(Schema):
 
     class Meta:
         schema_id = SchemaID.participant_biobank_order_samples
-        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples'
+        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/BiobankSamples'
 
 
 class BiobankOrderSchema(Schema):
@@ -167,7 +167,7 @@ class PatientStatusSchema(Schema):
     """
     Patient Status History: PatientStatusFlag Enum
     """
-    patent_status_history_id = fields.Int32()
+    patient_status_history_id = fields.Int32()
     patient_status_created = fields.DateTime()
     patient_status_modified = fields.DateTime()
     patient_status_authored = fields.DateTime()
@@ -187,12 +187,12 @@ class PatientStatusSchema(Schema):
         resource_uri = 'Participant/{participant_id}/PatientStatuses'
 
 
-class EHRReceiptSchema(Schema):
+class EhrReceiptSchema(Schema):
     """
     Participant EHR status records.
     """
-    # TODO:  Confirm if this can be removed?
-    # participant_ehr_receipt_id = fields.Int32()
+    # TODO:  Confirm if this should be the resource_pk_id in the Meta data?
+    participant_ehr_receipt_id = fields.Int32()
     file_timestamp = fields.DateTime()
     first_seen = fields.DateTime()
     last_seen = fields.DateTime()
@@ -305,7 +305,7 @@ class ParticipantSchema(Schema):
     was_ehr_data_available = fields.Boolean()
     first_ehr_receipt_time = fields.DateTime()
     latest_ehr_receipt_time = fields.DateTime()
-    ehr_receipts = fields.Nested(EHRReceiptSchema, many=True)
+    ehr_receipts = fields.Nested(EhrReceiptSchema, many=True)
 
 
     class Meta:

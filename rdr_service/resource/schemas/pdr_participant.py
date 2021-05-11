@@ -9,7 +9,7 @@ from rdr_service.participant_enums import ParticipantCohort, PhysicalMeasurement
     SuspensionStatus, DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.schemas.participant import RaceSchema, GenderSchema, ModuleStatusSchema, ConsentSchema, \
-    PatientStatusSchema, BiobankOrderSchema, EHRReceiptSchema
+    PatientStatusSchema, BiobankOrderSchema, EhrReceiptSchema
 from rdr_service.resource.constants import SchemaID
 
 
@@ -146,7 +146,7 @@ class PDRParticipantSchema(Schema):
     was_ehr_data_available = fields.Boolean()
     first_ehr_receipt_time = fields.DateTime()
     latest_ehr_receipt_time = fields.DateTime()
-    ehr_receipts = fields.Nested(EHRReceiptSchema, many=True)
+    ehr_receipts = fields.Nested(EhrReceiptSchema, many=True)
 
     # PDR-176: Participant deceased status info
     deceased_status = fields.EnumString(enum=DeceasedStatus)

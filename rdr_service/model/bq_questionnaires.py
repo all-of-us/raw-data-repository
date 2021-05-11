@@ -319,7 +319,7 @@ class BQPDRTheBasicsView(BQView):
 #
 # Lifestyle
 #
-# Note:  Must add the comma after a single element in the _excluded_fields list so it is still treated like a
+# Note:  Must add the comma after a single element in the _default_excluded_fields list so it is still treated like a
 # list of strings in a comprehension (vs. a list of chars from the single string)
 class BQPDRLifestyleSchema(_BQModuleSchema):
     """ Lifestyle Module """
