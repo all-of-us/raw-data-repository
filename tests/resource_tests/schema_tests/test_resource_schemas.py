@@ -27,6 +27,10 @@ bq_field_name_mappings = {
     # Each item is a dict where key is the bq field name and value is the related resource schema field
     'BiobankOrderSchema': {
         'bbo_created': 'order_created'
+    },
+    'ModuleStatusSchema': {
+        'mod_created': 'module_created',
+        'mod_authored': 'module_authored',
     }
 }
 
@@ -112,7 +116,6 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.HPOSchema(),
                                      bq_hpo.BQHPOSchema())
 
-    @unittest.skip("ModuleStatusSchema deltas not resolved")
     def test_module_status_resource_schema(self):
         self._verify_resource_schema('ModuleStatusSchema',
                                      rschemas.participant.ModuleStatusSchema(),

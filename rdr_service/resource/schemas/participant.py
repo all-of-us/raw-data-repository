@@ -50,8 +50,8 @@ class ModuleStatusSchema(Schema):
     status = fields.EnumString(enum=QuestionnaireStatus)
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
     external_id = fields.String(validate=validate.Length(max=120))
-    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
-    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
+    response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+    response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
 
     class Meta:
         schema_id = SchemaID.participant_modules
