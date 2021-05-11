@@ -3,7 +3,6 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from .participant import ParticipantSchema
-from .pdr_participant import PDRParticipantSchema
 from .code import CodeSchema
 from .hpo import HPOSchema
 from .organization import OrganizationSchema
@@ -18,7 +17,6 @@ from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSch
 
 __all__ = [
     'ParticipantSchema',
-    'PDRParticipantSchema',
     'CodeSchema',
     'HPOSchema',
     'OrganizationSchema',
