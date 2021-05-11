@@ -23,7 +23,7 @@ _default_excluded_fields = ['id', 'created', 'modified']
 
 # Any additional "per schema" exclusions that may not be present in the corresponding resource schema
 bq_field_exclusions = {
-    'CodeSchema': ['bq_field_name']
+    'CodeSchema': ['bq_field_name'],
 }
 
 # Fields from the resource schemas that do not exist in the BQ schema
@@ -31,8 +31,7 @@ rsc_field_exclusions = {
     'EhrReceiptSchema': ['participant_ehr_receipt_id'],
     'HPOSchema': ['comment'],
     'PatientStatusSchema': ['comment', 'patient_status_history_id', 'user'],
-    'PhysicalMeasurementsSchema': ['physical_measurements_id']
-
+    'PhysicalMeasurementsSchema': ['physical_measurements_id'],
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
@@ -45,7 +44,7 @@ bq_field_name_mappings = {
     'ModuleStatusSchema': {
         'mod_created': 'module_created',
         'mod_authored': 'module_authored',
-    }
+    },
 }
 
 
@@ -179,29 +178,26 @@ class ResourceSchemaTest(BaseTestCase):
     # TODO:  Questionnaire-related schemas
 
     # Genomic-related schemas
-    @unittest.skip("GenomicSetSchema deltas not resolved")
+
     def test_genomic_set_resource_schema(self):
         self._verify_resource_schema('GenomicSetSchema',
                                      rschemas.GenomicSetSchema(),
-                                     bq_genomics.BQGenomicSetSchema())
+                                     bq_genomics.BQGenomicSetSchema(), bq_prefix="orig_")
 
-    @unittest.skip("GenomicSetMemberSchema deltas not resolved")
     def test_genomic_set_member_resource_schema(self):
         self._verify_resource_schema('GenomicSetMemberSchema',
                                      rschemas.GenomicSetMemberSchema(),
-                                     bq_genomics.BQGenomicSetMemberSchema())
+                                     bq_genomics.BQGenomicSetMemberSchema(), bq_prefix="orig_")
 
-    @unittest.skip("GenomicJobRunSchema deltas not resolved")
     def test_genomic_job_run_resource_schema(self):
         self._verify_resource_schema('GenomicJobRunSchema',
                                      rschemas.GenomicJobRunSchema(),
-                                     bq_genomics.BQGenomicJobRunSchema())
+                                     bq_genomics.BQGenomicJobRunSchema(), bq_prefix="orig_")
 
-    @unittest.skip("GenomicFileProcessedSchema deltas not resolved")
     def test_genomic_file_processed_resource_schema(self):
         self._verify_resource_schema('GenomicFileProcessedSchema',
                                      rschemas.GenomicFileProcessedSchema(),
-                                     bq_genomics.BQGenomicFileProcessedSchema())
+                                     bq_genomics.BQGenomicFileProcessedSchema(), bq_prefix="orig_")
 
     @unittest.skip("GenomicManifestFileSchema deltas not resolved")
     def test_genomic_manifest_file_resource_schema(self):
