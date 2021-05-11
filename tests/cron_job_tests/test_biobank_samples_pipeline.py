@@ -679,9 +679,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             created=five_days_ago
         )
 
-        from tests.helpers.diagnostics import LoggingDatabaseActivity
-        with LoggingDatabaseActivity():
-            rows_written = self._generate_withdrawal_report()
+        rows_written = self._generate_withdrawal_report()
         self.assert_participant_in_report_rows(
             withdrawn_participant,
             rows=rows_written,
