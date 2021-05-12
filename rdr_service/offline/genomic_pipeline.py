@@ -234,6 +234,7 @@ def gem_a2_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+        controller.sub_folder_name = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
         controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.run_general_ingestion_workflow()
 
