@@ -19,7 +19,7 @@ from rdr_service.resource import schemas as rschemas
 # Common fields from all the BQ schemas which should be excluded from comparison.  If the resource schema contains these
 # field names, the names will be translated automatically by the pipeline to add an 'orig_' prefix for the
 # BigQuery or PostgreSQL tables
-_default_excluded_fields = ['id', 'created', 'modified']
+_default_exclusions = ['id', 'created', 'modified']
 
 # Any additional "per schema" exclusions that may not be present in the corresponding resource schema
 bq_field_exclusions = {
@@ -36,9 +36,9 @@ rsc_field_exclusions = {
     'HPOSchema': ['comment'],
     'PatientStatusSchema': ['comment', 'patient_status_history_id', 'user'],
     'PhysicalMeasurementsSchema': ['physical_measurements_id'],
-    'GenomicManifestFileSchema': _default_excluded_fields,
-    'GenomicManifestFeedbackSchema': _default_excluded_fields,
-    'GenomicGCValidationMetricsSchema': _default_excluded_fields,
+    'GenomicManifestFileSchema': _default_exclusions,
+    'GenomicManifestFeedbackSchema': _default_exclusions,
+    'GenomicGCValidationMetricsSchema': _default_exclusions,
     'WorkbenchResearcherSchema': ['email', 'family_name', 'given_name']
 }
 
@@ -71,9 +71,9 @@ class ResourceSchemaTest(BaseTestCase):
         # Some schemas may have fields we don't intend to include in the resource schemas; otherwise, use
         # the default exclusions list
         if rsc_name in bq_field_exclusions.keys():
-            exclusions = _default_excluded_fields + bq_field_exclusions[rsc_name]
+            exclusions = _default_exclusions + bq_field_exclusions[rsc_name]
         else:
-            exclusions = _default_excluded_fields
+            exclusions = _default_exclusions
 
         bq_field_list = sorted(self._get_bq_field_list(bq_schema_obj, rsc_name,
                                                        bq_prefix=bq_prefix, exclusions=exclusions))

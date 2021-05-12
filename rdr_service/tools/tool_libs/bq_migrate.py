@@ -32,7 +32,6 @@ LJUST_WIDTH = 75
 
 
 class BQMigration(object):
-
     _db_config = None
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -257,7 +256,8 @@ class BQMigration(object):
 
                 if dataset_id is None:
                     _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'disabled'))
+                                                     format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'),
+                                                     'disabled'))
                     continue
 
                 if self.args.delete:
@@ -288,8 +288,8 @@ class BQMigration(object):
                                 if not hasattr(ls_obj, attr):
                                     _logger.error(f'\tField {attr} missing from local {table_id} schema ')
                             for attr in dir(ls_obj):
-                                if attr in ['_fields', '_module', '_default_excluded_fields'] or \
-                                callable(getattr(ls_obj, attr)):
+                                if attr in ['_fields', '_module', '_excluded_fields'] or \
+                                        callable(getattr(ls_obj, attr)):
                                     continue
                                 if not hasattr(rs_obj, attr):
                                     _logger.warning(f'\tNew field {attr} defined in local {table_id} schema ')
@@ -299,12 +299,16 @@ class BQMigration(object):
                         # If this happens, the table can be reset by deleting it
                         # and then creating again it using this tool
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), '!!! corrupt !!!'))
+                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
+                                                                                                        '.'),
+                                                         '!!! corrupt !!!'))
                         continue
 
                     if rs_obj == ls_obj:
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'unchanged'))
+                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
+                                                                                                        '.'),
+                                                         'unchanged'))
                     else:
                         self.modify_table(bq_table, project_id, dataset_id, table_id)
 
