@@ -43,6 +43,7 @@ class SchemaID(IntEnum):
     workbench_researcher = 4000
     workbench_institutional_affiliation = 4010
     workbench_workspace = 4020
+    workbench_workspace_age = 4025
     workbench_workspace_users = 4030
 
     # Covid study

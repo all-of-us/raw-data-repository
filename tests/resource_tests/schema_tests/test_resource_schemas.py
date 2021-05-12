@@ -24,6 +24,10 @@ _default_excluded_fields = ['id', 'created', 'modified']
 # Any additional "per schema" exclusions that may not be present in the corresponding resource schema
 bq_field_exclusions = {
     'CodeSchema': ['bq_field_name'],
+    # Genomic schemas that have orig_* fields already and also id/created/modified
+    'GenomicManifestFileSchema': ['orig_id'],
+    'GenomicManifestFeedbackSchema': ['orig_id'],
+    'GenomicGCValidationMetricsSchema': ['orig_id', 'orig_created', 'orig_modified']
 }
 
 # Fields from the resource schemas that do not exist in the BQ schema
@@ -32,6 +36,10 @@ rsc_field_exclusions = {
     'HPOSchema': ['comment'],
     'PatientStatusSchema': ['comment', 'patient_status_history_id', 'user'],
     'PhysicalMeasurementsSchema': ['physical_measurements_id'],
+    'GenomicManifestFileSchema': _default_excluded_fields,
+    'GenomicManifestFeedbackSchema': _default_excluded_fields,
+    'GenomicGCValidationMetricsSchema': _default_excluded_fields,
+    'WorkbenchResearcherSchema': ['email', 'family_name', 'given_name']
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
@@ -199,26 +207,24 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.GenomicFileProcessedSchema(),
                                      bq_genomics.BQGenomicFileProcessedSchema(), bq_prefix="orig_")
 
-    @unittest.skip("GenomicManifestFileSchema deltas not resolved")
+    # TODO:  Confirm relationship of the id and orig_id fields (and/or similar created, modified) in genomic schemas
     def test_genomic_manifest_file_resource_schema(self):
         self._verify_resource_schema('GenomicManifestFileSchema',
                                      rschemas.GenomicManifestFileSchema(),
                                      bq_genomics.BQGenomicManifestFileSchema())
 
-    @unittest.skip("GenomicManifestFeedbackSchema deltas not resolved")
     def test_genomic_manifest_feedback_resource_schema(self):
         self._verify_resource_schema('GenomicManifestFeedbackSchema',
                                      rschemas.GenomicManifestFeedbackSchema(),
                                      bq_genomics.BQGenomicManifestFeedbackSchema())
 
-    @unittest.skip("GenomicManifestFeedbackSchema deltas not resolved")
     def test_genomic_gc_validation_metrics_resource_schema(self):
         self._verify_resource_schema('GenomicGCValidationMetricsSchema',
                                      rschemas.GenomicGCValidationMetricsSchema(),
                                      bq_genomics.BQGenomicGCValidationMetricsSchema())
 
     # Researcher workbench related schemas
-    @unittest.skip("WorkbenchResearcherSchema deltas not resolved")
+
     def test_rwb_researcher_resource_schema(self):
         self._verify_resource_schema('WorkbenchResearcherSchema',
                                      rschemas.workbench_researcher.WorkbenchResearcherSchema(),
@@ -243,9 +249,9 @@ class ResourceSchemaTest(BaseTestCase):
     def test_workbench_workspace_age_resource_schema(self):
         self._verify_resource_schema('WorkspaceAgeSchema',
                                      rschemas.workbench_workspace.WorkspaceAgeSchema(),
-                                     bq_workbench_researcher.BQWorkspaceAgeSchema())
+                                     bq_workbench_workspace.BQWorkspaceAgeSchema())
     @unittest.skip('Confirm if WorkspaceRaceEthnicitySchema needs a SchemaID defined')
     def test_workbench_workspace_race_resource_schema(self):
         self._verify_resource_schema('WorkspaceRaceEthnicitySchema',
                                      rschemas.workbench_workspace.WorkspaceRaceEthnicitySchema(),
-                                     bq_workbench_researcher.BQWorkspaceRaceEthnicitySchema())
+                                     bq_workbench_workspace.BQWorkspaceRaceEthnicitySchema())
