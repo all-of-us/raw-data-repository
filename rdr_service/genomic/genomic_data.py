@@ -1,4 +1,5 @@
 import sqlalchemy
+from sqlalchemy.orm import aliased
 
 from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
@@ -14,6 +15,12 @@ class GenomicQueryClass:
 
     def __init__(self, input_manifest=None):
         self.input_manifest = input_manifest
+
+        # Table aliases for tables requiring multiple JOINs
+        self.aliases = {
+            'gsm': aliased(GenomicSetMember),
+        }
+
         self.genomic_data_config = {
             GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
                 [
@@ -89,15 +96,22 @@ class GenomicQueryClass:
                 ]
             ).select_from(
                 sqlalchemy.join(
-                    sqlalchemy.join(
-                        sqlalchemy.join(ParticipantSummary,
-                                        GenomicSetMember,
-                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
-                        GenomicGCValidationMetrics,
-                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                    ),
+                    ParticipantSummary,
+                    GenomicSetMember,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                ).join(
+                    GenomicGCValidationMetrics,
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).join(
                     Participant,
                     Participant.participantId == ParticipantSummary.participantId
+                ).join(
+                    self.aliases['gsm'],
+                    sqlalchemy.and_(
+                        self.aliases['gsm'].gcManifestParentSampleId == GenomicSetMember.gcManifestParentSampleId,
+                        self.aliases['gsm'].genomeType == 'aou_array',
+                        self.aliases['gsm'].aw3ManifestJobRunID.isnot(None)
+                    )
                 )
             ).where(
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
