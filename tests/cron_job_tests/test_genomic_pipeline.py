@@ -335,6 +335,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_workflow_state=None,
         genome_center=None,
         aw3_job_id=None,
+        gc_manifest_parent_sample_id=None,
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -358,6 +359,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.genomicWorkflowState = genomic_workflow_state
         genomic_set_member.gcSiteId = genome_center
         genomic_set_member.aw3ManifestJobRunID = aw3_job_id
+        genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -444,6 +446,7 @@ class GenomicPipelineTest(BaseTestCase):
                 genomic_workflow_state=kwargs.get('genomic_workflow_state'),
                 genome_center=kwargs.get('genome_center'),
                 aw3_job_id=kwargs.get('aw3_job_id'),
+                gc_manifest_parent_sample_id=1000+p,
             )
 
     def _update_site_states(self):
@@ -2884,9 +2887,20 @@ class GenomicPipelineTest(BaseTestCase):
 
         self._create_stored_samples([(2, 1002)])
 
+        # Create corresponding array genomic_set_members
+        for i in range(1, 4):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000+i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+            )
+
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
 
-        # Test sequencing file (required for GEM)
+        # Test sequencing file (required for AW3 WGS)
         sequencing_test_files = (
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
