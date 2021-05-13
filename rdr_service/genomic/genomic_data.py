@@ -803,6 +803,27 @@ class GenomicQueryClass:
             "from_date": from_date
         }
 
+        return query_sql, query_params\
+
+    @staticmethod
+    def dq_report_incident_detail(from_date):
+        query_sql = """
+                # Incident Detail Report Query
+            SELECT code
+                , created
+                , biobank_id
+                , genomic_set_member_id
+                , source_job_run_id
+                , source_file_processed_id
+            FROM genomic_incident
+            WHERE created >= :from_date
+            ORDER BY code, created
+            """
+
+        query_params = {
+            "from_date": from_date
+        }
+
         return query_sql, query_params
 
 
