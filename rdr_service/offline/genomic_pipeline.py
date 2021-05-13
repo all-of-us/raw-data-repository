@@ -233,8 +233,8 @@ def gem_a2_manifest_workflow():
     Entrypoint for GEM A2 Workflow
     """
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
-                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
-        controller.sub_folder_name = config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER) as controller:
         controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.run_general_ingestion_workflow()
 
