@@ -64,7 +64,7 @@ class GenomicJobController:
         self.job_id = job_id
         self.job_run = None
         self.bucket_name = getSetting(bucket_name, default="")
-        self.sub_folder_name = getSetting(sub_folder_name, default="")
+        self.sub_folder_name = getSetting(sub_folder_name, default=sub_folder_name)
         self.sub_folder_tuple = sub_folder_tuple
         self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
