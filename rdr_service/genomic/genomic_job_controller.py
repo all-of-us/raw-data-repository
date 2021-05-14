@@ -353,7 +353,7 @@ class GenomicJobController:
             data_file = file_path.split('/')[-1]
             sample_id = data_file.split('_')[2]
             member = self.member_dao.get_member_from_sample_id(sample_id)
-            metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
+            metrics = None if not member else self.metrics_dao.get_metrics_by_member_id(member.id)
 
             if metrics:
                 ext = file_path.split('.', 1)[-1]
