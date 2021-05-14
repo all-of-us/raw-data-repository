@@ -1,6 +1,9 @@
 import mock
-from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
 
+from rdr_service import clock
+from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
+from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -24,3 +27,67 @@ class GenomicJobControllerTest(BaseTestCase):
                 'text': incident_message
             }
         )
+
+    def test_gvcf_files_ingestion(self):
+        metrics_dao = GenomicGCValidationMetricsDao()
+        job_controller = GenomicJobController(job_id=38)
+        bucket_name = "test_bucket"
+
+        file_path = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz"
+        file_path_md5 = "Wgs_sample_raw_data/SS_VCF_research/" \
+                        "BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz.md5sum"
+
+        full_path = f'{bucket_name}/{file_path}'
+        full_path_md5 = f'{bucket_name}/{file_path_md5}'
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath=f"/test_file_path",
+            bucketName='test_bucket',
+            fileName='test_file_name',
+        )
+
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=gen_member.id,
+            genomicFileProcessedId=gen_processed_file.id
+        )
+
+        job_controller.ingest_data_files(file_path_md5, bucket_name)
+
+        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+
+        self.assertIsNotNone(metrics.gvcfMd5Received)
+        self.assertIsNotNone(metrics.gvcfMd5Path)
+        self.assertEqual(metrics.gvcfMd5Path, full_path_md5)
+        self.assertEqual(metrics.gvcfMd5Received, 1)
+
+        job_controller.ingest_data_files(file_path, bucket_name)
+
+        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+
+        self.assertIsNotNone(metrics.gvcfReceived)
+        self.assertIsNotNone(metrics.gvcfPath)
+        self.assertEqual(metrics.gvcfPath, full_path)
+        self.assertEqual(metrics.gvcfReceived, 1)
+

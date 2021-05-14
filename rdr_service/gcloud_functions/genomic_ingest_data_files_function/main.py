@@ -32,9 +32,7 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
 
     def __init__(self, gcp_env, _event, _context):
         super().__init__(gcp_env, _event, _context)
-
         self.task_route = '/resource/task/IngestDataFilesTaskApi'
-        self.prefix = None
 
     def run(self):
         """ Handle Pub/Sub message events.
@@ -46,18 +44,21 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
 
         _logger.info(f"Event payload: {self.event}")
 
-        object_id = self.event.attributes.objectId.lower().replace(" ", "")
+        # prod buckets for gvcf files / Only attaching gvcf notifications for now
+
+        # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
+        # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
+        # prod-genomics-data-northwest/wgs_sample_raw_data/ss_vcf_research/
 
         data = {
-            "filename": self.event.attributes.objectId.replace(" ", ""),
+            "file_path": self.event.attributes.objectId.replace(" ", ""),
             "bucket_name": self.event.attributes.bucketId,
         }
 
-        if object_id:
-            _logger.info("Pushing cloud tasks...")
+        _logger.info("Pushing cloud tasks...")
 
-            _task = GCPCloudTask()
-            _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
+        _task = GCPCloudTask()
+        _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

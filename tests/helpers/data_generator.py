@@ -13,7 +13,11 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicAW1Raw,
-    GenomicFileProcessed, GenomicAW2Raw, GenomicIncident)
+    GenomicFileProcessed,
+    GenomicAW2Raw,
+    GenomicIncident,
+    GenomicGCValidationMetrics
+)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -599,3 +603,12 @@ class DataGenerator:
 
     def _genomic_incident(self, **kwargs):
         return GenomicIncident(**kwargs)
+
+    def create_database_genomic_gc_validation_metrics(self, **kwargs):
+        incident = self._genomic_validation_metrics(**kwargs)
+        self._commit_to_database(incident)
+        return incident
+
+    def _genomic_validation_metrics(self, **kwargs):
+        return GenomicGCValidationMetrics(**kwargs)
+
