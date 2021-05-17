@@ -13,13 +13,13 @@ from aou_cloud.services.system_utils import setup_logging
 # Function name must contain only lower case Latin letters, digits or underscore. It must
 # start with letter, must not end with a hyphen, and must be at most 63 characters long.
 # There must be a python function in this file with the same name as the entry point.
-function_name = 'genomic_manifest_generic_function'
+function_name = 'genomic_ingest_data_files_function'
 
 # [--trigger-bucket=TRIGGER_BUCKET | --trigger-http | --trigger-topic=TRIGGER_TOPIC |
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
 # NOTE: Default function timeout limit is 60s, maximum can be 540s.
 deploy_args = [
-    '--trigger-topic aw1_ingestion_test',
+    '--trigger-topic genomic_data_files_upload',
     '--timeout=540',
     '--memory=512'
 ]
@@ -28,7 +28,11 @@ task_queue = 'genomics'
 _logger = logging.getLogger('function')
 
 
-class GenomicManifestGenericFunction(FunctionPubSubHandler):
+class GenomicIngestFilesFunction(FunctionPubSubHandler):
+
+    def __init__(self, gcp_env, _event, _context):
+        super().__init__(gcp_env, _event, _context)
+        self.task_route = '/resource/task/IngestDataFilesTaskApi'
 
     def run(self):
         """ Handle Pub/Sub message events.
@@ -38,24 +42,30 @@ class GenomicManifestGenericFunction(FunctionPubSubHandler):
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
-        # Verify this is a file that we want to process.
-        if 'aw1_genotyping_sample_manifests' not in self.event.attributes.objectId.lower():
-            return
+        _logger.info(f"Event payload: {self.event}")
 
-        _logger.info(f"file found: {self.event.attributes.objectId}")
+        allowed_files = ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum']
 
-        cloud_file_path = f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}'
+        file_path = self.event.attributes.objectId.replace(" ", "")
+        ext = file_path.split('.', 1)[-1]
+
+        # prod buckets for gvcf files / Only attaching gvcf notifications for now
+        # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
+        # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
+        # prod-genomics-data-northwest/wgs_sample_raw_data/ss_vcf_research/
 
         data = {
-            "file_path": cloud_file_path,
+            "file_path": file_path,
             "bucket_name": self.event.attributes.bucketId,
-            "upload_date": self.event.attributes.eventTime,
         }
 
-        _logger.info("Pushing cloud task...")
+        _logger.info("Pushing cloud tasks...")
 
-        _task = GCPCloudTask()
-        _task.execute('/resource/task/IngestAW1ManifestTaskApi', payload=data, queue=task_queue)
+        if ext and ext in allowed_files:
+            _task = GCPCloudTask()
+            _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
+        else:
+            _logger.info("File processed from Event payload not allowed")
 
 
 def get_deploy_args(gcp_env):
@@ -76,7 +86,7 @@ def get_deploy_args(gcp_env):
     return args
 
 
-def genomic_manifest_generic_function(_event, _context):
+def genomic_ingest_data_files_function(_event, _context):
     """ Background Cloud Function to be triggered by Pub/Sub.
     event (dict):  The dictionary with data specific to this type of
          event. The `data` field contains the PubsubMessage message. The
@@ -92,7 +102,7 @@ def genomic_manifest_generic_function(_event, _context):
     :param _context: (google.cloud.functions.Context): Metadata of triggering event.
     """
     with GCPCloudFunctionContext(function_name, None) as gcp_env:
-        func = GenomicManifestGenericFunction(gcp_env, _event, _context)
+        func = GenomicIngestFilesFunction(gcp_env, _event, _context)
         func.run()
 
 
@@ -101,21 +111,22 @@ if __name__ == '__main__':
     """ Test code locally """
     setup_logging(_logger, function_name, debug=True)
 
-    context = PubSubEventContext(1669022966780817, 'google.pubsub.v1.PubsubMessage')
-    file = "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218052.csv"
+    context = PubSubEventContext(1620919933899502, 'google.pubsub.v1.PubsubMessage')
+    file = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz.md5sum"
 
     event = {
         "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
         "attributes": {
             "bucketId": "aou-rdr-sandbox-mock-data",
-            "eventTime": "2021-04-19T16:02:41.919922Z",
+            "eventTime": "2021-05-13T15:32:13.910124Z",
             "eventType": "OBJECT_FINALIZE",
-            "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/34",
-            "objectGeneration": "1618848161894414",
-            "objectId": "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218054.csv",
-            "overwroteGeneration": "1618605912794149",
+            "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/58",
+            "objectGeneration": "1620919933899502",
+            "objectId": "Wgs_sample_raw_data/ SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered"
+                        ".gvcf.gz.md5sum",
+            "overwroteGeneration": "1620919548016598",
             "payloadFormat": "JSON_API_V1"
         }
     }
 
-    sys.exit(genomic_manifest_generic_function(event, context))
+    sys.exit(genomic_ingest_data_files_function(event, context))

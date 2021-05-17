@@ -86,6 +86,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestSamplesFromRawTaskAPI",
                       endpoint="ingest_samples_from_raw_task", methods=["POST"])
 
+    # Ingest member samples from raw models
+    _api.add_resource(genomic_cloud_tasks_api.IngestDataFilesTaskApi,
+                      TASK_PREFIX + "IngestDataFilesTaskApi",
+                      endpoint="ingest_data_files_task", methods=["POST"])
+
     # Calculate manifest file record count
     _api.add_resource(genomic_cloud_tasks_api.CalculateRecordCountTaskApi,
                       TASK_PREFIX + "CalculateRecordCountTaskApi",

@@ -27,7 +27,6 @@ from rdr_service.participant_enums import (
     WithdrawalStatus
 )
 
-
 class GenomicApiTestBase(BaseTestCase):
     def setUp(self):
 
@@ -329,7 +328,6 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
         super(GenomicCloudTasksApiTest, self).setUp()
-
         self.manifest_file_dao = GenomicManifestFileDao()
 
     @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
@@ -341,7 +339,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"manifest_file_id": manifest.id}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='CalculateRecordCountTaskApi',
@@ -376,7 +373,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw1"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
@@ -395,7 +391,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw2"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
@@ -409,13 +404,10 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     def test_load_samples_from_raw_data_task_api(self):
 
         data = {'job': 'AW1_MANIFEST',
-                'server_config': {
-                    'biobank_id_prefix': ['S']
-                },
+                'server_config': {'biobank_id_prefix': ['S']},
                 'member_ids': [1, 2, 3]}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         sample_results = self.send_post(
             local_path='IngestSamplesFromRawTaskAPI',
@@ -439,7 +431,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='IngestAW4ManifestTaskApi',
@@ -487,7 +478,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='IngestAW5ManifestTaskApi',
@@ -522,3 +512,22 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['bucket'], data['bucket_name'])
         self.assertEqual(call_json['job'], GenomicJob.AW5_WGS_MANIFEST)
         self.assertIsNotNone(call_json['file_data'])
+
+    def test_ingest_data_files_task_api(self):
+
+        data = {
+            "file_path": "test_file_path",
+            "bucket_name": "test_bucket",
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        insert_files_result = self.send_post(
+            local_path='IngestDataFilesTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(insert_files_result)
+        self.assertEqual(insert_files_result['success'], True)

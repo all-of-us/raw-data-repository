@@ -24,36 +24,40 @@ from rdr_service.resource.generators.genomics import genomic_set_batch_update, g
 from rdr_service.services.system_utils import JSONObject
 
 
-class LoadRawAWNManifestDataAPI(Resource):
-    """
-    Cloud Task endpoint: Load raw AW1/AW2 Manifest to
-    genomic_aw1_raw or genomic_aw2_raw table
-    """
+class BaseGenomicTaskApi(Resource):
+
+    def __init__(self):
+        self.data = None
 
     @task_auth_required
     def post(self):
         log_task_headers()
+        self.data = request.get_json(force=True)
 
-        # from cloud function
-        data = request.get_json(force=True)
-        logging.info(f'Loading {data.get("file_type").upper()} Raw Data: {data.get("filename")}')
+
+class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Load raw AW1/AW2 Manifest to
+    genomic_aw1_raw or genomic_aw2_raw table
+    """
+    def post(self):
+        super(LoadRawAWNManifestDataAPI, self).post()
+        logging.info(f'Loading {self.data.get("file_type").upper()} Raw Data: {self.data.get("filename")}')
 
         # Call pipeline function
-        genomic_pipeline.load_awn_manifest_into_raw_table(data.get("file_path"), data.get("file_type"))
+        genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
         logging.info('Complete.')
         return {"success": True}
 
 
-class IngestAW1ManifestTaskApi(Resource):
+class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest AW1 Manifest.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        logging.info(f'Ingesting AW1 File: {data.get("filename")}')
+        super(IngestAW1ManifestTaskApi, self).post()
+        logging.info(f'Ingesting AW1 File: {self.data.get("filename")}')
 
         # Set manifest_type and job
         job = GenomicJob.AW1_MANIFEST
@@ -61,7 +65,7 @@ class IngestAW1ManifestTaskApi(Resource):
         create_fb = True
 
         # Write a different manifest type and JOB ID if an AW1F
-        if "FAILURE" in data["file_path"]:
+        if "FAILURE" in self.data["file_path"]:
             job = GenomicJob.AW1F_MANIFEST
             manifest_type = GenomicManifestTypes.AW1F
             create_fb = False
@@ -69,12 +73,12 @@ class IngestAW1ManifestTaskApi(Resource):
         # Set up file/JSON
         task_data = {
             "job": job,
-            "bucket": data["bucket_name"],
+            "bucket": self.data["bucket_name"],
             "file_data": {
                 "create_feedback_record": create_fb,
-                "upload_date": data["upload_date"],
+                "upload_date": self.data["upload_date"],
                 "manifest_type": manifest_type,
-                "file_path": data["file_path"],
+                "file_path": self.data["file_path"],
             }
         }
 
@@ -87,25 +91,23 @@ class IngestAW1ManifestTaskApi(Resource):
         return {"success": True}
 
 
-class IngestAW2ManifestTaskApi(Resource):
+class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest AW2 Manifest.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        logging.info(f'Ingesting AW2 File: {data.get("filename")}')
+        super(IngestAW2ManifestTaskApi, self).post()
+        logging.info(f'Ingesting AW2 File: {self.data.get("filename")}')
 
         # Set up file/JSON
         task_data = {
             "job": GenomicJob.METRICS_INGESTION,
-            "bucket": data["bucket_name"],
+            "bucket": self.data["bucket_name"],
             "file_data": {
                 "create_feedback_record": False,
-                "upload_date": data["upload_date"],
+                "upload_date": self.data["upload_date"],
                 "manifest_type": GenomicManifestTypes.GC_DRC,
-                "file_path": data["file_path"],
+                "file_path": self.data["file_path"],
             }
         }
 
@@ -118,39 +120,38 @@ class IngestAW2ManifestTaskApi(Resource):
         return {"success": True}
 
 
-class IngestAW4ManifestTaskApi(Resource):
+class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest AW5 Manifest.
+    Cloud Task endpoint: Ingest AW4 Manifest.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        logging.info(f'Ingesting AW4 File: {data.get("filename")}')
+        super(IngestAW4ManifestTaskApi, self).post()
+        logging.info(f'Ingesting AW4 File: {self.data.get("filename")}')
 
-        if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in data["file_path"]:
+        if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in self.data["file_path"]:
             job_id = GenomicJob.AW4_ARRAY_WORKFLOW
             manifest_type = GenomicManifestTypes.AW4_ARRAY
-        elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in data["file_path"]:
+        elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in self.data["file_path"]:
             job_id = GenomicJob.AW4_WGS_WORKFLOW
             manifest_type = GenomicManifestTypes.AW4_WGS
         else:
-            logging.warning(f'Can not determine manifest type from file_path: {data["file_path"]}')
-            return '{"success": "false"}'
+            logging.warning(f'Can not determine manifest type from file_path: {self.data["file_path"]}.')
+            return {"success": False}
 
         # Set up file/JSON
         task_data = {
             "job": job_id,
-            "bucket": data["bucket_name"],
+            "bucket": self.data["bucket_name"],
             "file_data": {
                 "create_feedback_record": False,
-                "upload_date": data["upload_date"],
+                "upload_date": self.data["upload_date"],
                 "manifest_type": manifest_type,
-                "file_path": data["file_path"],
+                "file_path": self.data["file_path"],
             }
         }
 
         logging.info(f'AW4 task data: {task_data}')
+
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
@@ -158,39 +159,38 @@ class IngestAW4ManifestTaskApi(Resource):
         return {"success": True}
 
 
-class IngestAW5ManifestTaskApi(Resource):
+class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest AW5 Manifest.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        logging.info(f'Ingesting AW5 File: {data.get("filename")}')
+        super(IngestAW5ManifestTaskApi, self).post()
+        logging.info(f'Ingesting AW5 File: {self.data.get("filename")}')
 
-        if getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in data["file_path"]:
+        if getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in self.data["file_path"]:
             job_id = GenomicJob.AW5_ARRAY_MANIFEST
             manifest_type = GenomicManifestTypes.AW5_ARRAY
-        elif getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in data["file_path"]:
+        elif getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in self.data["file_path"]:
             job_id = GenomicJob.AW5_WGS_MANIFEST
             manifest_type = GenomicManifestTypes.AW5_WGS
         else:
-            logging.warning(f'Can not determine manifest type from file_path: {data["file_path"]}')
-            return '{"success": "false"}'
+            logging.warning(f'Can not determine manifest type from file_path: {self.data["file_path"]}.')
+            return {"success": False}
 
         # Set up file/JSON
         task_data = {
             "job": job_id,
-            "bucket": data["bucket_name"],
+            "bucket": self.data["bucket_name"],
             "file_data": {
                 "create_feedback_record": False,
-                "upload_date": data["upload_date"],
+                "upload_date": self.data["upload_date"],
                 "manifest_type": manifest_type,
-                "file_path": data["file_path"],
+                "file_path": self.data["file_path"],
             }
         }
 
         logging.info(f'AW5 task data: {task_data}')
+
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
@@ -198,22 +198,20 @@ class IngestAW5ManifestTaskApi(Resource):
         return {"success": True}
 
 
-class IngestSamplesFromRawTaskAPI(Resource):
+class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest samples based on list
     from Genomic RAW tables
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
+        super(IngestSamplesFromRawTaskAPI, self).post()
         logging.info(f'Ingesting Samples From List')
 
-        gen_enum = GenomicJob.__dict__[data['job']]
+        gen_enum = GenomicJob.__dict__[self.data['job']]
         with GenomicJobController(gen_enum,
-                                  server_config=data['server_config']
+                                  server_config=self.data['server_config']
                                   ) as controller:
-            results = controller.ingest_member_ids_from_awn_raw_table(data['member_ids'])
+            results = controller.ingest_member_ids_from_awn_raw_table(self.data['member_ids'])
 
         logging.info(f'{results}')
 
@@ -221,17 +219,31 @@ class IngestSamplesFromRawTaskAPI(Resource):
         return {"success": True}
 
 
-class CalculateRecordCountTaskApi(Resource):
+class IngestDataFilesTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest data files from buckets and saves
+    records to GenomicGCValidationMetrics
+    """
+    def post(self):
+        super(IngestDataFilesTaskApi, self).post()
+        logging.info(f'Ingesting data files: {self.data["file_path"]}')
+
+        with GenomicJobController(GenomicJob.INGEST_DATA_FILES,
+                                  ) as controller:
+            controller.ingest_data_files(self.data["file_path"], self.data['bucket_name'])
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
+        super(CalculateRecordCountTaskApi, self).post()
 
-        # from cloud function
-        data = request.get_json(force=True)
-        mid = data.get("manifest_file_id")
+        mid = self.data.get("manifest_file_id")
         logging.info(f'Calculating record count for manifest file ID: {mid}')
 
         manifest_file_dao = GenomicManifestFileDao()
@@ -255,19 +267,18 @@ class CalculateRecordCountTaskApi(Resource):
         return {"success": True}
 
 
-class CalculateContaminationCategoryApi(Resource):
+class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculate contamination category
     """
 
     def __init__(self):
+        super(CalculateContaminationCategoryApi, self).__init__()
         self.dao = GenomicSetMemberDao()
 
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        batch = data['member_ids']
+        super(CalculateContaminationCategoryApi, self).post()
+        batch = self.data['member_ids']
         logging.info(f'Calculating Contamination Category for batch of {len(batch)} member IDs')
 
         # iterate through batch and calculate contamination category
@@ -275,6 +286,8 @@ class CalculateContaminationCategoryApi(Resource):
             self.process_member_id_contamination_category(_mid)
 
         logging.info(f'Batch of {len(batch)} Complete.')
+
+        logging.info('Complete.')
         return {"success": True}
 
     def process_member_id_contamination_category(self, member_id):
@@ -304,16 +317,15 @@ class CalculateContaminationCategoryApi(Resource):
                 logging.info(f"Updated contamination category for member id: {member_id}")
 
 
-class RebuildGenomicTableRecordsApi(Resource):
+class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Rebuild Genomic table records for Resource/BigQuery.
     """
-    @task_auth_required
     def post(self):
-        log_task_headers()
-        data = request.get_json(force=True)
-        table = data['table']
-        batch = data['ids']
+        super(RebuildGenomicTableRecordsApi, self).post()
+
+        table = self.data['table']
+        batch = self.data['ids']
 
         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
 
@@ -341,4 +353,5 @@ class RebuildGenomicTableRecordsApi(Resource):
 
         logging.info(f'Rebuild complete.')
 
+        logging.info('Complete.')
         return {"success": True}

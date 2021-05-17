@@ -94,12 +94,15 @@ class GenomicJob(messages.Enum):
     AW5_ARRAY_MANIFEST = 36
     AW5_WGS_MANIFEST = 37
 
+    INGEST_DATA_FILES = 38
+
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
     DAILY_SUMMARY_REPORT_JOB_RUNS = 101
     WEEKLY_SUMMARY_REPORT_JOB_RUNS = 102
     DAILY_SUMMARY_REPORT_INGESTIONS = 103
     WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
+    DAILY_SUMMARY_REPORT_INCIDENTS = 105
 
 
 class GenomicWorkflowState(messages.Enum):
