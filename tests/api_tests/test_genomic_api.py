@@ -27,7 +27,6 @@ from rdr_service.participant_enums import (
     WithdrawalStatus
 )
 
-
 class GenomicApiTestBase(BaseTestCase):
     def setUp(self):
 
@@ -340,7 +339,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"manifest_file_id": manifest.id}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='CalculateRecordCountTaskApi',
@@ -375,7 +373,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw1"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
@@ -394,7 +391,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw2"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
@@ -412,7 +408,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 'member_ids': [1, 2, 3]}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         sample_results = self.send_post(
             local_path='IngestSamplesFromRawTaskAPI',
@@ -436,7 +431,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='IngestAW4ManifestTaskApi',
@@ -484,7 +478,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         self.send_post(
             local_path='IngestAW5ManifestTaskApi',
@@ -528,7 +521,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         }
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
 
         insert_files_result = self.send_post(
             local_path='IngestDataFilesTaskApi',
