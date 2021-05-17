@@ -67,6 +67,18 @@ class MetricsCacheJobStatusDao(UpdatableDao):
             record = query.first()
             return record
 
+    def get_last_complete_stage_two_data_inserted_time(self, table_name, cache_type=None):
+        with self.session() as session:
+            query = session.query(MetricsCacheJobStatus.dateInserted)
+            query = query.filter(MetricsCacheJobStatus.cacheTableName == table_name,
+                                 MetricsCacheJobStatus.stage_one_complete.is_(True),
+                                 MetricsCacheJobStatus.stage_two_complete.is_(True))
+            if cache_type:
+                query = query.filter(MetricsCacheJobStatus.type == str(cache_type))
+            query = query.order_by(desc(MetricsCacheJobStatus.id))
+            record = query.first()
+            return record
+
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
     def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
@@ -488,6 +500,31 @@ class MetricsGenderCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            copy_sql = """
+                INSERT INTO metrics_gender_cache
+                SELECT
+                :new_date_inserted_time as date_inserted,
+                type,
+                enrollment_status,
+                hpo_id,
+                hpo_name,
+                date,
+                gender_name,
+                gender_count,
+                participant_origin
+                FROM metrics_gender_cache
+                WHERE date_inserted = :last_date_inserted_time AND type = :type
+                AND date >= :start_date AND date <= :end_date
+            """
+            params = {'new_date_inserted_time': new_date_inserted_time,
+                      'last_date_inserted_time': last_date_inserted_time,
+                      'type': self.cache_type,
+                      'start_date': start_date,
+                      'end_date': end_date}
+            session.execute(copy_sql, params)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -881,6 +918,31 @@ class MetricsAgeCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            copy_sql = """
+                INSERT INTO metrics_age_cache
+                SELECT
+                :new_date_inserted_time as date_inserted,
+                enrollment_status,
+                type,
+                hpo_id,
+                hpo_name,
+                date,
+                age_range,
+                age_count,
+                participant_origin
+                FROM metrics_age_cache
+                WHERE date_inserted = :last_date_inserted_time AND type = :type
+                AND date >= :start_date AND date <= :end_date
+            """
+            params = {'new_date_inserted_time': new_date_inserted_time,
+                      'last_date_inserted_time': last_date_inserted_time,
+                      'type': self.cache_type,
+                      'start_date': start_date,
+                      'end_date': end_date}
+            session.execute(copy_sql, params)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -1339,6 +1401,44 @@ class MetricsRaceCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            copy_sql = """
+                INSERT INTO metrics_race_cache
+                SELECT
+                :new_date_inserted_time as date_inserted,
+                type,
+                registered_flag,
+                participant_flag,
+                consent_flag,
+                core_flag,
+                hpo_id,
+                hpo_name,
+                date,
+                american_indian_alaska_native,
+                asian,
+                black_african_american,
+                middle_eastern_north_african,
+                native_hawaiian_other_pacific_islander,
+                white,
+                hispanic_latino_spanish,
+                none_of_these_fully_describe_me,
+                prefer_not_to_answer,
+                multi_ancestry,
+                no_ancestry_checked,
+                participant_origin,
+                unset_no_basics
+                FROM metrics_race_cache
+                WHERE date_inserted = :last_date_inserted_time AND type = :type
+                AND date >= :start_date AND date <= :end_date
+            """
+            params = {'new_date_inserted_time': new_date_inserted_time,
+                      'last_date_inserted_time': last_date_inserted_time,
+                      'type': self.cache_type,
+                      'start_date': start_date,
+                      'end_date': end_date}
+            session.execute(copy_sql, params)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -2228,6 +2328,45 @@ class MetricsLifecycleCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            copy_sql = """
+                INSERT INTO metrics_lifecycle_cache
+                SELECT
+                :new_date_inserted_time as date_inserted,
+                enrollment_status,
+                type,
+                hpo_id,
+                hpo_name,
+                date,
+                registered,
+                consent_enrollment,
+                consent_complete,
+                ppi_basics,
+                ppi_overall_health,
+                ppi_lifestyle,
+                ppi_healthcare_access,
+                ppi_medical_history,
+                ppi_medications,
+                ppi_family_health,
+                ppi_baseline_complete,
+                retention_modules_eligible,
+                retention_modules_complete,
+                physical_measurement,
+                sample_received,
+                full_participant,
+                participant_origin
+                FROM metrics_lifecycle_cache
+                WHERE date_inserted = :last_date_inserted_time AND type = :type
+                AND date >= :start_date AND date <= :end_date
+            """
+            params = {'new_date_inserted_time': new_date_inserted_time,
+                      'last_date_inserted_time': last_date_inserted_time,
+                      'type': self.cache_type,
+                      'start_date': start_date,
+                      'end_date': end_date}
+            session.execute(copy_sql, params)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
