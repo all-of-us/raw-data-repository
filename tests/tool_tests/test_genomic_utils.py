@@ -3,6 +3,7 @@ from unittest import mock
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
+from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
 from rdr_service.tools.tool_libs.genomic_utils import GenomicProcessRunner, LoadRawManifest, IngestionClass
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
@@ -185,3 +186,36 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         m = mdao.get(1)
         self.assertEqual(GenomicWorkflowState.AW2, m.genomicWorkflowState)
         self.assertEqual(2, m.aw2FileProcessedId)
+
+    def test_backfill_gvcf(self):
+        test_file = ""
+
+        # create test data
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="1",
+            sampleId="10001",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        # Todo: create a test metric record
+
+        # Run tool
+        GenomicUtilsGeneralTest.run_tool(GVcfBackfillTool, tool_args={
+            'command': 'backfill-gvcf',
+            'input_file': test_file
+        })
+
+        # Test data updated correctly
+        metric_dao = GenomicGCValidationMetricsDao()
+        metric_obj = metric_dao.get(1)
+
+        self.assertEqual(metric_obj.gvcfReceived, 1)
+        self.assertEqual(metric_obj.gvcfPath, "test_path.g.vcf.gz")
