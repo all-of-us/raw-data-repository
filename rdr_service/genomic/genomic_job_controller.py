@@ -375,7 +375,7 @@ class GenomicJobController:
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id)
 
         except RuntimeError:
-            logging.warning(f'Inserting data file failure')
+            logging.warning('Inserting data file failure')
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):

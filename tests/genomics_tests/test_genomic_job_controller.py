@@ -63,7 +63,7 @@ class GenomicJobControllerTest(BaseTestCase):
         gen_processed_file = self.data_generator.create_database_genomic_file_processed(
             runId=gen_job_run.id,
             startTime=clock.CLOCK.now(),
-            filePath=f"/test_file_path",
+            filePath='/test_file_path',
             bucketName='test_bucket',
             fileName='test_file_name',
         )
