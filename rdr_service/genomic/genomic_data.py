@@ -87,6 +87,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.cramPath,
                     GenomicGCValidationMetrics.cramMd5Path,
                     GenomicGCValidationMetrics.craiPath,
+                    GenomicGCValidationMetrics.gvcfPath,
+                    GenomicGCValidationMetrics.gvcfMd5Path,
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.sexConcordance,
                     GenomicGCValidationMetrics.processingStatus,
@@ -129,7 +131,9 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
                 (GenomicGCValidationMetrics.cramReceived == 1) &
                 (GenomicGCValidationMetrics.cramMd5Received == 1) &
-                (GenomicGCValidationMetrics.craiReceived == 1)
+                (GenomicGCValidationMetrics.craiReceived == 1) &
+                (GenomicGCValidationMetrics.gvcfReceived == 1)
+                # (GenomicGCValidationMetrics.gvcfMd5Received == 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                         [
@@ -781,9 +785,9 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
-                
+
                 UNION
-                
+
                 # AW2 Ingestions
                 SELECT count(distinct raw.id) record_count
                     , count(distinct m.id) as ingested_count
