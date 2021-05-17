@@ -1,6 +1,7 @@
 from unittest import mock
 
 from rdr_service import clock
+from tests import test_data
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicContaminationCategory
 from rdr_service.tools.tool_libs.backfill_gvcf_paths import GVcfBackfillTool
@@ -188,7 +189,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.assertEqual(2, m.aw2FileProcessedId)
 
     def test_backfill_gvcf(self):
-        test_file = ""
+        test_file = test_data.data_path("test_gvcf_path.txt")
 
         # create test data
         gen_set = self.data_generator.create_database_genomic_set(
@@ -205,17 +206,21 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
             genomicWorkflowState=GenomicWorkflowState.AW0
         )
 
-        # Todo: create a test metric record
+        self.data_generator.create_database_genomic_gc_validation_metrics(genomicSetMemberId=1)
 
         # Run tool
         GenomicUtilsGeneralTest.run_tool(GVcfBackfillTool, tool_args={
             'command': 'backfill-gvcf',
-            'input_file': test_file
+            'input_file': test_file,
+            'md5': False
         })
 
         # Test data updated correctly
+        expected_path = "gs://test-genomics-data-rdr/Wgs_sample_raw_data/"
+        expected_path += "SS_VCF_research/RDR_A1_10001_00000_v1.hard-filtered.gvcf.gz"
+
         metric_dao = GenomicGCValidationMetricsDao()
         metric_obj = metric_dao.get(1)
 
         self.assertEqual(metric_obj.gvcfReceived, 1)
-        self.assertEqual(metric_obj.gvcfPath, "test_path.g.vcf.gz")
+        self.assertEqual(metric_obj.gvcfPath, expected_path)
