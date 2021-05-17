@@ -131,9 +131,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
                 (GenomicGCValidationMetrics.cramReceived == 1) &
                 (GenomicGCValidationMetrics.cramMd5Received == 1) &
-                (GenomicGCValidationMetrics.craiReceived == 1) &
-                (GenomicGCValidationMetrics.gvcfReceived == 1)
-                # (GenomicGCValidationMetrics.gvcfMd5Received == 1)
+                (GenomicGCValidationMetrics.craiReceived == 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                         [
