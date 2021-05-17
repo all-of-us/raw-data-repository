@@ -605,9 +605,9 @@ class DataGenerator:
         return GenomicIncident(**kwargs)
 
     def create_database_genomic_gc_validation_metrics(self, **kwargs):
-        incident = self._genomic_validation_metrics(**kwargs)
-        self._commit_to_database(incident)
-        return incident
+        metrics = self._genomic_validation_metrics(**kwargs)
+        self._commit_to_database(metrics)
+        return metrics
 
     def _genomic_validation_metrics(self, **kwargs):
         return GenomicGCValidationMetrics(**kwargs)
