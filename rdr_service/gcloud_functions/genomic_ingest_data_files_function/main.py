@@ -44,22 +44,32 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
 
         _logger.info(f"Event payload: {self.event}")
 
-        # prod buckets for gvcf files / Only attaching gvcf notifications for now
+        proceed_to_task = False
+        allowed_files = ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum']
 
+        file_path = self.event.attributes.objectId.replace(" ", "")
+        ext = file_path.split('.', 1)[-1]
+
+        if ext in allowed_files:
+            proceed_to_task = True
+
+        # prod buckets for gvcf files / Only attaching gvcf notifications for now
         # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
         # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
         # prod-genomics-data-northwest/wgs_sample_raw_data/ss_vcf_research/
 
         data = {
-            "file_path": self.event.attributes.objectId.replace(" ", ""),
+            "file_path": file_path,
             "bucket_name": self.event.attributes.bucketId,
         }
 
         _logger.info("Pushing cloud tasks...")
 
-        _task = GCPCloudTask()
-        _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
-
+        if proceed_to_task:
+            _task = GCPCloudTask()
+            _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
+        else:
+            _logger.info("File processed from Event payload not allowed")
 
 def get_deploy_args(gcp_env):
     """
