@@ -3,7 +3,7 @@ import mock, datetime, pytz
 
 from rdr_service import clock
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
-    GenomicManifestTypes
+    GenomicManifestTypes, GenomicIncidentCode
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.genomic.genomic_job_controller import DataQualityJobController
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
@@ -264,5 +264,52 @@ class GenomicDataQualityReportTest(BaseTestCase):
             report_output = controller.execute_workflow()
 
         expected_report = "No data to display for Daily Ingestions Summary"
+
+        self.assertEqual(expected_report, report_output)
+
+    def test_daily_incident_report(self):
+        # timeframes
+        time_1 = datetime.datetime(2021, 5, 13, 0, 0, 0, 0)
+        time_2 = time_1 - datetime.timedelta(days=2)
+
+        # Set up test data
+        # Create AW1 job_run
+        aw1_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=time_1,
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        with clock.FakeClock(time_1):
+            # Incident included in report
+            self.data_generator.create_database_genomic_incident(
+                code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                message='test message',
+                source_job_run_id=aw1_job_run.id,
+                biobank_id="10001",
+                sample_id="20001",
+                collection_tube_id="30001",
+            )
+
+        with clock.FakeClock(time_2):
+            # Incident excluded from report
+            self.data_generator.create_database_genomic_incident(
+                code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
+                message='test message 2',
+                source_job_run_id=aw1_job_run.id,
+                biobank_id="10002",
+                sample_id="20002",
+                collection_tube_id="30002",
+            )
+
+        with clock.FakeClock(time_1):
+            with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS) as controller:
+                report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Incidents Summary\n"
+        expected_report += "code    created    biobank_id    genomic_set_member_id    " \
+                           "source_job_run_id    source_file_processed_id\n"
+        expected_report += "UNABLE_TO_FIND_MEMBER    2021-05-13 00:00:00    10001    None    1    None"
+        expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
