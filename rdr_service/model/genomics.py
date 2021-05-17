@@ -567,7 +567,7 @@ class GenomicGCValidationMetrics(Base):
 
     # Ignore Record
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
-    devNote = Column('dev_note', String(512), nullable=True)
+    devNote = Column('dev_note', String(255), nullable=True)
 
     # Contamination category
     contaminationCategory = Column('contamination_category',
