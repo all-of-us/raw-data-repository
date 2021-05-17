@@ -1,8 +1,7 @@
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, UniqueConstraint, JSON, event, Boolean
-from sqlalchemy.orm import relationship
-from rdr_service.model.field_types import BlobUTF8
+from sqlalchemy import Column, ForeignKey, Integer, String, JSON, event
+
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, UTCDateTime6
+from rdr_service.model.utils import UTCDateTime6
 
 
 class MessageBrokerRecord(Base):
