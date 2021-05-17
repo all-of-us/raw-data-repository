@@ -1021,8 +1021,10 @@ class GenomicFileIngester:
                                 row.values()))
 
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(row_copy['sampleid']),
-                                                               genome_type, )
+            member = self.member_dao.get_member_from_sample_id(
+                int(row_copy['sampleid']),
+                genome_type
+            )
 
             if member is not None:
                 row_copy = self.prep_aw2_row_attributes(row_copy, member)
