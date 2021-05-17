@@ -117,7 +117,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         # Map report targets to source data queries
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
-            ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date)
+            ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
+            ("SUMMARY", "INCIDENTS"): self.query.dq_report_incident_detail(report_def.from_date)
         }
 
         report_def.source_data_query, report_def.source_data_params = target_mappings[

@@ -372,7 +372,7 @@ class GenomicSetMemberDao(UpdatableDao):
             ).one_or_none()
         return member
 
-    def get_member_from_sample_id(self, sample_id, genome_type):
+    def get_member_from_sample_id(self, sample_id, genome_type=None):
         """
         Retrieves a genomic set member record matching the sample_id
         The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
@@ -384,17 +384,20 @@ class GenomicSetMemberDao(UpdatableDao):
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-            ).first()
-        return member
+            )
+
+            if genome_type:
+                member = member.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return member.first()
 
     def get_members_from_member_ids(self, member_ids):
         with self.session() as session:
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
             ).all()
-
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
