@@ -1,7 +1,6 @@
 from copy import deepcopy
 import datetime
 import http.client
-from unittest import mock
 
 from mock import patch
 import threading
@@ -522,6 +521,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         num_summary = 3
         _date = datetime.date(1978, 10, 9)
         last_name = "Tester_1"
+
         for num in range(num_summary):
             self.data_generator \
                 .create_database_participant_summary(
@@ -541,7 +541,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 f"ParticipantSummary?lastName={last_name}",
                 expected_status=http.client.BAD_REQUEST
             )
-
         self.assertEqual(response_only_last_name.status_code, 400)
         self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
 
@@ -554,19 +553,27 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response_no_filter = self.send_get("ParticipantSummary")
         self.assertEqual(len(response_no_filter['entry']), num_summary)
 
-        constraint_method = "rdr_service.api.participant_summary_api.ParticipantSummaryApi._check_constraints"
+        response_only_dob_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&dateOfBirth={_date}")
+        self.assertEqual(len(response_only_dob_correct_role_and_awardee['entry']), 3)
+        resource = response_only_dob_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+        self.assertEqual(resource['hpoId'], 'UNSET')
 
-        # Test constraints called when no awardee param
-        with mock.patch(constraint_method) as constraint_mock:
-            constraint_mock.return_value = False, ""
-            self.send_get(f"ParticipantSummary?dateOfBirth={_date}&lastName={last_name}")
+        response_only_lastname_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&lastName={last_name}")
+        self.assertEqual(len(response_only_lastname_correct_role_and_awardee['entry']), 1)
+        resource = response_only_lastname_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['hpoId'], 'UNSET')
 
-            constraint_mock.assert_called()
-
-        # Test constraints not called when awardee param
-        with mock.patch(constraint_method) as constraint_mock:
-            self.send_get(f"ParticipantSummary?hpoId=TEST&dateOfBirth={_date}&lastName={last_name}")
-            constraint_mock.assert_not_called()
+        response_dob_and_lastname_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&dateOfBirth={_date}&lastName={last_name}")
+        self.assertEqual(len(response_dob_and_lastname_correct_role_and_awardee['entry']), 1)
+        resource = response_dob_and_lastname_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['hpoId'], 'UNSET')
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
 
         self.overwrite_test_user_roles([PTC])
 
