@@ -127,3 +127,30 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         detector.flag_duplicate_responses()
         warning_log = mock_logging.warning.call_args[0][0]
         self.assertTrue(warning_log.endswith(f'] found as duplicates of {latest_duplicate.questionnaireResponseId}'))
+
+    def test_checking_recent_responses(self):
+        """
+        Make sure that only recent responses are loaded
+        (to avoid unnecessary processing that causes slow_sql alerts)
+        """
+
+        # Create some responses, some that are duplicates of each other
+        participant = self.data_generator.create_database_participant()
+        one = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            externalId='one',
+            answerHash='badbeef',
+            authored=datetime(2020, 2, 1),
+            created=datetime(2020, 3, 1)
+        )
+        self._make_duplicate_of(
+            response=one,
+            created=datetime(2020, 3, 2)
+        )
+
+        detector = ResponseDuplicationDetector()
+        from tests.helpers.diagnostics import LoggingDatabaseActivity
+        with LoggingDatabaseActivity():
+            responses_detected = detector._get_duplicate_responses(self.session, datetime(2021, 1, 1))
+
+        self.assertEmpty(responses_detected)
