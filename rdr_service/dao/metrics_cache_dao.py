@@ -67,6 +67,18 @@ class MetricsCacheJobStatusDao(UpdatableDao):
             record = query.first()
             return record
 
+    def get_last_complete_stage_two_data_inserted_time(self, table_name, cache_type=None):
+        with self.session() as session:
+            query = session.query(MetricsCacheJobStatus.dateInserted)
+            query = query.filter(MetricsCacheJobStatus.cacheTableName == table_name,
+                                 MetricsCacheJobStatus.stage_one_complete.is_(True),
+                                 MetricsCacheJobStatus.stage_two_complete.is_(True))
+            if cache_type:
+                query = query.filter(MetricsCacheJobStatus.type == str(cache_type))
+            query = query.order_by(desc(MetricsCacheJobStatus.id))
+            record = query.first()
+            return record
+
 
 class MetricsEnrollmentStatusCacheDao(BaseDao):
     def __init__(self, cache_type=MetricsCacheType.METRICS_V2_API, version=None):
@@ -488,6 +500,20 @@ class MetricsGenderCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsGenderCache)
+                    .where(and_(MetricsGenderCache.dateInserted == last_date_inserted_time,
+                           MetricsGenderCache.date >= start_date,
+                           MetricsGenderCache.date <= end_date,
+                           MetricsGenderCache.type == self.cache_type)
+                           )
+                    .values({MetricsGenderCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -881,6 +907,20 @@ class MetricsAgeCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsAgeCache)
+                    .where(and_(MetricsAgeCache.dateInserted == last_date_inserted_time,
+                                MetricsAgeCache.date >= start_date,
+                                MetricsAgeCache.date <= end_date,
+                                MetricsAgeCache.type == self.cache_type)
+                           )
+                    .values({MetricsAgeCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -1339,6 +1379,20 @@ class MetricsRaceCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsRaceCache)
+                    .where(and_(MetricsRaceCache.dateInserted == last_date_inserted_time,
+                                MetricsRaceCache.date >= start_date,
+                                MetricsRaceCache.date <= end_date,
+                                MetricsRaceCache.type == self.cache_type)
+                           )
+                    .values({MetricsRaceCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -2228,6 +2282,20 @@ class MetricsLifecycleCacheDao(BaseDao):
             MetricsCacheType.METRICS_V2_API: self.to_metrics_client_json
         }
         return operation_funcs[self.cache_type](buckets)
+
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsLifecycleCache)
+                    .where(and_(MetricsLifecycleCache.dateInserted == last_date_inserted_time,
+                                MetricsLifecycleCache.date >= start_date,
+                                MetricsLifecycleCache.date <= end_date,
+                                MetricsLifecycleCache.type == self.cache_type)
+                           )
+                    .values({MetricsLifecycleCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
