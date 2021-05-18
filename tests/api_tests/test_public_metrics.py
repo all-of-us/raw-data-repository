@@ -36,6 +36,8 @@ from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
+TIME_2 = datetime.datetime(2018, 1, 15)
+TIME_3 = datetime.datetime(2018, 2, 10)
 
 
 def _questionnaire_response_url(participant_id):
@@ -805,7 +807,12 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        calculate_participant_metrics()
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1085,7 +1092,6 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
     def test_public_metrics_get_age_range_api(self):
-
         dob1 = datetime.date(1978, 10, 10)
         dob2 = datetime.date(1988, 10, 10)
         dob3 = datetime.date(1988, 10, 10)
@@ -1136,7 +1142,12 @@ class PublicMetricsApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time1, dob=dob3)
 
-        calculate_participant_metrics()
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1698,8 +1709,12 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
 
-        calculate_participant_metrics()
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -2144,7 +2159,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time1,
         )
 
-        calculate_participant_metrics()
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
 
@@ -2367,7 +2387,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time1,
         )
 
-        calculate_participant_metrics()
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
