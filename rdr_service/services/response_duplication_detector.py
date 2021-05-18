@@ -59,7 +59,7 @@ class ResponseDuplicationDetector:
         ).all()
 
     def flag_duplicate_responses(self, num_days_ago=2):
-        earliest_response_date = datetime.now() - timedelta(days=num_days_ago)
+        earliest_response_date = datetime.utcnow() - timedelta(days=num_days_ago)
 
         with get_database().session() as session:
             duplicated_response_data = self._get_duplicate_responses(session, earliest_response_date)
