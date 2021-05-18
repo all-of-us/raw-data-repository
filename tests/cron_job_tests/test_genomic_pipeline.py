@@ -2563,6 +2563,8 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.cram',
             f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
             f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
 
         for f in sequencing_test_files:
@@ -2601,15 +2603,16 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_CVL_Manifest_{w1_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = len(set(expected_w1_columns)) - len(set(csv_reader.fieldnames))
-            self.assertEqual(0, missing_cols)
+            self.assertEqual(len(set(expected_w1_columns)), len(set(csv_reader.fieldnames)))
 
             rows = list(csv_reader)
-
             self.assertEqual(1, len(rows))
-            self.assertEqual(member.biobankId, rows[0]['biobank_id'])
-            self.assertEqual(member.sampleId, rows[0]['sample_id'])
-            self.assertEqual("", rows[0]['secondary_validation'])
+
+            row = rows[0]
+
+            self.assertEqual(member.biobankId, row['biobank_id'])
+            self.assertEqual(member.sampleId,  row['sample_id'])
+            self.assertEqual("", row['secondary_validation'])
 
         # Test file processed is recorded
         file_record = self.file_processed_dao.get(2)  # remember, GC Metrics is #1
@@ -2879,9 +2882,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
-        self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+        self._create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
 
         self._update_test_sample_ids()
 
@@ -2911,7 +2916,8 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.cram',
             f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
-
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
         for f in sequencing_test_files:
             self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
@@ -2948,6 +2954,8 @@ class GenomicPipelineTest(BaseTestCase):
             "cram_path",
             "cram_md5_path",
             "crai_path",
+            "gvcf_path",
+            "gvcf_md5_path",
             "contamination",
             "sex_concordance",
             "processing_status",
@@ -2960,37 +2968,40 @@ class GenomicPipelineTest(BaseTestCase):
 
         with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
-            missing_cols = len(set(expected_aw3_columns)) - len(set(csv_reader.fieldnames))
-            self.assertEqual(0, missing_cols)
+            self.assertEqual(len(set(expected_aw3_columns)), len(set(csv_reader.fieldnames)))
 
             rows = list(csv_reader)
-
             self.assertEqual(1, len(rows))
-            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
-                             rows[0]['biobank_id'])
-            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
-                             rows[0]['biobankidsampleid'])
-            self.assertEqual(member.sexAtBirth, rows[0]['sex_at_birth'])
-            self.assertEqual(member.gcSiteId, rows[0]['site_id'])
-            self.assertEqual(1000002, int(rows[0]['research_id']))
 
-            # Test File Paths
+            row = rows[0]
             metric = self.metrics_dao.get(1)
-            self.assertEqual(metric.hfVcfPath, rows[0]["vcf_hf_path"])
-            self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_index_path"])
-            # self.assertEqual(metric.hfVcfTbiPath, rows[0]["vcf_hf_md5_path"])
-            self.assertEqual(metric.rawVcfPath, rows[0]["vcf_raw_path"])
-            self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_index_path"])
-            # self.assertEqual(metric.rawVcfTbiPath, rows[0]["vcf_raw_md5_path"])
-            self.assertEqual(metric.cramPath, rows[0]["cram_path"])
-            self.assertEqual(metric.cramMd5Path, rows[0]["cram_md5_path"])
-            self.assertEqual(metric.craiPath, rows[0]["crai_path"])
+            received = [val for val in metric if 'Received' in val[0] and val[1] == 1]
+            paths = [val for val in metric if 'Path' in val[0] and val[1] is not None]
+
+            self.assertEqual(len(sequencing_test_files), len(received))
+            self.assertEqual(len(sequencing_test_files), len(paths))
+
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}',
+                             row['biobank_id'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
+                             row['biobankidsampleid'])
+            self.assertEqual(member.sexAtBirth, row['sex_at_birth'])
+            self.assertEqual(member.gcSiteId, row['site_id'])
+            self.assertEqual(1000002, int(row['research_id']))
+
+            self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
+            self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
+            self.assertEqual(metric.rawVcfPath, row["vcf_raw_path"])
+            self.assertEqual(metric.rawVcfTbiPath, row["vcf_raw_index_path"])
+            self.assertEqual(metric.cramPath, row["cram_path"])
+            self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
+            self.assertEqual(metric.craiPath, row["crai_path"])
 
             # Test GC metrics columns
-            self.assertEqual(metric.contamination, rows[0]['contamination'])
-            self.assertEqual(metric.sexConcordance, rows[0]['sex_concordance'])
-            self.assertEqual(metric.processingStatus, rows[0]['processing_status'])
-            self.assertEqual(metric.meanCoverage, rows[0]['mean_coverage'])
+            self.assertEqual(metric.contamination, row['contamination'])
+            self.assertEqual(metric.sexConcordance, row['sex_concordance'])
+            self.assertEqual(metric.processingStatus, row['processing_status'])
+            self.assertEqual(metric.meanCoverage, row['mean_coverage'])
 
             # Test run record is success
             run_obj = self.job_run_dao.get(4)

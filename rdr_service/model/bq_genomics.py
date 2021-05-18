@@ -297,8 +297,6 @@ class BQGenomicManifestFileView(BQView):
     """
 
 
-
-
 class BQGenomicManifestFeedbackSchema(BQSchema):
     id = BQField('id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     created = BQField('created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
@@ -413,18 +411,22 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     idat_red_md5_deleted = BQField('idat_red_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     vcf_md5_deleted = BQField('vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     vcf_tbi_deleted = BQField('vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-
     drc_sex_concordance = BQField('drc_sex_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     drc_contamination = BQField('drc_contamination', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     drc_mean_coverage = BQField('drc_mean_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     drc_fp_concordance = BQField('drc_fp_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_path = BQField('gvcf_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_received = BQField('gvcf_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_deleted = BQField('gvcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_path = BQField('gvcf_md5_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_received = BQField('gvcf_md5_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_deleted = BQField('gvcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_gc_validation_metrics'
     __schema__ = BQGenomicGCValidationMetricsSchema
-
 
 
 class BQGenomicGCValidationMetricsView(BQView):
