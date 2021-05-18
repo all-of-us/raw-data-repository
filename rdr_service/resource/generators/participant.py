@@ -708,7 +708,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
                     mod_found = False
                     for en in ParticipantActivity:
-                        if en.name.lower() == module_name.lower():
+                        if module_name and en.name.lower() == module_name.lower():  # module_name can be null in the unittests.
                             activity.append(_act(row.authored, ActivityGroup.QuestionnaireModule, en, **mod_ca))
                             mod_found = True
                             break
