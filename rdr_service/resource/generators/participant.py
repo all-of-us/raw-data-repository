@@ -704,10 +704,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # consent_added == True means we already know it wasn't a replayed consent
                 if consent_added or not self.is_replay(last_mod_processed, module_data, created_key='module_created'):
                     modules.append(module_data)
-                    try:
-                        activity.append(_act(row.authored, ActivityGroup.QuestionnaireModule,
-                                                 ParticipantActivity[module_name], **mod_ca))
-                    except KeyError:
+
+                    # Find module in ParticipantActivity Enum via a case-insensitive way.
+                    mod_found = False
+                    for en in ParticipantActivity:
+                        if en.name.lower() == module_name.lower():
+                            activity.append(_act(row.authored, ActivityGroup.QuestionnaireModule, en, **mod_ca))
+                            mod_found = True
+                            break
+                    if mod_found is False:
                         logging.warning(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
@@ -824,7 +829,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
             })
-            _act(row.finalized, ActivityGroup.Profile, ParticipantActivity.PhysicalMeasurements)
+            activity.append(_act(row.finalized, ActivityGroup.Profile, ParticipantActivity.PhysicalMeasurements))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list
