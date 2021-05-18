@@ -41,7 +41,7 @@ class ParticipantCountsOverTimeService(BaseDao):
         self.start_date = datetime.datetime.strptime("2017-05-30", "%Y-%m-%d").date()
         self.end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
         self.stage_number = MetricsCronJobStage.STAGE_ONE
-        self.cronjob_time = datetime.datetime.now()
+        self.cronjob_time = datetime.datetime.now().replace(microsecond=0)
 
     def init_tmp_table(self):
         with self.session() as session:
@@ -222,8 +222,8 @@ class ParticipantCountsOverTimeService(BaseDao):
             logging.info(f'No last success stage two found for {dao.table_name}, calculate new data for stage two')
             self.refresh_data_for_metrics_cache(dao)
         else:
-            dao.copy_historical_cache_data(self.cronjob_time, last_success_stage_two.dateInserted,
-                                           self.start_date, self.end_date)
+            dao.update_historical_cache_data(self.cronjob_time, last_success_stage_two.dateInserted,
+                                             self.start_date, self.end_date)
             status_dao.set_to_complete(dao.cache_type, dao.table_name, self.cronjob_time, self.stage_number)
             dao.delete_old_records(n_days_ago=30)
 

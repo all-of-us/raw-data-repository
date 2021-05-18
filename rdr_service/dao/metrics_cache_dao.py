@@ -500,30 +500,19 @@ class MetricsGenderCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
-    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
         with self.session() as session:
-            copy_sql = """
-                INSERT INTO metrics_gender_cache
-                SELECT
-                :new_date_inserted_time as date_inserted,
-                type,
-                enrollment_status,
-                hpo_id,
-                hpo_name,
-                date,
-                gender_name,
-                gender_count,
-                participant_origin
-                FROM metrics_gender_cache
-                WHERE date_inserted = :last_date_inserted_time AND type = :type
-                AND date >= :start_date AND date <= :end_date
-            """
-            params = {'new_date_inserted_time': new_date_inserted_time,
-                      'last_date_inserted_time': last_date_inserted_time,
-                      'type': self.cache_type,
-                      'start_date': start_date,
-                      'end_date': end_date}
-            session.execute(copy_sql, params)
+            query = (
+                sqlalchemy
+                    .update(MetricsGenderCache)
+                    .where(and_(MetricsGenderCache.dateInserted == last_date_inserted_time,
+                           MetricsGenderCache.date >= start_date,
+                           MetricsGenderCache.date <= end_date,
+                           MetricsGenderCache.type == self.cache_type)
+                           )
+                    .values({MetricsGenderCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -919,30 +908,19 @@ class MetricsAgeCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
-    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
         with self.session() as session:
-            copy_sql = """
-                INSERT INTO metrics_age_cache
-                SELECT
-                :new_date_inserted_time as date_inserted,
-                enrollment_status,
-                type,
-                hpo_id,
-                hpo_name,
-                date,
-                age_range,
-                age_count,
-                participant_origin
-                FROM metrics_age_cache
-                WHERE date_inserted = :last_date_inserted_time AND type = :type
-                AND date >= :start_date AND date <= :end_date
-            """
-            params = {'new_date_inserted_time': new_date_inserted_time,
-                      'last_date_inserted_time': last_date_inserted_time,
-                      'type': self.cache_type,
-                      'start_date': start_date,
-                      'end_date': end_date}
-            session.execute(copy_sql, params)
+            query = (
+                sqlalchemy
+                    .update(MetricsAgeCache)
+                    .where(and_(MetricsAgeCache.dateInserted == last_date_inserted_time,
+                                MetricsAgeCache.date >= start_date,
+                                MetricsAgeCache.date <= end_date,
+                                MetricsAgeCache.type == self.cache_type)
+                           )
+                    .values({MetricsAgeCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -1402,43 +1380,19 @@ class MetricsRaceCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
-    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
         with self.session() as session:
-            copy_sql = """
-                INSERT INTO metrics_race_cache
-                SELECT
-                :new_date_inserted_time as date_inserted,
-                type,
-                registered_flag,
-                participant_flag,
-                consent_flag,
-                core_flag,
-                hpo_id,
-                hpo_name,
-                date,
-                american_indian_alaska_native,
-                asian,
-                black_african_american,
-                middle_eastern_north_african,
-                native_hawaiian_other_pacific_islander,
-                white,
-                hispanic_latino_spanish,
-                none_of_these_fully_describe_me,
-                prefer_not_to_answer,
-                multi_ancestry,
-                no_ancestry_checked,
-                participant_origin,
-                unset_no_basics
-                FROM metrics_race_cache
-                WHERE date_inserted = :last_date_inserted_time AND type = :type
-                AND date >= :start_date AND date <= :end_date
-            """
-            params = {'new_date_inserted_time': new_date_inserted_time,
-                      'last_date_inserted_time': last_date_inserted_time,
-                      'type': self.cache_type,
-                      'start_date': start_date,
-                      'end_date': end_date}
-            session.execute(copy_sql, params)
+            query = (
+                sqlalchemy
+                    .update(MetricsRaceCache)
+                    .where(and_(MetricsRaceCache.dateInserted == last_date_inserted_time,
+                                MetricsRaceCache.date >= start_date,
+                                MetricsRaceCache.date <= end_date,
+                                MetricsRaceCache.type == self.cache_type)
+                           )
+                    .values({MetricsRaceCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
@@ -2329,44 +2283,19 @@ class MetricsLifecycleCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
-    def copy_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
         with self.session() as session:
-            copy_sql = """
-                INSERT INTO metrics_lifecycle_cache
-                SELECT
-                :new_date_inserted_time as date_inserted,
-                enrollment_status,
-                type,
-                hpo_id,
-                hpo_name,
-                date,
-                registered,
-                consent_enrollment,
-                consent_complete,
-                ppi_basics,
-                ppi_overall_health,
-                ppi_lifestyle,
-                ppi_healthcare_access,
-                ppi_medical_history,
-                ppi_medications,
-                ppi_family_health,
-                ppi_baseline_complete,
-                retention_modules_eligible,
-                retention_modules_complete,
-                physical_measurement,
-                sample_received,
-                full_participant,
-                participant_origin
-                FROM metrics_lifecycle_cache
-                WHERE date_inserted = :last_date_inserted_time AND type = :type
-                AND date >= :start_date AND date <= :end_date
-            """
-            params = {'new_date_inserted_time': new_date_inserted_time,
-                      'last_date_inserted_time': last_date_inserted_time,
-                      'type': self.cache_type,
-                      'start_date': start_date,
-                      'end_date': end_date}
-            session.execute(copy_sql, params)
+            query = (
+                sqlalchemy
+                    .update(MetricsLifecycleCache)
+                    .where(and_(MetricsLifecycleCache.dateInserted == last_date_inserted_time,
+                                MetricsLifecycleCache.date >= start_date,
+                                MetricsLifecycleCache.date <= end_date,
+                                MetricsLifecycleCache.type == self.cache_type)
+                           )
+                    .values({MetricsLifecycleCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
 
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
