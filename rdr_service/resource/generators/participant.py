@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from collections import OrderedDict
+from enum import IntEnum
 
 from dateutil import parser, tz
 from dateutil.parser import ParserError
@@ -130,6 +131,72 @@ _deprecated_gror_consent_question_code_names = ('CheckDNA_Yes', 'CheckDNA_No', '
 _unlayered_question_codes_map = {
     'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
 }
+
+
+# Participant Activity Group IDs.
+class ActivityGroup(IntEnum):
+    Profile = 1  # ParticipantActivity values 1 through 19
+    Biobank = 20  # ParticipantActivity values 20 through 29
+    QuestionnaireModule = 40  # ParticipantActivity values 40 through 69
+    Genomics = 70  # ParticipantActivity values 70 through 99
+    EnrollmentStatus = 100 # Part
+
+# An enumeration of all participant activity with in RDR.
+class ParticipantActivity(IntEnum):
+    # Profile Group: 1 - 19
+    SignupTime = 1
+    PhysicalMeasurements = 3
+    EHRFirstReceived = 4
+    EHRLastReceived = 5
+    CABOR = 6
+    Deceased = 18
+    Withdrawal = 19
+
+    # Biobank Group: 20 - 29
+    BiobankOrder = 20
+    BiobankShipped = 21
+    BiobankReceived = 22
+    BiobankProcessed = 23
+
+    # Questionnaire Module Group (Names should exactly match module code value name): 40 - 69
+    ConsentPII = 40
+    TheBasics = 41
+    Lifestyle = 42
+    OverallHealth = 43
+    EHRConsentPII = 44
+    DVEHRSharing = 45
+    GROR = 46
+    PrimaryConsentUpdate = 47
+    ProgramUpdate = 48
+    COPE = 49,
+    cope_nov = 50,
+    cope_dec = 51,
+    cope_feb = 52,
+    GeneticAncestry = 53
+
+    # Genomics: 70 - 99
+
+    # Enrollment Status: 100 - 119
+    REGISTERED = 100
+    PARTICIPANT = 104
+    FULLY_CONSENTED = 108
+    CORE_MINUS_PM = 112
+    CORE_PARTICIPANT = 114
+
+
+def _act(timestamp, group: ActivityGroup, activity: ParticipantActivity, **kwargs):
+    """ Create and return a activity record. """
+    activity = {
+        'timestamp': timestamp,
+        'group': group.name,
+        'group_id': group.value,
+        'activity': activity.name,
+        'activity_id': activity.value
+    }
+    # Check for additional key/value pairs to add to this activity record.
+    if kwargs:
+        activity.update(kwargs)
+    return activity
 
 
 class ParticipantSummaryGenerator(generators.BaseGenerator):
@@ -342,6 +409,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'date_of_death': deceased_date_of_death
         }
 
+        # Record participant activity events
+        data['activity'] = [
+            _act(data['sign_up_time'], ActivityGroup.Profile, ParticipantActivity.SignupTime),
+            _act(data['withdrawal_authored'], ActivityGroup.Profile, ParticipantActivity.Withdrawal),
+            _act(data['deceased_authored'], ActivityGroup.Profile, ParticipantActivity.Deceased)
+        ]
+
         return data
 
     def _prep_participant_profile(self, p_id, ro_session):
@@ -425,6 +499,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if len(ehr_receipts):
                 data['ehr_receipts'] = ehr_receipts
 
+            # Record participant activity events
+            data['activity'] = [
+                _act(data['ehr_receipt'], ActivityGroup.Profile, ParticipantActivity.EHRFirstReceived),
+                _act(data['ehr_update'], ActivityGroup.Profile, ParticipantActivity.EHRLastReceived)
+            ]
+
         return data
 
     def _prep_consentpii_answers(self, p_id):
@@ -441,6 +521,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # return the minimum data required when we don't have the questionnaire data.
             return {'email': None, 'is_ghost_id': 0}
 
+        # TODO: Update this to a JSONObject instead of BQRecord object.
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
         try:
@@ -488,6 +569,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 data['cabor_authored'] = fields.get('authored')
                 break
 
+        # Record participant activity events
+        data['activity'] = [
+            _act(data['cabor_authored'], ActivityGroup.Profile, ParticipantActivity.CABOR)
+        ]
+
         return data
 
     def _prep_modules(self, p_id, ro_session):
@@ -497,6 +583,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
+        activity = list()
         code_id_query = ro_session.query(func.max(QuestionnaireConcept.codeId)). \
             filter(QuestionnaireResponse.questionnaireId ==
                    QuestionnaireConcept.questionnaireId).label('codeId')
@@ -543,6 +630,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'response_status': str(QuestionnaireResponseStatus(row.status)),
                     'response_status_id': int(QuestionnaireResponseStatus(row.status))
                 }
+
+                mod_ca = {'ConsentAnswer': None}
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
@@ -603,6 +692,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
+                        mod_ca['ConsentAnswer'] = consent['consent_value']
 
                         # Compare against the last consent response processed to filter replays/duplicates
                         if not self.is_replay(last_consent_processed, consent, created_key='consent_module_created'):
@@ -614,6 +704,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 # consent_added == True means we already know it wasn't a replayed consent
                 if consent_added or not self.is_replay(last_mod_processed, module_data, created_key='module_created'):
                     modules.append(module_data)
+                    try:
+                        activity.append(_act(row.authored, ActivityGroup.QuestionnaireModule,
+                                                 ParticipantActivity[module_name], **mod_ca))
+                    except KeyError:
+                        logging.warning(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
 
@@ -630,6 +725,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 except TypeError:
                     data['consents'].sort(key=lambda consent_data: consent_data['consent_module_created'],
                                           reverse=True)
+
+        data['activity'] = activity
         return data
 
     def _prep_the_basics(self, p_id, ro_session):
@@ -698,6 +795,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         data = {}
         pm_list = list()
+        activity = list()
 
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
                                  PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
@@ -726,9 +824,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
             })
+            _act(row.finalized, ActivityGroup.Profile, ParticipantActivity.PhysicalMeasurements)
 
         if len(pm_list) > 0:
             data['pm'] = pm_list
+            data['activity'] = activity  # Record participant activity events
+
         return data
 
     def _prep_biobank_info(self, p_id, p_bb_id, ro_session):
@@ -796,6 +897,25 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'disposed_reason_id': int(SampleStatus(stored_status)) if stored_status else None,
             }
 
+        def get_biobank_sample_activity(samples):
+            """
+            Grab biobank activity from list of sample records.
+            :param samples: list of biobank sample records.
+            :return: list
+            """
+            act_ = list()
+            confirmed_ts = processed_ts = datetime.datetime.min
+            for sample in samples:
+                if sample['confirmed'] and sample['confirmed'] > confirmed_ts:
+                    confirmed_ts = sample['confirmed']
+                if sample['processed'] and sample['processed'] > confirmed_ts:
+                    processed_ts = sample['processed']
+            if confirmed_ts != datetime.datetime.min:
+                act_.append(_act(confirmed_ts, ActivityGroup.Biobank, ParticipantActivity.BiobankReceived))
+            if processed_ts != datetime.datetime.min:
+                act_.append(_act(processed_ts, ActivityGroup.Biobank, ParticipantActivity.BiobankProcessed))
+            return act_
+
         # SQL to generate a list of biobank orders associated with a participant
         _biobank_orders_sql = """
            select bo.biobank_order_id, bo.created, bo.order_status,
@@ -840,6 +960,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         data = {}
         orders = list()
+        activity = list()
         # Find all biobank orders associated with this participant
         cursor = ro_session.execute(_biobank_orders_sql, {'p_id': p_id})
         biobank_orders = [r for r in cursor]
@@ -915,8 +1036,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'baseline_tests': baseline_tests,
                 'baseline_tests_confirmed': baseline_tests_confirmed,
             }
-
             orders.append(order)
+            activity.append(_act(row.created, ActivityGroup.Biobank, ParticipantActivity.BiobankOrder))
+            activity.append(_act(row.finalized_time, ActivityGroup.Biobank, ParticipantActivity.BiobankShipped))
+            if order['samples']:
+                activity = activity + get_biobank_sample_activity(order['samples'])
 
         # Add any "orderless" stored samples for this participant.  They will all be associated with a
         # pseudo order with an order id of 'UNSET'
@@ -925,14 +1049,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for bss_row in bss_missing_orders:
                 orderless_stored_samples.append(_make_sample_dict_from_row(bss=bss_row, bos=None))
 
-            orders.append({
+            order = {
                 'biobank_order_id': 'UNSET',
                 'tests_stored': len(orderless_stored_samples),
                 'samples': orderless_stored_samples
-            })
+            }
+            orders.append(order)
+            if order['samples']:
+                activity = activity + get_biobank_sample_activity(order['samples'])
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
+            data['activity'] = activity  # Record participant activity events
 
         return data
 
@@ -1447,10 +1575,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         last_answer = qnan.answer
 
                     # For question codes with multiple distinct responses, created comma-separated list of answers
-                    if qnan.code_name in data:
-                        data[qnan.code_name] += f',{qnan.answer}'
-                    else:
-                        data[qnan.code_name] = qnan.answer
+                    if qnan.answer:
+                        if qnan.code_name in data:
+                            data[qnan.code_name] += f',{qnan.answer}'
+                        else:
+                            data[qnan.code_name] = qnan.answer
 
                     # Special handling of GROR deprecated responses
                     if module == 'GROR' \
