@@ -634,3 +634,84 @@ class BQPDRCOPEFebView(BQView):
     __table__ = BQPDRCOPEFeb
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
+
+# Note:  the StopParticipating and withdrawal_intro module codes are used for similar surveys that contain the
+# same survey questions.
+class BQPDRWithdrawalIntroSchema(_BQModuleSchema):
+    """ Withdrawal Intro Module """
+    _module = 'withdrawal_intro'
+    _excluded_fields = ()
+
+class BQPDRWithdrawalIntro(BQTable):
+    """ Withdrawal Intro BigQuery Table """
+    __tablename__ = 'pdr_mod_withdrawalintro'
+    __schema__ = BQPDRWithdrawalIntroSchema
+
+class BQPDRStopParticipatingSchema(_BQModuleSchema):
+    """ Stop Participating Module """
+    _module   = 'StopParticipating'
+    _excluded_fields = ()
+
+class BQPDRStopParticipating(BQTable):
+    """ Stop Participating BigQuery Table """
+    __tablename__ = 'pdr_mod_stopparticipating'
+    __schema__ = BQPDRStopParticipatingSchema
+
+# This view will combine results from both pdr_mod_withdrawalintro and pdr_mod_stopparticipating.  It will only include
+# common fields that exist in both withdrawal modules.  The StopParticipating module has some extra codes
+# (e.g., DeactivatedLogin2_Boolean) that don't apply to the new withdrawal questionnaire.
+# TODO:  Confirm if withdrawalreasonother_text should be an excluded field in the base schemas
+class BQPDRWithdrawalView(BQView):
+    """ PDR Withdrawal module BigQuery View """
+    __viewname__ = 'v_pdr_mod_withdrawal'
+    __viewdescr__ = 'PDR Withdrawal Module View'
+    __table__ = BQPDRWithdrawalIntro
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    __sql__ = """
+        SELECT
+               id,
+               created,
+               modified,
+               authored,
+               `language`,
+               participant_id,
+               questionnaire_response_id,
+               questionnaire_id,
+               external_id,
+               status,
+               status_id,
+               test_participant,
+               StoppingMeans_StopOptions,
+               withdrawal_screen2,
+               withdrawalreasonother_text,
+               withdrawalaianceremony
+            FROM (
+                SELECT *,
+                       ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY authored DESC) AS rn
+                FROM `{project}`.{dataset}.pdr_mod_withdrawalintro ) wi
+        WHERE wi.rn = 1
+        UNION ALL
+        SELECT
+               id,
+               created,
+               modified,
+               authored,
+               `language`,
+               participant_id,
+               questionnaire_response_id,
+               questionnaire_id,
+               external_id,
+               status,
+               status_id,
+               test_participant,
+               StoppingMeans_StopOptions,
+               withdrawal_screen2,
+               withdrawalreasonother_text,
+               withdrawalaianceremony
+            FROM (
+                SELECT *,
+                       ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY authored DESC) AS rn
+                FROM `{project}`.{dataset}.pdr_mod_stopparticipating ) sp
+        WHERE sp.rn = 1
+    """
+    _show_created = True

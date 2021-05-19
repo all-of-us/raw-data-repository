@@ -25,9 +25,11 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
     bq_institutional_affiliations_update, bq_researcher_update
 from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
+from rdr_service.model.bq_questionnaires import (
+    BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory,
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRWithdrawalIntro, BQPDRStopParticipating
+)
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
@@ -92,7 +94,9 @@ class ParticipantResourceClass(object):
                     BQPDRCOPEFeb,
                     BQPDRFamilyHistory,
                     BQPDRPersonalMedicalHistory,
-                    BQPDRHealthcareAccess
+                    BQPDRHealthcareAccess,
+                    BQPDRStopParticipating,
+                    BQPDRWithdrawalIntro
                 )
 
                 for module in modules:
