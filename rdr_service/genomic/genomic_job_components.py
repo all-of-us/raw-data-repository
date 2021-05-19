@@ -1156,6 +1156,8 @@ class GenomicFileIngester:
                     bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
                     genomic_gc_validation_metrics_update(updated_obj.id)
 
+            return GenomicSubProcessResult.SUCCESS
+
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 

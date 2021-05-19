@@ -380,7 +380,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
             _task_data.job = GenomicJob.CALCULATE_RECORD_COUNT_AW1
             dispatch_genomic_job_from_task(_task_data)
 
-    if _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
+    elif _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
         # Calculate manifest record counts job
         with GenomicJobController(_task_data.job,
                                   bq_project_id=project_id) as controller:
