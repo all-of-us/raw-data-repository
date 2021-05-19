@@ -635,6 +635,24 @@ class BQPDRCOPEFebView(BQView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+class BQPDRCOPEVaccine1Schema(_BQModuleSchema):
+    """ COPE Vaccine Survey 1 (initial) """
+    _module = 'cope_vaccine1'
+    _excluded_fields = ()
+
+class BQPDRCOPEVaccine1(BQTable):
+    """ COPE Vaccine 1 BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_vaccine1'
+    __schema__ = BQPDRCOPEVaccine1Schema
+
+class BQPDRCOPEVaccine1View(BQView):
+    """ PDR COPE Vaccine1 BigQuery View """
+    __viewname__ = 'v_pdr_mod_cope_vaccine1'
+    __viewdescr__ = 'PDR COPE Vaccine1 Module View'
+    __table__ = BQPDRCOPEVaccine1
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
 # Note:  the StopParticipating and withdrawal_intro module codes are used for similar surveys that contain the
 # same survey questions.
 class BQPDRWithdrawalIntroSchema(_BQModuleSchema):

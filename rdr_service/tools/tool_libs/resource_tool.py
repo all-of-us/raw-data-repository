@@ -28,7 +28,8 @@ from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import (
     BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory,
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRWithdrawalIntro, BQPDRStopParticipating
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRWithdrawalIntro, BQPDRStopParticipating,
+    BQPDRCOPEVaccine1
 )
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
@@ -92,6 +93,7 @@ class ParticipantResourceClass(object):
                     BQPDRCOPENov,
                     BQPDRCOPEDec,
                     BQPDRCOPEFeb,
+                    BQPDRCOPEVaccine1,
                     BQPDRFamilyHistory,
                     BQPDRPersonalMedicalHistory,
                     BQPDRHealthcareAccess,

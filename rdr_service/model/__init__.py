@@ -21,6 +21,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENov'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDec'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFeb'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine1'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWithdrawalIntro'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRStopParticipating'),
 
@@ -75,6 +76,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENovView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDecView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFebView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine1View'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRWithdrawalView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
