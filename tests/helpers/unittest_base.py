@@ -37,7 +37,6 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from rdr_service.resource.generators.pdr_participant import PDRParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
@@ -391,7 +390,6 @@ class PDRGeneratorTestMixin:
     bq_participant_summary_gen = BQParticipantSummaryGenerator()
     bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
     participant_resource_gen = ParticipantSummaryGenerator()
-    pdr_participant_gen = PDRParticipantSummaryGenerator()
 
     def make_bq_participant_summary(self, participant_id, to_dict=True):
         """ Create generated resource data for bigquery_sync table pdr_participant records """
@@ -407,18 +405,6 @@ class PDRGeneratorTestMixin:
         """ Create generated resource data for resource table participant records """
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.participant_resource_gen.make_resource(participant_id)
-        # Return data as a dict by default; caller can override to get the ResourceRecordSet object
-        if get_data:
-            return gen_data.get_data()
-        else:
-            return gen_data
-
-    def make_pdr_participant_summary(self, participant_id, ps_rsc=None, get_data=True):
-        """ Create generated resource data for resource table pdr_participant records
-            Caller can provide a ps_rsc ResourceRecordObject to pass into the PDRParticipantSummarGenerator
-        """
-        participant_id = self.cast_pid_to_int(participant_id)
-        gen_data = self.pdr_participant_gen.make_resource(participant_id, ps_rsc)
         # Return data as a dict by default; caller can override to get the ResourceRecordSet object
         if get_data:
             return gen_data.get_data()
