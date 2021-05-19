@@ -380,7 +380,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
             _task_data.job = GenomicJob.CALCULATE_RECORD_COUNT_AW1
             dispatch_genomic_job_from_task(_task_data)
 
-    elif _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
+    if _task_data.job == GenomicJob.CALCULATE_RECORD_COUNT_AW1:
         # Calculate manifest record counts job
         with GenomicJobController(_task_data.job,
                                   bq_project_id=project_id) as controller:
@@ -396,9 +396,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
                 rec_count,
                 project_id=project_id
             )
-
-    else:
-        logging.warning(f'No task for {_task_data.job}')
 
 
 def load_awn_manifest_into_raw_table(
