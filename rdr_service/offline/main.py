@@ -433,6 +433,13 @@ def genomic_data_quality_daily_ingestion_summary():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def genomic_data_quality_daily_incident_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def bigquery_rebuild_cron():
     """ this should always be a manually run job, but we have to schedule it at least once a year. """
     now = datetime.utcnow()
@@ -740,11 +747,6 @@ def _build_pipeline_app():
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW4Workflow",
-        endpoint="genomic_aw4_workflow",
-        view_func=genomic_aw4_workflow, methods=["GET"]
-    )
     # END Genomic Pipeline Jobs
 
     # BEGIN Genomic Data Quality Jobs
@@ -752,6 +754,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicDataQualityDailyIngestionSummary",
         endpoint="genomic_data_quality_daily_ingestion_summary",
         view_func=genomic_data_quality_daily_ingestion_summary, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyIncidentSummary",
+        endpoint="genomic_data_quality_daily_incident_summary",
+        view_func=genomic_data_quality_daily_incident_summary, methods=["GET"]
     )
     # END Genomic Data Quality Jobs
 

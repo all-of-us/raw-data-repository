@@ -89,10 +89,8 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
                 else:
                     log.fpk_alt_id = str(insp.identity[0])
 
-        except NoInspectionAvailable:
-            pass
-        except Exception:  # pylint: disable=broad-except
-            pass
+        except (NoInspectionAvailable, Exception):  # pylint: disable=broad-except
+            logging.error('Error setting request log data', exc_info=True)
 
     return save_raw_request_record(log)
 

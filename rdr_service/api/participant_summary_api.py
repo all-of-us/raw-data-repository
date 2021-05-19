@@ -56,10 +56,9 @@ class ParticipantSummaryApi(BaseApi):
             return super(ParticipantSummaryApi, self)._query("participantId")
 
     def _make_query(self, check_invalid=True):
-        if not request.args.get("hpoId"):
-            constraint_failed, message = self._check_constraints()
-            if constraint_failed:
-                raise BadRequest(f"{message}")
+        constraint_failed, message = self._check_constraints()
+        if constraint_failed:
+            raise BadRequest(f"{message}")
 
         query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
@@ -81,20 +80,23 @@ class ParticipantSummaryApi(BaseApi):
         if not any(role in valid_roles for role in self.user_info.get('roles')):
             return invalid, message
 
-        pairs = {
+        pair_config = {
             'lastName': {
                 'fields': ['lastName', 'dateOfBirth'],
+                'bypass_check_args': ['hpoId']
             },
             'dateOfBirth': {
                 'fields': ['lastName', 'dateOfBirth'],
+                'bypass_check_args': ['hpoId']
             }
         }
 
         for arg in request.args:
-            if arg in pairs.keys():
-                constraint = pairs[arg]
+            if arg in pair_config.keys():
+                constraint = pair_config[arg]
+                bypass = [val for val in constraint['bypass_check_args'] if val in request.args]
                 missing = [val for val in constraint['fields'] if val not in request.args]
-                if missing:
+                if not bypass and missing:
                     invalid = True
                     message = f'Argument {missing[0]} is required with {arg}'
                     break

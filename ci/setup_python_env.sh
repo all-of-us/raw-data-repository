@@ -1,7 +1,8 @@
+#!/bin/bash
+
 #
 # Install the python library requirements
 #
-
 python3 -m venv venv
 source venv/bin/activate
 export PYTHONPATH=`pwd`

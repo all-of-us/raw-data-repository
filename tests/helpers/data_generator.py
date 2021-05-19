@@ -13,12 +13,17 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicAW1Raw,
-    GenomicFileProcessed, GenomicAW2Raw, GenomicIncident)
+    GenomicFileProcessed,
+    GenomicAW2Raw,
+    GenomicIncident,
+    GenomicGCValidationMetrics
+)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -30,6 +35,7 @@ from rdr_service.participant_enums import (
     DeceasedReportStatus,
     DeceasedStatus,
     EnrollmentStatus,
+    PatientStatusFlag,
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -51,6 +57,26 @@ class DataGenerator:
     def _commit_to_database(self, model):
         self.session.add(model)
         self.session.commit()
+
+    def create_database_patient_status(self, **kwargs):
+        patient_status = self._patient_status(**kwargs)
+        self._commit_to_database(patient_status)
+        return patient_status
+
+    def _patient_status(self, **kwargs):
+        for field, default in [('patientStatus', PatientStatusFlag.YES),
+                               ('user', 'test_user')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'hpoId' not in kwargs:
+            kwargs['hpoId'] = self.create_database_hpo().hpoId
+        if 'organizationId' not in kwargs:
+            kwargs['organizationId'] = self.create_database_organization().organizationId
+        if 'siteId' not in kwargs:
+            kwargs['siteId'] = self.create_database_site().siteId
+
+        return PatientStatus(**kwargs)
 
     def create_database_questionnaire(self, **kwargs):
         questionnaire = self._questionnaire(**kwargs)
@@ -177,7 +203,8 @@ class DataGenerator:
 
     def _site_with_defaults(self, **kwargs):
         defaults = {
-            'siteName': 'example_site'
+            'siteName': 'example_site',
+            'googleGroup': self.faker.pystr()
         }
         defaults.update(kwargs)
         return Site(**defaults)
@@ -189,7 +216,8 @@ class DataGenerator:
 
     def _organization_with_defaults(self, **kwargs):
         defaults = {
-            'displayName': 'example_org_display'
+            'displayName': 'example_org_display',
+            'externalId': self.faker.pystr()
         }
         defaults.update(kwargs)
 
@@ -439,7 +467,8 @@ class DataGenerator:
         if 'biobankStoredSampleId' not in kwargs:
             kwargs['biobankStoredSampleId'] = self.unique_biobank_stored_sample_id()
 
-        for field, default in [('biobankOrderIdentifier', self.faker.pystr())]:
+        for field, default in [('biobankOrderIdentifier', self.faker.pystr()),
+                               ('test', self.faker.pystr(4))]:
             if field not in kwargs:
                 kwargs[field] = default
 
@@ -574,3 +603,12 @@ class DataGenerator:
 
     def _genomic_incident(self, **kwargs):
         return GenomicIncident(**kwargs)
+
+    def create_database_genomic_gc_validation_metrics(self, **kwargs):
+        metrics = self._genomic_validation_metrics(**kwargs)
+        self._commit_to_database(metrics)
+        return metrics
+
+    def _genomic_validation_metrics(self, **kwargs):
+        return GenomicGCValidationMetrics(**kwargs)
+

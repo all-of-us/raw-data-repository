@@ -26,6 +26,7 @@ class SrcClean(Base):
     id = Column(BigInteger, autoincrement=True, primary_key=True)
     participant_id = Column(BigInteger)
     research_id = Column(BigInteger)
+    external_id = Column(BigInteger)
     survey_name = Column(String(200))
     date_of_survey = Column(DateTime)
     question_ppi_code = Column(String(200))

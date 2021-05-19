@@ -19,7 +19,8 @@ from rdr_service.config import (
     MissingConfigException, RDR_SLACK_WEBHOOKS)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
-    bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update
+    bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
+    bq_genomic_gc_validation_metrics_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -36,7 +37,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
     GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao,
-    GenomicAW2RawDao)
+    GenomicAW2RawDao, GenomicGCValidationMetricsDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -63,7 +64,7 @@ class GenomicJobController:
         self.job_id = job_id
         self.job_run = None
         self.bucket_name = getSetting(bucket_name, default="")
-        self.sub_folder_name = getSetting(sub_folder_name, default="")
+        self.sub_folder_name = getSetting(sub_folder_name, default=sub_folder_name)
         self.sub_folder_tuple = sub_folder_tuple
         self.bucket_name_list = getSettingList(bucket_name_list, default=[])
         self.archive_folder_name = archive_folder_name
@@ -83,6 +84,8 @@ class GenomicJobController:
         self.manifest_file_dao = GenomicManifestFileDao()
         self.manifest_feedback_dao = GenomicManifestFeedbackDao()
         self.incident_dao = GenomicIncidentDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.member_dao = GenomicSetMemberDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -331,6 +334,48 @@ class GenomicJobController:
             multiples,
             metrics
         )
+
+    def ingest_data_files(self, file_path, bucket_name):
+        data_file_mappings = {
+            'gcvf': {
+                'file_ext': ['hard-filtered.gvcf.gz'],
+                'model_attrs': ['gvcfPath', 'gvcfReceived']
+            },
+            'gcvf_md5': {
+                'file_ext': ['hard-filtered.gvcf.gz.md5sum'],
+                'model_attrs': ['gvcfMd5Path', 'gvcfMd5Received']
+            }
+        }
+
+        try:
+            logging.info(f'Inserting data file: {file_path}')
+
+            data_file = file_path.split('/')[-1]
+            sample_id = data_file.split('_')[2]
+            member = self.member_dao.get_member_from_sample_id(sample_id)
+            metrics = None if not member else self.metrics_dao.get_metrics_by_member_id(member.id)
+
+            if metrics:
+                ext = file_path.split('.', 1)[-1]
+                attrs = []
+                for key, value in data_file_mappings.items():
+                    if ext in value['file_ext']:
+                        attrs = data_file_mappings[key]['model_attrs']
+                        break
+
+                if attrs:
+                    for value in attrs:
+                        if 'Path' in value:
+                            metrics.__setattr__(value, f'{bucket_name}/{file_path}')
+                        else:
+                            metrics.__setattr__(value, 1)
+
+                    metrics_obj = self.metrics_dao.upsert(metrics)
+                    bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.bq_project_id)
+                    bq_genomic_gc_validation_metrics_update(metrics_obj.id)
+
+        except RuntimeError:
+            logging.warning('Inserting data file failure')
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
@@ -714,21 +759,24 @@ class GenomicJobController:
 
                 now_time = datetime.utcnow()
 
-                # Insert manifest_file record
-                new_manifest_obj = GenomicManifestFile(
-                    uploadDate=now_time,
-                    manifestTypeId=manifest_type,
-                    filePath=new_file_path,
-                    bucketName=self.bucket_name,
-                    recordCount=result['record_count'],
-                    rdrProcessingComplete=1,
-                    rdrProcessingCompleteDate=now_time,
-                    fileName=new_file_path.split('/')[-1]
-                )
-                new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+                new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(new_file_path)
 
-                bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
-                genomic_manifest_file_update(new_manifest_obj.id)
+                if not new_manifest_record:
+                    # Insert manifest_file record
+                    new_manifest_obj = GenomicManifestFile(
+                        uploadDate=now_time,
+                        manifestTypeId=manifest_type,
+                        filePath=new_file_path,
+                        bucketName=self.bucket_name,
+                        recordCount=result['record_count'],
+                        rdrProcessingComplete=1,
+                        rdrProcessingCompleteDate=now_time,
+                        fileName=new_file_path.split('/')[-1]
+                    )
+                    new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+
+                    bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
+                    genomic_manifest_file_update(new_manifest_obj.id)
 
                 # update feedback records if manifest is a feedback manifest
                 if "feedback_record" in kwargs.keys():
@@ -973,7 +1021,8 @@ class GenomicJobController:
 
         return data
 
-    def _send_email_with_sendgrid(self, _email):
+    @staticmethod
+    def _send_email_with_sendgrid(_email):
         """
         Calls SendGrid API with email request
         :param _email:
@@ -1066,6 +1115,7 @@ class DataQualityJobController:
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
         }
 
         return job_registry[job]

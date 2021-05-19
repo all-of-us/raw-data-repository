@@ -39,7 +39,6 @@ from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
 from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from rdr_service.resource.generators.pdr_participant import PDRParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
@@ -395,7 +394,6 @@ class PDRGeneratorTestMixin:
     bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
     code_resource_gen = CodeGenerator()
     participant_resource_gen = ParticipantSummaryGenerator()
-    pdr_participant_gen = PDRParticipantSummaryGenerator()
 
     def make_bq_code(self, code_id, to_dict=True):
         """ Create generated resource data for bigquery_sync table 'code' records """
@@ -418,15 +416,6 @@ class PDRGeneratorTestMixin:
         """ Create generated resource data for resource table participant records """
         participant_id = self.cast_pid_to_int(participant_id)
         gen_data = self.participant_resource_gen.make_resource(participant_id)
-        # Return data as a dict by default; caller can override to get the ResourceRecordSet object
-        return gen_data.get_data() if get_data else gen_data
-
-    def make_pdr_participant_summary(self, participant_id, ps_rsc=None, get_data=True):
-        """ Create generated resource data for resource table pdr_participant records
-            Caller can provide a ps_rsc ResourceRecordObject to pass into the PDRParticipantSummarGenerator
-        """
-        participant_id = self.cast_pid_to_int(participant_id)
-        gen_data = self.pdr_participant_gen.make_resource(participant_id, ps_rsc)
         # Return data as a dict by default; caller can override to get the ResourceRecordSet object
         return gen_data.get_data() if get_data else gen_data
 
@@ -496,6 +485,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
         self.config_data_to_reset = {}
+        self.uses_database = True
 
     def _set_up_test_suite(self):
         self.setup_config()
@@ -518,18 +508,20 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.setup_storage()
         self.app = main.app.test_client()
 
-        reset_mysql_instance(with_data, with_consent_codes)
-
         # Allow printing the full diff report on errors.
         self.maxDiff = None
         self._consent_questionnaire_id = None
 
-        self.session = database_factory.get_database().make_session()
-        self.data_generator = DataGenerator(self.session, self.fake)
+        if self.uses_database:
+            reset_mysql_instance(with_data, with_consent_codes)
+
+            self.session = database_factory.get_database().make_session()
+            self.data_generator = DataGenerator(self.session, self.fake)
 
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
-        self.session.close()
+        if self.uses_database:
+            self.session.close()
 
         for key, original_data in self.config_data_to_reset.items():
             config.override_setting(key, original_data)

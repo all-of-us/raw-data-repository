@@ -1,4 +1,5 @@
 import sqlalchemy
+from sqlalchemy.orm import aliased
 
 from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
@@ -14,6 +15,12 @@ class GenomicQueryClass:
 
     def __init__(self, input_manifest=None):
         self.input_manifest = input_manifest
+
+        # Table aliases for tables requiring multiple JOINs
+        self.aliases = {
+            'gsm': aliased(GenomicSetMember),
+        }
+
         self.genomic_data_config = {
             GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
                 [
@@ -80,6 +87,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.cramPath,
                     GenomicGCValidationMetrics.cramMd5Path,
                     GenomicGCValidationMetrics.craiPath,
+                    GenomicGCValidationMetrics.gvcfPath,
+                    GenomicGCValidationMetrics.gvcfMd5Path,
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.sexConcordance,
                     GenomicGCValidationMetrics.processingStatus,
@@ -89,15 +98,22 @@ class GenomicQueryClass:
                 ]
             ).select_from(
                 sqlalchemy.join(
-                    sqlalchemy.join(
-                        sqlalchemy.join(ParticipantSummary,
-                                        GenomicSetMember,
-                                        GenomicSetMember.participantId == ParticipantSummary.participantId),
-                        GenomicGCValidationMetrics,
-                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                    ),
+                    ParticipantSummary,
+                    GenomicSetMember,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                ).join(
+                    GenomicGCValidationMetrics,
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).join(
                     Participant,
                     Participant.participantId == ParticipantSummary.participantId
+                ).join(
+                    self.aliases['gsm'],
+                    sqlalchemy.and_(
+                        self.aliases['gsm'].gcManifestParentSampleId == GenomicSetMember.gcManifestParentSampleId,
+                        self.aliases['gsm'].genomeType == 'aou_array',
+                        self.aliases['gsm'].aw3ManifestJobRunID.isnot(None)
+                    )
                 )
             ).where(
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
@@ -767,9 +783,7 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
-                
                 UNION
-                
                 # AW2 Ingestions
                 SELECT count(distinct raw.id) record_count
                     , count(distinct m.id) as ingested_count
@@ -797,6 +811,27 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
+            """
+
+        query_params = {
+            "from_date": from_date
+        }
+
+        return query_sql, query_params\
+
+    @staticmethod
+    def dq_report_incident_detail(from_date):
+        query_sql = """
+                # Incident Detail Report Query
+            SELECT code
+                , created
+                , biobank_id
+                , genomic_set_member_id
+                , source_job_run_id
+                , source_file_processed_id
+            FROM genomic_incident
+            WHERE created >= :from_date
+            ORDER BY code, created
             """
 
         query_params = {

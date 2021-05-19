@@ -15,20 +15,17 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
     GenomicManifestFileDao)
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 from rdr_service.model.participant import Participant
-
 from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
     GenomicJobRun,
 )
-
 from rdr_service.participant_enums import (
     SampleStatus,
     WithdrawalStatus
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
-
 
 class GenomicApiTestBase(BaseTestCase):
     def setUp(self):
@@ -331,7 +328,6 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
         super(GenomicCloudTasksApiTest, self).setUp()
-
         self.manifest_file_dao = GenomicManifestFileDao()
 
     @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
@@ -343,7 +339,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"manifest_file_id": manifest.id}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
+
         self.send_post(
             local_path='CalculateRecordCountTaskApi',
             request_data=data,
@@ -377,7 +373,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw1"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
+
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
             request_data=data,
@@ -395,7 +391,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data = {"file_path": test_file_path, "file_type": "aw2"}
 
         from rdr_service.resource import main as resource_main
-        resource_main.app.testing = True
+
         self.send_post(
             local_path='LoadRawAWNManifestDataAPI',
             request_data=data,
@@ -404,3 +400,134 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         )
 
         load_raw_awn_data_mock.assert_called_with(test_file_path, "aw2")
+
+    def test_load_samples_from_raw_data_task_api(self):
+
+        data = {'job': 'AW1_MANIFEST',
+                'server_config': {'biobank_id_prefix': ['S']},
+                'member_ids': [1, 2, 3]}
+
+        from rdr_service.resource import main as resource_main
+
+        sample_results = self.send_post(
+            local_path='IngestSamplesFromRawTaskAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(sample_results)
+        self.assertEqual(sample_results['success'], True)
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_ingest_aw4_data_task_api(self, ingest_aw4_mock):
+        aw4_wgs_file_path = "AW4_wgs_manifest/test_aw4_file.csv"
+        aw4_array_file_path = "AW4_array_manifest/test_aw4_file.csv"
+
+        data = {
+            "file_path": aw4_array_file_path,
+            "bucket_name": aw4_array_file_path.split('/')[0],
+            "upload_date": '2020-09-13T20:52:12+00:00'
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='IngestAW4ManifestTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        call_json = ingest_aw4_mock.call_args[0][0]
+
+        self.assertEqual(ingest_aw4_mock.called, True)
+        self.assertEqual(call_json['bucket'], data['bucket_name'])
+        self.assertEqual(call_json['job'], GenomicJob.AW4_ARRAY_WORKFLOW)
+        self.assertIsNotNone(call_json['file_data'])
+
+        data = {
+            "file_path": aw4_wgs_file_path,
+            "bucket_name": aw4_wgs_file_path.split('/')[0],
+            "upload_date": '2020-09-13T20:52:12+00:00'
+        }
+
+        self.send_post(
+            local_path='IngestAW4ManifestTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        call_json = ingest_aw4_mock.call_args[0][0]
+
+        self.assertEqual(ingest_aw4_mock.called, True)
+        self.assertEqual(call_json['bucket'], data['bucket_name'])
+        self.assertEqual(call_json['job'], GenomicJob.AW4_WGS_WORKFLOW)
+        self.assertIsNotNone(call_json['file_data'])
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_ingest_aw5_data_task_api(self, ingest_aw5_mock):
+        aw5_wgs_file_path = "AW5_wgs_manifest/test_aw5_file.csv"
+        aw5_array_file_path = "AW5_array_manifest/test_aw5_file.csv"
+
+        data = {
+            "file_path": aw5_array_file_path,
+            "bucket_name": aw5_array_file_path.split('/')[0],
+            "upload_date": '2020-09-13T20:52:12+00:00'
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='IngestAW5ManifestTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        call_json = ingest_aw5_mock.call_args[0][0]
+
+        self.assertEqual(ingest_aw5_mock.called, True)
+        self.assertEqual(call_json['bucket'], data['bucket_name'])
+        self.assertEqual(call_json['job'], GenomicJob.AW5_ARRAY_MANIFEST)
+        self.assertIsNotNone(call_json['file_data'])
+
+        data = {
+            "file_path": aw5_wgs_file_path,
+            "bucket_name": aw5_wgs_file_path.split('/')[0],
+            "upload_date": '2020-09-13T20:52:12+00:00'
+        }
+
+        self.send_post(
+            local_path='IngestAW5ManifestTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        call_json = ingest_aw5_mock.call_args[0][0]
+
+        self.assertEqual(ingest_aw5_mock.called, True)
+        self.assertEqual(call_json['bucket'], data['bucket_name'])
+        self.assertEqual(call_json['job'], GenomicJob.AW5_WGS_MANIFEST)
+        self.assertIsNotNone(call_json['file_data'])
+
+    def test_ingest_data_files_task_api(self):
+
+        data = {
+            "file_path": "test_file_path",
+            "bucket_name": "test_bucket",
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        insert_files_result = self.send_post(
+            local_path='IngestDataFilesTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(insert_files_result)
+        self.assertEqual(insert_files_result['success'], True)

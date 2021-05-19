@@ -38,6 +38,8 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         self.task_mappings = {
             "aw1": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
+            "aw4": "IngestAW4ManifestTaskApi",
+            "aw5": "IngestAW5ManifestTaskApi"
         }
 
     def run(self):
@@ -48,27 +50,42 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
-        _logger.info(f"file found: {self.event.attributes.objectId}")
+        _logger.info(f"File found: {self.event.attributes.objectId}")
+
+        object_id = self.event.attributes.objectId.lower()
+        task_key = None
 
         # AW1 files have "_sample_manifests" in file name
-        if '_sample_manifests' in self.event.attributes.objectId.lower():
+        if '_sample_manifests' in object_id:
             task_key = "aw1"
 
             # Northwest moves their AW1 files to a `downloaded` subfolder. Ignore these.
-            if 'downloaded' in self.event.attributes.objectId.lower():
+            if 'downloaded' in object_id:
                 return
 
         # AW2 files have "_data_manifests" in their file name
-        elif '_data_manifests' in self.event.attributes.objectId.lower():
+        elif '_data_manifests' in object_id:
             task_key = "aw2"
+
+        # AW4 files have "AW4" in their file path (bucket name)
+        elif 'aw4_' in object_id:
+            task_key = "aw4"
+
+        # AW5 files have "AW5" in their file path (bucket name)
+        elif 'aw5_' in object_id:
+            task_key = "aw5"
 
         else:
             _logger.info("No files match ingestion criteria.")
             return
 
+        _logger.info(f"Event payload: {self.event}")
+
         cloud_file_path = f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}'
 
         data = {
+            "file_type": task_key,
+            "filename": self.event.attributes.objectId,
             "file_path": cloud_file_path,
             "bucket_name": self.event.attributes.bucketId,
             "upload_date": self.event.attributes.eventTime,
@@ -78,11 +95,12 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             _logger.info("Pushing cloud tasks...")
 
             # Load into raw table
-            _task = GCPCloudTask()
-            _task.execute('/resource/task/LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
+            if task_key in ['aw1', 'aw2']:
+                _task = GCPCloudTask()
+                _task.execute(f'{self.task_root}LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
 
             _task = GCPCloudTask()
-            _task.execute(self.task_root + self.task_mappings[task_key], payload=data, queue=task_queue)
+            _task.execute(f'{self.task_root}{self.task_mappings[task_key]}', payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

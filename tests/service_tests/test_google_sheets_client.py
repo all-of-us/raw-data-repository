@@ -6,6 +6,10 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class GoogleSheetsTestBase(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def setUp(self, **kwargs) -> None:
         super(GoogleSheetsTestBase, self).setUp(**kwargs)
 

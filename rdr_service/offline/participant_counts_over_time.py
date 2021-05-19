@@ -1,16 +1,17 @@
 import datetime
 import logging
 
+from rdr_service import clock
 from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.participant_enums import MetricsCronJobStage
 
 
 def calculate_participant_metrics():
-    stage_one_start_date = datetime.datetime.now().date() - datetime.timedelta(days=30)
-    stage_one_end_date = datetime.datetime.now().date() + datetime.timedelta(days=10)
+    stage_one_start_date = clock.CLOCK.now().date() - datetime.timedelta(days=30)
+    stage_one_end_date = clock.CLOCK.now().date() + datetime.timedelta(days=10)
     # the first participant is registered at 2017-05-31
     stage_two_start_date = datetime.datetime.strptime("2017-05-30", "%Y-%m-%d").date()
-    stage_two_end_date = datetime.datetime.now().date() - datetime.timedelta(days=31)
+    stage_two_end_date = clock.CLOCK.now().date() - datetime.timedelta(days=31)
 
     # call metrics functions
     service = ParticipantCountsOverTimeService()

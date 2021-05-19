@@ -71,6 +71,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestAW2ManifestTaskApi",
                       endpoint="ingest_aw2_manifest_task", methods=["POST"])
 
+    # Ingest AW4 manifest
+    _api.add_resource(genomic_cloud_tasks_api.IngestAW4ManifestTaskApi,
+                      TASK_PREFIX + "IngestAW4ManifestTaskApi",
+                      endpoint="ingest_aw4_manifest_task", methods=["POST"])
+
     # Ingest AW5 manifest
     _api.add_resource(genomic_cloud_tasks_api.IngestAW5ManifestTaskApi,
                       TASK_PREFIX + "IngestAW5ManifestTaskApi",
@@ -80,6 +85,11 @@ def _build_resource_app():
     _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,
                       TASK_PREFIX + "IngestSamplesFromRawTaskAPI",
                       endpoint="ingest_samples_from_raw_task", methods=["POST"])
+
+    # Ingest member samples from raw models
+    _api.add_resource(genomic_cloud_tasks_api.IngestDataFilesTaskApi,
+                      TASK_PREFIX + "IngestDataFilesTaskApi",
+                      endpoint="ingest_data_files_task", methods=["POST"])
 
     # Calculate manifest file record count
     _api.add_resource(genomic_cloud_tasks_api.CalculateRecordCountTaskApi,

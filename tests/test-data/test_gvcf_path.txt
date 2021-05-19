@@ -1,0 +1,1 @@
+gs://test-genomics-data-rdr/Wgs_sample_raw_data/SS_VCF_research/RDR_A1_10001_00000_v1.hard-filtered.gvcf.gz

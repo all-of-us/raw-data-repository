@@ -472,7 +472,7 @@ class GenomicFileIngester:
 
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
-                    _message = f"Cannot find genomic set member: " \
+                    _message = f"{self.job_id.name}: Cannot find genomic set member: " \
                                f"collection_tube_id: {row_copy['collectiontubeid']}, "\
                                f"biobank id: {bid}, "\
                                f"genome type: {row_copy['testname']}"
@@ -705,7 +705,7 @@ class GenomicFileIngester:
             if row['processingstatus'].lower() != 'pass':
                 return row
 
-            _message = f'contamination must be a number for sample_id: {row["sampleid"]}'
+            _message = f'{self.job_id.name}: Contamination must be a number for sample_id: {row["sampleid"]}'
 
             self.controller.create_incident(source_job_run_id=self.job_run_id,
                                             source_file_processed_id=self.file_obj.id,
@@ -852,7 +852,10 @@ class GenomicFileIngester:
                         metrics.drcMeanCoverage = row_copy['drcmeancoverage']
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
-                    self.metrics_dao.upsert(metrics)
+                    metrics_obj = self.metrics_dao.upsert(metrics)
+
+                    bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.controller.bq_project_id)
+                    genomic_gc_validation_metrics_update(metrics_obj.id)
 
                 self.member_dao.update(member)
 
@@ -1018,8 +1021,10 @@ class GenomicFileIngester:
                                 row.values()))
 
             genome_type = self.file_validator.genome_type
-            member = self.member_dao.get_member_from_sample_id(int(row_copy['sampleid']),
-                                                               genome_type, )
+            member = self.member_dao.get_member_from_sample_id(
+                int(row_copy['sampleid']),
+                genome_type
+            )
 
             if member is not None:
                 row_copy = self.prep_aw2_row_attributes(row_copy, member)
@@ -1065,7 +1070,7 @@ class GenomicFileIngester:
                     bid = bid[1:]
 
                 # Couldn't find genomic set member based on either biobank ID or sample ID
-                _message = f"Cannot find genomic set member for bid, sample_id: "\
+                _message = f"{self.job_id.name}: Cannot find genomic set member for bid, sample_id: "\
                            f"{row_copy['biobankid']}, {row_copy['sampleid']}"
 
                 self.controller.create_incident(source_job_run_id=self.job_run_id,
@@ -1535,7 +1540,7 @@ class GenomicFileValidator:
 
         if not struct_valid_result:
             slack = True
-            invalid_message = f"File structure of {filename} is not valid."
+            invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
             if missing_fields:
                 invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
@@ -1702,7 +1707,7 @@ class GenomicFileValidator:
         is_valid_filename = name_rules[self.job_id]()
 
         if not is_valid_filename:
-            invalid_message = f"File name {filename.split('/')[1]} has failed validation."
+            invalid_message = f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation."
             self.controller.create_incident(
                 save_incident=False,
                 slack=True,
@@ -1844,7 +1849,9 @@ class GenomicReconciler:
                                       ("rawVcfMd5Received", ".vcf.gz.md5sum", "rawVcfMd5Path"),
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
-                                      ("craiReceived", ".cram.crai", "craiPath"))
+                                      ("craiReceived", ".cram.crai", "craiPath"),
+                                      ("gvcfReceived", ".hard-filtered.gvcf.gz", "gvcfPath"),
+                                      ("gvcfMd5Received", ".hard-filtered.gvcf.gz.md5sum", "gvcfMd5Path"))
 
     def reconcile_metrics_to_array_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
@@ -1917,7 +1924,7 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            description = "The following AW2 manifests are missing data files."
+            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
@@ -2027,7 +2034,7 @@ class GenomicReconciler:
 
         # Make a roc ticket for missing data files
         if total_missing_data:
-            description = "The following AW2 manifests are missing data files."
+            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
             description += f"\nGenomic Job Run ID: {self.run_id}"
 
             for f in total_missing_data:
@@ -2999,6 +3006,8 @@ class ManifestDefinitionProvider:
                 "cram_path",
                 "cram_md5_path",
                 "crai_path",
+                "gvcf_path",
+                "gvcf_md5_path",
                 "contamination",
                 "sex_concordance",
                 "processing_status",
@@ -3114,11 +3123,9 @@ class ManifestCompiler:
     """
     def __init__(self, run_id, bucket_name=None):
         self.run_id = run_id
-
         self.bucket_name = bucket_name
         self.output_file_name = None
         self.manifest_def = None
-
         self.def_provider = None
 
         # Dao components

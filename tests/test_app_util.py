@@ -30,6 +30,10 @@ def not_in_prod():
     pass
 
 class AppUtilTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def setUp(self):
         super().setUp()
 

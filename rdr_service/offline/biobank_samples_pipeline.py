@@ -11,7 +11,7 @@ import os
 import pytz
 from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, or_
 from sqlalchemy.sql.functions import concat
 
 from rdr_service import clock, config
@@ -29,11 +29,13 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
-from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value
+from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value,\
+    WithdrawalStatus
 
 # Format for dates in output filenames for the reconciliation report.
 _FILENAME_DATE_FORMAT = "%Y-%m-%d"
@@ -86,10 +88,10 @@ def upsert_from_latest_csv():
         csv_reader = csv.DictReader(csv_file, delimiter="\t")
         written = _upsert_samples_from_csv(csv_reader)
 
-    ts = datetime.datetime.now()
+    since_ts = clock.CLOCK.now()
     dao = ParticipantSummaryDao()
     dao.update_from_biobank_stored_samples()
-    update_bigquery_sync_participants(ts, dao)
+    update_bigquery_sync_participants(since_ts, dao)
 
     return written, timestamp
 
@@ -102,7 +104,8 @@ def update_bigquery_sync_participants(ts, dao):
     batch_size = 250
 
     with dao.session() as session:
-        participants = session.query(Participant.participantId).filter(Participant.lastModified > ts).all()
+        participants = session.query(ParticipantSummary.participantId) \
+                       .filter(ParticipantSummary.lastModified > ts).all()
         total_rows = len(participants)
         count = int(math.ceil(float(total_rows) / float(batch_size)))
         logging.info('Biobank: calculated {0} tasks from {1} records with a batch size of {2}.'.
@@ -319,6 +322,7 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     (as biobank samples for Native Americans are disposed of differently)
     """
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
+    earliest_report_date = now - datetime.timedelta(days=report_cover_range)
     withdrawal_report_query = (
         Query([
             concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
@@ -336,12 +340,15 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
         ])
         .select_from(Participant)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
+        .join(BiobankStoredSample, BiobankStoredSample.biobankId == Participant.biobankId)
         .filter(
-            Participant.withdrawalTime >= now - datetime.timedelta(days=report_cover_range),
-            Query(BiobankStoredSample).filter(
-                BiobankStoredSample.biobankId == Participant.biobankId
-            ).exists()
+            Participant.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+            or_(
+                Participant.withdrawalTime >= earliest_report_date,
+                BiobankStoredSample.created >= earliest_report_date
+            )
         )
+        .distinct()
     )
 
     exporter.run_export(file_path, withdrawal_report_query, backup=True)

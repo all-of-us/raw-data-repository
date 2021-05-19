@@ -1,11 +1,12 @@
 import os
 
-from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
 from rdr_service.participant_enums import OrderStatus
+from rdr_service.resource.generators import ParticipantSummaryGenerator
 
 
 class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
@@ -192,7 +193,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             data['ubr_sexual_gender_minority'] = 1
 
         # ubr_disability
-        qnans = BQParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
+        qnans = ParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
         data['ubr_disability'] = 0
         if qnans:
             if qnans.get('Employment_EmploymentStatus') == 'EmploymentStatus_UnableToWork' or \
