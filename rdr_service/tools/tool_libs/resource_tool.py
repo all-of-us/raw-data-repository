@@ -34,6 +34,7 @@ from rdr_service.model.bq_questionnaires import (
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
@@ -286,11 +287,14 @@ class CodeResourceClass(object):
         self.gcp_env = gcp_env
 
     def update_code_table(self):
-
         ro_dao = BigQuerySyncDao(backup=True)
+
         with ro_dao.session() as ro_session:
-            gen = BQCodeGenerator()
-            results = ro_session.query(Code.codeId).all()
+            if not self.args.id:
+                results = ro_session.query(Code.codeId).all()
+            else:
+                # Force a list return type for the single-id lookup
+                results = ro_session.query(Code.codeId).filter(Code.codeId == self.args.id).all()
 
         count = 0
         total_ids = len(results)
@@ -299,9 +303,13 @@ class CodeResourceClass(object):
         _logger.info('  Code table: rebuilding {0} records...'.format(total_ids))
         with w_dao.session() as w_session:
             for row in results:
+                gen = BQCodeGenerator()
+                rsc_gen = CodeGenerator()
                 bqr = gen.make_bqrecord(row.codeId)
                 gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
                                   bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+                rsc_rec = rsc_gen.make_resource(row.codeId)
+                rsc_rec.save()
                 count += 1
                 if not self.args.debug:
                     print_progress_bar(count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete")
@@ -748,7 +756,7 @@ class ResearchWorkbenchResourceClass(object):
 def get_id_list(fname):
     """
     Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
-    id values from a specific genomic table).
+    id values from a specific table).
     :param fname:  The filename passed with the --from-file argument
     :return: A list of integers, or None on missing/empty fname
     """
@@ -858,6 +866,7 @@ def run():
         "code",
         parents=[all_ids_parser]
     )
+    code_parser.add_argument("--id", help="rebuild single code id", type=int, default=None)
     update_argument(code_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
 
     # Rebuild genomic resources.

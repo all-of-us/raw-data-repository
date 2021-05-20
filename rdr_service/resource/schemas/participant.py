@@ -9,7 +9,7 @@ from marshmallow import validate
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
-    WithdrawalAIANCeremonyStatus
+    WithdrawalAIANCeremonyStatus, BiobankOrderStatus
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -56,8 +56,8 @@ class ModuleStatusSchema(Schema):
     status = fields.EnumString(enum=QuestionnaireStatus)
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
     external_id = fields.String(validate=validate.Length(max=120))
-    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
-    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
+    response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+    response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
 
     class Meta:
         schema_id = SchemaID.participant_modules
@@ -154,7 +154,7 @@ class BiobankSampleSchema(Schema):
 
     class Meta:
         schema_id = SchemaID.participant_biobank_order_samples
-        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples'
+        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/BiobankSamples'
         # Exclude fields and/or functions to strip PII information from fields.
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
@@ -166,8 +166,8 @@ class BiobankOrderSchema(Schema):
     """
     biobank_order_id = fields.String(validate=validate.Length(max=80))
     created = fields.DateTime()
-    status = fields.EnumString(enum=OrderStatus)
-    status_id = fields.EnumInteger(enum=OrderStatus)
+    status = fields.EnumString(enum=BiobankOrderStatus)
+    status_id = fields.EnumInteger(enum=BiobankOrderStatus)
     dv_order = fields.Boolean()
     collected_site = fields.String(validate=validate.Length(max=255))
     collected_site_id = fields.Int32()
@@ -183,6 +183,9 @@ class BiobankOrderSchema(Schema):
     samples = fields.Nested(BiobankSampleSchema, many=True)
     tests_ordered = fields.Int32()
     tests_stored = fields.Int32()
+    finalized_time = fields.DateTime()
+    finalized_status = fields.EnumString(enum=OrderStatus)
+    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
 
     class Meta:
         schema_id = SchemaID.participant_biobank_orders
@@ -196,7 +199,7 @@ class PatientStatusSchema(Schema):
     """
     Patient Status History: PatientStatusFlag Enum
     """
-    patent_status_history_id = fields.Int32()
+    patient_status_history_id = fields.Int32()
     patient_status_created = fields.DateTime()
     patient_status_modified = fields.DateTime()
     patient_status_authored = fields.DateTime()
@@ -219,10 +222,11 @@ class PatientStatusSchema(Schema):
         pii_filter = {}  # dict(field: lambda function).
 
 
-class EHRReceiptSchema(Schema):
+class EhrReceiptSchema(Schema):
     """
     Participant EHR status records.
     """
+    # TODO:  Confirm if this should be the resource_pk_id in the Meta data?
     participant_ehr_receipt_id = fields.Int32()
     file_timestamp = fields.DateTime()
     first_seen = fields.DateTime()
@@ -339,7 +343,7 @@ class ParticipantSchema(Schema):
     was_ehr_data_available = fields.Boolean()
     first_ehr_receipt_time = fields.DateTime()
     latest_ehr_receipt_time = fields.DateTime()
-    ehr_receipts = fields.Nested(EHRReceiptSchema, many=True)
+    ehr_receipts = fields.Nested(EhrReceiptSchema, many=True)
 
     ubr_sex = fields.Boolean()
     ubr_sexual_orientation = fields.Boolean()
@@ -358,6 +362,9 @@ class ParticipantSchema(Schema):
         resource_uri = 'Participant'
         resource_pk_field = 'participant_id'
         # Exclude fields and/or functions to strip PII information from fields.
-        pii_fields = ('phone_number', 'login_phone_number', 'email', 'withdrawal_reason_justification',
-                      'distinct_visits')
+        pii_fields = ('phone_number', 'login_phone_number', 'email',
+                      'distinct_visits', 'first_name', 'middle_name', 'last_name',
+                      'sexual_orientation', 'sexual_orientation_id', 'research_id', 'last_modified'
+                      ) # List fields that contain PII data
+
         pii_filter = {}  # dict(field: lambda function).

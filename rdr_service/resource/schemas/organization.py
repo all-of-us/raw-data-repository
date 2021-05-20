@@ -23,3 +23,5 @@ class OrganizationSchema(Schema):
         schema_id = SchemaID.organization
         resource_uri = 'Organization'
         resource_pk_field = 'organization_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

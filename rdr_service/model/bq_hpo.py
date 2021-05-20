@@ -22,10 +22,15 @@ class BQHPOSchema(BQSchema):
     hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
     name = BQField('name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     display_name = BQField('display_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    organization_type = BQField('organization_type', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    organization_type = BQField('organization_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                 fld_enum=BQOrganizationTypeEnum)
-    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    organization_type_id = BQField('organization_type_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                                   fld_enum=BQOrganizationTypeEnum)
+    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQObsoleteStatusEnum)
+    is_obsolete_id = BQField('is_obsolete_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                             fld_enum=BQObsoleteStatusEnum)
+
 
 
 class BQHPO(BQTable):
