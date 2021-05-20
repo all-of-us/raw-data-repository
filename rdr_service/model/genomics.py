@@ -643,9 +643,9 @@ class GenomicCloudRequests(Base):
     event_payload = Column(JSON, nullable=False)
     topic = Column(String(255), nullable=False)
     api_route = Column(String(255), nullable=False)
-    file = Column(String(255), nullable=False)
+    file_path = Column(String(255), nullable=False)
     task = Column(String(255), nullable=False)
-    bucket = Column(String(255), nullable=False)
+    bucket_name = Column(String(255), nullable=False)
 
 
 event.listen(GenomicCloudRequests, 'before_insert', model_insert_listener)

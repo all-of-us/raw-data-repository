@@ -44,9 +44,9 @@ def upgrade_rdr():
     sa.Column('event_payload', mysql.JSON(), nullable=False),
     sa.Column('topic', sa.String(length=255), nullable=False),
     sa.Column('api_route', sa.String(length=255), nullable=False),
-    sa.Column('file', sa.String(length=255), nullable=False),
+    sa.Column('file_path', sa.String(length=255), nullable=False),
     sa.Column('task', sa.String(length=255), nullable=False),
-    sa.Column('bucket', sa.String(length=255), nullable=False),
+    sa.Column('bucket_name', sa.String(length=255), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
