@@ -8,8 +8,8 @@ from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerM
 
 class MessageBrokerDao(BaseDao):
     def __init__(self):
-        self.message_metadata_dao = MessageBrokerMetadataDao()
         super(MessageBrokerDao, self).__init__(MessageBrokerRecord)
+        self.message_metadata_dao = MessageBrokerMetadataDao()
 
     def from_client_json(self, resource_json, client_id=None):
         self._validate(resource_json)

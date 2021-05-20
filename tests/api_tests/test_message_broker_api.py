@@ -19,7 +19,7 @@ class MessageBrokerApiTest(BaseTestCase):
                 "report_revision_number": 0
             }
         }
-        result = self.send_post("Message/Broker", request_json)
+        result = self.send_post("MessageBroker", request_json)
         self.assertEqual(result, {'event': 'result_viewed',
                                   'participantId': participant.participantId,
                                   'responseCode': '200',
@@ -36,7 +36,7 @@ class MessageBrokerApiTest(BaseTestCase):
                 "report_revision_number": 0
             }
         }
-        self.send_post("Message/Broker", request_json, expected_status=http.client.BAD_REQUEST)
+        self.send_post("MessageBroker", request_json, expected_status=http.client.BAD_REQUEST)
 
         # participant not exist
         request_json = {
@@ -48,4 +48,4 @@ class MessageBrokerApiTest(BaseTestCase):
                 "report_revision_number": 0
             }
         }
-        self.send_post("Message/Broker", request_json, expected_status=http.client.BAD_REQUEST)
+        self.send_post("MessageBroker", request_json, expected_status=http.client.BAD_REQUEST)

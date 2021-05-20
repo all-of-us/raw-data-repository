@@ -62,3 +62,6 @@ class MessageBrokerMetadata(Base):
 
 event.listen(MessageBrokerRecord, "before_insert", model_insert_listener)
 event.listen(MessageBrokerRecord, "before_update", model_update_listener)
+
+event.listen(MessageBrokerMetadata, "before_insert", model_insert_listener)
+event.listen(MessageBrokerMetadata, "before_update", model_update_listener)

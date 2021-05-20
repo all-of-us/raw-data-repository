@@ -359,7 +359,7 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
 # Message broker API
-api.add_resource(MessageBrokerApi, API_PREFIX + "Message/Broker", endpoint="message.broker", methods=["POST"])
+api.add_resource(MessageBrokerApi, API_PREFIX + "MessageBroker", endpoint="message_broker", methods=["POST"])
 
 #
 # Non-resource endpoints
