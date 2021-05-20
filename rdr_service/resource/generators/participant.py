@@ -1053,7 +1053,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if len(bss_missing_orders):
             orderless_stored_samples = list()
             for bss_row in bss_missing_orders:
-                orderless_stored_samples.append(_make_sample_dict_from_row(bss=bss_row, bos=None))
+                sr = _make_sample_dict_from_row(bss=bss_row, bos=None)
+                if sr not in orderless_stored_samples:  # Don't put duplicates in samples list.
+                    orderless_stored_samples.append(sr)
 
             order = {
                 'biobank_order_id': 'UNSET',
