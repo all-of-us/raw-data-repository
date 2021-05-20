@@ -86,6 +86,8 @@ class WorkbenchWorkspaceSchema(Schema):
         schema_id = SchemaID.workbench_workspace
         resource_uri = 'WorkbenchWorkspace'
         resource_pk_field = 'workspace_source_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
 
 
 class WorkbenchWorkspaceUsersSchema(Schema):
@@ -105,3 +107,5 @@ class WorkbenchWorkspaceUsersSchema(Schema):
         schema_id = SchemaID.workbench_workspace_users
         resource_uri = 'WorkbenchWorkspaceUsers'
         resource_pk_field = 'user_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

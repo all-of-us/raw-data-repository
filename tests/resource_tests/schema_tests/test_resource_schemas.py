@@ -9,7 +9,7 @@ from tests.helpers.unittest_base import BaseTestCase
 
 # -- BQ model imports
 from rdr_service.model import (
-    bq_code, bq_genomics, bq_hpo, bq_organization, bq_participant_summary,
+    bq_code, bq_genomics, bq_hpo, bq_organization, bq_participant_summary, bq_pdr_participant_summary,
     # bq_questionnaires  <-- to do:  add tests for schemas in these files?
     bq_site, bq_workbench_workspace, bq_workbench_researcher
 )
@@ -27,19 +27,22 @@ bq_field_exclusions = {
     # Genomic schemas that have orig_* fields already and also id/created/modified
     'GenomicManifestFileSchema': ['orig_id'],
     'GenomicManifestFeedbackSchema': ['orig_id'],
-    'GenomicGCValidationMetricsSchema': ['orig_id', 'orig_created', 'orig_modified']
+    'GenomicGCValidationMetricsSchema': ['orig_id', 'orig_created', 'orig_modified'],
+    'ParticipantSchema': ['addr_state', 'addr_zip', 'biospec']
 }
 
 # Fields from the resource schemas that do not exist in the BQ schema
 rsc_field_exclusions = {
     'EhrReceiptSchema': ['participant_ehr_receipt_id'],
-    'HPOSchema': ['comment'],
-    'PatientStatusSchema': ['comment', 'patient_status_history_id', 'user'],
+    'HPOSchema': list(rschemas.HPOSchema.Meta.pii_fields),
+    'PatientStatusSchema':
+        list(rschemas.participant.PatientStatusSchema.Meta.pii_fields) + ['patient_status_history_id'],
     'PhysicalMeasurementsSchema': ['physical_measurements_id'],
     'GenomicManifestFileSchema': _default_exclusions,
     'GenomicManifestFeedbackSchema': _default_exclusions,
     'GenomicGCValidationMetricsSchema': _default_exclusions,
-    'WorkbenchResearcherSchema': ['email', 'family_name', 'given_name']
+    'WorkbenchResearcherSchema': list(rschemas.WorkbenchResearcherSchema.Meta.pii_fields),
+    'ParticipantSchema': list(rschemas.ParticipantSchema.Meta.pii_fields) + ['addresses']
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
@@ -162,7 +165,7 @@ class ResourceSchemaTest(BaseTestCase):
     def test_participant_resource_schema(self):
         self._verify_resource_schema('ParticipantSchema',
                                      rschemas.ParticipantSchema(),
-                                     bq_participant_summary.BQParticipantSummarySchema())
+                                     bq_pdr_participant_summary.BQPDRParticipantSummarySchema())
 
 
     def test_physical_measurements_resource_schema(self):
@@ -247,6 +250,7 @@ class ResourceSchemaTest(BaseTestCase):
         self._verify_resource_schema('WorkspaceAgeSchema',
                                      rschemas.workbench_workspace.WorkspaceAgeSchema(),
                                      bq_workbench_workspace.BQWorkspaceAgeSchema())
+
     @unittest.skip('Confirm if WorkspaceRaceEthnicitySchema needs a SchemaID defined')
     def test_workbench_workspace_race_resource_schema(self):
         self._verify_resource_schema('WorkspaceRaceEthnicitySchema',

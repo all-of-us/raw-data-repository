@@ -30,6 +30,8 @@ class GenomicSetSchema(Schema):
         schema_id = SchemaID.genomic_set
         resource_uri = 'GenomicSet'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicSetMemberSchema(Schema):
@@ -112,6 +114,8 @@ class GenomicSetMemberSchema(Schema):
         schema_id = SchemaID.genomic_set_member
         resource_uri = 'GenomicSetMember'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicJobRunSchema(Schema):
@@ -131,7 +135,8 @@ class GenomicJobRunSchema(Schema):
         schema_id = SchemaID.genomic_job_run
         resource_uri = 'GenomicJobRun'
         resource_pk_field = 'id'
-
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 class GenomicFileProcessedSchema(Schema):
 
@@ -153,6 +158,8 @@ class GenomicFileProcessedSchema(Schema):
         schema_id = SchemaID.genomic_file_processed
         resource_uri = 'GenomicFileProcessed'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicManifestFileSchema(Schema):
@@ -175,6 +182,9 @@ class GenomicManifestFileSchema(Schema):
         schema_id = SchemaID.genomic_manifest_file
         resource_uri = 'GenomicManifestFile'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
 
 
 class GenomicManifestFeedbackSchema(Schema):
@@ -193,6 +203,8 @@ class GenomicManifestFeedbackSchema(Schema):
         schema_id = SchemaID.genomic_manifest_feedback
         resource_uri = 'GenomicManifestFeedback'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicGCValidationMetricsSchema(Schema):
@@ -283,3 +295,5 @@ class GenomicGCValidationMetricsSchema(Schema):
         schema_id = SchemaID.genomic_gc_validation_metrics
         resource_uri = 'GenomicGCValidationMetrics'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

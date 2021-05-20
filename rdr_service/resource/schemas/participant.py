@@ -362,6 +362,9 @@ class ParticipantSchema(Schema):
         resource_uri = 'Participant'
         resource_pk_field = 'participant_id'
         # Exclude fields and/or functions to strip PII information from fields.
-        pii_fields = ('phone_number', 'login_phone_number', 'email', 'withdrawal_reason_justification',
-                      'distinct_visits')
+        pii_fields = ('phone_number', 'login_phone_number', 'email',
+                      'distinct_visits', 'first_name', 'middle_name', 'last_name',
+                      'sexual_orientation', 'sexual_orientation_id', 'research_id', 'last_modified'
+                      ) # List fields that contain PII data
+
         pii_filter = {}  # dict(field: lambda function).
