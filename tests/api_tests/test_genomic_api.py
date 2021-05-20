@@ -14,7 +14,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicSetMemberDao,
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
-    GenomicManifestFileDao,
+    GenomicCloudRequestsDao,
 )
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 from rdr_service.model.participant import Participant
@@ -330,7 +330,6 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
         super(GenomicCloudTasksApiTest, self).setUp()
-        self.manifest_file_dao = GenomicManifestFileDao()
 
     @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
     def test_calculate_record_count_task_api(self, dispatch_job_mock):
@@ -606,3 +605,79 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertIsNotNone(insert_files_result)
         self.assertEqual(insert_files_result['success'], True)
+
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_create_cloud_record(self, ingest_mock):
+        cloud_req_dao = GenomicCloudRequestsDao()
+        base_payload = {
+            "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+            "attributes": {
+                "bucketId": "aou-rdr-sandbox-mock-data",
+                "eventTime": "2021-04-19T16:02:41.919922Z",
+                "eventType": "OBJECT_FINALIZE",
+                "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/34",
+                "objectGeneration": "1618848161894414",
+                "objectId": "AW1_genotyping_sample_manifests/RDR_AoU_GEN_PKG-1908-218054.csv",
+                "overwroteGeneration": "1618605912794149",
+                "payloadFormat": "JSON_API_V1"
+            }
+        }
+
+        mappings = {
+            "aw1": {
+                'route': 'IngestAW1ManifestTaskApi',
+                'file_path': 'AW1_sample_manifests/test_aw1_file.csv'
+            },
+            "aw2": {
+                'route': 'IngestAW2ManifestTaskApi',
+                'file_path': 'AW2_data_manifests/test_aw2_file.csv'
+            },
+            "aw4": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': 'AW4_array_manifest/test_aw4_file.csv"'
+            },
+            "aw5": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_array_manifest/test_aw5_file.csv'
+            },
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        current_id = 0
+        for key, value in mappings.items():
+            current_id += 1
+            data = {
+                "file_type": key,
+                "filename": 'test_file_name',
+                "file_path": f'{base_payload["attributes"]["bucketId"]}/{value["file_path"]}',
+                "bucket_name": base_payload['attributes']['bucketId'],
+                "topic": "genomic_manifest_upload",
+                "event_payload": base_payload,
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "task": f'{key}_manifest',
+                "api_route": f'/resource/task/{value["route"]}',
+                "cloud_function": True,
+            }
+
+            self.send_post(
+                local_path=value["route"],
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            self.assertEqual(ingest_mock.called, True)
+
+            cloud_record = cloud_req_dao.get(current_id)
+
+            self.assertEqual(cloud_record.api_route, data['api_route'])
+            self.assertIsNotNone(cloud_record.event_payload)
+            self.assertEqual(cloud_record.bucket_name, data['bucket_name'])
+            self.assertEqual(cloud_record.topic, data['topic'])
+            self.assertEqual(cloud_record.task, data['task'])
+            self.assertEqual(cloud_record.file_path, data['file_path'])
+
+        self.assertEqual(len(mappings), len(cloud_req_dao.get_all()))
+
+
