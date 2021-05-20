@@ -81,18 +81,23 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         _logger.info(f"Event payload: {self.event}")
 
-        cloud_file_path = f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}'
-
-        data = {
-            "file_type": task_key,
-            "filename": self.event.attributes.objectId,
-            "file_path": cloud_file_path,
-            "bucket_name": self.event.attributes.bucketId,
-            "upload_date": self.event.attributes.eventTime,
-        }
-
         if task_key:
             _logger.info("Pushing cloud tasks...")
+
+            api_route = f'{self.task_root}{self.task_mappings[task_key]}'
+
+            data = {
+                "file_type": task_key,
+                "filename": self.event.attributes.objectId,
+                "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
+                "bucket_name": self.event.attributes.bucketId,
+                "topic": "genomic_manifest_upload",
+                "event_payload": self.event,
+                "upload_date": self.event.attributes.eventTime,
+                "task": f'{task_key}_manifest',
+                "api_route": api_route,
+                "cloud_function": True,
+            }
 
             # Load into raw table
             if task_key in ['aw1', 'aw2']:
@@ -100,7 +105,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 _task.execute(f'{self.task_root}LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
 
             _task = GCPCloudTask()
-            _task.execute(f'{self.task_root}{self.task_mappings[task_key]}', payload=data, queue=task_queue)
+            _task.execute(api_route, payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):

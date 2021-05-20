@@ -54,18 +54,21 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
         # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
         # prod-genomics-data-northwest/wgs_sample_raw_data/ss_vcf_research/
 
-        data = {
-            "file_path": file_path,
-            "bucket_name": self.event.attributes.bucketId,
-        }
-
-        _logger.info("Pushing cloud tasks...")
-
         if ext and ext in allowed_files:
+            _logger.info("Pushing cloud tasks...")
+
+            data = {
+                "file_path": file_path,
+                "bucket_name": self.event.attributes.bucketId,
+                "topic": "genomic_data_files_upload",
+                "event_payload": self.event,
+                "task": "file_ingest",
+                "api_route": self.task_route,
+                "cloud_function": True,
+            }
+
             _task = GCPCloudTask()
             _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
-        else:
-            _logger.info("File processed from Event payload not allowed")
 
 
 def get_deploy_args(gcp_env):
