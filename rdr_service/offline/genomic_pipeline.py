@@ -400,9 +400,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
                 project_id=project_id
             )
 
-    else:
-        logging.warning(f'No task for {_task_data.job}')
-
 
 def load_awn_manifest_into_raw_table(
     file_path,

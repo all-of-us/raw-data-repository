@@ -13,7 +13,7 @@ from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGener
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory
-from rdr_service.resource.generators import ParticipantSummaryGenerator, PDRParticipantSummaryGenerator
+from rdr_service.resource.generators import ParticipantSummaryGenerator
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
 
@@ -26,7 +26,6 @@ def batch_rebuild_participants_task(payload, project_id=None):
     :param payload: Dict object with list of participants to work on.
     """
     res_gen = ParticipantSummaryGenerator()
-    pdr_gen = PDRParticipantSummaryGenerator()
 
     ps_bqgen = BQParticipantSummaryGenerator()
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
@@ -54,7 +53,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
         count += 1
 
         if build_participant_summary:
-            rebuild_participant_summary_resource(p_id, res_gen=res_gen, pdr_gen=pdr_gen, patch_data=patch_data)
+            rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)
 
             ps_bqr = rebuild_bq_participant(p_id, ps_bqgen=ps_bqgen, pdr_bqgen=pdr_bqgen, patch_data=patch_data,
                                             project_id=project_id)
