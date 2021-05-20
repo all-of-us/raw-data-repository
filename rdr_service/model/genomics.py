@@ -629,3 +629,26 @@ class GenomicIncident(Base):
 
 event.listen(GenomicIncident, 'before_insert', model_insert_listener)
 event.listen(GenomicIncident, 'before_update', model_update_listener)
+
+
+class GenomicCloudRequests(Base):
+    """
+    Used for capturing cloud requests payloads via
+    Google Cloud Functions
+    """
+    __tablename__ = 'genomic_cloud_requests'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    event_payload = Column(JSON, nullable=False)
+    topic = Column(String(255), nullable=False)
+    api_route = Column(String(255), nullable=False)
+    file_path = Column(String(255), nullable=False)
+    task = Column(String(255), nullable=False)
+    bucket_name = Column(String(255), nullable=False)
+
+
+event.listen(GenomicCloudRequests, 'before_insert', model_insert_listener)
+event.listen(GenomicCloudRequests, 'before_update', model_update_listener)

@@ -43,6 +43,5 @@ class RequestsLog(Base):
     complete = Column('complete', Boolean, nullable=True, default=0)
 
 
-
 event.listen(RequestsLog, "before_insert", model_insert_listener)
 event.listen(RequestsLog, "before_update", model_update_listener)
