@@ -53,18 +53,24 @@ class ResourceDataDao(UpsertableDao):
                 continue
 
             value = getattr(obj, key)
+            int_id_value = None
 
-            # TODO:  This section may need reworking to correctly process different Enum classes (e.g., Python base
-            # TODO:  Enum classes from Python 3.4 and protopc messages.Enum).  The to_resource_dict() method is not
-            # TODO:  currently called anywhere except by a few resource generators not yet in use
             if schema:
                 # Check for Enum column type and convert to Enum if needed.
                 _field = schema.get_field(key)
                 if type(_field) == EnumString:
                     value = str(_field.enum(value))
+                    _id_field = schema.get_field(key + '_id')
+                    if _id_field and type(_id_field) == EnumInteger:
+                        int_id_value = int(_field.enum(value))
+
                 elif type(_field) == EnumInteger:
                     value = int(_field.enum(value))
 
             data[key] = value
+            # Automatically generate an integer field for enum/string fields that have a paired _id integer field
+            # E.g.:   status/status_id, code_type/code_type_id, etc.
+            if int_id_value:
+                data[key + '_id'] = int_id_value
 
         return data

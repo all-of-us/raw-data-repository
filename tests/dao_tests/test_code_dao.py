@@ -131,7 +131,7 @@ class CodeDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(bq_code_data.get('topic'), expected_code.topic)
         self.assertEqual(bq_code_data.get('parent_id'), expected_code.parentId)
         self.assertEqual(bq_code_data.get('code_type'), expected_code.codeType.name)
-        self.assertEqual(bq_code_data.get('code_type_id'), int(expected_code.codeType))
+        self.assertEqual(bq_code_data.get('code_type_id'), expected_code.codeType.number)
 
         code_resource_data = self.make_code_resource(expected_code_2.codeId)
         self.assertEqual(code_resource_data.get('code_id'), expected_code_2.codeId)
@@ -140,7 +140,7 @@ class CodeDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(code_resource_data.get('topic'), expected_code_2.topic)
         self.assertEqual(code_resource_data.get('parent_id'), expected_code_2.parentId)
         # TODO:  Confirm methodolody for comparing Enum-derived fields since test code data uses messages.Enum class?
-        self.assertEqual(code_resource_data.get('code_type').name, expected_code_2.codeType.name)
+        self.assertEqual(code_resource_data.get('code_type'), expected_code_2.codeType.name)
         self.assertEqual(code_resource_data.get('code_type_id'), expected_code_2.codeType.number)
 
     def test_insert_second_codebook_same_system(self):
