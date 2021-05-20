@@ -633,6 +633,8 @@ event.listen(GenomicIncident, 'before_update', model_update_listener)
 
 class GenomicCloudRequests(Base):
     """
+    Used for capturing cloud requests payloads via
+    Google Cloud Functions
     """
     __tablename__ = 'genomic_cloud_requests'
 
