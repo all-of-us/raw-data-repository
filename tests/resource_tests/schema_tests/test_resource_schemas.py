@@ -46,9 +46,6 @@ rsc_field_exclusions = {
 # and the resource schemas
 bq_field_name_mappings = {
     # Each item is a dict where key is the bq field name and value is the related resource schema field name
-    'BiobankOrderSchema': {
-        'bbo_created': 'order_created'
-    },
     'ModuleStatusSchema': {
         'mod_created': 'module_created',
         'mod_authored': 'module_authored',
