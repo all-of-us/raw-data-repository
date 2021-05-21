@@ -38,6 +38,9 @@ class ResponseDuplicationDetector:
                 QuestionnaireResponse.questionnaireResponseId,  # The latest one
                 func.group_concat(older_duplicate.questionnaireResponseId.distinct()),  # Responses to mark as dups
                 func.count(other_duplicate.questionnaireResponseId.distinct())  # Total number of duplicates
+            ).with_hint(
+                QuestionnaireResponse,
+                'USE INDEX (idx_created_q_id)'
             ).join(
                 older_duplicate,
                 and_(
@@ -53,7 +56,9 @@ class ResponseDuplicationDetector:
             ).filter(
                 # We should use the newest duplicate, and mark the older ones with isDuplicate
                 newer_duplicate.questionnaireResponseId.is_(None),
-                QuestionnaireResponse.created >= earliest_response_date
+                QuestionnaireResponse.created >= earliest_response_date,
+                # The Questionnaire id needs to be referenced to use the index that has the created date
+                QuestionnaireResponse.questionnaireId > 0
             )
             .group_by(QuestionnaireResponse.questionnaireResponseId)
         ).all()
