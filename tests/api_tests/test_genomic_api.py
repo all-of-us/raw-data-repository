@@ -680,4 +680,58 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(len(mappings), len(cloud_req_dao.get_all()))
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_batching_manifest_task_api(self, ingest_mock):
+        mappings = {
+            "aw1": {
+                'route': 'IngestAW1ManifestTaskApi',
+                'file_path': ['AW1_sample_manifests/test_aw1_file_1.csv',
+                              'AW1_sample_manifests/test_aw1_file_2.csv',
+                              'AW1_sample_manifests/test_aw1_file_3.csv',
+                              'AW1_sample_manifests/test_aw1_file_4.csv',
+                              'AW1_sample_manifests/test_aw1_file_5.csv']
+            },
+            "aw2": {
+                'route': 'IngestAW2ManifestTaskApi',
+                'file_path': 'AW2_data_manifests/test_aw2_file.csv'
+            },
+            "aw4": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': ['AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv']
+            },
+            "aw5": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_array_manifest/test_aw5_file.csv'
+            },
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        path_count = 0
+        for value in mappings.values():
+            path_count = path_count + (len(value['file_path']) if type(value['file_path']) is list else 1)
+
+            data = {
+                "file_path": value['file_path'],
+                "bucket_name": value['file_path'].split('/')[0]
+                if type(value['file_path']) is not list
+                else value['file_path'][0].split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00'
+            }
+
+            self.send_post(
+                local_path=value["route"],
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            self.assertEqual(ingest_mock.called, True)
+
+        self.assertEqual(ingest_mock.call_count, path_count)
+
 
