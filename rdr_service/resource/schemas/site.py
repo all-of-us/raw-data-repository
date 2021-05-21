@@ -79,3 +79,5 @@ class SiteSchema(Schema):
         schema_id = SchemaID.site
         resource_uri = 'Site'
         resource_pk_field = 'site_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

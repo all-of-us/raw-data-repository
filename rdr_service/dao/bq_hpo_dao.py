@@ -6,6 +6,9 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_hpo import BQHPOSchema, BQHPO
 from rdr_service.model.hpo import HPO
+from rdr_service.model.site_enums import ObsoleteStatus
+from rdr_service.participant_enums import OrganizationType
+
 
 
 class BQHPOGenerator(BigQueryGenerator):
@@ -25,6 +28,14 @@ class BQHPOGenerator(BigQueryGenerator):
         with ro_dao.session() as ro_session:
             row = ro_session.execute(text('select * from hpo where hpo_id = :id'), {'id': hpo_id}).first()
             data = ro_dao.to_dict(row)
+            # TODO:  Tried convert_to_enum=True but does not handle null values gracefully.  Is there a better way to
+            # TODO: populate the new *_id fields vs. using the messages.Enum classes from participant_enums.py?
+            if data['is_obsolete']:
+                data['is_obsolete_id'] = int(ObsoleteStatus(data['is_obsolete']))
+                data['is_obsolete'] = str(ObsoleteStatus(data['is_obsolete']))
+            if data['organization_type']:
+                data['organization_type_id'] = int(OrganizationType(data['organization_type']))
+                data['organization_type'] = str(OrganizationType(data['organization_type']))
             return BQRecord(schema=BQHPOSchema, data=data, convert_to_enum=convert_to_enum)
 
 

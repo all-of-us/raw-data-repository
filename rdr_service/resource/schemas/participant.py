@@ -9,7 +9,7 @@ from marshmallow import validate
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
-    WithdrawalAIANCeremonyStatus
+    WithdrawalAIANCeremonyStatus, BiobankOrderStatus
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -38,6 +38,12 @@ class AddressSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_address
         resource_uri = 'Participant/{participant_id}/Address'
+        # PII: remove all fields except 'addr_state' and 'addr_zip'
+        pii_fields = ('addr_type', 'addr_type_id', 'addr_street_address_1', 'addr_street_address_2', 'addr_country')
+        # PII: strip last two digits from zip code.
+        pii_filter = {
+            'addr_zip': (lambda v: str(v).strip()[:3] if v else None)
+        }
 
 
 class ModuleStatusSchema(Schema):
@@ -50,12 +56,15 @@ class ModuleStatusSchema(Schema):
     status = fields.EnumString(enum=QuestionnaireStatus)
     status_id = fields.EnumInteger(enum=QuestionnaireStatus)
     external_id = fields.String(validate=validate.Length(max=120))
-    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
-    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
+    response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+    response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
 
     class Meta:
         schema_id = SchemaID.participant_modules
         resource_uri = 'Participant/{participant_id}/Modules'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class ConsentSchema(Schema):
@@ -76,6 +85,9 @@ class ConsentSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_consents
         resource_uri = 'Participant/{participant_id}/Consents'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class RaceSchema(Schema):
@@ -86,6 +98,9 @@ class RaceSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_race
         resource_uri = 'Participant/{participant_id}/Races'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenderSchema(Schema):
@@ -96,6 +111,9 @@ class GenderSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_gender
         resource_uri = 'Participant/{participant_id}/Genders'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class PhysicalMeasurementsSchema(Schema):
@@ -113,6 +131,9 @@ class PhysicalMeasurementsSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_physical_measurements
         resource_uri = 'Participant/{participant_id}/PhysicalMeasurements'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class BiobankSampleSchema(Schema):
@@ -133,7 +154,10 @@ class BiobankSampleSchema(Schema):
 
     class Meta:
         schema_id = SchemaID.participant_biobank_order_samples
-        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/Samples'
+        resource_uri = 'Participant/{participant_id}/BiobankOrders/{biobank_order_id}/BiobankSamples'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class BiobankOrderSchema(Schema):
@@ -141,9 +165,9 @@ class BiobankOrderSchema(Schema):
     Biobank order information
     """
     biobank_order_id = fields.String(validate=validate.Length(max=80))
-    order_created = fields.DateTime()
-    status = fields.EnumString(enum=OrderStatus)
-    status_id = fields.EnumInteger(enum=OrderStatus)
+    created = fields.DateTime()
+    status = fields.EnumString(enum=BiobankOrderStatus)
+    status_id = fields.EnumInteger(enum=BiobankOrderStatus)
     dv_order = fields.Boolean()
     collected_site = fields.String(validate=validate.Length(max=255))
     collected_site_id = fields.Int32()
@@ -151,20 +175,31 @@ class BiobankOrderSchema(Schema):
     processed_site_id = fields.Int32()
     finalized_site = fields.String(validate=validate.Length(max=255))
     finalized_site_id = fields.Int32()
+    # PDR-243:  Including calculated OrderStatus (UNSET/FINALIZED) and finalized time analogous to the RDR
+    # participant_summary.biospecimen_* fields that are based on non-cancelled orders.
+    finalized_time = fields.DateTime()
+    finalized_status = fields.String(validate=validate.Length(max=25))
+    finalized_status_id = fields.Int32()
     samples = fields.Nested(BiobankSampleSchema, many=True)
     tests_ordered = fields.Int32()
     tests_stored = fields.Int32()
+    finalized_time = fields.DateTime()
+    finalized_status = fields.EnumString(enum=OrderStatus)
+    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
 
     class Meta:
         schema_id = SchemaID.participant_biobank_orders
         resource_uri = 'Participant/{participant_id}/BiobankOrders'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class PatientStatusSchema(Schema):
     """
     Patient Status History: PatientStatusFlag Enum
     """
-    patent_status_history_id = fields.Int32()
+    patient_status_history_id = fields.Int32()
     patient_status_created = fields.DateTime()
     patient_status_modified = fields.DateTime()
     patient_status_authored = fields.DateTime()
@@ -182,12 +217,16 @@ class PatientStatusSchema(Schema):
     class Meta:
         schema_id = SchemaID.patient_statuses
         resource_uri = 'Participant/{participant_id}/PatientStatuses'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ('comment', 'user')
+        pii_filter = {}  # dict(field: lambda function).
 
 
-class EHRReceiptSchema(Schema):
+class EhrReceiptSchema(Schema):
     """
     Participant EHR status records.
     """
+    # TODO:  Confirm if this should be the resource_pk_id in the Meta data?
     participant_ehr_receipt_id = fields.Int32()
     file_timestamp = fields.DateTime()
     first_seen = fields.DateTime()
@@ -196,11 +235,15 @@ class EHRReceiptSchema(Schema):
     class Meta:
         schema_id = SchemaID.ehr_recept
         resource_uri = 'Participant/{participant_id}/EHRReceipt'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class ParticipantSchema(Schema):
     """ Participant Activity Summary Schema """
-    last_modified = fields.DateTime()
+    last_modified = fields.DateTime(
+        description='Last time the participant record was updated.')
 
     participant_id = fields.String(validate=validate.Length(max=10), required=True)
     biobank_id = fields.Int32()
@@ -241,9 +284,6 @@ class ParticipantSchema(Schema):
     suspension_status = fields.EnumString(enum=SuspensionStatus)
     suspension_status_id = fields.EnumInteger(enum=SuspensionStatus)
     suspension_time = fields.DateTime()
-    suspension_status = fields.EnumString(enum=SuspensionStatus)
-    suspension_status_id = fields.EnumInteger(enum=SuspensionStatus)
-    suspension_time = fields.DateTime()
 
     hpo = fields.String(validate=validate.Length(max=20))
     hpo_id = fields.Int32()
@@ -260,6 +300,8 @@ class ParticipantSchema(Schema):
     phone_number = fields.String(validate=validate.Length(max=80))
     login_phone_number = fields.String(validate=validate.Length(max=80))
     email = fields.String(validate=validate.Length(max=255))
+    phone_number_available = fields.Boolean()
+    email_available = fields.Boolean()
 
     addresses = fields.Nested(AddressSchema, many=True)
 
@@ -301,10 +343,28 @@ class ParticipantSchema(Schema):
     was_ehr_data_available = fields.Boolean()
     first_ehr_receipt_time = fields.DateTime()
     latest_ehr_receipt_time = fields.DateTime()
-    ehr_receipts = fields.Nested(EHRReceiptSchema, many=True)
+    ehr_receipts = fields.Nested(EhrReceiptSchema, many=True)
 
+    ubr_sex = fields.Boolean()
+    ubr_sexual_orientation = fields.Boolean()
+    ubr_gender_identity = fields.Boolean()
+    ubr_ethnicity = fields.Boolean()
+    ubr_geography = fields.Boolean()
+    ubr_education = fields.Boolean()
+    ubr_income = fields.Boolean()
+    ubr_sexual_gender_minority = fields.Boolean()
+    ubr_age_at_consent = fields.Boolean()
+    ubr_disability = fields.Boolean()
+    ubr_overall = fields.Boolean()
 
     class Meta:
         schema_id = SchemaID.participant
         resource_uri = 'Participant'
         resource_pk_field = 'participant_id'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ('phone_number', 'login_phone_number', 'email',
+                      'distinct_visits', 'first_name', 'middle_name', 'last_name',
+                      'sexual_orientation', 'sexual_orientation_id', 'research_id', 'last_modified'
+                      ) # List fields that contain PII data
+
+        pii_filter = {}  # dict(field: lambda function).

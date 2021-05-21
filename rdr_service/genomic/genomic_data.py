@@ -87,6 +87,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.cramPath,
                     GenomicGCValidationMetrics.cramMd5Path,
                     GenomicGCValidationMetrics.craiPath,
+                    GenomicGCValidationMetrics.gvcfPath,
+                    GenomicGCValidationMetrics.gvcfMd5Path,
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.sexConcordance,
                     GenomicGCValidationMetrics.processingStatus,
@@ -781,9 +783,7 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
-                
                 UNION
-                
                 # AW2 Ingestions
                 SELECT count(distinct raw.id) record_count
                     , count(distinct m.id) as ingested_count

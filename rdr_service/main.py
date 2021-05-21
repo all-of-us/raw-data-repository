@@ -43,6 +43,7 @@ from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
+from rdr_service.api.message_broker_api import MessageBrokerApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -357,6 +358,8 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 # Data generator API used to load fake data into the database.
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
+# Message broker API
+api.add_resource(MessageBrokerApi, API_PREFIX + "MessageBroker", endpoint="message_broker", methods=["POST"])
 
 #
 # Non-resource endpoints

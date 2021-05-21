@@ -1158,6 +1158,8 @@ class GenomicFileIngester:
                     bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
                     genomic_gc_validation_metrics_update(updated_obj.id)
 
+            return GenomicSubProcessResult.SUCCESS
+
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
@@ -1849,7 +1851,9 @@ class GenomicReconciler:
                                       ("rawVcfMd5Received", ".vcf.gz.md5sum", "rawVcfMd5Path"),
                                       ("cramReceived", ".cram", "cramPath"),
                                       ("cramMd5Received", ".cram.md5sum", "cramMd5Path"),
-                                      ("craiReceived", ".cram.crai", "craiPath"))
+                                      ("craiReceived", ".cram.crai", "craiPath"),
+                                      ("gvcfReceived", ".hard-filtered.gvcf.gz", "gvcfPath"),
+                                      ("gvcfMd5Received", ".hard-filtered.gvcf.gz.md5sum", "gvcfMd5Path"))
 
     def reconcile_metrics_to_array_data(self, _gc_site_id):
         """ The main method for the AW2 manifest vs. array data reconciliation
@@ -3004,6 +3008,8 @@ class ManifestDefinitionProvider:
                 "cram_path",
                 "cram_md5_path",
                 "crai_path",
+                "gvcf_path",
+                "gvcf_md5_path",
                 "contamination",
                 "sex_concordance",
                 "processing_status",
@@ -3119,11 +3125,9 @@ class ManifestCompiler:
     """
     def __init__(self, run_id, bucket_name=None):
         self.run_id = run_id
-
         self.bucket_name = bucket_name
         self.output_file_name = None
         self.manifest_def = None
-
         self.def_provider = None
 
         # Dao components

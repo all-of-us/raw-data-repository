@@ -526,8 +526,7 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
                            resource,
                            expected_status=http.client.BAD_REQUEST)
 
-    @mock.patch('rdr_service.dao.bq_participant_summary_dao.logging')
-    def test_gror_consent_with_duplicate_answers(self, mock_logging):
+    def test_gror_consent_with_duplicate_answers(self):
         """ Simulate RDR questionnaire_response payloads that contain duplicate entries in question JSON array"""
 
         with FakeClock(TIME_1):
@@ -574,8 +573,6 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
-        # Generic verification PDR generator logged a warning.  TODO:  Possible to test logged message w/regex?
-        self.assertTrue(mock_logging.warning.called)
 
         ps_json = self.make_bq_participant_summary(participant_id)
         gror = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR',

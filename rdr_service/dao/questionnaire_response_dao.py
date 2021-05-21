@@ -124,6 +124,8 @@ class ResponseValidator:
         self.survey = self._get_survey_for_questionnaire_history(questionnaire_history)
         if self.survey is not None:
             self._code_to_question_map = self._build_code_to_question_map()
+            if self.survey.redcapProjectId is not None:
+                logging.info('Validating imported survey')
 
         # Get the skip code id
         self.skip_code_id = self.session.query(Code.codeId).filter(Code.value == PMI_SKIP_CODE).scalar()

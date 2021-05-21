@@ -5,9 +5,12 @@ from sqlalchemy import text
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
-    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
+from rdr_service.model.bq_questionnaires import (
+    BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle,
+    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory,
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb,
+    BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1
+)
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
 
@@ -108,7 +111,11 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             'COPE': BQPDRCOPEMay,
             'cope_nov': BQPDRCOPENov,
             'cope_dec': BQPDRCOPEDec,
-            'cope_feb': BQPDRCOPEFeb
+            'cope_feb': BQPDRCOPEFeb,
+            'cope_vaccine1': BQPDRCOPEVaccine1,
+            # There are two different module id codes in use for the withdrawal survey
+            'withdrawal_intro': BQPDRWithdrawalIntro,
+            'StopParticipating': BQPDRStopParticipating
         }
         table = table_map.get(module_id, None)
         if table is None:

@@ -33,3 +33,4 @@ class HPOSchema(Schema):
         schema_id = SchemaID.hpo
         resource_uri = 'HPO'
         resource_pk_field = 'hpo_id'
+        pii_fields = ('comment', )

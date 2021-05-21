@@ -479,10 +479,8 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         # Test all the PDR / resource generator results while participant not considered a test participant
         ps_bqs_data = self.make_bq_participant_summary(participant_id)
         ps_rsc = self.make_participant_resource(participant_id)
-        pdr_rsc_data = self.make_pdr_participant_summary(participant_id)
         self.assertEqual(ps_bqs_data.get('test_participant'), 0)
         self.assertEqual(ps_rsc.get('test_participant'), 0)
-        self.assertEqual(pdr_rsc_data.get('test_participant'), 0)
 
         pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
         self.assertEqual(pdr_mod_responses[0].test_participant, 0)
@@ -531,10 +529,8 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         # Retest all the PDR / resource generator results after participant is updated with test participant data
         ps_bqs_data = self.make_bq_participant_summary(participant_id)
         ps_rsc = self.make_participant_resource(participant_id)
-        pdr_rsc_data = self.make_pdr_participant_summary(participant_id)
         self.assertEqual(ps_bqs_data.get('test_participant'), 1)
         self.assertEqual(ps_rsc.get('test_participant'), 1)
-        self.assertEqual(pdr_rsc_data.get('test_participant'), 1)
 
         pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
         self.assertEqual(pdr_mod_responses[0].test_participant, 1)

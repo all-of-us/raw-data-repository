@@ -12,11 +12,11 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_geno
     bq_genomic_job_run_batch_update, bq_genomic_file_processed_batch_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_manifest_file_batch_update, \
     bq_genomic_manifest_feedback_batch_update
-from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudRequestsDao, GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicCloudRequests
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
@@ -28,11 +28,18 @@ class BaseGenomicTaskApi(Resource):
 
     def __init__(self):
         self.data = None
+        self.cloud_req_dao = GenomicCloudRequestsDao()
 
     @task_auth_required
     def post(self):
         log_task_headers()
         self.data = request.get_json(force=True)
+
+    def create_cloud_record(self):
+        if self.data.get('cloud_function'):
+            insert_data = {key: value for key, value in self.data.items() if key in
+                           GenomicCloudRequests.__table__.columns.keys()}
+            self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
@@ -47,6 +54,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         # Call pipeline function
         genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -87,6 +95,7 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -116,6 +125,7 @@ class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -155,6 +165,7 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -194,6 +205,7 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -215,6 +227,7 @@ class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
 
         logging.info(f'{results}')
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -232,6 +245,7 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
                                   ) as controller:
             controller.ingest_data_files(self.data["file_path"], self.data['bucket_name'])
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -263,6 +277,7 @@ class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
             # Call pipeline function
             genomic_pipeline.dispatch_genomic_job_from_task(JSONObject(task_data))
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -287,6 +302,7 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
 
         logging.info(f'Batch of {len(batch)} Complete.')
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
 
@@ -353,5 +369,6 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
 
         logging.info(f'Rebuild complete.')
 
+        self.create_cloud_record()
         logging.info('Complete.')
         return {"success": True}
