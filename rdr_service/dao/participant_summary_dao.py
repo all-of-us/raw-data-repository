@@ -310,21 +310,30 @@ def _get_dna_isolates_sql_and_params():
     )
 
 
-def _get_sample_status_time_sql_and_params():
-    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
-  on the participant summary.
-  """
-
+def _get_status_time_sql():
     dns_test_list = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
 
     status_time_sql = "%s" % ",".join(
         ["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item for item in dns_test_list]
     )
+    return status_time_sql
+
+
+def _get_baseline_ppi_module_sql():
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
 
     baseline_ppi_module_sql = "%s" % ",".join(
         ["""%s_time""" % re.sub("(?<!^)(?=[A-Z])", "_", item).lower() for item in baseline_ppi_module_fields]
     )
+    return baseline_ppi_module_sql
+
+
+def _get_sample_status_time_sql_and_params():
+    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
+  on the participant summary.
+  """
+    status_time_sql = _get_status_time_sql()
+    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
 
     sub_sql = """
     SELECT
@@ -358,6 +367,51 @@ def _get_sample_status_time_sql_and_params():
       a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
     WHERE a.enrollment_status = 3
     AND a.enrollment_status_core_stored_sample_time IS NULL
+    """.format(
+        sub_sql=sub_sql
+    )
+
+    return sql
+
+
+def _get_core_minus_pm_time_sql_and_params():
+    """
+    Gets SQL that to update enrollmentStatusCoreMinusPMTime field on the participant summary.
+    """
+    status_time_sql = _get_status_time_sql()
+    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
+
+    sub_sql = """
+    SELECT
+      participant_id,
+      GREATEST(
+        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
+             ELSE consent_for_electronic_health_records_time
+        END,
+        {baseline_ppi_module_sql},
+        CASE WHEN
+            LEAST(
+                {status_time_sql}
+                ) = '3000-01-01' THEN NULL
+            ELSE LEAST(
+                {status_time_sql}
+                )
+        END
+      ) AS core_minus_pm_time
+    FROM
+      participant_summary
+  """.format(
+        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
+    )
+
+    sql = """
+    UPDATE
+      participant_summary AS a
+      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
+    SET
+      a.enrollment_status_core_minus_pm_time = b.core_minus_pm_time
+    WHERE a.enrollment_status = 4
+    AND a.enrollment_status_core_minus_pm_time IS NULL
     """.format(
         sub_sql=sub_sql
     )
@@ -567,6 +621,9 @@ class ParticipantSummaryDao(UpdatableDao):
         sample_status_time_sql = _get_sample_status_time_sql_and_params()
         sample_status_time_params = {}
 
+        core_minus_pm_time_sql = _get_core_minus_pm_time_sql_and_params()
+        core_minus_pm_time_params = {}
+
         counts_sql = """
     UPDATE
       participant_summary
@@ -608,6 +665,8 @@ class ParticipantSummaryDao(UpdatableDao):
             enrollment_status_params["participant_id"] = participant_id
             sample_status_time_sql += " AND a.participant_id = :participant_id"
             sample_status_time_params["participant_id"] = participant_id
+            core_minus_pm_time_sql += " AND a.participant_id = :participant_id"
+            core_minus_pm_time_params["participant_id"] = participant_id
 
         sample_sql = replace_null_safe_equals(sample_sql)
         counts_sql = replace_null_safe_equals(counts_sql)
@@ -616,8 +675,10 @@ class ParticipantSummaryDao(UpdatableDao):
             session.execute(sample_sql, sample_params)
             session.execute(counts_sql, counts_params)
             session.execute(enrollment_status_sql, enrollment_status_params)
+            session.commit()
             # TODO: Change this to the optimized sql in _update_dv_stored_samples()
             session.execute(sample_status_time_sql, sample_status_time_params)
+            session.execute(core_minus_pm_time_sql, core_minus_pm_time_params)
 
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
