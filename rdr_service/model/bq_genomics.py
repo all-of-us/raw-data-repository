@@ -421,6 +421,7 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     gvcf_md5_path = BQField('gvcf_md5_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     gvcf_md5_received = BQField('gvcf_md5_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     gvcf_md5_deleted = BQField('gvcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    drc_call_rate = BQField('drc_call_rate', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicGCValidationMetrics(BQTable):
