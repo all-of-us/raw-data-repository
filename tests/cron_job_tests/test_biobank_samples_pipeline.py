@@ -172,7 +172,9 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         mail_kit_1sal2_participant_id = participant_ids[6]
         on_site_1sal2_participant_id = participant_ids[11]
         no_order_1sal2_participant_id = participant_ids[14]
-        test_codes[6] = test_codes[11] = test_codes[14] = '1SAL2'
+        core_minus_pm_participant_id = participant_ids[5]
+        core_participant_id = participant_ids[1]
+        test_codes[6] = test_codes[11] = test_codes[14] = test_codes[5] = test_codes[1] = '1SAL2'
 
         mailed_biobank_order = self.data_generator.create_database_biobank_order(
             participantId=mail_kit_1sal2_participant_id
@@ -193,6 +195,30 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             biobankOrderId=on_site_biobank_order.biobankOrderId,
             value='KIT-11'  # from the 12th record in the biobank_samples_1.csv
         )
+        participant_summary_dao = ParticipantSummaryDao()
+        core_minus_pm_summary = participant_summary_dao.get(core_minus_pm_participant_id)
+
+        core_minus_pm_summary.numCompletedBaselinePPIModules = 3
+        core_minus_pm_summary.consentForStudyEnrollment = 1
+        core_minus_pm_summary.consentForElectronicHealthRecords = 1
+        core_minus_pm_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        participant_summary_dao.update(core_minus_pm_summary)
+
+        core_summary = participant_summary_dao.get(core_participant_id)
+
+        core_summary.numCompletedBaselinePPIModules = 3
+        core_summary.consentForStudyEnrollment = 1
+        core_summary.consentForElectronicHealthRecords = 1
+        core_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        core_summary.physicalMeasurementsStatus = 1
+        core_summary.physicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
+        participant_summary_dao.update(core_summary)
 
         samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
         lines = samples_file.split("\n")[1:]  # remove field name line
@@ -237,6 +263,18 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             ParticipantSummary.participantId == mail_kit_1sal2_participant_id
         ).one()
         self.assertEqual(SampleCollectionMethod.MAIL_KIT, mail_kit_summary.sample1SAL2CollectionMethod)
+
+        core_minus_pm_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == core_minus_pm_participant_id
+        ).one()
+        self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
+        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 30, 2, 59, 42))
+
+        core_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == core_participant_id
+        ).one()
+        self.assertEqual(core_summary.enrollmentStatus, EnrollmentStatus.FULL_PARTICIPANT)
+        self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 18, 38, 58))
 
         no_order_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == no_order_1sal2_participant_id
