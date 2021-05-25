@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import mock
 
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
@@ -22,21 +22,22 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
 
         # Create some responses, some that are duplicates of each other
         participant = self.data_generator.create_database_participant()
+        first_authored_date = datetime.now() - timedelta(days=20)
         one = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             externalId='one',
             answerHash='badbeef',
-            authored=datetime(2021, 2, 1),
-            created=datetime(2021, 3, 1)
+            authored=first_authored_date,
+            created=first_authored_date
         )
         duplicate_of_one = self._make_duplicate_of(
             response=one,
-            created=datetime(2021, 3, 2)
+            created=first_authored_date + timedelta(days=1)
         )
         last_duplicate_of_one = self._make_duplicate_of(
             response=one,
             authored=datetime.now(),  # Sometimes the authored date can shift when duplications happen,
-            created=datetime(2021, 3, 3)
+            created=first_authored_date + timedelta(days=2)
         )
         # Some repetitions should be accepted, such as updates to contact information through the ConsentPII.
         # These updates will come as responses that share the identifier of the original, but have different answers.
@@ -45,11 +46,11 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
             externalId=one.externalId,
             answerHash='0ddba11',
             authored=datetime.now(),
-            created=datetime(2021, 3, 4)
+            created=first_authored_date + timedelta(days=3)
         )
 
         detector = ResponseDuplicationDetector(duplication_threshold=2)
-        detector.flag_duplicate_responses()
+        detector.flag_duplicate_responses(num_days_ago=30)
 
         # Reload responses in the current session so we can get the updated info on the isDuplicate field
         self.session.refresh(one)
@@ -72,20 +73,20 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
             participantId=participant.participantId,
             externalId='one',
             answerHash='badbeef',
-            created=datetime(2021, 3, 1),
+            created=datetime.now() - timedelta(days=5),
             isDuplicate=True
         )
         another_response = self._make_duplicate_of(
             response=first_response,
-            created=datetime(2021, 3, 2)
+            created=first_response.created + timedelta(days=1)
         )
         new_response = self._make_duplicate_of(
             response=first_response,
-            created=datetime(2021, 3, 3)
+            created=first_response.created + timedelta(days=2)
         )
 
         detector = ResponseDuplicationDetector(duplication_threshold=2)
-        detector.flag_duplicate_responses()
+        detector.flag_duplicate_responses(num_days_ago=10)
 
         # Check that only one response was marked as a duplicate
         mock_logging.warning.assert_called_with(
@@ -106,14 +107,14 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
             participantId=participant.participantId,
             externalId='one',
             answerHash='badbeef',
-            created=datetime(2021, 3, 1)
+            created=datetime.now() - timedelta(weeks=2)
         )
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 2))
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 3))
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 4))
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 5))
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 6))
-        self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 7))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=1))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=2))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=3))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=4))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=5))
+        self._make_duplicate_of(response=first_response, created=first_response.created + timedelta(days=6))
 
         # Check that nothing is marked as a duplicate of anything else
         detector.flag_duplicate_responses()
@@ -123,7 +124,35 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         self.assertIsNone(duplicate_response)
 
         # Make one more duplicate and make sure the duplication is found
-        latest_duplicate = self._make_duplicate_of(response=first_response, created=datetime(2021, 3, 8))
-        detector.flag_duplicate_responses()
+        latest_duplicate = self._make_duplicate_of(
+            response=first_response,
+            created=first_response.created + timedelta(days=7)
+        )
+        detector.flag_duplicate_responses(num_days_ago=100)
         warning_log = mock_logging.warning.call_args[0][0]
         self.assertTrue(warning_log.endswith(f'] found as duplicates of {latest_duplicate.questionnaireResponseId}'))
+
+    def test_checking_recent_responses(self):
+        """
+        Make sure that only recent responses are loaded
+        (to avoid unnecessary processing that causes slow_sql alerts)
+        """
+
+        # Create some responses, some that are duplicates of each other
+        participant = self.data_generator.create_database_participant()
+        one = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            externalId='one',
+            answerHash='badbeef',
+            authored=datetime(2020, 2, 1),
+            created=datetime(2020, 3, 1)
+        )
+        self._make_duplicate_of(
+            response=one,
+            created=datetime(2020, 3, 2)
+        )
+
+        detector = ResponseDuplicationDetector()
+        responses_detected = detector._get_duplicate_responses(self.session, datetime(2021, 1, 1))
+
+        self.assertEmpty(responses_detected)

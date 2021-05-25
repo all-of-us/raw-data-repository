@@ -71,7 +71,8 @@ class QuestionnaireResponse(Base):
             ["questionnaire_id", "questionnaire_version"],
             ["questionnaire_history.questionnaire_id", "questionnaire_history.version"],
         ),
-        Index('idx_response_identifier_answers', externalId, answerHash)
+        Index('idx_response_identifier_answers', externalId, answerHash),
+        Index('idx_created_q_id', questionnaireId, created)
     )
 
 
