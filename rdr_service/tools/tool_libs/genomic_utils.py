@@ -76,6 +76,7 @@ class GenomicManifestBase(ToolBase):
         self.genomic_task_queue = 'genomics'
         self.resource_task_queue = 'resource-tasks'
         self.genomic_cloud_tasks = {
+            # AW1
             'AW1_MANIFEST': {
                 'process': {
                     'endpoint': 'ingest_aw1_manifest_task'
@@ -92,6 +93,28 @@ class GenomicManifestBase(ToolBase):
                 'samples': {
                     'endpoint': 'ingest_samples_from_raw_task'
                 }
+            },
+            # AW4
+            'AW4_ARRAY_WORKFLOW': {
+                'process': {
+                    'endpoint': 'ingest_aw4_manifest_task'
+                },
+            },
+            'AW4_WGS_WORKFLOW': {
+                'process': {
+                    'endpoint': 'ingest_aw4_manifest_task'
+                },
+            },
+            # AW5
+            'AW5_ARRAY_MANIFEST': {
+                'process': {
+                    'endpoint': 'ingest_aw5_manifest_task'
+                },
+            },
+            'AW5_WGS_MANIFEST': {
+                'process': {
+                    'endpoint': 'ingest_aw5_manifest_task'
+                },
             }
         }
 
@@ -1030,11 +1053,12 @@ class GenomicProcessRunner(GenomicManifestBase):
                         return 1
 
                     file_paths = self.args.manifest_file if self.args.manifest_file else self.csv_to_list()
-                    bucket_name = file_paths.split('/')[0] if file_paths is not list else file_paths[0].split('/')[0]
+                    bucket_name = file_paths.split('/')[0] if type(file_paths) is not list else file_paths[0].split(
+                        '/')[0]
 
                     if self.args.cloud_task:
                         # Get blob for file from gcs
-                        file_name = file_paths if file_paths is not list else file_paths[0]
+                        file_name = file_paths if type(file_paths) is not list else file_paths[0]
                         _blob = self.gscp.get_blob(bucket_name, file_name)
                         payload = {
                             "file_path": file_paths,
@@ -1047,13 +1071,13 @@ class GenomicProcessRunner(GenomicManifestBase):
                             queue=self.genomic_task_queue,
                         )
 
-                    if self.args.manifest_file and file_paths is not list:
+                    if self.args.manifest_file and type(file_paths) is not list:
                         return self.run_manifest_ingestion(
                             bucket_name=bucket_name,
                             file_name=file_paths
                         )
 
-                    if self.args.csv and file_paths is list:
+                    if self.args.csv and type(file_paths) is list:
                         # Run the AW2/AW4/AW5 manifest ingestion on each file
                         for file in file_paths:
                             self.run_manifest_ingestion(
@@ -1246,7 +1270,6 @@ class GenomicProcessRunner(GenomicManifestBase):
             # Run the AW2/AW4/AW5 manifest ingestion on each file
             for line in csvreader:
                 files.append(line[0])
-
         return files
 
 
