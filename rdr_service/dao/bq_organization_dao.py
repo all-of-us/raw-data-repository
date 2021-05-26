@@ -27,9 +27,10 @@ class BQOrganizationGenerator(BigQueryGenerator):
                 text('select * from organization where organization_id = :id'), {'id': organization_id}).first()
             data = ro_dao.to_dict(row)
             is_obsolete = data['is_obsolete']
-            if is_obsolete:
-                data['is_obsolete_id'] = BQObsoleteStatusEnum(is_obsolete).value
-                data['is_obsolete'] = BQObsoleteStatusEnum(is_obsolete).name
+            if is_obsolete is not None:
+                obsolete_enum = BQObsoleteStatusEnum(is_obsolete)
+                data['is_obsolete_id'] = obsolete_enum.value
+                data['is_obsolete'] = obsolete_enum.name
 
             return BQRecord(schema=BQOrganizationSchema, data=data, convert_to_enum=convert_to_enum)
 

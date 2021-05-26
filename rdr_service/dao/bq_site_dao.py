@@ -32,18 +32,22 @@ class BQSiteGenerator(BigQueryGenerator):
             ds_status = data['digital_scheduling_status']
             enrolling_status = data['enrolling_status']
             is_obsolete = data['is_obsolete']
-            if site_status:
-                data['site_status'] = BQSiteStatus(site_status).name
-                data['site_status_id'] = BQSiteStatus(site_status).value
-            if ds_status:
-                data['digital_scheduling_status'] = BQDigitalSchedulingStatus(ds_status).name
-                data['digital_scheduling_status_id'] = BQDigitalSchedulingStatus(ds_status).value
-            if enrolling_status:
-                data['enrolling_status'] = BQEnrollingStatus(enrolling_status).name
-                data['enrolling_status_id'] = BQEnrollingStatus(enrolling_status).value
-            if is_obsolete:
-                data['is_obsolete'] = BQObsoleteStatusEnum(is_obsolete).name
-                data['is_obsolete_id'] = BQObsoleteStatusEnum(is_obsolete).value
+            if site_status is not None:
+                site_status_enum = BQSiteStatus(site_status)
+                data['site_status'] = site_status_enum.name
+                data['site_status_id'] = site_status_enum.value
+            if ds_status is not None:
+                ds_status_enum = BQDigitalSchedulingStatus(ds_status)
+                data['digital_scheduling_status'] = ds_status_enum.name
+                data['digital_scheduling_status_id'] = ds_status_enum.value
+            if enrolling_status is not None:
+                enroll_enum = BQEnrollingStatus(enrolling_status)
+                data['enrolling_status'] = enroll_enum.name
+                data['enrolling_status_id'] = enroll_enum.value
+            if is_obsolete is not None:
+                obsolete_enum = BQObsoleteStatusEnum(is_obsolete)
+                data['is_obsolete'] = obsolete_enum.name
+                data['is_obsolete_id'] = obsolete_enum.value
 
             return BQRecord(schema=BQSiteSchema, data=data, convert_to_enum=convert_to_enum)
 

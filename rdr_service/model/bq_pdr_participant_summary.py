@@ -21,6 +21,9 @@ class BQPDRPhysicalMeasurements(BQSchema):
     pm_status = BQField('pm_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
+
 
 # TODO:  Deprecate use of this class and add these fields to the BQBiobankOrderSchema
 class BQPDRBiospecimenSchema(BQSchema):
@@ -37,6 +40,7 @@ class BQPDRBiospecimenSchema(BQSchema):
     biosp_baseline_tests_confirmed = BQField('biosp_baseline_tests_confirmed',
                                              BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+
 class BQPDREhrReceiptSchema(BQSchema):
     """
     PDR Participant EHR Receipt Histories
@@ -44,6 +48,7 @@ class BQPDREhrReceiptSchema(BQSchema):
     file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummarySchema(BQSchema):
     """
@@ -212,6 +217,7 @@ class BQPDRParticipantSummaryView(BQView):
         ])
     )
 
+
 class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
     __viewname__ = 'v_pdr_participant_all'
     __viewdescr__ = 'PDR Participant Summary All View'
@@ -238,10 +244,11 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
         ])
     )
 
+
 # TODO:  This is now a custom view in PDR BigQuery (as of PDR-262).  Needs to be disabled here so it will not be
 # updated by migrate-bq tool.   Consider moving all custom views into our model?  Some (like this one) will have
 # extremely complicated SQL definitions, so unclear if that is a viable/best solution
-#class BQPDRParticipantSummaryWithdrawnView(BQView):
+# class BQPDRParticipantSummaryWithdrawnView(BQView):
 #   __viewname__ = 'v_pdr_participant_withdrawn'
 #   __viewdescr__ = 'PDR Participant Summary Withdrawn View'
 #   __table__ = BQPDRParticipantSummary
@@ -343,6 +350,7 @@ class BQPDRBioSpecView(BQView):
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
+
 class BQPDRPatientStatuesView(BQView):
     __viewname__ = 'v_pdr_participant_patient_status'
     __viewdescr__ = 'PDR Participant Patient Status View'
@@ -356,6 +364,7 @@ class BQPDRPatientStatuesView(BQView):
       ) ps cross join unnest(patient_statuses) as nt
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
+
 
 class BQPDRParticipantBiobankOrderView(BQView):
     __viewname__ = 'v_pdr_participant_biobank_order'
@@ -387,6 +396,7 @@ class BQPDRParticipantBiobankOrderView(BQView):
         WHERE ps.rn = 1 and ps.test_participant != 1
     """
 
+
 class BQPDRParticipantBiobankSampleView(BQView):
     __viewname__ = 'v_pdr_participant_biobank_sample'
     __viewdescr__ = 'PDR Participant Biobank Sample Details view'
@@ -414,6 +424,7 @@ class BQPDRParticipantBiobankSampleView(BQView):
             ) ps cross join unnest(biobank_orders) as bbo, unnest(bbo.bbo_samples) as nt
             WHERE ps.rn = 1 and ps.test_participant != 1
     """
+
 
 class BQPDREhrReceiptView(BQView):
     __viewname__ = 'v_pdr_participant_ehr_receipt'

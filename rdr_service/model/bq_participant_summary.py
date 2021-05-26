@@ -117,6 +117,8 @@ class BQPhysicalMeasurements(BQSchema):
     pm_finalized_site = BQField('pm_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_finalized_site_id = BQField('pm_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankSampleSchema(BQSchema):

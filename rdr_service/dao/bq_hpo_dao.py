@@ -29,12 +29,15 @@ class BQHPOGenerator(BigQueryGenerator):
             # TODO: convenience method in BQRecord that can use BQField fld_enum to do the _id field assignments?
             is_obsolete = data['is_obsolete']
             org_type = data['organization_type']
-            if is_obsolete:
-                data['is_obsolete_id'] = BQObsoleteStatusEnum(is_obsolete).value
-                data['is_obsolete'] = BQObsoleteStatusEnum(is_obsolete).name
-            if org_type:
-                data['organization_type_id'] = BQOrganizationTypeEnum(org_type).value
-                data['organization_type'] = BQOrganizationTypeEnum(org_type).name
+            if is_obsolete is not None:
+                obsolete_enum = BQObsoleteStatusEnum(is_obsolete)
+                data['is_obsolete_id'] = obsolete_enum.value
+                data['is_obsolete'] = obsolete_enum.name
+            if org_type is not None:
+                org_enum = BQOrganizationTypeEnum(org_type)
+                data['organization_type_id'] = org_enum.value
+                data['organization_type'] = org_enum.name
+
             return BQRecord(schema=BQHPOSchema, data=data, convert_to_enum=convert_to_enum)
 
 
