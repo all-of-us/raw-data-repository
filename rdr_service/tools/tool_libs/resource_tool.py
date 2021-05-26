@@ -24,6 +24,9 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
     bq_institutional_affiliations_update, bq_researcher_update
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update
+from rdr_service.dao.bq_organization_dao import bq_organization_update
+from rdr_service.dao.bq_site_dao import bq_site_update
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import (
     BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
@@ -53,6 +56,8 @@ GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'ge
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
+
+SITE_TABLES = ('hpo', 'site', 'organization')
 
 
 class ParticipantResourceClass(object):
@@ -752,6 +757,51 @@ class ResearchWorkbenchResourceClass(object):
 
         return 1
 
+class SiteResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.table and not self.args.all_tables:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild hpo/organization/site Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Database Table        : {0}'.format(clr.fmt(self.args.table)))
+
+        if self.args.all_tables:
+            tables = [t for t in SITE_TABLES]
+        else:
+            tables = [self.args.table]
+        _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+        _logger.info('  Rebuild Table(s)      : {0}'.format(
+            clr.fmt(', '.join([t for t in tables]))))
+
+        for table in tables:
+            if table == 'hpo':
+                bq_hpo_update(self.gcp_env.project)
+            elif table == 'site':
+                bq_site_update(self.gcp_env.project)
+            elif table == 'organization':
+                bq_organization_update(self.gcp_env.project)
+            else:
+                _logger.warning(f'Unknown table {table}.  Skipping rebuild for {table}')
+
+        return 1
 
 def get_id_list(fname):
     """
@@ -890,6 +940,14 @@ def run():
     update_argument(rw_parser, 'table', help="research workbench db table name to rebuild from")
     rw_parser.epilog = f'Possible TABLE Values: {{{",".join(RESEARCH_WORKBENCH_TABLES)}}}.'
 
+    # Rebuild hpo/site/organization tables.  Specify a single table name or all-tables
+    site_parser = subparser.add_parser(
+        "site-tables",
+        parents=[table_parser, all_tables_parser]
+    )
+    update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
+    site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -926,6 +984,10 @@ def run():
 
         elif args.resource == 'code':
             process = CodeResourceClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.resource == 'site-tables':
+            process = SiteResourceClass(args, gcp_env)
             exit_code = process.run()
 
         else:
