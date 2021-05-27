@@ -439,8 +439,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                 site.timeZoneId = self._get_time_zone(latitude, longitude)
         else:
             if site.siteStatus == SiteStatus.ACTIVE:
-                logging.warning(f'Active site must have valid address. Site: {site.siteName}, '
-                                f'Group: {site.googleGroup}')
+                logging.warning(f'Active site must have valid address. Site:{site.siteName}, Group:{site.googleGroup}')
 
     def _get_lat_long_for_site(self, address_1, city, state):
         self.full_address = address_1 + ' ' + city + ' ' + state
