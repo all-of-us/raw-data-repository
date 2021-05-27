@@ -890,10 +890,11 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute1Authored)
 
         participant_res_data = self.make_participant_resource(participant.participantId)
-        vaccine_module_data = None
-        for module_data in participant_res_data['modules']:
-            if module_data['module'] == COPE_VACCINE_MINUTE_1_MODULE_CODE:
-                vaccine_module_data = module_data
+        [vaccine_module_data] = self.get_generated_items(
+            participant_res_data['modules'],
+            item_key='module',
+            item_value=COPE_VACCINE_MINUTE_1_MODULE_CODE
+        )
 
         self.assertIsNotNone(vaccine_module_data)
         self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
