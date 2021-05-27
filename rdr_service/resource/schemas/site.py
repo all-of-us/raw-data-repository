@@ -43,6 +43,7 @@ class SiteSchema(Schema):
 
     site_id = fields.Int32(required=False)
     site_name = fields.String(validate=validate.Length(max=255))
+    site_type = fields.String(validate=validate.Length(max=255))
     # The Google group for the site; this is a unique key used externally.
     google_group = fields.String(validate=validate.Length(max=255))
     mayolink_client_number = fields.Int32(required=False)

@@ -225,6 +225,10 @@ class BQMigration(object):
         local = {}
         remote = {}
 
+        # For selectively overriding default colorization of info logging in schema comparison output
+        BLUE = '\033[94m'
+        END_COLOR = '\033[0m'
+
         # Must at least have a local schema to compare
         if not local_schema:
             _logger.error(f'Missing local schema definition for {table_id}')
@@ -238,20 +242,25 @@ class BQMigration(object):
                 remote[field['name']] = (field['type'], field['mode'])
         else:
             # Remote schema doesn't exist; assume it's a new table.  List the column definitions and return
-            _logger.warning(f'New table: {table_id}')
+            _logger.info(f'{BLUE}New table: {table_id}{END_COLOR}')
             for col in local.keys():
-                _logger.warning(f'\t {col} {local[col]}')
+                _logger.info(f'\t{BLUE} {col} {local[col]}{END_COLOR}')
             return
 
-        # Make a merged list of all the column keys from both schemas and compare column definitions
+        # Make a merged list of all the column keys from both local and remote schemas and compare column definitions
         columns = sorted(local.keys() | remote.keys())
         for col in columns:
             if col in local.keys() and col in remote.keys():
                 if local[col] != remote[col]:
+                    # The field type or mode must have been altered in the latest local schema definition;
+                    # Will require dropping/recreating the BigQuery table
                     _logger.error(f'\t{table_id} column {col} changed from {remote[col]} to {local[col]}')
             elif col in local.keys() and col not in remote.keys():
-                _logger.warning(f'\t{table_id} column {col} {local[col]} added')
+                # A new column in the local schema definition; a "safe" update to apply to existing BigQuery table
+                _logger.info(f'\t{BLUE}{table_id} column {col} {local[col]} added{END_COLOR}')
             else:
+                # A column from the existing BigQuery table no longer exists in the local schema definition;
+                # Will require dropping/recreating the BigQuery table
                 _logger.error(f'\t{table_id} column {col} {remote[col]} removed')
 
 
