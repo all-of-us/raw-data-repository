@@ -96,7 +96,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                      isObsolete=is_obsolete,
                      resourceId=hierarchy_org_obj.id)
 
-        existing_map = {entity.name: entity for entity in self.hpo_dao.get_all()}
+        existing_map = {entity.name: entity for entity in self.hpo_dao.get_all(refresh_cache=True)}
         existing_entity = existing_map.get(entity.name)
 
         with self.hpo_dao.session() as session:
@@ -115,7 +115,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                     existing_entity.resourceId = entity.resourceId
                     self.hpo_dao.update_with_session(session, existing_entity)
             else:
-                hpo_id_list = [item.hpoId for item in self.hpo_dao.get_all()]
+                hpo_id_list = [item.hpoId for item in self.hpo_dao.get_all(refresh_cache=True)]
                 entity.hpoId = max(hpo_id_list) + 1 if len(hpo_id_list) > 0 else 0
                 hpo_id = entity.hpoId
                 self.hpo_dao.insert_with_session(session, entity)
@@ -142,7 +142,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                               hpoId=hpo.hpoId,
                               isObsolete=is_obsolete,
                               resourceId=hierarchy_org_obj.id)
-        existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all()}
+        existing_map = {entity.externalId: entity for entity in self.organization_dao.get_all(refresh_cache=True)}
         existing_entity = existing_map.get(entity.externalId)
         with self.organization_dao.session() as session:
             if existing_entity:
@@ -288,7 +288,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                       isObsolete=is_obsolete,
                       resourceId=hierarchy_org_obj.id)
 
-        existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all()}
+        existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all(refresh_cache=True)}
         existing_entity = existing_map.get(entity.googleGroup)
         new_site = None
         with self.site_dao.session() as session:
