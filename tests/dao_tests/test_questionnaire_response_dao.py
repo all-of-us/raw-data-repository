@@ -14,7 +14,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_YES_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
-    VACCINE_MINUTE_1_MODULE_CODE,
+    COPE_VACCINE_MINUTE_1_MODULE_CODE,
     PMI_SKIP_CODE,
     PPI_SYSTEM,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
@@ -46,7 +46,7 @@ from tests.test_data import (
     login_phone_number_code,
     to_client_participant_id
 )
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -71,7 +71,7 @@ def with_id(resource, id_):
     return json.dumps(resource_json)
 
 
-class QuestionnaireResponseDaoTest(BaseTestCase):
+class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
     def setUp(self):
         super().setUp()
         self.code_dao = CodeDao()
@@ -187,7 +187,7 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         )
 
         self.vaccine_1_survey_module_code = self.data_generator.create_database_code(
-            value=VACCINE_MINUTE_1_MODULE_CODE
+            value=COPE_VACCINE_MINUTE_1_MODULE_CODE
         )
 
     def check_response(self, expected_qr):
@@ -886,8 +886,18 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == participant.participantId
         ).one()
-        self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnVaccineMinute1)
-        self.assertEqual(authored_date, summary.questionnaireOnVaccineMinute1Authored)
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute1)
+        self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute1Authored)
+
+        participant_res_data = self.make_participant_resource(participant.participantId)
+        vaccine_module_data = None
+        for module_data in participant_res_data['modules']:
+            if module_data['module'] == COPE_VACCINE_MINUTE_1_MODULE_CODE:
+                vaccine_module_data = module_data
+
+        self.assertIsNotNone(vaccine_module_data)
+        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
+        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
 
 
     def test_ppi_questionnaire_count_field_not_found(self):
