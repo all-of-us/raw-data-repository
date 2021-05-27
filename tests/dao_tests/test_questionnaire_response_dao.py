@@ -873,6 +873,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         self.insert_codes()
         participant = self.data_generator.create_database_participant(participantId=1, biobankId=2)
         self._setup_participant()
+        num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
 
         questionnaire = self._create_questionnaire(module_code=self.vaccine_1_survey_module_code)
         authored_date = datetime.datetime(2021, 3, 4)
@@ -888,6 +889,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         ).one()
         self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute1)
         self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute1Authored)
+        self.assertEqual(num_completed_ppi_after_setup + 1, summary.numCompletedPPIModules)
 
         participant_res_data = self.make_participant_resource(participant.participantId)
         [vaccine_module_data] = self.get_generated_items(
