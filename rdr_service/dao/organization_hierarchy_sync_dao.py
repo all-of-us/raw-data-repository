@@ -107,7 +107,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                 existing_dict = existing_entity.asdict()
                 existing_dict['hpoId'] = None
                 if existing_dict == new_dict:
-                    logging.info('Not updating {}.'.format(new_dict['name']))
+                    logging.warning(f'No change found for {new_dict["name"]}, skip updating.')
                 else:
                     existing_entity.displayName = entity.displayName
                     existing_entity.organizationType = entity.organizationType
@@ -151,7 +151,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                 existing_dict = existing_entity.asdict()
                 existing_dict['organizationId'] = None
                 if existing_dict == new_dict:
-                    logging.info('Not updating {}.'.format(new_dict['externalId']))
+                    logging.warning(f'No change found for {new_dict["externalId"]}, skip updating.')
                 else:
                     existing_entity.displayName = entity.displayName
                     existing_entity.hpoId = entity.hpoId
@@ -302,7 +302,7 @@ class OrganizationHierarchySyncDao(BaseDao):
                 existing_dict = existing_entity.asdict()
                 existing_dict['siteId'] = None
                 if existing_dict == new_dict:
-                    logging.info('Not updating {}.'.format(new_dict['googleGroup']))
+                    logging.warning(f'No change found for {new_dict["googleGroup"]}, skip updating.')
                 else:
                     for k, v in entity.asdict().items():
                         if k != 'siteId' and k != 'googleGroup':
@@ -439,8 +439,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                 site.timeZoneId = self._get_time_zone(latitude, longitude)
         else:
             if site.siteStatus == SiteStatus.ACTIVE:
-                logging.warn('Active site must have valid address. Site: {}, Group: {}'.format(
-                    site.siteName, site.googleGroup))
+                logging.warning(f'Active site must have valid address. Site: {site.siteName}, '
+                                f'Group: {site.googleGroup}')
 
     def _get_lat_long_for_site(self, address_1, city, state):
         self.full_address = address_1 + ' ' + city + ' ' + state
@@ -454,7 +454,7 @@ class OrganizationHierarchySyncDao(BaseDao):
             try:
                 geocode_result = self.gmaps.geocode(address_1 + '' + city + ' ' + state)[0]
             except IndexError:
-                logging.warn('Bad address for {}, could not geocode.'.format(self.full_address))
+                logging.warning(f'Bad address for {self.full_address}, could not geocode.')
                 return None, None
             if geocode_result:
                 geometry = geocode_result.get('geometry')
