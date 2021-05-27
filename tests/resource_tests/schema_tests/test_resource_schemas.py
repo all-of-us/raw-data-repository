@@ -37,7 +37,6 @@ rsc_field_exclusions = {
     'HPOSchema': list(rschemas.HPOSchema.Meta.pii_fields),
     'PatientStatusSchema':
         list(rschemas.participant.PatientStatusSchema.Meta.pii_fields) + ['patient_status_history_id'],
-    'PhysicalMeasurementsSchema': ['physical_measurements_id'],
     'GenomicManifestFileSchema': _default_exclusions,
     'GenomicManifestFeedbackSchema': _default_exclusions,
     'GenomicGCValidationMetricsSchema': _default_exclusions,
