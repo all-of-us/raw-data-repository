@@ -48,6 +48,8 @@ class BQPDREhrReceiptSchema(BQSchema):
     file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    participant_ehr_receipt_id = BQField('participant_ehr_receipt_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummarySchema(BQSchema):

@@ -801,7 +801,7 @@ class SiteResourceClass(object):
             else:
                 _logger.warning(f'Unknown table {table}.  Skipping rebuild for {table}')
 
-        return 1
+        return 0
 
 def get_id_list(fname):
     """

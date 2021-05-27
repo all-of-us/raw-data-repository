@@ -33,10 +33,8 @@ bq_field_exclusions = {
 
 # Fields from the resource schemas that do not exist in the BQ schema
 rsc_field_exclusions = {
-    'EhrReceiptSchema': ['participant_ehr_receipt_id'],
     'HPOSchema': list(rschemas.HPOSchema.Meta.pii_fields),
-    'PatientStatusSchema':
-        list(rschemas.participant.PatientStatusSchema.Meta.pii_fields) + ['patient_status_history_id'],
+    'PatientStatusSchema': list(rschemas.participant.PatientStatusSchema.Meta.pii_fields),
     'GenomicManifestFileSchema': _default_exclusions,
     'GenomicManifestFeedbackSchema': _default_exclusions,
     'GenomicGCValidationMetricsSchema': _default_exclusions,
