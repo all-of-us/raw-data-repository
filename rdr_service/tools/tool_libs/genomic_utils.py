@@ -2079,7 +2079,7 @@ def run():
                                            'RECONCILE_WGS_DATA',
                                            'AW4_ARRAY_WORKFLOW',
                                            'AW4_WGS_WORKFLOW',
-                                           'AW2F_MANIFEST'
+                                           'AW2F_MANIFEST',
                                            'CALCULATE_RECORD_COUNT_AW1'
                                        ],
                                        type=str
