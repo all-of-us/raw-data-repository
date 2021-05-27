@@ -221,6 +221,49 @@ class BQMigration(object):
 
         return so
 
+    def compare_table_schemas (self, table_id, local_schema, remote_schema):
+        local = {}
+        remote = {}
+
+        # For selectively overriding default colorization of info logging in schema comparison output
+        BLUE = '\033[94m'
+        END_COLOR = '\033[0m'
+
+        # Must at least have a local schema to compare
+        if not local_schema:
+            _logger.error(f'Missing local schema definition for {table_id}')
+            return
+        else:
+            for field in json.loads(local_schema.to_json()):
+                local[field['name']] = (field['type'], field['mode'])
+
+        if remote_schema:
+            for field in json.loads(remote_schema.to_json()):
+                remote[field['name']] = (field['type'], field['mode'])
+        else:
+            # Remote schema doesn't exist; assume it's a new table.  List the column definitions and return
+            _logger.info(f'{BLUE}New table: {table_id}{END_COLOR}')
+            for col in local.keys():
+                _logger.info(f'\t{BLUE} {col} {local[col]}{END_COLOR}')
+            return
+
+        # Make a merged list of all the column keys from both local and remote schemas and compare column definitions
+        columns = sorted(local.keys() | remote.keys())
+        for col in columns:
+            if col in local.keys() and col in remote.keys():
+                if local[col] != remote[col]:
+                    # The field type or mode must have been altered in the latest local schema definition;
+                    # Will require dropping/recreating the BigQuery table
+                    _logger.error(f'\t{table_id} column {col} changed from {remote[col]} to {local[col]}')
+            elif col in local.keys() and col not in remote.keys():
+                # A new column in the local schema definition; a "safe" update to apply to existing BigQuery table
+                _logger.info(f'\t{BLUE}{table_id} column {col} {local[col]} added{END_COLOR}')
+            else:
+                # A column from the existing BigQuery table no longer exists in the local schema definition;
+                # Will require dropping/recreating the BigQuery table
+                _logger.error(f'\t{table_id} column {col} {remote[col]} removed')
+
+
     def run(self):
         """
         Main program process
@@ -269,7 +312,8 @@ class BQMigration(object):
 
                 if not rs_json:
                     if self.args.dry_run:
-                        _logger.error('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
+                        # A new table;  compare_table_schemas() will display the new schema details
+                        self.compare_table_schemas(table_id, ls_obj, None)
                         continue
                     else:
                         self.create_table(bq_table, project_id, dataset_id, table_id)
@@ -277,22 +321,11 @@ class BQMigration(object):
                 else:
                     try:
                         rs_obj = BQSchema(json.loads(rs_json))
-
-                        # The --dry-run argument does a cursory check that the local schema contains the same
-                        # fields as the existing BigQuery table. If a mismatch is found and the BigQuery table has a
-                        # field the local schema does not, the BigQuery table will need to be deleted and recreated
-                        # rather than updated, when adding new fields.
                         if self.args.dry_run:
-                            _logger.info(f'Checking {project_id}:{dataset_id}.{table_id} schema...')
-                            for attr in dir(rs_obj):
-                                if not hasattr(ls_obj, attr):
-                                    _logger.error(f'\tField {attr} missing from local {table_id} schema ')
-                            for attr in dir(ls_obj):
-                                if attr in ['_fields', '_module', '_excluded_fields'] or \
-                                        callable(getattr(ls_obj, attr)):
-                                    continue
-                                if not hasattr(rs_obj, attr):
-                                    _logger.warning(f'\tNew field {attr} defined in local {table_id} schema ')
+                            # New/added columns can be handled by re-running the command without --dry-run
+                            # Changed or removed columns mean the table should be dropped (run with --delete) first
+                            _logger.info(f'Comparing {project_id}:{dataset_id}.{table_id} schema changes...')
+                            self.compare_table_schemas(table_id, ls_obj, rs_obj)
                             continue
                     except ValueError:
                         # Something is there in BigQuery for this schema, but it is bad.

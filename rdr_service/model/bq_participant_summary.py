@@ -117,6 +117,8 @@ class BQPhysicalMeasurements(BQSchema):
     pm_finalized_site = BQField('pm_finalized_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_finalized_site_id = BQField('pm_finalized_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankSampleSchema(BQSchema):
@@ -179,6 +181,7 @@ class BQPatientStatusSchema(BQSchema):
     organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     site_id = BQField('site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    patient_status_history_id = BQField('patient_status_history_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQEhrReceiptSchema(BQSchema):
@@ -188,6 +191,8 @@ class BQEhrReceiptSchema(BQSchema):
     file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    participant_ehr_receipt_id = BQField('participant_ehr_receipt_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummarySchema(BQSchema):
