@@ -707,6 +707,7 @@ class QuestionnaireResponseDao(BaseDao):
                         and participant_summary.questionnaireOnCopeVaccineMinute1 != QuestionnaireStatus.SUBMITTED:
                     participant_summary.questionnaireOnCopeVaccineMinute1 = QuestionnaireStatus.SUBMITTED
                     participant_summary.questionnaireOnCopeVaccineMinute1Authored = authored
+                    module_changed = True
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
