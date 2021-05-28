@@ -132,7 +132,6 @@ _unlayered_question_codes_map = {
     'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
 }
 
-
 # Participant Activity Group IDs.
 class ActivityGroup(IntEnum):
     Profile = 1  # ParticipantActivity values 1 through 19
@@ -159,6 +158,8 @@ class ParticipantActivity(IntEnum):
     BiobankProcessed = 23
 
     # Questionnaire Module Group (Names should exactly match module code value name): 40 - 69
+    # Initial list based on module responses that can trigger participant status or retention eligibility updates.
+    # SNAP modules and some misc. administrative modules not included.
     ConsentPII = 40
     TheBasics = 41
     Lifestyle = 42
@@ -714,7 +715,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             mod_found = True
                             break
                     if mod_found is False:
-                        logging.warning(f'Key ({module_name}) not found in ParticipantActivity enum.')
+                        # The participant's module history often contains modules we aren't explicitly tracking as a
+                        # ParticipantActivity yet.  Downgrade log message to debug to avoid noisy warnings
+                        # TODO: Determine if ParticipantActivity list needs to be expanded
+                        logging.debug(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
 
