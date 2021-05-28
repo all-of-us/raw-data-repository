@@ -76,6 +76,7 @@ class GenomicManifestBase(ToolBase):
         self.genomic_task_queue = 'genomics'
         self.resource_task_queue = 'resource-tasks'
         self.genomic_cloud_tasks = {
+            # AW1
             'AW1_MANIFEST': {
                 'process': {
                     'endpoint': 'ingest_aw1_manifest_task'
@@ -92,6 +93,28 @@ class GenomicManifestBase(ToolBase):
                 'samples': {
                     'endpoint': 'ingest_samples_from_raw_task'
                 }
+            },
+            # AW4
+            'AW4_ARRAY_WORKFLOW': {
+                'process': {
+                    'endpoint': 'ingest_aw4_manifest_task'
+                },
+            },
+            'AW4_WGS_WORKFLOW': {
+                'process': {
+                    'endpoint': 'ingest_aw4_manifest_task'
+                },
+            },
+            # AW5
+            'AW5_ARRAY_MANIFEST': {
+                'process': {
+                    'endpoint': 'ingest_aw5_manifest_task'
+                },
+            },
+            'AW5_WGS_MANIFEST': {
+                'process': {
+                    'endpoint': 'ingest_aw5_manifest_task'
+                },
             }
         }
 
@@ -1014,23 +1037,53 @@ class GenomicProcessRunner(GenomicManifestBase):
                 _logger.error(e)
                 return 1
 
-        if self.gen_job_name in ('METRICS_INGESTION', 'AW4_ARRAY_WORKFLOW', 'AW4_WGS_WORKFLOW'):
+        if self.gen_job_name in (
+            'METRICS_INGESTION',
+            'AW4_ARRAY_WORKFLOW',
+            'AW4_WGS_WORKFLOW',
+            'AW5_ARRAY_MANIFEST',
+            'AW5_WGS_MANIFEST'
+        ):
             try:
-                if self.args.manifest_file:
-                    _logger.info(f'File(s) Specified: {self.args.manifest_file}')
-                    return self.run_manifest_ingestion()
+                if self.args.manifest_file or self.args.csv:
+                    _logger.info(f'File(s) Specified: {self.args.manifest_file or self.args.csv}')
 
-                elif self.args.csv:
-                    _logger.info(f'File list Specified: {self.args.csv}')
-                    print(f'Multiple File List Specified: {self.args.csv}')
-
-                    # Validate file exists
-                    if not os.path.exists(self.args.csv):
-                        _logger.error(f'File {self.args.csv} was not found.')
+                    if self.args.csv and not os.path.exists(self.args.csv):
+                        _logger.error(f'CSV File {self.args.csv} was not found.')
                         return 1
 
-                    return self.process_multiple_from_file()
+                    file_paths = self.args.manifest_file if self.args.manifest_file else self.csv_to_list()
+                    bucket_name = file_paths.split('/')[0] if type(file_paths) is not list else file_paths[0].split(
+                        '/')[0]
 
+                    if self.args.cloud_task:
+                        # Get blob for file from gcs
+                        file_name = file_paths if type(file_paths) is not list else file_paths[0]
+                        _blob = self.gscp.get_blob(bucket_name, file_name)
+                        payload = {
+                            "file_path": file_paths,
+                            "bucket_name": bucket_name,
+                            "upload_date": _blob.updated,
+                        }
+                        return self.execute_in_cloud_task(
+                            endpoint=self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint'],
+                            payload=payload,
+                            queue=self.genomic_task_queue,
+                        )
+
+                    if self.args.manifest_file and type(file_paths) is not list:
+                        return self.run_manifest_ingestion(
+                            bucket_name=bucket_name,
+                            file_name=file_paths
+                        )
+
+                    if self.args.csv and type(file_paths) is list:
+                        # Run the AW2/AW4/AW5 manifest ingestion on each file
+                        for file in file_paths:
+                            self.run_manifest_ingestion(
+                                bucket_name=bucket_name,
+                                file_name=file.replace(bucket_name + '/', '') if bucket_name in file else file
+                            )
                 else:
                     _logger.error(f'A manifest file or csv is required for this job.')
                     return 1
@@ -1143,26 +1196,8 @@ class GenomicProcessRunner(GenomicManifestBase):
             _logger.error(e)
             return 1
 
-    def run_manifest_ingestion(self):
-        bucket_name = self.args.manifest_file.split('/')[0]
-        file_name = self.args.manifest_file.replace(bucket_name + '/', '')
-
-        # Get blob for file from gcs
-        _blob = self.gscp.get_blob(bucket_name, file_name)
-
+    def run_manifest_ingestion(self, *, bucket_name, file_name):
         _logger.info(f'Processing: {file_name}')
-
-        if self.args.cloud_task:
-            payload = {
-                "file_path": self.args.manifest_file,
-                "bucket_name": bucket_name,
-                "upload_date": _blob.updated,
-            }
-            return self.execute_in_cloud_task(
-                endpoint=self.genomic_cloud_tasks[self.gen_job_name]['process']['endpoint'],
-                payload=payload,
-                queue=self.genomic_task_queue,
-            )
 
         # Use a Controller to run the job
         try:
@@ -1177,20 +1212,6 @@ class GenomicProcessRunner(GenomicManifestBase):
         except Exception as e:  # pylint: disable=broad-except
             _logger.error(e)
             return 1
-
-    def process_multiple_from_file(self):
-        # Open list of files and run_aw2_manifest() for each one individually
-        with open(self.args.csv, encoding='utf-8-sig') as f:
-            csvreader = csv.reader(f)
-
-            # Run the AW2/AW4 manifest ingestion on each file
-            for l in csvreader:
-                self.args.manifest_file = l[0]
-                result = self.run_manifest_ingestion()
-                if result == 1:
-                    return 1
-
-        return 0
 
     def run_aw2f_manifest(self, feedback_id):
         """
@@ -1241,6 +1262,15 @@ class GenomicProcessRunner(GenomicManifestBase):
             task_data,
             project_id=self.gcp_env.project
         )
+
+    def csv_to_list(self):
+        files = []
+        with open(self.args.csv, encoding='utf-8-sig') as f:
+            csvreader = csv.reader(f)
+            # Run the AW2/AW4/AW5 manifest ingestion on each file
+            for line in csvreader:
+                files.append(line[0])
+        return files
 
 
 class FileUploadDateClass(GenomicManifestBase):
@@ -2079,6 +2109,8 @@ def run():
                                            'RECONCILE_WGS_DATA',
                                            'AW4_ARRAY_WORKFLOW',
                                            'AW4_WGS_WORKFLOW',
+                                           'AW5_ARRAY_MANIFEST',
+                                           'AW5_WGS_MANIFEST',
                                            'AW2F_MANIFEST'
                                            'CALCULATE_RECORD_COUNT_AW1'
                                        ],
