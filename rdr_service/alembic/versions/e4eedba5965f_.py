@@ -42,16 +42,22 @@ def upgrade_rdr():
         "Insert into genomic_member_report_states (genomic_set_member_id) Select id From genomic_set_member "
         "Where genomic_set_member.genomic_workflow_state in (23,24,25)"
     )
+    # should be > 68K records
 
     op.execute(
         "Update genomic_member_report_states INNER Join genomic_set_member "
         "On genomic_set_member.id = genomic_member_report_states.genomic_set_member_id "
-        "Set module = 'GEM', genomic_set_member_id = genomic_set_member.id, genomic_report_state = "
+        "Set module = 'GEM', "
+        "genomic_set_member_id = genomic_set_member.id, "
+        "genomic_report_state = "
         "CASE WHEN genomic_set_member.genomic_workflow_state = 23 THEN 1 "
         "WHEN genomic_set_member.genomic_workflow_state = 24 THEN 2 "
-        "WHEN genomic_set_member.genomic_workflow_state = 25 THEN 3 END, created=NOW()"
+        "WHEN genomic_set_member.genomic_workflow_state = 25 THEN 3 END, "
+        "genomic_member_report_states.created=NOW()"
         "Where genomic_set_member.genomic_workflow_state in (23,24,25)"
     )
+    # should be > 68K records
+
     # ### end Alembic commands ###
 
 
