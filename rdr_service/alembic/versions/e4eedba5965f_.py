@@ -33,9 +33,24 @@ def upgrade_rdr():
     sa.Column('genomic_report_state', rdr_service.model.utils.Enum(GenomicReportState), nullable=True),
     sa.Column('created', sa.DateTime(), nullable=True),
     sa.Column('modified', sa.DateTime(), nullable=True),
-    sa.Column('module', sa.String(length=80), nullable=False),
+    sa.Column('module', sa.String(length=80), nullable=True),
     sa.ForeignKeyConstraint(['genomic_set_member_id'], ['genomic_set_member.id'], ),
     sa.PrimaryKeyConstraint('id')
+    )
+
+    op.execute(
+        "Insert into genomic_member_report_states (genomic_set_member_id) Select id From genomic_set_member "
+        "Where genomic_set_member.genomic_workflow_state in (23,24,25)"
+    )
+
+    op.execute(
+        "Update genomic_member_report_states INNER Join genomic_set_member "
+        "On genomic_set_member.id = genomic_member_report_states.genomic_set_member_id "
+        "Set module = 'GEM', genomic_set_member_id = genomic_set_member.id, genomic_report_state = "
+        "CASE WHEN genomic_set_member.genomic_workflow_state = 23 THEN 1 "
+        "WHEN genomic_set_member.genomic_workflow_state = 24 THEN 2 "
+        "WHEN genomic_set_member.genomic_workflow_state = 25 THEN 3 END, created=NOW()"
+        "Where genomic_set_member.genomic_workflow_state in (23,24,25)"
     )
     # ### end Alembic commands ###
 
