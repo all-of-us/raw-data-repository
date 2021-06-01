@@ -274,7 +274,7 @@ class MailKitOrderDao(UpdatableDao):
 
         return order
 
-    def insert_biobank_order(self, pid, resource):
+    def insert_biobank_order(self, pid, resource, session=None):
         obj = BiobankOrder()
         obj.participantId = int(pid)
         obj.created = clock.CLOCK.now()
@@ -284,10 +284,13 @@ class MailKitOrderDao(UpdatableDao):
         obj.orderOrigin = resource.get("orderOrigin")
         test = self.get(resource["id"])
         obj.mailKitOrders = [test]
-        bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, app_util.ObjectView(resource))
-        bod.insert(obj)
+        biobank_order_dao = BiobankOrderDao()
+        if session is None:
+            biobank_order_dao.insert(obj)
+        else:
+            biobank_order_dao.insert_with_session(session, obj)
 
     def insert_mayolink_create_order_history(self, pid, resource, request_payload, response_payload):
         mayolink_create_order_history = MayolinkCreateOrderHistory()
