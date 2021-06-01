@@ -1,0 +1,66 @@
+{
+  "notifications": [
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "34",
+      "topic_name": "aw1_ingestion_test",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1"
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "39",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "AW4_array_manifest/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "40",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "AW4_wgs_manifest/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "41",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "AW5_wgs_manifest/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "42",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "AW5_array_manifest/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": "58",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Wgs_sample_raw_data/ SS_VCF_research/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    }
+  ]
+}

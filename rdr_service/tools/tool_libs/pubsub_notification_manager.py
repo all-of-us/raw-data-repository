@@ -1,12 +1,15 @@
 import json
+import logging
+import os
 
 from google.cloud import storage
 
-from rdr_service.config import PUBSUB_NOTIFICATION_BUCKETS
+from rdr_service.config import PUBSUB_NOTIFICATION_BUCKETS_PROD, PUBSUB_NOTIFICATION_BUCKETS_SANDBOX
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'pubsub-manager'
 tool_desc = 'Manage GCloud Pub/Sub Notifications'
+_logger = logging.getLogger("rdr_logger")
 
 
 class PubSubNotificationManager(ToolBase):
@@ -30,9 +33,13 @@ class PubSubNotificationManager(ToolBase):
         given bucket.
         """
         # Get buckets
-        bucket_list = [self.args.bucket] if self.args.bucket else PUBSUB_NOTIFICATION_BUCKETS
+        project_bucket_mappings = {
+            'all-of-us-rdr-prod': PUBSUB_NOTIFICATION_BUCKETS_PROD,
+            'all-of-us-rdr-sandbox': PUBSUB_NOTIFICATION_BUCKETS_SANDBOX,
+        }
 
-        # bucket_list = ["prod-genomics-baylor"]
+        bucket_list = [self.args.bucket] if self.args.bucket else project_bucket_mappings[self.gcp_env.project]
+
         notifications_dict = {"notifications": []}
 
         for bucket_name in bucket_list:
@@ -53,13 +60,16 @@ class PubSubNotificationManager(ToolBase):
 
                 output_dict = dict()
 
-                output_dict['bucket'] = bucket_name
-                output_dict['id'] = notification.notification_id
-                output_dict['topic_name'] = notification.topic_name
-                output_dict['topic_project'] = notification.topic_project
-                output_dict['payload_format'] = notification.payload_format
-                output_dict['object_name_prefix'] = notification._properties['object_name_prefix']
-                output_dict['event_types'] = notification.event_types
+                try:
+                    output_dict['bucket'] = bucket_name
+                    output_dict['id'] = notification.notification_id
+                    output_dict['topic_name'] = notification.topic_name
+                    output_dict['topic_project'] = notification.topic_project
+                    output_dict['payload_format'] = notification.payload_format
+                    output_dict['object_name_prefix'] = notification._properties['object_name_prefix']
+                    output_dict['event_types'] = notification.event_types
+                except KeyError:
+                    pass
 
                 notifications_dict['notifications'].append(output_dict)
 
@@ -72,6 +82,27 @@ class PubSubNotificationManager(ToolBase):
         Create a new Pub/Sub notification based on the JSON
         in the supplied --config-file
         """
+
+        if not os.path.exists(self.args.config_file):
+            _logger.error(f'File {self.args.config_file} was not found.')
+            return 1
+
+        # bucket_list = [self.args.bucket]
+        #
+        # for bucket_name in bucket_list:
+        #     # call storage api
+        #     client = storage.Client()
+        #     bucket = client.get_bucket(bucket_name)
+        #     notifications = bucket.notification(
+        #         topic_name=None,
+        #         topic_project=None,
+        #         custom_attributes=None,
+        #         event_types=None,
+        #         blob_name_prefix=None,
+        #         payload_format=None,
+        #         notification_id=None,
+        #     )
+
         return 0
 
     def command_delete(self):
