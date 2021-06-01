@@ -10,7 +10,7 @@ from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
-    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
 
 
 class GenomicSet(Base):
@@ -589,7 +589,6 @@ class GenomicSampleContamination(Base):
     # Auto-Timestamps
     created = Column('created', DateTime, nullable=True)
     modified = Column('modified', DateTime, nullable=True)
-
     sampleId = Column('sample_id', ForeignKey(BiobankStoredSample.biobankStoredSampleId), nullable=False)
     failedInJob = Column('failed_in_job', Enum(GenomicJob), nullable=False)
 
@@ -652,3 +651,24 @@ class GenomicCloudRequests(Base):
 
 event.listen(GenomicCloudRequests, 'before_insert', model_insert_listener)
 event.listen(GenomicCloudRequests, 'before_update', model_update_listener)
+
+
+class GenomicMemberReportStates(Base):
+    """
+    Used for maintaning one-to-many relationship
+    from GenomicSetMember based on multiple report states
+    """
+
+    __tablename__ = 'genomic_member_report_states'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
+    genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    module = Column(String(80), nullable=False)
+
+
+event.listen(GenomicMemberReportStates, 'before_insert', model_insert_listener)
+event.listen(GenomicMemberReportStates, 'before_update', model_update_listener)
