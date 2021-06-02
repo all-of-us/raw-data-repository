@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 from google.cloud import storage
 
@@ -17,8 +18,7 @@ CONFIG_ROOT = os.path.join(os.path.dirname(__file__), '../../config')
 
 class PubSubNotificationManager(ToolBase):
     def run(self):
-
-        super(PubSubNotificationManager, self).run()
+        #super(PubSubNotificationManager, self).run()
 
         if self.args.command == "list":
             return self.command_list()
@@ -102,28 +102,13 @@ class PubSubNotificationManager(ToolBase):
         )
         for new_notification in new_notifications_list:
 
-            bucket_name = new_notification['bucket']
+            notification = self.create_notification(new_notification)
 
-            if self.gcp_env.project != new_notification['topic_project']:
-                _logger.error(f'Notification project mismatch.')
-                return 1
+            new_notification['id'] = notification.notification_id
 
-            # create notification
-            client = storage.Client()
-            bucket = client.get_bucket(bucket_name)
-            notification = bucket.notification(
-                topic_name=new_notification['topic_name'],
-                topic_project=new_notification['topic_project'],
-                custom_attributes=None,
-                event_types=new_notification['event_types'],
-                blob_name_prefix=new_notification['object_name_prefix'],
-                payload_format=new_notification['payload_format'],
-                notification_id=None,
-            )
-
-            notification.create(client=client)
-
-            pass
+        # replace existing json file with updated notification
+        with open(config_path, "w") as f:
+            f.write(json.dumps(config_data, indent=2))
 
         return 0
 
@@ -133,6 +118,34 @@ class PubSubNotificationManager(ToolBase):
         in the supplied --config-file
         """
         return 0
+
+    def create_notification(self, new_notification: dict):
+        """
+        Calls google api to create new pub/sub notification
+        :param new_notification: dict from config file
+        :return:
+        """
+        bucket_name = new_notification['bucket']
+
+        if self.gcp_env.project != new_notification['topic_project']:
+            _logger.error(f'Notification project mismatch.')
+            sys.exit(1)
+
+        # create notification
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        notification = bucket.notification(
+            topic_name=new_notification['topic_name'],
+            topic_project=new_notification['topic_project'],
+            custom_attributes=None,
+            event_types=new_notification['event_types'],
+            blob_name_prefix=new_notification['object_name_prefix'],
+            payload_format=new_notification['payload_format'],
+            notification_id=None,
+        )
+
+        notification.create(client=client)
+        return notification
 
 
 def add_additional_arguments(parser):
