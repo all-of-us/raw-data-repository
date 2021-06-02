@@ -89,7 +89,9 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
                 else:
                     log.fpk_alt_id = str(insp.identity[0])
 
-        except (NoInspectionAvailable, Exception):  # pylint: disable=broad-except
+        except NoInspectionAvailable:
+            pass  # Ignoring errors generated for model objects that can't be inspected (like the FHIR lib classes)
+        except Exception:  # pylint: disable=broad-except
             logging.error('Error setting request log data', exc_info=True)
 
     return save_raw_request_record(log)
