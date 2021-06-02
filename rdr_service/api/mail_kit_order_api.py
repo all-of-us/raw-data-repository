@@ -8,6 +8,8 @@ from rdr_service.api.base_api import UpdatableApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
 from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
+from rdr_service.dao.participant_dao import raise_if_withdrawn
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import OrderShipmentTrackingStatus
@@ -76,11 +78,11 @@ class MailKitOrderApi(UpdatableApi):
         try:
             fhir = SimpleFhirR4Reader(resource)
             patient = fhir.patient
-            pid = patient.identifier
-            p_id = from_client_participant_id(pid.value)
+            patient_id_obj = patient.identifier
+            participant_id_int = from_client_participant_id(patient_id_obj.value)
             bo_id = fhir.basedOn[0].identifier.value
             _id = self.dao.get_id(
-                ObjDict({"participantId": p_id, "order_id": int(bo_id)})
+                ObjDict({"participantId": participant_id_int, "order_id": int(bo_id)})
             )
             tracking_status = fhir.extension.get(
                 url=DV_FHIR_URL + "tracking-status"
@@ -107,19 +109,25 @@ class MailKitOrderApi(UpdatableApi):
             and self._to_mayo(fhir)
             and not dvo.biobankOrderId
         ):
-            # Send to mayolink and create internal biobank order
-            response = self.dao.send_order(resource, p_id)
-            merged_resource = merge_dicts(response, resource)
-            merged_resource["id"] = _id
-            merged_resource["orderOrigin"] = get_account_origin_id()
-            logging.info(f"Sending salivary order to biobank for participant: {p_id}")
-            self.dao.insert_biobank_order(p_id, merged_resource)
-            self.dao.insert_mayolink_create_order_history(p_id, merged_resource, resource, response)
+            with self.dao.session() as session:
+                summary_dao = ParticipantSummaryDao()
+                summary = summary_dao.get_for_update(session, participant_id_int)
+                if summary is not None:  # Later code handles the error if it's missing
+                    raise_if_withdrawn(summary)
+
+                # Send to mayolink and create internal biobank order
+                response = self.dao.send_order(resource, participant_id_int)
+                merged_resource = merge_dicts(response, resource)
+                merged_resource["id"] = _id
+                merged_resource["orderOrigin"] = get_account_origin_id()
+                logging.info(f"Sending salivary order to biobank for participant: {participant_id_int}")
+                self.dao.insert_biobank_order(participant_id_int, merged_resource, session=session)
+                self.dao.insert_mayolink_create_order_history(participant_id_int, merged_resource, resource, response)
 
         response = super(MailKitOrderApi, self)\
             .put(
                 bo_id,
-                participant_id=p_id,
+                participant_id=participant_id_int,
                 skip_etag=True,
                 resource=merged_resource
             )

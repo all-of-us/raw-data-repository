@@ -133,7 +133,8 @@ participant_summary_default_values = {
     "enrollmentSite": "UNSET",
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
-    "wasEhrDataAvailable": False
+    "wasEhrDataAvailable": False,
+    "questionnaireOnCopeVaccineMinute1": "UNSET"
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
@@ -2632,7 +2633,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("UNSET", new_ps_2["enrollmentStatus"])
+        self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
         self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -3046,7 +3047,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("UNSET", new_ps_2["enrollmentStatus"])
+        self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
         self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])

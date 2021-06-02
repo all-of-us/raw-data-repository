@@ -79,6 +79,7 @@ class BQSiteSchema(BQSchema):
                           fld_enum=BQObsoleteStatusEnum)
     is_obsolete_id = BQField('is_obsolete_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                              fld_enum=BQObsoleteStatusEnum)
+    site_type = BQField('site_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 class BQSite(BQTable):
     """ Organization Site BigQuery Table """

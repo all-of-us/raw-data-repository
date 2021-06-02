@@ -23,6 +23,7 @@ import faker
 from rdr_service import api_util
 from rdr_service import config
 from rdr_service import main
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory
@@ -581,7 +582,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
 
     def submit_questionnaire_response(
-        self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth):
+        self, participant_id: str, questionnaire_id, race_code=None,
+        gender_code=None, state=None, date_of_birth=None, authored_datetime=datetime.now()
+    ):
         code_answers = []
         date_answers = []
         if race_code:
@@ -595,7 +598,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         qr = self.make_questionnaire_response_json(
             participant_id, questionnaire_id, code_answers=code_answers, date_answers=date_answers
         )
-        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+        with FakeClock(authored_datetime):
+            self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def submit_consent_questionnaire_response(self, participant_id, questionnaire_id, ehr_consent_answer):
         code_answers = [("ehrConsent", Concept(PPI_SYSTEM, ehr_consent_answer))]

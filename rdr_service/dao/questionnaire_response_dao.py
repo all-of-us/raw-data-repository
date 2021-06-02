@@ -48,7 +48,8 @@ from rdr_service.code_constants import (
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
-    COHORT_1_REVIEW_CONSENT_YES_CODE)
+    COHORT_1_REVIEW_CONSENT_YES_CODE,
+    COPE_VACCINE_MINUTE_1_MODULE_CODE)
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -702,6 +703,11 @@ class QuestionnaireResponseDao(BaseDao):
                     # them as submitted
                     participant_summary.questionnaireOnDnaProgram = QuestionnaireStatus.SUBMITTED
                     participant_summary.questionnaireOnDnaProgramAuthored = authored
+                elif code.value == COPE_VACCINE_MINUTE_1_MODULE_CODE \
+                        and participant_summary.questionnaireOnCopeVaccineMinute1 != QuestionnaireStatus.SUBMITTED:
+                    participant_summary.questionnaireOnCopeVaccineMinute1 = QuestionnaireStatus.SUBMITTED
+                    participant_summary.questionnaireOnCopeVaccineMinute1Authored = authored
+                    module_changed = True
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(

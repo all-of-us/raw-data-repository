@@ -59,10 +59,6 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         if '_sample_manifests' in object_id:
             task_key = "aw1"
 
-            # Northwest moves their AW1 files to a `downloaded` subfolder. Ignore these.
-            if 'downloaded' in object_id:
-                return
-
         # AW2 files have "_data_manifests" in their file name
         elif '_data_manifests' in object_id:
             task_key = "aw2"

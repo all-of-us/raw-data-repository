@@ -7,9 +7,19 @@ from werkzeug.exceptions import BadRequest, Forbidden
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
-from rdr_service.code_constants import GENDER_IDENTITY_QUESTION_CODE, PMI_SKIP_CODE, PPI_SYSTEM, THE_BASICS_PPI_MODULE,\
-    CONSENT_COPE_YES_CODE, CONSENT_COPE_NO_CODE, CONSENT_COPE_DEFERRED_CODE, PRIMARY_CONSENT_UPDATE_QUESTION_CODE,\
-    COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE
+from rdr_service.code_constants import (
+    COHORT_1_REVIEW_CONSENT_NO_CODE,
+    COHORT_1_REVIEW_CONSENT_YES_CODE,
+    CONSENT_COPE_DEFERRED_CODE,
+    CONSENT_COPE_NO_CODE,
+    CONSENT_COPE_YES_CODE,
+    GENDER_IDENTITY_QUESTION_CODE,
+    COPE_VACCINE_MINUTE_1_MODULE_CODE,
+    PMI_SKIP_CODE,
+    PPI_SYSTEM,
+    PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
+    THE_BASICS_PPI_MODULE
+)
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -23,18 +33,20 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
     RetentionStatus
 from tests import test_data
 from tests.test_data import (
     consent_code,
+    cope_consent_code,
     email_code,
     first_name_code,
     last_name_code,
     login_phone_number_code,
-    cope_consent_code
+    to_client_participant_id
 )
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 TIME = datetime.datetime(2016, 1, 1)
 TIME_2 = datetime.datetime(2016, 1, 2)
@@ -59,7 +71,7 @@ def with_id(resource, id_):
     return json.dumps(resource_json)
 
 
-class QuestionnaireResponseDaoTest(BaseTestCase):
+class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
     def setUp(self):
         super().setUp()
         self.code_dao = CodeDao()
@@ -171,7 +183,11 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
             questionnaireResponseAnswerId=6,
             questionnaireResponseId=1,
             questionId=6,
-            valueString=self.login_phone_number,
+            valueString=self.login_phone_number
+        )
+
+        self.vaccine_1_survey_module_code = self.data_generator.create_database_code(
+            value=COPE_VACCINE_MINUTE_1_MODULE_CODE
         )
 
     def check_response(self, expected_qr):
@@ -656,15 +672,20 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         with FakeClock(TIME_2):
             self._insert_questionnaire_response(qr)
 
-    def _create_questionnaire(self, created_date, question_code_id=None, identifier='1'):
+    def _create_questionnaire(self, created_date=datetime.datetime.now(), question_code_id=None,
+                              identifier='1', module_code: Code = None) -> Questionnaire:
         questionnaire = Questionnaire(resource=QUESTIONNAIRE_RESOURCE, externalId=identifier)
+
+        if module_code:
+            concept = QuestionnaireConcept(codeId=module_code.codeId)
+            questionnaire.concepts = [concept]
 
         if question_code_id:
             question = QuestionnaireQuestion(codeId=question_code_id, repeats=False)
             questionnaire.questions.append(question)
 
         with FakeClock(created_date):
-            self.questionnaire_dao.insert(questionnaire)
+            return self.questionnaire_dao.insert(questionnaire)
 
     def _create_cope_questionnaire(self, identifier='Cope'):
         self._create_questionnaire(datetime.datetime.now(), self.cope_consent_id, identifier=identifier)
@@ -846,6 +867,41 @@ class QuestionnaireResponseDaoTest(BaseTestCase):
         participant_summary = self.participant_summary_dao.get(1)
         self.assertEqual(QuestionnaireStatus.SUBMITTED, participant_summary.questionnaireOnCopeFeb)
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
+
+    def test_cope_first_minute_survey(self):
+        """Make sure the dao fills in the summary data for the first COPE minute survey"""
+        self.insert_codes()
+        participant = self.data_generator.create_database_participant(participantId=1, biobankId=2)
+        self._setup_participant()
+        num_completed_ppi_after_setup = self.participant_summary_dao.get(1).numCompletedPPIModules
+
+        questionnaire = self._create_questionnaire(module_code=self.vaccine_1_survey_module_code)
+        authored_date = datetime.datetime(2021, 3, 4)
+        self.submit_questionnaire_response(
+            participant_id=to_client_participant_id(participant.participantId),
+            questionnaire_id=questionnaire.questionnaireId,
+            authored_datetime=authored_date
+        )
+
+        # Check that the summary fields have the survey data
+        summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant.participantId
+        ).one()
+        self.assertEqual(QuestionnaireStatus.SUBMITTED, summary.questionnaireOnCopeVaccineMinute1)
+        self.assertEqual(authored_date, summary.questionnaireOnCopeVaccineMinute1Authored)
+        self.assertEqual(num_completed_ppi_after_setup + 1, summary.numCompletedPPIModules)
+
+        participant_res_data = self.make_participant_resource(participant.participantId)
+        [vaccine_module_data] = self.get_generated_items(
+            participant_res_data['modules'],
+            item_key='module',
+            item_value=COPE_VACCINE_MINUTE_1_MODULE_CODE
+        )
+
+        self.assertIsNotNone(vaccine_module_data)
+        self.assertEqual(str(QuestionnaireStatus.SUBMITTED), vaccine_module_data['status'])
+        self.assertEqual(authored_date, vaccine_module_data['module_authored'])
+
 
     def test_ppi_questionnaire_count_field_not_found(self):
         """Make sure QuestionnaireResponseDao doesn't fail when an unknown field is part of the list"""

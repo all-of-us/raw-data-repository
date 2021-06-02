@@ -820,7 +820,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET
 
             pm_list.append({
-                'physical_measurement_id': row.physicalMeasurementsId,
+                'physical_measurements_id': row.physicalMeasurementsId,
                 'status': str(pm_status),
                 'status_id': int(pm_status),
                 'created': row.created,

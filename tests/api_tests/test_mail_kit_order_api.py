@@ -19,7 +19,9 @@ from rdr_service.model.biobank_order import (
 )
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
+from rdr_service.participant_enums import WithdrawalStatus
 from tests.test_data import load_test_data_json
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import load_biobank_order_json
@@ -48,7 +50,7 @@ class MailKitOrderApiTestBase(BaseTestCase):
         mayolinkapi_patcher = mock.patch(
             "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
-        mayolinkapi_patcher.start()
+        self.mock_mayolink_api = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def get_payload(self, filename):
@@ -418,6 +420,37 @@ class MailKitOrderApiTestPostSupplyDelivery(MailKitOrderApiTestBase):
         for i in order:
             self.assertEqual(i.id, int(1))
             self.assertEqual(i.order_id, int(999999))
+
+    def test_no_api_call_on_withdrawn(self):
+        """
+        No Mayolink API call should occur if the request fails validation because the participant is withdrawn
+        """
+        participant_id = self.participant.participantId
+
+        # Create order for the SupplyDelivery POST to work with
+        # (order number and participant id from dv_order_api_post_supply_delivery.json file)
+        self.data_generator.create_database_biobank_mail_kit_order(
+            participantId=participant_id,
+            order_id=999999
+        )
+
+        # Set the participant as withdrawn
+        participant = self.session.query(Participant).filter(
+            Participant.participantId == participant_id
+        ).one()
+        participant.withdrawalStatus = WithdrawalStatus.NO_USE
+        summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == participant_id
+        ).one()
+        summary.withdrawalStatus = WithdrawalStatus.NO_USE
+        self.session.commit()
+
+        # Send the SupplyDelivery POST, expecting it to fail validation
+        order_json = self.get_payload("dv_order_api_post_supply_delivery.json")
+        self.send_post("SupplyDelivery", request_data=order_json, expected_status=http.client.FORBIDDEN)
+
+        # Ensure that the Mayolink API wasn't called
+        self.mock_mayolink_api.return_value.post.assert_not_called()
 
 
 class MailKitOrderApiTestPutSupplyDelivery(MailKitOrderApiTestBase):
