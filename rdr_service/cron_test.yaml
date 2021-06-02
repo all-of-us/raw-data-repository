@@ -7,3 +7,4 @@
   url: /offline/MigrateRequestsLog/rdrpostgresql
   timezone: America/New_York
   schedule: every day 1:00
+  target: offline
