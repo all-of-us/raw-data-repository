@@ -9,7 +9,10 @@ from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'pubsub-manager'
 tool_desc = 'Manage GCloud Pub/Sub Notifications'
+
 _logger = logging.getLogger("rdr_logger")
+
+CONFIG_ROOT = os.path.join(os.path.dirname(__file__), '../../config')
 
 
 class PubSubNotificationManager(ToolBase):
@@ -80,28 +83,47 @@ class PubSubNotificationManager(ToolBase):
     def command_create(self):
         """
         Create a new Pub/Sub notification based on the JSON
-        in the supplied --config-file
+        in the supplied --config-file for configurations
+        where 'id' key has a value of null
         """
 
-        if not os.path.exists(self.args.config_file):
-            _logger.error(f'File {self.args.config_file} was not found.')
+        config_path = os.path.join(CONFIG_ROOT, self.args.config_file)
+
+        if not os.path.exists(config_path):
+            _logger.error(f'File {config_path} was not found.')
             return 1
 
-        # bucket_list = [self.args.bucket]
-        #
-        # for bucket_name in bucket_list:
-        #     # call storage api
-        #     client = storage.Client()
-        #     bucket = client.get_bucket(bucket_name)
-        #     notifications = bucket.notification(
-        #         topic_name=None,
-        #         topic_project=None,
-        #         custom_attributes=None,
-        #         event_types=None,
-        #         blob_name_prefix=None,
-        #         payload_format=None,
-        #         notification_id=None,
-        #     )
+        with open(config_path) as f:
+            config_data = json.load(f)
+
+        new_notifications_list = filter(
+            lambda x: x['id'] is None,
+            config_data['notifications']
+        )
+        for new_notification in new_notifications_list:
+
+            bucket_name = new_notification['bucket']
+
+            if self.gcp_env.project != new_notification['topic_project']:
+                _logger.error(f'Notification project mismatch.')
+                return 1
+
+            # create notification
+            client = storage.Client()
+            bucket = client.get_bucket(bucket_name)
+            notification = bucket.notification(
+                topic_name=new_notification['topic_name'],
+                topic_project=new_notification['topic_project'],
+                custom_attributes=None,
+                event_types=new_notification['event_types'],
+                blob_name_prefix=new_notification['object_name_prefix'],
+                payload_format=new_notification['payload_format'],
+                notification_id=None,
+            )
+
+            notification.create(client=client)
+
+            pass
 
         return 0
 

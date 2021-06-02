@@ -61,6 +61,17 @@
       "event_types": [
         "OBJECT_FINALIZE"
       ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "id": null,
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-sandbox",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "tool_test/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
     }
   ]
 }
