@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 import mock
 from typing import Dict, List
 
@@ -273,9 +273,9 @@ class ResponseValidatorTest(BaseTestCase):
                 )
             },
             answers={
-                date_question_code: QuestionnaireResponseAnswer(valueDate=datetime(2020, 7, 4)),
+                date_question_code: QuestionnaireResponseAnswer(valueDate=date(2020, 7, 4)),
                 integer_question_code: QuestionnaireResponseAnswer(valueInteger=11),
-                broken_date_question_code: QuestionnaireResponseAnswer(valueDate=datetime(2020, 7, 4)),
+                broken_date_question_code: QuestionnaireResponseAnswer(valueDate=date(2020, 7, 4)),
                 broken_integer_question_code: QuestionnaireResponseAnswer(valueInteger=11),
             }
         )
@@ -285,7 +285,7 @@ class ResponseValidatorTest(BaseTestCase):
 
         mock_logging.warning.assert_has_calls([
             mock.call(
-                f'Given answer "2020-07-04 00:00:00" is less than expected min '
+                f'Given answer "2020-07-04" is less than expected min '
                 f'"2020-09-01" for question {date_question_code.value}'
             ),
             mock.call(
