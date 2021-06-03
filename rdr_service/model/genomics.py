@@ -653,9 +653,9 @@ event.listen(GenomicCloudRequests, 'before_insert', model_insert_listener)
 event.listen(GenomicCloudRequests, 'before_update', model_update_listener)
 
 
-class GenomicMemberReportStates(Base):
+class GenomicMemberReportState(Base):
     """
-    Used for maintaning one-to-many relationship
+    Used for maintaining one-to-many relationship
     from GenomicSetMember based on multiple report states
     """
 
@@ -670,5 +670,5 @@ class GenomicMemberReportStates(Base):
     module = Column(String(80), nullable=False)
 
 
-event.listen(GenomicMemberReportStates, 'before_insert', model_insert_listener)
-event.listen(GenomicMemberReportStates, 'before_update', model_update_listener)
+event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
+event.listen(GenomicMemberReportState, 'before_update', model_update_listener)
