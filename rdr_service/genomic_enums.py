@@ -155,6 +155,27 @@ class GenomicWorkflowState(messages.Enum):
     LR_ACCEPTED = 37
 
 
+class GenomicReportState(messages.Enum):
+
+    UNSET = 0
+
+    # GEM Reporting States
+    GEM_RPT_READY = 1
+    GEM_RPT_PENDING_DELETE = 2
+    GEM_RPT_DELETED = 3
+
+    # PGX Reporting States
+    PGX_RPT_READY = 4
+    PGX_RPT_PENDING_DELETE = 5
+    PGX_RPT_DELETED = 6
+
+    # HDR Reporting States
+    HDR_RPT_UNINFORMATIVE = 7
+    HDR_RPT_POSITIVE = 8
+    HDR_RPT_PENDING_DELETE = 9
+    HDR_RPT_DELETED = 10
+
+
 class GenomicSubProcessStatus(messages.Enum):
     """The status of a Genomics Sub-Process"""
     QUEUED = 0
