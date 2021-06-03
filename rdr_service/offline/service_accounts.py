@@ -44,7 +44,7 @@ class ServiceAccountKeyManager:
 
     def _expire_keys_for_project(self, project_name, ignore_service_account_func):
         for service_account in self._get_service_accounts_for_project(project_name):
-            if ignore_service_account_func(service_account.email):
+            if ignore_service_account_func(service_account):
                 logging.info("Skip key expiration check for Service Account {}".format(service_account.email))
             else:
                 for key in self._get_keys_for_account(
@@ -91,5 +91,5 @@ class ServiceAccountKeyManager:
         ]
 
     def _delete_key(self, key: ServiceAccountKey):
-        delete_request = self._google_service.projects().serviceAccount().keys().delete(name=key.name)
+        delete_request = self._google_service.projects().serviceAccounts().keys().delete(name=key.name)
         delete_request.execute()
