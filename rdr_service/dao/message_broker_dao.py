@@ -56,6 +56,7 @@ class MessageBrokerDao(BaseDao):
         message.responseError = response_error
         message.responseTime = clock.CLOCK.now()
         super(MessageBrokerDao, self).insert_with_session(session, message)
+        # TODO - store data to RDR table
 
         return message
 
@@ -71,7 +72,9 @@ class MessageBrokerDao(BaseDao):
 
     def _send_message_to_dest(self, message):
         dest_url = self._get_message_dest_url(message.eventType, message.messageDest)  # pylint: disable=unused-variable
+        access_token = self._get_access_token(message)
         request_body = message.requestBody  # pylint: disable=unused-variable
+
 
         # PTSC test env is not ready for this implementation
         # TODO - get access to dest endpoint and sent message to dest
@@ -81,6 +84,14 @@ class MessageBrokerDao(BaseDao):
         response_body = {'result': 'mocked result'}
         response_error = ''
         return response_code, response_body, response_error
+
+    def _get_access_token(self, message):
+        # TODO
+        # 1. PTSC will configure an OpenID connect client in their identity provider.
+        # 2. Calls from DRC will use a token obtained using the client credentials grant,
+        # used for machine to machine authentication/authorization.
+        # 3. Token should be included in the HTTP Authorization header using the Bearer scheme.
+        return ''
 
 
 class MessageBrokerMetadataDao(BaseDao):
