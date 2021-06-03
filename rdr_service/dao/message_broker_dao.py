@@ -72,7 +72,7 @@ class MessageBrokerDao(BaseDao):
 
     def _send_message_to_dest(self, message):
         dest_url = self._get_message_dest_url(message.eventType, message.messageDest)  # pylint: disable=unused-variable
-        access_token = self._get_access_token(message)
+        access_token = self._get_access_token(message)  # pylint: disable=unused-variable
         request_body = message.requestBody  # pylint: disable=unused-variable
 
 
@@ -85,7 +85,7 @@ class MessageBrokerDao(BaseDao):
         response_error = ''
         return response_code, response_body, response_error
 
-    def _get_access_token(self, message):
+    def _get_access_token(self, message):  # pylint: disable=unused-argument
         # TODO
         # 1. PTSC will configure an OpenID connect client in their identity provider.
         # 2. Calls from DRC will use a token obtained using the client credentials grant,
