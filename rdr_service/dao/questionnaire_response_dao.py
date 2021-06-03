@@ -211,7 +211,7 @@ class ResponseValidator:
         elif question_definition.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
             if question_definition.validation is None and answer.valueString is None:
                 logging.warning(f'No valueString answer given for text-based question {question_code_value}')
-            elif question_definition.validation is not None:
+            elif question_definition.validation is not None and question_definition.validation != '':
                 if question_definition.validation.startswith('date'):
                     if answer.valueDate is None:
                         logging.warning(f'No valueDate answer given for date-based question {question_code_value}')
@@ -220,7 +220,7 @@ class ResponseValidator:
                             answer.valueDate,
                             question_definition.validation_min,
                             question_definition.validation_max,
-                            parser.parse,
+                            lambda validation_str: parser.parse(validation_str).date(),
                             question_code_value
                         )
                 elif question_definition.validation == 'integer':
