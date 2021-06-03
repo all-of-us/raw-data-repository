@@ -113,6 +113,21 @@ HPO_LITE_AWARDEE = 'hpo_lite_awardee'
 HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
 HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
 
+# Buckets to listen for Pub/Sub notifications
+PUBSUB_NOTIFICATION_BUCKETS_PROD = [
+    "prod-genomics-baylor",
+    "prod-genomics-broad",
+    "prod-genomics-northwest",
+    "prod-genomics-data-baylor",
+    "prod-genomics-data-broad",
+    "prod-genomics-data-northwest",
+    "prod-drc-broad",
+]
+
+PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
+    "aou-rdr-sandbox-mock-data",
+]
+
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
 
