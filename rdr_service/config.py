@@ -156,6 +156,8 @@ DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
+DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 
