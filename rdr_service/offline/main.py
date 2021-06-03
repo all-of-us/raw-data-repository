@@ -32,7 +32,7 @@ from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
-from rdr_service.offline.sa_key_remove import delete_service_account_keys
+from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.services.data_quality import DataQualityChecker
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
@@ -193,7 +193,8 @@ def skew_duplicates():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def delete_old_keys():
-    delete_service_account_keys()
+    manager = ServiceAccountKeyManager()
+    manager.expire_old_keys()
     return '{"success": "true"}'
 
 
