@@ -659,7 +659,7 @@ class GenomicMemberReportStates(Base):
     from GenomicSetMember based on multiple report states
     """
 
-    __tablename__ = 'genomic_member_report_states'
+    __tablename__ = 'genomic_member_report_state'
 
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
