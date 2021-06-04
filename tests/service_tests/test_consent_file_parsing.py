@@ -27,7 +27,7 @@ class ConsentFileParsingTest(BaseTestCase):
         """
         test_data = []
 
-        # reusable elements usually expected on the signature page
+        # elements that usually appear on the signature page
         description_elements = [
             self._build_pdf_element(
                 cls=LTTextBoxHorizontal,
@@ -58,8 +58,8 @@ class ConsentFileParsingTest(BaseTestCase):
         pdf = self._build_pdf(pages=[
             [
                 *description_elements,
-                self._build_form_element(text='Test Name', bbox=(116.734, 147.229, 517.202, 169.229)),
-                self._build_form_element(text='Aug 17, 2019', bbox=(116.167, 97.3622, 266.167, 119.362))
+                self._build_form_element(text='Test Name', bbox=(116, 147, 517, 169)),
+                self._build_form_element(text='Aug 17, 2019', bbox=(116, 97, 266, 119))
             ]
         ])
         test_data.append(
@@ -110,8 +110,8 @@ class ConsentFileParsingTest(BaseTestCase):
         pdf = self._build_pdf(pages=[
             [
                 *description_elements,
-                self._build_form_element(text='', bbox=(116.16, 147.48, 521.16, 171.240)),
-                self._build_form_element(text='', bbox=(116.167, 97.3622, 266.167, 119.362))
+                self._build_form_element(text='', bbox=(116, 147, 521, 171)),
+                self._build_form_element(text='', bbox=(116, 97, 266, 119))
             ]
         ])
         test_data.append(
@@ -127,12 +127,12 @@ class ConsentFileParsingTest(BaseTestCase):
             [
                 *description_elements,
                 self._build_form_element(
-                    bbox=(200.0, 125.0, 400.0, 191.595),
+                    bbox=(200, 125, 400, 191),
                     children=[
-                        self._build_pdf_element(cls=LTImage, bbox=(200.0, 125.0, 400.0, 191.595))
+                        self._build_pdf_element(cls=LTImage, bbox=(200, 125, 400, 191))
                     ]
                 ),
-                self._build_form_element(text='December 7, 2018', bbox=(116.167, 97.3622, 266.167, 119.362))
+                self._build_form_element(text='December 7, 2018', bbox=(116, 97, 266, 119))
             ]
         ])
         test_data.append(
@@ -171,8 +171,8 @@ class ConsentFileParsingTest(BaseTestCase):
                         )
                     ]
                 ),
-                self._build_form_element(text='2018 Participant', bbox=(116.16, 147.48, 521.16, 171.24)),
-                self._build_form_element(text='Feb 19, 2018', bbox=(116.16, 96.84, 521.16, 120.6))
+                self._build_form_element(text='2018 Participant', bbox=(116, 147, 521, 171)),
+                self._build_form_element(text='Feb 19, 2018', bbox=(116, 96, 521, 120))
             ]
         ])
         test_data.append(

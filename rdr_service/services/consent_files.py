@@ -14,33 +14,22 @@ class ConsentFile(ABC):
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
-        signature = None
         for element in signature_elements:
             first_child = Pdf.get_first_child_of_element(element)
 
             if isinstance(first_child, LTChar):
-                possible_signature = ''
-                for char in element:
-                    possible_signature += char.get_text()
-                possible_signature = possible_signature.strip()
+                possible_signature = ''.join([char_child.get_text() for char_child in element]).strip()
                 if possible_signature != '':
-                    signature = possible_signature
-                    break
+                    return possible_signature
 
             elif isinstance(first_child, LTImage):
-                signature = True
-                break
-
-        return signature
+                return True
 
     def get_date_signed(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
             if isinstance(element, LTFigure):
-                date_str = ''
-                for char in element:
-                    date_str += char.get_text()
-                date_str = date_str.strip()
+                date_str = ''.join([char_child.get_text() for char_child in element]).strip()
                 if date_str:
                     return parser.parse(date_str).date()
 
@@ -67,8 +56,6 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
     def _get_signature_elements(self):
         signature_page = self._get_signature_page()
-        if signature_page is None:
-            return []
 
         elements = self.pdf.get_elements_intersecting_box(
             Rect.from_edges(left=125, right=500, bottom=155, top=160),
@@ -82,8 +69,6 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
     def _get_date_elements(self):
         signature_page = self._get_signature_page()
-        if signature_page is None:
-            return []
 
         elements = self.pdf.get_elements_intersecting_box(
             Rect.from_edges(left=125, right=200, bottom=110, top=120),
