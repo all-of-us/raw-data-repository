@@ -20,6 +20,12 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
+    def test_vibrent_cabor_consent(self):
+        for consent_example in self._get_vibrent_cabor_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
     def _get_vibrent_primary_test_data(self) -> List['PrimaryConsentTestData']:
         """
         Builds a list of PDFs that represent the different layouts of Vibrent's primary consent
@@ -184,6 +190,23 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         return test_data
+
+    def _get_vibrent_cabor_test_data(self) -> List['ConsentTestData']:
+        """Builds a list of PDFs that represent the different layouts of Vibrent's CaBOR consent"""
+
+        basic_cabor_pdf = self._build_pdf(pages=[
+            [
+                self._build_form_element(text='Test cabor', bbox=(116, 100, 517, 140)),
+                self._build_form_element(text='April 27, 2020', bbox=(500, 100, 600, 140))
+            ]
+        ])
+        basic_cabor_case = ConsentTestData(
+            file=consent_files.VibrentCaborConsentFile(basic_cabor_pdf),
+            expected_signature='Test cabor',
+            expected_sign_date=date(2020, 4, 27)
+        )
+
+        return [basic_cabor_case]
 
     @classmethod
     def _build_pdf(cls, pages) -> consent_files.Pdf:

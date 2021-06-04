@@ -47,6 +47,10 @@ class PrimaryConsentFile(ConsentFile, ABC):
         return self.pdf.get_page_number_of_text(['you will get care at a VA facility']) is not None
 
 
+class CaborConsentFile(ConsentFile, ABC):
+    ...
+
+
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -81,6 +85,14 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
             )
 
         return elements
+
+
+class VibrentCaborConsentFile(CaborConsentFile):
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=110, top=115))
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
 
 
 class Pdf:
