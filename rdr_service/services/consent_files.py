@@ -3,9 +3,102 @@ from dateutil import parser
 from geometry import Rect
 from google.cloud.storage.blob import Blob
 from io import BytesIO
+from os.path import basename
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
 from typing import List
+
+from rdr_service.storage import GoogleCloudStorageProvider
+
+
+class ConsentFileAbstractFactory(ABC):
+    @classmethod
+    def get_file_factory(cls, participant_id: int, participant_origin: str,
+                         storage_provider: GoogleCloudStorageProvider) -> 'ConsentFileAbstractFactory':
+        if participant_origin == 'vibrent':
+            return VibrentConsentFactory(participant_id, storage_provider)
+
+        raise Exception(f'Unsupported participant origin {participant_origin}')
+
+    def __init__(self, participant_id: int, storage_provider: GoogleCloudStorageProvider):
+        source_bucket = self._get_source_bucket()
+        self.file_blobs = [
+            blob for blob in
+            storage_provider.list(
+                bucket_name=source_bucket,
+                prefix=f'Participant/P{participant_id}'
+            )
+            if blob.name.endswith('.pdf')
+        ]
+
+        self._consent_files_parsed = {}
+
+    @abstractmethod
+    def get_primary_consents(self) -> List['PrimaryConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_cabor_consents(self) -> List['CaborConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_ehr_consents(self) -> List['EhrConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_gror_consents(self) -> List['GrorConsentFile']:
+        ...
+
+    @abstractmethod
+    def _get_source_bucket(self) -> str:
+        ...
+
+
+class VibrentConsentFactory(ConsentFileAbstractFactory):
+    CABOR_TEXT = 'California Experimental Subject’s Bill of Rights'
+
+    def get_primary_consents(self) -> List['PrimaryConsentFile']:
+        primary_consents = []
+        for blob in self._get_consent_pii_blobs():
+            pdf_data = Pdf.from_google_storage_blob(blob)
+            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
+                primary_consents.append(VibrentPrimaryConsentFile(pdf_data))
+
+        return primary_consents
+
+    def get_cabor_consents(self) -> List['CaborConsentFile']:
+        cabor_consents = []
+        for blob in self._get_consent_pii_blobs():
+            pdf_data = Pdf.from_google_storage_blob(blob)
+            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
+                cabor_consents.append(VibrentCaborConsentFile(pdf_data))
+
+        return cabor_consents
+
+    def get_ehr_consents(self) -> List['EhrConsentFile']:
+        ehr_consents = []
+        for blob in self.file_blobs:
+            if basename(blob.name).startswith('EHRConsentPII'):
+                ehr_consents.append(VibrentEhrConsentFile(Pdf.from_google_storage_blob(blob)))
+
+        return ehr_consents
+
+    def get_gror_consents(self) -> List['GrorConsentFile']:
+        gror_consents = []
+        for blob in self.file_blobs:
+            if basename(blob.name).startswith('GROR'):
+                gror_consents.append(VibrentGrorConsentFile(Pdf.from_google_storage_blob(blob)))
+
+        return gror_consents
+
+    def _get_source_bucket(self) -> str:
+        return 'ptc-uploads-all-of-us-rdr-prod'
+
+    def _get_consent_pii_blobs(self):
+        return [
+            blob for blob in self.file_blobs
+            if basename(blob.name).startswith('ConsentPII') and blob.name.endswith('.pdf')
+        ]
 
 
 class ConsentFile(ABC):
