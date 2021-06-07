@@ -1,4 +1,5 @@
 import http.client
+import mock
 
 from rdr_service import clock
 from tests.helpers.unittest_base import BaseTestCase
@@ -8,8 +9,10 @@ class MessageBrokerApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
 
-    def test_send_valid_message(self):
-        participant = self.data_generator.create_database_participant()
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    def test_send_valid_message(self, request_origin):
+        request_origin.return_value = 'color'
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
         request_json = {
             "event": "result_viewed",
             "eventAuthoredTime": "2021-05-19T21:05:41Z",

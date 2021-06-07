@@ -3,13 +3,13 @@ from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerMetadata
+from rdr_service.model.message_broker import MessageBrokerRecord
+from rdr_service.message_broker.message_broker import MessageBrokerFactory
 
 
 class MessageBrokerDao(BaseDao):
     def __init__(self):
         super(MessageBrokerDao, self).__init__(MessageBrokerRecord)
-        self.message_metadata_dao = MessageBrokerMetadataDao()
 
     def from_client_json(self, resource_json, client_id=None):
         self._validate(resource_json)
@@ -45,12 +45,8 @@ class MessageBrokerDao(BaseDao):
 
         return participant.participantOrigin
 
-    def _get_message_dest_url(self, event, dest):
-        dest_url = self.message_metadata_dao.get_dest_url(event, dest)
-        return dest_url
-
     def insert_with_session(self, session, message):
-        response_code, response_body, response_error = self._send_message_to_dest(message)
+        response_code, response_body, response_error = self.send_message(message)
         message.responseCode = response_code
         message.responseBody = response_body
         message.responseError = response_error
@@ -70,36 +66,6 @@ class MessageBrokerDao(BaseDao):
         }
         return response_json
 
-    def _send_message_to_dest(self, message):
-        dest_url = self._get_message_dest_url(message.eventType, message.messageDest)  # pylint: disable=unused-variable
-        access_token = self._get_access_token(message)  # pylint: disable=unused-variable
-        request_body = message.requestBody  # pylint: disable=unused-variable
-
-
-        # PTSC test env is not ready for this implementation
-        # TODO - get access to dest endpoint and sent message to dest
-        # mock response from PTSC
-
-        response_code = '200'
-        response_body = {'result': 'mocked result'}
-        response_error = ''
-        return response_code, response_body, response_error
-
-    def _get_access_token(self, message):  # pylint: disable=unused-argument
-        # TODO
-        # 1. PTSC will configure an OpenID connect client in their identity provider.
-        # 2. Calls from DRC will use a token obtained using the client credentials grant,
-        # used for machine to machine authentication/authorization.
-        # 3. Token should be included in the HTTP Authorization header using the Bearer scheme.
-        return ''
-
-
-class MessageBrokerMetadataDao(BaseDao):
-    def __init__(self):
-        super(MessageBrokerMetadataDao, self).__init__(MessageBrokerMetadata)
-
-    def get_dest_url(self, event, dest):
-        with self.session() as session:
-            query = session.query(MessageBrokerMetadata).filter(MessageBrokerMetadata.eventType == event,
-                                                                MessageBrokerMetadata.destination == dest)
-            return query.first()
+    def send_message(self, message):
+        message_broker = MessageBrokerFactory.create(message)
+        return message_broker.send_request()
