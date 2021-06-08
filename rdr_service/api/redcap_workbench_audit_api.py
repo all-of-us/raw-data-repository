@@ -7,6 +7,28 @@ from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorks
 
 
 class BaseRedcapApi(BaseApi):
+    def __init__(self):
+        super().__init__(WorkbenchWorkspaceAuditDao())
+        self.get_filters = None
+
+    @auth_required(REDCAP)
+    def get(self):
+        get_param_config = {
+            'redcapworkbenchauditapi': {
+                'last_snapshot_id': request.args.get('last_snapshot_id'),
+                'snapshot_id': request.args.get('snapshot_id'),
+                'workspace_id': request.args.get('workspace_id')
+            },
+            'redcapresearcherauditapi': {
+                'last_snapshot_id': request.args.get('last_snapshot_id'),
+                'snapshot_id': request.args.get('snapshot_id'),
+                'user_source_id': request.args.get('user_source_id')
+            }
+
+        }
+        self.get_filters = self.validate_params(
+            get_param_config[self.__class__.__name__.lower()]
+        )
 
     @auth_required(REDCAP)
     def post(self):
@@ -34,37 +56,24 @@ class BaseRedcapApi(BaseApi):
 
 
 class RedcapWorkbenchAuditApi(BaseRedcapApi):
-    def __init__(self):
-        super().__init__(WorkbenchWorkspaceAuditDao())
 
-    @auth_required(REDCAP)
     def get(self):
-        params = {
-            'last_snapshot_id': request.args.get('last_snapshot_id'),
-            'snapshot_id': request.args.get('snapshot_id'),
-            'workspace_id': request.args.get('workspace_id')
-        }
-        filters = self.validate_params(params)
-        method = self.dao.workspace_dao.get_redcap_audit_workspaces
-        results = self.get_filtered_results(method, **filters)
+        super(RedcapWorkbenchAuditApi, self).get()
 
+        method = self.dao.workspace_dao.get_redcap_audit_workspaces
+        results = self.get_filtered_results(method, **self.get_filters)
         return results
 
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
     def __init__(self):
-        super().__init__(WorkbenchResearcherDao())
+        super().__init__()
+        self.dao = WorkbenchResearcherDao()
 
-    @auth_required(REDCAP)
     def get(self):
-        params = {
-            'last_snapshot_id': request.args.get('last_snapshot_id'),
-            'snapshot_id': request.args.get('snapshot_id'),
-            'user_source_id': request.args.get('user_source_id')
-        }
+        super(RedcapResearcherAuditApi, self).get()
 
-        filters = self.validate_params(params)
-        method = self.workspace_dao.get_redcap_audit_workspaces
-        results = self.get_filtered_results(method, **filters)
-
+        method = self.dao.get_redcap_audit_researchers
+        results = self.get_filtered_results(method, **self.get_filters)
         return results
+

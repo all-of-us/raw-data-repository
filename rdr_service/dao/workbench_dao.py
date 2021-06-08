@@ -298,7 +298,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         if workspace:
             session.delete(workspace)
 
-    def get_redcap_audit_workspaces(self, **filters, ):
+    def get_redcap_audit_workspaces(self, **filters):
         last_snapshot_id = filters.get('last_snapshot_id', None)
         snapshot_id = filters.get('snapshot_id', None)
         workspace_id = filters.get('workspace_id', None)
@@ -850,6 +850,48 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(
                             f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
+    def get_redcap_audit_researchers(self, **filters):
+        last_snapshot_id = filters.get('last_snapshot_id', None)
+        snapshot_id = filters.get('snapshot_id', None)
+        user_source_id = filters.get('user_source_id', None)
+
+        results = []
+        with self.session() as session:
+            researchers = (
+                session.query(WorkbenchResearcher)
+            )
+            if user_source_id:
+                researchers = researchers.filter(WorkbenchResearcher.user_source_id == user_source_id) \
+                    .order_by(desc(WorkbenchResearcher.id)).limit(1)
+            elif snapshot_id:
+                researchers = researchers.filter(WorkbenchResearcher.id == snapshot_id)
+            elif last_snapshot_id:
+                researchers = researchers.filter(WorkbenchResearcher.id > last_snapshot_id) \
+                    .order_by(WorkbenchResearcher.id)
+
+        for researcher in researchers.all():
+            affiliations = []
+            if researcher.workbenchInstitutionalAffiliations:
+                for affiliation in researcher.workbenchInstitutionalAffiliations:
+                    affiliations.append(
+                        {
+                            "institution": affiliation.institution,
+                            "role": affiliation.role,
+                            "isVerified": affiliation.isVerified,
+                            "nonAcademicAffiliation":
+                                str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
+                                if affiliation.nonAcademicAffiliation else 'UNSET'
+                        }
+                    )
+            results.append({
+                'givenName': researcher.givenName,
+                'familyName': researcher.familyName,
+                'email': researcher.email,
+                'affiliations': affiliations
+            })
+
+        return results
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -888,7 +930,8 @@ class WorkbenchResearcherDao(UpdatableDao):
 
         return researchers
 
-    def _get_affiliations(self, affiliations_json, verified_affiliation_json):
+    @staticmethod
+    def _get_affiliations(affiliations_json, verified_affiliation_json):
         now = clock.CLOCK.now()
         affiliations = []
         if affiliations_json is not None:
@@ -956,7 +999,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 result.append(json.loads(researcher.resource))
             return result
 
-    def _insert_history(self, session, researchers):
+    @staticmethod
+    def _insert_history(session, researchers):
         session.flush()
         for researcher in researchers:
             history = WorkbenchResearcherHistory()
@@ -977,11 +1021,13 @@ class WorkbenchResearcherDao(UpdatableDao):
             history.workbenchInstitutionalAffiliations = affiliations_history
             session.add(history)
 
-    def get_researcher_by_user_id_with_session(self, session, user_id):
+    @staticmethod
+    def get_researcher_by_user_id_with_session(session, user_id):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id) \
             .order_by(desc(WorkbenchResearcher.created)).first()
 
-    def get_researchers_by_user_id_list_with_session(self, session, user_id_list):
+    @staticmethod
+    def get_researchers_by_user_id_list_with_session(session, user_id_list):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
 
 
