@@ -149,6 +149,7 @@ DAYS_TO_DELETE_KEYS = "days_to_delete_keys"
 
 # service accounts exception from key deletion
 SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
+DATA_OPS_SERVICE_ACCOUNTS_TO_MANAGE = "data_ops_service_accounts_to_manage"
 
 CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
 

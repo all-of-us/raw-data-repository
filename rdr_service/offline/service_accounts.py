@@ -5,6 +5,7 @@ import logging
 from typing import List
 
 from rdr_service import config
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.config import GAE_PROJECT
 
 
@@ -30,6 +31,9 @@ class ServiceAccountKeyManager:
         self._service_accounts_with_long_lived_keys = config.getSettingList(
             config.SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS, default=[]
         )
+        self._managed_data_ops_accounts = config.getSettingList(
+            config.DATA_OPS_SERVICE_ACCOUNTS_TO_MANAGE, default=[]
+        )
 
     def expire_old_keys(self):
         """Deletes service account keys older than 3 days as required by NIH"""
@@ -41,6 +45,11 @@ class ServiceAccountKeyManager:
             project_name=self._app_id,
             ignore_service_account_func=lambda account: account.email in self._service_accounts_with_long_lived_keys
         )
+        if self._app_id == RdrEnvironment.PROD.value:
+            self._expire_keys_for_project(
+                project_name='all-of-us-ops-data-api-prod',
+                ignore_service_account_func=lambda account: account.email not in self._managed_data_ops_accounts
+            )
 
     def _expire_keys_for_project(self, project_name, ignore_service_account_func):
         for service_account in self._get_service_accounts_for_project(project_name):

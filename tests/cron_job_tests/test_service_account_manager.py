@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import mock
 
 from rdr_service.offline.service_accounts import ServiceAccount, ServiceAccountKey, ServiceAccountKeyManager
+from rdr_service.services.gcp_config import RdrEnvironment
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -91,6 +92,46 @@ class ServiceAccountManagerTest(BaseTestCase):
 
             self.service_account_manager.expire_old_keys()
             self.assertNoKeysDeleted()
+
+    def test_expire_keys_for_ops_project(self):
+        """Check that Prod data-ops accounts are managed when they appear in the list of managed accounts"""
+        self.service_account_manager._app_id = RdrEnvironment.PROD.value
+
+        with mock.patch.object(self.service_account_manager, '_get_service_accounts_for_project') as get_accounts_mock,\
+                mock.patch.object(self.service_account_manager, '_get_keys_for_account') as mock_get_keys:
+            managed_account = 'test@managed.com'
+            self._mock_accounts_for_project(get_accounts_mock, 'all-of-us-ops-data-api-prod', [
+                ServiceAccount(email=managed_account)
+            ])
+            mock_get_keys.return_value = [
+                ServiceAccountKey(name='delete_this', start_date=datetime.now() - timedelta(days=100))
+            ]
+            self.service_account_manager._managed_data_ops_accounts = [managed_account]
+
+            self.service_account_manager.expire_old_keys()
+            self.assertKeyDeleted(key_name='delete_this')
+
+    def test_expire_only_managed_ops_accounts(self):
+        """Make sure that only keys for accounts in the managed account list get expired for the data ops project"""
+        self.service_account_manager._app_id = RdrEnvironment.PROD.value
+
+        with mock.patch.object(self.service_account_manager, '_get_service_accounts_for_project') as get_accounts_mock,\
+                mock.patch.object(self.service_account_manager, '_get_keys_for_account') as mock_get_keys:
+            self._mock_accounts_for_project(get_accounts_mock, 'all-of-us-ops-data-api-prod', [
+                ServiceAccount(email='not_managed@test.com')
+            ])
+            mock_get_keys.return_value = [
+                ServiceAccountKey(name='do_not_delete', start_date=datetime.now() - timedelta(days=100))
+            ]
+
+            self.service_account_manager.expire_old_keys()
+            self.assertNoKeysDeleted()
+
+    def _mock_accounts_for_project(self, get_accounts_mock, project_name, accounts):
+        def get_accounts_for_project(project_name_requested):
+            return accounts if project_name_requested == project_name else []
+
+        get_accounts_mock.side_effect = get_accounts_for_project
 
     def _mock_service_accounts(self, service_accounts):
         self.mock_account_list.return_value.execute.return_value = {
