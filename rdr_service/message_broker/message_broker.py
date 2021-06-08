@@ -1,5 +1,5 @@
-from werkzeug.exceptions import BadRequest
-import httplib2
+from werkzeug.exceptions import BadRequest, BadGateway
+import requests
 from rdr_service import clock
 from datetime import timedelta
 
@@ -12,13 +12,13 @@ class BaseMessageBroker:
     def __init__(self, message):
         self.message = message
         self.message_metadata_dao = MessageBrokerMetadataDao()
-        self.dest_auth_Dao = MessageBrokerDestAuthInfoDao()
+        self.dest_auth_dao = MessageBrokerDestAuthInfoDao()
 
     # Calls from DRC will use a token obtained using the client credentials grant,
     # used for machine to machine authentication/authorization.
     def get_access_token(self):
         """Returns the access token for the API endpoint."""
-        auth_info = self.dest_auth_Dao.get_auth_info(self.message.messageDest)
+        auth_info = self.dest_auth_dao.get_auth_info(self.message.messageDest)
         if not auth_info:
             raise BadRequest(f'can not find auth info for dest: {self.message.messageDest}')
 
@@ -27,25 +27,21 @@ class BaseMessageBroker:
         if auth_info.accessToken and auth_info.expiredAt > five_mins_later:
             return auth_info.accessToken
         else:
-            http = httplib2.Http()
             token_endpoint = auth_info.tokenEndpoint
             payload = f'grant_type=client_credentials&client_id={auth_info.key}&client_secret={auth_info.secret}'
+            response = requests.post(token_endpoint, data=payload,
+                                     headers={"Content-type": "application/x-www-form-urlencoded"})
 
-            response, content = http.request(
-                token_endpoint, method="POST",
-                headers={"Content-type": "application/x-www-form-urlencoded"},
-                body=payload
-            )
-
-            if response['status'] in ('200', '201'):
-                auth_info.accessToken = content['access_token']
+            if response.status_code in (200, 201):
+                r_json = response.json()
+                auth_info.accessToken = r_json['access_token']
                 now = clock.CLOCK.now()
-                expired_at = now + timedelta(seconds=content['expires_in'])
+                expired_at = now + timedelta(seconds=r_json['expires_in'])
                 auth_info.expiredAt = expired_at
-                self.dest_auth_Dao.update(auth_info)
-                return content['access_token']
+                self.dest_auth_dao.update(auth_info)
+                return r_json['access_token']
             else:
-                raise BadRequest(f'can not get access token for dest: {self.message.messageDest}')
+                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}')
 
     def _get_message_dest_url(self):
         dest_url = self.message_metadata_dao.get_dest_url(self.message.eventType, self.message.messageDest)
@@ -62,17 +58,14 @@ class BaseMessageBroker:
         dest_url = self._get_message_dest_url()
         token = self.get_access_token()
         request_body = self.make_request_body()
-        http = httplib2.Http()
 
         # Token should be included in the HTTP Authorization header using the Bearer scheme.
-        response, content = http.request(
-            dest_url, method="POST", headers={"Content-type": "application/json", "Authorization": "Bearer " + token},
-            body=request_body
-        )
-        if response['status'] == "200":
-            return response['status'], content, ''
+        response = requests.post(dest_url, data=request_body,
+                                 headers={"Content-type": "application/json", "Authorization": "Bearer " + token})
+        if response.status_code == "200":
+            return response.status_code, response.json(), ''
         else:
-            return response['status'], content, content
+            return response.status_code, response.text, response.text
 
 
 class PtscMessageBroker(BaseMessageBroker):
