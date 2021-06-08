@@ -39,7 +39,9 @@ class BaseRedcapApi(BaseApi):
         filters = {}
         for key in params:
             try:
-                filters[key] = int(params[key]) if params[key] is not None else None
+                filters[key] = int(params[key]) if params[key] is not None \
+                                                   and params[key].isnumeric() \
+                                                   else None
             except TypeError:
                 raise BadRequest(f"Invalid parameter {key}: {params[key]}")
 
