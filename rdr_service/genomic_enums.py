@@ -235,6 +235,7 @@ class GenomicIncidentCode(messages.Enum):
     DATA_VALIDATION_FAILED = 4
     FILE_VALIDATION_FAILED_NAME = 5
     FILE_VALIDATION_FAILED_STRUCTURE = 6
+    UNABLE_TO_FIND_METRIC = 7
 
 
 class GenomicIncidentStatus(messages.Enum):
