@@ -1204,7 +1204,6 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['name'], 'workspace name str 3')
 
-
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
         researchers_json = [
@@ -1460,3 +1459,109 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
 
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 2)
+
+    def test_get_audit_researchers_with_params(self):
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "given name 1",
+                "familyName": "family name 1",
+                "email": "tester@email.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["AIAN"],
+                "degree": ["PHD", "MPH"],
+                "sexAtBirth": ["FEMALE"],
+                "sexualOrientation": "BISEXUAL",
+                "affiliations": [
+                    {
+                        "institution": "institution1",
+                        "role": "institution role 1",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            },
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "given name 2",
+                "familyName": "family name 2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "degree": ["PHD", "MPH"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        result = self.send_get('workbench/audit/researcher/snapshots')
+        self.assertEqual(len(result), 2)
+        self.assertIsNotNone(result[0]['givenName'])
+        self.assertIsNotNone(result[0]['familyName'])
+        self.assertIsNotNone(result[0]['email'])
+        self.assertEqual(len(result[0]['affiliations']), 2)
+
+        self.assertIsNotNone(result[1]['givenName'])
+        self.assertIsNotNone(result[1]['familyName'])
+        self.assertIsNone(result[1]['email'])
+        self.assertEqual(len(result[1]['affiliations']), 3)
+
+        result = self.send_get('workbench/audit/researcher/snapshots?snapshot_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 1')
+        self.assertEqual(result[0]['familyName'], 'family name 1')
+        self.assertEqual(result[0]['email'], 'tester@email.com')
+
+        result = self.send_get('workbench/audit/researcher/snapshots?last_snapshot_id=2')
+        self.assertEmpty(result)
+
+        result = self.send_get('workbench/audit/researcher/snapshots?last_snapshot_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 2')
+        self.assertEqual(result[0]['familyName'], 'family name 2')
+        self.assertIsNone(result[0]['email'])
+
+        result = self.send_get('workbench/audit/researcher/snapshots?user_source_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 2')
+        self.assertEqual(result[0]['familyName'], 'family name 2')
+        self.assertIsNone(result[0]['email'])
+

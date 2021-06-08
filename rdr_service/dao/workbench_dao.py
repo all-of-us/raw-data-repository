@@ -861,7 +861,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                 session.query(WorkbenchResearcher)
             )
             if user_source_id:
-                researchers = researchers.filter(WorkbenchResearcher.user_source_id == user_source_id) \
+                researchers = researchers.filter(WorkbenchResearcher.userSourceId == user_source_id) \
                     .order_by(desc(WorkbenchResearcher.id)).limit(1)
             elif snapshot_id:
                 researchers = researchers.filter(WorkbenchResearcher.id == snapshot_id)
@@ -869,28 +869,28 @@ class WorkbenchResearcherDao(UpdatableDao):
                 researchers = researchers.filter(WorkbenchResearcher.id > last_snapshot_id) \
                     .order_by(WorkbenchResearcher.id)
 
-        for researcher in researchers.all():
-            affiliations = []
-            if researcher.workbenchInstitutionalAffiliations:
-                for affiliation in researcher.workbenchInstitutionalAffiliations:
-                    affiliations.append(
-                        {
-                            "institution": affiliation.institution,
-                            "role": affiliation.role,
-                            "isVerified": affiliation.isVerified,
-                            "nonAcademicAffiliation":
-                                str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
-                                if affiliation.nonAcademicAffiliation else 'UNSET'
-                        }
-                    )
-            results.append({
-                'givenName': researcher.givenName,
-                'familyName': researcher.familyName,
-                'email': researcher.email,
-                'affiliations': affiliations
-            })
+            for researcher in researchers.all():
+                affiliations = []
+                if researcher.workbenchInstitutionalAffiliations:
+                    for affiliation in researcher.workbenchInstitutionalAffiliations:
+                        affiliations.append(
+                            {
+                                "institution": affiliation.institution,
+                                "role": affiliation.role,
+                                "isVerified": affiliation.isVerified,
+                                "nonAcademicAffiliation":
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
+                                    if affiliation.nonAcademicAffiliation else 'UNSET'
+                            }
+                        )
+                results.append({
+                    'givenName': researcher.givenName,
+                    'familyName': researcher.familyName,
+                    'email': researcher.email,
+                    'affiliations': affiliations
+                })
 
-        return results
+            return results
 
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
