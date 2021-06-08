@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 import mock
-from pdfminer.layout import LTChar, LTFigure, LTImage, LTTextBoxHorizontal, LTTextLineHorizontal
+from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBoxHorizontal, LTTextLineHorizontal
 from typing import List
 
 from rdr_service.services import consent_files
@@ -19,6 +19,25 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
+
+    def test_vibrent_cabor_consent(self):
+        for consent_example in self._get_vibrent_cabor_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
+    def test_vibrent_ehr_consent(self):
+        for consent_example in self._get_vibrent_ehr_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
+    def test_vibrent_gror_consent(self):
+        for consent_example in self._get_vibrent_gror_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+            self.assertEqual(consent_example.has_yes_selected, consent_file.is_confirmation_selected())
 
     def _get_vibrent_primary_test_data(self) -> List['PrimaryConsentTestData']:
         """
@@ -185,6 +204,79 @@ class ConsentFileParsingTest(BaseTestCase):
 
         return test_data
 
+    def _get_vibrent_cabor_test_data(self) -> List['ConsentTestData']:
+        """Builds a list of PDFs that represent the different layouts of Vibrent's CaBOR consent"""
+
+        basic_cabor_pdf = self._build_pdf(pages=[
+            [
+                self._build_form_element(text='Test cabor', bbox=(116, 100, 517, 140)),
+                self._build_form_element(text='April 27, 2020', bbox=(500, 100, 600, 140))
+            ]
+        ])
+        basic_cabor_case = ConsentTestData(
+            file=consent_files.VibrentCaborConsentFile(basic_cabor_pdf),
+            expected_signature='Test cabor',
+            expected_sign_date=date(2020, 4, 27)
+        )
+
+        return [basic_cabor_case]
+
+    def _get_vibrent_ehr_test_data(self) -> List['ConsentTestData']:
+        six_empty_pages = [[], [], [], [], [], []]  # The EHR signature is expected to be on the 7th page
+        basic_ehr_pdf = self._build_pdf(pages=[
+            *six_empty_pages,
+            [
+                self._build_form_element(text='Test ehr', bbox=(125, 150, 450, 180)),
+                self._build_form_element(text='Dec 21, 2019', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        basic_ehr_case = ConsentTestData(
+            file=consent_files.VibrentEhrConsentFile(basic_ehr_pdf),
+            expected_signature='Test ehr',
+            expected_sign_date=date(2019, 12, 21)
+        )
+
+        return [basic_ehr_case]
+
+    def _get_vibrent_gror_test_data(self) -> List['GrorConsentTestData']:
+        # The GROR signature is expected to be on the 10th page
+        nine_empty_pages = [
+            [], [], [], [], [], [], [], [], []
+        ]
+        basic_gror_pdf = self._build_pdf(pages=[
+            *nine_empty_pages,
+            [
+                self._build_form_element(
+                    children=[self._build_pdf_element(LTCurve)],
+                    bbox=(65, 470, 75, 480)
+                ),
+                self._build_form_element(text='Test gror', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='Jan 1st, 2021', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        basic_gror_case = GrorConsentTestData(
+            file=consent_files.VibrentGrorConsentFile(basic_gror_pdf),
+            expected_signature='Test gror',
+            expected_sign_date=date(2021, 1, 1),
+            has_yes_selected=True
+        )
+
+        gror_missing_check = self._build_pdf(pages=[
+            *nine_empty_pages,
+            [
+                self._build_form_element(text='no confirmation', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='Feb 1st, 2021', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        no_confirmation_case = GrorConsentTestData(
+            file=consent_files.VibrentGrorConsentFile(gror_missing_check),
+            expected_signature='no confirmation',
+            expected_sign_date=date(2021, 2, 1),
+            has_yes_selected=False
+        )
+
+        return [basic_gror_case, no_confirmation_case]
+
     @classmethod
     def _build_pdf(cls, pages) -> consent_files.Pdf:
         """
@@ -269,3 +361,9 @@ class ConsentTestData:
 class PrimaryConsentTestData(ConsentTestData):
     file: consent_files.PrimaryConsentFile
     expected_to_be_va_file: bool = False
+
+
+@dataclass
+class GrorConsentTestData(ConsentTestData):
+    file: consent_files.GrorConsentFile
+    has_yes_selected: bool = False

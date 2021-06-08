@@ -4,7 +4,7 @@ from geometry import Rect
 from google.cloud.storage.blob import Blob
 from io import BytesIO
 from pdfminer.high_level import extract_pages
-from pdfminer.layout import LTChar, LTFigure, LTImage, LTTextBox
+from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
 from typing import List
 
 
@@ -47,6 +47,28 @@ class PrimaryConsentFile(ConsentFile, ABC):
         return self.pdf.get_page_number_of_text(['you will get care at a VA facility']) is not None
 
 
+class CaborConsentFile(ConsentFile, ABC):
+    ...
+
+
+class EhrConsentFile(ConsentFile, ABC):
+    ...
+
+
+class GrorConsentFile(ConsentFile, ABC):
+    def is_confirmation_selected(self):
+        for element in self._get_confirmation_check_elements():
+            for child in element:
+                if isinstance(child, LTCurve):
+                    return True
+
+        return False
+
+    @abstractmethod
+    def _get_confirmation_check_elements(self):
+        ...
+
+
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -81,6 +103,33 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
             )
 
         return elements
+
+
+class VibrentCaborConsentFile(CaborConsentFile):
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=110, top=115))
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
+
+
+class VibrentEhrConsentFile(EhrConsentFile):
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=160, top=165), page=6)
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+
+
+class VibrentGrorConsentFile(GrorConsentFile):
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=150, right=400, bottom=155, top=160), page=9)
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=400, bottom=110, top=115), page=9)
+
+    def _get_confirmation_check_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=70,  right=73, bottom=475, top=478), page=9)
 
 
 class Pdf:
