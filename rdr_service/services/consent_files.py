@@ -51,6 +51,10 @@ class CaborConsentFile(ConsentFile, ABC):
     ...
 
 
+class EhrConsentFile(ConsentFile, ABC):
+    ...
+
+
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -93,6 +97,14 @@ class VibrentCaborConsentFile(CaborConsentFile):
 
     def _get_date_elements(self):
         return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
+
+
+class VibrentEhrConsentFile(EhrConsentFile):
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=160, top=165), page=6)
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
 
 
 class Pdf:
