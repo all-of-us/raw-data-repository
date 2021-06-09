@@ -42,13 +42,13 @@ class ConsentFactoryTest(BaseTestCase):
         ]
 
         self.vibrent_factory = consent_files.ConsentFileAbstractFactory.get_file_factory(
-            1234,
-            'vibrent',
-            self.storage_provider_mock
+            participant_id=1234,
+            participant_origin='vibrent',
+            storage_provider=self.storage_provider_mock
         )
 
     def test_consent_factory_returned(self):
-        """Test the factory builder method to make sure it builds and returns the correct type"""
+        """Test the factory builder method to make sure it builds and returns the correct factory type"""
         participant_id = 123456789
         consent_factory = consent_files.ConsentFileAbstractFactory.get_file_factory(
             participant_id=participant_id,
@@ -63,7 +63,7 @@ class ConsentFactoryTest(BaseTestCase):
         )
 
     def test_vibrent_primary_consent(self):
-        """Test that the factory correctly identifies the Primary consent file"""
+        """Test that the factory correctly identifies the Primary consent files"""
         self.assertConsentListEquals(
             expected_class=consent_files.VibrentPrimaryConsentFile,
             expected_files=[self.primary_file, self.another_primary],
@@ -71,7 +71,7 @@ class ConsentFactoryTest(BaseTestCase):
         )
 
     def test_vibrent_cabor_consent(self):
-        """Test that the factory correctly identifies the Primary consent file"""
+        """Test that the factory correctly identifies the Cabor consent file"""
         self.assertConsentListEquals(
             expected_class=consent_files.VibrentCaborConsentFile,
             expected_files=[self.cabor_file],
