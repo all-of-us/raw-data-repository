@@ -287,21 +287,25 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 result.append(json.loads(workspace.resource))
             return result
 
-    def get_workspace_by_workspace_id_with_session(self, session, workspace_id):
+    @staticmethod
+    def get_workspace_by_workspace_id_with_session(session, workspace_id):
         return session.query(WorkbenchWorkspaceApproved) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
 
-    def remove_workspace_by_workspace_id_with_session(self, session, workspace_id):
+    @staticmethod
+    def remove_workspace_by_workspace_id_with_session(session, workspace_id):
         workspace = session.query(WorkbenchWorkspaceApproved) \
             .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
         if workspace:
             session.delete(workspace)
 
-    def get_redcap_audit_workspaces(self, **filters):
-        last_snapshot_id = filters.get('last_snapshot_id', None)
-        snapshot_id = filters.get('snapshot_id', None)
-        workspace_id = filters.get('workspace_id', None)
+    def get_redcap_audit_workspaces(
+        self,
+        last_snapshot_id=None,
+        snapshot_id=None,
+        workspace_id=None
+        ):
 
         results = []
         with self.session() as session:
@@ -850,11 +854,12 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(
                             f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
-    def get_redcap_audit_researchers(self, **filters):
-        last_snapshot_id = filters.get('last_snapshot_id', None)
-        snapshot_id = filters.get('snapshot_id', None)
-        user_source_id = filters.get('user_source_id', None)
-
+    def get_redcap_audit_researchers(
+        self,
+        last_snapshot_id=None,
+        snapshot_id=None,
+        user_source_id=None
+        ):
         results = []
         with self.session() as session:
             researchers = (
@@ -879,8 +884,7 @@ class WorkbenchResearcherDao(UpdatableDao):
                                 "role": affiliation.role,
                                 "isVerified": affiliation.isVerified,
                                 "nonAcademicAffiliation":
-                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation))
-                                    if affiliation.nonAcademicAffiliation else 'UNSET'
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation or 0))
                             }
                         )
                 results.append({

@@ -58,10 +58,12 @@ class BaseRedcapApi(BaseApi):
 
 
 class RedcapWorkbenchAuditApi(BaseRedcapApi):
+    def __init__(self):
+        super().__init__()
+        self.dao = WorkbenchWorkspaceAuditDao()
 
     def get(self):
         super(RedcapWorkbenchAuditApi, self).get()
-
         method = self.dao.workspace_dao.get_redcap_audit_workspaces
         results = self.get_filtered_results(method, **self.get_filters)
         return results
@@ -74,7 +76,6 @@ class RedcapResearcherAuditApi(BaseRedcapApi):
 
     def get(self):
         super(RedcapResearcherAuditApi, self).get()
-
         method = self.dao.get_redcap_audit_researchers
         results = self.get_filtered_results(method, **self.get_filters)
         return results
