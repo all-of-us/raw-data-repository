@@ -60,8 +60,37 @@ class MessageBrokerMetadata(Base):
     __table_args__ = (UniqueConstraint('event_type', 'destination', 'url', name='unique_message_target'),)
 
 
+class MessageBrokerDestAuthInfo(Base):
+    __tablename__ = "Message_broker_dest_auth_info"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    """Auto increment, primary key."""
+    created = Column("created", UTCDateTime6, nullable=True)
+    """The create time for this record."""
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
+
+    destination = Column("destination", String(80))
+    """message destination, decided by participant origin"""
+    key = Column("key", String(256))
+    """access client key"""
+    secret = Column("secret", String(256))
+    """access client secret"""
+    tokenEndpoint = Column("token_endpoint", String(512))
+    """token endpoint"""
+    accessToken = Column("access_token", String(512))
+    """access token for the destination API"""
+    expiredAt = Column("expired_at", UTCDateTime6, nullable=True)
+    """access token expired time"""
+
+    __table_args__ = (UniqueConstraint('destination', name='unique_destination'),)
+
+
 event.listen(MessageBrokerRecord, "before_insert", model_insert_listener)
 event.listen(MessageBrokerRecord, "before_update", model_update_listener)
 
 event.listen(MessageBrokerMetadata, "before_insert", model_insert_listener)
 event.listen(MessageBrokerMetadata, "before_update", model_update_listener)
+
+event.listen(MessageBrokerDestAuthInfo, "before_insert", model_insert_listener)
+event.listen(MessageBrokerDestAuthInfo, "before_update", model_update_listener)
