@@ -317,10 +317,10 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                             WorkbenchWorkspaceSnapshot.id == WorkbenchWorkspaceUserHistory.workspaceId)
             )
 
-            if workspace_id is not None:
+            if workspace_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id)\
                     .order_by(desc(WorkbenchWorkspaceSnapshot.id)).limit(1)
-            elif snapshot_id is not None:
+            elif snapshot_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.id == snapshot_id)
             elif last_snapshot_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)\
