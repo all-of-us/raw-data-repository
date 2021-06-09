@@ -47,15 +47,6 @@ class BaseRedcapApi(BaseApi):
 
         return filters
 
-    @staticmethod
-    def get_filtered_results(dao_method, **filters):
-        """Queries DB, returns results in format consumed by front-end
-        :param filters: query parameters for filtering the data
-        :param dao_method: method on dao for returning results from query
-        :return: Filtered results
-        """
-        return dao_method(**filters)
-
 
 class RedcapWorkbenchAuditApi(BaseRedcapApi):
     def __init__(self):
@@ -64,9 +55,7 @@ class RedcapWorkbenchAuditApi(BaseRedcapApi):
 
     def get(self):
         super(RedcapWorkbenchAuditApi, self).get()
-        method = self.dao.workspace_dao.get_redcap_audit_workspaces
-        results = self.get_filtered_results(method, **self.get_filters)
-        return results
+        return self.dao.workspace_dao.get_redcap_audit_workspaces(**self.get_filters)
 
 
 class RedcapResearcherAuditApi(BaseRedcapApi):
@@ -76,7 +65,5 @@ class RedcapResearcherAuditApi(BaseRedcapApi):
 
     def get(self):
         super(RedcapResearcherAuditApi, self).get()
-        method = self.dao.get_redcap_audit_researchers
-        results = self.get_filtered_results(method, **self.get_filters)
-        return results
+        return self.dao.get_redcap_audit_researchers(**self.get_filters)
 
