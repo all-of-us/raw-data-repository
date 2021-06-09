@@ -668,7 +668,7 @@ class GenomicMemberReportState(Base):
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
     created = Column(DateTime)
     modified = Column(DateTime)
-    module = Column(String(80), nullable=False)
+    module = Column(String(80), nullable=True)
 
 
 event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
