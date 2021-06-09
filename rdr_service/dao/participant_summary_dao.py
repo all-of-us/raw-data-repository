@@ -894,6 +894,47 @@ class ParticipantSummaryDao(UpdatableDao):
                     getattr(ParticipantSummary, attr).isnot(None))
             return record.all()
 
+    @classmethod
+    def calculate_retention_type(cls, model):
+        if model.retentionEligibleStatus != RetentionStatus.ELIGIBLE:
+            return RetentionType.UNSET
+        else:
+            retention_type = RetentionType.UNSET
+            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
+            if (model.questionnaireOnHealthcareAccessAuthored and
+                    model.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnFamilyHealthAuthored and
+                     model.questionnaireOnFamilyHealthAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnMedicalHistoryAuthored and
+                     model.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeNovAuthored and
+                     model.questionnaireOnCopeNovAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeJulyAuthored and
+                     model.questionnaireOnCopeJulyAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeJuneAuthored and
+                     model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeMayAuthored and
+                     model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeDecAuthored and
+                     model.questionnaireOnCopeDecAuthored > eighteen_month_ago) or \
+                    (model.questionnaireOnCopeFebAuthored and
+                     model.questionnaireOnCopeFebAuthored > eighteen_month_ago) or \
+                    (model.consentCohort == ParticipantCohort.COHORT_1 and
+                     model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
+                     model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
+                    (model.consentCohort == ParticipantCohort.COHORT_1 and model.consentForGenomicsRORAuthored and
+                     model.consentForGenomicsRORAuthored > eighteen_month_ago) or \
+                    (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
+                     model.consentForGenomicsRORAuthored > eighteen_month_ago):
+                retention_type = RetentionType.ACTIVE
+            if model.ehrUpdateTime and model.ehrUpdateTime > eighteen_month_ago:
+                if retention_type == RetentionType.ACTIVE:
+                    retention_type = RetentionType.ACTIVE_AND_PASSIVE
+                else:
+                    retention_type = RetentionType.PASSIVE
+
+            return retention_type
+
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
@@ -936,40 +977,7 @@ class ParticipantSummaryDao(UpdatableDao):
             if model.race is None or model.race == Race.UNSET:
                 result['race'] = Race.PMI_Skip
 
-        result["retentionType"] = str(RetentionType.UNSET)
-        if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
-            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
-            if (model.questionnaireOnHealthcareAccessAuthored and
-                model.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnFamilyHealthAuthored and
-                 model.questionnaireOnFamilyHealthAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnMedicalHistoryAuthored and
-                 model.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeNovAuthored and
-                 model.questionnaireOnCopeNovAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeJulyAuthored and
-                 model.questionnaireOnCopeJulyAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeJuneAuthored and
-                 model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeMayAuthored and
-                 model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeDecAuthored and
-                 model.questionnaireOnCopeDecAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeFebAuthored and
-                 model.questionnaireOnCopeFebAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_1 and
-                 model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
-                 model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_1 and model.consentForGenomicsRORAuthored and
-                 model.consentForGenomicsRORAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
-                 model.consentForGenomicsRORAuthored > eighteen_month_ago):
-                result["retentionType"] = str(RetentionType.ACTIVE)
-            if model.ehrUpdateTime and model.ehrUpdateTime > eighteen_month_ago:
-                if result["retentionType"] == str(RetentionType.ACTIVE):
-                    result["retentionType"] = str(RetentionType.ACTIVE_AND_PASSIVE)
-                else:
-                    result["retentionType"] = str(RetentionType.PASSIVE)
+        result['retentionType'] = str(self.calculate_retention_type(model))
 
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # def format_patient_status_record(status_obj):
