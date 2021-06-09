@@ -70,11 +70,18 @@ class BQModuleStatusSchema(BQSchema):
     mod_external_id = BQField('mod_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_response_status = BQField('mod_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_response_status_id = BQField('mod_response_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_questionnaire_response_id = BQField('mod_questionnaire_response_id', BQFieldTypeEnum.INTEGER,
+                                            BQFieldModeEnum.NULLABLE)
+    mod_consent = BQField('mod_is_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_consent_value = BQField('mod_consent_value', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_consent_value_id = BQField('mod_consent_value_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_consent_expired = BQField('mod_consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
     """
     Store participant consent information
+    # TODO: Depreciated, ModuleStatusSchema is the replacement.
     """
     consent = BQField('consent', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_id = BQField('consent_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -88,6 +95,7 @@ class BQConsentSchema(BQSchema):
     consent_module_external_id = BQField('consent_module_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_response_status = BQField('consent_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_response_status_id = BQField('consent_response_status_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
 
 class BQRaceSchema(BQSchema):
     """

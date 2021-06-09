@@ -629,7 +629,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'status_id': module_status.value,
                     'external_id': row.externalId,
                     'response_status': str(QuestionnaireResponseStatus(row.status)),
-                    'response_status_id': int(QuestionnaireResponseStatus(row.status))
+                    'response_status_id': int(QuestionnaireResponseStatus(row.status)),
+                    'questionnaire_response_id': row.questionnaireResponseId,
+                    'consent': 1 if module_name in _consent_module_question_map else 0
                 }
 
                 mod_ca = {'ConsentAnswer': None}
@@ -651,6 +653,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
+                        # TODO: Concent table depreciated, remove consent field sets after BigQuery table support
+                        #  is removed.
                         consent = {
                             'consent': _consent_module_question_map[module_name],
                             'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
@@ -660,7 +664,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             'consent_module_created': row.created,
                             'consent_module_external_id': row.externalId,
                             'consent_response_status': str(QuestionnaireResponseStatus(row.status)),
-                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status))
+                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status)),
+                            'questionnaire_response_id': row.questionnaireResponseId
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
@@ -669,14 +674,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         if _consent_module_question_map[module_name] is None:
                             consent['consent'] = module_name
                             consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
-                            consent['consent_value'] = 'ConsentPermission_Yes'
-                            consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
+                            consent['consent_value'] = module_data['consent_value'] = 'ConsentPermission_Yes'
+                            consent['consent_value_id'] = module_data['consent_value_id'] = \
+                                self._lookup_code_id('ConsentPermission_Yes', ro_session)
                         else:
                             consent_value = qnan.get(_consent_module_question_map[module_name], None)
-                            consent['consent_value'] = consent_value
-                            consent['consent_value_id'] = self._lookup_code_id(consent_value, ro_session)
-                            consent['consent_expired'] = \
+                            consent['consent_value'] = module_data['consent_value'] = consent_value
+                            consent['consent_value_id'] = module_data['consent_value_id'] = \
+                                self._lookup_code_id(consent_value, ro_session)
+                            consent['consent_expired'] = module_data['consent_expired'] = \
                                 qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                            # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
+                            #  value be?
 
                             # Note: Currently, consent_expired only applies for EHRConsentPII.  Expired EHR consent
                             # (EHRConsentPII_ConsentExpired_Yes) is always accompanied by consent_value
