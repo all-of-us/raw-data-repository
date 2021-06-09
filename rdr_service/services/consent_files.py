@@ -21,17 +21,13 @@ class ConsentFileAbstractFactory(ABC):
         raise Exception(f'Unsupported participant origin {participant_origin}')
 
     def __init__(self, participant_id: int, storage_provider: GoogleCloudStorageProvider):
-        source_bucket = self._get_source_bucket()
-        self.file_blobs = [
-            blob for blob in
-            storage_provider.list(
-                bucket_name=source_bucket,
-                prefix=f'Participant/P{participant_id}'
-            )
-            if blob.name.endswith('.pdf')
-        ]
-
-        self._consent_files_parsed = {}
+        # Get the PDF Blobs from Google's API for the participant's consent files
+        factory_consent_bucket = self._get_source_bucket()
+        file_blobs = storage_provider.list(
+            bucket_name=factory_consent_bucket,
+            prefix=f'Participant/P{participant_id}'
+        )
+        self.pdf_blobs = [blob for blob in file_blobs if blob.name.endswith('.pdf')]
 
     @abstractmethod
     def get_primary_consents(self) -> List['PrimaryConsentFile']:
@@ -77,7 +73,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def get_ehr_consents(self) -> List['EhrConsentFile']:
         ehr_consents = []
-        for blob in self.file_blobs:
+        for blob in self.pdf_blobs:
             if basename(blob.name).startswith('EHRConsentPII'):
                 ehr_consents.append(VibrentEhrConsentFile(Pdf.from_google_storage_blob(blob)))
 
@@ -85,7 +81,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def get_gror_consents(self) -> List['GrorConsentFile']:
         gror_consents = []
-        for blob in self.file_blobs:
+        for blob in self.pdf_blobs:
             if basename(blob.name).startswith('GROR'):
                 gror_consents.append(VibrentGrorConsentFile(Pdf.from_google_storage_blob(blob)))
 
@@ -95,10 +91,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return 'ptc-uploads-all-of-us-rdr-prod'
 
     def _get_consent_pii_blobs(self):
-        return [
-            blob for blob in self.file_blobs
-            if basename(blob.name).startswith('ConsentPII') and blob.name.endswith('.pdf')
-        ]
+        def is_consent_pii_blob(blob):
+            return basename(blob.name).startswith('ConsentPII') and blob.name.endswith('.pdf')
+        return [blob for blob in self.pdf_blobs if is_consent_pii_blob(blob)]
 
 
 class ConsentFile(ABC):
