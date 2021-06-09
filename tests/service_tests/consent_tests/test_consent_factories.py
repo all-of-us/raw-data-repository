@@ -14,7 +14,7 @@ class ConsentFactoryTest(BaseTestCase):
         self.storage_provider_mock = mock.MagicMock()
 
         # Patch the PDF wrapper class to simply return the blob object that was meant to be parsed
-        pdf_patcher = mock.patch('rdr_service.services.consent_files.Pdf.from_google_storage_blob')
+        pdf_patcher = mock.patch('rdr_service.services.consent.files.Pdf.from_google_storage_blob')
         pdf_mock = pdf_patcher.start()
         pdf_mock.side_effect = lambda blob: blob
         self.addCleanup(pdf_patcher.stop)
