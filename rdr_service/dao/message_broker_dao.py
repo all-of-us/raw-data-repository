@@ -67,7 +67,7 @@ class MessageBrokerDao(BaseDao):
             _task = GCPCloudTask()
             _task.execute('/resource/task/StoreMessageBrokerEventDataTaskApi',
                           payload=payload,
-                          queue='message_broker_queue')
+                          queue='message-broker-tasks')
 
         return message
 
