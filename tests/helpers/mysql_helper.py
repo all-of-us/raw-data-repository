@@ -6,7 +6,6 @@
 #
 #
 #
-from alembic.script import ScriptDirectory
 import atexit
 import csv
 import inspect
@@ -18,29 +17,29 @@ import shutil
 import signal
 import subprocess
 import tempfile
+from time import sleep
 from types import ModuleType
 import warnings
-from sqlalchemy import event
-from time import sleep
 
-from rdr_service import config
-from rdr_service import singletons
+from alembic.script import ScriptDirectory
+from sqlalchemy import event
+
+from rdr_service import config, model, singletons
 from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
-from rdr_service import model
 from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.site import Site
 from rdr_service.model.site_enums import ObsoleteStatus
-from rdr_service.participant_enums import UNSET_HPO_ID, OrganizationType
-from rdr_service.services.system_utils import find_mysqld_executable, pid_is_running, which, \
-    run_external_program
+from rdr_service.participant_enums import OrganizationType, UNSET_HPO_ID
+from rdr_service.services.system_utils import find_mysqld_executable, pid_is_running, \
+    run_external_program, which
 from tests.helpers import temporary_sys_path
-from tests.helpers.mysql_helper_data import PITT_HPO_ID, PITT_ORG_ID, AZ_HPO_ID, AZ_ORG_ID
+from tests.helpers.mysql_helper_data import AZ_HPO_ID, AZ_ORG_ID, PITT_HPO_ID, PITT_ORG_ID
 
 BASE_PATH = '{0}/rdr-mysqld'.format(tempfile.gettempdir())
 MYSQL_HOST = "127.0.0.1"  # Do not use 'localhost', we want to force using an IP socket.
