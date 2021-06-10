@@ -30,6 +30,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service import model
+from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
