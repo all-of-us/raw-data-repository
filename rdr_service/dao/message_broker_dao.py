@@ -2,7 +2,6 @@ from rdr_service import clock
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.dao import database_utils
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.message_broker import MessageBrokerRecord

@@ -1,6 +1,6 @@
 from rdr_service import app_util
 from rdr_service.api.base_api import BaseApi
-from rdr_service.api_util import GEM, RDR
+from rdr_service.api_util import RDR
 from rdr_service.dao.message_broker_dao import MessageBrokerDao
 
 
