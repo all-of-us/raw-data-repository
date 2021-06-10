@@ -219,6 +219,9 @@ def _run_unit_test_migrations(engine):
     with temporary_sys_path('rdr_service'):  # the revision files need to find modules (like model) in rdr_service
         migrations_directory = os.path.join(os.getcwd(), "rdr_service", "alembic")
         migrations_api = ScriptDirectory(migrations_directory)
+
+        # walk_revisions returns revisions in order of newest to oldest,
+        # reversing to start with the first and work up to the latest
         for revision in reversed(list(migrations_api.walk_revisions())):
             with warnings.catch_warnings():  # Ignore warnings from 'DROP IF EXISTS' sql statements
                 warnings.simplefilter("ignore")
