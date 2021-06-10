@@ -1,10 +1,14 @@
 from rdr_service import clock
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
+
+from rdr_service.dao import database_utils
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.message_broker import MessageBrokerRecord
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
 
 
 class MessageBrokerDao(BaseDao):
@@ -45,14 +49,26 @@ class MessageBrokerDao(BaseDao):
 
         return participant.participantOrigin
 
-    def insert_with_session(self, session, message):
+    def insert(self, message):
         response_code, response_body, response_error = self.send_message(message)
         message.responseCode = response_code
         message.responseBody = response_body
         message.responseError = response_error
         message.responseTime = clock.CLOCK.now()
-        super(MessageBrokerDao, self).insert_with_session(session, message)
-        # TODO - store data to RDR table
+        super(MessageBrokerDao, self).insert(message)
+        # store the data to RDR table asynchronous
+        if GAE_PROJECT != 'localhost':
+            payload = {
+                'id': message.id,
+                'eventType': message.eventType,
+                'eventAuthoredTime': message.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                'participantId': message.participantId,
+                'requestBody': message.requestBody
+            }
+            _task = GCPCloudTask()
+            _task.execute('/resource/task/StoreMessageBrokerEventDataTaskApi',
+                          payload=payload,
+                          queue='message_broker_queue')
 
         return message
 

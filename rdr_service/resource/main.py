@@ -7,7 +7,7 @@ from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 
 from rdr_service import app_util
-from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api
+from rdr_service.api import cloud_tasks_api, genomic_cloud_tasks_api, message_broker_cloud_tasks_api
 from rdr_service.api.resource_api import ResourceRequestApi
 
 from rdr_service.services.flask import RESOURCE_PREFIX, TASK_PREFIX, flask_start, flask_stop
@@ -48,6 +48,10 @@ def _build_resource_app():
                       TASK_PREFIX + "RebuildResearchWorkbenchTableRecordsApi",
                       endpoint="rebuild_research_workbench_table_records_task", methods=["POST"])
 
+    # Store message broker event data
+    _api.add_resource(message_broker_cloud_tasks_api.StoreMessageBrokerEventDataTaskApi,
+                      TASK_PREFIX + "StoreMessageBrokerEventDataTaskApi",
+                      endpoint="store_message_broker_event_data_task", methods=["POST"])
     #
     # Begin Genomic Cloud Task API Endpoints
     #

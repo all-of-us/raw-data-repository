@@ -1,12 +1,14 @@
 import http.client
 import mock
+from datetime import timedelta
 
 from rdr_service import clock
-from datetime import timedelta
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
-from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerDestAuthInfo
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerDestAuthInfo, MessageBrokerEventData
 from rdr_service.dao.message_broker_dest_auth_info_dao import MessageBrokerDestAuthInfoDao
+from rdr_service.dao.message_broker_dao import MessageBrokerDao
+from rdr_service.dao.base_dao import BaseDao
 
 
 class MessageBrokerApiTest(BaseTestCase):
@@ -61,8 +63,11 @@ class MessageBrokerApiTest(BaseTestCase):
             "eventAuthoredTime": "2021-05-19T21:05:41Z",
             "participantId": str(participant.participantId),
             "messageBody": {
-                "result_type": "hdr_v1",
-                "report_revision_number": 0
+                "test_str": "str",
+                "test_int": 0,
+                "test_datatime": "2020-01-01T21:05:41Z",
+                "test_bool": True,
+                "test_json": {'name': 'value'}
             }
         }
         result = self.send_post("MessageBroker", request_json)
@@ -71,6 +76,48 @@ class MessageBrokerApiTest(BaseTestCase):
                                   'responseCode': '200',
                                   'responseBody': {'result': 'mocked result'},
                                   'errorMessage': ''})
+
+        # test cloud task API
+        from rdr_service.resource import main as resource_main
+        record_dao = MessageBrokerDao()
+        records = record_dao.get_all()
+        record = records[0]
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        dao = BaseDao(MessageBrokerEventData)
+        event_data = dao.get_all()
+        self.assertEqual(5, len(event_data))
+        count = 0
+        for item in event_data:
+            print(str(item.asdict()))
+            if item.fieldName == 'test_bool':
+                self.assertEqual(item.valueBool, True)
+                count = count + 1
+            if item.fieldName == 'test_json':
+                self.assertEqual(item.valueJson, {'name': 'value'})
+                count = count + 1
+            if item.fieldName == 'test_str':
+                self.assertEqual(item.valueString, 'str')
+                count = count + 1
+            if item.fieldName == 'test_datatime':
+                self.assertEqual(item.valueDatetime.strftime("%Y-%m-%dT%H:%M:%SZ"), "2020-01-01T21:05:41Z")
+                count = count + 1
+            if item.fieldName == 'test_int':
+                self.assertEqual(item.valueInteger, 0)
+                count = count + 1
+        self.assertEqual(count, 5)
 
     def test_send_invalid_message(self):
         # request without participant id
