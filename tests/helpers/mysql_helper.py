@@ -6,14 +6,13 @@
 #
 #
 #
+from alembic.script import ScriptDirectory
 import atexit
 import csv
-import importlib
 import inspect
 import io
 import os
 import random
-import re
 import shlex
 import shutil
 import signal
@@ -21,7 +20,6 @@ import subprocess
 import tempfile
 from types import ModuleType
 import warnings
-from glob import glob
 from sqlalchemy import event
 from time import sleep
 
@@ -32,7 +30,6 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service import model
-from rdr_service.model import compiler  # pylint: disable=unused-import
 from rdr_service.model.base import Base
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
@@ -178,7 +175,7 @@ def _initialize_database(with_data=True, with_consent_codes=False):
                            "utf8mb4_unicode_ci")
             engine.execute("ALTER TABLE `participant_summary` CONVERT TO CHARACTER SET utf8mb4 COLLATE "
                            "utf8mb4_unicode_ci")
-            _load_views_and_functions(engine)
+            _run_unit_test_migrations(engine)
 
             _track_database_changes()
             initialize = False
@@ -210,7 +207,7 @@ def reset_mysql_instance(with_data=True, with_consent_codes=False):
     # TODO: Decide how we are going to reset data in the database.
 
 
-def _load_views_and_functions(engine):
+def _run_unit_test_migrations(engine):
     """
     Load all Views and Functions from Alembic migration files into schema.
     Note: I was able to switch to Alembic to create the full schema, but it was
@@ -218,72 +215,17 @@ def _load_views_and_functions(engine):
     way into the schema works much faster.
     :param engine: Database engine object
     """
-    alembic_path = os.path.join(os.getcwd(), "rdr_service", "alembic", "versions")
-    if not os.path.exists(alembic_path):
-        raise OSError("alembic migrations path not found.")
+    with temporary_sys_path('rdr_service'):  # the revision files need to find modules (like model) in rdr_service
+        migrations_directory = os.path.join(os.getcwd(), "rdr_service", "alembic")
+        migrations_api = ScriptDirectory(migrations_directory)
+        for revision in reversed(list(migrations_api.walk_revisions())):
+            with warnings.catch_warnings():  # Ignore warnings from 'DROP IF EXISTS' sql statements
+                warnings.simplefilter("ignore")
 
-    migrations = glob(os.path.join(alembic_path, "*.py"))
+                if hasattr(revision.module, 'unittest_schemas'):
+                    for operation in revision.module.unittest_schemas():
+                        engine.execute(operation)
 
-    steps = list()
-    initial = None
-
-
-    # Load all the migration step files into a unsorted list of tuples.
-    # ( current_step, prev_step, has unittest func )
-    for migration in migrations:
-        module = os.path.basename(migration)
-        rev = module.split("_")[0]
-        prev_rev = None
-
-        #contents = open(migration).read()
-        with open(migration) as f:
-            contents = f.read()
-
-        result = re.search("^down_revision = ['|\"](.*?)['|\"]", contents, re.MULTILINE)
-        if result:
-            prev_rev = result.group(1)
-        else:
-            initial = (module, rev, None, False, 0)
-        # Look for unittest functions in migration file
-        result = re.search("^def unittest_schemas", contents, re.MULTILINE)
-
-        steps.append((module, rev, prev_rev, (not result is None)))
-
-    # Put the migration steps in order
-    ord_steps = list()
-    ord_steps.append(initial)
-
-    def _find_next_step(c):
-        for s in steps:
-            if c[1] == s[2]:
-                return s
-        return None
-
-    c_step = initial
-    while c_step:
-        n_step = _find_next_step(c_step)
-        c_step = n_step
-        if n_step:
-            ord_steps.append(n_step)
-
-    # Ignore warnings from 'DROP IF EXISTS' sql statements
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-
-        # Load any schemas marked with unittests in order.
-        for step in ord_steps:
-            # Skip non-unittest enabled migrations
-            if step[3] is False:
-                continue
-
-            # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-            with temporary_sys_path(alembic_path):
-                mod = importlib.import_module(step[0].replace(".py", ""))
-
-            items = mod.unittest_schemas()
-
-            for item in items:
-                engine.execute(item)
 
 def _setup_consent_codes():
     """
