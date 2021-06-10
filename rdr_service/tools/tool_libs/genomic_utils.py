@@ -1056,9 +1056,13 @@ class GenomicProcessRunner(GenomicManifestBase):
                     bucket_name = file_paths.split('/')[0] if type(file_paths) is not list else file_paths[0].split(
                         '/')[0]
 
-                    if self.args.cloud_task:
+                    if self.args.cloud_task and not self.args.csv:
+                        if bucket_name in file_paths:
+                            file_name = file_paths.replace(bucket_name + '/', '')
+                        else:
+                            file_name = file_paths
+
                         # Get blob for file from gcs
-                        file_name = file_paths if type(file_paths) is not list else file_paths[0]
                         _blob = self.gscp.get_blob(bucket_name, file_name)
                         payload = {
                             "file_path": file_paths,
@@ -1074,7 +1078,8 @@ class GenomicProcessRunner(GenomicManifestBase):
                     if self.args.manifest_file and type(file_paths) is not list:
                         return self.run_manifest_ingestion(
                             bucket_name=bucket_name,
-                            file_name=file_paths
+                            file_name=file_paths.replace(bucket_name + '/', '') if bucket_name in file_paths
+                            else file_paths
                         )
 
                     if self.args.csv and type(file_paths) is list:
