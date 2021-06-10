@@ -55,7 +55,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicSetDao,
     GenomicJobRunDao,
-    GenomicManifestFeedbackDao, GenomicManifestFileDao, GenomicAW1RawDao, GenomicAW2RawDao)
+    GenomicManifestFeedbackDao,
+    GenomicManifestFileDao,
+    GenomicAW1RawDao,
+    GenomicAW2RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -774,7 +777,6 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
-
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
