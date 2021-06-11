@@ -58,7 +58,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         for blob in self._get_consent_pii_blobs():
             pdf_data = Pdf.from_google_storage_blob(blob)
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
-                primary_consents.append(VibrentPrimaryConsentFile(pdf_data))
+                primary_consents.append(VibrentPrimaryConsentFile(pdf_data, upload_time=blob.updated))
 
         return primary_consents
 
@@ -67,7 +67,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         for blob in self._get_consent_pii_blobs():
             pdf_data = Pdf.from_google_storage_blob(blob)
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
-                cabor_consents.append(VibrentCaborConsentFile(pdf_data))
+                cabor_consents.append(VibrentCaborConsentFile(pdf_data, upload_time=blob.updated))
 
         return cabor_consents
 
@@ -75,7 +75,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         ehr_consents = []
         for blob in self.pdf_blobs:
             if basename(blob.name).startswith('EHRConsentPII'):
-                ehr_consents.append(VibrentEhrConsentFile(Pdf.from_google_storage_blob(blob)))
+                ehr_consents.append(VibrentEhrConsentFile(Pdf.from_google_storage_blob(blob), upload_time=blob.updated))
 
         return ehr_consents
 
@@ -83,7 +83,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         gror_consents = []
         for blob in self.pdf_blobs:
             if basename(blob.name).startswith('GROR'):
-                gror_consents.append(VibrentGrorConsentFile(Pdf.from_google_storage_blob(blob)))
+                gror_consents.append(VibrentGrorConsentFile(
+                    Pdf.from_google_storage_blob(blob), upload_time=blob.updated
+                ))
 
         return gror_consents
 
@@ -97,8 +99,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
 
 class ConsentFile(ABC):
-    def __init__(self, pdf: 'Pdf'):
+    def __init__(self, pdf: 'Pdf', upload_time):
         self.pdf = pdf
+        self.upload_time = upload_time
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
@@ -140,7 +143,10 @@ class CaborConsentFile(ConsentFile, ABC):
 
 
 class EhrConsentFile(ConsentFile, ABC):
-    ...
+    def get_is_va_consent(self):
+        return self.pdf.get_page_number_of_text([
+            'We may ask you to go to a local clinic to be measured. Trained research staff will do the measurements.'
+        ]) is not None
 
 
 class GrorConsentFile(ConsentFile, ABC):
@@ -228,7 +234,7 @@ class Pdf:
     @classmethod
     def from_google_storage_blob(cls, blob: Blob):
         file_bytes = BytesIO(blob.download_as_string())
-        pages = extract_pages(file_bytes)
+        pages = list(extract_pages(file_bytes))
         return Pdf(pages)
 
     def get_elements_intersecting_box(self, search_box: Rect, page=0):
