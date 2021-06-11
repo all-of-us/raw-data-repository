@@ -20,13 +20,20 @@ from rdr_service.model.genomics import (
     GenomicJobRun,
     GenomicFileProcessed,
     GenomicGCValidationMetrics,
-    GenomicManifestFile, GenomicManifestFeedback, GenomicAW1Raw, GenomicAW2Raw, GenomicIncident, GenomicCloudRequests)
+    GenomicManifestFile,
+    GenomicManifestFeedback,
+    GenomicAW1Raw,
+    GenomicAW2Raw,
+    GenomicIncident,
+    GenomicCloudRequests,
+    GenomicMemberReportState
+)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
     SuspensionStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
-    GenomicSubProcessResult, GenomicManifestTypes
+    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -163,6 +170,7 @@ class GenomicSetMemberDao(UpdatableDao):
                                     'cvlW3ManifestJobRunID',
                                     'aw3ManifestJobRunID',
                                     'aw4ManifestJobRunID',)
+        self.report_state_dao = GenomicMemberReportStateDao()
 
     def get_id(self, obj):
         return obj.id
@@ -728,6 +736,26 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.collectionTubeId == collection_tube_id,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
             ).one_or_none()
+
+    def update(self, obj):
+        gem_wf_states = (
+            GenomicWorkflowState.GEM_RPT_READY,
+            GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
+            GenomicWorkflowState.GEM_RPT_DELETED
+        )
+        if obj.genomicWorkflowState and obj.genomicWorkflowState in gem_wf_states:
+            state = self.report_state_dao.get_report_state_from_wf_state(obj.genomicWorkflowState)
+            report = self.report_state_dao.get_from_member_id(obj.id)
+            if not report:
+                report_obj = GenomicMemberReportState()
+                report_obj.genomic_set_member_id = obj.id
+                report_obj.genomic_report_state = state
+                report_obj.module = 'GEM'
+                self.report_state_dao.insert(report_obj)
+            else:
+                report.genomic_report_state = state
+                self.report_state_dao.update(report)
+        super(GenomicSetMemberDao, self).update(obj)
 
 
 class GenomicJobRunDao(UpdatableDao):
@@ -1639,3 +1667,32 @@ class GenomicCloudRequestsDao(UpdatableDao):
     def from_client_json(self):
         pass
 
+
+class GenomicMemberReportStateDao(UpdatableDao):
+
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicMemberReportStateDao, self).__init__(
+            GenomicMemberReportState, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+    def get_from_member_id(self, obj_id):
+        with self.session() as session:
+            return session.query(
+                GenomicMemberReportState
+            ).filter(
+                GenomicMemberReportState.genomic_set_member_id == obj_id
+            ).first()
+
+    @staticmethod
+    def get_report_state_from_wf_state(wf_state):
+        for value in GenomicReportState:
+            if value.name == wf_state.name:
+                return value
+        return None

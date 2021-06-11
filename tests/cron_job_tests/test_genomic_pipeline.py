@@ -24,7 +24,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicManifestFileDao,
     GenomicManifestFeedbackDao,
-    GenomicAW1RawDao, GenomicAW2RawDao, GenomicIncidentDao)
+    GenomicAW1RawDao,
+    GenomicAW2RawDao,
+    GenomicIncidentDao,
+    GenomicMemberReportStateDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -138,6 +141,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.qr_dao = QuestionnaireResponseDao()
         self.qra_dao = QuestionnaireResponseAnswerDao()
         self.qq_dao = QuestionnaireQuestionDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -2387,6 +2391,17 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(withdraw_time):
             genomic_pipeline.gem_a3_manifest_workflow()  # run_id 6
 
+        members = self.member_dao.get_all()
+        for member in members:
+            report_state = self.report_state_dao.get_from_member_id(member.id)
+            if member.id == 1:
+                self.assertIsNotNone(report_state)
+                r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+                self.assertEqual(report_state.genomic_report_state, r_state)
+                self.assertEqual(report_state.module, 'GEM')
+            else:
+                self.assertIsNone(report_state)
+
         # Do Reconsent ROR
         reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
         summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
@@ -2432,6 +2447,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test A2 fields and genomic state
         members = self.member_dao.get_all()
         for member in members:
+            report_state = self.report_state_dao.get_from_member_id(member.id)
             self.assertEqual(datetime.datetime(2020, 4, 29, 0, 0, 0), member.gemDateOfImport)
             self.assertEqual(fake_now, member.genomicWorkflowStateModifiedTime)
 
@@ -2439,9 +2455,15 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
                 self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, member.genomicWorkflowState)
+                self.assertIsNotNone(report_state)
+                r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+                self.assertEqual(report_state.genomic_set_member_id, member.id)
+                self.assertEqual(report_state.genomic_report_state, r_state)
+                self.assertEqual(report_state.module, 'GEM')
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
                 self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
+                self.assertIsNone(report_state)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -2497,6 +2519,19 @@ class GenomicPipelineTest(BaseTestCase):
         test_member_2 = self.member_dao.get(2)
         self.assertEqual(2, test_member_2.gemA3ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_2.genomicWorkflowState)
+
+        members = self.member_dao.get_all()
+
+        report_states = self.report_state_dao.get_all()
+        self.assertEqual(len(report_states), len(members))
+
+        for member in members:
+            report_state = self.report_state_dao.get_from_member_id(member.id)
+            self.assertIsNotNone(report_state)
+            r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+            self.assertEqual(report_state.genomic_report_state, r_state)
+            self.assertEqual(report_state.genomic_set_member_id, member.id)
+            self.assertEqual(report_state.module, 'GEM')
 
         # Test the manifest file contents
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
@@ -3333,9 +3368,21 @@ class GenomicPipelineTest(BaseTestCase):
         # Run Workflow
         genomic_pipeline.gem_metrics_ingest()  # run_id 1
 
-        # Test metrics were ingested
         members = self.member_dao.get_all()
+
+        report_states = self.report_state_dao.get_all()
+        self.assertEqual(len(report_states), len(members))
+
+        # Test metrics were ingested
         for member in members:
+            report_state = self.report_state_dao.get_from_member_id(member.id)
+            r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+
+            self.assertIsNotNone(report_state)
+            self.assertEqual(report_state.genomic_set_member_id, member.id)
+            self.assertEqual(report_state.genomic_report_state, r_state)
+            self.assertEqual(report_state.module, 'GEM')
+
             self.assertEqual(1, member.colorMetricsJobRunID)
             self.assertEqual("['ancestry','cilantro','lactose','earwax','bittertaste']",
                              member.gemMetricsAvailableResults)
