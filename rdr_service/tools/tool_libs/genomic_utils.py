@@ -1241,7 +1241,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
                 controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
 
-                controller.generate_manifest(self.gen_enum,
+                controller.generate_manifest(GenomicManifestTypes.AW2F,
                                              _genome_type=config.GENOME_TYPE_ARRAY,
                                              feedback_record=feedback_record)
 
@@ -2116,7 +2116,7 @@ def run():
                                            'AW4_WGS_WORKFLOW',
                                            'AW5_ARRAY_MANIFEST',
                                            'AW5_WGS_MANIFEST',
-                                           'AW2F_MANIFEST'
+                                           'AW2F_MANIFEST',
                                            'CALCULATE_RECORD_COUNT_AW1'
                                        ],
                                        type=str
