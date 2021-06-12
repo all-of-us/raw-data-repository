@@ -47,7 +47,7 @@ class BQSiteSchema(BQSchema):
 
     site_status = BQField('site_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQSiteStatus)
-    site_status_id = BQField('site_status_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+    site_status_id = BQField('site_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                              fld_enum=BQSiteStatus)
     enrolling_status = BQField('enrolling_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                fld_enum=BQEnrollingStatus)
