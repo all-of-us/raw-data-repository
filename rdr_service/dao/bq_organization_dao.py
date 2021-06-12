@@ -54,9 +54,10 @@ def bq_organization_update(project_id=None):
                               project_id=project_id)
 
 
-def bq_organization_update_by_id(org_id):
+def bq_organization_update_by_id(org_id, project_id=None):
     gen = BQOrganizationGenerator()
     bqr = gen.make_bqrecord(org_id, backup=False)
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
-        gen.save_bqrecord(org_id, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session)
+        gen.save_bqrecord(org_id, bqr, bqtable=BQOrganization, w_dao=w_dao, w_session=w_session,
+                          project_id=project_id)
