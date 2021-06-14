@@ -5,6 +5,7 @@
     <option name="PARENT_ENVS" value="true" />
     <envs>
       <env name="PYTHONUNBUFFERED" value="1" />
+      <env name="CLOUDSDK_PYTHON" value="$PROJECT_DIR$/venv37/bin/python3" />
     </envs>
     <option name="SDK_HOME" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/rdr_service" />
@@ -13,7 +14,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="tools" />
-    <option name="PARAMETERS" value="sync-consents --project all-of-us-rdr-prod --service-account configurator@all-of-us-rdr-prod.iam.gserviceaccount.com --org-id CAL_PMC_UCD --date-limit 2019-04-01 --end-date 2019-12-01 --dry-run --debug" />
+    <option name="PARAMETERS" value="deceased-sync --project all-of-us-rdr-prod" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="true" />

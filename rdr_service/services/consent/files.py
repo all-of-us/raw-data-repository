@@ -238,7 +238,7 @@ class Pdf:
         return Pdf(pages)
 
     def get_elements_intersecting_box(self, search_box: Rect, page=0):
-        if page is None:
+        if page is None or len(self.pages) <= page:
             return []
 
         elements = []

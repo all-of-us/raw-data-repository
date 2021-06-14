@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import pytz
 from typing import List
 
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
@@ -13,6 +14,8 @@ class ConsentValidator:
         self.factory = consent_factory
         self.participant_summary = participant_summary
         self.va_hpo_id = va_hpo_id
+
+        self._central_time = pytz.timezone('America/Chicago')
 
     def get_primary_validation_results(self):
 
@@ -97,7 +100,7 @@ class ConsentValidator:
         self._store_signature(result=result, consent_file=consent)
 
         result.signing_date = consent.get_date_signed()
-        result.expected_sign_date = expected_sign_datetime.date()
+        result.expected_sign_date = self._get_date_from_datetime(expected_sign_datetime)
         result.is_signing_date_valid = self._is_signing_date_valid(
             signing_date=result.signing_date,
             expected_date=result.expected_sign_date
@@ -125,3 +128,6 @@ class ConsentValidator:
             return False
         else:
             return signing_date == expected_date
+
+    def _get_date_from_datetime(self, timestamp: datetime):
+        return timestamp.replace(tzinfo=pytz.utc).astimezone(self._central_time).date()
