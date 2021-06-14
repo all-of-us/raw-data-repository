@@ -14,6 +14,9 @@ class ConsentControllerTest(BaseTestCase):
         super(ConsentControllerTest, self).__init__(*args, **kwargs)
         self.uses_database = False
 
+    def setUp(self, *args, **kwargs) -> None:
+        super(ConsentControllerTest, self).setUp(*args, **kwargs)
+
         self.consent_dao_mock = mock.MagicMock(spec=ConsentDao)
         self.hpo_dao_mock = mock.MagicMock(spec=HPODao)
         self.participant_summary_dao_mock = mock.MagicMock(spec=ParticipantSummaryDao)
