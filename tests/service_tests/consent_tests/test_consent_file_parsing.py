@@ -4,7 +4,7 @@ import mock
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBoxHorizontal, LTTextLineHorizontal
 from typing import List
 
-from rdr_service.services import consent_files
+from rdr_service.services.consent import files
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -83,7 +83,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature='Test Name',
                 expected_sign_date=date(2019, 8, 17)
             )
@@ -99,7 +99,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature='Nick',
                 expected_sign_date=date(2017, 12, 25)
             )
@@ -118,7 +118,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature=None,
                 expected_sign_date=None,
                 expected_to_be_va_file=True
@@ -135,7 +135,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature=None,
                 expected_sign_date=None
             )
@@ -156,7 +156,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature=True,
                 expected_sign_date=date(2018, 12, 7)
             )
@@ -196,7 +196,7 @@ class ConsentFileParsingTest(BaseTestCase):
         ])
         test_data.append(
             PrimaryConsentTestData(
-                file=consent_files.VibrentPrimaryConsentFile(pdf),
+                file=files.VibrentPrimaryConsentFile(pdf),
                 expected_signature='2018 Participant',
                 expected_sign_date=date(2018, 2, 19)
             )
@@ -214,7 +214,7 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         basic_cabor_case = ConsentTestData(
-            file=consent_files.VibrentCaborConsentFile(basic_cabor_pdf),
+            file=files.VibrentCaborConsentFile(basic_cabor_pdf),
             expected_signature='Test cabor',
             expected_sign_date=date(2020, 4, 27)
         )
@@ -231,7 +231,7 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         basic_ehr_case = ConsentTestData(
-            file=consent_files.VibrentEhrConsentFile(basic_ehr_pdf),
+            file=files.VibrentEhrConsentFile(basic_ehr_pdf),
             expected_signature='Test ehr',
             expected_sign_date=date(2019, 12, 21)
         )
@@ -255,7 +255,7 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         basic_gror_case = GrorConsentTestData(
-            file=consent_files.VibrentGrorConsentFile(basic_gror_pdf),
+            file=files.VibrentGrorConsentFile(basic_gror_pdf),
             expected_signature='Test gror',
             expected_sign_date=date(2021, 1, 1),
             has_yes_selected=True
@@ -269,7 +269,7 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         no_confirmation_case = GrorConsentTestData(
-            file=consent_files.VibrentGrorConsentFile(gror_missing_check),
+            file=files.VibrentGrorConsentFile(gror_missing_check),
             expected_signature='no confirmation',
             expected_sign_date=date(2021, 2, 1),
             has_yes_selected=False
@@ -278,7 +278,7 @@ class ConsentFileParsingTest(BaseTestCase):
         return [basic_gror_case, no_confirmation_case]
 
     @classmethod
-    def _build_pdf(cls, pages) -> consent_files.Pdf:
+    def _build_pdf(cls, pages) -> files.Pdf:
         """
         Builds a consent_files.Pdf object
         :param pages A list where each item represents a page,
@@ -290,7 +290,7 @@ class ConsentFileParsingTest(BaseTestCase):
             page_mock.__iter__.return_value = page_elements
             page_mocks.append(page_mock)
 
-        return consent_files.Pdf(pages=page_mocks)
+        return files.Pdf(pages=page_mocks)
 
     def _build_pdf_element(self, cls, text: str = None, children: list = None, bbox=None):
         """Create a generic pdf element to add to the page"""
@@ -352,18 +352,18 @@ class ConsentFileParsingTest(BaseTestCase):
 
 @dataclass
 class ConsentTestData:
-    file: consent_files.ConsentFile
+    file: files.ConsentFile
     expected_signature: str or bool  # Text of the signature, or True if it's an image
     expected_sign_date: date or None
 
 
 @dataclass
 class PrimaryConsentTestData(ConsentTestData):
-    file: consent_files.PrimaryConsentFile
+    file: files.PrimaryConsentFile
     expected_to_be_va_file: bool = False
 
 
 @dataclass
 class GrorConsentTestData(ConsentTestData):
-    file: consent_files.GrorConsentFile
+    file: files.GrorConsentFile
     has_yes_selected: bool = False
