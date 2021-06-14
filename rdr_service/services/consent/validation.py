@@ -1,10 +1,114 @@
+from collections import defaultdict
 from datetime import date, datetime
 import pytz
 from typing import List
 
+from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent import files
+from rdr_service.storage import GoogleCloudStorageProvider
+
+
+class ConsentValidationController:
+    def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
+                 hpo_dao: HPODao, storage_provider: GoogleCloudStorageProvider):
+        self.consent_dao = consent_dao
+        self.participant_summary_dao = participant_summary_dao
+        self.storage_provider = storage_provider
+
+        self.va_hpo_id = hpo_dao.get_by_name('VA').hpo_id
+
+    def check_for_corrections(self):
+        """Load all of the current consent issues and see if they have been resolved yet"""
+        files_needing_correction = self.consent_dao.get_files_needing_correction()
+        organized_results = self._organize_results(files_needing_correction)
+
+        validation_updates: List[ParsingResult] = []
+        for participant_id, corrections_needed in organized_results.items():
+            participant_summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
+            consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
+                participant_id=participant_id,
+                participant_origin=participant_summary.participantOrigin,
+                storage_provider=self.storage_provider
+            )
+            validator = ConsentValidator(
+                consent_factory=consent_factory,
+                participant_summary=participant_summary,
+                va_hpo_id=self.va_hpo_id
+            )
+
+            for consent_type, validation_results in corrections_needed.items():
+                new_validation_results = []
+                if consent_type == ConsentType.PRIMARY:
+                    new_validation_results = validator.get_primary_validation_results()
+                elif consent_type == ConsentType.CABOR:
+                    new_validation_results = validator.get_cabor_validation_results()
+                elif consent_type == ConsentType.EHR:
+                    new_validation_results = validator.get_ehr_validation_results()
+                elif consent_type == ConsentType.GROR:
+                    new_validation_results = validator.get_gror_validation_results()
+
+                file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
+                if file_ready_for_sync is not None:
+                    for previous_validation_result in validation_results:
+                        previous_validation_result.sync_status = ConsentSyncStatus.OBSOLETE
+                        validation_updates.append(previous_validation_result)
+                    validation_updates.append(file_ready_for_sync)
+                else:
+                    for new_result in new_validation_results:
+                        matching_previous_result = self._find_matching_validation_result(
+                            new_result=new_result,
+                            previous_results=validation_results
+                        )
+                        if matching_previous_result is None:
+                            validation_updates.append(new_result)
+
+            self.consent_dao.batch_update_consent_files(validation_updates)
+
+        # Todo:
+        #  get corrections needed, grouped by participant and type of consent
+        #  get file validation for the participant's files of that type
+        #    if a file is READY then mark all stored as obsolete, and save the ready file record
+        #    else go through all the files validated and save any records that came up for new files
+
+    def validate_recent_uploads(self, min_consent_date):
+        """Find all the expected consents since the minimum date and check the files that have been uploaded"""
+        print(min_consent_date)
+        ...
+
+    @classmethod
+    def _organize_results(cls, results: List[ParsingResult]):
+        """
+        Organize the validation results by participant id and then
+        consent type to make it easier for checking for updates for them
+        """
+
+        def new_participant_results():
+            return defaultdict(lambda: [])
+        organized_results = defaultdict(new_participant_results)
+        for result in results:
+            organized_results[result.participant_id][result.type].append(result)
+        return organized_results
+
+    @classmethod
+    def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
+        for result in results:
+            if result.sync_status == ConsentSyncStatus.READY_FOR_SYNC:
+                return result
+
+        return None
+
+    @classmethod
+    def _find_matching_validation_result(cls, new_result: ParsingResult, previous_results: List[ParsingResult]):
+        """Return the corresponding object from the list. They're matched up based on the file path."""
+        for previous_result in previous_results:
+            if new_result.file_path == previous_result.file_path:
+                return previous_result
+
+        return None
 
 
 class ConsentValidator:
