@@ -113,6 +113,7 @@ class ConsentFile(ABC):
     def __init__(self, pdf: 'Pdf', upload_time):
         self.pdf = pdf
         self.upload_time = upload_time
+        # TODO: capture file path and store on validation result
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()

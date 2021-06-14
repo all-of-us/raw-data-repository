@@ -1,14 +1,14 @@
 from datetime import datetime
 
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from tests.helpers.unittest_base import BaseTestCase
 
 
 class ConsentFileDaoTest(BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentFileDaoTest, self).setUp(*args, **kwargs)
-        self.consent_dao = ConsentDao(None)
+        self.consent_dao = ConsentDao(ConsentFile)
 
     def test_loading_summaries_with_consent(self):
         """Check that participant summaries with any consents in the given time range are loaded"""
@@ -123,6 +123,37 @@ class ConsentFileDaoTest(BaseTestCase):
             actual_list=self.consent_dao.get_files_needing_correction(),
             id_attribute='id'
         )
+
+    def test_batch_update_of_results(self):
+        """Make sure that any new or existing validation result records can be updated by the dao"""
+
+        self.data_generator.create_database_consent_file(
+            type=ConsentType.EHR,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            file_path='/not_ready_ehr'
+        )
+        to_update = self.consent_dao.get_files_needing_correction()
+        updates_to_send = [
+            ConsentFile(
+                type=ConsentType.EHR,
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+                file_path='/ready_ehr'
+            )
+        ]
+        for result in to_update:
+            result.sync_status = ConsentSyncStatus.OBSOLETE
+            updates_to_send.append(result)
+
+        self.consent_dao.batch_update_consent_files(updates_to_send)
+        results = self.consent_dao.get_all()
+        self.assertEqual(2, len(results))
+        for result in results:
+            if result.file_path == '/ready_ehr':
+                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, result.sync_status)
+            elif result.file_path == '/not_ready_ehr':
+                self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
+            else:
+                self.fail('Unexpected file validation result')
 
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))

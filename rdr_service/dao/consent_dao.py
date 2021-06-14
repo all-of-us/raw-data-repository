@@ -1,3 +1,4 @@
+from typing import List
 
 from sqlalchemy import or_
 
@@ -31,8 +32,13 @@ class ConsentDao(BaseDao):
             summaries = query.all()
             return summaries
 
-    def get_files_needing_correction(self):
+    def get_files_needing_correction(self) -> List[ConsentFile]:
         with self.session() as session:
             return session.query(ConsentFile).filter(
                 ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
             ).all()
+
+    def batch_update_consent_files(self, consent_files: List[ConsentFile]):
+        with self.session() as session:
+            for file_record in consent_files:
+                session.merge(file_record)
