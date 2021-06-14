@@ -2,6 +2,7 @@
 from sqlalchemy import or_
 
 from rdr_service.dao.base_dao import BaseDao
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
@@ -29,3 +30,9 @@ class ConsentDao(BaseDao):
                 )
             summaries = query.all()
             return summaries
+
+    def get_files_needing_correction(self):
+        with self.session() as session:
+            return session.query(ConsentFile).filter(
+                ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+            ).all()
