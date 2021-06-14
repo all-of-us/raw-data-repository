@@ -101,7 +101,6 @@ class MessageBrokerApiTest(BaseTestCase):
         self.assertEqual(5, len(event_data))
         count = 0
         for item in event_data:
-            print(str(item.asdict()))
             if item.fieldName == 'test_bool':
                 self.assertEqual(item.valueBool, True)
                 count = count + 1
