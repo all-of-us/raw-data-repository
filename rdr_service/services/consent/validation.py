@@ -71,6 +71,14 @@ class ConsentValidator:
             if additional_validation:
                 additional_validation(consent, result)
             results.append(result)
+
+        if not results:
+            results.append(ParsingResult(
+                participant_id=self.participant_summary.participantId,
+                file_exists=False,
+                type=consent_type,
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING
+            ))
         return results
 
     def _build_validation_result(self, consent: files.ConsentFile, consent_type: ConsentType,

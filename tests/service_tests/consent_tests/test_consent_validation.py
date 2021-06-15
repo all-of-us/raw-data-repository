@@ -236,6 +236,24 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_gror_validation_results()
         )
 
+    def test_gror_missing(self):
+        self.participant_summary.consentForGenomicsRORAuthored = datetime.combine(
+            self._default_signing_date,
+            datetime.now().time()
+        )
+        self.consent_factory_mock.get_gror_consents.return_value = []
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.GROR,
+                    'file_exists': False,
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_gror_validation_results()
+        )
+
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
             'get_signature_on_file': self._default_signature,
