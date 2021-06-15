@@ -16,7 +16,10 @@ from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER, RDR
 from rdr_service.app_util import nonprod
 from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, genomic_data_quality_pipeline
@@ -34,11 +37,13 @@ from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, Public
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.services.consent.validation import ConsentValidationController
 from rdr_service.services.data_quality import DataQualityChecker
-from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
+from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
+from rdr_service.storage import GoogleCloudStorageProvider
 
 
 def _alert_on_exceptions(func):
@@ -210,6 +215,28 @@ def participant_counts_over_time():
 def exclude_ghosts():
     mark_ghost_participants()
     return '{"success": "true"}'
+
+
+def _build_validation_controller():
+    return ConsentValidationController(
+        consent_dao=ConsentDao(),
+        participant_summary_dao=ParticipantSummaryDao(),
+        hpo_dao=HPODao(),
+        storage_provider=GoogleCloudStorageProvider()
+    )
+
+
+@app_util.auth_required_cron
+def check_for_consent_corrections():
+    validation_controller = _build_validation_controller()
+    validation_controller.check_for_corrections()
+
+
+@app_util.auth_required_cron
+def validate_consent_files():
+    min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
+    validation_controller = _build_validation_controller()
+    validation_controller.validate_recent_uploads(min_consent_date=min_authored_timestamp)
 
 
 @app_util.auth_required_cron
@@ -626,6 +653,16 @@ def _build_pipeline_app():
         endpoint="manually_sync_consent_files",
         view_func=manually_trigger_consent_sync,
         methods=["POST"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ValidateConsentFiles", endpoint="validate_consent_files", view_func=validate_consent_files,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CorrectConsentFiles", endpoint="correct_consent_files",
+        view_func=check_for_consent_corrections, methods=["GET"]
     )
 
     offline_app.add_url_rule(

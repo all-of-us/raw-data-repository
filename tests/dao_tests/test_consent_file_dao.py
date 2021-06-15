@@ -8,7 +8,7 @@ from tests.helpers.unittest_base import BaseTestCase
 class ConsentFileDaoTest(BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentFileDaoTest, self).setUp(*args, **kwargs)
-        self.consent_dao = ConsentDao(ConsentFile)
+        self.consent_dao = ConsentDao()
 
     def test_loading_summaries_with_consent(self):
         """Check that participant summaries with any consents in the given time range are loaded"""
