@@ -25,6 +25,10 @@ class ConsentValidationController:
     def check_for_corrections(self):
         """Load all of the current consent issues and see if they have been resolved yet"""
         files_needing_correction = self.consent_dao.get_files_needing_correction()
+
+        # Organize the corrections needed into a dict where the key is the participant id
+        # and the value is another dictionary. That secondary dictionary is keyed by consent type
+        # and the values in it are lists of corrections needed for that participant and consent type
         organized_results = self._organize_results(files_needing_correction)
 
         validation_updates: List[ParsingResult] = []
@@ -32,7 +36,7 @@ class ConsentValidationController:
             participant_summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
             validator = self._build_validator(participant_summary)
 
-            for consent_type, validation_results in corrections_needed.items():
+            for consent_type, previous_file_records in corrections_needed.items():
                 new_validation_results = []
                 if consent_type == ConsentType.PRIMARY:
                     new_validation_results = validator.get_primary_validation_results()
@@ -45,15 +49,18 @@ class ConsentValidationController:
 
                 file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
                 if file_ready_for_sync is not None:
-                    for previous_validation_result in validation_results:
+                    # If there is a file ready to sync, then mark all previous invalid files as obsolete
+                    for previous_validation_result in previous_file_records:
                         previous_validation_result.sync_status = ConsentSyncStatus.OBSOLETE
                         validation_updates.append(previous_validation_result)
                     validation_updates.append(file_ready_for_sync)
                 else:
+                    # Add any new validation results to the list for updating
+                    # (ignoring records for files already validated)
                     for new_result in new_validation_results:
                         matching_previous_result = self._find_matching_validation_result(
                             new_result=new_result,
-                            previous_results=validation_results
+                            previous_results=previous_file_records
                         )
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
