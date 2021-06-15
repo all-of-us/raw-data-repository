@@ -1,8 +1,8 @@
 import mock
 
 from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
+from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao
+from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -90,4 +90,54 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertIsNotNone(metrics.gvcfPath)
         self.assertEqual(metrics.gvcfPath, full_path)
         self.assertEqual(metrics.gvcfReceived, 1)
+
+    def test_gvcf_files_ingestion_create_incident(self):
+        incident_dao = GenomicIncidentDao()
+        bucket_name = "test_bucket"
+        file_path = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz"
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="111111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath='/test_file_path',
+            bucketName=bucket_name,
+            fileName='test_file_name',
+        )
+
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=gen_member.id,
+            genomicFileProcessedId=gen_processed_file.id
+        )
+
+        with GenomicJobController(GenomicJob.INGEST_DATA_FILES) as controller:
+            controller.ingest_data_files(file_path, bucket_name)
+
+        incident = incident_dao.get(1)
+        self.assertIsNotNone(incident)
+        self.assertEqual(incident.slack_notification, 1)
+        self.assertIsNotNone(incident.slack_notification_date)
+        self.assertEqual(incident.code, GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name)
+        self.assertEqual(incident.data_file_path, file_path)
+        self.assertEqual(incident.message, 'Cannot find genomics metric record for sample id: 21042005280')
+
 

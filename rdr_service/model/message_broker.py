@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, JSON, event, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, Boolean, String, JSON, event, UniqueConstraint
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.utils import UTCDateTime6
@@ -60,8 +60,73 @@ class MessageBrokerMetadata(Base):
     __table_args__ = (UniqueConstraint('event_type', 'destination', 'url', name='unique_message_target'),)
 
 
+class MessageBrokerDestAuthInfo(Base):
+    __tablename__ = "Message_broker_dest_auth_info"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    """Auto increment, primary key."""
+    created = Column("created", UTCDateTime6, nullable=True)
+    """The create time for this record."""
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
+
+    destination = Column("destination", String(80))
+    """message destination, decided by participant origin"""
+    key = Column("key", String(256))
+    """access client key"""
+    secret = Column("secret", String(256))
+    """access client secret"""
+    tokenEndpoint = Column("token_endpoint", String(512))
+    """token endpoint"""
+    accessToken = Column("access_token", String(512))
+    """access token for the destination API"""
+    expiredAt = Column("expired_at", UTCDateTime6, nullable=True)
+    """access token expired time"""
+
+    __table_args__ = (UniqueConstraint('destination', name='unique_destination'),)
+
+
+class MessageBrokerEventData(Base):
+    __tablename__ = "message_broker_event_data"
+
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    """Auto increment, primary key."""
+    created = Column("created", UTCDateTime6, nullable=True)
+    """The create time for this record."""
+    modified = Column("modified", UTCDateTime6, nullable=True)
+    """The last modified time for this record."""
+
+    messageRecordId = Column("message_record_id", Integer, ForeignKey("message_broker_record.id"))
+    """message record id, foreign key of message_broker_record.id"""
+    participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"))
+    """participant id, foreign key of participant.participant_id"""
+    eventType = Column("event_type", String(128))
+    """message event type"""
+    eventAuthoredTime = Column("event_authored_time", UTCDateTime6)
+    """The actual time at which the participant trigger this event"""
+
+    fieldName = Column("field_name", String(512))
+    """message body field name"""
+    valueString = Column("value_string", String(512))
+    """message field value for string value"""
+    valueInteger = Column("value_integer", Integer)
+    """message field value for integer value"""
+    valueDatetime = Column("value_datetime", UTCDateTime6)
+    """message field value for datetime value"""
+    valueBool = Column("value_bool", Boolean)
+    """message field value for boolean value"""
+    valueJson = Column("value_json", JSON)
+    """message field value for json value"""
+
+
 event.listen(MessageBrokerRecord, "before_insert", model_insert_listener)
 event.listen(MessageBrokerRecord, "before_update", model_update_listener)
 
 event.listen(MessageBrokerMetadata, "before_insert", model_insert_listener)
 event.listen(MessageBrokerMetadata, "before_update", model_update_listener)
+
+event.listen(MessageBrokerDestAuthInfo, "before_insert", model_insert_listener)
+event.listen(MessageBrokerDestAuthInfo, "before_update", model_update_listener)
+
+event.listen(MessageBrokerEventData, "before_insert", model_insert_listener)
+event.listen(MessageBrokerEventData, "before_update", model_update_listener)

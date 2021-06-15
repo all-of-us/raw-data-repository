@@ -49,10 +49,11 @@ from rdr_service.model.resource_type import ResourceType
 from rdr_service.model.resource_schema import ResourceSchema
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.resource_search_results import ResourceSearchResults
+from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, QuestCovidAntibodyTestResult,\
     QuestCovidAntibodyTest
 from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImportRecord
-from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerMetadata
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerMetadata, MessageBrokerDestAuthInfo
 
 RETRY_CONNECTION_LIMIT = 10
 

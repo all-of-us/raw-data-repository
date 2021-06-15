@@ -57,7 +57,7 @@
       "topic_name": "genomic_data_files_upload",
       "topic_project": "all-of-us-rdr-sandbox",
       "payload_format": "JSON_API_V1",
-      "object_name_prefix": "Wgs_sample_raw_data/ SS_VCF_research/",
+      "object_name_prefix": "Wgs_sample_raw_data/SS_VCF_research/",
       "event_types": [
         "OBJECT_FINALIZE"
       ]

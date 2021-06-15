@@ -26,7 +26,8 @@ from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
     GenomicGCValidationMetrics
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult
+from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
+    GenomicSubProcessResult, GenomicIncidentCode
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -373,7 +374,17 @@ class GenomicJobController:
                     metrics_obj = self.metrics_dao.upsert(metrics)
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.bq_project_id)
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id)
-
+            else:
+                message = f'Cannot find genomics metric record for sample id: {sample_id}'
+                logging.warning(message)
+                self.create_incident(
+                    source_job_run_id=self.job_run.id,
+                    code=GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name,
+                    message=message,
+                    sample_id=sample_id if sample_id else '',
+                    data_file_path=file_path,
+                    slack=True
+                )
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
