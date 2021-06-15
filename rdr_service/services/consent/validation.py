@@ -20,7 +20,7 @@ class ConsentValidationController:
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
 
-        self.va_hpo_id = hpo_dao.get_by_name('VA').hpo_id
+        self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
 
     def check_for_corrections(self):
         """Load all of the current consent issues and see if they have been resolved yet"""

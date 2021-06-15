@@ -10,7 +10,7 @@ from rdr_service.model.participant_summary import ParticipantSummary
 class ConsentDao(BaseDao):
     def get_participants_with_consents_in_range(self, start_date, end_date=None) -> List[ParticipantSummary]:
         with self.session() as session:
-            query = session.query(ParticipantSummary)
+            query = session.query(ParticipantSummary).filter(ParticipantSummary.participantOrigin == 'vibrent')
             if end_date is None:
                 query = query.filter(
                     or_(
