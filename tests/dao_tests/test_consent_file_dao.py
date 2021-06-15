@@ -167,5 +167,6 @@ class ConsentFileDaoTest(BaseTestCase):
             consentForStudyEnrollmentFirstYesAuthored=primary,
             consentForCABoRAuthored=cabor,
             consentForElectronicHealthRecordsAuthored=ehr,
-            consentForGenomicsRORAuthored=gror
+            consentForGenomicsRORAuthored=gror,
+            participantOrigin='vibrent'
         )
