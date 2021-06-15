@@ -33,6 +33,10 @@ class ConsentFile(Base):
     signature_str = Column(String(200), nullable=True)
     is_signature_image = Column(Boolean, default=False)
     signing_date = Column(Date, nullable=True)
+    expected_sign_date = Column(Date, nullable=True)
+
+    file_upload_time = Column(UTCDateTime, nullable=True)
+    file_path = Column(String(250), nullable=True)
 
     other_errors = Column(String(200), nullable=True)
     sync_status = Column(Enum(ConsentSyncStatus))
