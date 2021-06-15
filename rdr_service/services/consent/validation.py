@@ -8,6 +8,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -29,16 +30,7 @@ class ConsentValidationController:
         validation_updates: List[ParsingResult] = []
         for participant_id, corrections_needed in organized_results.items():
             participant_summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
-            consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
-                participant_id=participant_id,
-                participant_origin=participant_summary.participantOrigin,
-                storage_provider=self.storage_provider
-            )
-            validator = ConsentValidator(
-                consent_factory=consent_factory,
-                participant_summary=participant_summary,
-                va_hpo_id=self.va_hpo_id
-            )
+            validator = self._build_validator(participant_summary)
 
             for consent_type, validation_results in corrections_needed.items():
                 new_validation_results = []
@@ -68,16 +60,74 @@ class ConsentValidationController:
 
             self.consent_dao.batch_update_consent_files(validation_updates)
 
-        # Todo:
-        #  get corrections needed, grouped by participant and type of consent
-        #  get file validation for the participant's files of that type
-        #    if a file is READY then mark all stored as obsolete, and save the ready file record
-        #    else go through all the files validated and save any records that came up for new files
-
     def validate_recent_uploads(self, min_consent_date):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
-        print(min_consent_date)
-        ...
+        validation_results = []
+        validated_participant_ids = []
+        for summary in self.consent_dao.get_participants_with_consents_in_range(start_date=min_consent_date):
+            validated_participant_ids.append(summary.participantId)
+            validator = self._build_validator(summary)
+
+            if self._has_new_consent(
+                consent_status=summary.consentForStudyEnrollment,
+                authored=summary.consentForStudyEnrollmentFirstYesAuthored,
+                min_authored=min_consent_date
+            ):
+                validation_results.extend(self._process_validation_results(validator.get_primary_validation_results()))
+            if self._has_new_consent(
+                consent_status=summary.consentForCABoR,
+                authored=summary.consentForCABoRAuthored,
+                min_authored=min_consent_date
+            ):
+                validation_results.extend(self._process_validation_results(validator.get_cabor_validation_results()))
+            if self._has_new_consent(
+                consent_status=summary.consentForElectronicHealthRecords,
+                authored=summary.consentForElectronicHealthRecordsAuthored,
+                min_authored=min_consent_date
+            ):
+                validation_results.extend(self._process_validation_results(validator.get_ehr_validation_results()))
+            if self._has_new_consent(
+                consent_status=summary.consentForGenomicsROR,
+                authored=summary.consentForGenomicsRORAuthored,
+                min_authored=min_consent_date
+            ):
+                validation_results.extend(self._process_validation_results(validator.get_gror_validation_results()))
+
+        results_to_store = []
+        previous_results = self.consent_dao.get_validation_results_for_participants(
+            participant_ids=validated_participant_ids
+        )
+        for possible_new_result in validation_results:
+            if not any(
+                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
+            ):
+                results_to_store.append(possible_new_result)
+
+        self.consent_dao.batch_update_consent_files(results_to_store)
+
+    @classmethod
+    def _process_validation_results(cls, results: List[ParsingResult]):
+        ready_file = cls._find_file_ready_for_sync(results)
+        if ready_file:
+            return [ready_file]
+        else:
+            return results
+
+    @classmethod
+    def _has_new_consent(cls, consent_status, authored, min_authored):
+        return consent_status == QuestionnaireStatus.SUBMITTED and authored > min_authored
+
+    def _build_validator(self, participant_summary: ParticipantSummary) -> 'ConsentValidator':
+        consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
+            participant_id=participant_summary.participantId,
+            participant_origin=participant_summary.participantOrigin,
+            storage_provider=self.storage_provider
+        )
+        return ConsentValidator(
+            consent_factory=consent_factory,
+            participant_summary=participant_summary,
+            va_hpo_id=self.va_hpo_id
+        )
 
     @classmethod
     def _organize_results(cls, results: List[ParsingResult]):
