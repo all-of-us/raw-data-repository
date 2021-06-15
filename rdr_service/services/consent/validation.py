@@ -83,7 +83,8 @@ class ConsentValidator:
             participant_id=self.participant_summary.participantId,
             file_exists=True,
             type=consent_type,
-            file_upload_time=consent.upload_time
+            file_upload_time=consent.upload_time,
+            file_path=consent.file_path
         )
         self._store_signature(result=result, consent_file=consent)
 

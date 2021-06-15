@@ -61,7 +61,8 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
                 primary_consents.append(VibrentPrimaryConsentFile(
                     pdf_data,
-                    upload_time=blob.updated
+                    upload_time=blob.updated,
+                    file_path=blob.path
                 ))
 
         return primary_consents
@@ -73,7 +74,8 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
                 cabor_consents.append(VibrentCaborConsentFile(
                     pdf_data,
-                    upload_time=blob.updated
+                    upload_time=blob.updated,
+                    file_path=blob.path
                 ))
 
         return cabor_consents
@@ -84,7 +86,8 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             if basename(blob.name).startswith('EHRConsentPII'):
                 ehr_consents.append(VibrentEhrConsentFile(
                     Pdf.from_google_storage_blob(blob),
-                    upload_time=blob.updated
+                    upload_time=blob.updated,
+                    file_path=blob.path
                 ))
 
         return ehr_consents
@@ -95,7 +98,8 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             if basename(blob.name).startswith('GROR'):
                 gror_consents.append(VibrentGrorConsentFile(
                     Pdf.from_google_storage_blob(blob),
-                    upload_time=blob.updated
+                    upload_time=blob.updated,
+                    file_path=blob.path
                 ))
 
         return gror_consents
@@ -110,9 +114,10 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
 
 class ConsentFile(ABC):
-    def __init__(self, pdf: 'Pdf', upload_time):
+    def __init__(self, pdf: 'Pdf', upload_time, file_path):
         self.pdf = pdf
         self.upload_time = upload_time
+        self.file_path = file_path
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
