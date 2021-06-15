@@ -129,15 +129,11 @@ class ConsentValidationTesting(BaseTestCase):
         )
 
     def test_non_va_primary_for_veteran(self):
-        consent_timestamp = datetime(2020, 1, 17, 13, 7)
-        self.participant_summary.consentForStudyEnrollmentFirstYesAuthored = consent_timestamp
         self.participant_summary.hpoId = self.va_hpo.hpoId
         self.consent_factory_mock.get_primary_consents.return_value = [
             self._mock_consent(
                 consent_class=files.PrimaryConsentFile,
                 get_is_va_consent=False,
-                get_signature_on_file=True,
-                get_date_signed=consent_timestamp.date()
             )
         ]
         self.assertMatchesExpectedResults(
@@ -250,6 +246,7 @@ class ConsentValidationTesting(BaseTestCase):
 
         consent_mock = mock.MagicMock(spec=consent_class)
         consent_mock.upload_time = datetime.now()
+        consent_mock.file_path = '/test'
         for method_name, return_value in consent_args.items():
             if hasattr(consent_mock, method_name):
                 getattr(consent_mock, method_name).return_value = return_value

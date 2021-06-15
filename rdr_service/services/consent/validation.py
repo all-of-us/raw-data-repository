@@ -17,7 +17,7 @@ class ConsentValidator:
 
         self._central_time = pytz.timezone('America/Chicago')
 
-    def get_primary_validation_results(self):
+    def get_primary_validation_results(self) -> List[ParsingResult]:
         return self._generate_validation_results(
             consent_files=self.factory.get_primary_consents(),
             consent_type=ConsentType.PRIMARY,
