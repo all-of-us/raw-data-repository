@@ -59,11 +59,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         for blob in self._get_consent_pii_blobs():
             pdf_data = Pdf.from_google_storage_blob(blob)
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
-                primary_consents.append(VibrentPrimaryConsentFile(
-                    pdf_data,
-                    upload_time=blob.updated,
-                    file_path=blob.path
-                ))
+                primary_consents.append(VibrentPrimaryConsentFile(pdf=pdf_data, blob=blob))
 
         return primary_consents
 
@@ -72,11 +68,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         for blob in self._get_consent_pii_blobs():
             pdf_data = Pdf.from_google_storage_blob(blob)
             if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
-                cabor_consents.append(VibrentCaborConsentFile(
-                    pdf_data,
-                    upload_time=blob.updated,
-                    file_path=blob.path
-                ))
+                cabor_consents.append(VibrentCaborConsentFile(pdf=pdf_data, blob=blob))
 
         return cabor_consents
 
@@ -84,11 +76,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         ehr_consents = []
         for blob in self.pdf_blobs:
             if basename(blob.name).startswith('EHRConsentPII'):
-                ehr_consents.append(VibrentEhrConsentFile(
-                    Pdf.from_google_storage_blob(blob),
-                    upload_time=blob.updated,
-                    file_path=blob.path
-                ))
+                ehr_consents.append(VibrentEhrConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
 
         return ehr_consents
 
@@ -96,11 +84,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         gror_consents = []
         for blob in self.pdf_blobs:
             if basename(blob.name).startswith('GROR'):
-                gror_consents.append(VibrentGrorConsentFile(
-                    Pdf.from_google_storage_blob(blob),
-                    upload_time=blob.updated,
-                    file_path=blob.path
-                ))
+                gror_consents.append(VibrentGrorConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
 
         return gror_consents
 
@@ -114,10 +98,10 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
 
 class ConsentFile(ABC):
-    def __init__(self, pdf: 'Pdf', upload_time, file_path):
+    def __init__(self, pdf: 'Pdf', blob: Blob):
         self.pdf = pdf
-        self.upload_time = upload_time
-        self.file_path = file_path
+        self.upload_time = blob.updated
+        self.file_path = f'{blob.bucket.name}/{blob.name}'
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
