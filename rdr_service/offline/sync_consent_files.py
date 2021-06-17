@@ -56,21 +56,23 @@ class ConsentSyncController:
         consent_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
         for file in file_list:
-            pairing_info = pairing_info_map[file.participant_id]
-            org_consent_config = consent_config[pairing_info.org_name]
+            pairing_info = pairing_info_map.get(file.participant_id, None)
 
-            if not org_consent_config['zip_consents']:
-                file_sync_func = self._copy_file_in_cloud
-            else:
-                file_sync_func = self._download_file_for_zip
-            file_sync_func(
-                file=file,
-                bucket_name=org_consent_config['bucket'],
-                org_name=pairing_info.org_name,
-                site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
-            )
-            file.sync_time = datetime.utcnow()
-            file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
+            if pairing_info:
+                org_consent_config = consent_config[pairing_info.org_name]
+
+                if not org_consent_config['zip_consents']:
+                    file_sync_func = self._copy_file_in_cloud
+                else:
+                    file_sync_func = self._download_file_for_zip
+                file_sync_func(
+                    file=file,
+                    bucket_name=org_consent_config['bucket'],
+                    org_name=pairing_info.org_name,
+                    site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
+                )
+                file.sync_time = datetime.utcnow()
+                file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
 
         self._zip_and_upload()
         self.consent_dao.batch_update_consent_files(file_list)

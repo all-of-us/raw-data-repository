@@ -126,6 +126,16 @@ class ConsentSyncControllerTest(BaseTestCase):
             path=f'{self.foo_bucket_name}/Participant/{self.foo_org_name}/{DEFAULT_GOOGLE_GROUP}.zip'
         )
 
+    def test_unpaired_participants(self):
+        """Test that any participants that aren't paired are ignored"""
+        # Return empty list, indicating that the participants are not paired to organizations
+        self.participant_dao_mock.get_org_and_site_for_ids.return_value = []
+
+        self.sync_controller.sync_ready_files()
+
+        # If no participants are paired, then nothing should sync
+        self.storage_provider_mock.copy_blob.assert_not_called()
+
     @classmethod
     def _build_expected_dest_path(cls, bucket_name, org_id, site_group, participant_id, file_name):
         return f'{bucket_name}/Participant/{org_id}/{site_group}/P{participant_id}/{file_name}'
