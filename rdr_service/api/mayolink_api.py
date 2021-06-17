@@ -13,17 +13,18 @@ from rdr_service.app_util import auth_required
 class MayoLinkApi:
     def __init__(self):
         self.namespace = "http://orders.mayomedicallaboratories.com"
-        self.config_bucket = config.CONFIG_BUCKET
-        self.config = config.getSetting(config.MAYOLINK_CREDS)
-        self.path = "/" + self.config_bucket + "/" + self.config
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
-        # For now I can not figure out how to use google cloud on dev_appserver, comment out the
-        # below and manually add self.username, etc.
-        with open_cloud_file(self.path) as file_path:
-            self.creds = json.load(file_path)
-        self.username = self.creds.get("username")
-        self.pw = self.creds.get("password")
-        self.account = self.creds.get("account")
+        self.username, self.pw, self.account = self._get_credentials()
+
+    @classmethod
+    def _get_credentials(cls):
+        credentials_bucket_name = config.CONFIG_BUCKET
+        credentials_file_name = config.getSetting(config.MAYOLINK_CREDS)
+
+        with open_cloud_file("/" + credentials_bucket_name + "/" + credentials_file_name) as file:
+            credentials = json.load(file)
+
+        return credentials.get('username'), credentials.get('password'), credentials.get('account')
 
     @auth_required(RDR_AND_PTC)
     def post(self, order):
