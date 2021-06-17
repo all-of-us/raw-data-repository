@@ -5,6 +5,7 @@ from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, B
     BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.genomics import (
@@ -308,6 +309,22 @@ class DataGenerator:
                     defaults[f'{questionnaire_field}Authored'] = datetime.now()
 
         return ParticipantSummary(**defaults)
+
+    def create_database_consent_file(self, **kwargs):
+        consent_file = self._consent_file_with_defaults(**kwargs)
+        self._commit_to_database(consent_file)
+        return consent_file
+
+    def _consent_file_with_defaults(self, **kwargs):
+        defaults = {
+            'file_exists': True
+        }
+
+        defaults.update(kwargs)
+        if defaults.get('participant_id') is None:
+            defaults['participant_id'] = self.create_database_participant().participantId
+
+        return ConsentFile(**defaults)
 
     def create_database_biobank_specimen(self, **kwargs):
         specimen = self._biobank_specimen_with_defaults(**kwargs)

@@ -1,4 +1,14 @@
 cron:
+- description: Validate the previous day's consent files
+  url: /offline/ValidateConsentFiles
+  schedule: every day 02:00
+  timezone: America/New_York
+  target: offline
+- description: Check for any corrections to invalid consent files
+  url: /offline/CorrectConsentFiles
+  schedule: 7, 14, 21, 28 of month 20:00
+  timezone: America/New_York
+  target: offline
 - description: Sync site bucket consent files
   url: /offline/SyncConsentFiles
   schedule: 1 of month 00:00

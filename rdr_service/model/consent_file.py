@@ -16,6 +16,7 @@ class ConsentType(messages.Enum):
 class ConsentSyncStatus(messages.Enum):
     NEEDS_CORRECTING = 1
     READY_FOR_SYNC = 2
+    OBSOLETE = 3
 
 
 class ConsentFile(Base):
