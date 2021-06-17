@@ -9,7 +9,7 @@ from rdr_service.code_constants import (
     CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_YES,
     EHR_CONSENT_EXPIRED_YES,
-    DVEHRSHARING_CONSENT_CODE_NO
+    DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE
 )
 from rdr_service.resource.constants import PDREnrollmentStatusEnum
 from rdr_service.resource.constants import ParticipantEventEnum, COHORT_1_CUTOFF, \
@@ -32,6 +32,8 @@ class EnrollmentStatusCalculator:
     status: PDREnrollmentStatusEnum = PDREnrollmentStatusEnum.Unset
     # events = None  # List of EnrollmentStatusEvent objects.
     _activity = None  # List of activity created from Participant generator.
+
+    cohort = None
 
     # First info object for each part used in calculating enrollment status.
     _signup = None
@@ -71,6 +73,9 @@ class EnrollmentStatusCalculator:
             physical_measurements = self.calc_physical_measurements(events)
             modules = self.calc_modules(events)
 
+            if not self.cohort:
+                self.cohort = cohort
+
             # Calculate enrollment status
             status = PDREnrollmentStatusEnum.Unset
             if signed_up:
@@ -81,11 +86,11 @@ class EnrollmentStatusCalculator:
                 status = PDREnrollmentStatusEnum.ParticipantPlusEHR
             if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
                     (modules and len(modules.values) >= 3) and \
-                    (cohort != ConsentCohortEnum.COHORT_3.name or gror_consented):
+                    (cohort != ConsentCohortEnum.COHORT_3 or gror_consented):
                 status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
             if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
                     physical_measurements and \
-                    (cohort != ConsentCohortEnum.COHORT_3.name or gror_consented):
+                    (cohort != ConsentCohortEnum.COHORT_3 or gror_consented):
                 status = PDREnrollmentStatusEnum.CoreParticipant
 
             # Set the permanent enrollment status value if needed. Enrollment status can go down
@@ -207,17 +212,23 @@ class EnrollmentStatusCalculator:
         """
         Determine if participant has consented to GROR.
         Criteria:
-          - GROR consented has been submitted.
+          - GROR consented has been submitted with a CheckDNA_Yes answer.
         :param events: List of events
         :return: EnrollmentStatusInfo object
         """
         info = EnrollmentStatusInfo()
         for ev in events:
             if ev.event == ParticipantEventEnum.GROR:
-                info.calculated = True
-                info.first_ts = ev.last_ts = ev.timestamp
-                info.values.append(ev)
-                break
+                # See if we need to reset the info object.
+                if ev.answer in [CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE]:
+                    info = EnrollmentStatusInfo()
+                    continue
+                # See if we should set the consent info.
+                if info.calculated is False and ev.answer == CONSENT_GROR_YES_CODE:
+                    info.calculated = True
+                    info.first_ts = ev.last_ts = ev.timestamp
+                    info.values.append(ev)
+
         return self.save_calc('_gror_consented', info)
 
     def calc_biobank_samples(self, events):
