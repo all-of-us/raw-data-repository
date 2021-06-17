@@ -100,8 +100,8 @@ class ConsentSyncController:
             # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
             for file in files:
                 file_path = os.path.join(current_path, file)
-                file_name = os.path.basename(file_path)
-                zip_file.write(file_path, arcname=file_name)
+                file_path_in_zip = file_path[len(directory_path):]
+                zip_file.write(file_path, arcname=file_path_in_zip)
 
     def _upload_zip_file(self, zip_file_path, bucket_name, org_name):
         file_name = os.path.basename(zip_file_path)
@@ -117,7 +117,10 @@ class ConsentSyncController:
                 'please sync consent files using the cloud environment'
             )
 
-        temp_file_destination = TEMP_CONSENTS_PATH + f'/{bucket_name}/{org_name}/{site_name}/P{file.participant_id}/'
+        file_name = os.path.basename(file.file_path)
+        temp_file_destination = (
+            TEMP_CONSENTS_PATH + f'/{bucket_name}/{org_name}/{site_name}/P{file.participant_id}/{file_name}'
+        )
         os.makedirs(os.path.dirname(temp_file_destination), exist_ok=True)
 
         self.storage_provider.download_blob(
