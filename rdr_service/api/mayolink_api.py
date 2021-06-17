@@ -11,18 +11,24 @@ from rdr_service.app_util import auth_required
 
 
 class MayoLinkApi:
-    def __init__(self):
+    def __init__(self, credentials_key='default'):
         self.namespace = "http://orders.mayomedicallaboratories.com"
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
-        self.username, self.pw, self.account = self._get_credentials()
+
+        self.username, self.pw, self.account = self._get_credentials(credentials_key=credentials_key)
 
     @classmethod
-    def _get_credentials(cls):
+    def _get_credentials(cls, credentials_key):
         credentials_bucket_name = config.CONFIG_BUCKET
         credentials_file_name = config.getSetting(config.MAYOLINK_CREDS)
-
         with open_cloud_file("/" + credentials_bucket_name + "/" + credentials_file_name) as file:
-            credentials = json.load(file)
+            credentials_json = json.load(file)
+            if credentials_key in credentials_json:
+                credentials = credentials_json[credentials_key]
+            else:
+                # If the key is not found, that likely means the file is still a legacy version
+                # (where the entire file was one set of credentials)
+                credentials = credentials_json
 
         return credentials.get('username'), credentials.get('password'), credentials.get('account')
 
