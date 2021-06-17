@@ -62,3 +62,21 @@ class MayolinkClientTest(BaseTestCase):
         self.assertEqual('legacy_user', mayolink_client.username)
         self.assertEqual('9283', mayolink_client.pw)
         self.assertEqual(7676, mayolink_client.account)
+
+    def test_empty_field_in_xml(self):
+        """Making sure an empty field gets sent in the xml"""
+        client = MayoLinkApi()
+        xml_output = client.__dict_to_mayo_xml__({
+            'order': {
+                'blank': None
+            }
+        })
+        self.assertEqual(
+            b'<orders xmlns="http://orders.mayomedicallaboratories.com">'
+            b'<order>'
+            b'<blank />'
+            b'<account>1122</account>'
+            b'</order>'
+            b'</orders>',
+            xml_output
+        )

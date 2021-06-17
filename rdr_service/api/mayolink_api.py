@@ -80,5 +80,5 @@ class MayoLinkApi:
                     for item in v:
                         self.create_xml_tree_from_dict(sub_element, item)
             return root
-        else:
+        elif dict_tree is not None:
             root.text = str(dict_tree)
