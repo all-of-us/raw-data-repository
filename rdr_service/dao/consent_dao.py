@@ -51,3 +51,9 @@ class ConsentDao(BaseDao):
             return session.query(ConsentFile).filter(
                 ConsentFile.participant_id.in_(participant_ids)
             ).all()
+
+    def get_files_ready_to_sync(self) -> List[ConsentFile]:
+        with self.session() as session:
+            return session.query(ConsentFile).filter(
+                ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC
+            ).all()

@@ -55,7 +55,7 @@ class ConsentSyncControllerTest(BaseTestCase):
         third_file = ConsentFile(file_path='/source_bucket/test/three.pdf', participant_id=self.bob_participant_id)
         self.consent_dao_mock.get_files_ready_to_sync.return_value = [first_file, second_file, third_file]
 
-        self.sync_controller.sync_files_for_config_orgs()
+        self.sync_controller.sync_ready_files()
         self.storage_provider_mock.copy_blob.assert_has_calls(
             calls=[
                 mock.call(source_path=first_file.file_path, destination_path=mock.ANY),
@@ -68,7 +68,7 @@ class ConsentSyncControllerTest(BaseTestCase):
     def test_file_destinations(self):
         """Test that consent files sync to the correct destinations based on participant data"""
 
-        self.sync_controller.sync_files_for_config_orgs()
+        self.sync_controller.sync_ready_files()
         self.storage_provider_mock.copy_blob.assert_has_calls(
             calls=[
                 mock.call(
@@ -105,7 +105,7 @@ class ConsentSyncControllerTest(BaseTestCase):
             }
         )
 
-        self.sync_controller.sync_files_for_config_orgs()
+        self.sync_controller.sync_ready_files()
         self.storage_provider_mock.copy_blob.assert_called_once_with(
             source_path=self.bob_file.file_path,
             destination_path=self._build_expected_dest_path(

@@ -17,6 +17,7 @@ class ConsentSyncStatus(messages.Enum):
     NEEDS_CORRECTING = 1
     READY_FOR_SYNC = 2
     OBSOLETE = 3
+    SYNC_COMPLETE = 4
 
 
 class ConsentFile(Base):
@@ -38,6 +39,8 @@ class ConsentFile(Base):
 
     file_upload_time = Column(UTCDateTime, nullable=True)
     file_path = Column(String(250), nullable=True)
+
+    sync_time = Column(UTCDateTime, nullable=True)
 
     other_errors = Column(String(200), nullable=True)
     sync_status = Column(Enum(ConsentSyncStatus))

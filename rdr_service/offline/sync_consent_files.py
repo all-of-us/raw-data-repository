@@ -19,7 +19,7 @@ from rdr_service import config
 from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -50,14 +50,14 @@ class ConsentSyncController:
         self.participant_dao = participant_dao
         self.storage_provider = storage_provider
 
-    def sync_files_for_config_orgs(self):
+    def sync_ready_files(self):
         file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync()
-        participant_orgs = self._build_participant_pairing_map(file_list)
-        all_orgs_consent_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+        pairing_info_map = self._build_participant_pairing_map(file_list)
+        consent_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
         for file in file_list:
-            pairing_info = participant_orgs[file.participant_id]
-            org_consent_config = all_orgs_consent_config[pairing_info.org_name]
+            pairing_info = pairing_info_map[file.participant_id]
+            org_consent_config = consent_config[pairing_info.org_name]
 
             if not org_consent_config['zip_consents']:
                 file_sync_func = self._copy_file_in_cloud
@@ -69,8 +69,11 @@ class ConsentSyncController:
                 org_name=pairing_info.org_name,
                 site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
             )
+            file.sync_time = datetime.utcnow()
+            file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
 
         self._zip_and_upload()
+        self.consent_dao.batch_update_consent_files(file_list)
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):
