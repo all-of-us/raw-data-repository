@@ -519,7 +519,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         for response_id_key in responses:
             fields = responses.get(response_id_key)
             if fields.get(CABOR_SIGNATURE_QUESTION_CODE, PMI_SKIP_CODE) != PMI_SKIP_CODE:
-                data['cabor_authored'] = fields.get('authored')
+                cabor_ts = fields.get('authored')
+                data['cabor_authored'] = parser.parse(cabor_ts) if cabor_ts and isinstance(cabor_ts, str) else cabor_ts
                 break
 
         # Record participant activity events
@@ -1092,17 +1093,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
-        try:
-            activity = summary['activity'] = sorted([r for r in summary['activity'] if r['timestamp']],
-                    key=lambda i: i['timestamp'])
-        except TypeError as e:
-            logging.error(f'Failed to sort activity for pid: {p_id}.')
-            logging.error(e)
-            activity = summary['activity']
+        # Test that all timestamps are datetime or None.
+        msg = None
+        for ev in summary['activity']:
+            if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
+                msg = f'Participant activity timestamp is invalid ({p_id}).'
+        if msg:
+            logging.error(msg)
 
+        # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
+        activity = summary['activity'] = \
+            sorted([r for r in summary['activity'] if r['timestamp']], key=lambda i: i['timestamp'])
         esc = EnrollmentStatusCalculator()
         esc.run(activity)
+
         # TODO: Replace data values from results after old calculation code has been removed.
         status = EnrollmentStatusV2.REGISTERED
         data = {
