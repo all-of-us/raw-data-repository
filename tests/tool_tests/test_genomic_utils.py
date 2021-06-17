@@ -82,7 +82,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.data_generator.create_database_genomic_file_processed(
             runId=1,
             startTime=clock.CLOCK.now(),
-            filePath=f'/{test_aw1}',
+            filePath=f'{test_aw1}',
             bucketName="test-bucket",
             fileName="test_GEN_sample_manifest.csv"
         )
@@ -91,7 +91,7 @@ class GenomicUtilsGeneralTest(GenomicUtilsTestBase):
         self.data_generator.create_database_genomic_file_processed(
             runId=2,
             startTime=clock.CLOCK.now(),
-            filePath=f'/{test_aw2}',
+            filePath=f'{test_aw2}',
             bucketName="test-bucket",
             fileName="test_GEN_data_manifest.csv"
         )
