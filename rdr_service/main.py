@@ -27,8 +27,6 @@ from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedRepor
 from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi
 from rdr_service.api.import_codebook_api import import_codebook
-from rdr_service.api.metric_sets_api import MetricSetsApi
-from rdr_service.api.metrics_api import MetricsApi
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
 from rdr_service.api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
@@ -42,7 +40,7 @@ from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireA
 from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
-from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
+from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
@@ -142,9 +140,6 @@ api.add_resource(
     methods=["GET", "POST", "PATCH"],
 )
 
-# TODO: remove commented metrics 1 endpoints after December 1 2020.
-#api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
-
 api.add_resource(
     ParticipantCountsOverTimeApi,
     API_PREFIX + "ParticipantCountsOverTime",
@@ -154,14 +149,6 @@ api.add_resource(
 
 # Returns fields in metrics configs. Used in dashboards.
 api.add_resource(MetricsFieldsApi, API_PREFIX + "MetricsFields", endpoint="metrics_fields", methods=["GET"])
-
-#api.add_resource(
-#    MetricSetsApi,
-#    API_PREFIX + "MetricSets",
-#    API_PREFIX + "MetricSets/<string:ms_id>/Metrics",
-#    endpoint="metric_sets",
-#    methods=["GET"],
-#)
 
 # Used by participant_counts_over_time
 api.add_resource(metrics_ehr_api.MetricsEhrApi, API_PREFIX + "MetricsEHR", endpoint="metrics_ehr", methods=["GET"])
@@ -309,6 +296,11 @@ api.add_resource(RedcapWorkbenchAuditApi,
                  API_PREFIX + 'workbench/audit/workspace/results',
                  endpoint='workbench.audit',
                  methods=['GET', 'POST'])
+
+api.add_resource(RedcapResearcherAuditApi,
+                 API_PREFIX + 'workbench/audit/researcher/snapshots',
+                 endpoint='researchers.audit',
+                 methods=['GET'])
 
 api.add_resource(GenomicPiiApi,
                  API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",

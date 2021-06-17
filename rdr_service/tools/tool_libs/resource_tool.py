@@ -24,9 +24,9 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_se
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
     bq_institutional_affiliations_update, bq_researcher_update
-from rdr_service.dao.bq_hpo_dao import bq_hpo_update
-from rdr_service.dao.bq_organization_dao import bq_organization_update
-from rdr_service.dao.bq_site_dao import bq_site_update
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
+from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
+from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import (
     BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
@@ -787,17 +787,30 @@ class SiteResourceClass(object):
             tables = [t for t in SITE_TABLES]
         else:
             tables = [self.args.table]
-        _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
-        _logger.info('  Rebuild Table(s)      : {0}'.format(
-            clr.fmt(', '.join([t for t in tables]))))
+
+        if self.args.id:
+            _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
+        else:
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+
+        _logger.info('  Rebuild Table(s)      : {0}'.format(clr.fmt(', '.join([t for t in tables]))))
 
         for table in tables:
             if table == 'hpo':
-                bq_hpo_update(self.gcp_env.project)
+                if self.args.id:
+                    bq_hpo_update_by_id(self.args.id, self.gcp_env.project)
+                else:
+                    bq_hpo_update(self.gcp_env.project)
             elif table == 'site':
-                bq_site_update(self.gcp_env.project)
+                if self.args.id:
+                    bq_site_update_by_id(self.args.id, self.gcp_env.project)
+                else:
+                    bq_site_update(self.gcp_env.project)
             elif table == 'organization':
-                bq_organization_update(self.gcp_env.project)
+                if self.args.id:
+                    bq_organization_update_by_id(self.gcp_env.project, self.gcp_env.project)
+                else:
+                    bq_organization_update(self.gcp_env.project)
             else:
                 _logger.warning(f'Unknown table {table}.  Skipping rebuild for {table}')
 
@@ -943,7 +956,7 @@ def run():
     # Rebuild hpo/site/organization tables.  Specify a single table name or all-tables
     site_parser = subparser.add_parser(
         "site-tables",
-        parents=[table_parser, all_tables_parser]
+        parents=[table_parser, all_tables_parser, id_parser]
     )
     update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
     site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'

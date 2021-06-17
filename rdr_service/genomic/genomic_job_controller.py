@@ -479,7 +479,7 @@ class GenomicJobController:
         path_map = {}
 
         for p in paths:
-            file_obj = self.file_processed_dao.get_max_file_processed_for_filepath(f'/{p}')
+            file_obj = self.file_processed_dao.get_max_file_processed_for_filepath(f'{p}')
 
             if not file_obj:
                 raise DataError(f"No genomic_file_processed record for {p}")
