@@ -79,6 +79,26 @@ class ConsentFileDaoTest(BaseTestCase):
             id_attribute='participantId'
         )
 
+    def test_ignoring_participants(self):
+        """Make sure test and ghost accounts are left out of consent validation"""
+        self._init_summary_with_consent_dates(
+            primary=datetime(2020, 4, 1),
+            participantId=self.data_generator.create_database_participant(isGhostId=True).participantId
+        )
+        self._init_summary_with_consent_dates(
+            primary=datetime(2020, 4, 1),
+            participantId=self.data_generator.create_database_participant(isTestParticipant=True).participantId
+        )
+        self._init_summary_with_consent_dates(
+            primary=datetime(2020, 4, 1),
+            email='one@example.com'
+        )
+
+        self.assertEqual(
+            [],
+            self.consent_dao.get_participants_with_consents_in_range(start_date=datetime(2020, 1, 1))
+        )
+
     def test_getting_files_to_correct(self):
         """Test that all the consent files that need correcting are loaded"""
         # Create files that are ready to sync
@@ -162,11 +182,12 @@ class ConsentFileDaoTest(BaseTestCase):
         for expected_summary in expected_list:
             self.assertIn(getattr(expected_summary, id_attribute), actual_id_list)
 
-    def _init_summary_with_consent_dates(self, primary, cabor=None, ehr=None, gror=None):
+    def _init_summary_with_consent_dates(self, primary, cabor=None, ehr=None, gror=None, **kwargs):
         return self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentFirstYesAuthored=primary,
             consentForCABoRAuthored=cabor,
             consentForElectronicHealthRecordsAuthored=ehr,
             consentForGenomicsRORAuthored=gror,
-            participantOrigin='vibrent'
+            participantOrigin='vibrent',
+            **kwargs
         )
