@@ -263,6 +263,15 @@ class ParticipantSchema(Schema):
     test_participant = fields.Boolean()
 
     sign_up_time = fields.DateTime()
+    enrl_status = fields.String(validate=validate.Length(max=40))
+    enrl_status_id = fields.Int32()
+    enrl_registered_ts = fields.DateTime()
+    enrl_participant_ts = fields.DateTime()
+    enrl_participant_plus_ehr_ts = fields.DateTime()
+    enrl_core_participant_minus_pm_ts = fields.DateTime()
+    enrl_core_participant_ts = fields.DateTime()
+
+    # TODO: Depreciate fields here that are duplicated by the new enrollment fields above.
     enrollment_status = fields.EnumString(enum=EnrollmentStatusV2)
     enrollment_status_id = fields.EnumInteger(enum=EnrollmentStatusV2)
     enrollment_member = fields.DateTime()

@@ -326,6 +326,17 @@ class BQParticipantSummarySchema(BQSchema):
     # end of field list if enabled later
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
+    # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
+    #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
+    #       completely.
+    enrl_registered_ts = BQField('enrl_registered_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_ts = BQField('enrl_participant_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_plus_ehr_ts = BQField('enrl_participant_plus_ehr_ts', BQFieldTypeEnum.DATETIME,
+                                           BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_minus_pm_ts = BQField('enrl_core_participant_minus_pm_ts', BQFieldTypeEnum.DATETIME,
+                                                BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_ts = BQField('enrl_core_participant_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
 
 class BQParticipantSummary(BQTable):
     """ Participant Summary BigQuery Table """

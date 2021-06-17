@@ -1,0 +1,293 @@
+#
+# This file is subject to the terms and conditions defined in the
+# file 'LICENSE', which is part of this source code package.
+#
+import datetime
+
+from rdr_service.code_constants import (
+    CONSENT_PERMISSION_YES_CODE,
+    CONSENT_PERMISSION_NO_CODE,
+    DVEHRSHARING_CONSENT_CODE_YES,
+    EHR_CONSENT_EXPIRED_YES,
+    DVEHRSHARING_CONSENT_CODE_NO
+)
+from rdr_service.resource.constants import PDREnrollmentStatusEnum
+from rdr_service.resource.constants import ParticipantEventEnum, COHORT_1_CUTOFF, \
+    COHORT_2_CUTOFF, ConsentCohortEnum
+from rdr_service.services.system_utils import JSONObject
+
+
+class EnrollmentStatusInfo:
+    """ Information about Enrollment Status events """
+    calculated = False  # False = No, True = Yes
+    first_ts = None  # First timestamp seen.
+    last_ts = None  # Last timestamp seen.
+    values: list = list()  # List of related events.
+
+
+class EnrollmentStatusCalculator:
+    """
+    Calculate participant enrollment status.
+    """
+    status: PDREnrollmentStatusEnum = PDREnrollmentStatusEnum.Unset
+    # events = None  # List of EnrollmentStatusEvent objects.
+    _activity = None  # List of activity created from Participant generator.
+
+    # First info object for each part used in calculating enrollment status.
+    _signup = None
+    _consented = None
+    _ehr_consented = None
+    _gror_consented = None
+    _biobank_samples = None
+    _physical_measurements = None
+    _modules = None
+
+    # Timestamps for when each status was achieved, these are set in the self.save_calc() method.
+    registered_ts = None
+    participant_ts = None
+    participant_plus_ehr_ts = None
+    core_participant_minus_pm_ts = None
+    core_participant_ts = None
+
+    def run(self, activity: list):
+        """
+        :param activity: A list of activity dictionary objects created by the ParticipantSummaryGenerator.
+        """
+        self._activity = [JSONObject(i) for i in activity]
+
+        # Work through activity by slicing to determine current enrollment status.
+        # This method allows us to iterate once through the data and still catch participants
+        # that might have been considered a Core Participant at one point, but would not by
+        # looking at their current state.
+        for x in range(1, len(self._activity)):
+            events = self._activity[0:x]
+
+            # Get each datum needed for calculating the enrollment status.
+            signed_up = self.calc_signup(events)
+            consented, cohort = self.calc_consent(events)
+            ehr_consented = self.calc_ehr_consent(events)
+            gror_consented = self.calc_gror_consent(events)
+            biobank_samples = self.calc_biobank_samples(events)
+            physical_measurements = self.calc_physical_measurements(events)
+            modules = self.calc_modules(events)
+
+            # Calculate enrollment status
+            status = PDREnrollmentStatusEnum.Unset
+            if signed_up:
+                status = PDREnrollmentStatusEnum.Registered
+            if status == PDREnrollmentStatusEnum.Registered and consented:
+                status = PDREnrollmentStatusEnum.Participant
+            if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
+                status = PDREnrollmentStatusEnum.ParticipantPlusEHR
+            if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
+                    (modules and len(modules.values) >= 3) and \
+                    (cohort != ConsentCohortEnum.COHORT_3.name or gror_consented):
+                status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
+            if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
+                    physical_measurements and \
+                    (cohort != ConsentCohortEnum.COHORT_3.name or gror_consented):
+                status = PDREnrollmentStatusEnum.CoreParticipant
+
+            # Set the permanent enrollment status value if needed. Enrollment status can go down
+            # unless the enrollment status has reached 'CoreParticipant'.
+            # TODO: If participant reaches CoreParticipantMinusPM status, can the status level go back down?
+            if self.status != PDREnrollmentStatusEnum.CoreParticipant:
+                self.status = status
+
+            # Save the timestamp when each status was reached.
+            self.save_status_timestamp(status)
+
+    def save_status_timestamp(self, status):
+        """
+        Save the status timestamp when we first see that status achieved.
+        :param status: Current calculated enrollment status.
+        """
+        # Set the first timestamp for each status the participant reaches.
+        if status == PDREnrollmentStatusEnum.Registered and not self.registered_ts:
+            self.registered_ts = self._signup.first_ts
+        if status == PDREnrollmentStatusEnum.Participant and not self.participant_ts:
+            self.participant_ts = self._consented.first_ts
+        if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and not self.participant_plus_ehr_ts:
+            self.participant_plus_ehr_ts = self._ehr_consented.first_ts
+        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_ts:
+            self.core_participant_minus_pm_ts = max([self._biobank_samples.first_ts, self._modules.last_ts])
+        if status == PDREnrollmentStatusEnum.CoreParticipant and not self.core_participant_ts:
+            self.core_participant_ts = \
+                max([self._biobank_samples.first_ts, self._modules.last_ts, self._physical_measurements.first_ts])
+            # If we jumped over core minus pm status, just make it the same timestamp as core.
+            if not self.core_participant_minus_pm_ts:
+                self.core_participant_minus_pm_ts = self.core_participant_ts
+
+    def save_calc(self, key, info):
+        """
+        Save first calculated info object for the given key.
+        :param key: Property name.
+        :param info: EnrollmentStatusInfo object
+        :return: EnrollmentStatusInfo object
+        """
+        if info.calculated is False:
+            return None
+
+        obj = getattr(self, key)
+        if not obj or obj.calculated is False:
+            setattr(self, key, info)
+        return info
+
+    def calc_signup(self, events):
+        """
+        Determine when participant signed up.
+        Criteria:
+          - Establish participant sign up timestamp.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if ev.event == ParticipantEventEnum.SignupTime:
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.values.append(ev)
+                break
+        return self.save_calc('_signup', info)
+
+    def calc_consent(self, events):
+        """
+        Determine if participant has consented.
+        Criteria:
+          - ConsentPII has been submitted.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if ev.event == ParticipantEventEnum.ConsentPII:
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.values.append(ev)
+                break
+
+        # Calculate consent cohort group
+        cohort = None
+        if info.calculated is True:
+            if info.first_ts < COHORT_1_CUTOFF:
+                cohort = ConsentCohortEnum.COHORT_1
+            elif COHORT_1_CUTOFF <= info.first_ts <= COHORT_2_CUTOFF:
+                cohort = ConsentCohortEnum.COHORT_2
+            else:
+                cohort = ConsentCohortEnum.COHORT_3
+
+        return self.save_calc('_consented', info), cohort
+
+    def calc_ehr_consent(self, events):
+        """
+        Determine if participant has an EHR Consent.
+        Criteria:
+          - A positive EHR or DVEHR Consent submission has been received.
+          - Use first Yes Consent submission after most recent No/Expired consent.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if ev.event == ParticipantEventEnum.EHRConsentPII or ev.event == ParticipantEventEnum.DVEHRSharing:
+                # See if we need to reset the info object.
+                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]:
+                    info = EnrollmentStatusInfo()
+                    continue
+                # See if we should set the consent info.
+                if info.calculated is False and \
+                        ev.answer in [CONSENT_PERMISSION_YES_CODE, DVEHRSHARING_CONSENT_CODE_YES]:
+                    info.calculated = True
+                    info.first_ts = ev.last_ts = ev.timestamp
+                    info.values.append(ev)
+
+        return self.save_calc('_ehr_consented', info)
+
+    def calc_gror_consent(self, events):
+        """
+        Determine if participant has consented to GROR.
+        Criteria:
+          - GROR consented has been submitted.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if ev.event == ParticipantEventEnum.GROR:
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.values.append(ev)
+                break
+        return self.save_calc('_gror_consented', info)
+
+    def calc_biobank_samples(self, events):
+        """
+        Determine if biobank has confirmed DNA test for participant.
+        Criteria:
+          - First time DNA tests have been confirmed by the BioBank.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if ev.event == ParticipantEventEnum.BiobankConfirmed and ev.dna_tests > 0:
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.values.append(ev)
+                break
+
+        return self.save_calc('_biobank_samples', info)
+
+    def calc_physical_measurements(self, events):
+        """
+        Determine if biobank has confirmed DNA test for participant.
+        Criteria:
+          - Physical Measurements have been received and finalized.
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if info.calculated is False and ev.event == ParticipantEventEnum.PhysicalMeasurements and \
+                    ev.finalized is not None:
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.values.append(ev)
+                break
+
+        return self.save_calc('_physical_measurements', info)
+
+    def calc_modules(self, events):
+        """
+        Determine if biobank has confirmed DNA test for participant.
+        Criteria:
+          - First TheBasics, Lifestyle and OverallHealth submissions
+        :param events: List of events
+        :return: EnrollmentStatusInfo object
+        """
+        info = EnrollmentStatusInfo()
+        info.first_ts = datetime.datetime.max
+        info.last_ts = datetime.datetime.min
+        tb = None  # TheBasics event
+        li = None  # Lifestyle event
+        oh = None  # OverallHealth event
+        for ev in events:
+            match = None
+            if not tb and ev.event == ParticipantEventEnum.TheBasics:
+                tb = match = ev
+            elif not li and ev.event == ParticipantEventEnum.Lifestyle:
+                li = match = ev
+            elif not oh and ev.event == ParticipantEventEnum.OverallHealth:
+                oh = match = ev
+
+            if match:
+                if match.timestamp < info.first_ts:
+                    info.first_ts = match.timestamp
+                if match.timestamp > info.last_ts:
+                    info.last_ts = match.timestamp
+
+        info.values = [e for e in [tb, li, oh] if e is not None]
+        if info.values:
+            info.calculated = True
+
+        return self.save_calc('_modules', info)
