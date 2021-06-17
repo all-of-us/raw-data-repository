@@ -135,10 +135,14 @@ class MailKitOrderDaoTestBase(BaseTestCase):
 
         mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
         mayo_order_payload = mayo_order_payload['order']
-        mayo_payload_fields = ['collected', 'account', 'patient', 'physician', 'report_notes', 'tests', 'client_passthrough_fields','comments']
 
-        self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], version_two_barcode)
-        self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
+        mayo_request_test_data = mayo_order_payload['tests'][0]['test']
+        self.assertEqual(mayo_request_test_data['client_passthrough_fields']['field1'], version_two_barcode)
+        self.assertEqual(
+            ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests','comments'],
+            list(mayo_order_payload.keys())
+        )
+        self.assertIsNone(mayo_order_payload['number'])
 
     def test_biobank_order_finalized_and_identifier_created(self):
         self.send_post(

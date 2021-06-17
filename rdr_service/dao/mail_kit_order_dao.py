@@ -116,11 +116,11 @@ class MailKitOrderDao(UpdatableDao):
         }
 
         if barcode and len(barcode) > 14:
-            del order["order"]["number"]
+            order["order"]["number"] = None
             client_fields = {"client_passthrough_fields": {
                 "field1": barcode
             }}
-            order['order'].update(client_fields)
+            order['order']['tests'][0]['test'].update(client_fields)
 
         order['order']['comments'] = "Salivary Kit Order, direct from participant"
         return order
