@@ -43,34 +43,35 @@ class ParticipantPairingInfo:
 
 
 class ConsentSyncController:
-    """Syncs any designated consent files that are ready for syncing"""
-
     def __init__(self, consent_dao, participant_dao: ParticipantDao, storage_provider: GoogleCloudStorageProvider):
         self.consent_dao = consent_dao
         self.participant_dao = participant_dao
         self.storage_provider = storage_provider
 
     def sync_ready_files(self):
+        """Syncs any validated consent files that are ready for syncing"""
+
         file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync()
         pairing_info_map = self._build_participant_pairing_map(file_list)
-        consent_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+        sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
 
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)
 
-            if pairing_info:
-                org_consent_config = consent_config[pairing_info.org_name]
+            if pairing_info:  # Ignore participants that aren't paired to an organization
+                org_consent_config = sync_config[pairing_info.org_name]
 
-                if not org_consent_config['zip_consents']:
-                    file_sync_func = self._copy_file_in_cloud
-                else:
+                if org_consent_config['zip_consents']:
                     file_sync_func = self._download_file_for_zip
+                else:
+                    file_sync_func = self._copy_file_in_cloud
                 file_sync_func(
                     file=file,
                     bucket_name=org_consent_config['bucket'],
                     org_name=pairing_info.org_name,
                     site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
                 )
+
                 file.sync_time = datetime.utcnow()
                 file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
 
@@ -79,6 +80,7 @@ class ConsentSyncController:
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):
+            # The directory wouldn't exist if there were no files downloaded that need to be zipped
             return
 
         logging.info("zipping and uploading consent files...")
@@ -152,10 +154,10 @@ class ConsentSyncController:
         and the google group name for their site
         """
         participant_ids = {file.participant_id for file in files}
-        participant_org_rows = self.participant_dao.get_org_and_site_for_ids(participant_ids)
+        participant_pairing_data = self.participant_dao.get_org_and_site_for_ids(participant_ids)
         return {
             participant_id: ParticipantPairingInfo(org_name=org_name, site_name=site_name)
-            for participant_id, org_name, site_name in participant_org_rows
+            for participant_id, org_name, site_name in participant_pairing_data
         }
 
 
