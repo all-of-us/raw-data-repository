@@ -1093,8 +1093,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
-        activity = summary['activity'] = sorted([r for r in summary['activity'] if r['timestamp']],
-                key=lambda i: i['timestamp'])
+        try:
+            activity = summary['activity'] = sorted([r for r in summary['activity'] if r['timestamp']],
+                    key=lambda i: i['timestamp'])
+        except TypeError as e:
+            logging.error(f'Failed to sort activity for pid: {p_id}.')
+            logging.error(e)
+            activity = summary['activity']
+
         esc = EnrollmentStatusCalculator()
         esc.run(activity)
         # TODO: Replace data values from results after old calculation code has been removed.
