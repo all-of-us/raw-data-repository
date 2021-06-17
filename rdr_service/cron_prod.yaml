@@ -14,11 +14,6 @@ cron:
   schedule: 1 of month 00:00
   timezone: America/New_York
   target: offline
-- description: Sync VA consent files
-  url: /offline/SyncVaConsentFiles
-  schedule: 1 of month 00:30
-  timezone: America/New_York
-  target: offline
 - description: Update EHR Status for Organizations from curation data
   url: /offline/UpdateEhrStatusOrganization
   schedule: every day 01:00

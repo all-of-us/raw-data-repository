@@ -19,6 +19,7 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
@@ -36,6 +37,7 @@ from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
+from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.services.consent.validation import ConsentValidationController
 from rdr_service.services.data_quality import DataQualityChecker
@@ -240,9 +242,13 @@ def validate_consent_files():
 
 
 @app_util.auth_required_cron
-@_alert_on_exceptions
 def run_sync_consent_files():
-    sync_consent_files.do_sync_recent_consent_files()
+    controller = ConsentSyncController(
+        consent_dao=ConsentDao(),
+        participant_dao=ParticipantDao(),
+        storage_provider=GoogleCloudStorageProvider()
+    )
+    controller.sync_ready_files()
     return '{"success": "true"}'
 
 
@@ -258,13 +264,6 @@ def manually_trigger_consent_sync():
             parameters[field_name] = request_json.get(field_name)
 
     sync_consent_files.do_sync_consent_files(zip_files=request.json.get('zip_files'), **parameters)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def run_va_sync_consent_files():
-    sync_consent_files.do_sync_recent_consent_files(all_va=True, zip_files=True)
     return '{"success": "true"}'
 
 
@@ -667,13 +666,6 @@ def _build_pipeline_app():
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files,
-        methods=["GET"]
-    )
-
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "SyncVaConsentFiles",
-        endpoint="sync_va_consent_files",
-        view_func=run_va_sync_consent_files,
         methods=["GET"]
     )
 
