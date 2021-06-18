@@ -183,14 +183,11 @@ class BiobankOrderSchema(Schema):
     # PDR-243:  Including calculated OrderStatus (UNSET/FINALIZED) and finalized time analogous to the RDR
     # participant_summary.biospecimen_* fields that are based on non-cancelled orders.
     finalized_time = fields.DateTime()
-    finalized_status = fields.String(validate=validate.Length(max=25))
-    finalized_status_id = fields.Int32()
+    finalized_status = fields.EnumString(enum=OrderStatus)
+    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
     samples = fields.Nested(BiobankSampleSchema, many=True)
     tests_ordered = fields.Int32()
     tests_stored = fields.Int32()
-    finalized_time = fields.DateTime()
-    finalized_status = fields.EnumString(enum=OrderStatus)
-    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
 
     class Meta:
         schema_id = SchemaID.participant_biobank_orders

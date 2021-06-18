@@ -952,9 +952,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             stored_count = 0
             # Count the number of DNA and Baseline tests in this order.
             dna_tests = 0
-            dna_tests_confirmed = 0
             baseline_tests = 0
-            baseline_tests_confirmed = 0
+
             for ordered_sample in bos_results:
                 # This will look for a matching stored sample based on matching the biobank order id and test
                 # to what's in the ordered sample record
@@ -966,13 +965,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for test in bbo_samples:
                 if test['dna_test'] == 1:
                     dna_tests += 1
-                    if test['confirmed']:
-                        dna_tests_confirmed += 1
                 # PDR-134:  Add baseline tests counts
                 elif test['baseline_test'] == 1:
                     baseline_tests += 1
-                    if test['confirmed']:
-                        baseline_tests_confirmed += 1
 
             # PDR-243:  calculate an UNSET or FINALIZED OrderStatus to include with the biobank order data.  Aligns
             # with how RDR summarizes biospecimen details in participant_summary.biospecimen_* fields.  Intended to
@@ -1003,25 +998,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'tests_stored': stored_count,
                 'samples': bbo_samples,
                 'isolate_dna': dna_tests,
-                'isolate_dna_confirmed': dna_tests_confirmed,
+                'isolate_dna_confirmed': 0,  # Fill in below.
                 'baseline_tests': baseline_tests,
-                'baseline_tests_confirmed': baseline_tests_confirmed,
+                'baseline_tests_confirmed': 0  # Fill in below.
             }
             orders.append(order)
-            # Determine activity id for order
-            act_key = ParticipantEventEnum.BiobankOrder
-            act_ts = row.created
-            if row.finalized_time:
-                act_key = ParticipantEventEnum.BiobankShipped
-                act_ts = row.finalized_time
-            if dna_tests_confirmed:
-                tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
-                if tmp_ts:
-                    act_key = ParticipantEventEnum.BiobankConfirmed
-                    act_ts = tmp_ts
-
-            activity.append(_act(act_ts, ActivityGroupEnum.Biobank, act_key,
-                                 **{'dna_tests': dna_tests_confirmed, 'basline_tests': baseline_tests_confirmed}))
 
         # Add any "orderless" stored samples for this participant.  They will all be associated with a
         # pseudo order with an order id of 'UNSET'
@@ -1033,15 +1014,46 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     orderless_stored_samples.append(sr)
 
             order = {
+                'finalized_time': None,
                 'biobank_order_id': 'UNSET',
                 'tests_stored': len(orderless_stored_samples),
-                'samples': orderless_stored_samples
+                'samples': orderless_stored_samples,
+                'isolate_dna': sum([r['dna_test'] for r in orderless_stored_samples]),
+                'isolate_dna_confirmed': 0,  # Fill in below.
+                'baseline_test': sum([r['baseline_test'] for r in orderless_stored_samples]),
+                'baseline_tests_confirmed': 0  # Fill in below.
             }
             orders.append(order)
             # TODO: If we don't log activity here, does that affect anyone's enrollment status?
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
+
+            # Calculate confirmed tests and save activity events.
+            for order in orders:
+                act_key = ParticipantEventEnum.BiobankOrder
+                act_ts = order['finalized_time']
+                if act_ts:
+                    act_key = ParticipantEventEnum.BiobankShipped
+
+                if order['samples']:
+                    order['baseline_tests_confirmed'] = \
+                        sum([r['baseline_test'] for r in order['samples'] if r['confirmed'] is not None])
+                    order['isolate_dna_confirmed'] = \
+                        sum([r['dna_test'] for r in order['samples'] if r['confirmed'] is not None])
+                    # Find minimum confirmed date of DNA tests if we have any.
+                    if order['isolate_dna']:
+                        try:
+                            tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
+                            act_key = ParticipantEventEnum.BiobankConfirmed
+                            act_ts = tmp_ts
+                        except ValueError:  # No confirmed timestamps in list.
+                            pass
+
+                activity.append(_act(act_ts, ActivityGroupEnum.Biobank, act_key,
+                    **{'dna_tests': order['isolate_dna_confirmed'],
+                       'basline_tests': order['baseline_tests_confirmed']}))
+
             data['activity'] = activity  # Record participant activity events
 
         return data
