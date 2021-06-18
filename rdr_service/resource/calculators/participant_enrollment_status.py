@@ -60,7 +60,7 @@ class EnrollmentStatusCalculator:
         # This method allows us to iterate once through the data and still catch participants
         # that might have been considered a Core Participant at one point, but would not by
         # looking at their current state.
-        for x in range(1, len(self.activity)):
+        for x in range(1, len(self.activity)+1):
             events = self.activity[0:x]
 
             # Get each datum needed for calculating the enrollment status.

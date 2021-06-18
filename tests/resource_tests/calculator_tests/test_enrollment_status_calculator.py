@@ -167,7 +167,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_participant(self):
         """ Test that we only reach Participant status """
-        self.esc.run(BASIC_ACTIVITY[0:4])
+        self.esc.run(BASIC_ACTIVITY[0:3])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Participant)
         self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_ts, datetime(2018, 3, 6, 20, 35, 12))
@@ -178,7 +178,11 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_registered(self):
         """ Test that we only reach Registered status """
-        self.esc.run(BASIC_ACTIVITY[0:3])
+        activity = [
+            {'timestamp': datetime(2018, 3, 6, 20, 20, 57), 'group': 'Profile', 'group_id': 1,
+             'event': p_event.SignupTime}
+        ]
+        self.esc.run(activity)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Registered)
         self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_ts, None)
