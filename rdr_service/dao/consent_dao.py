@@ -12,7 +12,7 @@ class ConsentDao(BaseDao):
     def __init__(self):
         super(ConsentDao, self).__init__(ConsentFile)
 
-    def get_participants_with_consents_in_range(self, start_date, end_date=None) -> List[ParticipantSummary]:
+    def get_participants_with_consents_in_range(self, start_date=None, end_date=None) -> List[ParticipantSummary]:
         with self.session() as session:
             query = session.query(
                 ParticipantSummary
@@ -26,26 +26,28 @@ class ConsentDao(BaseDao):
                 or_(
                     ParticipantSummary.email.is_(None),
                     ParticipantSummary.email.notlike('%@example.com')
-                )
+                ),
+                Participant.hpoId == 15
             )
-            if end_date is None:
-                query = query.filter(
-                    or_(
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored >= start_date,
-                        ParticipantSummary.consentForCABoRAuthored >= start_date,
-                        ParticipantSummary.consentForElectronicHealthRecordsAuthored >= start_date,
-                        ParticipantSummary.consentForGenomicsRORAuthored >= start_date
+            if start_date is not None:
+                if end_date is None:
+                    query = query.filter(
+                        or_(
+                            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored >= start_date,
+                            ParticipantSummary.consentForCABoRAuthored >= start_date,
+                            ParticipantSummary.consentForElectronicHealthRecordsAuthored >= start_date,
+                            ParticipantSummary.consentForGenomicsRORAuthored >= start_date
+                        )
                     )
-                )
-            else:
-                query = query.filter(
-                    or_(
-                        ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.between(start_date, end_date),
-                        ParticipantSummary.consentForCABoRAuthored.between(start_date, end_date),
-                        ParticipantSummary.consentForElectronicHealthRecordsAuthored.between(start_date, end_date),
-                        ParticipantSummary.consentForGenomicsRORAuthored.between(start_date, end_date)
+                else:
+                    query = query.filter(
+                        or_(
+                            ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.between(start_date, end_date),
+                            ParticipantSummary.consentForCABoRAuthored.between(start_date, end_date),
+                            ParticipantSummary.consentForElectronicHealthRecordsAuthored.between(start_date, end_date),
+                            ParticipantSummary.consentForGenomicsRORAuthored.between(start_date, end_date)
+                        )
                     )
-                )
             summaries = query.all()
             return summaries
 

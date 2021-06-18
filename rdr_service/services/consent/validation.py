@@ -12,6 +12,8 @@ from rdr_service.participant_enums import QuestionnaireStatus
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
+import csv
+
 
 class ConsentValidationController:
     def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
@@ -67,62 +69,69 @@ class ConsentValidationController:
 
             self.consent_dao.batch_update_consent_files(validation_updates)
 
-    def validate_recent_uploads(self, min_consent_date):
+    def validate_recent_uploads(self):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
         validation_results = []
         validated_participant_ids = []
-        for summary in self.consent_dao.get_participants_with_consents_in_range(start_date=min_consent_date):
-            validated_participant_ids.append(summary.participantId)
-            validator = self._build_validator(summary)
 
-            if self._has_new_consent(
-                consent_status=summary.consentForStudyEnrollment,
-                authored=summary.consentForStudyEnrollmentFirstYesAuthored,
-                min_authored=min_consent_date
-            ):
-                validation_results.extend(self._process_validation_results(validator.get_primary_validation_results()))
-            if self._has_new_consent(
-                consent_status=summary.consentForCABoR,
-                authored=summary.consentForCABoRAuthored,
-                min_authored=min_consent_date
-            ):
-                validation_results.extend(self._process_validation_results(validator.get_cabor_validation_results()))
-            if self._has_new_consent(
-                consent_status=summary.consentForElectronicHealthRecords,
-                authored=summary.consentForElectronicHealthRecordsAuthored,
-                min_authored=min_consent_date
-            ):
-                validation_results.extend(self._process_validation_results(validator.get_ehr_validation_results()))
-            if self._has_new_consent(
-                consent_status=summary.consentForGenomicsROR,
-                authored=summary.consentForGenomicsRORAuthored,
-                min_authored=min_consent_date
-            ):
-                validation_results.extend(self._process_validation_results(validator.get_gror_validation_results()))
+        with open('output.csv', 'w') as file:
+            csv_file = csv.writer(file)
+            csv_file.writerow(['participant_id', 'type', 'sync_status', 'file_exists',
+                               'signature', 'signing_date', 'expected_sign_date',
+                               'file_upload_time', 'file_path', 'other_errors'])
 
-        results_to_store = []
-        previous_results = self.consent_dao.get_validation_results_for_participants(
-            participant_ids=validated_participant_ids
-        )
-        for possible_new_result in validation_results:
-            if not any(
-                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
-            ):
-                results_to_store.append(possible_new_result)
+            for summary in self.consent_dao.get_participants_with_consents_in_range():
+                print(f'checking participant {summary.participantId}')
+                validated_participant_ids.append(summary.participantId)
+                validator = self._build_validator(summary)
 
-        self.consent_dao.batch_update_consent_files(results_to_store)
+                if self._has_new_consent(
+                    consent_status=summary.consentForStudyEnrollment
+                ):
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_primary_validation_results())
+                    )
+                if self._has_new_consent(
+                    consent_status=summary.consentForCABoR
+                ):
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_cabor_validation_results()))
+                if self._has_new_consent(
+                    consent_status=summary.consentForElectronicHealthRecords
+                ):
+                    validation_results.extend(self._process_validation_results(validator.get_ehr_validation_results()))
+                if self._has_new_consent(
+                    consent_status=summary.consentForGenomicsROR
+                ):
+                    validation_results.extend(self._process_validation_results(validator.get_gror_validation_results()))
+
+                csv_file.writerows(validation_results)
+                validation_results = []
+
+        # results_to_store = []
+        # previous_results = self.consent_dao.get_validation_results_for_participants(
+        #     participant_ids=validated_participant_ids
+        # )
+        # for possible_new_result in validation_results:
+        #     if not any(
+        #         [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
+        #     ):
+        #         results_to_store.append(possible_new_result)
+        #
+        # self.consent_dao.batch_update_consent_files(results_to_store)
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
-        ready_file = cls._find_file_ready_for_sync(results)
-        if ready_file:
-            return [ready_file]
-        else:
-            return results
+        return [
+            [file.participant_id, file.type, file.sync_status, file.file_exists,
+             '<image>' if file.is_signature_image else file.signature_str, file.signing_date, file.expected_sign_date,
+             file.file_upload_time, file.file_path, file.other_errors]
+            for file in results
+        ]
 
     @classmethod
-    def _has_new_consent(cls, consent_status, authored, min_authored):
-        return consent_status == QuestionnaireStatus.SUBMITTED and authored > min_authored
+    def _has_new_consent(cls, consent_status):
+        return consent_status == QuestionnaireStatus.SUBMITTED
 
     def _build_validator(self, participant_summary: ParticipantSummary) -> 'ConsentValidator':
         consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
