@@ -59,8 +59,6 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         data = list()
         # Make a deep copy so we don't mess with the BASIC_ACTIVITY timestamp values.
         act_ = copy.deepcopy(activity)
-        # Sort values by timestamp
-        act_ = sorted([r for r in act_ if r['timestamp']], key=lambda i: i['timestamp'])
         for ev in act_:
             ev['timestamp'] = ev['timestamp'] + timedelta(days=days)
             data.append(ev)
@@ -103,7 +101,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
              'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_No',
              'answer_id': 767},
         )
-        # Shift and sort the activity and then run the calculation.
+        # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
         self.esc.run(activity)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
@@ -118,7 +116,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
              'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_Yes',
              'answer_id': 767},
         )
-        # Shift and sort the activity and then run the calculation.
+        # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
         self.esc.run(activity)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
@@ -138,7 +136,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
              'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_No',
              'answer_id': 767},
         )
-        # Shift and sort the activity and then run the calculation.
+        # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
         self.esc.run(activity)
         # We should only reach ParticipantPlusEHR status with a Yes and then a No GROR consent.

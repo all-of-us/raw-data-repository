@@ -31,7 +31,7 @@ class EnrollmentStatusCalculator:
     """
     status: PDREnrollmentStatusEnum = PDREnrollmentStatusEnum.Unset
     # events = None  # List of EnrollmentStatusEvent objects.
-    _activity = None  # List of activity created from Participant generator.
+    activity = None  # List of activity created from Participant generator.
 
     cohort = None
 
@@ -55,14 +55,13 @@ class EnrollmentStatusCalculator:
         """
         :param activity: A list of activity dictionary objects created by the ParticipantSummaryGenerator.
         """
-        self._activity = [JSONObject(i) for i in activity]
-
+        self.activity = sorted([JSONObject(r) for r in activity if r['timestamp']], key=lambda i: i.timestamp)
         # Work through activity by slicing to determine current enrollment status.
         # This method allows us to iterate once through the data and still catch participants
         # that might have been considered a Core Participant at one point, but would not by
         # looking at their current state.
-        for x in range(1, len(self._activity)):
-            events = self._activity[0:x]
+        for x in range(1, len(self.activity)):
+            events = self.activity[0:x]
 
             # Get each datum needed for calculating the enrollment status.
             signed_up = self.calc_signup(events)

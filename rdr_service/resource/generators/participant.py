@@ -197,13 +197,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
-            # Filter empty timestamps and sort by timestamp
-            summary['activity'] = sorted(
-                [r for r in summary['activity'] if r['timestamp']],
-                key=lambda i: i['timestamp'])
-
+            summary['activity'] = self.validate_activity_timestamps(summary['activity'])
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
-
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
@@ -241,6 +236,27 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
         return None
+
+    @staticmethod
+    def validate_activity_timestamps(activity, p_id=None):
+        """
+        Validate the timestamps in a list of activity events.
+        :param activity: List of activity events.
+        :param p_id: Participant ID
+        :return:
+        """
+        # Test that all timestamps are datetime or None.
+        msg = None
+        for ev in activity:
+            if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
+                try:
+                    ev['timestamp'] = parser.parse(ev['timestamp'])
+                except ParserError:
+                    msg = f'Participant activity timestamp is invalid for P{p_id}.'
+                    ev['timestamp'] = None
+        if msg:
+            logging.error(msg)
+        return activity
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -1093,17 +1109,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        # Test that all timestamps are datetime or None.
-        msg = None
-        for ev in summary['activity']:
-            if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
-                msg = f'Participant activity timestamp is invalid ({p_id}).'
-        if msg:
-            logging.error(msg)
-
+        # Verify activity timestamps are correct.
+        activity = self.validate_activity_timestamps(summary['activity'], p_id)
         # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
-        activity = summary['activity'] = \
-            sorted([r for r in summary['activity'] if r['timestamp']], key=lambda i: i['timestamp'])
         esc = EnrollmentStatusCalculator()
         esc.run(activity)
 
