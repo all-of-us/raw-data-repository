@@ -1,8 +1,11 @@
 import argparse
+from datetime import datetime, timedelta
 from dateutil.parser import parse
+from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.model.consent_file import ConsentFile
+from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 tool_cmd = 'consents'
@@ -13,6 +16,7 @@ class ConsentTool(ToolBase):
     def __init__(self, *args, **kwargs):
         super(ConsentTool, self).__init__(*args, **kwargs)
         self._consent_dao = ConsentDao()
+        self._storage_provider = GoogleCloudStorageProvider()
 
     def run(self):
         super(ConsentTool, self).run()
@@ -26,32 +30,47 @@ class ConsentTool(ToolBase):
             if previous_participant_id and previous_participant_id != result.participant_id and self.args.verbose:
                 report_lines.append('')
             previous_participant_id = result.participant_id
-
             report_lines.append(self._line_output_for_validation(result, verbose=self.args.verbose))
 
         logger.info('\n'.join(report_lines))
 
-    @classmethod
-    def _line_output_for_validation(cls, result: ConsentFile, verbose: bool):
-        if not result.file_exists:
-            error_message = 'missing file'
+    def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
+        output_line = StringIO()
+        output_line.write(f'P{file.participant_id} - {str(file.type).ljust(10)} ')
+
+        if not file.file_exists:
+            output_line.write('missing file')
         else:
             errors_with_file = []
-            if not result.is_signature_valid:
+            if not file.is_signature_valid:
                 errors_with_file.append('invalid signature')
-            if not result.is_signing_date_valid:
-                extra_info = ''
-                if verbose:
-                    time_difference = result.signing_date - result.expected_sign_date
-                    extra_info = f', diff of {time_difference.days} days'
-                errors_with_file.append(
-                    f'invalid signing date (expected {result.expected_sign_date} '
-                    f'but file has {result.signing_date}{extra_info})'
-                )
-            if result.other_errors is not None:
-                errors_with_file.append(result.other_errors)
-            error_message = ', '.join(errors_with_file)
-        return f'P{result.participant_id} - {str(result.type).ljust(10)} {error_message}'
+            if not file.is_signing_date_valid:
+                errors_with_file.append(self._get_date_error_details(file, verbose))
+            if file.other_errors is not None:
+                errors_with_file.append(file.other_errors)
+
+            output_line.write(', '.join(errors_with_file))
+            if verbose:
+                output_line.write(f' - {self._get_link(file)}')
+
+        return output_line.getvalue()
+
+    @classmethod
+    def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
+        extra_info = ''
+        if verbose:
+            time_difference = file.signing_date - file.expected_sign_date
+            extra_info = f', diff of {time_difference.days} days'
+        return f'invalid signing date (expected {file.expected_sign_date} '\
+               f'but file has {file.signing_date}{extra_info})'
+
+    def _get_link(self, file: ConsentFile):
+        bucket_name, *name_parts = file.file_path.split('/')
+        blob = self._storage_provider.get_blob(
+            bucket_name=bucket_name,
+            blob_name='/'.join(name_parts)
+        )
+        return blob.generate_signed_url(datetime.now() + timedelta(hours=2))
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

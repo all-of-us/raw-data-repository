@@ -17,22 +17,42 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
         super(ConsentsTest, self).setUp(*args, **kwargs)
 
         self.invalid_files = [
-            ConsentFile(participant_id=123123123, type=ConsentType.PRIMARY, file_exists=False),
-            ConsentFile(participant_id=222333444, type=ConsentType.CABOR, file_exists=False),
-            ConsentFile(participant_id=222333444, type=ConsentType.GROR, file_exists=True,
-                        is_signature_valid=False, is_signing_date_valid=True,
-                        other_errors='missing checkmark'),
-            ConsentFile(participant_id=654321123, type=ConsentType.CABOR, file_exists=True,
-                        is_signature_valid=True, is_signing_date_valid=False,
-                        signing_date=date(2021, 12, 1), expected_sign_date=date(2020, 12, 1)),
-            ConsentFile(participant_id=901987345, type=ConsentType.EHR, file_exists=True,
-                        is_signature_valid=False, is_signing_date_valid=True)
+            ConsentFile(
+                participant_id=123123123, type=ConsentType.PRIMARY, file_exists=False
+            ),
+            ConsentFile(
+                participant_id=222333444, type=ConsentType.CABOR, file_exists=False
+            ),
+            ConsentFile(
+                participant_id=222333444, type=ConsentType.GROR, file_exists=True,
+                is_signature_valid=False, is_signing_date_valid=True, other_errors='missing checkmark',
+                file_path='test_bucket/P222/GROR_no_checkmark_or_signature.pdf'
+            ),
+            ConsentFile(
+                participant_id=654321123, type=ConsentType.CABOR, file_exists=True,
+                is_signature_valid=True, is_signing_date_valid=False,
+                signing_date=date(2021, 12, 1), expected_sign_date=date(2020, 12, 1),
+                file_path='test_bucket/P654/Cabor_bad_date.pdf'
+            ),
+            ConsentFile(
+                participant_id=901987345, type=ConsentType.EHR, file_exists=True,
+                is_signature_valid=False, is_signing_date_valid=True,
+                file_path='test_bucket/P901/EHR_no_signature.pdf'
+            )
         ]
 
     def _run_error_report(self, verbose=False):
-        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao') as consent_dao_class_mock:
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao') as consent_dao_class_mock,\
+                mock.patch('rdr_service.tools.tool_libs.consents.GoogleCloudStorageProvider') as storage_provider_mock:
             consent_dao_instance_mock = consent_dao_class_mock.return_value
             consent_dao_instance_mock.get_files_needing_correction.return_value = self.invalid_files
+
+            def blob_that_gives_url(bucket_name, blob_name):
+                blob_mock = mock.MagicMock()
+                blob_mock.generate_signed_url.return_value = f'https://example.com/{bucket_name}/{blob_name}'
+                return blob_mock
+            storage_provider_mock.return_value.get_blob.side_effect = blob_that_gives_url
+
             self.run_tool(ConsentTool, tool_args={
                 'since': None,
                 'verbose': verbose
@@ -59,11 +79,13 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             'P123123123 - PRIMARY    missing file',
             '',
             'P222333444 - CABOR      missing file',
-            'P222333444 - GROR       invalid signature, missing checkmark',
+            'P222333444 - GROR       invalid signature, missing checkmark - '
+            'https://example.com/test_bucket/P222/GROR_no_checkmark_or_signature.pdf',
             '',
             'P654321123 - CABOR      '
-            'invalid signing date (expected 2020-12-01 but file has 2021-12-01, diff of 365 days)',
+            'invalid signing date (expected 2020-12-01 but file has 2021-12-01, diff of 365 days) - '
+            'https://example.com/test_bucket/P654/Cabor_bad_date.pdf',
             '',
-            'P901987345 - EHR        invalid signature',
+            'P901987345 - EHR        invalid signature - https://example.com/test_bucket/P901/EHR_no_signature.pdf',
         ]))
 
