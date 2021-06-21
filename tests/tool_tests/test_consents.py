@@ -41,7 +41,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             )
         ]
 
-    def _run_error_report(self, verbose=False):
+    def _run_consents_tool(self, command, verbose=False):
         with mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao') as consent_dao_class_mock,\
                 mock.patch('rdr_service.tools.tool_libs.consents.GoogleCloudStorageProvider') as storage_provider_mock:
             consent_dao_instance_mock = consent_dao_class_mock.return_value
@@ -54,13 +54,14 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             storage_provider_mock.return_value.get_blob.side_effect = blob_that_gives_url
 
             self.run_tool(ConsentTool, tool_args={
+                'command': command,
                 'since': None,
                 'verbose': verbose
             })
 
     def test_report_to_send_to_ptsc(self, logger_mock):
         """Check the basic report format, the one that would be sent to Vibrent or CE for correcting"""
-        self._run_error_report()
+        self._run_consents_tool(command='report-errors')
         logger_mock.info.assert_called_once_with('\n'.join([
             'P123123123 - PRIMARY    missing file',
             'P222333444 - CABOR      missing file',
@@ -74,7 +75,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
         Check additional information and formatting helpful for looking into whether
         the files might have been mistakenly marked as incorrect
         """
-        self._run_error_report(verbose=True)
+        self._run_consents_tool(command='report-errors', verbose=True)
         logger_mock.info.assert_called_once_with('\n'.join([
             'P123123123 - PRIMARY    missing file',
             '',

@@ -21,6 +21,10 @@ class ConsentTool(ToolBase):
     def run(self):
         super(ConsentTool, self).run()
 
+        if self.args.command == 'report-errors':
+            self.report_files_for_correction()
+
+    def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
         results_to_report = self._consent_dao.get_files_needing_correction(min_modified_datetime=min_validation_date)
 
