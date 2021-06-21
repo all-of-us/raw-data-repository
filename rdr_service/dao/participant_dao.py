@@ -4,7 +4,7 @@ import logging
 
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
-from sqlalchemy.sql.expression import bindparam
+from sqlalchemy.sql.expression import literal
 
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -521,25 +521,27 @@ class ParticipantDao(UpdatableDao):
                 return existing_participant
         return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
 
-    def get_participant_id_mapping(self, is_sql=True):
+    def get_participant_id_mapping(self,  is_sql=True):
         with self.session() as session:
             participant_map = (
                 session.query(
                     Participant.participantId.label('p_id'),
-                    bindparam('id_source', 'r_id'),
+                    literal('r_id'),
                     Participant.researchId.label('id_value'),
                 ).union(
                     session.query(
                         Participant.participantId.label('p_id'),
-                        bindparam('id_source', 'vibrent_id'),
+                        literal('vibrent_id'),
                         Participant.externalId.label('id_value'),
                     )).filter(
                     Participant.researchId.isnot(None),
                     Participant.externalId.isnot(None)
-                )).limit(100)
+                ))
 
             if is_sql:
-                return participant_map.__str__()
+                sql = str(participant_map.statement.compile(compile_kwargs={"literal_binds": True}))
+                sql = sql.replace('param_1', 'id_source')
+                return sql
 
             return participant_map.all()
 
