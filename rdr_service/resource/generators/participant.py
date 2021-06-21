@@ -563,7 +563,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
-                QuestionnaireResponse.status, code_id_query). \
+                QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
@@ -600,7 +600,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'response_status': str(QuestionnaireResponseStatus(row.status)),
                     'response_status_id': int(QuestionnaireResponseStatus(row.status)),
                     'questionnaire_response_id': row.questionnaireResponseId,
-                    'consent': 1 if module_name in _consent_module_question_map else 0
+                    'consent': 1 if module_name in _consent_module_question_map else 0,
+                    'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None
                 }
 
                 mod_ca = {'ConsentAnswer': None}
@@ -622,7 +623,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
-                        # TODO: Concent table depreciated, remove consent field sets after BigQuery table support
+                        # TODO: Consent table depreciated, remove consent field sets after BigQuery table support
                         #  is removed.
                         consent = {
                             'consent': _consent_module_question_map[module_name],

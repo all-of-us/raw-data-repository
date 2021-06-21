@@ -63,6 +63,7 @@ class ModuleStatusSchema(Schema):
     consent_value = fields.String(validate=validate.Length(max=80))
     consent_value_id = fields.Int32()
     consent_expired = fields.String(validate=validate.Length(max=80))
+    non_participant_answer = fields.String(validate=validate.Length(max=60))
 
     class Meta:
         schema_id = SchemaID.participant_modules
