@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 
+from sqlalchemy.dialects import mysql
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql.expression import literal
@@ -521,7 +522,7 @@ class ParticipantDao(UpdatableDao):
                 return existing_participant
         return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
 
-    def get_participant_id_mapping(self,  is_sql=True):
+    def get_participant_id_mapping(self, is_sql=True):
         with self.session() as session:
             participant_map = (
                 session.query(
@@ -539,7 +540,10 @@ class ParticipantDao(UpdatableDao):
                 ))
 
             if is_sql:
-                sql = str(participant_map.statement.compile(compile_kwargs={"literal_binds": True}))
+                sql = str(participant_map.statement.compile(
+                    compile_kwargs={"literal_binds": True},
+                    dialect=mysql.dialect()
+                ))
                 sql = sql.replace('param_1', 'id_source')
                 return sql
 
