@@ -1719,6 +1719,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for addr in summary['addresses']:
                 if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
                     zipcode = addr['addr_zip']
+                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
+                    if zipcode and len(zipcode) > 5:
+                        zipcode = zipcode[:5]
                     if zipcode in RURAL_ZIPCODES:
                         data['ubr_geography'] = 1
 
