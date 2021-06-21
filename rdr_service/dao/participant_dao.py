@@ -526,12 +526,12 @@ class ParticipantDao(UpdatableDao):
             participant_map = (
                 session.query(
                     Participant.participantId.label('p_id'),
-                    bindparam('id_source', 'ewewewe'),
+                    bindparam('id_source', 'r_id'),
                     Participant.researchId.label('id_value'),
                 ).union(
                     session.query(
                         Participant.participantId.label('p_id'),
-                        bindparam('id_source', 'r_id'),
+                        bindparam('id_source', 'vibrent_id'),
                         Participant.externalId.label('id_value'),
                     )).filter(
                     Participant.researchId.isnot(None),
