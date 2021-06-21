@@ -58,7 +58,8 @@ class ConsentSyncController:
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)
 
-            if pairing_info:  # Ignore participants that aren't paired to an organization
+            # Ignore participants that aren't paired to a configured organization
+            if pairing_info and pairing_info.org_name in sync_config:
                 org_consent_config = sync_config[pairing_info.org_name]
 
                 if org_consent_config['zip_consents']:
