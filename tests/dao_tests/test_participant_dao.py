@@ -641,3 +641,34 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.insert(new_participant)
 
         self.assertIn('Incorrect string value', str(exc_wrapper.exception))
+
+    def test_participant_id_mapping(self):
+        """
+        Checks that correct Raw sql for export is sent back from dao method
+        as well as checking for correct objects being
+        sent if is_sql param is false
+        """
+        num_participants = 10
+        for _ in range(num_participants):
+            self.data_generator.create_database_participant(
+                externalId=self.data_generator.unique_external_id()
+            )
+
+        expected_union = "(SELECT participant.participant_id AS p_id, 'r_id' AS id_source, " \
+                         "participant.research_id AS id_value \nFROM participant " \
+                         "UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
+                         "AS id_source, participant.external_id AS id_value \nFROM participant)"
+
+        only_sql = self.dao.get_participant_id_mapping()
+        self.assertIn(expected_union, only_sql)
+
+        only_objs = self.dao.get_participant_id_mapping(is_sql=False)
+        self.assertEqual(len(only_objs), num_participants*2)
+
+        for obj in only_objs:
+            p_id = obj[0]
+            similar = [obj for obj in only_objs if obj[0] == p_id]
+            self.assertEqual(len(similar), 2)
+            self.assertTrue(any(obj for obj in similar if obj[1] == 'r_id'))
+            self.assertTrue(any(obj for obj in similar if obj[1] == 'vibrent_id'))
+

@@ -541,6 +541,7 @@ class ParticipantDao(UpdatableDao):
             if is_sql:
                 sql = self.literal_sql_from_query(participant_map)
                 sql = sql.replace('param_1', 'id_source')
+                sql = sql.replace('param_2', 'id_source')
                 return sql
 
             return participant_map.all()
