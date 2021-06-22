@@ -4,7 +4,7 @@ from dateutil.parser import parse
 from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -44,11 +44,37 @@ class ConsentTool(ToolBase):
         # TODO:
         #  make changes to the record specified by the id
         #  print the changes being made (NEEDS_CORRECTIONS => READY_TO_SYNC) and ask for confirmation
-        ...
+        file = self._consent_dao.get(self.args.id)
+        if file is None:
+            logger.error('Unable to find validation record')
+
+        logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
+        self._respond_if_different(
+            self.args.type, file.type, ConsentType,
+            new_value_callback=lambda new_value: self._log_property_change('type', file.type, new_value)
+        )
+        self._respond_if_different(
+            self.args.sync_status, file.sync_status, ConsentSyncStatus,
+            new_value_callback=lambda new_value: self._log_property_change('sync_status', file.sync_status, new_value)
+        )
+        confirm = input('\nMake the changes above (Y/n)? : ')
+        if confirm and confirm.lower().strip() != 'y':
+            logger.info('Aborting update')
+        else:
+            logger.info('Updating file record')
+            self._respond_if_different(
+                self.args.type, file.type, ConsentType,
+                new_value_callback=lambda new_value: setattr(file, 'type', new_value)
+            )
+            self._respond_if_different(
+                self.args.sync_status, file.sync_status, ConsentSyncStatus,
+                new_value_callback=lambda new_value: setattr(file, 'sync_status', new_value)
+            )
+            self._consent_dao.batch_update_consent_files([file])
 
     # todo: methods for
     #  re-evaluating sync validations in time range, and/or by type of consent
-    #  triggering validation for consents
+    #  triggering validation for consents (by time range or participant ids)
     #  batch-adding records (for CE participants)
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
@@ -89,6 +115,26 @@ class ConsentTool(ToolBase):
         )
         return blob.generate_signed_url(datetime.now() + timedelta(hours=2))
 
+    @classmethod
+    def _log_property_change(cls, property_name, old_value, new_value):
+        logger.info(f'{property_name}:'.ljust(16) + f'{old_value} => {new_value}')
+
+    @classmethod
+    def _new_value(cls, entered_value, parser_func=None):
+        if isinstance(entered_value, str) and entered_value.lower() == 'none':
+            return None
+        elif parser_func is not None:
+            return parser_func(entered_value)
+        else:
+            return entered_value
+
+    @classmethod
+    def _respond_if_different(cls, new_value, stored_value, parser_func=None, new_value_callback=None):
+        if new_value is not None:
+            parsed_value = cls._new_value(entered_value=new_value, parser_func=parser_func)
+            if parsed_value != stored_value:
+                new_value_callback(parsed_value)
+
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -106,7 +152,15 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     )
 
     modify_parser = subparsers.add_parser('modify')
-    modify_parser.add_argument('--id', help='Database id of the record to modify', required=True)
+    modify_parser.add_argument(
+        '--id', help='Database id of the record to modify', required=True
+    )
+    modify_parser.add_argument(
+        '--type', help='New consent type value to set'
+    )
+    modify_parser.add_argument(
+        '--sync-status', help='New sync status to set (format: string or int value of the new status'
+    )
 
 
 def run():
