@@ -283,6 +283,9 @@ class EnrollmentStatusCalculator:
         # Create a list of the baseline module enumerations from the config file.
         module_enums = [ParticipantEventEnum[mod.replace('questionnaireOn', '')]
                                 for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+        # Sanity check, make sure we have the same number of event enums as config baseline modules.
+        if len(module_enums) != len(config.getSettingList('baseline_ppi_questionnaire_fields')):
+            raise ValueError('Baseline module event enum list different than config.')
         mod_events = list()
 
         # Find the baseline module events.
