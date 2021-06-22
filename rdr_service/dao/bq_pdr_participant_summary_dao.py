@@ -96,7 +96,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                 with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
                     # pylint: disable=unused-variable
                     for count, line in enumerate(handle):
-                        self.rural_zipcodes.append(line.split(',')[1].strip())
+                        # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it
+                        self.rural_zipcodes.append(line.split(',')[1].strip().zfill(5))
                 break
 
     def _set_contact_flags(self, ps_bqr):
@@ -169,6 +170,9 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     data['addr_state'] = addr['addr_state']
                     data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else addr['addr_zip']
                     zipcode = addr['addr_zip']
+                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
+                    if zipcode and len(zipcode) > 5:
+                        zipcode = zipcode[:5]
 
                     # See if we need to import the rural zip code list.
                     if not self.rural_zipcodes:
