@@ -553,7 +553,12 @@ class BaseDao(object):
 
     @staticmethod
     def literal_sql_from_query(query):
-
+        """
+        Returns actual Raw SQL with translated MySQL dialects, with literal
+        value bindings in string
+        :param query: sqlalchemy query object
+        :return: string
+        """
         return str(query.statement.compile(
             compile_kwargs={"literal_binds": True},
             dialect=mysql.dialect()
