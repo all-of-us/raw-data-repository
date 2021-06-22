@@ -41,9 +41,6 @@ class ConsentTool(ToolBase):
         logger.info('\n'.join(report_lines))
 
     def modify_file_results(self):
-        # TODO:
-        #  make changes to the record specified by the id
-        #  print the changes being made (NEEDS_CORRECTIONS => READY_TO_SYNC) and ask for confirmation
         file = self._consent_dao.get(self.args.id)
         if file is None:
             logger.error('Unable to find validation record')
@@ -71,11 +68,6 @@ class ConsentTool(ToolBase):
                 new_value_callback=lambda new_value: setattr(file, 'sync_status', new_value)
             )
             self._consent_dao.batch_update_consent_files([file])
-
-    # todo: methods for
-    #  re-evaluating sync validations in time range, and/or by type of consent
-    #  triggering validation for consents (by time range or participant ids)
-    #  batch-adding records (for CE participants)
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()
