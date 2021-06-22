@@ -8,8 +8,7 @@ from rdr_service import config
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
-from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao
-
+from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao, GenomicOutreachDaoV2
 
 ALLOWED_ENVIRONMENTS = ['all-of-us-rdr-sandbox',
                         'all-of-us-rdr-stable',
@@ -149,3 +148,81 @@ class GenomicOutreachApi(BaseApi):
         """
         if mode.lower() not in config.GENOMIC_API_MODES:
             raise BadRequest(f"GenomicOutreach Mode required to be one of {config.GENOMIC_API_MODES}.")
+
+
+class GenomicOutreachApiV2(BaseApi):
+    def __init__(self):
+        super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
+
+    @auth_required(RDR_AND_PTC)
+    def get(self):
+        self._check_global_args(
+            request.args.get('module'),
+            request.args.get('type')
+        )
+        return self.get_outreach()
+
+    def get_outreach(self):
+        """
+        Returns the outreach resource based on the request parameters
+        :return:
+        """
+        _start_date = request.args.get("start_date")
+        _pid = request.args.get("participant_id")
+        _end_date = clock.CLOCK.now() \
+            if request.args.get("end_date") is None \
+            else parser.parse(request.args.get("end_date"))
+        participant_report_states = []
+
+        if not _pid and not _start_date:
+            raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
+
+        if _pid and _start_date:
+            raise BadRequest('Start date not supported with Participant ID lookup.')
+
+        # If this is a participant lookup
+        if _pid is not None:
+            if _pid.startswith("P"):
+                _pid = _pid[1:]
+            participant_report_states = self.dao.outreach_lookup(pid=_pid)
+            if not participant_report_states:
+                raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')
+
+        # If this is a date lookup
+        if _start_date is not None:
+            _start_date = parser.parse(_start_date)
+            participant_report_states = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
+
+        if participant_report_states:
+            proto_payload = {
+                'date': clock.CLOCK.now(),
+                'data': participant_report_states
+            }
+            return self._make_response(proto_payload)
+        raise BadRequest
+
+    def _check_global_args(self, module, _type):
+        """
+        Checks that the mode in the endpoint is valid
+        :param mode: "GEM" / "RHP" / "PGX" / "HDR"
+        """
+        current_module = None
+        current_type = None
+
+        if module:
+            if module.lower() not in config.GENOMIC_API_MODES:
+                raise BadRequest(
+                    f"GenomicOutreach mode required to be one of {' '.join(config.GENOMIC_API_MODES).upper()}.")
+            else:
+                current_module = module.lower()
+        if _type:
+            allowed_types = ['result', 'informingLoop', 'appointment']
+            if _type and _type.lower() not in allowed_types:
+                raise BadRequest(f"GenomicOutreach type is required to be one of {' '.join(allowed_types)}")
+            else:
+                current_type = _type
+
+        self.dao.set_globals(
+            module=current_module,
+            _type=current_type
+        )

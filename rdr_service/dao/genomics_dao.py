@@ -1374,6 +1374,146 @@ class GenomicOutreachDao(BaseDao):
         return state_mapping[resource_status]
 
 
+class GenomicOutreachDaoV2(BaseDao):
+    def __init__(self):
+        super(GenomicOutreachDaoV2, self).__init__(
+            GenomicSetMember, order_by_ending=['id'])
+        self.module = None
+        self._type = ['result', 'informingLoop']  # static for now
+        self.report_query_state = self.get_report_state_query_config()
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def to_client_json(self, _dict):
+        report_statuses = []
+        for participant in _dict['data']:
+            p_status, p_module = self._determine_report_state(participant[1])
+            report_statuses.append({
+                "participant_id": f'P{participant[0]}',
+                "status": p_status,
+                "module": p_module,
+                "type": self._type[0],  # result | informing loop | appointment | result only for now
+            })
+        # handle date
+        try:
+            ts = pytz.utc.localize(_dict['date'])
+        except ValueError:
+            ts = _dict['date']
+
+        client_json = {
+            "data": report_statuses,
+            "timestamp": ts
+        }
+        return client_json
+
+    def outreach_lookup(self, pid=None, start_date=None, end_date=None):
+
+        if not end_date:
+            end_date = clock.CLOCK.now()
+
+        with self.session() as session:
+            outreach_query = (
+                session.query(
+                    GenomicSetMember.participantId,
+                    GenomicMemberReportState.genomic_report_state)
+                .join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId,
+                ).join(
+                    GenomicMemberReportState,
+                    GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
+                )
+                .filter(
+                    ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                )
+            )
+
+            if pid:
+                outreach_query = outreach_query.filter(
+                    ParticipantSummary.participantId == pid)
+
+            if start_date:
+                outreach_query = outreach_query.filter(
+                    GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                    GenomicSetMember.genomicWorkflowStateModifiedTime < end_date)
+
+            if self.report_query_state:
+                outreach_query = outreach_query.filter(
+                    GenomicMemberReportState.genomic_report_state.in_(self.report_query_state))
+
+            return outreach_query.all()
+
+    def _determine_report_state(self, status):
+        """
+        Reads 'status' from ptsc and determines which report state value
+        to set
+        :param status: string
+        :return: GenomicWorkflowState for report state
+        """
+        report_state_mapping = {
+            'gem': {
+                GenomicReportState.GEM_RPT_READY: "ready",
+                GenomicReportState.GEM_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.GEM_RPT_DELETED: "deleted"
+            },
+            'pgx': {
+                GenomicReportState.PGX_RPT_READY: "ready",
+                GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.PGX_RPT_DELETED: "deleted"
+            },
+            'hdr': {
+                GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
+                GenomicReportState.HDR_RPT_POSITIVE: "positive",
+                GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.HDR_RPT_DELETED: "deleted"
+            }
+        }
+        p_status = None
+        p_module = None
+        if self.module:
+            p_status = report_state_mapping[self.module][status]
+            p_module = self.module
+        else:
+            for key, value in report_state_mapping.items():
+                if status in value.keys():
+                    p_status = value[status]
+                    p_module = key
+                    break
+        return p_status, p_module
+
+    def get_report_state_query_config(self):
+        report_state_query_mapping = {
+            'gem': [GenomicReportState.GEM_RPT_READY,
+                    GenomicReportState.GEM_RPT_PENDING_DELETE,
+                    GenomicReportState.GEM_RPT_DELETED],
+            'pgx': [GenomicReportState.PGX_RPT_READY,
+                    GenomicReportState.PGX_RPT_PENDING_DELETE,
+                    GenomicReportState.PGX_RPT_DELETED],
+            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
+                    GenomicReportState.HDR_RPT_POSITIVE,
+                    GenomicReportState.HDR_RPT_PENDING_DELETE,
+                    GenomicReportState.HDR_RPT_DELETED]
+        }
+        if not self.module:
+            all_mappings = []
+            for value in report_state_query_mapping.values():
+                all_mappings.extend(value)
+            return all_mappings
+        return report_state_query_mapping[self.module]
+
+    def set_globals(self, module, _type):
+        if module:
+            self.module = module
+            self.report_query_state = self.get_report_state_query_config()
+        if _type:
+            self._type = _type
+
+
 class GenomicManifestFileDao(BaseDao):
     def __init__(self):
         super(GenomicManifestFileDao, self).__init__(
