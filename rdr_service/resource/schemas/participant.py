@@ -263,11 +263,11 @@ class ParticipantSchema(Schema):
     sign_up_time = fields.DateTime()
     enrl_status = fields.String(validate=validate.Length(max=40))
     enrl_status_id = fields.Int32()
-    enrl_registered_ts = fields.DateTime()
-    enrl_participant_ts = fields.DateTime()
-    enrl_participant_plus_ehr_ts = fields.DateTime()
-    enrl_core_participant_minus_pm_ts = fields.DateTime()
-    enrl_core_participant_ts = fields.DateTime()
+    enrl_registered_time = fields.DateTime()
+    enrl_participant_time = fields.DateTime()
+    enrl_participant_plus_ehr_time = fields.DateTime()
+    enrl_core_participant_minus_pm_time = fields.DateTime()
+    enrl_core_participant_time = fields.DateTime()
 
     # TODO: Depreciate fields here that are duplicated by the new enrollment fields above.
     enrollment_status = fields.EnumString(enum=EnrollmentStatusV2)

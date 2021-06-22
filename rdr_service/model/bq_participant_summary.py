@@ -331,13 +331,14 @@ class BQParticipantSummarySchema(BQSchema):
     # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
     #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
     #       completely.
-    enrl_registered_ts = BQField('enrl_registered_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-    enrl_participant_ts = BQField('enrl_participant_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
-    enrl_participant_plus_ehr_ts = BQField('enrl_participant_plus_ehr_ts', BQFieldTypeEnum.DATETIME,
+    enrl_registered_time = BQField('enrl_registered_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_time = BQField('enrl_participant_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_plus_ehr_time = BQField('enrl_participant_plus_ehr_time', BQFieldTypeEnum.DATETIME,
                                            BQFieldModeEnum.NULLABLE)
-    enrl_core_participant_minus_pm_ts = BQField('enrl_core_participant_minus_pm_ts', BQFieldTypeEnum.DATETIME,
+    enrl_core_participant_minus_pm_time = BQField('enrl_core_participant_minus_pm_time', BQFieldTypeEnum.DATETIME,
                                                 BQFieldModeEnum.NULLABLE)
-    enrl_core_participant_ts = BQField('enrl_core_participant_ts', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

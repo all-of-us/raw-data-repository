@@ -11,6 +11,7 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_YES,
     DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE
 )
+from rdr_service import config
 from rdr_service.resource.constants import PDREnrollmentStatusEnum
 from rdr_service.resource.constants import ParticipantEventEnum, COHORT_1_CUTOFF, \
     COHORT_2_CUTOFF, ConsentCohortEnum
@@ -42,14 +43,14 @@ class EnrollmentStatusCalculator:
     _gror_consented = None
     _biobank_samples = None
     _physical_measurements = None
-    _modules = None
+    _baseline_modules = None
 
     # Timestamps for when each status was achieved, these are set in the self.save_calc() method.
-    registered_ts = None
-    participant_ts = None
-    participant_plus_ehr_ts = None
-    core_participant_minus_pm_ts = None
-    core_participant_ts = None
+    registered_time = None
+    participant_time = None
+    participant_plus_ehr_time = None
+    core_participant_minus_pm_time = None
+    core_participant_time = None
 
     def run(self, activity: list):
         """
@@ -70,7 +71,7 @@ class EnrollmentStatusCalculator:
             gror_consented = self.calc_gror_consent(events)
             biobank_samples = self.calc_biobank_samples(events)
             physical_measurements = self.calc_physical_measurements(events)
-            modules = self.calc_modules(events)
+            modules = self.calc_baseline_modules(events)
 
             if not self.cohort:
                 self.cohort = cohort
@@ -93,9 +94,8 @@ class EnrollmentStatusCalculator:
                 status = PDREnrollmentStatusEnum.CoreParticipant
 
             # Set the permanent enrollment status value if needed. Enrollment status can go down
-            # unless the enrollment status has reached 'CoreParticipant'.
-            # TODO: If participant reaches CoreParticipantMinusPM status, can the status level go back down?
-            if self.status != PDREnrollmentStatusEnum.CoreParticipant:
+            # unless the enrollment status has reached a 'Core' status.
+            if status > self.status or self.status < PDREnrollmentStatusEnum.CoreParticipantMinusPM:
                 self.status = status
 
             # Save the timestamp when each status was reached.
@@ -107,20 +107,21 @@ class EnrollmentStatusCalculator:
         :param status: Current calculated enrollment status.
         """
         # Set the first timestamp for each status the participant reaches.
-        if status == PDREnrollmentStatusEnum.Registered and not self.registered_ts:
-            self.registered_ts = self._signup.first_ts
-        if status == PDREnrollmentStatusEnum.Participant and not self.participant_ts:
-            self.participant_ts = self._consented.first_ts
-        if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and not self.participant_plus_ehr_ts:
-            self.participant_plus_ehr_ts = self._ehr_consented.first_ts
-        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_ts:
-            self.core_participant_minus_pm_ts = max([self._biobank_samples.first_ts, self._modules.last_ts])
-        if status == PDREnrollmentStatusEnum.CoreParticipant and not self.core_participant_ts:
-            self.core_participant_ts = \
-                max([self._biobank_samples.first_ts, self._modules.last_ts, self._physical_measurements.first_ts])
+        if status == PDREnrollmentStatusEnum.Registered and not self.registered_time:
+            self.registered_time = self._signup.first_ts
+        if status == PDREnrollmentStatusEnum.Participant and not self.participant_time:
+            self.participant_time = self._consented.first_ts
+        if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and not self.participant_plus_ehr_time:
+            self.participant_plus_ehr_time = self._ehr_consented.first_ts
+        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_time:
+            self.core_participant_minus_pm_time = max([self._biobank_samples.first_ts, self._baseline_modules.last_ts])
+        if status == PDREnrollmentStatusEnum.CoreParticipant and not self.core_participant_time:
+            self.core_participant_time = \
+                max([self._biobank_samples.first_ts, self._baseline_modules.last_ts,
+                        self._physical_measurements.first_ts])
             # If we jumped over core minus pm status, just make it the same timestamp as core.
-            if not self.core_participant_minus_pm_ts:
-                self.core_participant_minus_pm_ts = self.core_participant_ts
+            if not self.core_participant_minus_pm_time:
+                self.core_participant_minus_pm_time = self.core_participant_time
 
     def save_calc(self, key, info):
         """
@@ -267,9 +268,9 @@ class EnrollmentStatusCalculator:
 
         return self.save_calc('_physical_measurements', info)
 
-    def calc_modules(self, events):
+    def calc_baseline_modules(self, events):
         """
-        Determine if biobank has confirmed DNA test for participant.
+        Find the baseline modules the participant has submitted.
         Criteria:
           - First TheBasics, Lifestyle and OverallHealth submissions
         :param events: List of events
@@ -278,26 +279,24 @@ class EnrollmentStatusCalculator:
         info = EnrollmentStatusInfo()
         info.first_ts = datetime.datetime.max
         info.last_ts = datetime.datetime.min
-        tb = None  # TheBasics event
-        li = None  # Lifestyle event
-        oh = None  # OverallHealth event
+
+        # Create a list of the baseline module enumerations from the config file.
+        module_enums = [ParticipantEventEnum[mod.replace('questionnaireOn', '')]
+                                for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+        mod_events = list()
+
+        # Find the baseline module events.
         for ev in events:
-            match = None
-            if not tb and ev.event == ParticipantEventEnum.TheBasics:
-                tb = match = ev
-            elif not li and ev.event == ParticipantEventEnum.Lifestyle:
-                li = match = ev
-            elif not oh and ev.event == ParticipantEventEnum.OverallHealth:
-                oh = match = ev
+            for mod_ev in module_enums:
+                if ev.event == mod_ev:
+                    if ev.timestamp < info.first_ts:
+                        info.first_ts = ev.timestamp
+                    if ev.timestamp > info.last_ts:
+                        info.last_ts = ev.timestamp
+                    mod_events.append(ev)
 
-            if match:
-                if match.timestamp < info.first_ts:
-                    info.first_ts = match.timestamp
-                if match.timestamp > info.last_ts:
-                    info.last_ts = match.timestamp
-
-        info.values = [e for e in [tb, li, oh] if e is not None]
+        info.values = mod_events
         if info.values:
             info.calculated = True
 
-        return self.save_calc('_modules', info)
+        return self.save_calc('_baseline_modules', info)

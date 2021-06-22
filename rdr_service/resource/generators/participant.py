@@ -604,7 +604,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None
                 }
 
-                mod_ca = {'ConsentAnswer': None}
+                mod_ca = dict()
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
@@ -967,7 +967,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if test['dna_test'] == 1:
                     dna_tests += 1
                 # PDR-134:  Add baseline tests counts
-                elif test['baseline_test'] == 1:
+                if test['baseline_test'] == 1:
                     baseline_tests += 1
 
             # PDR-243:  calculate an UNSET or FINALIZED OrderStatus to include with the biobank order data.  Aligns
@@ -1025,7 +1025,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'baseline_tests_confirmed': 0  # Fill in below.
             }
             orders.append(order)
-            # TODO: If we don't log activity here, does that affect anyone's enrollment status?
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
@@ -1134,11 +1133,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # Fields from EnrollmentStatusCalculator results.
             'enrl_status': esc.status.name,
             'enrl_status_id': esc.status.value,
-            'enrl_registered_ts': esc.registered_ts,
-            'enrl_participant_ts': esc.participant_ts,
-            'enrl_participant_plus_ehr_ts': esc.participant_plus_ehr_ts,
-            'enrl_core_participant_minus_pm_ts': esc.core_participant_minus_pm_ts,
-            'enrl_core_participant_ts': esc.core_participant_ts,
+            'enrl_registered_time': esc.registered_time,
+            'enrl_participant_time': esc.participant_time,
+            'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
+            'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
+            'enrl_core_participant_time': esc.core_participant_time,
             # Old fields
             'enrollment_status': str(status),
             'enrollment_status_id': int(status),

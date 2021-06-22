@@ -18,10 +18,10 @@ BASIC_ACTIVITY = [
     {'timestamp': datetime(2018, 3, 6, 20, 20, 57), 'group': 'Profile', 'group_id': 1,
      'event': p_event.SignupTime},
     {'timestamp': datetime(2018, 3, 6, 20, 35, 12), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.ConsentPII, 'ConsentAnswer': None, 'answer': 'ConsentPermission_Yes',
+     'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
      'answer_id': 767},
     {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.EHRConsentPII, 'ConsentAnswer': None, 'answer': 'ConsentPermission_Yes',
+     'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
      'answer_id': 767},
     {'timestamp': datetime(2018, 3, 6, 20, 46, 48), 'group': 'QuestionnaireModule', 'group_id': 40,
      'event': p_event.TheBasics, 'ConsentAnswer': None},
@@ -44,6 +44,10 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     # EnrollmentStatusCalculator object
     esc = None
+
+    def __init__(self, *args, **kwargs):
+        super(EnrollmentStatusCalculatorTest, self).__init__(*args, **kwargs)
+        self.uses_database = False
 
     def setUp(self, with_data=False, with_consent_codes=False) -> None:
         super().setUp(with_data, with_consent_codes)
@@ -68,13 +72,13 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ A simple test of the basic activity list. """
         self.esc.run(BASIC_ACTIVITY)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
-        self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
-        self.assertEqual(self.esc.participant_ts, datetime(2018, 3, 6, 20, 35, 12))
-        self.assertEqual(self.esc.participant_plus_ehr_ts, datetime(2018, 3, 6, 20, 43, 50))
-        self.assertEqual(self.esc.core_participant_minus_pm_ts, datetime(2018, 3, 28, 20, 18, 59))
-        self.assertEqual(self.esc.core_participant_ts, datetime(2018, 5, 21, 18, 9, 12))
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
+        self.assertEqual(self.esc.participant_plus_ehr_time, datetime(2018, 3, 6, 20, 43, 50))
+        self.assertEqual(self.esc.core_participant_minus_pm_time, datetime(2018, 3, 28, 20, 18, 59))
+        self.assertEqual(self.esc.core_participant_time, datetime(2018, 5, 21, 18, 9, 12))
 
-        self.assertNotEqual(self.esc.core_participant_ts, datetime(2021, 1, 1, 0, 0, 0))
+        self.assertNotEqual(self.esc.core_participant_time, datetime(2021, 1, 1, 0, 0, 0))
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_1)
 
     def test_cohort_2(self):
@@ -98,7 +102,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = copy.deepcopy(BASIC_ACTIVITY)
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
-             'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_No',
+             'event': p_event.GROR, 'answer': 'CheckDNA_No',
              'answer_id': 767},
         )
         # Shift the activity and then run the calculation.
@@ -113,7 +117,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = copy.deepcopy(BASIC_ACTIVITY)
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
-             'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_Yes',
+             'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
              'answer_id': 767},
         )
         # Shift the activity and then run the calculation.
@@ -128,12 +132,12 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = copy.deepcopy(BASIC_ACTIVITY)
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
-             'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_Yes',
+             'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
              'answer_id': 767},
         )
         activity.append(
             {'timestamp': datetime(2018, 3, 7, 15, 11, 19), 'group': 'QuestionnaireModule', 'group_id': 40,
-             'event': p_event.GROR, 'ConsentAnswer': None, 'answer': 'CheckDNA_No',
+             'event': p_event.GROR, 'answer': 'CheckDNA_No',
              'answer_id': 767},
         )
         # Shift the activity and then run the calculation.
@@ -147,33 +151,33 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ Test that we only reach CoreParticipantMinusPM status """
         self.esc.run(BASIC_ACTIVITY[0:-2])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipantMinusPM)
-        self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
-        self.assertEqual(self.esc.participant_ts, datetime(2018, 3, 6, 20, 35, 12))
-        self.assertEqual(self.esc.participant_plus_ehr_ts, datetime(2018, 3, 6, 20, 43, 50))
-        self.assertEqual(self.esc.core_participant_minus_pm_ts, datetime(2018, 3, 28, 20, 18, 59))
-        self.assertEqual(self.esc.core_participant_ts, None)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
+        self.assertEqual(self.esc.participant_plus_ehr_time, datetime(2018, 3, 6, 20, 43, 50))
+        self.assertEqual(self.esc.core_participant_minus_pm_time, datetime(2018, 3, 28, 20, 18, 59))
+        self.assertEqual(self.esc.core_participant_time, None)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_1)
 
     def test_participant_plus_ehr(self):
         """ Test that we only reach ParticipantPlusEHR status """
         self.esc.run(BASIC_ACTIVITY[0:-5])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
-        self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
-        self.assertEqual(self.esc.participant_ts, datetime(2018, 3, 6, 20, 35, 12))
-        self.assertEqual(self.esc.participant_plus_ehr_ts, datetime(2018, 3, 6, 20, 43, 50))
-        self.assertEqual(self.esc.core_participant_minus_pm_ts, None)
-        self.assertEqual(self.esc.core_participant_ts, None)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
+        self.assertEqual(self.esc.participant_plus_ehr_time, datetime(2018, 3, 6, 20, 43, 50))
+        self.assertEqual(self.esc.core_participant_minus_pm_time, None)
+        self.assertEqual(self.esc.core_participant_time, None)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_1)
 
     def test_participant(self):
         """ Test that we only reach Participant status """
         self.esc.run(BASIC_ACTIVITY[0:3])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Participant)
-        self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
-        self.assertEqual(self.esc.participant_ts, datetime(2018, 3, 6, 20, 35, 12))
-        self.assertEqual(self.esc.participant_plus_ehr_ts, None)
-        self.assertEqual(self.esc.core_participant_minus_pm_ts, None)
-        self.assertEqual(self.esc.core_participant_ts, None)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
+        self.assertEqual(self.esc.participant_plus_ehr_time, None)
+        self.assertEqual(self.esc.core_participant_minus_pm_time, None)
+        self.assertEqual(self.esc.core_participant_time, None)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_1)
 
     def test_registered(self):
@@ -184,9 +188,9 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         ]
         self.esc.run(activity)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Registered)
-        self.assertEqual(self.esc.registered_ts, datetime(2018, 3, 6, 20, 20, 57))
-        self.assertEqual(self.esc.participant_ts, None)
-        self.assertEqual(self.esc.participant_plus_ehr_ts, None)
-        self.assertEqual(self.esc.core_participant_minus_pm_ts, None)
-        self.assertEqual(self.esc.core_participant_ts, None)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, None)
+        self.assertEqual(self.esc.participant_plus_ehr_time, None)
+        self.assertEqual(self.esc.core_participant_minus_pm_time, None)
+        self.assertEqual(self.esc.core_participant_time, None)
         self.assertEqual(self.esc.cohort, None)
