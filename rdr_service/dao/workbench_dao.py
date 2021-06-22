@@ -29,7 +29,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
@@ -183,6 +183,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 if item.get("workspaceDemographic").get('others') is not None:
                     item["others"] = item.get("workspaceDemographic").get("others")
 
+                try:
+                    if item.get("accessTier") is None:
+                        item['accessTier'] = 'UNSET'
+                    else:
+                        item["accessTier"] = item.get("accessTier")
+                    WorkbenchWorkspaceAccessTier(item['accessTier'])
+                except TypeError:
+                    raise BadRequest(f'WorkspaceID:{item.get("workspaceId")} Invalid '
+                                     f'accessTier: {item.get("accessTier")}')
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -228,6 +238,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
                 cdrVersion=item.get('cdrVersionName'),
+                accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
                 resource=json.dumps(item)
             )
 
@@ -400,6 +411,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "commercialPurpose": workspace.commercialPurpose,
                     "educational": workspace.educational,
                     "otherPurpose": workspace.otherPurpose,
+                    "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
+                                                                   if workspace.accessTier else 0)),
                     "scientificApproaches": workspace.scientificApproaches,
                     "intendToStudy": workspace.intendToStudy,
                     "findingsFromStudy": workspace.findingsFromStudy,
@@ -607,6 +620,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "methodsDevelopment": workspace.methodsDevelopment,
                     "controlSet": workspace.controlSet,
                     "ancestry": workspace.ancestry,
+                    "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
+                                                                   if workspace.accessTier else 0)),
                     "socialBehavioral": workspace.socialBehavioral,
                     "populationHealth": workspace.populationHealth,
                     "drugDevelopment": workspace.drugDevelopment,
