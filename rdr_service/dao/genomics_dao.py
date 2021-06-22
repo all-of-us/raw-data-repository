@@ -1546,7 +1546,8 @@ class GenomicAW1RawDao(BaseDao):
             return session.query(
                 functions.count(GenomicAW1Raw.id)
             ).filter(
-                GenomicAW1Raw.file_path == filepath
+                GenomicAW1Raw.file_path == filepath,
+                GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
     def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):

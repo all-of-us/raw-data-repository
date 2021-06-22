@@ -1,6 +1,6 @@
 import mock
 
-from rdr_service.services import consent_files
+from rdr_service.services.consent import files
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -14,7 +14,7 @@ class ConsentFactoryTest(BaseTestCase):
         self.storage_provider_mock = mock.MagicMock()
 
         # Patch the PDF wrapper class to simply return the blob object that was meant to be parsed
-        pdf_patcher = mock.patch('rdr_service.services.consent_files.Pdf.from_google_storage_blob')
+        pdf_patcher = mock.patch('rdr_service.services.consent.files.Pdf.from_google_storage_blob')
         pdf_mock = pdf_patcher.start()
         pdf_mock.side_effect = lambda blob: blob
         self.addCleanup(pdf_patcher.stop)
@@ -23,7 +23,7 @@ class ConsentFactoryTest(BaseTestCase):
         self.primary_file = self._mock_pdf(name='ConsentPII_1234.pdf')
         self.cabor_file = self._mock_pdf(
             name='ConsentPII_4567.pdf',
-            text_in_file=consent_files.VibrentConsentFactory.CABOR_TEXT
+            text_in_file=files.VibrentConsentFactory.CABOR_TEXT
         )
         self.another_primary = self._mock_pdf(name='ConsentPII_test.pdf')
         self.ehr_file = self._mock_pdf(name='EHRConsentPII.pdf')
@@ -41,7 +41,7 @@ class ConsentFactoryTest(BaseTestCase):
             self.gror_file
         ]
 
-        self.vibrent_factory = consent_files.ConsentFileAbstractFactory.get_file_factory(
+        self.vibrent_factory = files.ConsentFileAbstractFactory.get_file_factory(
             participant_id=1234,
             participant_origin='vibrent',
             storage_provider=self.storage_provider_mock
@@ -50,13 +50,13 @@ class ConsentFactoryTest(BaseTestCase):
     def test_consent_factory_returned(self):
         """Test the factory builder method to make sure it builds and returns the correct factory type"""
         participant_id = 123456789
-        consent_factory = consent_files.ConsentFileAbstractFactory.get_file_factory(
+        consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
             participant_id=participant_id,
             participant_origin='vibrent',
             storage_provider=self.storage_provider_mock
         )
 
-        self.assertIsInstance(consent_factory, consent_files.VibrentConsentFactory)
+        self.assertIsInstance(consent_factory, files.VibrentConsentFactory)
         self.storage_provider_mock.list.assert_called_with(
             bucket_name=consent_factory._get_source_bucket(),
             prefix=f'Participant/P{participant_id}'
@@ -65,7 +65,7 @@ class ConsentFactoryTest(BaseTestCase):
     def test_vibrent_primary_consent(self):
         """Test that the factory correctly identifies the Primary consent files"""
         self.assertConsentListEquals(
-            expected_class=consent_files.VibrentPrimaryConsentFile,
+            expected_class=files.VibrentPrimaryConsentFile,
             expected_files=[self.primary_file, self.another_primary],
             actual_files=self.vibrent_factory.get_primary_consents()
         )
@@ -73,21 +73,21 @@ class ConsentFactoryTest(BaseTestCase):
     def test_vibrent_cabor_consent(self):
         """Test that the factory correctly identifies the Cabor consent file"""
         self.assertConsentListEquals(
-            expected_class=consent_files.VibrentCaborConsentFile,
+            expected_class=files.VibrentCaborConsentFile,
             expected_files=[self.cabor_file],
             actual_files=self.vibrent_factory.get_cabor_consents()
         )
 
     def test_vibrent_ehr_consent(self):
         self.assertConsentListEquals(
-            expected_class=consent_files.VibrentEhrConsentFile,
+            expected_class=files.VibrentEhrConsentFile,
             expected_files=[self.ehr_file, self.another_ehr],
             actual_files=self.vibrent_factory.get_ehr_consents()
         )
 
     def test_vibrent_gror_consent(self):
         self.assertConsentListEquals(
-            expected_class=consent_files.VibrentGrorConsentFile,
+            expected_class=files.VibrentGrorConsentFile,
             expected_files=[self.gror_file],
             actual_files=self.vibrent_factory.get_gror_consents()
         )
