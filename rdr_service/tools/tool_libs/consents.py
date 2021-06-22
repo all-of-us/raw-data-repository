@@ -46,26 +46,34 @@ class ConsentTool(ToolBase):
             logger.error('Unable to find validation record')
 
         logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
-        self._respond_if_different(
-            self.args.type, file.type, ConsentType,
-            new_value_callback=lambda new_value: self._log_property_change('type', file.type, new_value)
+        self._check_for_update(
+            new_value=self.args.type,
+            stored_value=file.type,
+            parser_func=ConsentType,
+            callback=lambda parsed_value: self._log_property_change('type', file.type, parsed_value)
         )
-        self._respond_if_different(
-            self.args.sync_status, file.sync_status, ConsentSyncStatus,
-            new_value_callback=lambda new_value: self._log_property_change('sync_status', file.sync_status, new_value)
+        self._check_for_update(
+            new_value=self.args.sync_status,
+            stored_value=file.sync_status,
+            parser_func=ConsentSyncStatus,
+            callback=lambda parsed_value: self._log_property_change('sync_status', file.sync_status, parsed_value)
         )
-        confirm = input('\nMake the changes above (Y/n)? : ')
-        if confirm and confirm.lower().strip() != 'y':
+        confirmation_answer = input('\nMake the changes above (Y/n)? : ')
+        if confirmation_answer and confirmation_answer.lower().strip() != 'y':
             logger.info('Aborting update')
         else:
             logger.info('Updating file record')
-            self._respond_if_different(
-                self.args.type, file.type, ConsentType,
-                new_value_callback=lambda new_value: setattr(file, 'type', new_value)
+            self._check_for_update(
+                new_value=self.args.type,
+                stored_value=file.type,
+                parser_func=ConsentType,
+                callback=lambda parsed_value: setattr(file, 'type', parsed_value)
             )
-            self._respond_if_different(
-                self.args.sync_status, file.sync_status, ConsentSyncStatus,
-                new_value_callback=lambda new_value: setattr(file, 'sync_status', new_value)
+            self._check_for_update(
+                new_value=self.args.sync_status,
+                stored_value=file.sync_status,
+                parser_func=ConsentSyncStatus,
+                callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
             )
             self._consent_dao.batch_update_consent_files([file])
 
@@ -121,11 +129,11 @@ class ConsentTool(ToolBase):
             return entered_value
 
     @classmethod
-    def _respond_if_different(cls, new_value, stored_value, parser_func=None, new_value_callback=None):
+    def _check_for_update(cls, new_value, stored_value, parser_func=None, callback=None):
         if new_value is not None:
             parsed_value = cls._new_value(entered_value=new_value, parser_func=parser_func)
             if parsed_value != stored_value:
-                new_value_callback(parsed_value)
+                callback(parsed_value)
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
