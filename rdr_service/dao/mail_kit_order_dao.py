@@ -54,8 +54,8 @@ class MailKitOrderDao(UpdatableDao):
         }
 
     def send_order(self, resource, pid):
-        mayo = MayoLinkApi()
-        order = self._filter_order_fields(resource, pid)
+        order, is_version_two = self._filter_order_fields(resource, pid)
+        mayo = MayoLinkApi(credentials_key='version_two' if is_version_two else 'default')
         response = mayo.post(order)
         return self.to_client_json(response, for_update=True)
 
@@ -115,15 +115,16 @@ class MailKitOrderDao(UpdatableDao):
             }
         }
 
-        if barcode and len(barcode) > 14:
-            del order["order"]["number"]
+        is_version_two = barcode and len(barcode) > 14
+        if is_version_two:
+            order["order"]["number"] = None
             client_fields = {"client_passthrough_fields": {
                 "field1": barcode
             }}
-            order['order'].update(client_fields)
+            order['order']['tests'][0]['test'].update(client_fields)
 
         order['order']['comments'] = "Salivary Kit Order, direct from participant"
-        return order
+        return order, is_version_two
 
     def to_client_json(self, model, for_update=False):
         if for_update:

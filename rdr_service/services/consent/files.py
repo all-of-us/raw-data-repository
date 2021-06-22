@@ -1,16 +1,107 @@
 from abc import ABC, abstractmethod
 from dateutil import parser
+from io import BytesIO
+from os.path import basename
+from typing import List
+
 from geometry import Rect
 from google.cloud.storage.blob import Blob
-from io import BytesIO
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
-from typing import List
+
+from rdr_service.storage import GoogleCloudStorageProvider
+
+
+class ConsentFileAbstractFactory(ABC):
+    @classmethod
+    def get_file_factory(cls, participant_id: int, participant_origin: str,
+                         storage_provider: GoogleCloudStorageProvider) -> 'ConsentFileAbstractFactory':
+        if participant_origin == 'vibrent':
+            return VibrentConsentFactory(participant_id, storage_provider)
+
+        raise Exception(f'Unsupported participant origin {participant_origin}')
+
+    def __init__(self, participant_id: int, storage_provider: GoogleCloudStorageProvider):
+        # Get the PDF Blobs from Google's API for the participant's consent files
+        factory_consent_bucket = self._get_source_bucket()
+        file_blobs = storage_provider.list(
+            bucket_name=factory_consent_bucket,
+            prefix=f'Participant/P{participant_id}'
+        )
+        self.pdf_blobs = [blob for blob in file_blobs if blob.name.endswith('.pdf')]
+
+    @abstractmethod
+    def get_primary_consents(self) -> List['PrimaryConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_cabor_consents(self) -> List['CaborConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_ehr_consents(self) -> List['EhrConsentFile']:
+        ...
+
+    @abstractmethod
+    def get_gror_consents(self) -> List['GrorConsentFile']:
+        ...
+
+    @abstractmethod
+    def _get_source_bucket(self) -> str:
+        ...
+
+
+class VibrentConsentFactory(ConsentFileAbstractFactory):
+    CABOR_TEXT = 'California Experimental Subject’s Bill of Rights'
+
+    def get_primary_consents(self) -> List['PrimaryConsentFile']:
+        primary_consents = []
+        for blob in self._get_consent_pii_blobs():
+            pdf_data = Pdf.from_google_storage_blob(blob)
+            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
+                primary_consents.append(VibrentPrimaryConsentFile(pdf=pdf_data, blob=blob))
+
+        return primary_consents
+
+    def get_cabor_consents(self) -> List['CaborConsentFile']:
+        cabor_consents = []
+        for blob in self._get_consent_pii_blobs():
+            pdf_data = Pdf.from_google_storage_blob(blob)
+            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
+                cabor_consents.append(VibrentCaborConsentFile(pdf=pdf_data, blob=blob))
+
+        return cabor_consents
+
+    def get_ehr_consents(self) -> List['EhrConsentFile']:
+        ehr_consents = []
+        for blob in self.pdf_blobs:
+            if basename(blob.name).startswith('EHRConsentPII'):
+                ehr_consents.append(VibrentEhrConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
+
+        return ehr_consents
+
+    def get_gror_consents(self) -> List['GrorConsentFile']:
+        gror_consents = []
+        for blob in self.pdf_blobs:
+            if basename(blob.name).startswith('GROR'):
+                gror_consents.append(VibrentGrorConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
+
+        return gror_consents
+
+    def _get_source_bucket(self) -> str:
+        return 'ptc-uploads-all-of-us-rdr-prod'
+
+    def _get_consent_pii_blobs(self):
+        def is_consent_pii_blob(blob):
+            return basename(blob.name).startswith('ConsentPII') and blob.name.endswith('.pdf')
+        return [blob for blob in self.pdf_blobs if is_consent_pii_blob(blob)]
 
 
 class ConsentFile(ABC):
-    def __init__(self, pdf: 'Pdf'):
+    def __init__(self, pdf: 'Pdf', blob: Blob):
         self.pdf = pdf
+        self.upload_time = blob.updated
+        self.file_path = f'{blob.bucket.name}/{blob.name}'
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
@@ -140,11 +231,11 @@ class Pdf:
     @classmethod
     def from_google_storage_blob(cls, blob: Blob):
         file_bytes = BytesIO(blob.download_as_string())
-        pages = extract_pages(file_bytes)
+        pages = list(extract_pages(file_bytes))
         return Pdf(pages)
 
     def get_elements_intersecting_box(self, search_box: Rect, page=0):
-        if page is None:
+        if page is None or len(self.pages) <= page:
             return []
 
         elements = []

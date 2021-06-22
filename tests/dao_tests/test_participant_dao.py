@@ -641,3 +641,23 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.insert(new_participant)
 
         self.assertIn('Incorrect string value', str(exc_wrapper.exception))
+
+    def test_loading_org_and_site_by_ids(self):
+        first_org = self.data_generator.create_database_organization(externalId='ONE')
+        second_org = self.data_generator.create_database_organization(externalId='TWO')
+
+        test_site = self.data_generator.create_database_site(googleGroup='test-site-group')
+
+        participant_one = self.data_generator.create_database_participant(
+            organizationId=first_org.organizationId,
+            siteId=test_site.siteId
+        )
+        participant_two = self.data_generator.create_database_participant(
+            organizationId=second_org.organizationId
+        )
+
+        results = self.dao.get_org_and_site_for_ids([participant_one.participantId, participant_two.participantId])
+        self.assertEqual([
+            (participant_one.participantId, first_org.externalId, test_site.googleGroup),
+            (participant_two.participantId, second_org.externalId, None)
+        ], results)

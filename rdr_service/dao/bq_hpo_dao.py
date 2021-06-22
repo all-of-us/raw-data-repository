@@ -59,10 +59,10 @@ def bq_hpo_update(project_id=None):
             gen.save_bqrecord(row.hpoId, bqr, bqtable=BQHPO, w_dao=w_dao, w_session=w_session, project_id=project_id)
 
 
-def bq_hpo_update_by_id(hpo_id):
+def bq_hpo_update_by_id(hpo_id, project_id=None):
     gen = BQHPOGenerator()
     # get from main database in case the backup is not synch in time
     bqr = gen.make_bqrecord(hpo_id, backup=False)
     w_dao = BigQuerySyncDao()
     with w_dao.session() as w_session:
-        gen.save_bqrecord(hpo_id, bqr, bqtable=BQHPO, w_dao=w_dao, w_session=w_session)
+        gen.save_bqrecord(hpo_id, bqr, bqtable=BQHPO, w_dao=w_dao, w_session=w_session, project_id=project_id)
