@@ -1,0 +1,24 @@
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 300s
+      perSeriesAligner: ALIGN_PERCENTILE_99
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="logging.googleapis.com/user/message_broker_latency" resource.type="gae_app"
+    trigger:
+      count: 1
+  displayName: logging/user/message_broker_latency
+  name: projects/all-of-us-rdr-prod/alertPolicies/11970965144134117548/conditions/11970965144134119067
+creationRecord:
+  mutateTime: '2021-06-23T20:13:57.497405546Z'
+  mutatedBy: yu.wang@pmi-ops.org
+displayName: message_broker_latency_alert
+enabled: true
+mutationRecord:
+  mutateTime: '2021-06-23T20:37:15.068067873Z'
+  mutatedBy: yu.wang@pmi-ops.org
+name: projects/all-of-us-rdr-prod/alertPolicies/11970965144134117548
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/1388380576191610346
