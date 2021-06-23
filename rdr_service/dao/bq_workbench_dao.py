@@ -14,7 +14,7 @@ from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchRe
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier
 
 
 class BQRWBWorkspaceGenerator(BigQueryGenerator):
@@ -72,6 +72,9 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
 
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
+
+            data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
+            data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
 
             return BQRecord(schema=BQRWBWorkspaceSchema, data=data, convert_to_enum=convert_to_enum)
 
