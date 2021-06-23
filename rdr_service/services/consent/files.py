@@ -213,14 +213,29 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
+    _SIGNATURE_PAGE = 9
+
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=150, right=400, bottom=155, top=160), page=9)
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=150, right=400, bottom=155, top=160),
+            page=self._SIGNATURE_PAGE
+        )
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=400, bottom=110, top=115), page=9)
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=400, bottom=110, top=115),
+            page=self._SIGNATURE_PAGE
+        )
 
     def _get_confirmation_check_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=70,  right=73, bottom=475, top=478), page=9)
+        spanish_signature_text = '¿Desea conocer alguno de sus resultados de ADN?'
+        if self.pdf.get_page_number_of_text([spanish_signature_text]) is not None:
+            # Spanish versions of the the GROR have the checkmark a bit more to the left
+            search_box = Rect.from_edges(left=33, right=36, bottom=480, top=485)
+        else:
+            search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
+
+        return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
 
 
 class Pdf:

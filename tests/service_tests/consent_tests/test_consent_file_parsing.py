@@ -275,7 +275,29 @@ class ConsentFileParsingTest(BaseTestCase):
             has_yes_selected=False
         )
 
-        return [basic_gror_case, no_confirmation_case]
+        spanish_gror_pdf = self._build_pdf(pages=[
+            *nine_empty_pages,
+            [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='¿Desea conocer alguno de sus resultados de ADN?'
+                ),
+                self._build_form_element(
+                    children=[self._build_pdf_element(LTCurve)],
+                    bbox=(30, 478, 40, 488)
+                ),
+                self._build_form_element(text='spanish gror', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='May 1st, 2018', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        spanish_gror_case = GrorConsentTestData(
+            file=files.VibrentGrorConsentFile(pdf=spanish_gror_pdf, blob=mock.MagicMock()),
+            expected_signature='spanish gror',
+            expected_sign_date=date(2018, 5, 1),
+            has_yes_selected=True
+        )
+
+        return [basic_gror_case, no_confirmation_case, spanish_gror_case]
 
     @classmethod
     def _build_pdf(cls, pages) -> files.Pdf:
