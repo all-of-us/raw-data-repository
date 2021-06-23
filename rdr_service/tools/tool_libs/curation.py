@@ -163,7 +163,7 @@ class CurationExportClass(ToolBase):
 
     def export_participant_id_map(self):
         dao = ParticipantDao()
-        export_sql = dao.get_participant_id_mapping()
+        export_sql = dao.get_participant_id_mapping(is_sql=True)
 
         export_name = 'participant_id_mapping'
         cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'

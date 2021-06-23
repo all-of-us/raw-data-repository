@@ -659,10 +659,10 @@ class ParticipantDaoTest(BaseTestCase):
                          "UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
                          "AS id_source, participant.external_id AS id_value \nFROM participant)"
 
-        only_sql = self.dao.get_participant_id_mapping()
+        only_sql = self.dao.get_participant_id_mapping(is_sql=True)
         self.assertIn(expected_union, only_sql)
 
-        only_objs = self.dao.get_participant_id_mapping(is_sql=False)
+        only_objs = self.dao.get_participant_id_mapping()
         self.assertEqual(len(only_objs), num_participants*2)
 
         for obj in only_objs:

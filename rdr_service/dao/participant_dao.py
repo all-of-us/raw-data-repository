@@ -524,7 +524,7 @@ class ParticipantDao(UpdatableDao):
                 return existing_participant
         return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
 
-    def get_participant_id_mapping(self, is_sql=True):
+    def get_participant_id_mapping(self, is_sql=False):
         with self.session() as session:
             participant_map = (
                 session.query(
