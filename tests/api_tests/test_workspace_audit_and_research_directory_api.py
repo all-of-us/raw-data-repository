@@ -113,6 +113,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "methodsDevelopment": True,
                 "controlSet": True,
                 "ancestry": True,
+                "accessTier": "REGISTERED",
                 "socialBehavioral": True,
                 "populationHealth": True,
                 "drugDevelopment": True,
@@ -233,6 +234,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -290,6 +292,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,
@@ -384,6 +387,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -452,6 +456,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -532,6 +537,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,
@@ -1059,6 +1065,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
                        'scientificApproaches': 'reasonForInvestigation string', 'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string', 'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': ['AIAN', 'MENA'], 'age': ['AGE_0_11', 'AGE_65_74'],
                            'sexAtBirth': None, 'genderIdentity': 'OTHER_THAN_MAN_WOMAN',
@@ -1101,7 +1108,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
                        'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
                        'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None,
+                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
@@ -1143,7 +1150,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
                        'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
                        'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None,
+                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
@@ -1403,6 +1410,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,

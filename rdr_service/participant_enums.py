@@ -652,6 +652,12 @@ class WorkbenchWorkspaceIncomeLevel(messages.Enum):
     BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT = 1
 
 
+class WorkbenchWorkspaceAccessTier(messages.Enum):
+    UNSET = 0
+    REGISTERED = 1
+    CONTROLLED = 2
+
+
 class WorkbenchWorkspaceUserRole(messages.Enum):
     """Status of Workbench Workspace User Role"""
 
