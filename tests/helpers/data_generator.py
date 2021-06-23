@@ -50,6 +50,7 @@ class DataGenerator:
         self.faker = faker
         self._next_unique_participant_id = 900000000
         self._next_unique_research_id = 9000000
+        self._next_unique_external_id = 4000000
         self._next_unique_participant_biobank_id = 500000000
         self._next_unique_biobank_order_id = 100000000
         self._next_unique_biobank_stored_sample_id = 800000000
@@ -176,6 +177,11 @@ class DataGenerator:
         next_research_id = self._next_unique_research_id
         self._next_unique_research_id += 1
         return next_research_id
+
+    def unique_external_id(self):
+        next_external_id = self._next_unique_external_id
+        self._next_unique_external_id += 1
+        return next_external_id
 
     def unique_participant_biobank_id(self):
         next_biobank_id = self._next_unique_participant_biobank_id
