@@ -146,7 +146,8 @@ class CaborConsentFile(ConsentFile, ABC):
 
 
 class EhrConsentFile(ConsentFile, ABC):
-    ...
+    def get_is_va_consent(self):
+        return self.pdf.get_page_number_of_text(['We may ask you to go to a local clinic to be measured']) is not None
 
 
 class GrorConsentFile(ConsentFile, ABC):
