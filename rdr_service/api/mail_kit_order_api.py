@@ -42,7 +42,10 @@ class MailKitOrderApi(UpdatableApi):
             raise BadRequest("missing FHIR resource")
 
         method = self._lookup_resource_type_method(
-            {"SupplyRequest": self._post_supply_request, "SupplyDelivery": self._post_supply_delivery}, resource
+            {
+                "SupplyRequest": self._post_supply_request,
+                "SupplyDelivery": self._post_supply_delivery
+            }, resource
         )
         return method(resource)
 
