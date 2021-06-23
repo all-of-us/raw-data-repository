@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dateutil import parser
 from io import BytesIO
 from os.path import basename
-from typing import List
+from typing import List, Union
 
 from geometry import Rect
 from google.cloud.storage.blob import Blob
@@ -52,7 +52,10 @@ class ConsentFileAbstractFactory(ABC):
 
 
 class VibrentConsentFactory(ConsentFileAbstractFactory):
-    CABOR_TEXT = 'California Experimental Subject’s Bill of Rights'
+    CABOR_TEXT = (
+        'California Experimental Subject’s Bill of Rights',
+        'Declaración de Derechos del Sujeto de Investigación Experimental'
+    )
 
     def get_primary_consents(self) -> List['PrimaryConsentFile']:
         primary_consents = []
@@ -267,7 +270,7 @@ class Pdf:
 
         return elements
 
-    def get_page_number_of_text(self, search_str_list: List[str]):
+    def get_page_number_of_text(self, search_str_list: List[Union[str, tuple]]):
         for page_number, page in enumerate(self.pages):
             all_strings_found_in_page = True
             for search_str in search_str_list:
