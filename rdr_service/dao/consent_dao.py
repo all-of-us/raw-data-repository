@@ -13,10 +13,6 @@ class ConsentDao(BaseDao):
     def __init__(self):
         super(ConsentDao, self).__init__(ConsentFile)
 
-    def get(self, obj_id) -> ConsentFile:
-        with self.session() as session:
-            return session.query(ConsentFile).filter(ConsentFile.id == obj_id).one_or_none()
-
     def get_participants_with_consents_in_range(self, start_date, end_date=None) -> List[ParticipantSummary]:
         with self.session() as session:
             query = session.query(
