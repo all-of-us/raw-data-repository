@@ -52,6 +52,12 @@ class EnrollmentStatusCalculator:
     core_participant_minus_pm_time = None
     core_participant_time = None
 
+    def __init__(self):
+
+        # Create a list of the baseline module enumerations from the config file.
+        self._module_enums = [ParticipantEventEnum[mod.replace('questionnaireOn', '')]
+                                for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+
     def run(self, activity: list):
         """
         :param activity: A list of activity dictionary objects created by the ParticipantSummaryGenerator.
@@ -85,7 +91,7 @@ class EnrollmentStatusCalculator:
             if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
                 status = PDREnrollmentStatusEnum.ParticipantPlusEHR
             if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
-                    (modules and len(modules.values) >= 3) and \
+                    (modules and len(modules.values) >= len(self._module_enums)) and \
                     (cohort != ConsentCohortEnum.COHORT_3 or gror_consented):
                 status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
             if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
@@ -280,17 +286,15 @@ class EnrollmentStatusCalculator:
         info.first_ts = datetime.datetime.max
         info.last_ts = datetime.datetime.min
 
-        # Create a list of the baseline module enumerations from the config file.
-        module_enums = [ParticipantEventEnum[mod.replace('questionnaireOn', '')]
-                                for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+
         # Sanity check, make sure we have the same number of event enums as config baseline modules.
-        if len(module_enums) != len(config.getSettingList('baseline_ppi_questionnaire_fields')):
+        if len(self._module_enums) != len(config.getSettingList('baseline_ppi_questionnaire_fields')):
             raise ValueError('Baseline module event enum list different than config.')
         mod_events = list()
 
         # Find the baseline module events.
         for ev in events:
-            for mod_ev in module_enums:
+            for mod_ev in self._module_enums:
                 if ev.event == mod_ev:
                     if ev.timestamp < info.first_ts:
                         info.first_ts = ev.timestamp
