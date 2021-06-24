@@ -285,7 +285,8 @@ class ConsentValidator:
         if not signing_date or not expected_date:
             return False
         else:
-            return signing_date == expected_date
+            days_off = (signing_date - expected_date).days
+            return abs(days_off) < 10
 
     def _get_date_from_datetime(self, timestamp: datetime):
         return timestamp.replace(tzinfo=pytz.utc).astimezone(self._central_time).date()
