@@ -138,6 +138,10 @@ class MailKitOrderDaoTestBase(BaseTestCase):
 
         mayo_request_test_data = mayo_order_payload['tests'][0]['test']
         self.assertEqual(mayo_request_test_data['client_passthrough_fields']['field1'], version_two_barcode)
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field2'])
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field3'])
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field4'])
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field5'])
         self.assertEqual(
             ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests','comments'],
             list(mayo_order_payload.keys())
