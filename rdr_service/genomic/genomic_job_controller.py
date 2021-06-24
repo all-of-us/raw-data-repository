@@ -1178,7 +1178,8 @@ class DataQualityJobController:
             file_path = rc.create_report_csv(report_string, report_params['display_name'])
 
             message = report_params['display_name'] + " too long for output.\n"
-            message += f"Report file generated here: https://storage.cloud.google.com{file_path}"
+            message += f"Report too long for Slack Output, download the report here:" \
+                       f" https://storage.cloud.google.com{file_path}"
 
             message_data = {'text': message}
 
