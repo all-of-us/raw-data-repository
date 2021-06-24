@@ -174,7 +174,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return report_string
 
-    def create_report_csv(self, report_string, display_name):
+    def create_report_file(self, report_string, display_name):
         now_str = clock.CLOCK.now().replace(microsecond=0).isoformat(sep="_", )
         report_file_name = f"{display_name.replace(' ', '_')}_{now_str}.txt"
 
