@@ -375,7 +375,7 @@ class GenomicJobController:
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.bq_project_id)
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id)
             else:
-                message = f'Cannot find genomics metric record for sample id: {sample_id}'
+                message = f'{self.job_id.name}: Cannot find genomics metric record for sample id: {sample_id}'
                 logging.warning(message)
                 self.create_incident(
                     source_job_run_id=self.job_run.id,
