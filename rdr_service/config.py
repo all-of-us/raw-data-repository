@@ -159,7 +159,7 @@ RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
-GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_test/"
+GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
