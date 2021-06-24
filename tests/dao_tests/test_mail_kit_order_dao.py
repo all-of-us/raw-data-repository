@@ -148,8 +148,9 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
 
     def test_biobank_bad_barcode(self):
-        bad_barcode = '4810030221-666-091121'
-        cleaned_barcode = '4810030221666091121'
+        bad_barcode = 'SABR90-1601-2221IN'
+        cleaned_barcode = 'SABR9016012221IN'
+
         self.put_request['extension'][0]['valueString'] = bad_barcode
 
         payload = self.send_post(
