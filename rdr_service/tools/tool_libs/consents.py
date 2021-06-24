@@ -1,4 +1,5 @@
 import argparse
+import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from io import StringIO
@@ -30,6 +31,8 @@ class ConsentTool(ToolBase):
             self.modify_file_results()
         elif self.args.command == 'validate':
             self.validate_consents()
+        elif self.args.command == 'upload':
+            self.upload_records()
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
@@ -93,6 +96,15 @@ class ConsentTool(ToolBase):
             storage_provider=GoogleCloudStorageProvider()
         )
         controller.validate_recent_uploads(min_consent_date=min_date, max_consent_date=max_date)
+
+    def upload_records(self):
+        data_to_upload = []
+        with open(self.args.file) as input_file:
+            input_csv = csv.DictReader(input_file)
+            for validation_data in input_csv:
+                data_to_upload.append(ConsentFile(**validation_data))
+
+        self._consent_dao.batch_update_consent_files(data_to_upload)
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()
@@ -182,6 +194,13 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     modify_parser = subparsers.add_parser('validate')
     modify_parser.add_argument('--min_date', help='Earliest date of the expected consents to validate', required=True)
     modify_parser.add_argument('--max_date', help='Latest date of the expected consents to validate')
+
+    modify_parser = subparsers.add_parser('upload')
+    modify_parser.add_argument(
+        '--file',
+        help='CSV file defining validation record data that should be added to the database',
+        required=True
+    )
 
 
 def run():
