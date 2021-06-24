@@ -31,6 +31,7 @@ class ConsentFileParsingTest(BaseTestCase):
             consent_file = consent_example.file
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+            self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
     def test_vibrent_gror_consent(self):
         for consent_example in self._get_vibrent_gror_test_data():
@@ -221,7 +222,7 @@ class ConsentFileParsingTest(BaseTestCase):
 
         return [basic_cabor_case]
 
-    def _get_vibrent_ehr_test_data(self) -> List['ConsentTestData']:
+    def _get_vibrent_ehr_test_data(self) -> List['EhrConsentTestData']:
         six_empty_pages = [[], [], [], [], [], []]  # The EHR signature is expected to be on the 7th page
         basic_ehr_pdf = self._build_pdf(pages=[
             *six_empty_pages,
@@ -230,13 +231,31 @@ class ConsentFileParsingTest(BaseTestCase):
                 self._build_form_element(text='Dec 21, 2019', bbox=(125, 100, 450, 130))
             ]
         ])
-        basic_ehr_case = ConsentTestData(
+        basic_ehr_case = EhrConsentTestData(
             file=files.VibrentEhrConsentFile(pdf=basic_ehr_pdf, blob=mock.MagicMock()),
             expected_signature='Test ehr',
             expected_sign_date=date(2019, 12, 21)
         )
 
-        return [basic_ehr_case]
+        va_ehr_pdf = self._build_pdf(pages=[
+            *six_empty_pages,
+            [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='We may ask you to go to a local clinic to be measured'
+                ),
+                self._build_form_element(text='Test va ehr', bbox=(125, 150, 450, 180)),
+                self._build_form_element(text='Oct 10, 2020', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        va_ehr_case = EhrConsentTestData(
+            file=files.VibrentEhrConsentFile(pdf=va_ehr_pdf, blob=mock.MagicMock()),
+            expected_signature='Test va ehr',
+            expected_sign_date=date(2020, 10, 10),
+            expected_to_be_va_file=True
+        )
+
+        return [basic_ehr_case, va_ehr_case]
 
     def _get_vibrent_gror_test_data(self) -> List['GrorConsentTestData']:
         # The GROR signature is expected to be on the 10th page
@@ -275,7 +294,29 @@ class ConsentFileParsingTest(BaseTestCase):
             has_yes_selected=False
         )
 
-        return [basic_gror_case, no_confirmation_case]
+        spanish_gror_pdf = self._build_pdf(pages=[
+            *nine_empty_pages,
+            [
+                self._build_pdf_element(
+                    cls=LTTextLineHorizontal,
+                    text='¿Desea conocer alguno de sus resultados de ADN?'
+                ),
+                self._build_form_element(
+                    children=[self._build_pdf_element(LTCurve)],
+                    bbox=(30, 478, 40, 488)
+                ),
+                self._build_form_element(text='spanish gror', bbox=(140, 150, 450, 180)),
+                self._build_form_element(text='May 1st, 2018', bbox=(125, 100, 450, 130))
+            ]
+        ])
+        spanish_gror_case = GrorConsentTestData(
+            file=files.VibrentGrorConsentFile(pdf=spanish_gror_pdf, blob=mock.MagicMock()),
+            expected_signature='spanish gror',
+            expected_sign_date=date(2018, 5, 1),
+            has_yes_selected=True
+        )
+
+        return [basic_gror_case, no_confirmation_case, spanish_gror_case]
 
     @classmethod
     def _build_pdf(cls, pages) -> files.Pdf:
@@ -360,6 +401,12 @@ class ConsentTestData:
 @dataclass
 class PrimaryConsentTestData(ConsentTestData):
     file: files.PrimaryConsentFile
+    expected_to_be_va_file: bool = False
+
+
+@dataclass
+class EhrConsentTestData(ConsentTestData):
+    file: files.EhrConsentFile
     expected_to_be_va_file: bool = False
 
 
