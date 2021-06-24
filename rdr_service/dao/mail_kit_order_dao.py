@@ -122,8 +122,7 @@ class MailKitOrderDao(UpdatableDao):
                 "field1": barcode,
                 "field2": None,
                 "field3": None,
-                "field4": None,
-                "field5": None,
+                "field4": None
             }}
             order['order']['tests'][0]['test'].update(client_fields)
 
