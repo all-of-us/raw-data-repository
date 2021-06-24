@@ -2,6 +2,7 @@
 import mock, datetime, pytz
 
 from rdr_service import clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     GenomicManifestTypes, GenomicIncidentCode
 from tests.helpers.unittest_base import BaseTestCase
@@ -266,6 +267,21 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report = "No data to display for Daily Ingestions Summary"
 
         self.assertEqual(expected_report, report_output)
+
+    @mock.patch('rdr_service.genomic.genomic_data_quality_components.ReportingComponent.format_report')
+    def test_daily_ingestion_summary_long_report(self, format_mock):
+
+        format_mock.return_value = "test\n" * 30
+
+        with DataQualityJobController(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS) as controller:
+            report_output = controller.execute_workflow(slack=True)
+
+        expected_report = "test\n" * 30
+
+        with open_cloud_file(report_output, 'r') as report_file:
+            report_file_data = report_file.read()
+
+        self.assertEqual(expected_report, report_file_data)
 
     def test_daily_incident_report(self):
         # timeframes
