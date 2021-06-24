@@ -23,7 +23,13 @@ class EnrollmentStatusInfo:
     calculated = False  # False = No, True = Yes
     first_ts = None  # First timestamp seen.
     last_ts = None  # Last timestamp seen.
-    values: list = list()  # List of related events.
+    values = None  # List of related events.
+
+    def add_value(self, value):
+        """ Save a relevant datum to the values list. """
+        if not self.values:
+            self.values = list()
+        self.values.append(value)
 
 
 class EnrollmentStatusCalculator:
@@ -157,7 +163,7 @@ class EnrollmentStatusCalculator:
             if ev.event == ParticipantEventEnum.SignupTime:
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
-                info.values.append(ev)
+                info.add_value(ev)
                 break
         return self.save_calc('_signup', info)
 
@@ -174,7 +180,7 @@ class EnrollmentStatusCalculator:
             if ev.event == ParticipantEventEnum.ConsentPII:
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
-                info.values.append(ev)
+                info.add_value(ev)
                 break
 
         # Calculate consent cohort group
@@ -210,7 +216,7 @@ class EnrollmentStatusCalculator:
                         ev.answer in [CONSENT_PERMISSION_YES_CODE, DVEHRSHARING_CONSENT_CODE_YES]:
                     info.calculated = True
                     info.first_ts = ev.last_ts = ev.timestamp
-                    info.values.append(ev)
+                    info.add_value(ev)
 
         return self.save_calc('_ehr_consented', info)
 
@@ -233,7 +239,7 @@ class EnrollmentStatusCalculator:
                 if info.calculated is False and ev.answer == CONSENT_GROR_YES_CODE:
                     info.calculated = True
                     info.first_ts = ev.last_ts = ev.timestamp
-                    info.values.append(ev)
+                    info.add_value(ev)
 
         return self.save_calc('_gror_consented', info)
 
@@ -250,7 +256,7 @@ class EnrollmentStatusCalculator:
             if ev.event == ParticipantEventEnum.BiobankConfirmed and ev.dna_tests > 0:
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
-                info.values.append(ev)
+                info.add_value(ev)
                 break
 
         return self.save_calc('_biobank_samples', info)
@@ -269,7 +275,7 @@ class EnrollmentStatusCalculator:
                     ev.finalized is not None:
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
-                info.values.append(ev)
+                info.add_value(ev)
                 break
 
         return self.save_calc('_physical_measurements', info)
