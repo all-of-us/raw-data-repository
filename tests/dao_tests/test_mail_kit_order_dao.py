@@ -108,7 +108,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
 
     def test_insert_biobank_order_version_two_barcode(self):
-        version_two_barcode = 'SABR901601##21IN'
+        version_two_barcode = 'SABR9016012221IN'
         self.put_request['extension'][0]['valueString'] = version_two_barcode
         payload = self.send_post(
             "SupplyRequest",
@@ -146,6 +146,40 @@ class MailKitOrderDaoTestBase(BaseTestCase):
 
         # Make sure the correct account is used for version two
         self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
+
+    def test_biobank_bad_barcode(self):
+        bad_barcode = 'SABR90-1601-2221IN'
+        cleaned_barcode = 'SABR9016012221IN'
+
+        self.put_request['extension'][0]['valueString'] = bad_barcode
+
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
+        payload = self.send_post(
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
+
+        self.assertEqual(put_response["barcode"], cleaned_barcode)
+
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]['order']['tests'][0]['test']
+        self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], cleaned_barcode)
 
     def test_biobank_order_finalized_and_identifier_created(self):
         self.send_post(
