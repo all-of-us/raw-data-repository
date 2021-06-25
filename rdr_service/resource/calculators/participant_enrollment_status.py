@@ -9,7 +9,8 @@ from rdr_service.code_constants import (
     CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_YES,
     EHR_CONSENT_EXPIRED_YES,
-    DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE
+    DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE,
+    DVEHRSHARING_CONSENT_CODE_NOT_SURE
 )
 from rdr_service import config
 from rdr_service.resource.constants import PDREnrollmentStatusEnum
@@ -27,9 +28,10 @@ class EnrollmentStatusInfo:
 
     def add_value(self, value):
         """ Save a relevant datum to the values list. """
-        if not self.values:
+        if self.values is None:
             self.values = list()
         self.values.append(value)
+
 
 
 class EnrollmentStatusCalculator:
@@ -63,6 +65,8 @@ class EnrollmentStatusCalculator:
         # Create a list of the baseline module enumerations from the config file.
         self._module_enums = [ParticipantEventEnum[mod.replace('questionnaireOn', '')]
                                 for mod in config.getSettingList('baseline_ppi_questionnaire_fields')]
+        if not self._module_enums:
+            raise ValueError('Loading baseline modules from configuration failed.')
 
     def run(self, activity: list):
         """
@@ -206,9 +210,11 @@ class EnrollmentStatusCalculator:
         """
         info = EnrollmentStatusInfo()
         for ev in events:
-            if ev.event == ParticipantEventEnum.EHRConsentPII or ev.event == ParticipantEventEnum.DVEHRSharing:
+            if ev.event in [ParticipantEventEnum.EHRConsentPII, ParticipantEventEnum.DVEHRSharing]:
                 # See if we need to reset the info object.
-                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]:
+                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES,
+                                 DVEHRSHARING_CONSENT_CODE_NOT_SURE]:
+                    self._ehr_consented = None  # Reset any saved info.
                     info = EnrollmentStatusInfo()
                     continue
                 # See if we should set the consent info.
@@ -233,6 +239,7 @@ class EnrollmentStatusCalculator:
             if ev.event == ParticipantEventEnum.GROR:
                 # See if we need to reset the info object.
                 if ev.answer in [CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE]:
+                    self._gror_consented = None  # Reset any saved info.
                     info = EnrollmentStatusInfo()
                     continue
                 # See if we should set the consent info.
@@ -296,7 +303,6 @@ class EnrollmentStatusCalculator:
         # Sanity check, make sure we have the same number of event enums as config baseline modules.
         if len(self._module_enums) != len(config.getSettingList('baseline_ppi_questionnaire_fields')):
             raise ValueError('Baseline module event enum list different than config.')
-        mod_events = list()
 
         # Find the baseline module events.
         for ev in events:
@@ -306,10 +312,10 @@ class EnrollmentStatusCalculator:
                         info.first_ts = ev.timestamp
                     if ev.timestamp > info.last_ts:
                         info.last_ts = ev.timestamp
-                    mod_events.append(ev)
+                    info.add_value(ev)
 
-        info.values = mod_events
-        if info.values:
+        # If we have seen all the baseline modules, set calculated to True
+        if info.values is not None and len(info.values) == len(self._module_enums):
             info.calculated = True
 
         return self.save_calc('_baseline_modules', info)
