@@ -28,7 +28,11 @@ class ConsentTool(ToolBase):
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
-        results_to_report = self._consent_dao.get_files_needing_correction(min_modified_datetime=min_validation_date)
+        with self.get_session() as session:
+            results_to_report = self._consent_dao.get_files_needing_correction(
+                session,
+                min_modified_datetime=min_validation_date
+            )
 
         report_lines = []
         previous_participant_id = None
@@ -39,6 +43,7 @@ class ConsentTool(ToolBase):
             report_lines.append(self._line_output_for_validation(result, verbose=self.args.verbose))
 
         logger.info('\n'.join(report_lines))
+        input('Press Enter to exit...')
 
     def modify_file_results(self):
         file = self._consent_dao.get(self.args.id)
@@ -79,6 +84,8 @@ class ConsentTool(ToolBase):
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()
+        if verbose:
+            output_line.write(f'\n{file.id} - ')  # TODO: ljust the id
         output_line.write(f'P{file.participant_id} - {str(file.type).ljust(10)} ')
 
         if not file.file_exists:
@@ -94,14 +101,14 @@ class ConsentTool(ToolBase):
 
             output_line.write(', '.join(errors_with_file))
             if verbose:
-                output_line.write(f' - {self._get_link(file)}')
+                output_line.write(f'\n{self._get_link(file)}')
 
         return output_line.getvalue()
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
         extra_info = ''
-        if verbose:
+        if verbose and file.signing_date and file.expected_sign_date:
             time_difference = file.signing_date - file.expected_sign_date
             extra_info = f', diff of {time_difference.days} days'
         return f'invalid signing date (expected {file.expected_sign_date} '\
@@ -113,7 +120,7 @@ class ConsentTool(ToolBase):
             bucket_name=bucket_name,
             blob_name='/'.join(name_parts)
         )
-        return blob.generate_signed_url(datetime.now() + timedelta(hours=2))
+        return blob.generate_signed_url(datetime.utcnow() + timedelta(hours=2))
 
     @classmethod
     def _log_property_change(cls, property_name, old_value, new_value):

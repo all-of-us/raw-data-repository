@@ -50,14 +50,13 @@ class ConsentDao(BaseDao):
             summaries = query.all()
             return summaries
 
-    def get_files_needing_correction(self, min_modified_datetime : datetime = None) -> List[ConsentFile]:
-        with self.session() as session:
-            query = session.query(ConsentFile).filter(
-                ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
-            )
-            if min_modified_datetime:
-                query = query.filter(ConsentFile.modified >= min_modified_datetime)
-            return query.all()
+    def get_files_needing_correction(self, session, min_modified_datetime: datetime = None) -> List[ConsentFile]:
+        query = session.query(ConsentFile).filter(
+            ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+        )
+        if min_modified_datetime:
+            query = query.filter(ConsentFile.modified >= min_modified_datetime)
+        return query.all()
 
     def batch_update_consent_files(self, consent_files: List[ConsentFile]):
         with self.session() as session:
