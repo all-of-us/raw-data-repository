@@ -46,41 +46,45 @@ class ConsentTool(ToolBase):
         input('Press Enter to exit...')
 
     def modify_file_results(self):
-        file = self._consent_dao.get(self.args.id)
-        if file is None:
-            logger.error('Unable to find validation record')
+        with self.get_session() as session:
 
-        logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
-        self._check_for_update(
-            new_value=self.args.type,
-            stored_value=file.type,
-            parser_func=ConsentType,
-            callback=lambda parsed_value: self._log_property_change('type', file.type, parsed_value)
-        )
-        self._check_for_update(
-            new_value=self.args.sync_status,
-            stored_value=file.sync_status,
-            parser_func=ConsentSyncStatus,
-            callback=lambda parsed_value: self._log_property_change('sync_status', file.sync_status, parsed_value)
-        )
-        confirmation_answer = input('\nMake the changes above (Y/n)? : ')
-        if confirmation_answer and confirmation_answer.lower().strip() != 'y':
-            logger.info('Aborting update')
-        else:
-            logger.info('Updating file record')
-            self._check_for_update(
-                new_value=self.args.type,
-                stored_value=file.type,
-                parser_func=ConsentType,
-                callback=lambda parsed_value: setattr(file, 'type', parsed_value)
-            )
-            self._check_for_update(
-                new_value=self.args.sync_status,
-                stored_value=file.sync_status,
-                parser_func=ConsentSyncStatus,
-                callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
-            )
-            self._consent_dao.batch_update_consent_files([file])
+            for _id in self.args.id.split(','):
+                file = self._consent_dao.get_with_session(session, _id)
+                if file is None:
+                    logger.error('Unable to find validation record')
+
+                logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
+                self._check_for_update(
+                    new_value=self.args.type,
+                    stored_value=file.type,
+                    parser_func=ConsentType,
+                    callback=lambda parsed_value: self._log_property_change('type', file.type, parsed_value)
+                )
+                self._check_for_update(
+                    new_value=self.args.sync_status,
+                    stored_value=file.sync_status,
+                    parser_func=ConsentSyncStatus,
+                    callback=lambda parsed_value: self._log_property_change('sync_status',
+                                                                            file.sync_status, parsed_value)
+                )
+                confirmation_answer = input('\nMake the changes above (Y/n)? : ')
+                if confirmation_answer and confirmation_answer.lower().strip() != 'y':
+                    logger.info('Aborting update')
+                else:
+                    logger.info('Updating file record')
+                    self._check_for_update(
+                        new_value=self.args.type,
+                        stored_value=file.type,
+                        parser_func=ConsentType,
+                        callback=lambda parsed_value: setattr(file, 'type', parsed_value)
+                    )
+                    self._check_for_update(
+                        new_value=self.args.sync_status,
+                        stored_value=file.sync_status,
+                        parser_func=ConsentSyncStatus,
+                        callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
+                    )
+                    self._consent_dao.batch_update_consent_files(session, [file])
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()

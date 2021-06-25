@@ -58,10 +58,9 @@ class ConsentDao(BaseDao):
             query = query.filter(ConsentFile.modified >= min_modified_datetime)
         return query.all()
 
-    def batch_update_consent_files(self, consent_files: List[ConsentFile]):
-        with self.session() as session:
-            for file_record in consent_files:
-                session.merge(file_record)
+    def batch_update_consent_files(self, session, consent_files: List[ConsentFile]):
+        for file_record in consent_files:
+            session.merge(file_record)
 
     def get_validation_results_for_participants(self, participant_ids: List[int]) -> List[ConsentFile]:
         with self.session() as session:
