@@ -4,7 +4,7 @@ from dateutil.parser import parse
 from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -23,6 +23,8 @@ class ConsentTool(ToolBase):
 
         if self.args.command == 'report-errors':
             self.report_files_for_correction()
+        elif self.args.command == 'modify':
+            self.modify_file_results()
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
@@ -37,6 +39,43 @@ class ConsentTool(ToolBase):
             report_lines.append(self._line_output_for_validation(result, verbose=self.args.verbose))
 
         logger.info('\n'.join(report_lines))
+
+    def modify_file_results(self):
+        file = self._consent_dao.get(self.args.id)
+        if file is None:
+            logger.error('Unable to find validation record')
+
+        logger.info('File info:'.ljust(16) + f'P{file.participant_id}, {file.file_path}')
+        self._check_for_update(
+            new_value=self.args.type,
+            stored_value=file.type,
+            parser_func=ConsentType,
+            callback=lambda parsed_value: self._log_property_change('type', file.type, parsed_value)
+        )
+        self._check_for_update(
+            new_value=self.args.sync_status,
+            stored_value=file.sync_status,
+            parser_func=ConsentSyncStatus,
+            callback=lambda parsed_value: self._log_property_change('sync_status', file.sync_status, parsed_value)
+        )
+        confirmation_answer = input('\nMake the changes above (Y/n)? : ')
+        if confirmation_answer and confirmation_answer.lower().strip() != 'y':
+            logger.info('Aborting update')
+        else:
+            logger.info('Updating file record')
+            self._check_for_update(
+                new_value=self.args.type,
+                stored_value=file.type,
+                parser_func=ConsentType,
+                callback=lambda parsed_value: setattr(file, 'type', parsed_value)
+            )
+            self._check_for_update(
+                new_value=self.args.sync_status,
+                stored_value=file.sync_status,
+                parser_func=ConsentSyncStatus,
+                callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
+            )
+            self._consent_dao.batch_update_consent_files([file])
 
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()
@@ -76,6 +115,26 @@ class ConsentTool(ToolBase):
         )
         return blob.generate_signed_url(datetime.now() + timedelta(hours=2))
 
+    @classmethod
+    def _log_property_change(cls, property_name, old_value, new_value):
+        logger.info(f'{property_name}:'.ljust(16) + f'{old_value} => {new_value}')
+
+    @classmethod
+    def _new_value(cls, entered_value, parser_func=None):
+        if isinstance(entered_value, str) and entered_value.lower() == 'none':
+            return None
+        elif parser_func is not None:
+            return parser_func(entered_value)
+        else:
+            return entered_value
+
+    @classmethod
+    def _check_for_update(cls, new_value, stored_value, parser_func=None, callback=None):
+        if new_value is not None:
+            parsed_value = cls._new_value(entered_value=new_value, parser_func=parser_func)
+            if parsed_value != stored_value:
+                callback(parsed_value)
+
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -90,6 +149,17 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
         help='Enable verbose output, useful when auditing flagged files',
         default=False,
         action="store_true"
+    )
+
+    modify_parser = subparsers.add_parser('modify')
+    modify_parser.add_argument(
+        '--id', help='Database id of the record to modify', required=True
+    )
+    modify_parser.add_argument(
+        '--type', help='New consent type value to set'
+    )
+    modify_parser.add_argument(
+        '--sync-status', help='New sync status to set (format: string or int value of the new status'
     )
 
 
