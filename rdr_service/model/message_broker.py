@@ -40,6 +40,10 @@ class MessageBrokerRecord(Base):
     """Original resource value; whole payload request that was sent from the requester"""
 
 
+event.listen(MessageBrokerRecord, "before_insert", model_insert_listener)
+event.listen(MessageBrokerRecord, "before_update", model_update_listener)
+
+
 class MessageBrokerMetadata(Base):
     __tablename__ = "message_broker_metadata"
 
@@ -58,6 +62,10 @@ class MessageBrokerMetadata(Base):
     """message destination endpoint"""
 
     __table_args__ = (UniqueConstraint('event_type', 'destination', 'url', name='unique_message_target'),)
+
+
+event.listen(MessageBrokerMetadata, "before_insert", model_insert_listener)
+event.listen(MessageBrokerMetadata, "before_update", model_update_listener)
 
 
 class MessageBrokerDestAuthInfo(Base):
@@ -84,6 +92,10 @@ class MessageBrokerDestAuthInfo(Base):
     """access token expired time"""
 
     __table_args__ = (UniqueConstraint('destination', name='unique_destination'),)
+
+
+event.listen(MessageBrokerDestAuthInfo, "before_insert", model_insert_listener)
+event.listen(MessageBrokerDestAuthInfo, "before_update", model_update_listener)
 
 
 class MessageBrokerEventData(Base):
@@ -118,15 +130,6 @@ class MessageBrokerEventData(Base):
     valueJson = Column("value_json", JSON)
     """message field value for json value"""
 
-
-event.listen(MessageBrokerRecord, "before_insert", model_insert_listener)
-event.listen(MessageBrokerRecord, "before_update", model_update_listener)
-
-event.listen(MessageBrokerMetadata, "before_insert", model_insert_listener)
-event.listen(MessageBrokerMetadata, "before_update", model_update_listener)
-
-event.listen(MessageBrokerDestAuthInfo, "before_insert", model_insert_listener)
-event.listen(MessageBrokerDestAuthInfo, "before_update", model_update_listener)
 
 event.listen(MessageBrokerEventData, "before_insert", model_insert_listener)
 event.listen(MessageBrokerEventData, "before_update", model_update_listener)
