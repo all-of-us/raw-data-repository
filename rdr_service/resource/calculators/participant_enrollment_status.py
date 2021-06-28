@@ -13,6 +13,7 @@ from rdr_service.code_constants import (
     DVEHRSHARING_CONSENT_CODE_NOT_SURE
 )
 from rdr_service import config
+from rdr_service.participant_enums import PhysicalMeasurementsStatus
 from rdr_service.resource.constants import PDREnrollmentStatusEnum
 from rdr_service.resource.constants import ParticipantEventEnum, COHORT_1_CUTOFF, \
     COHORT_2_CUTOFF, ConsentCohortEnum
@@ -31,7 +32,6 @@ class EnrollmentStatusInfo:
         if self.values is None:
             self.values = list()
         self.values.append(value)
-
 
 
 class EnrollmentStatusCalculator:
@@ -279,7 +279,7 @@ class EnrollmentStatusCalculator:
         info = EnrollmentStatusInfo()
         for ev in events:
             if info.calculated is False and ev.event == ParticipantEventEnum.PhysicalMeasurements and \
-                    ev.finalized is not None:
+                    ev.status_id == int(PhysicalMeasurementsStatus.COMPLETED):
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
                 info.add_value(ev)
@@ -299,15 +299,23 @@ class EnrollmentStatusCalculator:
         info.first_ts = datetime.datetime.max
         info.last_ts = datetime.datetime.min
 
-
         # Sanity check, make sure we have the same number of event enums as config baseline modules.
         if len(self._module_enums) != len(config.getSettingList('baseline_ppi_questionnaire_fields')):
             raise ValueError('Baseline module event enum list different than config.')
 
+        def module_type_stored(mod_ev_):
+            """ See if we have stored that module type already. """
+            if isinstance(info.values, list):
+                for ev_ in info.values:
+                    if mod_ev_ == ev_.event:
+                        return True
+            return False
+
         # Find the baseline module events.
         for ev in events:
             for mod_ev in self._module_enums:
-                if ev.event == mod_ev:
+                # Make sure we are saving a distinct list of baseline module events.
+                if ev.event == mod_ev and module_type_stored(mod_ev) is False:
                     if ev.timestamp < info.first_ts:
                         info.first_ts = ev.timestamp
                     if ev.timestamp > info.last_ts:

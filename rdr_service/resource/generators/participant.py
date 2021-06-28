@@ -814,8 +814,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
             })
-            activity.append(_act(row.finalized, ActivityGroupEnum.Profile, ParticipantEventEnum.PhysicalMeasurements,
-                                 **{'finalized': row.finalized}))
+            activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
+                                ParticipantEventEnum.PhysicalMeasurements,
+                                **{'status': str(pm_status), 'status_id': int(pm_status)}))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list

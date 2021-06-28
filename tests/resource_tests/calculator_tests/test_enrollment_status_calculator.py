@@ -2,7 +2,6 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-import copy
 from datetime import datetime, timedelta
 
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
@@ -10,34 +9,39 @@ from rdr_service.resource.constants import ParticipantEventEnum as p_event, PDRE
 from tests.helpers.unittest_base import BaseTestCase
 
 
-# A basic set of activity records for a 'Cohort 1' and CoreParticipant participant.
-# Remember to make a deep copy if you are going to change the data here.
-BASIC_ACTIVITY = [
-    {'timestamp': datetime(2018, 3, 6, 0, 0), 'group': 'Profile', 'group_id': 1,
-     'event': p_event.EHRFirstReceived},
-    {'timestamp': datetime(2018, 3, 6, 20, 20, 57), 'group': 'Profile', 'group_id': 1,
-     'event': p_event.SignupTime},
-    {'timestamp': datetime(2018, 3, 6, 20, 35, 12), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
-     'answer_id': 767},
-    {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
-     'answer_id': 767},
-    {'timestamp': datetime(2018, 3, 6, 20, 46, 48), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.TheBasics, 'ConsentAnswer': None},
-    {'timestamp': datetime(2018, 3, 6, 20, 49), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.OverallHealth, 'ConsentAnswer': None},
-    {'timestamp': datetime(2018, 3, 6, 20, 51, 6), 'group': 'QuestionnaireModule', 'group_id': 40,
-     'event': p_event.Lifestyle, 'ConsentAnswer': None},
-    {'timestamp': datetime(2018, 3, 28, 20, 18, 59), 'group': 'Biobank', 'group_id': 20,
-     'event': p_event.BiobankConfirmed, 'dna_tests': 3, 'basline_tests': 4},
-    {'timestamp': datetime(2018, 5, 17, 2, 11, 37), 'group': 'Biobank', 'group_id': 20,
-     'event': p_event.BiobankOrder, 'dna_tests': 0, 'basline_tests': 0},
-    {'timestamp': datetime(2018, 5, 21, 18, 9, 12), 'group': 'Profile', 'group_id': 1,
-     'event': p_event.PhysicalMeasurements, 'finalized': datetime(2018, 3, 8, 18, 9, 12)},
-    {'timestamp': datetime(2019, 6, 13, 0, 0), 'group': 'Profile', 'group_id': 1,
-     'event': p_event.EHRLastReceived}
-]
+def get_basic_activity():
+    """
+    A basic set of activity records for a 'Cohort 1' and CoreParticipant participant.
+    """
+    return [
+        {'timestamp': datetime(2018, 3, 6, 0, 0), 'group': 'Profile', 'group_id': 1,
+         'event': p_event.EHRFirstReceived},
+        {'timestamp': datetime(2018, 3, 6, 20, 20, 57), 'group': 'Profile', 'group_id': 1,
+         'event': p_event.SignupTime},
+        {'timestamp': datetime(2018, 3, 6, 20, 35, 12), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
+         'answer_id': 767},
+        {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
+         'answer_id': 767},
+        {'timestamp': datetime(2018, 3, 6, 20, 46, 48), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'event': p_event.TheBasics, 'ConsentAnswer': None},
+        {'timestamp': datetime(2018, 3, 6, 20, 49, 0), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'event': p_event.OverallHealth, 'ConsentAnswer': None},
+        {'timestamp': datetime(2018, 3, 6, 20, 51, 6), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'event': p_event.Lifestyle, 'ConsentAnswer': None},
+        {'timestamp': datetime(2018, 3, 28, 20, 18, 59), 'group': 'Biobank', 'group_id': 20,
+         'event': p_event.BiobankConfirmed, 'dna_tests': 3, 'basline_tests': 4},
+        {'timestamp': datetime(2018, 5, 17, 2, 11, 37), 'group': 'Biobank', 'group_id': 20,
+         'event': p_event.BiobankOrder, 'dna_tests': 0, 'basline_tests': 0},
+        # ROC-295: duplicate record, manually cancelled
+        {'timestamp': datetime(2018, 5, 21, 18, 9, 8), 'group': 'Profile', 'group_id': 1,
+         'event': p_event.PhysicalMeasurements, 'status': 'CANCELLED', 'status_id': 2},
+        {'timestamp': datetime(2018, 5, 21, 18, 9, 12), 'group': 'Profile', 'group_id': 1,
+         'event': p_event.PhysicalMeasurements, 'status': 'COMPLETED', 'status_id': 1},
+        {'timestamp': datetime(2019, 6, 13, 0, 0), 'group': 'Profile', 'group_id': 1,
+         'event': p_event.EHRLastReceived}
+    ]
 
 
 class EnrollmentStatusCalculatorTest(BaseTestCase):
@@ -61,16 +65,14 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         :return: list
         """
         data = list()
-        # Make a deep copy so we don't mess with the BASIC_ACTIVITY timestamp values.
-        act_ = copy.deepcopy(activity)
-        for ev in act_:
+        for ev in activity:
             ev['timestamp'] = ev['timestamp'] + timedelta(days=days)
             data.append(ev)
         return data
 
     def test_basic_activity(self):
         """ A simple test of the basic activity list. """
-        self.esc.run(BASIC_ACTIVITY)
+        self.esc.run(get_basic_activity())
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
         self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
@@ -81,29 +83,55 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         self.assertNotEqual(self.esc.core_participant_time, datetime(2021, 1, 1, 0, 0, 0))
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_1)
 
+        # Test physical measurements timestamp to ensure second PM record was used.
+        self.assertEqual(self.esc._physical_measurements.first_ts, datetime(2018, 5, 21, 18, 9, 12))
+
+    def test_duplicate_baseline_modules(self):
+        """ Test that duplicate baseline modules are excluded in enrollment status calculation. """
+        activity = get_basic_activity()
+        # Add additional "TheBasics" to activity.
+        activity.append(
+            {'timestamp': datetime(2018, 3, 6, 20, 47, 21), 'group': 'QuestionnaireModule', 'group_id': 40,
+            'event': p_event.TheBasics, 'ConsentAnswer': None}
+        )
+        self.esc.run(activity)
+        bm_count = 0
+        for ev in self.esc._baseline_modules.values:
+            if ev.event == p_event.TheBasics:
+                self.assertEqual(ev.timestamp, datetime(2018, 3, 6, 20, 46, 48))
+                bm_count += 1
+            elif ev.event == p_event.OverallHealth:
+                self.assertEqual(ev.timestamp, datetime(2018, 3, 6, 20, 49, 0))
+                bm_count += 1
+            elif ev.event == p_event.Lifestyle:
+                self.assertEqual(ev.timestamp, datetime(2018, 3, 6, 20, 51, 6))
+                bm_count += 1
+
+        self.assertEqual(bm_count, 3)
+
     def test_cohort_2(self):
         """ Shift activity dates so we look like a cohort 2 participant. """
-        activity = self._shift_timestamps(BASIC_ACTIVITY, 180)
+        activity = self._shift_timestamps(get_basic_activity(), 180)
         self.esc.run(activity)
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_2)
 
     def test_cohort_3_no_gror(self):
         """ Shift activity dates so we look like a cohort 3 participant with no GROR consent. """
-        activity = self._shift_timestamps(BASIC_ACTIVITY, 800)
+        activity = self._shift_timestamps(get_basic_activity(), 800)
         self.esc.run(activity)
-        # Since BASIC_ACTIVITY does not have a GROR consent, we should only reach ParticipantPlusEHR status.
+        # Since get_basic_activity() does not have a GROR consent, we should only reach ParticipantPlusEHR status.
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_3)
 
     def test_cohort_3_gror_no_answer(self):
         """ Shift activity dates so we look like a cohort 3 participant with GROR consent with CheckDNA_No answer. """
-        # Make a deep copy so we don't mess with the BASIC_ACTIVITY timestamp values.
-        activity = copy.deepcopy(BASIC_ACTIVITY)
+        # Make a deep copy so we don't mess with the get_basic_activity() timestamp values.
+        activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
              'event': p_event.GROR, 'answer': 'CheckDNA_No',
-             'answer_id': 767},
+             'answer_id': 767}
         )
         # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
@@ -113,12 +141,12 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_cohort_3_gror_yes_answer(self):
         """ Shift activity dates so we look like a cohort 3 participant with GROR consent with CheckDNA_Yes answer. """
-        # Make a deep copy so we don't mess with the BASIC_ACTIVITY timestamp values.
-        activity = copy.deepcopy(BASIC_ACTIVITY)
+        # Make a deep copy so we don't mess with the get_basic_activity() timestamp values.
+        activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
              'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
-             'answer_id': 767},
+             'answer_id': 767}
         )
         # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
@@ -128,17 +156,17 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_cohort_3_gror_yes_no_answer(self):
         """ Shift activity dates so we look like a cohort 3 participant with GROR consent with multiple answers. """
-        # Make a deep copy so we don't mess with the BASIC_ACTIVITY timestamp values.
-        activity = copy.deepcopy(BASIC_ACTIVITY)
+        # Make a deep copy so we don't mess with the get_basic_activity() timestamp values.
+        activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
              'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
-             'answer_id': 767},
+             'answer_id': 767}
         )
         activity.append(
             {'timestamp': datetime(2018, 3, 7, 15, 11, 19), 'group': 'QuestionnaireModule', 'group_id': 40,
              'event': p_event.GROR, 'answer': 'CheckDNA_No',
-             'answer_id': 767},
+             'answer_id': 767}
         )
         # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
@@ -149,7 +177,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_core_minus_pm(self):
         """ Test that we only reach CoreParticipantMinusPM status """
-        self.esc.run(BASIC_ACTIVITY[0:-2])
+        self.esc.run(get_basic_activity()[0:-2])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipantMinusPM)
         self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
@@ -160,7 +188,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_participant_plus_ehr(self):
         """ Test that we only reach ParticipantPlusEHR status """
-        self.esc.run(BASIC_ACTIVITY[0:-5])
+        self.esc.run(get_basic_activity()[0:-5])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
         self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
@@ -171,7 +199,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
     def test_participant(self):
         """ Test that we only reach Participant status """
-        self.esc.run(BASIC_ACTIVITY[0:3])
+        self.esc.run(get_basic_activity()[0:3])
         self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Participant)
         self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
         self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
