@@ -1,11 +1,16 @@
 import argparse
 from datetime import datetime, timedelta
+from typing import List
+
+import pytz
 from dateutil.parser import parse
 from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.participant import ParticipantHistory
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent.validation import ConsentValidationController
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
@@ -29,6 +34,41 @@ class ConsentTool(ToolBase):
             self.modify_file_results()
         elif self.args.command == 'revalidate':
             self.revalidate()
+        elif self.args.command == 'generate-ce':
+            self.generate_ce()
+        elif self.args.command == 'check-org-change':
+            self.check_org_change()
+        elif self.args.command == 'validate':
+            self.validate()
+
+    def check_org_change(self):
+        with self.get_session() as session:
+            cutoff_date = datetime(2021, 5, 28)
+            modified_participant_ids = list(session.query(
+                ParticipantSummary.participantId,
+                ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored
+            ).filter(ParticipantSummary.lastModified > cutoff_date).all())
+            for modified_participant_id, consent_authored in modified_participant_ids:
+                print(f'checking {modified_participant_id}')
+                history_records: List[ParticipantHistory] = session.query(
+                    ParticipantHistory.organizationId,
+                    ParticipantHistory.lastModified
+                ).filter(
+                    ParticipantHistory.participantId == modified_participant_id
+                ).all()
+                last_org_id_seen = None
+                latest_org_change_record = None
+                for history_record in history_records:
+                    if history_record.organizationId != last_org_id_seen:
+                        last_org_id_seen = history_record.organizationId
+                        latest_org_change_record = history_record
+
+                if (
+                    latest_org_change_record
+                    and latest_org_change_record.lastModified > cutoff_date > consent_authored
+                ):
+                    print(f'changed org on {latest_org_change_record.lastModified}')
+
 
     def revalidate(self):
         validation_controller = ConsentValidationController(
@@ -39,6 +79,25 @@ class ConsentTool(ToolBase):
         with self.get_session() as session:
             for _id in self.args.ids.split(','):
                 validation_controller.revalidate_record(session, _id)
+
+    def generate_ce(self):
+        validation_controller = ConsentValidationController(
+            consent_dao=ConsentDao(),
+            participant_summary_dao=ParticipantSummaryDao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        with self.get_session() as session:
+            validation_controller.generate_records_for_ce(session,
+                                                          min_consent_date=datetime(2021, 5, 28, tzinfo=pytz.utc))
+
+    def validate(self):
+        validation_controller = ConsentValidationController(
+            consent_dao=ConsentDao(),
+            participant_summary_dao=ParticipantSummaryDao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        with self.get_session() as session:
+            validation_controller.generate_org_change_sync_records(session)
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
@@ -190,6 +249,10 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     revalidate_parser.add_argument(
         '--ids', help='Database id of the record to modify', required=True
     )
+
+    subparsers.add_parser('generate-ce')
+    subparsers.add_parser('check-org-change')
+    subparsers.add_parser('validate')
 
 
 def run():

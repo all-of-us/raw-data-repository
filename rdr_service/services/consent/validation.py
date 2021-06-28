@@ -4,7 +4,6 @@ import pytz
 from typing import List
 
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -15,12 +14,12 @@ from rdr_service.storage import GoogleCloudStorageProvider
 
 class ConsentValidationController:
     def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
-                 hpo_dao: HPODao, storage_provider: GoogleCloudStorageProvider):
+                 storage_provider: GoogleCloudStorageProvider):
         self.consent_dao = consent_dao
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
 
-        self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
+        self.va_hpo_id = 15
 
     def check_for_corrections(self):
         """Load all of the current consent issues and see if they have been resolved yet"""
@@ -67,6 +66,48 @@ class ConsentValidationController:
 
             self.consent_dao.batch_update_consent_files(validation_updates)
 
+    def _build_ce_result(self, wrapper: files._ConsentBlobWrapper, participant_id):
+        return ParsingResult(
+            participant_id=participant_id,
+            type=ConsentType.PRIMARY,
+            file_exists=True,
+            file_upload_time=wrapper.blob.updated,
+            file_path=f'{wrapper.blob.bucket.name}/{wrapper.blob.name}',
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC
+        )
+
+    def generate_records_for_ce(self, session, min_consent_date):
+        validation_results: List[ParsingResult] = []
+        validated_participant_ids = []
+        summaries = self.consent_dao.get_ce_participants_with_consents(session, start_date=min_consent_date)
+        for summary in summaries:
+            print(f'adding records for {summary.participantId}')
+            validated_participant_ids.append(summary.participantId)
+            consent_factory: files.ConsentFileAbstractFactory = files.ConsentFileAbstractFactory.get_file_factory(
+                participant_id=summary.participantId,
+                participant_origin=summary.participantOrigin,
+                storage_provider=self.storage_provider
+            )
+            validation_records = [
+                self._build_ce_result(participant_id=summary.participantId, wrapper=blob)
+                for blob in consent_factory.consent_blobs
+                if blob.blob.updated >= min_consent_date
+            ]
+            validation_results.extend(validation_records)
+
+        results_to_store = []
+        previous_results = self.consent_dao.get_validation_results_for_participants(
+            session,
+            participant_ids=validated_participant_ids
+        )
+        for possible_new_result in validation_results:
+            if not any(
+                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
+            ):
+                results_to_store.append(possible_new_result)
+
+        self.consent_dao.batch_update_consent_files(session, results_to_store)
+
     def validate_recent_uploads(self, min_consent_date):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
         validation_results = []
@@ -112,12 +153,55 @@ class ConsentValidationController:
 
         self.consent_dao.batch_update_consent_files(results_to_store)
 
+    def generate_org_change_sync_records(self, session):
+        validation_results = []
+        participant_ids = []
+        for summary in self.consent_dao.get_org_change_summaries(session):
+            print(f'pid {summary.participantId}')
+            participant_ids.append(summary.participantId)
+            validator = self._build_validator(summary)
+
+            if isinstance(validator.factory, files.VibrentConsentFactory):
+                if summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED:
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_primary_validation_results()))
+                if summary.consentForCABoR == QuestionnaireStatus.SUBMITTED:
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_cabor_validation_results()))
+                if summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED:
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_ehr_validation_results()))
+                if summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+                    validation_results.extend(
+                        self._process_validation_results(validator.get_gror_validation_results()))
+            else:
+                validation_results.extend([
+                    self._build_ce_result(participant_id=summary.participantId, wrapper=blob)
+                    for blob in validator.factory.consent_blobs
+                ])
+
+        results_to_store = []
+        previous_results = self.consent_dao.get_validation_results_for_participants(session,
+                                                                                    participant_ids=participant_ids)
+        for possible_new_result in validation_results:
+            if not any(
+                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
+            ):
+                results_to_store.append(possible_new_result)
+
+        self.consent_dao.batch_update_consent_files(session, results_to_store)
+
     def revalidate_record(self, session, record_id):
-        validation_record: ParsingResult = self.consent_dao.get_with_session(session, record_id)
-        summary = self.participant_summary_dao.get_with_session(session, validation_record.participant_id)
-        validator = self._build_validator(summary)
-        validator.revalidate_file(validation_record)
-        self.consent_dao.batch_update_consent_files(session, [validation_record])
+        # TODO: revalidation needs to consider if there is another validation record ready to sync that
+        #  would make the current obsolete
+        # validation_record: ParsingResult = self.consent_dao.get_with_session(session, record_id)
+        print(f'ignoring {record_id}')
+        for validation_record in self.consent_dao.get_all_ehr_for_revalidation(session):
+            print(f'reval for {validation_record.participant_id}')
+            summary = self.participant_summary_dao.get_with_session(session, validation_record.participant_id)
+            validator = self._build_validator(summary)
+            validator.revalidate_file(validation_record)
+            # self.consent_dao.batch_update_consent_files(session, [validation_record])
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
@@ -197,6 +281,7 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
+            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=self.participant_summary.consentForElectronicHealthRecordsAuthored
         )
 
@@ -228,6 +313,15 @@ class ConsentValidator:
         new_consent_data = self.factory.get_consent_for_path(validation_result.file_path)
         if isinstance(new_consent_data, files.PrimaryConsentFile):
             expected_sign_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+            self._build_validation_result(
+                consent=new_consent_data,
+                consent_type=validation_result.type,
+                expected_sign_datetime=expected_sign_date,
+                result=validation_result
+            )
+            self._validate_is_va_file(consent=new_consent_data, result=validation_result)
+        elif isinstance(new_consent_data, files.EhrConsentFile):
+            expected_sign_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
             self._build_validation_result(
                 consent=new_consent_data,
                 consent_type=validation_result.type,

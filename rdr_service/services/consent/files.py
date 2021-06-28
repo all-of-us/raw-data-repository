@@ -30,17 +30,21 @@ class ConsentFileAbstractFactory(ABC):
                          storage_provider: GoogleCloudStorageProvider) -> 'ConsentFileAbstractFactory':
         if participant_origin == 'vibrent':
             return VibrentConsentFactory(participant_id, storage_provider)
+        elif participant_origin == 'careevolution':
+            return CeConsentFactory(participant_id, storage_provider)
 
         raise Exception(f'Unsupported participant origin {participant_origin}')
 
     def __init__(self, participant_id: int, storage_provider: GoogleCloudStorageProvider):
         # Get the PDF Blobs from Google's API for the participant's consent files
         factory_consent_bucket = self._get_source_bucket()
-        file_blobs = storage_provider.list(
+        file_blobs = list(storage_provider.list(
             bucket_name=factory_consent_bucket,
-            prefix=f'Participant/P{participant_id}'
-        )
-        self.consent_blobs = [_ConsentBlobWrapper(blob) for blob in file_blobs if blob.name.endswith('.pdf')]
+            prefix=f'{self._get_source_prefix()}/P{participant_id}'
+        ))
+        self.consent_blobs: List[_ConsentBlobWrapper] = [
+            _ConsentBlobWrapper(blob) for blob in file_blobs if blob.name.endswith('.pdf')
+        ]
         self._storage_provider = storage_provider
 
     def get_consent_for_path(self, file_path) -> 'ConsentFile':
@@ -121,6 +125,10 @@ class ConsentFileAbstractFactory(ABC):
     def _get_source_bucket(self) -> str:
         ...
 
+    @abstractmethod
+    def _get_source_prefix(self) -> str:
+        ...
+
 
 class VibrentConsentFactory(ConsentFileAbstractFactory):
     CABOR_TEXT = (
@@ -158,6 +166,41 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def _get_source_bucket(self) -> str:
         return 'ptc-uploads-all-of-us-rdr-prod'
+
+    def _get_source_prefix(self) -> str:
+        return 'Participant'
+
+
+class CeConsentFactory(ConsentFileAbstractFactory):
+    def _is_primary_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        pass
+
+    def _is_cabor_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        pass
+
+    def _is_ehr_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        pass
+
+    def _is_gror_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        pass
+
+    def _build_primary_consent(self, blob_wrapper: _ConsentBlobWrapper) -> 'PrimaryConsentFile':
+        pass
+
+    def _build_cabor_consent(self, blob_wrapper: _ConsentBlobWrapper) -> 'CaborConsentFile':
+        pass
+
+    def _build_ehr_consent(self, blob_wrapper: _ConsentBlobWrapper) -> 'EhrConsentFile':
+        pass
+
+    def _build_gror_consent(self, blob_wrapper: _ConsentBlobWrapper) -> 'GrorConsentFile':
+        pass
+
+    def _get_source_bucket(self) -> str:
+        return 'ce-uploads-all-of-us-rdr-prod'
+
+    def _get_source_prefix(self) -> str:
+        return 'Participants'
 
 
 class ConsentFile(ABC):
