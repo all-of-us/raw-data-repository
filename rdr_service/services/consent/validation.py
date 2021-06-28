@@ -112,6 +112,13 @@ class ConsentValidationController:
 
         self.consent_dao.batch_update_consent_files(results_to_store)
 
+    def revalidate_record(self, session, record_id):
+        validation_record: ParsingResult = self.consent_dao.get_with_session(session, record_id)
+        summary = self.participant_summary_dao.get_with_session(session, validation_record.participant_id)
+        validator = self._build_validator(summary)
+        validator.revalidate_file(validation_record)
+        self.consent_dao.batch_update_consent_files(session, [validation_record])
+
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
         ready_file = cls._find_file_ready_for_sync(results)
@@ -214,6 +221,23 @@ class ConsentValidator:
             expected_sign_datetime=self.participant_summary.consentForGenomicsRORAuthored
         )
 
+    def revalidate_file(self, validation_result: ParsingResult):
+        if not validation_result.file_exists:
+            return
+
+        new_consent_data = self.factory.get_consent_for_path(validation_result.file_path)
+        if isinstance(new_consent_data, files.PrimaryConsentFile):
+            expected_sign_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+            self._build_validation_result(
+                consent=new_consent_data,
+                consent_type=validation_result.type,
+                expected_sign_datetime=expected_sign_date,
+                result=validation_result
+            )
+            self._validate_is_va_file(consent=new_consent_data, result=validation_result)
+        else:
+            print(f'record {validation_result.id} does not point to a primary file')
+
     def _validate_is_va_file(self, consent, result: ParsingResult):
         is_va_consent = consent.get_is_va_consent()
         if self.participant_summary.hpoId == self.va_hpo_id and not is_va_consent:
@@ -243,18 +267,20 @@ class ConsentValidator:
         return results
 
     def _build_validation_result(self, consent: files.ConsentFile, consent_type: ConsentType,
-                                 expected_sign_datetime: datetime):
+                                 expected_sign_datetime: datetime, result: ParsingResult = None):
         """
         Used to check generic data found on all consent types,
         additional result information should be validated for each type
         """
-        result = ParsingResult(
-            participant_id=self.participant_summary.participantId,
-            file_exists=True,
-            type=consent_type,
-            file_upload_time=consent.upload_time,
-            file_path=consent.file_path
-        )
+        if result is None:
+            result = ParsingResult(
+                participant_id=self.participant_summary.participantId,
+                type=consent_type,
+                file_path=consent.file_path
+            )
+        result.file_exists = True
+        result.file_upload_time = consent.upload_time
+
         self._store_signature(result=result, consent_file=consent)
 
         result.signing_date = consent.get_date_signed()

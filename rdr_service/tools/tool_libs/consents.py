@@ -4,7 +4,9 @@ from dateutil.parser import parse
 from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.services.consent.validation import ConsentValidationController
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -25,12 +27,24 @@ class ConsentTool(ToolBase):
             self.report_files_for_correction()
         elif self.args.command == 'modify':
             self.modify_file_results()
+        elif self.args.command == 'revalidate':
+            self.revalidate()
+
+    def revalidate(self):
+        validation_controller = ConsentValidationController(
+            consent_dao=ConsentDao(),
+            participant_summary_dao=ParticipantSummaryDao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        with self.get_session() as session:
+            for _id in self.args.ids.split(','):
+                validation_controller.revalidate_record(session, _id)
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
         with self.get_session() as session:
             results_to_report = self._consent_dao.get_files_needing_correction(
-                session,
+                session=session,
                 min_modified_datetime=min_validation_date
             )
 
@@ -47,7 +61,6 @@ class ConsentTool(ToolBase):
 
     def modify_file_results(self):
         with self.get_session() as session:
-
             for _id in self.args.id.split(','):
                 file = self._consent_dao.get_with_session(session, _id)
                 if file is None:
@@ -89,7 +102,7 @@ class ConsentTool(ToolBase):
     def _line_output_for_validation(self, file: ConsentFile, verbose: bool):
         output_line = StringIO()
         if verbose:
-            output_line.write(f'\n{file.id} - ')  # TODO: ljust the id
+            output_line.write(f'{file.id} - ')  # TODO: ljust the id
         output_line.write(f'P{file.participant_id} - {str(file.type).ljust(10)} ')
 
         if not file.file_exists:
@@ -171,6 +184,11 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     )
     modify_parser.add_argument(
         '--sync-status', help='New sync status to set (format: string or int value of the new status'
+    )
+
+    revalidate_parser = subparsers.add_parser('revalidate')
+    revalidate_parser.add_argument(
+        '--ids', help='Database id of the record to modify', required=True
     )
 
 
