@@ -382,8 +382,7 @@ class GenomicJobController:
                     code=GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name,
                     message=message,
                     sample_id=sample_id if sample_id else '',
-                    data_file_path=file_path,
-                    slack=True
+                    data_file_path=file_path
                 )
         except RuntimeError:
             logging.warning('Inserting data file failure')
