@@ -817,7 +817,7 @@ class GenomicQueryClass:
             "from_date": from_date
         }
 
-        return query_sql, query_params\
+        return query_sql, query_params
 
     @staticmethod
     def dq_report_incident_detail(from_date):

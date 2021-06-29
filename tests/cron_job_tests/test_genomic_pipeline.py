@@ -3523,6 +3523,13 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, manifest_feedback_record.inputManifestFileId)  # id = 1 is the AW1
         self.assertEqual(2, manifest_feedback_record.feedbackManifestFileId)  # id = 2 is the AW2F
 
+        # check aw2f_job_run_id
+        members = self.member_dao.get_all()
+
+        for member in members:
+            if member.id in (1, 2):
+                self.assertEqual(7, member.aw2fManifestJobRunID)
+
         # Test the manifest file contents
         expected_aw2f_columns = (
             "PACKAGE_ID",

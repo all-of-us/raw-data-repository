@@ -70,11 +70,20 @@ class BQModuleStatusSchema(BQSchema):
     mod_external_id = BQField('mod_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_response_status = BQField('mod_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_response_status_id = BQField('mod_response_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_questionnaire_response_id = BQField('mod_questionnaire_response_id', BQFieldTypeEnum.INTEGER,
+                                            BQFieldModeEnum.NULLABLE)
+    mod_consent = BQField('mod_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_consent_value = BQField('mod_consent_value', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_consent_value_id = BQField('mod_consent_value_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    mod_consent_expired = BQField('mod_consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_non_participant_answer = BQField('mod_non_participant_answer', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
     """
     Store participant consent information
+    # TODO: Depreciated, ModuleStatusSchema is the replacement.
     """
     consent = BQField('consent', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_id = BQField('consent_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
@@ -88,6 +97,7 @@ class BQConsentSchema(BQSchema):
     consent_module_external_id = BQField('consent_module_external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_response_status = BQField('consent_response_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     consent_response_status_id = BQField('consent_response_status_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
 
 class BQRaceSchema(BQSchema):
     """
@@ -317,6 +327,18 @@ class BQParticipantSummarySchema(BQSchema):
     # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR. Add to
     # end of field list if enabled later
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
+
+    # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
+    #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
+    #       completely.
+    enrl_registered_time = BQField('enrl_registered_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_time = BQField('enrl_participant_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_plus_ehr_time = BQField('enrl_participant_plus_ehr_time', BQFieldTypeEnum.DATETIME,
+                                           BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_minus_pm_time = BQField('enrl_core_participant_minus_pm_time', BQFieldTypeEnum.DATETIME,
+                                                BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

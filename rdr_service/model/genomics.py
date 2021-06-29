@@ -121,9 +121,6 @@ class GenomicSetMember(Base):
     aw2FileProcessedId = Column('aw2_file_processed_id',
                                 Integer, ForeignKey("genomic_file_processed.id"),
                                 nullable=True)
-    aw2fFileProcessedId = Column('aw2f_file_processed_id',
-                                 Integer, ForeignKey("genomic_file_processed.id"),
-                                 nullable=True)
 
     # Reconciliation and Manifest columns
     # Reconciled to BB Manifest
@@ -162,6 +159,10 @@ class GenomicSetMember(Base):
     aw4ManifestJobRunID = Column('aw4_manifest_job_run_id',
                                  Integer, ForeignKey("genomic_job_run.id"),
                                  nullable=True)
+
+    aw2fManifestJobRunID = Column('aw2f_manifest_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',

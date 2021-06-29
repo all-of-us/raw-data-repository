@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dateutil import parser
 from io import BytesIO
 from os.path import basename
-from typing import List
+from typing import List, Union
 
 from geometry import Rect
 from google.cloud.storage.blob import Blob
@@ -52,7 +52,10 @@ class ConsentFileAbstractFactory(ABC):
 
 
 class VibrentConsentFactory(ConsentFileAbstractFactory):
-    CABOR_TEXT = 'California Experimental Subject’s Bill of Rights'
+    CABOR_TEXT = (
+        'California Experimental Subject’s Bill of Rights',
+        'Declaración de Derechos del Sujeto de Investigación Experimental'
+    )
 
     def get_primary_consents(self) -> List['PrimaryConsentFile']:
         primary_consents = []
@@ -143,7 +146,8 @@ class CaborConsentFile(ConsentFile, ABC):
 
 
 class EhrConsentFile(ConsentFile, ABC):
-    ...
+    def get_is_va_consent(self):
+        return self.pdf.get_page_number_of_text(['We may ask you to go to a local clinic to be measured']) is not None
 
 
 class GrorConsentFile(ConsentFile, ABC):
@@ -163,8 +167,8 @@ class GrorConsentFile(ConsentFile, ABC):
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
-            'I freely and willingly choose',
-            'sign your full name'
+            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia'),
+            ('sign your full name', 'Firme con su nombre completo')
         ])
 
     def _get_signature_elements(self):
@@ -213,14 +217,29 @@ class VibrentEhrConsentFile(EhrConsentFile):
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
+    _SIGNATURE_PAGE = 9
+
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=150, right=400, bottom=155, top=160), page=9)
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=150, right=400, bottom=155, top=160),
+            page=self._SIGNATURE_PAGE
+        )
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=400, bottom=110, top=115), page=9)
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=400, bottom=110, top=115),
+            page=self._SIGNATURE_PAGE
+        )
 
     def _get_confirmation_check_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=70,  right=73, bottom=475, top=478), page=9)
+        spanish_signature_text = '¿Desea conocer alguno de sus resultados de ADN?'
+        if self.pdf.get_page_number_of_text([spanish_signature_text]) is not None:
+            # Spanish versions of the the GROR have the checkmark a bit more to the left
+            search_box = Rect.from_edges(left=33, right=36, bottom=480, top=485)
+        else:
+            search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
+
+        return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
 
 
 class Pdf:
@@ -252,7 +271,7 @@ class Pdf:
 
         return elements
 
-    def get_page_number_of_text(self, search_str_list: List[str]):
+    def get_page_number_of_text(self, search_str_list: List[Union[str, tuple]]):
         for page_number, page in enumerate(self.pages):
             all_strings_found_in_page = True
             for search_str in search_str_list:

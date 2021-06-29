@@ -3,7 +3,6 @@ import json
 import logging
 import re
 from collections import OrderedDict
-from enum import IntEnum
 
 from dateutil import parser, tz
 from dateutil.parser import ParserError
@@ -32,8 +31,8 @@ from rdr_service.code_constants import (
 from rdr_service.dao.resource_dao import ResourceDataDao
 # TODO: Replace BQRecord here with a Resource alternative.
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, \
-    BQModuleStatusEnum, COHORT_1_CUTOFF, COHORT_2_CUTOFF, BQConsentCohort
+# TODO: Create new versions of these ENUMs in resource.constants.
+from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum, BQModuleStatusEnum
 from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
@@ -51,9 +50,12 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
     DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
     TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
 from rdr_service.resource import generators, schemas
-from rdr_service.resource.constants import SchemaID
+from rdr_service.resource.calculators import EnrollmentStatusCalculator
+from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, COHORT_1_CUTOFF, \
+    COHORT_2_CUTOFF, ConsentCohortEnum
 from rdr_service.resource.helpers import DateCollection, RURAL_ZIPCODES
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
+
 
 _consent_module_question_map = {
     # module: question code string
@@ -132,72 +134,19 @@ _unlayered_question_codes_map = {
     'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
 }
 
-# Participant Activity Group IDs.
-class ActivityGroup(IntEnum):
-    Profile = 1  # ParticipantActivity values 1 through 19
-    Biobank = 20  # ParticipantActivity values 20 through 29
-    QuestionnaireModule = 40  # ParticipantActivity values 40 through 69
-    Genomics = 70  # ParticipantActivity values 70 through 99
-    EnrollmentStatus = 100 # Part
 
-# An enumeration of all participant activity with in RDR.
-class ParticipantActivity(IntEnum):
-    # Profile Group: 1 - 19
-    SignupTime = 1
-    PhysicalMeasurements = 3
-    EHRFirstReceived = 4
-    EHRLastReceived = 5
-    CABOR = 6
-    Deceased = 18
-    Withdrawal = 19
-
-    # Biobank Group: 20 - 29
-    BiobankOrder = 20
-    BiobankShipped = 21
-    BiobankReceived = 22
-    BiobankProcessed = 23
-
-    # Questionnaire Module Group (Names should exactly match module code value name): 40 - 69
-    # Initial list based on module responses that can trigger participant status or retention eligibility updates.
-    # SNAP modules and some misc. administrative modules not included.
-    ConsentPII = 40
-    TheBasics = 41
-    Lifestyle = 42
-    OverallHealth = 43
-    EHRConsentPII = 44
-    DVEHRSharing = 45
-    GROR = 46
-    PrimaryConsentUpdate = 47
-    ProgramUpdate = 48
-    COPE = 49,
-    cope_nov = 50,
-    cope_dec = 51,
-    cope_feb = 52,
-    GeneticAncestry = 53
-
-    # Genomics: 70 - 99
-
-    # Enrollment Status: 100 - 119
-    REGISTERED = 100
-    PARTICIPANT = 104
-    FULLY_CONSENTED = 108
-    CORE_MINUS_PM = 112
-    CORE_PARTICIPANT = 114
-
-
-def _act(timestamp, group: ActivityGroup, activity: ParticipantActivity, **kwargs):
+def _act(timestamp, group: ActivityGroupEnum, event: ParticipantEventEnum, **kwargs):
     """ Create and return a activity record. """
-    activity = {
+    event = {
         'timestamp': timestamp,
         'group': group.name,
         'group_id': group.value,
-        'activity': activity.name,
-        'activity_id': activity.value
+        'event': event,
     }
     # Check for additional key/value pairs to add to this activity record.
     if kwargs:
-        activity.update(kwargs)
-    return activity
+        event.update(kwargs)
+    return event
 
 
 class ParticipantSummaryGenerator(generators.BaseGenerator):
@@ -240,8 +189,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
             summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id, ro_session))
-            # # Depreciated for now: calculate enrollment status times
-            # summary = self._merge_schema_dicts(summary, self._calculate_enrollment_timestamps(summary))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate UBR flags
@@ -250,8 +197,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
 
+            summary['activity'] = self.validate_activity_timestamps(summary['activity'])
             # data = self.ro_dao.to_resource_dict(summary, schema=schemas.ParticipantSchema)
-
             return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
     def patch_resource(self, p_id, data):
@@ -289,6 +236,27 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return generators.ResourceRecordSet(schemas.ParticipantSchema, summary)
 
         return None
+
+    @staticmethod
+    def validate_activity_timestamps(activity, p_id=None):
+        """
+        Validate the timestamps in a list of activity events.
+        :param activity: List of activity events.
+        :param p_id: Participant ID
+        :return:
+        """
+        # Test that all timestamps are datetime or None.
+        msg = None
+        for ev in activity:
+            if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
+                try:
+                    ev['timestamp'] = parser.parse(ev['timestamp'])
+                except ParserError:
+                    msg = f'Participant activity timestamp is invalid for P{p_id}.'
+                    ev['timestamp'] = None
+        if msg:
+            logging.error(msg)
+        return activity
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -412,9 +380,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         # Record participant activity events
         data['activity'] = [
-            _act(data['sign_up_time'], ActivityGroup.Profile, ParticipantActivity.SignupTime),
-            _act(data['withdrawal_authored'], ActivityGroup.Profile, ParticipantActivity.Withdrawal),
-            _act(data['deceased_authored'], ActivityGroup.Profile, ParticipantActivity.Deceased)
+            _act(data['sign_up_time'], ActivityGroupEnum.Profile, ParticipantEventEnum.SignupTime),
+            _act(data['withdrawal_authored'], ActivityGroupEnum.Profile, ParticipantEventEnum.Withdrawal),
+            _act(data['deceased_authored'], ActivityGroupEnum.Profile, ParticipantEventEnum.Deceased)
         ]
 
         return data
@@ -502,8 +470,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
             # Record participant activity events
             data['activity'] = [
-                _act(data['ehr_receipt'], ActivityGroup.Profile, ParticipantActivity.EHRFirstReceived),
-                _act(data['ehr_update'], ActivityGroup.Profile, ParticipantActivity.EHRLastReceived)
+                _act(data['ehr_receipt'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRFirstReceived),
+                _act(data['ehr_update'], ActivityGroupEnum.Profile, ParticipantEventEnum.EHRLastReceived)
             ]
 
         return data
@@ -567,12 +535,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         for response_id_key in responses:
             fields = responses.get(response_id_key)
             if fields.get(CABOR_SIGNATURE_QUESTION_CODE, PMI_SKIP_CODE) != PMI_SKIP_CODE:
-                data['cabor_authored'] = fields.get('authored')
+                cabor_ts = fields.get('authored')
+                data['cabor_authored'] = parser.parse(cabor_ts) if cabor_ts and isinstance(cabor_ts, str) else cabor_ts
                 break
 
         # Record participant activity events
         data['activity'] = [
-            _act(data['cabor_authored'], ActivityGroup.Profile, ParticipantActivity.CABOR)
+            _act(data['cabor_authored'], ActivityGroupEnum.Profile, ParticipantEventEnum.CABOR)
         ]
 
         return data
@@ -594,7 +563,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
-                QuestionnaireResponse.status, code_id_query). \
+                QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
@@ -602,8 +571,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         results = query.all()
 
         data = {
-            'consent_cohort': BQConsentCohort.UNSET.name,
-            'consent_cohort_id': BQConsentCohort.UNSET.value
+            'consent_cohort': ConsentCohortEnum.UNSET.name,
+            'consent_cohort_id': ConsentCohortEnum.UNSET.value
         }
         modules = list()
         consents = list()
@@ -629,10 +598,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'status_id': module_status.value,
                     'external_id': row.externalId,
                     'response_status': str(QuestionnaireResponseStatus(row.status)),
-                    'response_status_id': int(QuestionnaireResponseStatus(row.status))
+                    'response_status_id': int(QuestionnaireResponseStatus(row.status)),
+                    'questionnaire_response_id': row.questionnaireResponseId,
+                    'consent': 1 if module_name in _consent_module_question_map else 0,
+                    'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None
                 }
 
-                mod_ca = {'ConsentAnswer': None}
+                mod_ca = dict()
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
@@ -640,17 +612,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     if consent_dt is None and module_name == 'ConsentPII' and row.authored:
                         consent_dt = row.authored
                         if consent_dt < COHORT_1_CUTOFF:
-                            cohort = BQConsentCohort.COHORT_1
+                            cohort = ConsentCohortEnum.COHORT_1
                         elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
-                            cohort = BQConsentCohort.COHORT_2
+                            cohort = ConsentCohortEnum.COHORT_2
                         else:
-                            cohort = BQConsentCohort.COHORT_3
+                            cohort = ConsentCohortEnum.COHORT_3
                         data['consent_cohort'] = cohort.name
                         data['consent_cohort_id'] = cohort.value
 
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
+                        # TODO: Consent table depreciated, remove consent field sets after BigQuery table support
+                        #  is removed.
                         consent = {
                             'consent': _consent_module_question_map[module_name],
                             'consent_id': self._lookup_code_id(_consent_module_question_map[module_name], ro_session),
@@ -660,7 +634,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             'consent_module_created': row.created,
                             'consent_module_external_id': row.externalId,
                             'consent_response_status': str(QuestionnaireResponseStatus(row.status)),
-                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status))
+                            'consent_response_status_id': int(QuestionnaireResponseStatus(row.status)),
+                            'questionnaire_response_id': row.questionnaireResponseId
                         }
                         # Note:  Based on currently available modules when a module has no
                         # associated answer options (like ConsentPII or ProgramUpdate), any submitted response is given
@@ -669,14 +644,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         if _consent_module_question_map[module_name] is None:
                             consent['consent'] = module_name
                             consent['consent_id'] = self._lookup_code_id(module_name, ro_session)
-                            consent['consent_value'] = 'ConsentPermission_Yes'
-                            consent['consent_value_id'] = self._lookup_code_id('ConsentPermission_Yes', ro_session)
+                            consent['consent_value'] = module_data['consent_value'] = 'ConsentPermission_Yes'
+                            consent['consent_value_id'] = module_data['consent_value_id'] = \
+                                self._lookup_code_id('ConsentPermission_Yes', ro_session)
                         else:
                             consent_value = qnan.get(_consent_module_question_map[module_name], None)
-                            consent['consent_value'] = consent_value
-                            consent['consent_value_id'] = self._lookup_code_id(consent_value, ro_session)
-                            consent['consent_expired'] = \
+                            consent['consent_value'] = module_data['consent_value'] = consent_value
+                            consent['consent_value_id'] = module_data['consent_value_id'] = \
+                                self._lookup_code_id(consent_value, ro_session)
+                            consent['consent_expired'] = module_data['consent_expired'] = \
                                 qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                            # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
+                            #  value be (there is only a question code_id in the code table, no answer code_id)?
 
                             # Note: Currently, consent_expired only applies for EHRConsentPII.  Expired EHR consent
                             # (EHRConsentPII_ConsentExpired_Yes) is always accompanied by consent_value
@@ -693,7 +672,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                         module_data['status'] = module_status.name
                         module_data['status_id'] = module_status.value
-                        mod_ca['ConsentAnswer'] = consent['consent_value']
+                        mod_ca['answer'] = consent['consent_value']
+                        mod_ca['answer_id'] = consent['consent_value_id']
 
                         # Compare against the last consent response processed to filter replays/duplicates
                         if not self.is_replay(last_consent_processed, consent, created_key='consent_module_created'):
@@ -708,10 +688,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
                     mod_found = False
-                    for en in ParticipantActivity:
+                    for en in ParticipantEventEnum:
                         # module_name can be None in the unittests.
                         if module_name and en.name.lower() == module_name.lower():
-                            activity.append(_act(row.authored, ActivityGroup.QuestionnaireModule, en, **mod_ca))
+                            activity.append(_act(row.authored, ActivityGroupEnum.QuestionnaireModule, en, **mod_ca))
                             mod_found = True
                             break
                     if mod_found is False:
@@ -834,7 +814,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
             })
-            activity.append(_act(row.finalized, ActivityGroup.Profile, ParticipantActivity.PhysicalMeasurements))
+            activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
+                                ParticipantEventEnum.PhysicalMeasurements,
+                                **{'status': str(pm_status), 'status_id': int(pm_status)}))
 
         if len(pm_list) > 0:
             data['pm'] = pm_list
@@ -906,25 +888,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'disposed_reason_id': int(SampleStatus(stored_status)) if stored_status else None,
             }
 
-        def get_biobank_sample_activity(samples):
-            """
-            Grab biobank activity from list of sample records.
-            :param samples: list of biobank sample records.
-            :return: list
-            """
-            act_ = list()
-            confirmed_ts = processed_ts = datetime.datetime.min
-            for sample in samples:
-                if sample['confirmed'] and sample['confirmed'] > confirmed_ts:
-                    confirmed_ts = sample['confirmed']
-                if sample['processed'] and sample['processed'] > confirmed_ts:
-                    processed_ts = sample['processed']
-            if confirmed_ts != datetime.datetime.min:
-                act_.append(_act(confirmed_ts, ActivityGroup.Biobank, ParticipantActivity.BiobankReceived))
-            if processed_ts != datetime.datetime.min:
-                act_.append(_act(processed_ts, ActivityGroup.Biobank, ParticipantActivity.BiobankProcessed))
-            return act_
-
         # SQL to generate a list of biobank orders associated with a participant
         _biobank_orders_sql = """
            select bo.biobank_order_id, bo.created, bo.order_status,
@@ -990,9 +953,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             stored_count = 0
             # Count the number of DNA and Baseline tests in this order.
             dna_tests = 0
-            dna_tests_confirmed = 0
             baseline_tests = 0
-            baseline_tests_confirmed = 0
             # RDR has a small number of biobank_order records (mail kit salivary orders) without a related
             # biobank_ordered_sample record, but with biobank_stored_sample records.  Make sure those stored samples
             # are included with the participant's biobank_order data
@@ -1013,13 +974,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for test in bbo_samples:
                 if test['dna_test'] == 1:
                     dna_tests += 1
-                    if test['confirmed']:
-                        dna_tests_confirmed += 1
                 # PDR-134:  Add baseline tests counts
                 if test['baseline_test'] == 1:
                     baseline_tests += 1
-                    if test['confirmed']:
-                        baseline_tests_confirmed += 1
 
             # PDR-243:  calculate an UNSET or FINALIZED OrderStatus to include with the biobank order data.  Aligns
             # with how RDR summarizes biospecimen details in participant_summary.biospecimen_* fields.  Intended to
@@ -1050,15 +1007,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'tests_stored': stored_count,
                 'samples': bbo_samples,
                 'isolate_dna': dna_tests,
-                'isolate_dna_confirmed': dna_tests_confirmed,
+                'isolate_dna_confirmed': 0,  # Fill in below.
                 'baseline_tests': baseline_tests,
-                'baseline_tests_confirmed': baseline_tests_confirmed,
+                'baseline_tests_confirmed': 0  # Fill in below.
             }
             orders.append(order)
-            activity.append(_act(row.created, ActivityGroup.Biobank, ParticipantActivity.BiobankOrder))
-            activity.append(_act(row.finalized_time, ActivityGroup.Biobank, ParticipantActivity.BiobankShipped))
-            if order['samples']:
-                activity = activity + get_biobank_sample_activity(order['samples'])
 
         # Add any "orderless" stored samples for this participant.  They will all be associated with a
         # pseudo order with an order id of 'UNSET'
@@ -1070,16 +1023,45 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     orderless_stored_samples.append(sr)
 
             order = {
+                'finalized_time': None,
                 'biobank_order_id': 'UNSET',
                 'tests_stored': len(orderless_stored_samples),
-                'samples': orderless_stored_samples
+                'samples': orderless_stored_samples,
+                'isolate_dna': sum([r['dna_test'] for r in orderless_stored_samples]),
+                'isolate_dna_confirmed': 0,  # Fill in below.
+                'baseline_test': sum([r['baseline_test'] for r in orderless_stored_samples]),
+                'baseline_tests_confirmed': 0  # Fill in below.
             }
             orders.append(order)
-            if order['samples']:
-                activity = activity + get_biobank_sample_activity(order['samples'])
 
         if len(orders) > 0:
             data['biobank_orders'] = orders
+
+            # Calculate confirmed tests and save activity events.
+            for order in orders:
+                act_key = ParticipantEventEnum.BiobankOrder
+                act_ts = order['finalized_time']
+                if act_ts:
+                    act_key = ParticipantEventEnum.BiobankShipped
+
+                if order['samples']:
+                    order['baseline_tests_confirmed'] = \
+                        sum([r['baseline_test'] for r in order['samples'] if r['confirmed'] is not None])
+                    order['isolate_dna_confirmed'] = \
+                        sum([r['dna_test'] for r in order['samples'] if r['confirmed'] is not None])
+                    # Find minimum confirmed date of DNA tests if we have any.
+                    if order['isolate_dna']:
+                        try:
+                            tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
+                            act_key = ParticipantEventEnum.BiobankConfirmed
+                            act_ts = tmp_ts
+                        except ValueError:  # No confirmed timestamps in list.
+                            pass
+
+                activity.append(_act(act_ts, ActivityGroupEnum.Biobank, act_key,
+                    **{'dna_tests': order['isolate_dna_confirmed'],
+                       'baseline_tests': order['baseline_tests_confirmed']}))
+
             data['activity'] = activity  # Record participant activity events
 
         return data
@@ -1147,11 +1129,29 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
+        # Verify activity timestamps are correct.
+        activity = self.validate_activity_timestamps(summary['activity'], p_id)
+        # Make sure activity has been sorted by timestamp before we run the enrollment status calculator.
+        esc = EnrollmentStatusCalculator()
+        esc.run(activity)
+
+        # TODO: Replace data values from results after old calculation code has been removed.
         status = EnrollmentStatusV2.REGISTERED
         data = {
+            # Fields from EnrollmentStatusCalculator results.
+            'enrl_status': esc.status.name,
+            'enrl_status_id': esc.status.value,
+            'enrl_registered_time': esc.registered_time,
+            'enrl_participant_time': esc.participant_time,
+            'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
+            'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
+            'enrl_core_participant_time': esc.core_participant_time,
+            # Old fields
             'enrollment_status': str(status),
-            'enrollment_status_id': int(status)
+            'enrollment_status_id': int(status),
         }
+
+        # TODO: -- Depreciate all code below this line, replaced by EnrollmentStatusCalculator. --
         if 'consents' not in summary:
             return data
 
@@ -1239,7 +1239,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
             pm_complete and \
-            (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or gror_consent) and \
+            (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or gror_consent) and \
             'modules' in summary and \
             completed_all_baseline_modules and \
             dna_sample_count > 0:
@@ -1251,7 +1251,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # and physical measurements can't be reversed
             if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
                     had_ehr_consent and \
-                    (summary['consent_cohort'] != BQConsentCohort.COHORT_3.name or had_gror_consent):
+                    (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_consent):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -1309,7 +1309,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         .get_intersection(dna_date_range)\
                         .get_intersection(ehr_date_range)
 
-                    if summary['consent_cohort'] == BQConsentCohort.COHORT_3.name:
+                    if summary['consent_cohort'] == ConsentCohortEnum.COHORT_3.name:
                         date_overlap = date_overlap.get_intersection(gror_date_range)
 
                     # If there's any time that they had everything at once, then they should be a Core participant
@@ -1349,91 +1349,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
 
         return data
-
-    #
-    # Depreciated for now, but keep this code around for later.
-    #
-    # def _calculate_enrollment_timestamps(self, summary):
-    #     """
-    #     Calculate all enrollment status timestamps, based on calculate_max_core_sample_time() method in
-    #     participant summary dao.
-    #     :param summary: summary data
-    #     :return: dict
-    #     """
-    #     if summary['enrollment_status_id'] != int(EnrollmentStatusV2.CORE_PARTICIPANT):
-    #         return {}
-    #
-    #     # Calculate the min ordered sample and max stored sample times.
-    #     ordered_time = stored_time = datetime.datetime.max
-    #     stored_sample_times = dict(zip(self._dna_sample_test_codes, [
-    #         {
-    #             'confirmed': datetime.datetime.min, 'confirmed_count': 0,
-    #             'disposed': datetime.datetime.min, 'disposed_count': 0
-    #         } for i in range(0, 5)]))  # pylint: disable=unused-variable
-    #
-    #     for bbo in summary['biobank_orders']:
-    #         if not bbo['samples']:
-    #             continue
-    #
-    #         for bboi in bbo['samples']:
-    #             if bboi['dna_test'] == 1:
-    #                 # See: biobank_order_dao.py:_set_participant_summary_fields()
-    #                 #      biobank_order_dao.py:_get_order_status_and_time()
-    #                 if ordered_time == datetime.datetime.max:
-    #                     ordered_time = (bboi['finalized'] or bboi['processed'] or
-    #                                     bboi['collected'] or bbo['created'] or datetime.datetime.max)
-    #                 # See: participant_summary_dao.py:calculate_max_core_sample_time() and
-    #                 #       _participant_summary_dao.py:126
-    #                 sst = stored_sample_times[bboi['test']]
-    #                 if bboi['confirmed']:
-    #                     sst['confirmed'] = max(sst['confirmed'], bboi['confirmed'])
-    #                     sst['confirmed_count'] += 1
-    #                 if bboi['disposed']:
-    #                     sst['disposed'] = max(sst['disposed'], bboi['disposed'])
-    #                     sst['disposed_count'] += 1
-    #
-    #     sstl = list()
-    #     for k, v in stored_sample_times.items():  # pylint: disable=unused-variable
-    #         if v['confirmed_count'] != v['disposed_count']:
-    #             ts = v['confirmed']
-    #         else:
-    #             ts = v['disposed']
-    #         if ts != datetime.datetime.min:
-    #             sstl.append(ts)
-    #
-    #     if sstl:
-    #         stored_time = min(sstl)
-    #
-    #     ordered_time = ordered_time if ordered_time != datetime.datetime.max else None
-    #     stored_time = stored_time if stored_time != datetime.datetime.max else None
-    #
-    #     data = {
-    #         'enrollment_core_ordered': ordered_time,
-    #         'enrollment_core_stored': stored_time
-    #     }
-    #
-    #     if not ordered_time and not stored_time:
-    #         return data
-    #
-    #     # This logic [DA-769] added to RDR on 10/31/2018, but the backfill [DA-784] only applied this logic where
-    #     # the enrollment core stored and ordered field values were null. I think its impossible to fully recreate
-    #     # the timestamp values in the RDR enrollment core ordered and stored fields here. For example see: [PDR-114].
-    #     # See: participant_summary_dao.py:calculate_max_core_sample_time()
-    #     # If we have ordered or stored sample times, ensure that it is not before the alt_time value.
-    #     alt_time = max(
-    #         summary.get('enrollment_member', datetime.datetime.min),
-    #         max(mod['module_created'] or datetime.datetime.min for mod in summary['modules']
-    #                 if mod['baseline_module'] == 1),
-    #         max(pm['finalized'] or datetime.datetime.min for pm in summary['pm']) if 'pm' in summary
-    #                 else datetime.datetime.min
-    #     )
-    #
-    #     if ordered_time:
-    #         data['enrollment_core_ordered'] = max(ordered_time, alt_time)
-    #     if stored_time:
-    #         data['enrollment_core_stored'] = max(stored_time, alt_time)
-    #
-    #     return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
         """

@@ -375,15 +375,14 @@ class GenomicJobController:
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.bq_project_id)
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id)
             else:
-                message = f'Cannot find genomics metric record for sample id: {sample_id}'
+                message = f'{self.job_id.name}: Cannot find genomics metric record for sample id: {sample_id}'
                 logging.warning(message)
                 self.create_incident(
                     source_job_run_id=self.job_run.id,
                     code=GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name,
                     message=message,
                     sample_id=sample_id if sample_id else '',
-                    data_file_path=file_path,
-                    slack=True
+                    data_file_path=file_path
                 )
         except RuntimeError:
             logging.warning('Inserting data file failure')

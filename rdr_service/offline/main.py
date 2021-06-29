@@ -232,6 +232,7 @@ def _build_validation_controller():
 def check_for_consent_corrections():
     validation_controller = _build_validation_controller()
     validation_controller.check_for_corrections()
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -239,6 +240,7 @@ def validate_consent_files():
     min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
     validation_controller = _build_validation_controller()
     validation_controller.validate_recent_uploads(min_consent_date=min_authored_timestamp)
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron

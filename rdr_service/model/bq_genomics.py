@@ -163,9 +163,9 @@ class BQGenomicSetMemberSchema(BQSchema):
     fingerprint_path = BQField('fingerprint_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     aw1_file_processed_id = BQField('aw1_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    aw2f_file_processed_id = BQField('aw2f_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    aw2f_job_run_id = BQField('aw2f_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
