@@ -46,6 +46,8 @@ class ConsentValidationController:
                 elif consent_type == ConsentType.GROR:
                     new_validation_results = validator.get_gror_validation_results()
 
+                # TODO: if there are multiple files that need correcting, the check only needs to happen once
+
                 file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
                 if file_ready_for_sync is not None:
                     # If there is a file ready to sync, then mark all previous invalid files as obsolete
