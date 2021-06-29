@@ -736,7 +736,9 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
     def test_informing_loop_task_api(self):
 
-        data = {}
+        data = {
+            'records': []
+        }
 
         from rdr_service.resource import main as resource_main
 

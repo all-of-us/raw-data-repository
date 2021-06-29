@@ -21,6 +21,7 @@ from rdr_service.model.genomics import (
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -85,7 +86,8 @@ class DataGenerator:
         self._commit_to_database(questionnaire)
         return questionnaire
 
-    def _questionnaire(self, **kwargs):
+    @staticmethod
+    def _questionnaire(**kwargs):
         for field, default in [('version', 1),
                                ('created', datetime.now()),
                                ('lastModified', datetime.now()),
@@ -100,7 +102,8 @@ class DataGenerator:
         self._commit_to_database(questionnaire_concept)
         return questionnaire_concept
 
-    def _questionnaire_concept(self, **kwargs):
+    @staticmethod
+    def _questionnaire_concept(**kwargs):
         return QuestionnaireConcept(**kwargs)
 
     def create_database_questionnaire_history(self, **kwargs):
@@ -127,7 +130,8 @@ class DataGenerator:
         self._commit_to_database(questionnaire_response_answer)
         return questionnaire_response_answer
 
-    def _questionnaire_response_answer(self, **kwargs):
+    @staticmethod
+    def _questionnaire_response_answer(**kwargs):
         return QuestionnaireResponseAnswer(**kwargs)
 
     def create_database_questionnaire_response(self, **kwargs):
@@ -244,7 +248,8 @@ class DataGenerator:
 
         return hpo
 
-    def _hpo_with_defaults(self, **kwargs):
+    @staticmethod
+    def _hpo_with_defaults(**kwargs):
         return HPO(**kwargs)
 
     def create_database_participant(self, **kwargs):
@@ -439,7 +444,8 @@ class DataGenerator:
 
         return biobank_mail_kit_order
 
-    def _biobank_mail_kit_order(self, **kwargs):
+    @staticmethod
+    def _biobank_mail_kit_order(**kwargs):
         for field, default in [('version', 1)]:
             if field not in kwargs:
                 kwargs[field] = default
@@ -472,7 +478,8 @@ class DataGenerator:
 
         return biobank_ordered_sample
 
-    def _biobank_ordered_sample(self, **kwargs):
+    @staticmethod
+    def _biobank_ordered_sample(**kwargs):
         for field, default in [('description', 'test ordered sample'),
                                ('processingRequired', False),
                                ('test', 'C3PO')]:
@@ -502,7 +509,8 @@ class DataGenerator:
         self._commit_to_database(log_position)
         return log_position
 
-    def _log_position(self, **kwargs):
+    @staticmethod
+    def _log_position(**kwargs):
         return LogPosition(**kwargs)
 
     def create_database_api_user(self, **kwargs):
@@ -510,7 +518,8 @@ class DataGenerator:
         self._commit_to_database(api_user)
         return api_user
 
-    def _api_user(self, **kwargs):
+    @staticmethod
+    def _api_user(**kwargs):
         if 'system' not in kwargs:
             kwargs['system'] = 'unit_test'
         if 'username' not in kwargs:
@@ -552,7 +561,8 @@ class DataGenerator:
         self._commit_to_database(survey_question)
         return survey_question
 
-    def _survey_question(self, **kwargs):
+    @staticmethod
+    def _survey_question(**kwargs):
         return SurveyQuestion(**kwargs)
 
     def create_database_survey_question_option(self, **kwargs):
@@ -560,7 +570,8 @@ class DataGenerator:
         self._commit_to_database(survey_question_option)
         return survey_question_option
 
-    def _survey_question_option(self, **kwargs):
+    @staticmethod
+    def _survey_question_option(**kwargs):
         return SurveyQuestionOption(**kwargs)
 
     def create_database_genomic_manifest_file(self, **kwargs):
@@ -568,7 +579,8 @@ class DataGenerator:
         self._commit_to_database(manifest)
         return manifest
 
-    def _genomic_manifest_file(self, **kwargs):
+    @staticmethod
+    def _genomic_manifest_file(**kwargs):
         return GenomicManifestFile(**kwargs)
 
     def create_database_genomic_job_run(self, **kwargs):
@@ -576,7 +588,8 @@ class DataGenerator:
         self._commit_to_database(job_run)
         return job_run
 
-    def _genomic_job_run(self, **kwargs):
+    @staticmethod
+    def _genomic_job_run(**kwargs):
         return GenomicJobRun(**kwargs)
 
     def create_database_genomic_set(self, **kwargs):
@@ -584,7 +597,8 @@ class DataGenerator:
         self._commit_to_database(gen_set)
         return gen_set
 
-    def _genomic_set(self, **kwargs):
+    @staticmethod
+    def _genomic_set(**kwargs):
         return GenomicSet(**kwargs)
 
     def create_database_genomic_set_member(self, **kwargs):
@@ -592,7 +606,8 @@ class DataGenerator:
         self._commit_to_database(m)
         return m
 
-    def _genomic_set_member(self, **kwargs):
+    @staticmethod
+    def _genomic_set_member(**kwargs):
         return GenomicSetMember(**kwargs)
 
     def create_database_genomic_aw1_raw(self, **kwargs):
@@ -600,7 +615,8 @@ class DataGenerator:
         self._commit_to_database(raw)
         return raw
 
-    def _genomic_aw1_raw(self, **kwargs):
+    @staticmethod
+    def _genomic_aw1_raw(**kwargs):
         return GenomicAW1Raw(**kwargs)
 
     def create_database_genomic_aw2_raw(self, **kwargs):
@@ -608,7 +624,8 @@ class DataGenerator:
         self._commit_to_database(raw)
         return raw
 
-    def _genomic_aw2_raw(self, **kwargs):
+    @staticmethod
+    def _genomic_aw2_raw(**kwargs):
         return GenomicAW2Raw(**kwargs)
 
     def create_database_genomic_file_processed(self, **kwargs):
@@ -616,7 +633,8 @@ class DataGenerator:
         self._commit_to_database(file)
         return file
 
-    def _genomic_file_processed(self, **kwargs):
+    @staticmethod
+    def _genomic_file_processed(**kwargs):
         return GenomicFileProcessed(**kwargs)
 
     def create_database_genomic_incident(self, **kwargs):
@@ -624,7 +642,8 @@ class DataGenerator:
         self._commit_to_database(incident)
         return incident
 
-    def _genomic_incident(self, **kwargs):
+    @staticmethod
+    def _genomic_incident(**kwargs):
         return GenomicIncident(**kwargs)
 
     def create_database_genomic_gc_validation_metrics(self, **kwargs):
@@ -632,6 +651,24 @@ class DataGenerator:
         self._commit_to_database(metrics)
         return metrics
 
-    def _genomic_validation_metrics(self, **kwargs):
+    @staticmethod
+    def _genomic_validation_metrics(**kwargs):
         return GenomicGCValidationMetrics(**kwargs)
 
+    def create_database_message_broker_record(self, **kwargs):
+        records = self._message_broker_records(**kwargs)
+        self._commit_to_database(records)
+        return records
+
+    @staticmethod
+    def _message_broker_records(**kwargs):
+        return MessageBrokerRecord(**kwargs)
+
+    def create_database_message_broker_event_data(self, **kwargs):
+        records = self._message_broker_event_data(**kwargs)
+        self._commit_to_database(records)
+        return records
+
+    @staticmethod
+    def _message_broker_event_data(**kwargs):
+        return MessageBrokerEventData(**kwargs)
