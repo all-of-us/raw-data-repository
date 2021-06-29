@@ -5,8 +5,10 @@ from dateutil.parser import parse
 
 from rdr_service.app_util import task_auth_required
 from rdr_service.api.cloud_tasks_api import log_task_headers
-from rdr_service.dao.base_dao import BaseDao
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.config import GAE_PROJECT
 from rdr_service.model.message_broker import MessageBrokerEventData
+from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 
 
 class StoreMessageBrokerEventDataTaskApi(Resource):
@@ -16,14 +18,14 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
     @task_auth_required
     def post(self):
         log_task_headers()
-        dao = BaseDao(MessageBrokerEventData)
+        dao = MessageBrokenEventDataDao()
         data = request.get_json(force=True)
         message_record_id = data.get('id')
         event_type = data.get('eventType')
         event_authored_time = parse(data.get('eventAuthoredTime'))
         participant_id = data.get('participantId')
-
         message_body = data.get('requestBody')
+
         with dao.session() as session:
             for key, value in message_body.items():
                 field_name = key
@@ -52,6 +54,20 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
                     message_event_date.valueString = value
                 elif isinstance(value, int):
                     message_event_date.valueInteger = value
-                dao.insert_with_session(session, message_event_date)
+                inserted_obj = dao.insert_with_session(session, message_event_date)
+
+        if GAE_PROJECT != 'localhost' \
+                and 'informing_loop'.lower() in event_type:
+            payload = {}
+            informing_records = dao.get_informing_loop(
+                inserted_obj.messageRecordId,
+                event_type
+            )
+            if informing_records:
+                payload['records'] = informing_records
+                _task = GCPCloudTask()
+                _task.execute('ingest_informing_loop',
+                              payload=payload,
+                              queue='genomics')
 
         return '{"success": "true"}'

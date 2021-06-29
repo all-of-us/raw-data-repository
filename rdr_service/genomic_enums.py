@@ -95,6 +95,7 @@ class GenomicJob(messages.Enum):
     AW5_WGS_MANIFEST = 37
 
     INGEST_DATA_FILES = 38
+    INGEST_INFORMING_LOOP = 39
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

@@ -5,17 +5,30 @@ from datetime import timedelta
 from rdr_service import clock
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
-from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerDestAuthInfo, MessageBrokerEventData
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerDestAuthInfo
 from rdr_service.dao.message_broker_dest_auth_info_dao import MessageBrokerDestAuthInfoDao
-from rdr_service.dao.message_broker_dao import MessageBrokerDao
-from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.message_broker_dao import MessageBrokerDao, MessageBrokenEventDataDao
+
+
+class MockedTokenResponse(object):
+    status_code = 200
+
+    @staticmethod
+    def json():
+        return {
+            'access_token': 'new_token',
+            'expires_in': 600
+        }
 
 
 class MessageBrokerApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
+        self.record_dao = MessageBrokerDao()
+        self.event_data_dao = MessageBrokenEventDataDao()
 
-    def _create_auth_info_record(self, dest, token, expired_at):
+    @staticmethod
+    def _create_auth_info_record(dest, token, expired_at):
         auth_info_record = MessageBrokerDestAuthInfo(
             destination=dest,
             accessToken=token,
@@ -79,8 +92,7 @@ class MessageBrokerApiTest(BaseTestCase):
 
         # test cloud task API
         from rdr_service.resource import main as resource_main
-        record_dao = MessageBrokerDao()
-        records = record_dao.get_all()
+        records = self.record_dao.get_all()
         record = records[0]
         payload = {
             'id': record.id,
@@ -96,8 +108,7 @@ class MessageBrokerApiTest(BaseTestCase):
             test_client=resource_main.app.test_client(),
         )
 
-        dao = BaseDao(MessageBrokerEventData)
-        event_data = dao.get_all()
+        event_data = self.event_data_dao.get_all()
         self.assertEqual(5, len(event_data))
         count = 0
         for item in event_data:
@@ -142,12 +153,56 @@ class MessageBrokerApiTest(BaseTestCase):
         }
         self.send_post("MessageBroker", request_json, expected_status=http.client.BAD_REQUEST)
 
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    def test_informing_loop_decision(self, request_origin):
+        request_origin.return_value = 'color'
+        participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        loop_type = 'informing_loop_decision'
 
-class MockedTokenResponse(object):
-    status_code = 200
-
-    def json(self):
-        return {
-            'access_token': 'new_token',
-            'expires_in': 600
+        request_json = {
+            "event": "informing_loop_decision",
+            "eventAuthoredTime": str(clock.CLOCK.now()),
+            "participantId": str(participant.participantId),
+            "messageBody": {
+                'module_type': 'hdr',
+                'decision_value': 'yes'
+            }
         }
+
+        self.send_post("MessageBroker", request_json)
+
+        from rdr_service.resource import main as resource_main
+        records = self.record_dao.get_all()
+        record = records[0]
+
+        event_time = record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': event_time,
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        loop_records = self.event_data_dao.get_informing_loop(
+            record.id,
+            loop_type
+        )
+
+        self.assertIsNotNone(loop_records)
+        self.assertEqual(len(loop_records), 2)
+
+        for loop_record in loop_records:
+            self.assertIsNotNone(loop_record.valueString)
+            self.assertEqual(loop_record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"), event_time)
+            self.assertTrue(any(obj for obj in loop_records if obj.valueString == 'hdr'))
+            self.assertTrue(any(obj for obj in loop_records if obj.valueString == 'yes'))
+

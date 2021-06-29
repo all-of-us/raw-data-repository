@@ -22,6 +22,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_gc_validation_metrics_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
+from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
+    raw_aw2_to_genomic_set_member_fields
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
@@ -37,13 +39,18 @@ from rdr_service.genomic.genomic_job_components import (
 from rdr_service.dao.genomics_dao import (
     GenomicFileProcessedDao,
     GenomicJobRunDao,
-    GenomicManifestFileDao, GenomicManifestFeedbackDao, GenomicIncidentDao, GenomicSetMemberDao, GenomicAW1RawDao,
-    GenomicAW2RawDao, GenomicGCValidationMetricsDao)
+    GenomicManifestFileDao,
+    GenomicManifestFeedbackDao,
+    GenomicIncidentDao,
+    GenomicSetMemberDao,
+    GenomicAW1RawDao,
+    GenomicAW2RawDao,
+    GenomicGCValidationMetricsDao,
+    GenomicInformingLoopDao
+)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
-from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
-    raw_aw2_to_genomic_set_member_fields
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -87,6 +94,7 @@ class GenomicJobController:
         self.incident_dao = GenomicIncidentDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
+        self.informing_loop_dao = GenomicInformingLoopDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -387,6 +395,10 @@ class GenomicJobController:
                 )
         except RuntimeError:
             logging.warning('Inserting data file failure')
+
+    def ingest_informing_loop(self):
+        logging.info(f'Inserting informing loop for Participant:')
+        pass
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):

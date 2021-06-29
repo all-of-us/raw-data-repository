@@ -734,4 +734,18 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(ingest_mock.call_count, path_count)
 
+    def test_informing_loop_task_api(self):
 
+        data = {}
+
+        from rdr_service.resource import main as resource_main
+
+        insert_informing_loop = self.send_post(
+            local_path='IngestInformingLoopTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(insert_informing_loop)
+        self.assertEqual(insert_informing_loop['success'], True)
