@@ -847,7 +847,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 if sample.test == ordered_sample.test and sample.biobank_order_id == ordered_sample.order_id:
                     match = sample
                     break
-
             return match
 
         def _make_sample_dict_from_row(bss=None, bos=None):
@@ -955,14 +954,22 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # Count the number of DNA and Baseline tests in this order.
             dna_tests = 0
             baseline_tests = 0
-
-            for ordered_sample in bos_results:
-                # This will look for a matching stored sample based on matching the biobank order id and test
-                # to what's in the ordered sample record
-                stored_sample = _get_stored_sample_row(bss_results, ordered_sample)
-                bbo_samples.append(_make_sample_dict_from_row(bss=stored_sample, bos=ordered_sample))
-                if stored_sample:
-                    stored_count += 1
+            # RDR has a small number of biobank_order records (mail kit salivary orders) without a related
+            # biobank_ordered_sample record, but with biobank_stored_sample records.  Make sure those stored samples
+            # are included with the participant's biobank_order data
+            if len(bos_results) == 0 and len(bss_results) > 0:
+                for bss in bss_results:
+                    if bss.biobank_order_id == row.biobank_order_id:
+                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=None))
+                        stored_count += 1
+            else:
+                for ordered_sample in bos_results:
+                    # Look for a matching stored sample result based on the biobank order id and test type
+                    # from the ordered sample record, to add to the order's list of samples
+                    stored_sample = _get_stored_sample_row(bss_results, ordered_sample)
+                    bbo_samples.append(_make_sample_dict_from_row(bss=stored_sample, bos=ordered_sample))
+                    if stored_sample:
+                        stored_count += 1
 
             for test in bbo_samples:
                 if test['dna_test'] == 1:
@@ -1053,7 +1060,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                 activity.append(_act(act_ts, ActivityGroupEnum.Biobank, act_key,
                     **{'dna_tests': order['isolate_dna_confirmed'],
-                       'basline_tests': order['baseline_tests_confirmed']}))
+                       'baseline_tests': order['baseline_tests_confirmed']}))
 
             data['activity'] = activity  # Record participant activity events
 
@@ -1635,6 +1642,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for addr in summary['addresses']:
                 if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
                     zipcode = addr['addr_zip']
+                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
+                    if zipcode and len(zipcode) > 5:
+                        zipcode = zipcode[:5]
                     if zipcode in RURAL_ZIPCODES:
                         data['ubr_geography'] = 1
 
