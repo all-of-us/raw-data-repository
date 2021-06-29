@@ -65,7 +65,7 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-            self.consent_dao.batch_update_consent_files(validation_updates)
+        self.consent_dao.batch_update_consent_files(validation_updates)
 
     def validate_recent_uploads(self, min_consent_date):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
