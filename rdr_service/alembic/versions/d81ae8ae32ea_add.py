@@ -41,6 +41,7 @@ def upgrade_rdr():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('message_record_id', sa.Integer(), nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
+    sa.Column('event_type', sa.String(), nullable=False),
     sa.Column('event_authored_time', rdr_service.model.utils.UTCDateTime6(fsp=6), nullable=True),
     sa.Column('module_type', sa.String(length=128), nullable=True),
     sa.Column('decision_value', sa.String(length=128), nullable=True),

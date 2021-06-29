@@ -1,8 +1,8 @@
 import datetime
-from unittest import mock
-
 import pytz
+
 from dateutil import parser
+from unittest import mock
 
 from rdr_service.services.system_utils import JSONObject
 from tests.helpers.unittest_base import BaseTestCase
@@ -737,6 +737,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     def test_informing_loop_task_api(self):
 
         data = {
+            'event_type': '',
             'records': []
         }
 

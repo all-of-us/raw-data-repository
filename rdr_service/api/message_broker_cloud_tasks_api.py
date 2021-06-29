@@ -64,6 +64,7 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
                 event_type
             )
             if informing_records:
+                payload['event_type'] = event_type
                 payload['records'] = informing_records
                 _task = GCPCloudTask()
                 _task.execute('ingest_informing_loop',

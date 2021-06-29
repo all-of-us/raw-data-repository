@@ -688,6 +688,7 @@ class GenomicInformingLoop(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     message_record_id = Column(Integer, nullable=False)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
+    event_type = Column(String(256), nullable=False)
     event_authored_time = Column(UTCDateTime6)
     module_type = Column(String(128))
     decision_value = Column(String(128))

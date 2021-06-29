@@ -27,7 +27,7 @@ from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_f
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
-    GenomicGCValidationMetrics
+    GenomicGCValidationMetrics, GenomicInformingLoop
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode
 from rdr_service.genomic.genomic_job_components import (
@@ -395,9 +395,24 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_informing_loop(self):
-        logging.info(f'Inserting informing loop for Participant:')
-        pass
+    def ingest_informing_loop_records(self, *, loop_type, records):
+
+        if records:
+            logging.info(f'Inserting informing loop for Participant: {records[0].participantId}')
+
+            module_type = [obj for obj in records if obj.fieldName == 'module_type' and obj.valueString]
+            decision_value = [obj for obj in records if obj.fieldName == 'decision_value' and obj.valueString]
+
+            loop_obj = GenomicInformingLoop(
+                participant_id=records[0].participantId,
+                message_record_id=records[0].messageRecordId,
+                event_type=loop_type,
+                event_authored_time=records[0].eventAuthoredTime,
+                module_type=module_type[0].valueString if module_type else None,
+                decision_value=decision_value[0].valueString if decision_value else None,
+            )
+
+            self.informing_loop_dao.insert(loop_obj)
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
