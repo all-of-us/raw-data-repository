@@ -64,7 +64,7 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-            self.consent_dao.batch_update_consent_files(validation_updates)
+        self.consent_dao.batch_update_consent_files(validation_updates)
 
     def _build_ce_result(self, wrapper: files._ConsentBlobWrapper, participant_id):
         return ParsingResult(
