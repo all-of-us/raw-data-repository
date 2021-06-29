@@ -2,6 +2,7 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+from datetime import datetime
 from enum import IntEnum
 
 
@@ -49,3 +50,83 @@ class SchemaID(IntEnum):
     biobank_covid_antibody_sample = 5000
     quest_covid_antibody_test = 5010
     quest_covid_antibody_test_result = 5020
+
+
+# Used to calculate participant enrollment cohort.
+COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
+COHORT_2_CUTOFF = datetime(2020, 4, 21, 4, 0, 0)
+
+class ConsentCohortEnum(IntEnum):
+    """
+    Which cohort does a participant belong too, based on consent date.
+    """
+    UNSET = 0
+    COHORT_1 = 1  # Beta participants.  Consent before April 24, 2018.
+    COHORT_2 = 2  # National Launch Participants. Consent between April 24, 2018 and April 21, 2020 (03:59:59 UTC)
+    COHORT_3 = 3  # New Participants with consent starting from April 21, 2020 04:00:00 UTC (midnight eastern)
+
+
+# The PDR version of the RDR Enrollment Status enum. These names line up with program nameing.
+# Names should be ordered by value. Insert new status names to keep the correct order.
+class PDREnrollmentStatusEnum(IntEnum):
+    Unset = 0
+    Registered = 10  # EnrollmentStatusV2.REGISTERED
+    Participant = 20  # EnrollmentStatusV2.PARTICIPANT
+    ParticipantPlusEHR = 30  # EnrollmentStatusV2.FULLY_CONSENTED
+    CoreParticipantMinusPM = 40  # EnrollmentStatusV2.CORE_MINUS_PM
+    CoreParticipant = 50  # EnrollmentStatusV2.CORE_PARTICIPANT
+
+
+# Participant Activity Group IDs.
+class ActivityGroupEnum(IntEnum):
+    Profile = 1  # ParticipantActivity values 1 through 19
+    Biobank = 20  # ParticipantActivity values 20 through 29
+    QuestionnaireModule = 40  # ParticipantActivity values 40 through 69
+    Genomics = 70  # ParticipantActivity values 70 through 99
+    EnrollmentStatus = 100 # Part
+
+
+# An enumeration of all participant activity with in RDR.
+class ParticipantEventEnum(IntEnum):
+    # Profile Group: 1 - 19
+    SignupTime = 1
+    PhysicalMeasurements = 3
+    EHRFirstReceived = 4
+    EHRLastReceived = 5
+    CABOR = 6
+    Deceased = 18
+    Withdrawal = 19
+
+    # Biobank Group: 20 - 29
+    BiobankOrder = 20
+    BiobankShipped = 21
+    BiobankReceived = 22
+    BiobankConfirmed = 23
+
+    # Questionnaire Module Group (Names should exactly match module code value name): 40 - 69
+    # Initial list based on module responses that can trigger participant status or retention eligibility updates.
+    # SNAP modules and some misc. administrative modules not included.
+    ConsentPII = 40
+    TheBasics = 41
+    Lifestyle = 42
+    OverallHealth = 43
+    EHRConsentPII = 44
+    DVEHRSharing = 45
+    GROR = 46
+    PrimaryConsentUpdate = 47
+    ProgramUpdate = 48
+    COPE = 49,
+    cope_nov = 50,
+    cope_dec = 51,
+    cope_feb = 52,
+    GeneticAncestry = 53
+    cope_vaccine1 = 54
+
+    # Genomics: 70 - 99
+
+    # Enrollment Status: 100 - 119
+    REGISTERED = 100
+    PARTICIPANT = 104
+    FULLY_CONSENTED = 108
+    CORE_MINUS_PM = 112
+    CORE_PARTICIPANT = 114
