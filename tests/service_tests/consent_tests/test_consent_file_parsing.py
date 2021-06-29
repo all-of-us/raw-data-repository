@@ -203,6 +203,41 @@ class ConsentFileParsingTest(BaseTestCase):
             )
         )
 
+        # Build Spanish version of the Primary file
+        pdf = self._build_pdf(pages=[
+            [
+                self._build_pdf_element(
+                    cls=LTTextBoxHorizontal,
+                    children=[
+                        self._build_pdf_element(
+                            cls=LTTextLineHorizontal,
+                            text='Decido participar libremente y por voluntad propia'
+                        )
+                    ]
+                ),
+                self._build_pdf_element(
+                    cls=LTTextBoxHorizontal,
+                    children=[
+                        self._build_pdf_element(
+                            cls=LTTextLineHorizontal,
+                            children=[
+                                self._build_pdf_element(LTTextLineHorizontal, text='Firme con su nombre completo:')
+                            ]
+                        )
+                    ]
+                ),
+                self._build_form_element(text='Spanish Participant', bbox=(116, 147, 517, 169)),
+                self._build_form_element(text='Mar 3, 2021', bbox=(116, 97, 266, 119))
+            ]
+        ])
+        test_data.append(
+            PrimaryConsentTestData(
+                file=files.VibrentPrimaryConsentFile(pdf=pdf, blob=mock.MagicMock()),
+                expected_signature='Spanish Participant',
+                expected_sign_date=date(2021, 3, 3)
+            )
+        )
+
         return test_data
 
     def _get_vibrent_cabor_test_data(self) -> List['ConsentTestData']:

@@ -47,6 +47,7 @@ class ConsentSyncController:
         self.consent_dao = consent_dao
         self.participant_dao = participant_dao
         self.storage_provider = storage_provider
+        self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
 
     def sync_ready_files(self):
         """Syncs any validated consent files that are ready for syncing"""
@@ -112,7 +113,7 @@ class ConsentSyncController:
         file_name = os.path.basename(zip_file_path)
         self.storage_provider.upload_from_file(
             source_file=zip_file_path,
-            path=f'{bucket_name}/Participant/{org_name}/{file_name}'
+            path=f'{bucket_name}/{self._destination_folder}/{org_name}/{file_name}'
         )
 
     def _download_file_for_zip(self, file: ConsentFile, bucket_name, org_name, site_name):
@@ -145,9 +146,8 @@ class ConsentSyncController:
             )
         )
 
-    @classmethod
-    def _build_cloud_destination_path(cls, bucket_name, org_name, site_name, participant_id, file_name):
-        return f'{bucket_name}/Participant/{org_name}/{site_name}/P{participant_id}/{file_name}'
+    def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
+        return f'{bucket_name}/{self._destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
 
     def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
         """

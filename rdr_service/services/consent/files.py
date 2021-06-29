@@ -167,8 +167,8 @@ class GrorConsentFile(ConsentFile, ABC):
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
-            'I freely and willingly choose',
-            'sign your full name'
+            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia'),
+            ('sign your full name', 'Firme con su nombre completo')
         ])
 
     def _get_signature_elements(self):

@@ -65,7 +65,7 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-            self.consent_dao.batch_update_consent_files(validation_updates)
+        self.consent_dao.batch_update_consent_files(validation_updates)
 
     def validate_recent_uploads(self, min_consent_date, max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
@@ -193,6 +193,7 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
+            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=self.participant_summary.consentForElectronicHealthRecordsAuthored
         )
 
