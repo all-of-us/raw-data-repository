@@ -279,7 +279,7 @@ class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
     def post(self):
         super(IngestInformingLoopTaskApi, self).post()
 
-        logging.info(f'Ingesting informing loop.')
+        logging.info('Ingesting informing loop.')
 
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
                                   ) as controller:
