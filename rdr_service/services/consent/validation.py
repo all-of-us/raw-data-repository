@@ -67,11 +67,14 @@ class ConsentValidationController:
 
             self.consent_dao.batch_update_consent_files(validation_updates)
 
-    def validate_recent_uploads(self, min_consent_date):
+    def validate_recent_uploads(self, min_consent_date, max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
         validation_results = []
         validated_participant_ids = []
-        for summary in self.consent_dao.get_participants_with_consents_in_range(start_date=min_consent_date):
+        for summary in self.consent_dao.get_participants_with_consents_in_range(
+            start_date=min_consent_date,
+            end_date=max_consent_date
+        ):
             validated_participant_ids.append(summary.participantId)
             validator = self._build_validator(summary)
 
