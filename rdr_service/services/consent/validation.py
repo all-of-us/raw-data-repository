@@ -190,6 +190,7 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
+            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=self.participant_summary.consentForElectronicHealthRecordsAuthored
         )
 
