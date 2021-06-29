@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 import mock
+from typing import List
 
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.tools.tool_libs.consents import ConsentTool
@@ -19,6 +20,12 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
         consent_dao_patcher = mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao')
         self.consent_dao_mock = consent_dao_patcher.start().return_value
         self.addCleanup(consent_dao_patcher.stop)
+
+        # Patching other DAOs to keep them from trying to connect to the DB
+        for name_to_patch in ['ParticipantSummaryDao', 'HPODao']:
+            dao_patch = mock.patch(f'rdr_service.tools.tool_libs.consents.{name_to_patch}')
+            dao_patch.start()
+            self.addCleanup(dao_patch.stop)
 
         self.consent_dao_mock.get_files_needing_correction.return_value = [
             ConsentFile(
@@ -124,3 +131,79 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             self.assertEqual(file_to_update.id, updated_file.id)
             self.assertEqual(ConsentType.CABOR, updated_file.type)
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
+
+    def test_validation_time_range(self, _):
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock:
+            controller_mock = controller_class_mock.return_value
+
+            # Check without max_date
+            self._run_consents_tool(
+                command='validate',
+                additional_args={
+                    'min_date': 'Apr 1st, 2021',
+                    'max_date': None
+                }
+            )
+            controller_mock.validate_recent_uploads.assert_called_with(
+                min_consent_date=datetime(2021, 4, 1),
+                max_consent_date=None
+            )
+
+            # Check with max_date
+            self._run_consents_tool(
+                command='validate',
+                additional_args={
+                    'min_date': '2021-05-01',
+                    'max_date': '2021-06-17'
+                }
+            )
+            controller_mock.validate_recent_uploads.assert_called_with(
+                min_consent_date=datetime(2021, 5, 1),
+                max_consent_date=datetime(2021, 6, 17)
+            )
+
+    def test_record_upload(self, _):
+        with mock.patch('rdr_service.tools.tool_libs.consents.csv') as csv_mock, \
+                mock.patch('rdr_service.tools.tool_libs.consents.open'):
+            csv_file_mock = csv_mock.DictReader.return_value
+            csv_file_mock.__iter__.return_value = [
+                {
+                    'participant_id': '4567',
+                    'file_exists': '1',
+                    'file_path': 'bucket/valid_file.pdf',
+                    'sync_status': 'READY_FOR_SYNC'
+                },
+                {
+                    'participant_id': '1234',
+                    'file_exists': '0',
+                    'file_path': '',
+                    'sync_status': 'NEEDS_CORRECTING'
+                }
+            ]
+
+            # Check without max_date
+            self._run_consents_tool(
+                command='upload',
+                additional_args={
+                    'file': 'data.csv',
+                }
+            )
+            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
+            self.assertTrue(any([
+                (
+                    record.participant_id == '4567'
+                    and record.file_exists == '1'
+                    and record.file_path == 'bucket/valid_file.pdf'
+                    and record.sync_status == 'READY_FOR_SYNC'
+                )
+                for record in uploaded_records
+            ]))
+            self.assertTrue(any([
+                (
+                    record.participant_id == '1234'
+                    and record.file_exists == '0'
+                    and record.file_path == ''
+                    and record.sync_status == 'NEEDS_CORRECTING'
+                )
+                for record in uploaded_records
+            ]))
