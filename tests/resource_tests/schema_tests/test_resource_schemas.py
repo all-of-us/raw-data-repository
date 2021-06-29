@@ -28,7 +28,7 @@ bq_field_exclusions = {
     'GenomicManifestFileSchema': ['orig_id'],
     'GenomicManifestFeedbackSchema': ['orig_id'],
     'GenomicGCValidationMetricsSchema': ['orig_id', 'orig_created', 'orig_modified'],
-    'ParticipantSchema': ['addr_state', 'addr_zip', 'biospec']
+    'ParticipantSchema': ['addr_state', 'addr_zip', 'biospec', 'consents']
 }
 
 # Fields from the resource schemas that do not exist in the BQ schema
@@ -39,7 +39,8 @@ rsc_field_exclusions = {
     'GenomicManifestFeedbackSchema': _default_exclusions,
     'GenomicGCValidationMetricsSchema': _default_exclusions,
     'WorkbenchResearcherSchema': list(rschemas.WorkbenchResearcherSchema.Meta.pii_fields),
-    'ParticipantSchema': list(rschemas.ParticipantSchema.Meta.pii_fields) + ['addresses']
+    'ParticipantSchema': list(rschemas.ParticipantSchema.Meta.pii_fields) +
+                         ['addresses', 'enrl_status', 'enrl_status_id']
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
@@ -124,10 +125,11 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.CodeSchema(),
                                      bq_code.BQCodeSchema())
 
-    def test_consent_resource_schema(self):
-        self._verify_resource_schema('ConsentSchema',
-                                     rschemas.participant.ConsentSchema(),
-                                     bq_participant_summary.BQConsentSchema())
+    # Consent schema is depreciated in Resources, but not BigQuery.
+    # def test_consent_resource_schema(self):
+    #     self._verify_resource_schema('ConsentSchema',
+    #                                  rschemas.participant.ConsentSchema(),
+    #                                  bq_participant_summary.BQConsentSchema())
 
     def test_ehr_receipt_schema(self):
         self._verify_resource_schema('EhrReceiptSchema',
