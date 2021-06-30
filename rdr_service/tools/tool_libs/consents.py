@@ -1,9 +1,11 @@
 import argparse
+import csv
 from datetime import datetime, timedelta
+import os
 from typing import List
 
-import pytz
 from dateutil.parser import parse
+from google.cloud.storage.blob import Blob
 from io import StringIO
 
 from rdr_service.dao.consent_dao import ConsentDao
@@ -11,7 +13,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant import ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.services.consent.validation import ConsentValidationController
+from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy,\
+    ReplacementStoringStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -40,6 +43,47 @@ class ConsentTool(ToolBase):
             self.check_org_change()
         elif self.args.command == 'validate':
             self.validate()
+        elif self.args.command == 'list-bucket':
+            self.list_bucket()
+        elif self.args.command == 'corrections':
+            self.corrections()
+
+    def corrections(self):
+        consent_dao = ConsentDao()
+        with self.get_session() as session:
+            with ReplacementStoringStrategy(
+                session=session,
+                consent_dao=consent_dao
+            ) as strategy:
+                validation_controller = ConsentValidationController(
+                    consent_dao=consent_dao,
+                    participant_summary_dao=ParticipantSummaryDao(),
+                    storage_provider=GoogleCloudStorageProvider()
+                )
+                validation_controller.generate_new_validations(
+                    participant_id=self.args.participant,
+                    consent_type=ConsentType(self.args.type),
+                    output_strategy=strategy
+                )
+
+
+    def list_bucket(self):
+        storage_provider = GoogleCloudStorageProvider()
+        blobs: List[Blob] = storage_provider.list(
+            bucket_name='ptc-uploads-all-of-us-rdr-prod',
+            prefix='Participant'
+        )
+        with open('bucket_list_output.csv', 'w') as out_file:
+            csv_file = csv.writer(out_file)
+            csv_file.writerow([
+                'participant_id', 'file_name', 'file_size_bytes', 'file_upload_time'
+            ])
+            for blob in blobs:
+                _, participant_id, file_name = blob.name.split('/')
+                if os.path.basename(file_name).endswith('pdf'):
+                    csv_file.writerow([
+                        participant_id, file_name, blob.size, blob.time_created
+                    ])
 
     def check_org_change(self):
         with self.get_session() as session:
@@ -87,8 +131,16 @@ class ConsentTool(ToolBase):
             storage_provider=GoogleCloudStorageProvider()
         )
         with self.get_session() as session:
-            validation_controller.generate_records_for_ce(session,
-                                                          min_consent_date=datetime(2021, 5, 28, tzinfo=pytz.utc))
+            with LogResultStrategy(
+                logger=logger,
+                verbose=True,
+                storage_provider=GoogleCloudStorageProvider()
+            ) as output_strategy:
+                validation_controller.validate_recent_uploads(session, output_strategy)
+            # validation_controller.generate_records_for_ce(session,
+            #                                               min_consent_date=datetime(2021, 5, 28, tzinfo=pytz.utc))
+
+        input('Press Enter to exit...')
 
     def validate(self):
         validation_controller = ConsentValidationController(
@@ -253,6 +305,11 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers.add_parser('generate-ce')
     subparsers.add_parser('check-org-change')
     subparsers.add_parser('validate')
+    subparsers.add_parser('list-bucket')
+
+    corrections_parser = subparsers.add_parser('corrections')
+    corrections_parser.add_argument('--participant', required=True)
+    corrections_parser.add_argument('--type', required=True)
 
 
 def run():

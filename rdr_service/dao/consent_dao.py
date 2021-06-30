@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import Collection, List
 
 from sqlalchemy import or_
 
@@ -113,7 +113,7 @@ class ConsentDao(BaseDao):
         for file_record in consent_files:
             session.merge(file_record)
 
-    def get_validation_results_for_participants(self, session, participant_ids: List[int]) -> List[ConsentFile]:
+    def get_validation_results_for_participants(self, session, participant_ids: Collection[int]) -> List[ConsentFile]:
         return session.query(ConsentFile).filter(
             ConsentFile.participant_id.in_(participant_ids)
         ).all()
