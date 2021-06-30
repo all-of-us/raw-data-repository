@@ -1170,13 +1170,29 @@ class DataQualityJobController:
 
         report_string = rc.format_report(report_data)
 
+        report_result = report_string
+
+        # Compile long reports to cloud file and post link
+        if len(report_string.split("\n")) > 25:
+            file_path = rc.create_report_file(report_string, report_params['display_name'])
+
+            message = report_params['display_name'] + " too long for output.\n"
+            message += f"Report too long for Slack Output, download the report here:" \
+                       f" https://storage.cloud.google.com{file_path}"
+
+            message_data = {'text': message}
+
+            report_result = file_path
+
+        else:
+            message_data = {'text': report_string}
+
         # Send report to slack #rdr-genomics channel
         if kwargs.get('slack') is True:
-            message_data = {'text': report_string}
             self.genomic_report_slack.send_message_to_webhook(
                 message_data=message_data
             )
 
         self.job_run_result = GenomicSubProcessResult.SUCCESS
 
-        return report_string
+        return report_result
