@@ -89,6 +89,28 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_primary_validation_results()
         )
 
+    def test_primary_with_slightly_off_date(self):
+        shifted_date_on_file = self._default_signing_date - timedelta(days=3)
+        self.consent_factory_mock.get_primary_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.PrimaryConsentFile,
+                get_signature_on_file='signed with slightly off date',
+                get_date_signed=shifted_date_on_file
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'type': ConsentType.PRIMARY,
+                    'signature_str': 'signed with slightly off date',
+                    'is_signing_date_valid': True,
+                    'signing_date': shifted_date_on_file,
+                    'sync_status': ConsentSyncStatus.READY_FOR_SYNC
+                }
+            ],
+            self.validator.get_primary_validation_results()
+        )
+
     def test_primary_with_signature_image(self):
         self.consent_factory_mock.get_primary_consents.return_value = [
             self._mock_consent(

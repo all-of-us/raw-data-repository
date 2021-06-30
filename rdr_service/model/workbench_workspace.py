@@ -7,7 +7,7 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, WorkbenchWorkspaceSexualOrientation, \
     WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchAuditReviewType, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditWorkspaceAccessDecision, WorkbenchWorkspaceAccessTier
 
 
 class WorkbenchWorkspaceBase(object):
@@ -69,6 +69,7 @@ class WorkbenchWorkspaceBase(object):
                             default=WorkbenchWorkspaceEducationLevel.UNSET)
     incomeLevel = Column("income_level", Enum(WorkbenchWorkspaceIncomeLevel),
                          default=WorkbenchWorkspaceIncomeLevel.UNSET)
+    accessTier = Column("access_tier", Enum(WorkbenchWorkspaceAccessTier), default=WorkbenchWorkspaceAccessTier.UNSET)
     others = Column("others", String(2000))
     isReviewed = Column("is_reviewed", Boolean, default=False)
     cdrVersion = Column("cdr_version", String(200))

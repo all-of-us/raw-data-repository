@@ -58,6 +58,12 @@ class ModuleStatusSchema(Schema):
     external_id = fields.String(validate=validate.Length(max=120))
     response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
     response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
+    questionnaire_response_id = fields.Int32()
+    consent = fields.Boolean()
+    consent_value = fields.String(validate=validate.Length(max=80))
+    consent_value_id = fields.Int32()
+    consent_expired = fields.String(validate=validate.Length(max=80))
+    non_participant_answer = fields.String(validate=validate.Length(max=60))
 
     class Meta:
         schema_id = SchemaID.participant_modules
@@ -66,28 +72,28 @@ class ModuleStatusSchema(Schema):
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
 
-
-class ConsentSchema(Schema):
-    """ Store participant consent information """
-    consent = fields.String(validate=validate.Length(max=80))
-    consent_id = fields.Int32()
-    consent_date = fields.Date()
-    consent_value = fields.String(validate=validate.Length(max=80))
-    consent_value_id = fields.Int32()
-    consent_module = fields.String(validate=validate.Length(max=80))
-    consent_module_authored = fields.DateTime()
-    consent_module_created = fields.DateTime()
-    consent_expired = fields.String(validate=validate.Length(max=80))
-    consent_module_external_id = fields.String(validate=validate.Length(max=120))
-    consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
-    consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
-
-    class Meta:
-        schema_id = SchemaID.participant_consents
-        resource_uri = 'Participant/{participant_id}/Consents'
-        # Exclude fields and/or functions to strip PII information from fields.
-        pii_fields = ()  # List fields that contain PII data.
-        pii_filter = {}  # dict(field: lambda function).
+# TODO: Deprecated, but leave around until BigQuery support is removed.
+# class ConsentSchema(Schema):
+#     """ Store participant consent information """
+#     consent = fields.String(validate=validate.Length(max=80))
+#     consent_id = fields.Int32()
+#     consent_date = fields.Date()
+#     consent_value = fields.String(validate=validate.Length(max=80))
+#     consent_value_id = fields.Int32()
+#     consent_module = fields.String(validate=validate.Length(max=80))
+#     consent_module_authored = fields.DateTime()
+#     consent_module_created = fields.DateTime()
+#     consent_expired = fields.String(validate=validate.Length(max=80))
+#     consent_module_external_id = fields.String(validate=validate.Length(max=120))
+#     consent_response_status = fields.EnumString(enum=QuestionnaireResponseStatus)
+#     consent_response_status_id = fields.EnumInteger(enum=QuestionnaireResponseStatus)
+#
+#     class Meta:
+#         schema_id = SchemaID.participant_consents
+#         resource_uri = 'Participant/{participant_id}/Consents'
+#         # Exclude fields and/or functions to strip PII information from fields.
+#         pii_fields = ()  # List fields that contain PII data.
+#         pii_filter = {}  # dict(field: lambda function).
 
 
 class RaceSchema(Schema):
@@ -178,14 +184,11 @@ class BiobankOrderSchema(Schema):
     # PDR-243:  Including calculated OrderStatus (UNSET/FINALIZED) and finalized time analogous to the RDR
     # participant_summary.biospecimen_* fields that are based on non-cancelled orders.
     finalized_time = fields.DateTime()
-    finalized_status = fields.String(validate=validate.Length(max=25))
-    finalized_status_id = fields.Int32()
+    finalized_status = fields.EnumString(enum=OrderStatus)
+    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
     samples = fields.Nested(BiobankSampleSchema, many=True)
     tests_ordered = fields.Int32()
     tests_stored = fields.Int32()
-    finalized_time = fields.DateTime()
-    finalized_status = fields.EnumString(enum=OrderStatus)
-    finalized_status_id = fields.EnumInteger(enum=OrderStatus)
 
     class Meta:
         schema_id = SchemaID.participant_biobank_orders
@@ -258,6 +261,15 @@ class ParticipantSchema(Schema):
     test_participant = fields.Boolean()
 
     sign_up_time = fields.DateTime()
+    enrl_status = fields.String(validate=validate.Length(max=40))
+    enrl_status_id = fields.Int32()
+    enrl_registered_time = fields.DateTime()
+    enrl_participant_time = fields.DateTime()
+    enrl_participant_plus_ehr_time = fields.DateTime()
+    enrl_core_participant_minus_pm_time = fields.DateTime()
+    enrl_core_participant_time = fields.DateTime()
+
+    # TODO: Depreciate fields here that are duplicated by the new enrollment fields above.
     enrollment_status = fields.EnumString(enum=EnrollmentStatusV2)
     enrollment_status_id = fields.EnumInteger(enum=EnrollmentStatusV2)
     enrollment_member = fields.DateTime()
@@ -320,7 +332,8 @@ class ParticipantSchema(Schema):
     races = fields.Nested(RaceSchema, many=True)
     genders = fields.Nested(GenderSchema, many=True)
     modules = fields.Nested(ModuleStatusSchema, many=True)
-    consents = fields.Nested(ConsentSchema, many=True)
+    # TODO: Deprecated, but leave around until BigQuery table support is removed.
+    # consents = fields.Nested(ConsentSchema, many=True)
 
     biobank_orders = fields.Nested(BiobankOrderSchema, many=True)
 

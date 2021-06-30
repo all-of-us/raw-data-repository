@@ -134,10 +134,10 @@ class GenomicJobControllerTest(BaseTestCase):
 
         incident = incident_dao.get(1)
         self.assertIsNotNone(incident)
-        self.assertEqual(incident.slack_notification, 1)
-        self.assertIsNotNone(incident.slack_notification_date)
         self.assertEqual(incident.code, GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name)
         self.assertEqual(incident.data_file_path, file_path)
-        self.assertEqual(incident.message, 'Cannot find genomics metric record for sample id: 21042005280')
+        self.assertEqual(incident.message, 'INGEST_DATA_FILES: Cannot find '
+                                           'genomics metric record for sample id: '
+                                           '21042005280')
 
 

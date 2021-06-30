@@ -80,6 +80,8 @@ class BQRWBWorkspaceSchema(BQSchema):
     is_reviewed = BQField('is_reviewed', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
     cdr_version = BQField('cdr_version', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    access_tier = BQField('access_tier', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    access_tier_id = BQField('access_tier_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspace(BQTable):

@@ -19,7 +19,7 @@ SUB_PREFIXES = {
 
 SUB_FIELD_MAP = {
     'module_authored': 'mod_authored',
-    'module_created': 'mod_created'
+    'module_created': 'mod_created',
 }
 
 

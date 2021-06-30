@@ -13,6 +13,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.domainresource import DomainRe
 from rdr_service.lib_fhir.fhirclient_1_0_6.models.fhirabstractbase import FHIRValidationError
 from protorpc import messages
 from sqlalchemy import and_, inspect, or_
+from sqlalchemy.dialects import mysql
 from sqlalchemy.engine.result import ResultProxy
 from sqlalchemy.exc import IntegrityError, OperationalError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
@@ -550,7 +551,21 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
-    def query_to_text(self, query, reindent=True):
+    @staticmethod
+    def literal_sql_from_query(query):
+        """
+        Returns actual Raw SQL with translated MySQL dialects, with literal
+        value bindings in string
+        :param query: sqlalchemy query object
+        :return: string
+        """
+        return str(query.statement.compile(
+            compile_kwargs={"literal_binds": True},
+            dialect=mysql.dialect()
+        ))
+
+    @staticmethod
+    def query_to_text(query, reindent=True):
         """
     Return the SQL statement text from a sqlalchemy query object.
     :param query: sqlalchemy query object

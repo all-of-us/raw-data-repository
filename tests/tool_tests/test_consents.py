@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 import mock
+from typing import List
 
-from rdr_service.model.consent_file import ConsentFile, ConsentType
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.tools.tool_libs.consents import ConsentTool
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
@@ -16,7 +17,17 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentsTest, self).setUp(*args, **kwargs)
 
-        self.invalid_files = [
+        consent_dao_patcher = mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao')
+        self.consent_dao_mock = consent_dao_patcher.start().return_value
+        self.addCleanup(consent_dao_patcher.stop)
+
+        # Patching other DAOs to keep them from trying to connect to the DB
+        for name_to_patch in ['ParticipantSummaryDao', 'HPODao']:
+            dao_patch = mock.patch(f'rdr_service.tools.tool_libs.consents.{name_to_patch}')
+            dao_patch.start()
+            self.addCleanup(dao_patch.stop)
+
+        self.consent_dao_mock.get_files_needing_correction.return_value = [
             ConsentFile(
                 participant_id=123123123, type=ConsentType.PRIMARY, file_exists=False
             ),
@@ -41,23 +52,23 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             )
         ]
 
-    def _run_consents_tool(self, command, verbose=False):
-        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentDao') as consent_dao_class_mock,\
-                mock.patch('rdr_service.tools.tool_libs.consents.GoogleCloudStorageProvider') as storage_provider_mock:
-            consent_dao_instance_mock = consent_dao_class_mock.return_value
-            consent_dao_instance_mock.get_files_needing_correction.return_value = self.invalid_files
-
+    def _run_consents_tool(self, command, verbose=False, additional_args=None):
+        with mock.patch('rdr_service.tools.tool_libs.consents.GoogleCloudStorageProvider') as storage_provider_mock:
             def blob_that_gives_url(bucket_name, blob_name):
                 blob_mock = mock.MagicMock()
                 blob_mock.generate_signed_url.return_value = f'https://example.com/{bucket_name}/{blob_name}'
                 return blob_mock
             storage_provider_mock.return_value.get_blob.side_effect = blob_that_gives_url
 
-            self.run_tool(ConsentTool, tool_args={
+            tool_args = {
                 'command': command,
                 'since': None,
                 'verbose': verbose
-            })
+            }
+            if additional_args:
+                tool_args.update(additional_args)
+
+            self.run_tool(ConsentTool, tool_args)
 
     def test_report_to_send_to_ptsc(self, logger_mock):
         """Check the basic report format, the one that would be sent to Vibrent or CE for correcting"""
@@ -90,3 +101,109 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             'P901987345 - EHR        invalid signature - https://example.com/test_bucket/P901/EHR_no_signature.pdf',
         ]))
 
+    def test_changing_existing_record(self, logger_mock):
+        with mock.patch('rdr_service.tools.tool_libs.consents.input') as input_mock:
+            file_to_update = ConsentFile(
+                id=24,
+                participant_id=1234,
+                file_path='test_bucket/file.pdf',
+                type=ConsentType.PRIMARY,
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING
+            )
+            self.consent_dao_mock.get.return_value = file_to_update
+
+            input_mock.return_value = 'y'
+            self._run_consents_tool(
+                command='modify',
+                additional_args={
+                    'type': 'CABOR',
+                    'sync_status': 'READY_FOR_SYNC'
+                }
+            )
+
+            logger_mock.info.assert_has_calls([
+                mock.call('File info:      P1234, test_bucket/file.pdf'),
+                mock.call('type:           PRIMARY => CABOR'),
+                mock.call('sync_status:    NEEDS_CORRECTING => READY_FOR_SYNC')
+            ])
+
+            updated_file = self.consent_dao_mock.batch_update_consent_files.call_args_list[0].args[0][0]
+            self.assertEqual(file_to_update.id, updated_file.id)
+            self.assertEqual(ConsentType.CABOR, updated_file.type)
+            self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
+
+    def test_validation_time_range(self, _):
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock:
+            controller_mock = controller_class_mock.return_value
+
+            # Check without max_date
+            self._run_consents_tool(
+                command='validate',
+                additional_args={
+                    'min_date': 'Apr 1st, 2021',
+                    'max_date': None
+                }
+            )
+            controller_mock.validate_recent_uploads.assert_called_with(
+                min_consent_date=datetime(2021, 4, 1),
+                max_consent_date=None
+            )
+
+            # Check with max_date
+            self._run_consents_tool(
+                command='validate',
+                additional_args={
+                    'min_date': '2021-05-01',
+                    'max_date': '2021-06-17'
+                }
+            )
+            controller_mock.validate_recent_uploads.assert_called_with(
+                min_consent_date=datetime(2021, 5, 1),
+                max_consent_date=datetime(2021, 6, 17)
+            )
+
+    def test_record_upload(self, _):
+        with mock.patch('rdr_service.tools.tool_libs.consents.csv') as csv_mock, \
+                mock.patch('rdr_service.tools.tool_libs.consents.open'):
+            csv_file_mock = csv_mock.DictReader.return_value
+            csv_file_mock.__iter__.return_value = [
+                {
+                    'participant_id': '4567',
+                    'file_exists': '1',
+                    'file_path': 'bucket/valid_file.pdf',
+                    'sync_status': 'READY_FOR_SYNC'
+                },
+                {
+                    'participant_id': '1234',
+                    'file_exists': '0',
+                    'file_path': '',
+                    'sync_status': 'NEEDS_CORRECTING'
+                }
+            ]
+
+            # Check without max_date
+            self._run_consents_tool(
+                command='upload',
+                additional_args={
+                    'file': 'data.csv',
+                }
+            )
+            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
+            self.assertTrue(any([
+                (
+                    record.participant_id == '4567'
+                    and record.file_exists == '1'
+                    and record.file_path == 'bucket/valid_file.pdf'
+                    and record.sync_status == 'READY_FOR_SYNC'
+                )
+                for record in uploaded_records
+            ]))
+            self.assertTrue(any([
+                (
+                    record.participant_id == '1234'
+                    and record.file_exists == '0'
+                    and record.file_path == ''
+                    and record.sync_status == 'NEEDS_CORRECTING'
+                )
+                for record in uploaded_records
+            ]))

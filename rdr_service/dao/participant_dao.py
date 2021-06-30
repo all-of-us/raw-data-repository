@@ -5,6 +5,8 @@ from typing import Collection
 
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
+from sqlalchemy.sql.expression import literal
+
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import clock
@@ -521,6 +523,31 @@ class ParticipantDao(UpdatableDao):
             if existing_participant:
                 return existing_participant
         return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
+
+    def get_participant_id_mapping(self, is_sql=False):
+        with self.session() as session:
+            participant_map = (
+                session.query(
+                    Participant.participantId.label('p_id'),
+                    literal('r_id'),
+                    Participant.researchId.label('id_value'),
+                ).union(
+                    session.query(
+                        Participant.participantId.label('p_id'),
+                        literal('vibrent_id'),
+                        Participant.externalId.label('id_value'),
+                    )).filter(
+                    Participant.researchId.isnot(None),
+                    Participant.externalId.isnot(None)
+                ))
+
+            if is_sql:
+                sql = self.literal_sql_from_query(participant_map)
+                sql = sql.replace('param_1', 'id_source')
+                sql = sql.replace('param_2', 'id_source')
+                return sql
+
+            return participant_map.all()
 
     def get_org_and_site_for_ids(self, participant_ids: Collection[int]):
         """
