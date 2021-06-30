@@ -8,6 +8,7 @@ import importlib
 import inspect
 import itertools
 import json
+import logging
 import operator
 import re
 from enum import Enum, EnumMeta
@@ -567,6 +568,9 @@ class BQRecord(object):
             :return: dict
             """
             for key, val in src.items():
+                if not isinstance(key, str):
+                    logging.warning('Dict key is not a string.')
+                    continue
                 # validate key against schema if needed
                 if schema and not getattr(schema, key, None):
                     # raise KeyError('{0} key not in schema'.format(key))
