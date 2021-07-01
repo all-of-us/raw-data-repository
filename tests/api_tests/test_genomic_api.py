@@ -1,4 +1,5 @@
 import datetime
+import http.client
 import pytz
 
 from dateutil import parser
@@ -41,7 +42,6 @@ class GenomicApiTestBase(BaseTestCase):
         self.job_run_dao = GenomicJobRunDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.set_dao = GenomicSetDao()
-
         self._setup_data()
 
     def _setup_data(self):
@@ -325,6 +325,59 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         }
 
         self.send_post(local_path, request_data=payload, expected_status=404)
+
+
+class GenomicOutreachApiV2Test(GenomicApiTestBase):
+    def setUp(self):
+        super(GenomicOutreachApiV2Test, self).setUp()
+
+    def test_validate_params(self):
+        bad_response = 'GenomicOutreach accepted params: start_date | end_date | participant_id | module | type'
+
+        response_one = self.send_get(
+            "GenomicOutreachV2?wwqwqw=ewewe",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response_one.json['message'], bad_response)
+        self.assertEqual(response_one.status_code, 400)
+
+        response_two = self.send_get(
+            "GenomicOutreachV2?wwqwqw=ewewe&participant_id=P2",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_two.json['message'], bad_response)
+        self.assertEqual(response_two.status_code, 400)
+
+        bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
+
+        response_three = self.send_get(
+            "GenomicOutreachV2?participant_id=",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_three.json['message'], bad_response)
+        self.assertEqual(response_three.status_code, 400)
+
+        bad_response = 'GenomicOutreach accepted modules: gem | rhp | pgx | hdr'
+
+        response_four = self.send_get(
+            "GenomicOutreachV2?module=ewewewew",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_four.json['message'], bad_response)
+        self.assertEqual(response_four.status_code, 400)
+
+        bad_response = 'GenomicOutreach accepted types: result | informingLoop'
+
+        response_five = self.send_get(
+            "GenomicOutreachV2?type=ewewewew",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_five.json['message'], bad_response)
+        self.assertEqual(response_five.status_code, 400)
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):

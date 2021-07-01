@@ -1382,7 +1382,8 @@ class GenomicOutreachDaoV2(BaseDao):
         super(GenomicOutreachDaoV2, self).__init__(
             GenomicSetMember, order_by_ending=['id'])
         self.module = None
-        self._type = ['result', 'informingLoop']  # static for now
+        self.type = None
+        self.allowed_types = ['result', 'informingLoop']
         self.report_query_state = self.get_report_state_query_config()
 
     def get_id(self, obj):
@@ -1399,7 +1400,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 "participant_id": f'P{participant[0]}',
                 "status": p_status,
                 "module": p_module,
-                "type": self._type[0],  # result | informing loop | appointment | result only for now
+                "type": '',
             })
         # handle date
         try:
@@ -1514,7 +1515,7 @@ class GenomicOutreachDaoV2(BaseDao):
             self.module = module
             self.report_query_state = self.get_report_state_query_config()
         if _type:
-            self._type = _type
+            self.type = _type
 
 
 class GenomicManifestFileDao(BaseDao):

@@ -15,6 +15,7 @@ ALLOWED_ENVIRONMENTS = ['all-of-us-rdr-sandbox',
                         'all-of-us-rdr-ptsc-1-test',
                         'localhost']
 
+
 class GenomicPiiApi(BaseApi):
     def __init__(self):
         super(GenomicPiiApi, self).__init__(GenomicPiiDao())
@@ -129,15 +130,14 @@ class GenomicOutreachApi(BaseApi):
         m = self._do_insert(model)
 
         response_data = {
-                            'date': m.genomicWorkflowStateModifiedTime,
-                            'data': [
-                                (m.participantId, m.genomicWorkflowState),
-                            ]
-                        }
+            'date': m.genomicWorkflowStateModifiedTime,
+            'data': [
+                (m.participantId, m.genomicWorkflowState),
+            ]
+        }
 
         # Log to requests_log
         log_api_request(log=request.log_record)
-
         return self._make_response(response_data)
 
     @staticmethod
@@ -146,13 +146,15 @@ class GenomicOutreachApi(BaseApi):
         Checks that the mode in the endpoint is valid
         :param mode: "GEM" or "RHP"
         """
-        if mode.lower() not in config.GENOMIC_API_MODES:
-            raise BadRequest(f"GenomicOutreach Mode required to be one of {config.GENOMIC_API_MODES}.")
+        modes = ['gem', 'rhp']
+        if mode.lower() not in modes:
+            raise BadRequest(f"GenomicOutreach Mode required to be one of {modes}.")
 
 
 class GenomicOutreachApiV2(BaseApi):
     def __init__(self):
         super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
+        self.validate_params()
 
     @auth_required(RDR_AND_PTC)
     def get(self):
@@ -177,10 +179,6 @@ class GenomicOutreachApiV2(BaseApi):
         if not _pid and not _start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        if _pid and _start_date:
-            raise BadRequest('Start date not supported with Participant ID lookup.')
-
-        # If this is a participant lookup
         if _pid is not None:
             if _pid.startswith("P"):
                 _pid = _pid[1:]
@@ -188,7 +186,6 @@ class GenomicOutreachApiV2(BaseApi):
             if not participant_report_states:
                 raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')
 
-        # If this is a date lookup
         if _start_date is not None:
             _start_date = parser.parse(_start_date)
             participant_report_states = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
@@ -198,13 +195,16 @@ class GenomicOutreachApiV2(BaseApi):
                 'date': clock.CLOCK.now(),
                 'data': participant_report_states
             }
+
             return self._make_response(proto_payload)
+
         raise BadRequest
 
     def _check_global_args(self, module, _type):
         """
         Checks that the mode in the endpoint is valid
-        :param mode: "GEM" / "RHP" / "PGX" / "HDR"
+        :param module: "GEM" / "RHP" / "PGX" / "HDR"
+        :param _type: "result" / "informingLoop" / "appointment"
         """
         current_module = None
         current_type = None
@@ -212,13 +212,12 @@ class GenomicOutreachApiV2(BaseApi):
         if module:
             if module.lower() not in config.GENOMIC_API_MODES:
                 raise BadRequest(
-                    f"GenomicOutreach mode required to be one of {' '.join(config.GENOMIC_API_MODES).upper()}.")
+                    f"GenomicOutreach accepted modules: {' | '.join(config.GENOMIC_API_MODES)}")
             else:
                 current_module = module.lower()
         if _type:
-            allowed_types = ['result', 'informingLoop', 'appointment']
-            if _type and _type.lower() not in allowed_types:
-                raise BadRequest(f"GenomicOutreach type is required to be one of {' '.join(allowed_types)}")
+            if _type and _type.lower() not in self.dao.allowed_types:
+                raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.allowed_types)}")
             else:
                 current_type = _type
 
@@ -226,3 +225,10 @@ class GenomicOutreachApiV2(BaseApi):
             module=current_module,
             _type=current_type
         )
+
+    @staticmethod
+    def validate_params():
+        valid_params = ['start_date', 'end_date', 'participant_id', 'module', 'type']
+        request_keys = list(request.args.keys())
+        if any(arg for arg in request_keys if arg not in valid_params):
+            raise BadRequest(f"GenomicOutreach accepted params: {' | '.join(valid_params)}")

@@ -314,7 +314,7 @@ api.add_resource(GenomicOutreachApi,
                  methods=['GET', 'POST'])
 
 api.add_resource(GenomicOutreachApiV2,
-                 API_PREFIX + "GenomicOutreach",
+                 API_PREFIX + "GenomicOutreachV2",
                  endpoint='genomic.outreachv2',
                  methods=['GET'])
 
