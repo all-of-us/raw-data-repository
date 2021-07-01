@@ -124,7 +124,8 @@ def _import_rural_zipcodes():
             with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
                 # pylint: disable=unused-variable
                 for count, line in enumerate(handle):
-                    codes.append(line.split(',')[1].strip())
+                    # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it back
+                    codes.append(line.split(',')[1].strip().zfill(5))
             break
     return codes
 

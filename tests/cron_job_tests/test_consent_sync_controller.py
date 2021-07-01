@@ -136,6 +136,18 @@ class ConsentSyncControllerTest(BaseTestCase):
         # If no participants are paired, then nothing should sync
         self.storage_provider_mock.copy_blob.assert_not_called()
 
+    def test_ignore_unrecognized_orgs(self):
+        """Test that the sync ignores participants paired to an organization that isn't specified in the config"""
+        # Return empty list, indicating that the participants are not paired to organizations
+        self.participant_dao_mock.get_org_and_site_for_ids.return_value = [
+            (self.bob_participant_id, 'not_in_config', None),
+        ]
+
+        self.sync_controller.sync_ready_files()
+
+        # If no participants are paired, then nothing should sync
+        self.storage_provider_mock.copy_blob.assert_not_called()
+
     @classmethod
     def _build_expected_dest_path(cls, bucket_name, org_id, site_group, participant_id, file_name):
         return f'{bucket_name}/Participant/{org_id}/{site_group}/P{participant_id}/{file_name}'

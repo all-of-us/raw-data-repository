@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.model.message_broker import MessageBrokerRecord
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import GAE_PROJECT
@@ -31,7 +31,8 @@ class MessageBrokerDao(BaseDao):
 
         return message
 
-    def _validate(self, resource_json):
+    @staticmethod
+    def _validate(resource_json):
         not_null_fields = ['event', 'eventAuthoredTime', 'participantId', 'messageBody']
         for field_name in not_null_fields:
             if resource_json.get(field_name) is None:
@@ -40,7 +41,8 @@ class MessageBrokerDao(BaseDao):
         if not resource_json.get('participantId').isnumeric():
             raise BadRequest('Invalid participant ID')
 
-    def _get_message_dest_name(self, participant_id):
+    @staticmethod
+    def _get_message_dest_name(participant_id):
         p_dao = ParticipantDao()
         participant = p_dao.get(participant_id)
         if not participant:
@@ -81,6 +83,28 @@ class MessageBrokerDao(BaseDao):
         }
         return response_json
 
-    def send_message(self, message):
+    @staticmethod
+    def send_message(message):
         message_broker = MessageBrokerFactory.create(message)
         return message_broker.send_request()
+
+
+class MessageBrokenEventDataDao(BaseDao):
+
+    def __init__(self):
+        super(MessageBrokenEventDataDao, self).__init__(MessageBrokerEventData, order_by_ending=['id'])
+
+    def to_client_json(self, model):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_informing_loop(self, message_record_id, loop_type):
+        with self.session() as session:
+            return session.query(
+                MessageBrokerEventData
+            ).filter(
+                MessageBrokerEventData.messageRecordId == message_record_id,
+                MessageBrokerEventData.eventType == loop_type
+            ).all()

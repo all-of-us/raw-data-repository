@@ -1,6 +1,7 @@
 import json
 import logging
 import pytz
+import re
 from dateutil import parser
 
 from sqlalchemy.orm import load_only
@@ -119,7 +120,10 @@ class MailKitOrderDao(UpdatableDao):
         if is_version_two:
             order["order"]["number"] = None
             client_fields = {"client_passthrough_fields": {
-                "field1": barcode
+                "field1": barcode,
+                "field2": None,
+                "field3": None,
+                "field4": None
             }}
             order['order']['tests'][0]['test'].update(client_fields)
 
@@ -262,7 +266,12 @@ class MailKitOrderDao(UpdatableDao):
                 order.id = existing_obj.id
                 order.version = expected_version
                 if order.supplierStatus.lower() == "shipped":
-                    order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+                    barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+                    # remove non-alpha num chars from barcode
+                    if barcode and not barcode.isalnum():
+                        barcode = re.sub(r'\W+', '', barcode)
+
+                    order.barcode = barcode
 
             with self.session() as session:
                 participant = session.query(Participant).filter(

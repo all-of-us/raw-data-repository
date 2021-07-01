@@ -3,7 +3,8 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchResearcherHistoryDao, \
     WorkbenchWorkspaceDao, WorkbenchWorkspaceHistoryDao
 from rdr_service.participant_enums import WorkbenchWorkspaceUserRole, WorkbenchInstitutionNonAcademic, \
-    WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity
+    WorkbenchResearcherEducation, WorkbenchResearcherDisability, WorkbenchResearcherEthnicity, \
+    WorkbenchWorkspaceAccessTier
 
 
 class WorkbenchApiTest(BaseTestCase):
@@ -331,6 +332,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "methodsDevelopment": True,
                 "controlSet": True,
                 "ancestry": True,
+                "accessTier": "REGISTERED",
                 "socialBehavioral": True,
                 "populationHealth": True,
                 "drugDevelopment": True,
@@ -370,6 +372,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].ethicalLegalSocialImplications, True)
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.REGISTERED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 
@@ -380,6 +383,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string')
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.REGISTERED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual('irving', results[0].cdrVersion)
@@ -622,6 +626,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string')
         self.assertEqual(results[0].scientificApproaches, 'string')
         self.assertEqual(results[0].intendToStudy, 'string')
+        self.assertEqual(results[0].accessTier, None)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
         self.assertEqual('irving', results[0].cdrVersion)
@@ -653,6 +658,7 @@ class WorkbenchApiTest(BaseTestCase):
                 "methodsDevelopment": True,
                 "controlSet": True,
                 "ancestry": True,
+                "accessTier": "CONTROLLED",
                 "socialBehavioral": True,
                 "populationHealth": True,
                 "drugDevelopment": True,
@@ -679,6 +685,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].scientificApproaches, 'string2')
         self.assertEqual(len(results[0].workbenchWorkspaceUser), 1)
         self.assertEqual(results[0].cdrVersion, 'irving2')
+        self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.CONTROLLED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 
@@ -689,6 +696,7 @@ class WorkbenchApiTest(BaseTestCase):
         self.assertEqual(results[0].name, 'string_modify')
         self.assertEqual(results[0].scientificApproaches, 'string2')
         self.assertEqual(results[0].cdrVersion, 'irving2')
+        self.assertEqual(results[0].accessTier, WorkbenchWorkspaceAccessTier.CONTROLLED)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].userId, 1)
         self.assertEqual(results[0].workbenchWorkspaceUser[0].isCreator, True)
 

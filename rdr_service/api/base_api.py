@@ -324,7 +324,9 @@ class UpdatableApi(BaseApi):
             )
         else:
             return self.dao.from_client_json(
-                resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id()
+                resource, id_=id_,
+                expected_version=expected_version,
+                client_id=app_util.get_oauth_id()
             )
 
     def _make_response(self, obj):

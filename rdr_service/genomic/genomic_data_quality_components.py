@@ -2,8 +2,10 @@ import abc
 from datetime import timedelta
 
 from rdr_service import clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicJobRunDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
+from rdr_service.config import GENOMIC_REPORT_PATH
 
 
 class GenomicDataQualityComponentBase:
@@ -171,3 +173,14 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             report_string = self.report_def.empty_report_string
 
         return report_string
+
+    def create_report_file(self, report_string, display_name):
+        now_str = clock.CLOCK.now().replace(microsecond=0).isoformat(sep="_", )
+        report_file_name = f"{display_name.replace(' ', '_')}_{now_str}.txt"
+
+        path = GENOMIC_REPORT_PATH + report_file_name
+
+        with open_cloud_file(path, mode='wt') as cloud_file:
+            cloud_file.write(report_string)
+
+        return path

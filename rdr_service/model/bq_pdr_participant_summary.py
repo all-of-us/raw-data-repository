@@ -182,6 +182,18 @@ class BQPDRParticipantSummarySchema(BQSchema):
     # enabled later
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
+    # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
+    #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
+    #       completely.
+    enrl_registered_time = BQField('enrl_registered_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_time = BQField('enrl_participant_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_plus_ehr_time = BQField('enrl_participant_plus_ehr_time', BQFieldTypeEnum.DATETIME,
+                                           BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_minus_pm_time = BQField('enrl_core_participant_minus_pm_time', BQFieldTypeEnum.DATETIME,
+                                                BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
+                                         BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummary(BQTable):
     """ PDR Participant Summary BigQuery Table """
@@ -313,7 +325,8 @@ class BQPDRModuleView(BQView):
            nt.mod_module, nt.mod_baseline_module,
            CAST(nt.mod_authored AS DATETIME) as mod_authored, CAST(nt.mod_created AS DATETIME) as mod_created,
            nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_response_status, nt.mod_response_status_id,
-           nt.mod_external_id
+           nt.mod_external_id, nt.mod_questionnaire_response_id, nt.mod_consent, nt.mod_consent_value,
+           nt.mod_consent_value_id, nt.mod_consent_expired, nt.mod_non_participant_answer
       FROM (
         SELECT *,
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn

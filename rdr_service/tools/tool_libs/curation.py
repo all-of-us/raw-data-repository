@@ -14,6 +14,7 @@ from typing import Type
 from rdr_service import config
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
@@ -160,6 +161,16 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
+    def export_participant_id_map(self):
+        dao = ParticipantDao()
+        export_sql = dao.get_participant_id_mapping(is_sql=True)
+
+        export_name = 'participant_id_mapping'
+        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+
+        _logger.info(f'exporting {export_name}')
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+
     def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
@@ -180,6 +191,7 @@ class CurationExportClass(ToolBase):
             self.export_table(table)
 
         self.export_cope_map()
+        self.export_participant_id_map()
 
         for table in self.problematic_tables:
             self.export_table(table)

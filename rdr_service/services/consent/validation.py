@@ -65,13 +65,16 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-            self.consent_dao.batch_update_consent_files(validation_updates)
+        self.consent_dao.batch_update_consent_files(validation_updates)
 
-    def validate_recent_uploads(self, min_consent_date):
+    def validate_recent_uploads(self, min_consent_date, max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
         validation_results = []
         validated_participant_ids = []
-        for summary in self.consent_dao.get_participants_with_consents_in_range(start_date=min_consent_date):
+        for summary in self.consent_dao.get_participants_with_consents_in_range(
+            start_date=min_consent_date,
+            end_date=max_consent_date
+        ):
             validated_participant_ids.append(summary.participantId)
             validator = self._build_validator(summary)
 
@@ -190,6 +193,7 @@ class ConsentValidator:
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
+            additional_validation=self._validate_is_va_file,
             expected_sign_datetime=self.participant_summary.consentForElectronicHealthRecordsAuthored
         )
 
@@ -285,7 +289,8 @@ class ConsentValidator:
         if not signing_date or not expected_date:
             return False
         else:
-            return signing_date == expected_date
+            days_off = (signing_date - expected_date).days
+            return abs(days_off) < 10
 
     def _get_date_from_datetime(self, timestamp: datetime):
         return timestamp.replace(tzinfo=pytz.utc).astimezone(self._central_time).date()

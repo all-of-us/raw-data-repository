@@ -52,6 +52,7 @@ def _build_resource_app():
     _api.add_resource(message_broker_cloud_tasks_api.StoreMessageBrokerEventDataTaskApi,
                       TASK_PREFIX + "StoreMessageBrokerEventDataTaskApi",
                       endpoint="store_message_broker_event_data_task", methods=["POST"])
+
     #
     # Begin Genomic Cloud Task API Endpoints
     #
@@ -104,6 +105,11 @@ def _build_resource_app():
     _api.add_resource(genomic_cloud_tasks_api.CalculateContaminationCategoryApi,
                       TASK_PREFIX + "CalculateContaminationCategoryApi",
                       endpoint="calculate_contamination_category_task", methods=["POST"])
+
+    # Calculate Contamination Category
+    _api.add_resource(genomic_cloud_tasks_api.IngestInformingLoopTaskApi,
+                      TASK_PREFIX + "IngestInformingLoopTaskApi",
+                      endpoint="ingest_informing_loop", methods=["POST"])
 
     #
     # End Genomic Cloud Task API endpoints

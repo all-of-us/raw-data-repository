@@ -3105,7 +3105,7 @@ class ManifestDefinitionProvider:
                 'signal': 'bypass'
             },
             GenomicManifestTypes.AW2F: {
-                'job_run_field': None,
+                'job_run_field': 'aw2fManifestJobRunID',
                 'output_filename': f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
                 'signal': 'bypass'
             }

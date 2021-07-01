@@ -25,6 +25,10 @@ class ConsentFactoryTest(BaseTestCase):
             name='ConsentPII_4567.pdf',
             text_in_file=files.VibrentConsentFactory.CABOR_TEXT
         )
+        self.spanish_cabor_file = self._mock_pdf(
+            name='ConsentPII_es.pdf',
+            text_in_file='Declaración de Derechos del Sujeto de Investigación Experimental'
+        )
         self.another_primary = self._mock_pdf(name='ConsentPII_test.pdf')
         self.ehr_file = self._mock_pdf(name='EHRConsentPII.pdf')
         self.another_ehr = self._mock_pdf(name='EHRConsentPII_2.pdf')
@@ -34,6 +38,7 @@ class ConsentFactoryTest(BaseTestCase):
         self.storage_provider_mock.list.return_value = [
             self.primary_file,
             self.cabor_file,
+            self.spanish_cabor_file,
             self.another_primary,
             self.ehr_file,
             self.another_ehr,
@@ -74,7 +79,7 @@ class ConsentFactoryTest(BaseTestCase):
         """Test that the factory correctly identifies the Cabor consent file"""
         self.assertConsentListEquals(
             expected_class=files.VibrentCaborConsentFile,
-            expected_files=[self.cabor_file],
+            expected_files=[self.cabor_file, self.spanish_cabor_file],
             actual_files=self.vibrent_factory.get_cabor_consents()
         )
 
@@ -106,6 +111,17 @@ class ConsentFactoryTest(BaseTestCase):
         pdf_mock = mock.MagicMock()
         pdf_mock.name = name
 
-        pdf_mock.get_page_number_of_text.side_effect = lambda search_list: 1 if text_in_file in search_list else None
+        def page_number_for_text(search_list):
+            if text_in_file is None:
+                return None
+
+            # The code uses strings when there aren't translations, and tuples when there are
+            for search_item in search_list:
+                if isinstance(search_item, str) and search_item not in text_in_file:
+                    return False
+                elif not any([search_str in text_in_file for search_str in search_item]):
+                    return False
+            return True
+        pdf_mock.get_page_number_of_text.side_effect = page_number_for_text
 
         return pdf_mock

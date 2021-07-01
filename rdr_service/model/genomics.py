@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
+from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime, UTCDateTime6
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
@@ -121,9 +121,6 @@ class GenomicSetMember(Base):
     aw2FileProcessedId = Column('aw2_file_processed_id',
                                 Integer, ForeignKey("genomic_file_processed.id"),
                                 nullable=True)
-    aw2fFileProcessedId = Column('aw2f_file_processed_id',
-                                 Integer, ForeignKey("genomic_file_processed.id"),
-                                 nullable=True)
 
     # Reconciliation and Manifest columns
     # Reconciled to BB Manifest
@@ -162,6 +159,10 @@ class GenomicSetMember(Base):
     aw4ManifestJobRunID = Column('aw4_manifest_job_run_id',
                                  Integer, ForeignKey("genomic_job_run.id"),
                                  nullable=True)
+
+    aw2fManifestJobRunID = Column('aw2f_manifest_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
 
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',
@@ -673,3 +674,25 @@ class GenomicMemberReportState(Base):
 
 event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
 event.listen(GenomicMemberReportState, 'before_update', model_update_listener)
+
+
+class GenomicInformingLoop(Base):
+    """
+    Used for maintaining normalized value set of
+    informing_loop_decision ingested from MessageBrokerEventData
+    """
+
+    __tablename__ = 'genomic_informing_loop'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    message_record_id = Column(Integer, nullable=False)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
+    event_type = Column(String(256), nullable=False)
+    event_authored_time = Column(UTCDateTime6)
+    module_type = Column(String(128))
+    decision_value = Column(String(128))
+
+
+event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
+event.listen(GenomicInformingLoop, 'before_update', model_update_listener)
