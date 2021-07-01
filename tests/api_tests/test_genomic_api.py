@@ -1,8 +1,8 @@
 import datetime
-from unittest import mock
-
 import pytz
+
 from dateutil import parser
+from unittest import mock
 
 from rdr_service.services.system_utils import JSONObject
 from tests.helpers.unittest_base import BaseTestCase
@@ -734,4 +734,21 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(ingest_mock.call_count, path_count)
 
+    def test_informing_loop_task_api(self):
 
+        data = {
+            'event_type': '',
+            'records': []
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        insert_informing_loop = self.send_post(
+            local_path='IngestInformingLoopTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(insert_informing_loop)
+        self.assertEqual(insert_informing_loop['success'], True)
