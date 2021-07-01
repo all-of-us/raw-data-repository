@@ -26,7 +26,8 @@ from rdr_service.model.genomics import (
     GenomicAW2Raw,
     GenomicIncident,
     GenomicCloudRequests,
-    GenomicMemberReportState
+    GenomicMemberReportState,
+    GenomicInformingLoop
 )
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -40,6 +41,7 @@ from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
     genomic_manifest_file_update
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
+
 
 class GenomicSetDao(UpdatableDao):
     """ Stub for GenomicSet model """
@@ -1698,3 +1700,17 @@ class GenomicMemberReportStateDao(UpdatableDao):
             if value.name == wf_state.name:
                 return value
         return None
+
+
+class GenomicInformingLoopDao(UpdatableDao):
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicInformingLoopDao, self).__init__(
+            GenomicInformingLoop, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass

@@ -271,6 +271,29 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest informing loop decision from
+    Message Broker Event Data
+    """
+    def post(self):
+        super(IngestInformingLoopTaskApi, self).post()
+
+        logging.info('Ingesting informing loop.')
+
+        with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
+                                  ) as controller:
+            controller.ingest_informing_loop_records(
+                loop_type=self.data['event_type'],
+                records=self.data['records']
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
