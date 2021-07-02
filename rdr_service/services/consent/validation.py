@@ -289,9 +289,12 @@ class ConsentValidationController:
             results = validator.get_gror_validation_results()
         output_strategy.add_all(results)
 
-    def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date=None):
+    def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date=None,
+                                max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
-        for summary in self.consent_dao.get_participants_with_consents_in_range(session, start_date=min_consent_date):
+        for summary in self.consent_dao.get_participants_with_consents_in_range(
+            session, start_date=min_consent_date, end_date=max_consent_date
+        ):
             print(summary.participantId)
             validator = self._build_validator(summary)
 

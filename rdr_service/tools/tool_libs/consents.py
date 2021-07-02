@@ -14,7 +14,7 @@ from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, Conse
 from rdr_service.model.participant import ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy,\
-    ReplacementStoringStrategy
+    ReplacementStoringStrategy, StoreResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -149,7 +149,15 @@ class ConsentTool(ToolBase):
             storage_provider=GoogleCloudStorageProvider()
         )
         with self.get_session() as session:
-            validation_controller.generate_org_change_sync_records(session)
+            with StoreResultStrategy(
+                consent_dao=ConsentDao(),
+                session=session
+            ) as strategy:
+                max_time = datetime(2021, 7, 1, 8)
+                min_time = max_time - timedelta(hours=30)
+                validation_controller.validate_recent_uploads(
+                    session, strategy, min_consent_date=min_time, max_consent_date=max_time
+                )
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
