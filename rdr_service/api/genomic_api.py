@@ -158,10 +158,11 @@ class GenomicOutreachApiV2(BaseApi):
 
     @auth_required(RDR_AND_PTC)
     def get(self):
-        self._check_global_args(
-            request.args.get('module'),
-            request.args.get('type')
-        )
+        if not request.args.get('participant_id'):
+            self._check_global_args(
+                request.args.get('module'),
+                request.args.get('type')
+            )
         return self.get_outreach()
 
     def get_outreach(self):
@@ -174,7 +175,7 @@ class GenomicOutreachApiV2(BaseApi):
         _end_date = clock.CLOCK.now() \
             if request.args.get("end_date") is None \
             else parser.parse(request.args.get("end_date"))
-        participant_report_states = []
+        participant_states = []
 
         if not _pid and not _start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
@@ -182,21 +183,21 @@ class GenomicOutreachApiV2(BaseApi):
         if _pid:
             if _pid.startswith("P"):
                 _pid = _pid[1:]
-            participant_report_states = self.dao.outreach_lookup(pid=_pid)
-            if not participant_report_states:
+            participant_states = self.dao.outreach_lookup(pid=_pid)
+            if not participant_states:
                 raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')
 
         if _start_date:
             _start_date = parser.parse(_start_date)
-            participant_report_states = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
+            participant_states = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
 
-        if participant_report_states:
-            proto_payload = {
+        if participant_states:
+            payload = {
                 'date': clock.CLOCK.now(),
-                'data': participant_report_states
+                'data': participant_states
             }
 
-            return self._make_response(proto_payload)
+            return self._make_response(payload)
 
         raise BadRequest
 

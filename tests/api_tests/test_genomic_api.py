@@ -383,6 +383,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         num_participants = 5
         first_participant = None
         second_participant = None
+        third_participant = None
         fake_date = parser.parse('2020-05-29T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
 
@@ -426,6 +427,16 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 genomic_report_state=report_state
             )
 
+            if num == 3:
+                third_participant = participant
+                self.data_generator.create_database_genomic_informing_loop(
+                    message_record_id=1,
+                    event_type='informing_loop_decision',
+                    module_type=module,
+                    participant_id=participant.participantId,
+                    decision_value='maybe_later'
+                )
+
         with clock.FakeClock(fake_now):
             resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
 
@@ -466,6 +477,32 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
 
         self.assertEqual(resp.json['message'], bad_response)
         self.assertEqual(resp.status_code, 404)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={third_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'gem',
+                    'type': 'result',
+                    'status': 'ready',
+                    'participant_id': f'P{third_participant.participantId}'
+                },
+                {
+                    'module': 'gem',
+                    'type': 'informingLoop',
+                    'status': 'completed',
+                    'decision': 'maybe_later',
+                    'participant_id': f'P{third_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+
+        self.assertEqual(len(resp['data']), 2)
+        self.assertEqual(len(resp['data'][1]), 5)
+        self.assertEqual(expected, resp)
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):

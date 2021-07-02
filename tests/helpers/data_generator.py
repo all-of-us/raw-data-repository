@@ -18,7 +18,8 @@ from rdr_service.model.genomics import (
     GenomicAW2Raw,
     GenomicIncident,
     GenomicGCValidationMetrics,
-    GenomicMemberReportState
+    GenomicMemberReportState,
+    GenomicInformingLoop
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
@@ -682,3 +683,12 @@ class DataGenerator:
     @staticmethod
     def _genomic_member_report_state(**kwargs):
         return GenomicMemberReportState(**kwargs)
+
+    def create_database_genomic_informing_loop(self, **kwargs):
+        informing_loop = self._genomic_informing_loop(**kwargs)
+        self._commit_to_database(informing_loop)
+        return informing_loop
+
+    @staticmethod
+    def _genomic_informing_loop(**kwargs):
+        return GenomicInformingLoop(**kwargs)
