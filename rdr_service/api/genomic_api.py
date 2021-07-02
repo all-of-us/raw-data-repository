@@ -179,14 +179,14 @@ class GenomicOutreachApiV2(BaseApi):
         if not _pid and not _start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        if _pid is not None:
+        if _pid:
             if _pid.startswith("P"):
                 _pid = _pid[1:]
             participant_report_states = self.dao.outreach_lookup(pid=_pid)
             if not participant_report_states:
                 raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')
 
-        if _start_date is not None:
+        if _start_date:
             _start_date = parser.parse(_start_date)
             participant_report_states = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
 

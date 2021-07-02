@@ -17,7 +17,8 @@ from rdr_service.model.genomics import (
     GenomicFileProcessed,
     GenomicAW2Raw,
     GenomicIncident,
-    GenomicGCValidationMetrics
+    GenomicGCValidationMetrics,
+    GenomicMemberReportState
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
@@ -672,3 +673,12 @@ class DataGenerator:
     @staticmethod
     def _message_broker_event_data(**kwargs):
         return MessageBrokerEventData(**kwargs)
+
+    def create_database_genomic_member_report_state(self, **kwargs):
+        report_state = self._genomic_member_report_state(**kwargs)
+        self._commit_to_database(report_state)
+        return report_state
+
+    @staticmethod
+    def _genomic_member_report_state(**kwargs):
+        return GenomicMemberReportState(**kwargs)

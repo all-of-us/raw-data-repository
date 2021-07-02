@@ -17,7 +17,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicCloudRequestsDao,
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -378,6 +378,94 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
 
         self.assertEqual(response_five.json['message'], bad_response)
         self.assertEqual(response_five.status_code, 400)
+
+    def test_get_participant_lookup(self):
+        num_participants = 5
+        first_participant = None
+        second_participant = None
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date,
+                consentForStudyEnrollmentAuthored=fake_date
+            )
+
+            module = 'GEM'
+            report_state = GenomicReportState.GEM_RPT_READY
+
+            if num == 0:
+                first_participant = participant
+            elif num == 1:
+                second_participant = participant
+                module = 'PGX'
+                report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'gem',
+                    'type': 'result',
+                    'status': 'ready',
+                    'participant_id': f'P{first_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+        self.assertEqual(expected, resp)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={second_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'pgx',
+                    'type': 'result',
+                    'status': 'pending_delete',
+                    'participant_id': f'P{second_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+        self.assertEqual(expected, resp)
+
+        bad_id = 111111111
+        bad_response = f'Participant P{bad_id} does not exist in the Genomic system.'
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={bad_id}', expected_status=http.client.NOT_FOUND)
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 404)
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):

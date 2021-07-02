@@ -7,6 +7,7 @@ from dateutil import parser
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
+from sqlalchemy.sql.expression import literal
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
@@ -1393,15 +1394,21 @@ class GenomicOutreachDaoV2(BaseDao):
         pass
 
     def to_client_json(self, _dict):
-        report_statuses = []
-        for participant in _dict['data']:
-            p_status, p_module = self._determine_report_state(participant[1])
+        report_statuses, p_status, p_module = [], None, None
+
+        for p in _dict['data']:
+            if 'result' in p[-1]:
+                p_status, p_module = self._determine_report_state(p[1])
+            elif 'informingLoop' in p[-1]:
+                p_status, p_module = None, None
+
             report_statuses.append({
-                "participant_id": f'P{participant[0]}',
-                "status": p_status,
                 "module": p_module,
-                "type": '',
+                "type": p[-1],
+                "status": p_status,
+                "participant_id": f'P{p[0]}',
             })
+
         # handle date
         try:
             ts = pytz.utc.localize(_dict['date'])
@@ -1420,37 +1427,37 @@ class GenomicOutreachDaoV2(BaseDao):
             end_date = clock.CLOCK.now()
 
         with self.session() as session:
-            outreach_query = (
+            result_query = (
                 session.query(
                     GenomicSetMember.participantId,
-                    GenomicMemberReportState.genomic_report_state)
+                    GenomicMemberReportState.genomic_report_state,
+                    literal('result')
+                )
                 .join(
                     ParticipantSummary,
-                    GenomicSetMember.participantId == ParticipantSummary.participantId,
-                ).join(
+                    ParticipantSummary.participantId == GenomicSetMember.participantId
+                )
+                .join(
                     GenomicMemberReportState,
-                    GenomicSetMember.id == GenomicMemberReportState.genomic_set_member_id,
+                    GenomicMemberReportState.genomic_set_member_id == GenomicSetMember.id
                 )
                 .filter(
                     ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                     ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                    GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
                 )
             )
 
             if pid:
-                outreach_query = outreach_query.filter(
+                result_query = result_query.filter(
                     ParticipantSummary.participantId == pid)
 
             if start_date:
-                outreach_query = outreach_query.filter(
+                result_query = result_query.filter(
                     GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
                     GenomicSetMember.genomicWorkflowStateModifiedTime < end_date)
 
-            if self.report_query_state:
-                outreach_query = outreach_query.filter(
-                    GenomicMemberReportState.genomic_report_state.in_(self.report_query_state))
-
-            return outreach_query.all()
+            return result_query.all()
 
     def _determine_report_state(self, status):
         """
