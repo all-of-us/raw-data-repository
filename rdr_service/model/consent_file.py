@@ -11,6 +11,7 @@ class ConsentType(messages.Enum):
     CABOR = 2
     EHR = 3
     GROR = 4
+    UNKNOWN = 5
 
 
 class ConsentSyncStatus(messages.Enum):
@@ -18,6 +19,11 @@ class ConsentSyncStatus(messages.Enum):
     READY_FOR_SYNC = 2
     OBSOLETE = 3
     SYNC_COMPLETE = 4
+
+    LEGACY = 5
+    DELAYING_SYNC = 6
+    UNKNOWN = 7
+
 
 
 class ConsentFile(Base):
