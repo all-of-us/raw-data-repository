@@ -17,8 +17,12 @@ class ConsentDao(BaseDao):
         # TODO: should have only gotten records that weren't obsolete
         return session.query(
             ConsentFile
+        ).join(
+            Participant, Participant.participantId == ConsentFile.participant_id
         ).filter(
-            ConsentFile.type == ConsentType.EHR
+            ConsentFile.type == ConsentType.EHR,
+            ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC,
+            ConsentFile.created > datetime(2021, 6, 28)
         ).order_by(ConsentFile.participant_id).all()
 
     def get_ce_participants_with_consents(self, session, start_date, end_date=None) -> List[ParticipantSummary]:
@@ -64,6 +68,24 @@ class ConsentDao(BaseDao):
             ])
         )
 
+    def get_all_vibrent(self, session, start, end) -> List[ParticipantSummary]:
+        query = session.query(
+            ParticipantSummary
+        ).join(
+            Participant,
+            Participant.participantId == ParticipantSummary.participantId
+        ).filter(
+            ParticipantSummary.participantOrigin == 'vibrent',
+            Participant.isGhostId.isnot(True),
+            Participant.isTestParticipant.isnot(True),
+            or_(
+                ParticipantSummary.email.is_(None),
+                ParticipantSummary.email.notlike('%@example.com')
+            ),
+            Participant.participantId.between(start, end)
+        )
+        return query.all()
+
     def get_participants_with_consents_in_range(self, session, start_date, end_date=None) -> List[ParticipantSummary]:
         query = session.query(
             ParticipantSummary
@@ -77,8 +99,10 @@ class ConsentDao(BaseDao):
             or_(
                 ParticipantSummary.email.is_(None),
                 ParticipantSummary.email.notlike('%@example.com')
-            )
+            ),
+            Participant.hpoId == 15
         )
+
         if end_date is None:
             query = query.filter(
                 or_(
@@ -117,8 +141,10 @@ class ConsentDao(BaseDao):
             ConsentFile.participant_id.in_(participant_ids)
         ).all()
 
-    def get_files_ready_to_sync(self) -> List[ConsentFile]:
-        with self.session() as session:
-            return session.query(ConsentFile).filter(
-                ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC
-            ).all()
+    def get_files_ready_to_sync(self, session) -> List[ConsentFile]:
+        return session.query(ConsentFile).filter(
+            ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC
+        ).filter(
+            ConsentFile.created < '2021-07-01',
+            ConsentFile.id.notin_([4703, 4704])
+        ).all()

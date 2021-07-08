@@ -36,26 +36,31 @@ class ValidationOutputStrategy(ABC):
 
 class StoreResultStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao):
-        self.session = session
-        self.results = []
-        self.consent_dao = consent_dao
+        self._session = session
+        self._results = []
+        self._consent_dao = consent_dao
+        self._max_batch_count = 500
 
     def add_result(self, result: ParsingResult):
-        self.results.append(result)
+        self._results.append(result)
+        if len(self._results) > self._max_batch_count:
+            self.process_results()
+            self._results = []
 
     def process_results(self):
-        previous_results = self.consent_dao.get_validation_results_for_participants(
-            session=self.session,
-            participant_ids={result.participant_id for result in self.results}
+        previous_results = self._consent_dao.get_validation_results_for_participants(
+            session=self._session,
+            participant_ids={result.participant_id for result in self._results}
         )
         new_results_to_store = []
-        for possible_new_result in self.results:
+        for possible_new_result in self._results:
             if not any(
                 [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
             ):
                 new_results_to_store.append(possible_new_result)
 
-        self.consent_dao.batch_update_consent_files(self.session, new_results_to_store)
+        self._consent_dao.batch_update_consent_files(self._session, new_results_to_store)
+        self._session.commit()
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
@@ -274,9 +279,9 @@ class ConsentValidationController:
 
         self.consent_dao.batch_update_consent_files(session, results_to_store)
 
-    def generate_new_validations(self, participant_id, consent_type: ConsentType,
+    def generate_new_validations(self, session, participant_id, consent_type: ConsentType,
                                  output_strategy: ValidationOutputStrategy):
-        summary = self.participant_summary_dao.get(participant_id)
+        summary = self.participant_summary_dao.get_with_session(session, participant_id)
         validator = self._build_validator(summary)
         results = []
         if consent_type == ConsentType.PRIMARY:
@@ -322,6 +327,105 @@ class ConsentValidationController:
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
+
+    # def check_consents(self, out_csv, summary: ParticipantSummary, blobs: Collection[files._ConsentBlobWrapper]):
+    #     print(summary.participantId)
+    #
+    #     factory = files.ConsentFileAbstractFactory.get_file_factory(
+    #         participant_id=summary.participantId,
+    #         participant_origin=summary.participantOrigin,
+    #         storage_provider=self.storage_provider
+    #     )
+    #     factory.consent_blobs = blobs
+    #
+    #     primary_status = cabor_status = ehr_status = gror_status = ConsentStatus.NOT_CONSENTED
+    #     primary_upload = cabor_upload = ehr_upload = gror_upload = None
+    #     has_cabor_consent = summary.consentForCABoR == QuestionnaireStatus.SUBMITTED
+    #
+    #     if summary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED:
+    #         consent = factory.has_primary_consent(analyze_file=has_cabor_consent)
+    #         if consent:
+    #             primary_status = ConsentStatus.CONSENTED_WITH_FILE
+    #             primary_upload = consent.blob.time_created
+    #         else:
+    #             primary_status = ConsentStatus.CONSENTED_MISSING_FILE
+    #
+    #     if has_cabor_consent:
+    #         consent = factory.has_cabor_consent()
+    #         if consent:
+    #             cabor_status = ConsentStatus.CONSENTED_WITH_FILE
+    #             cabor_upload = consent.blob.time_created
+    #         else:
+    #             cabor_status = ConsentStatus.CONSENTED_MISSING_FILE
+    #
+    #     if summary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED:
+    #         consent = factory.has_ehr_consent()
+    #         if consent:
+    #             ehr_status = ConsentStatus.CONSENTED_WITH_FILE
+    #             ehr_upload = consent.blob.time_created
+    #         else:
+    #             ehr_status = ConsentStatus.CONSENTED_MISSING_FILE
+    #
+    #     if summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED:
+    #         consent = factory.has_gror_consent()
+    #         if consent:
+    #             gror_status = ConsentStatus.CONSENTED_WITH_FILE
+    #             gror_upload = consent.blob.time_created
+    #         else:
+    #             gror_status = ConsentStatus.CONSENTED_MISSING_FILE
+    #
+    #     out_csv.writerow([
+    #         f'P{summary.participantId}',
+    #         str(primary_status), summary.consentForStudyEnrollmentFirstYesAuthored, primary_upload or '',
+    #         str(cabor_status), summary.consentForCABoRAuthored, cabor_upload or '',
+    #         str(ehr_status), summary.consentForElectronicHealthRecordsFirstYesAuthored, ehr_upload or '',
+    #         str(gror_status), summary.consentForGenomicsRORAuthored, gror_upload or ''
+    #     ])
+    #
+    # def process_summary(self, summary: ParticipantSummary, organized_blobs, out_csv):
+    #     blobs = organized_blobs[f'P{summary.participantId}']
+    #     self.check_consents(out_csv, summary, blobs)
+    #     del organized_blobs[f'P{summary.participantId}']
+    #
+    # def get_blobs(self):
+    #     all_blobs: List[Blob] = self.storage_provider.list(
+    #         bucket_name='ptc-uploads-all-of-us-rdr-prod',
+    #         prefix=f'Participant'
+    #     )
+    #     organized_blobs = defaultdict(lambda: [])
+    #     count = 0
+    #     for blob in all_blobs:
+    #         count += 1
+    #         if count % 10000 == 0:
+    #             print(f'processed {count} blobs')
+    #         _, participant_id, *_ = blob.name.split('/')
+    #         if blob.name.endswith('.pdf'):
+    #             organized_blobs[participant_id].append(files._ConsentBlobWrapper(blob))
+    #
+    #     return organized_blobs
+    #
+    # def check_file_existence(self, session):
+    #     start = 1
+    #     end = 358622970
+    #
+    #     with open(f'status_output_{start // 10000000}_{end // 10000000}.csv', 'w') as out_file:
+    #         out_csv = csv.writer(out_file)
+    #         out_csv.writerow(
+    #             ['participant_id',
+    #              'primary_file_status', 'primary_authored', 'primary_upload',
+    #              'cabor_file_status', 'cabor_authored', 'cabor_upload',
+    #              'ehr_file_status', 'ehr_authored', 'ehr_upload',
+    #              'gror_file_status' 'gror_authored', 'gror_upload']
+    #         )
+    #
+    #         organized_blobs = self.get_blobs()
+    #
+    #         print('loading participant summaries')
+    #         summaries = self.consent_dao.get_all_vibrent(session, start=start, end=end)
+    #         list(map(
+    #             lambda participant_summary: self.process_summary(participant_summary, organized_blobs, out_csv),
+    #             summaries
+    #         ))
 
     def generate_org_change_sync_records(self, session):
         validation_results = []

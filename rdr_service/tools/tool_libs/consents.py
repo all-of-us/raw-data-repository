@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import os
 from typing import List
 
+import pytz
 from dateutil.parser import parse
 from google.cloud.storage.blob import Blob
 from io import StringIO
@@ -13,10 +14,13 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant import ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy,\
+from rdr_service.services.consent.validation import ConsentValidationController,\
     ReplacementStoringStrategy, StoreResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
+
+from rdr_service.offline.sync_consent_files import ConsentSyncController
+from rdr_service.dao.participant_dao import ParticipantDao
 
 tool_cmd = 'consents'
 tool_desc = 'Get reports of consent issues and modify validation records'
@@ -47,6 +51,21 @@ class ConsentTool(ToolBase):
             self.list_bucket()
         elif self.args.command == 'corrections':
             self.corrections()
+        elif self.args.command == 'trigger-sync':
+            self.trigger_sync()
+        elif self.args.command == 'check-missing':
+            self.check_missing()
+
+    def trigger_sync(self):
+        with self.get_session() as session:
+            controller = ConsentSyncController(
+                consent_dao=ConsentDao(),
+                participant_dao=ParticipantDao(),
+                storage_provider=GoogleCloudStorageProvider(),
+                session=session,
+                config=self.get_server_config()
+            )
+            controller.sync_ready_files(session)
 
     def corrections(self):
         consent_dao = ConsentDao()
@@ -60,12 +79,26 @@ class ConsentTool(ToolBase):
                     participant_summary_dao=ParticipantSummaryDao(),
                     storage_provider=GoogleCloudStorageProvider()
                 )
-                validation_controller.generate_new_validations(
-                    participant_id=self.args.participant,
-                    consent_type=ConsentType(self.args.type),
-                    output_strategy=strategy
-                )
+                for participant_id in [
 
+                ]:
+                    print(participant_id)
+                    validation_controller.generate_new_validations(
+                        session=session,
+                        participant_id=participant_id,
+                        consent_type=ConsentType(self.args.type),
+                        output_strategy=strategy
+                    )
+
+    def check_missing(self):
+        consent_dao = ConsentDao()
+        with self.get_session() as session:
+            validation_controller = ConsentValidationController(
+                consent_dao=consent_dao,
+                participant_summary_dao=ParticipantSummaryDao(),
+                storage_provider=GoogleCloudStorageProvider()
+            )
+            validation_controller.check_file_existence(session)
 
     def list_bucket(self):
         storage_provider = GoogleCloudStorageProvider()
@@ -73,17 +106,23 @@ class ConsentTool(ToolBase):
             bucket_name='ptc-uploads-all-of-us-rdr-prod',
             prefix='Participant'
         )
-        with open('bucket_list_output.csv', 'w') as out_file:
+        with open('full_bucket_list_output.csv', 'w') as out_file:
             csv_file = csv.writer(out_file)
             csv_file.writerow([
                 'participant_id', 'file_name', 'file_size_bytes', 'file_upload_time'
             ])
+
+            write_count = 0
             for blob in blobs:
-                _, participant_id, file_name = blob.name.split('/')
-                if os.path.basename(file_name).endswith('pdf'):
+                if os.path.basename(blob.name).endswith('pdf'):
+                    _, participant_id, file_name = blob.name.split('/')
+                    write_count += 1
                     csv_file.writerow([
                         participant_id, file_name, blob.size, blob.time_created
                     ])
+
+                    if write_count % 10000 == 0:
+                        print(f'wrote {write_count}')
 
     def check_org_change(self):
         with self.get_session() as session:
@@ -109,9 +148,10 @@ class ConsentTool(ToolBase):
 
                 if (
                     latest_org_change_record
-                    and latest_org_change_record.lastModified > cutoff_date > consent_authored
+                    and latest_org_change_record.lastModified > cutoff_date
+                    and consent_authored < datetime(2021, 6, 1)
                 ):
-                    print(f'changed org on {latest_org_change_record.lastModified}')
+                    print(f'P{modified_participant_id} changed org on {latest_org_change_record.lastModified}')
 
 
     def revalidate(self):
@@ -131,14 +171,14 @@ class ConsentTool(ToolBase):
             storage_provider=GoogleCloudStorageProvider()
         )
         with self.get_session() as session:
-            with LogResultStrategy(
-                logger=logger,
-                verbose=True,
-                storage_provider=GoogleCloudStorageProvider()
-            ) as output_strategy:
-                validation_controller.validate_recent_uploads(session, output_strategy)
-            # validation_controller.generate_records_for_ce(session,
-            #                                               min_consent_date=datetime(2021, 5, 28, tzinfo=pytz.utc))
+            # with LogResultStrategy(
+            #     logger=logger,
+            #     verbose=True,
+            #     storage_provider=GoogleCloudStorageProvider()
+            # ) as output_strategy:
+            # validation_controller.validate_recent_uploads(session, output_strategy)
+            validation_controller.generate_records_for_ce(session,
+                                                          min_consent_date=datetime(2021, 6, 24, tzinfo=pytz.utc))
 
         input('Press Enter to exit...')
 
@@ -153,10 +193,9 @@ class ConsentTool(ToolBase):
                 consent_dao=ConsentDao(),
                 session=session
             ) as strategy:
-                max_time = datetime(2021, 7, 1, 8)
-                min_time = max_time - timedelta(hours=30)
+                min_time = datetime(2010, 7, 1, 8)
                 validation_controller.validate_recent_uploads(
-                    session, strategy, min_consent_date=min_time, max_consent_date=max_time
+                    session, strategy, min_consent_date=min_time
                 )
 
     def report_files_for_correction(self):
@@ -314,6 +353,8 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     subparsers.add_parser('check-org-change')
     subparsers.add_parser('validate')
     subparsers.add_parser('list-bucket')
+    subparsers.add_parser('trigger-sync')
+    subparsers.add_parser('check-missing')
 
     corrections_parser = subparsers.add_parser('corrections')
     corrections_parser.add_argument('--participant', required=True)

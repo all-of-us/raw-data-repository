@@ -136,15 +136,21 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         'Declaración de Derechos del Sujeto de Investigación Experimental'
     )
 
-    def _is_primary_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
-        pdf = blob_wrapper.get_parsed_pdf()
+    def _is_primary_consent(self, blob_wrapper: _ConsentBlobWrapper,) -> bool:
         name = blob_wrapper.blob.name
-        return basename(name).startswith('ConsentPII') and pdf.get_page_number_of_text([self.CABOR_TEXT]) is None
+        if not basename(name).startswith('ConsentPII'):
+            return False
+
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.get_page_number_of_text([self.CABOR_TEXT]) is None
 
     def _is_cabor_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
-        pdf = blob_wrapper.get_parsed_pdf()
         name = blob_wrapper.blob.name
-        return basename(name).startswith('ConsentPII') and pdf.get_page_number_of_text([self.CABOR_TEXT]) is not None
+        if not basename(name).startswith('ConsentPII'):
+            return False
+
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.get_page_number_of_text([self.CABOR_TEXT]) is not None
 
     def _is_ehr_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
         return basename(blob_wrapper.blob.name).startswith('EHRConsentPII')
