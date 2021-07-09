@@ -27,8 +27,8 @@ from rdr_service.model.genomics import (
     GenomicIncident,
     GenomicCloudRequests,
     GenomicMemberReportState,
-    GenomicInformingLoop
-)
+    GenomicInformingLoop,
+    GenomicGcDataFile)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1712,4 +1712,19 @@ class GenomicInformingLoopDao(UpdatableDao):
         return obj.id
 
     def from_client_json(self):
+        pass
+
+
+class GenomicGcDataFileDao(BaseDao):
+    def __init__(self):
+        super(GenomicGcDataFileDao, self).__init__(
+            GenomicGcDataFile, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_with_sample_id(self):
         pass

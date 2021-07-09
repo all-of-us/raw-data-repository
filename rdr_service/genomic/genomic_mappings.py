@@ -48,3 +48,99 @@ raw_aw2_to_genomic_set_member_fields = {
     "processing_status": "processingStatus",
     "notes": "notes",
 }
+
+genomic_data_file_mappings = {
+    'idatRed': {
+        'file_ext': ['_red.idat'],
+        'model_attrs': ['idatRedPath', 'idatRedReceived']
+    },
+    'idatGreen': {
+        'file_ext': ['_grn.idat'],
+        'model_attrs': ['idatGreenPath', 'idatGreenReceived']
+    },
+    'idatRedMd5': {
+        'file_ext': ['_red.idat.md5sum'],
+        'model_attrs': ['idatRedMd5Path', 'idatRedMd5Received']
+    },
+    'idatGreenMd5': {
+        'file_ext': ['_grn.idat.md5sum'],
+        'model_attrs': ['idatGreenMd5Path', 'idatGreenMd5Received']
+    },
+    'vcf': {
+        'file_ext': ['vcf.gz'],
+        'model_attrs': ['vcfPath', 'vcfReceived']
+    },
+    'vcfTbi': {
+        'file_ext': ['vcf.gz.tbi'],
+        'model_attrs': ['vcfTbiPath', 'vcfTbiReceived']
+    },
+    'vcfMd5': {
+        'file_ext': ['vcf.gz.md5sum'],
+        'model_attrs': ['vcfMd5Path', 'vcfMd5Received']
+    },
+    'hfVcf': {
+        'file_ext': ['hard-filtered.vcf.gz'],
+        'model_attrs': ['hfVcfPath', 'hfVcfReceived']
+    },
+    'hfVcfTbi': {
+        'file_ext': ['hard-filtered.vcf.gz.tbi'],
+        'model_attrs': ['hfVcfTbiPath', 'hfVcfTbiReceived']
+    },
+    'hfVcfMd5': {
+        'file_ext': ['hard-filtered.vcf.gz.md5sum'],
+        'model_attrs': ['hfVcfMd5Path', 'hfVcfMd5Received']
+    },
+    'rawVcf': {
+        'file_ext': ['vcf.gz'],
+        'model_attrs': ['rawVcfPath', 'rawVcfReceived']
+    },
+    'rawVcfTbi': {
+        'file_ext': ['vcf.gz.tbi'],
+        'model_attrs': ['rawVcfTbiPath', 'rawVcfTbiReceived']
+    },
+    'rawVcfMd5': {
+        'file_ext': ['vcf.gz.md5sum'],
+        'model_attrs': ['rawVcfMd5Path', 'rawVcfMd5Received']
+    },
+    'cram': {
+        'file_ext': ['cram'],
+        'model_attrs': ['cramPath', 'cramReceived']
+    },
+    'cramMd5': {
+        'file_ext': ['cram.md5sum'],
+        'model_attrs': ['cramMd5Path', 'cramMd5Received']
+    },
+    'crai': {
+        'file_ext': ['cram.crai'],
+        'model_attrs': ['craiPath', 'craiReceived']
+    },
+    'gvcf': {
+        'file_ext': ['hard-filtered.gvcf.gz'],
+        'model_attrs': ['gvcfPath', 'gvcfReceived']
+    },
+    'gvcfMd5': {
+        'file_ext': ['hard-filtered.gvcf.gz.md5sum'],
+        'model_attrs': ['gvcfMd5Path', 'gvcfMd5Received']
+    },
+
+    'gcvf': {
+        'file_ext': ['hard-filtered.gvcf.gz'],
+        'model_attrs': ['gvcfPath', 'gvcfReceived']
+    },
+    'gcvf_md5': {
+        'file_ext': ['hard-filtered.gvcf.gz.md5sum'],
+        'model_attrs': ['gvcfMd5Path', 'gvcfMd5Received']
+    },
+}
+
+genome_centers_id_from_bucket_array = {
+    'baylor': 'jh',
+    'broad': 'bi',
+    'northwest': 'uw'
+}
+
+genome_centers_id_from_bucket_wgs = {
+    'baylor': 'bcm',
+    'broad': 'bi',
+    'northwest': 'uw'
+}

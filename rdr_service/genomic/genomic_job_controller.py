@@ -23,11 +23,11 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_gc_validation_metrics_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
-    raw_aw2_to_genomic_set_member_fields
+    raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
-    GenomicGCValidationMetrics, GenomicInformingLoop
+    GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode
 from rdr_service.genomic.genomic_job_components import (
@@ -46,8 +46,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW1RawDao,
     GenomicAW2RawDao,
     GenomicGCValidationMetricsDao,
-    GenomicInformingLoopDao
-)
+    GenomicInformingLoopDao,
+    GenomicGcDataFileDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -344,18 +344,7 @@ class GenomicJobController:
             metrics
         )
 
-    def ingest_data_files(self, file_path, bucket_name):
-        data_file_mappings = {
-            'gcvf': {
-                'file_ext': ['hard-filtered.gvcf.gz'],
-                'model_attrs': ['gvcfPath', 'gvcfReceived']
-            },
-            'gcvf_md5': {
-                'file_ext': ['hard-filtered.gvcf.gz.md5sum'],
-                'model_attrs': ['gvcfMd5Path', 'gvcfMd5Received']
-            }
-        }
-
+    def ingest_data_files_into_gc_metrics(self, file_path, bucket_name):
         try:
             logging.info(f'Inserting data file: {file_path}')
 
@@ -367,9 +356,9 @@ class GenomicJobController:
             if metrics:
                 ext = file_path.split('.', 1)[-1]
                 attrs = []
-                for key, value in data_file_mappings.items():
+                for key, value in genomic_data_file_mappings.items():
                     if ext in value['file_ext']:
-                        attrs = data_file_mappings[key]['model_attrs']
+                        attrs = genomic_data_file_mappings[key]['model_attrs']
                         break
 
                 if attrs:
@@ -413,6 +402,83 @@ class GenomicJobController:
             )
 
             self.informing_loop_dao.insert(loop_obj)
+
+    def accession_data_files(self, file_path, bucket_name):
+        data_file_dao = GenomicGcDataFileDao()
+
+        # split file name
+        file_attrs = self.parse_data_file_path(file_path)
+
+        # get GC
+        gc_id = self.get_gc_site_for_data_file(bucket_name, file_path,
+                                               file_attrs['name_components'])
+
+        # Insert record
+        data_file_record = GenomicGcDataFile(
+            file_path=file_path,
+            gc_site_id=gc_id,
+            bucket_name=bucket_name,
+            file_prefix=file_attrs['file_prefix'],
+            file_name=file_attrs['file_name'],
+            file_type=file_attrs['file_type'],
+            identifier_type=file_attrs['identifier_type'],
+            identifier_value=file_attrs['identifier_value'],
+        )
+
+        data_file_dao.insert(data_file_record)
+
+    def parse_data_file_path(self, file_path):
+
+        path_components = file_path.split('/')
+        name_components = path_components[-1].split("_")
+
+        # Set ID type and Value
+        id_type, id_value = self.set_identifier_fields(file_path, name_components)
+
+        # Set file type
+        if "idat" in file_path.lower():
+            file_type = name_components[-1]
+        else:
+            file_type = ".".join(name_components[-1].split('.')[1:])
+
+        attr_dict = {
+            'path_components': path_components,
+            'name_components': name_components,
+            'file_prefix': "/".join(path_components[:-1]),
+            'file_name': path_components[-1],
+            'file_type': file_type,
+            'identifier_type': id_type,
+            'identifier_value': id_value
+        }
+
+        return attr_dict
+
+    @staticmethod
+    def set_identifier_fields(file_path: str, name_components: list):
+        if "genotyping" in file_path.lower():
+            id_type = "chipwellbarcode"
+            id_value = name_components[0]  # ex: 204027270091_R02C01_Grn.idat
+
+        elif "wgs" in file_path.lower():
+            id_type = "sample_id"
+            id_value = name_components[2]  # ex: UW_A102807943_21046008189_689024_v1.cram
+
+        else:
+            id_type = None
+            id_value = None
+
+        return id_type, id_value
+
+    @staticmethod
+    def get_gc_site_for_data_file(bucket_name: str, file_path: str, name_components: list):
+        if "genotyping" in file_path.lower():
+            # get GC from bucket
+            name = bucket_name.split('-')[-1]
+            return genome_centers_id_from_bucket_array[name]
+
+        if "wgs" in file_path.lower():
+            # get from name
+            return name_components[0].lower()
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):

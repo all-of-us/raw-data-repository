@@ -696,3 +696,31 @@ class GenomicInformingLoop(Base):
 
 event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
 event.listen(GenomicInformingLoop, 'before_update', model_update_listener)
+
+
+class GenomicGcDataFile(Base):
+    """
+    Used for tracking genomic data files produced by the GCs
+    """
+
+    __tablename__ = 'genomic_gc_data_file'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    file_path = Column(String(255), nullable=False, index=True)
+    gc_site_id = Column(String(64), nullable=False, index=True)
+    bucket_name = Column(String(128), nullable=False, index=True)
+    file_prefix = Column(String(128), nullable=True)
+    file_name = Column(String(128), nullable=False)
+    file_type = Column(String(128), nullable=False, index=True)  # everything after the first '.'
+
+    # reconciliation process uses the identifier_* fields to match metrics records
+    identifier_type = Column(String(128), index=True)  # sample_id for WGS; chipwellbarcode for Array
+    identifier_value = Column(String(128), index=True)  # value to match the metric record
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
+
+
+event.listen(GenomicGcDataFile, 'before_insert', model_insert_listener)
+event.listen(GenomicGcDataFile, 'before_update', model_update_listener)

@@ -44,12 +44,39 @@ class GenomicIngestFilesFunction(FunctionPubSubHandler):
 
         _logger.info(f"Event payload: {self.event}")
 
-        allowed_files = ['hard-filtered.gvcf.gz', 'hard-filtered.gvcf.gz.md5sum']
+        allowed_files = [
+            "idat",  # red/green idat
+            "idat.md5sum",  # red/green idat md5
+            "vcf.gz",  # raw/regular vcf
+            "vcf.gz.tbi",  # raw/regular vcf
+            "vcf.gz.md5sum",  # raw/regular vcf md5
+            "hard-filtered.vcf.gz",   # hard-filtered vcf
+            "hard-filtered.vcf.gz.tbi",   # hard-filtered vcf index
+            "hard-filtered.vcf.gz.md5sum",   # hard-filtered vcf md5
+            "cram",   # cram
+            "cram.md5sum",   # cram md5
+            "cram.crai",    # cram index
+            'hard-filtered.gvcf.gz',  # gvcf
+            'hard-filtered.gvcf.gz.md5sum'  # gvcf md5
+        ]
 
         file_path = self.event.attributes.objectId.replace(" ", "")
         ext = file_path.split('.', 1)[-1]
 
-        # prod buckets for gvcf files / Only attaching gvcf notifications for now
+        # TODO: Set up notifications for all files (with subfolders)
+        # red/green idat
+        # red/green idat md5
+        # raw/regular vcf
+        # raw/regular vcf
+        # raw/regular vcf md5
+        # hard-filtered vcf
+        # hard-filtered vcf index
+        # hard-filtered vcf md5
+        # cram
+        # cram md5
+        # cram index
+
+        # prod buckets for gvcf files
         # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
         # prod-genomics-data-baylor/Wgs_sample_raw_data/SS_VCF_research/
         # prod-genomics-data-northwest/wgs_sample_raw_data/ss_vcf_research/
