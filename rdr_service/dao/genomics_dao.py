@@ -753,6 +753,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 report_obj = GenomicMemberReportState()
                 report_obj.genomic_set_member_id = obj.id
                 report_obj.genomic_report_state = state
+                report_obj.participant_id = obj.participantId
                 report_obj.module = 'GEM'
                 self.report_state_dao.insert(report_obj)
             else:

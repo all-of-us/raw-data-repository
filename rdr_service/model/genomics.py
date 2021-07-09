@@ -667,6 +667,7 @@ class GenomicMemberReportState(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
     created = Column(DateTime)
     modified = Column(DateTime)
     module = Column(String(80), nullable=False)
