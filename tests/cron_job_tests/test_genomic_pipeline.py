@@ -2397,6 +2397,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.id == 1:
                 self.assertIsNotNone(report_state)
                 r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+                self.assertEqual(report_state.participant_id, member.participantId)
                 self.assertEqual(report_state.genomic_report_state, r_state)
                 self.assertEqual(report_state.module, 'GEM')
             else:
@@ -2458,6 +2459,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertIsNotNone(report_state)
                 r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
                 self.assertEqual(report_state.genomic_set_member_id, member.id)
+                self.assertEqual(report_state.participant_id, member.participantId)
                 self.assertEqual(report_state.genomic_report_state, r_state)
                 self.assertEqual(report_state.module, 'GEM')
             if member.id == 3:
@@ -2530,6 +2532,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertIsNotNone(report_state)
             r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
             self.assertEqual(report_state.genomic_report_state, r_state)
+            self.assertEqual(report_state.participant_id, member.participantId)
             self.assertEqual(report_state.genomic_set_member_id, member.id)
             self.assertEqual(report_state.module, 'GEM')
 
@@ -3380,6 +3383,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertIsNotNone(report_state)
             self.assertEqual(report_state.genomic_set_member_id, member.id)
+            self.assertEqual(report_state.participant_id, member.participantId)
             self.assertEqual(report_state.genomic_report_state, r_state)
             self.assertEqual(report_state.module, 'GEM')
 
