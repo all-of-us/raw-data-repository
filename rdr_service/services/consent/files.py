@@ -28,26 +28,91 @@ class ConsentFileAbstractFactory(ABC):
             bucket_name=factory_consent_bucket,
             prefix=f'Participant/P{participant_id}'
         )
-        self.pdf_blobs = [blob for blob in file_blobs if blob.name.endswith('.pdf')]
+        self.consent_blobs: List[_ConsentBlobWrapper] = [
+            _ConsentBlobWrapper(blob) for blob in file_blobs if blob.name.endswith('.pdf')
+        ]
+        self._storage_provider = storage_provider
 
-    @abstractmethod
+    def get_consent_for_path(self, file_path) -> 'ConsentFile':
+        bucket_name, *blob_name_parts = file_path.split('/')
+        blob = self._storage_provider.get_blob(bucket_name=bucket_name, blob_name='/'.join(blob_name_parts))
+        blob_wrapper = _ConsentBlobWrapper(blob)
+
+        if self._is_primary_consent(blob_wrapper):
+            return self._build_primary_consent(blob_wrapper)
+        elif self._is_cabor_consent(blob_wrapper):
+            return self._build_cabor_consent(blob_wrapper)
+        elif self._is_ehr_consent(blob_wrapper):
+            return self._build_ehr_consent(blob_wrapper)
+        elif self._is_gror_consent(blob_wrapper):
+            return self._build_gror_consent(blob_wrapper)
+
     def get_primary_consents(self) -> List['PrimaryConsentFile']:
-        ...
+        return [
+            self._build_primary_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_primary_consent(blob_wrapper)
+        ]
 
-    @abstractmethod
     def get_cabor_consents(self) -> List['CaborConsentFile']:
-        ...
+        return [
+            self._build_cabor_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_cabor_consent(blob_wrapper)
+        ]
 
-    @abstractmethod
     def get_ehr_consents(self) -> List['EhrConsentFile']:
+        return [
+            self._build_ehr_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_ehr_consent(blob_wrapper)
+        ]
+
+    def get_gror_consents(self) -> List['GrorConsentFile']:
+        return [
+            self._build_gror_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_gror_consent(blob_wrapper)
+        ]
+
+    @abstractmethod
+    def _is_primary_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
         ...
 
     @abstractmethod
-    def get_gror_consents(self) -> List['GrorConsentFile']:
+    def _is_cabor_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        ...
+
+    @abstractmethod
+    def _is_ehr_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        ...
+
+    @abstractmethod
+    def _is_gror_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+        ...
+
+    @abstractmethod
+    def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'CaborConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
         ...
 
     @abstractmethod
     def _get_source_bucket(self) -> str:
+        ...
+
+    @abstractmethod
+    def _get_source_prefix(self) -> str:
         ...
 
 
@@ -57,47 +122,89 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         'Declaración de Derechos del Sujeto de Investigación Experimental'
     )
 
-    def get_primary_consents(self) -> List['PrimaryConsentFile']:
-        primary_consents = []
-        for blob in self._get_consent_pii_blobs():
-            pdf_data = Pdf.from_google_storage_blob(blob)
-            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is None:
-                primary_consents.append(VibrentPrimaryConsentFile(pdf=pdf_data, blob=blob))
+    def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        name = blob_wrapper.blob.name
+        if not basename(name).startswith('ConsentPII'):
+            return False
 
-        return primary_consents
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.get_page_number_of_text([self.CABOR_TEXT]) is None
 
-    def get_cabor_consents(self) -> List['CaborConsentFile']:
-        cabor_consents = []
-        for blob in self._get_consent_pii_blobs():
-            pdf_data = Pdf.from_google_storage_blob(blob)
-            if pdf_data.get_page_number_of_text([self.CABOR_TEXT]) is not None:
-                cabor_consents.append(VibrentCaborConsentFile(pdf=pdf_data, blob=blob))
+    def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        name = blob_wrapper.blob.name
+        if not basename(name).startswith('ConsentPII'):
+            return False
 
-        return cabor_consents
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.get_page_number_of_text([self.CABOR_TEXT]) is not None
 
-    def get_ehr_consents(self) -> List['EhrConsentFile']:
-        ehr_consents = []
-        for blob in self.pdf_blobs:
-            if basename(blob.name).startswith('EHRConsentPII'):
-                ehr_consents.append(VibrentEhrConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
+    def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('EHRConsentPII')
 
-        return ehr_consents
+    def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('GROR')
 
-    def get_gror_consents(self) -> List['GrorConsentFile']:
-        gror_consents = []
-        for blob in self.pdf_blobs:
-            if basename(blob.name).startswith('GROR'):
-                gror_consents.append(VibrentGrorConsentFile(pdf=Pdf.from_google_storage_blob(blob), blob=blob))
+    def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
-        return gror_consents
+    def _build_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'CaborConsentFile':
+        return VibrentCaborConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
+        return VibrentEhrConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
+        return VibrentGrorConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return 'ptc-uploads-all-of-us-rdr-prod'
 
-    def _get_consent_pii_blobs(self):
-        def is_consent_pii_blob(blob):
-            return basename(blob.name).startswith('ConsentPII') and blob.name.endswith('.pdf')
-        return [blob for blob in self.pdf_blobs if is_consent_pii_blob(blob)]
+    def _get_source_prefix(self) -> str:
+        return 'Participant'
+
+
+class CeConsentFactory(ConsentFileAbstractFactory):
+    def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pass
+
+    def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pass
+
+    def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pass
+
+    def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pass
+
+    def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
+        pass
+
+    def _build_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'CaborConsentFile':
+        pass
+
+    def _build_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
+        pass
+
+    def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
+        pass
+
+    def _get_source_bucket(self) -> str:
+        return 'ce-uploads-all-of-us-rdr-prod'
+
+    def _get_source_prefix(self) -> str:
+        return 'Participants'
+
+
+class _ConsentBlobWrapper:
+    def __init__(self, blob: Blob):
+        self.blob = blob
+        self._parsed_pdf = None
+
+    def get_parsed_pdf(self) -> 'Pdf':
+        if self._parsed_pdf is None:
+            self._parsed_pdf = Pdf.from_google_storage_blob(self.blob)
+
+        return self._parsed_pdf
 
 
 class ConsentFile(ABC):
