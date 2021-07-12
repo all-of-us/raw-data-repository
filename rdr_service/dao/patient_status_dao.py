@@ -153,7 +153,6 @@ class PatientStatusDao(UpsertableDao):
             .join(HPO, HPO.hpoId == Site.hpoId)
             .join(Organization, Organization.organizationId == Site.organizationId)
         )
-        # self.print_query(query)
         return query
 
     def to_client_json(self, model):

@@ -169,36 +169,37 @@ class GenomicOutreachApiV2(BaseApi):
         Returns the outreach resource based on the request parameters
         :return:
         """
-        _start_date = request.args.get("start_date", None)
-        _pid = request.args.get("participant_id", None)
-        _end_date = clock.CLOCK.now() \
-            if request.args.get("end_date") is None \
+        start_date = request.args.get("start_date", None)
+        pid = request.args.get("participant_id", None)
+        end_date = clock.CLOCK.now() \
+            if not request.args.get("end_date") \
             else parser.parse(request.args.get("end_date"))
+
         payload = {
             'date': clock.CLOCK.now()
         }
 
-        if not _pid and not _start_date:
+        if not pid and not start_date:
             raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
 
-        if _pid:
-            if _pid.startswith("P"):
-                _pid = _pid[1:]
-            participant_data = self.dao.outreach_lookup(pid=_pid)
+        if pid:
+            if pid.startswith("P"):
+                pid = pid[1:]
+            participant_data = self.dao.outreach_lookup(pid=pid)
             if participant_data:
                 payload['data'] = participant_data
                 return self._make_response(payload)
-            else:
-                raise NotFound(f'Participant P{_pid} does not exist in the Genomic system.')
 
-        if _start_date:
-            _start_date = parser.parse(_start_date)
-            participant_data = self.dao.outreach_lookup(start_date=_start_date, end_date=_end_date)
+            raise NotFound(f'Participant P{pid} does not exist in the Genomic system.')
+
+        if start_date:
+            start_date = parser.parse(start_date)
+            participant_data = self.dao.outreach_lookup(start_date=start_date, end_date=end_date)
             if participant_data:
                 payload['data'] = participant_data
                 return self._make_response(payload)
-            else:
-                raise NotFound(f'No participants found in date range.')
+
+            raise NotFound(f'No participants found in date range.')
 
         raise BadRequest
 

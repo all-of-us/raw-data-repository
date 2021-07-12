@@ -1433,33 +1433,34 @@ class GenomicOutreachDaoV2(BaseDao):
         return client_json
 
     def outreach_lookup(self, pid=None, start_date=None, end_date=None):
+        informing_loops = []
+        results = []
 
         if not end_date:
             end_date = clock.CLOCK.now()
 
-        informing_loops = []
-        results = []
-
         with self.session() as session:
             if 'informingLoop' in self.type:
-                # just informingLoop decisions for now
-                # informingLoops
+                # informingLoop decisions only
                 loop_query = (
                     session.query(
                         GenomicInformingLoop.participant_id,
                         GenomicInformingLoop.module_type,
                         GenomicInformingLoop.decision_value,
                         literal('informingLoop')
-                    ).join(
+                    )
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicInformingLoop.participant_id
-                    ).join(
-                            GenomicSetMember,
-                            GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                    )
+                    .join(
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
+                        GenomicInformingLoop.module_type.in_(self.module)
                     )
                 )
                 if pid:
@@ -1478,17 +1479,17 @@ class GenomicOutreachDaoV2(BaseDao):
                 # results
                 result_query = (
                     session.query(
-                        GenomicSetMember.participantId,
+                        GenomicMemberReportState.participant_id,
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )
                     .join(
                         ParticipantSummary,
-                        ParticipantSummary.participantId == GenomicSetMember.participantId
+                        ParticipantSummary.participantId == GenomicMemberReportState.participant_id
                     )
                     .join(
-                        GenomicMemberReportState,
-                        GenomicMemberReportState.genomic_set_member_id == GenomicSetMember.id
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == GenomicMemberReportState.participant_id
                     )
                     .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
