@@ -180,12 +180,8 @@ class ParticipantCountsOverTimeService(BaseDao):
         logging.info("Refresh MetricsLanguageCache done.")
         self.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
         logging.info("Refresh MetricsGenderCache for Metrics2API done.")
-        self.refresh_data_for_metrics_cache(MetricsAgeCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsAgeCache for Metrics2API done.")
         self.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
         logging.info("Refresh MetricsRaceCache for Metrics2API done.")
-        self.refresh_data_for_metrics_cache(MetricsLifecycleCacheDao(MetricsCacheType.METRICS_V2_API))
-        logging.info("Refresh MetricsLifecycleCache for Metrics2API done.")
 
     def refresh_data_for_metrics_cache(self, dao):
         status_dao = MetricsCacheJobStatusDao()
