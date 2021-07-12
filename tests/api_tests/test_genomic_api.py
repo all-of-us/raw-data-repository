@@ -711,6 +711,82 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertTrue(all_pgx)
         self.assertTrue(loop_and_result)
 
+    def test_get_by_date_range(self):
+        self.num_participants = 10
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        module = 'GEM'
+        report_state = GenomicReportState.GEM_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            if num % 2 == 0:
+                workflow_date = fake_date_two
+            else:
+                workflow_date = fake_date_one
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date_two,
+                consentForStudyEnrollmentAuthored=fake_date_two
+            )
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                genomicWorkflowStateModifiedTime=workflow_date
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant.participantId,
+                decision_value='maybe_later'
+            )
+
+        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        self.assertEqual(len(total_num_set), 20)
+
+        bad_response = 'No participants found in date range.'
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_two}',
+                expected_status=http.client.NOT_FOUND
+            )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 404)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        self.assertTrue(loop_and_result)
+
 
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
