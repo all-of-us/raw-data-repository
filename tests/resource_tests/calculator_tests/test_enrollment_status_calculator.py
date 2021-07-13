@@ -120,8 +120,9 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ Shift activity dates so we look like a cohort 3 participant with no GROR consent. """
         activity = self._shift_timestamps(get_basic_activity(), 800)
         self.esc.run(activity)
-        # Since get_basic_activity() does not have a GROR consent, we should only reach ParticipantPlusEHR status.
-        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
+        # GROR is considered a pre-requisite for Cohort 3 PM&B appointments and therefore Core status, but is not
+        # needed to reach CORE_MINUS_PM (e.g., ParticipantPlusEHR + biobank sample but no GROR qualifies)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipantMinusPM)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_3)
 
     def test_cohort_3_gror_no_answer(self):
@@ -133,10 +134,11 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
              'event': p_event.GROR, 'answer': 'CheckDNA_No',
              'answer_id': 767}
         )
-        # Shift the activity and then run the calculation.
+        # Shift the activity and then run the calculation.  GROR response needs to be present with any answer to reach
+        # Core Participant.
         activity = self._shift_timestamps(activity, 800)
         self.esc.run(activity)
-        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_3)
 
     def test_cohort_3_gror_yes_answer(self):
@@ -171,8 +173,8 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         # Shift the activity and then run the calculation.
         activity = self._shift_timestamps(activity, 800)
         self.esc.run(activity)
-        # We should only reach ParticipantPlusEHR status with a Yes and then a No GROR consent.
-        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
+        # As long as we have at least one valid GROR response, it doesn't need to be a 'yes' consent
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipant)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_3)
 
     def test_core_minus_pm(self):

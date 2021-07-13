@@ -12,6 +12,8 @@ from werkzeug.exceptions import NotFound
 from rdr_service import config
 from rdr_service.code_constants import (
     CONSENT_GROR_YES_CODE,
+    CONSENT_GROR_NO_CODE,
+    CONSENT_GROR_NOT_SURE,
     CONSENT_PERMISSION_YES_CODE,
     CONSENT_PERMISSION_NO_CODE,
     DVEHR_SHARING_QUESTION_CODE,
@@ -1156,7 +1158,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return data
 
         consents = {}
-        study_consent = ehr_consent = pm_complete = gror_consent = had_gror_consent = had_ehr_consent = \
+        study_consent = ehr_consent = pm_complete = had_gror_response = had_ehr_consent = \
             ehr_consent_expired = False
         study_consent_date = datetime.date.max
         enrollment_member_time = datetime.datetime.max
@@ -1182,9 +1184,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
+                gror_date = consent['consent_date'] or datetime.datetime.max
                 if not 'GRORConsent' in consents:  # We only want the most recent consent answer.
                     consents['GRORConsent'] = (response_value, response_date)
-                had_gror_consent = had_gror_consent or response_value == CONSENT_GROR_YES_CODE
+                # For enrollment status, we only need the presence of a valid GROR response (any valid answer)
+                had_gror_response = had_gror_response or response_value in [CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE,
+                                                                            CONSENT_GROR_NOT_SURE]
 
         if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
             if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES \
@@ -1198,10 +1203,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         elif 'DVEHRConsent' in consents:
             if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES:
                 ehr_consent = True
-
-        if 'GRORConsent' in consents:
-            gror_answer = consents['GRORConsent'][0]
-            gror_consent = gror_answer == CONSENT_GROR_YES_CODE
 
         # check physical measurements
         physical_measurements_date = datetime.datetime.max
@@ -1239,7 +1240,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             status = EnrollmentStatusV2.FULLY_CONSENTED
         if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
             pm_complete and \
-            (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or gror_consent) and \
+            (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_response) and \
             'modules' in summary and \
             completed_all_baseline_modules and \
             dna_sample_count > 0:
@@ -1250,8 +1251,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # This assumes consent for study, completion of baseline modules, stored dna sample,
             # and physical measurements can't be reversed
             if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
-                    had_ehr_consent and \
-                    (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_consent):
+                    had_ehr_consent:
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -1297,7 +1297,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                                 current_ehr_response != CONSENT_PERMISSION_YES_CODE:
                             ehr_date_range.add_stop(response_date)
                     elif consent_question == GROR_CONSENT_QUESTION_CODE:
-                        if consent_response == CONSENT_GROR_YES_CODE:
+                        if consent_response in [CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE]:
                             gror_date_range.add_start(response_date)
                         else:
                             gror_date_range.add_stop(response_date)

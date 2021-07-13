@@ -725,19 +725,26 @@ class ParticipantSummaryDao(UpdatableDao):
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
         consent_cohort, gror_consent, consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
     ):
+        """
+          2021-07-Note on enrollment status calculations and GROR:
+          Per NIH Analytics Data Glossary and confirmation on requirements for Core participants:
+          Cohort 3 participants need a GROR response (yes/no/not sure) to qualify for PM&B and therefore
+          Core / FULL_PARTICIPANT status.  GROR not required for CORE_MINUS_PM.
+        """
         if consent:
             if (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
-                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
+                and (consent_cohort != ParticipantCohort.COHORT_3 or
+                     (gror_consent and gror_consent != QuestionnaireStatus.UNSET
+                      and gror_consent != QuestionnaireStatus.SUBMITTED_INVALID))
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
             elif (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
-                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.CORE_MINUS_PM
             elif consent_expire_status != ConsentExpireStatus.EXPIRED:
