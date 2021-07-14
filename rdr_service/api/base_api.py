@@ -11,6 +11,7 @@ from rdr_service import app_util
 from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import save_raw_request_record
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.query import OrderBy, Query
@@ -89,9 +90,9 @@ def log_api_request(log: RequestsLog = None, model_obj=None):
                     log.fpk_alt_id = str(insp.identity[0])
 
         except NoInspectionAvailable:
-            pass
+            pass  # Ignoring errors generated for model objects that can't be inspected (like the FHIR lib classes)
         except Exception:  # pylint: disable=broad-except
-            pass
+            logging.error('Error setting request log data', exc_info=True)
 
     return save_raw_request_record(log)
 
@@ -147,6 +148,7 @@ class BaseApi(Resource):
                     f"{self.dao.model_type.__name__} with ID {id_} is not for participant with ID {participant_id}"
                 )
         log_api_request(log=request.log_record, model_obj=obj)
+        self._archive_request_log()
         return self._make_response(obj)
 
     def _make_response(self, obj):
@@ -186,6 +188,7 @@ class BaseApi(Resource):
                                     queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=result)
+        self._archive_request_log()
         return self._make_response(result)
 
     def list(self, participant_id=None):
@@ -214,12 +217,14 @@ class BaseApi(Resource):
         logging.info("Returning response.")
         return response
 
-    def _make_query(self):
+    def _make_query(self, check_invalid=False):
         field_filters = []
+        invalid_filters = []
         max_results = DEFAULT_MAX_RESULTS
         pagination_token = None
         order_by = None
         missing_id_list = ["awardee", "organization", "site"]
+        invalid_exclusion = ["_includeTotal", "_offset", "_sync", "_backfill"]
         include_total = request.args.get("_includeTotal", False)
         offset = request.args.get("_offset", False)
 
@@ -245,8 +250,19 @@ class BaseApi(Resource):
                 field_filter = self.dao.make_query_filter(key, value)
                 if field_filter:
                     field_filters.append(field_filter)
+                elif not field_filter \
+                        and key not in invalid_exclusion \
+                        and check_invalid:
+                    invalid_filters.append(key)
+
         return Query(
-            field_filters, order_by, max_results, pagination_token, include_total=include_total, offset=offset
+            field_filters,
+            order_by,
+            max_results,
+            pagination_token,
+            include_total=include_total,
+            offset=offset,
+            invalid_filters=invalid_filters
         )
 
     def _make_bundle(self, results, id_field, participant_id):
@@ -280,6 +296,15 @@ class BaseApi(Resource):
         else:
             return main.api.url_for(self.__class__, p_id=response_json[id_field], _external=True)
 
+    def _archive_request_log(self):
+        if GAE_PROJECT == RdrEnvironment.TEST.value:
+            logging.info('creating task for archiving request...')
+            payload = {
+                'log_id': request.log_record.id
+            }
+            self._task.execute('archive_request_log', queue='resource-tasks', payload=payload, in_seconds=60)
+            logging.info('...task created')
+
 
 class UpdatableApi(BaseApi):
     """Base class for API handlers that support PUT requests.
@@ -299,7 +324,9 @@ class UpdatableApi(BaseApi):
             )
         else:
             return self.dao.from_client_json(
-                resource, id_=id_, expected_version=expected_version, client_id=app_util.get_oauth_id()
+                resource, id_=id_,
+                expected_version=expected_version,
+                client_id=app_util.get_oauth_id()
             )
 
     def _make_response(self, obj):
@@ -348,6 +375,7 @@ class UpdatableApi(BaseApi):
                                     queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=m)
+        self._archive_request_log()
         return self._make_response(m)
 
     def make_etag(self, version):
@@ -382,6 +410,7 @@ class UpdatableApi(BaseApi):
                                    queue='resource-tasks', payload=params, in_seconds=5)
 
         log_api_request(log=request.log_record, model_obj=obj)
+        self._archive_request_log()
         return self._make_response(obj)
 
     def update_with_patch(self, id_, resource, expected_version):

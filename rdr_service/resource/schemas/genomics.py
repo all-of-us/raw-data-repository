@@ -7,18 +7,9 @@ from marshmallow import validate
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-#    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState,
-    GenomicQcStatus,
-    GenomicContaminationCategory,
-    GenomicManifestTypes
-)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
+    GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
+    GenomicQcStatus
 
 
 class GenomicSetSchema(Schema):
@@ -39,6 +30,8 @@ class GenomicSetSchema(Schema):
         schema_id = SchemaID.genomic_set
         resource_uri = 'GenomicSet'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicSetMemberSchema(Schema):
@@ -114,13 +107,15 @@ class GenomicSetMemberSchema(Schema):
     dev_note = fields.String(validate=validate.Length(max=255))
     aw1_file_processed_id = fields.Int32()
     aw2_file_processed_id = fields.Int32()
-    aw2f_file_processed_id = fields.Int32()
     biobank_id_str = fields.String(validate=validate.Length(max=128))
+    aw2f_job_run_id = fields.Int32()
 
     class Meta:
         schema_id = SchemaID.genomic_set_member
         resource_uri = 'GenomicSetMember'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicJobRunSchema(Schema):
@@ -140,7 +135,8 @@ class GenomicJobRunSchema(Schema):
         schema_id = SchemaID.genomic_job_run
         resource_uri = 'GenomicJobRun'
         resource_pk_field = 'id'
-
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 class GenomicFileProcessedSchema(Schema):
 
@@ -162,6 +158,8 @@ class GenomicFileProcessedSchema(Schema):
         schema_id = SchemaID.genomic_file_processed
         resource_uri = 'GenomicFileProcessed'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicManifestFileSchema(Schema):
@@ -178,11 +176,15 @@ class GenomicManifestFileSchema(Schema):
     rdr_processing_complete = fields.Int16()
     rdr_processing_complete_date = fields.DateTime()
     ignore_flag = fields.Int16()
+    file_name = fields.String(validate=validate.Length(max=255))
 
     class Meta:
         schema_id = SchemaID.genomic_manifest_file
         resource_uri = 'GenomicManifestFile'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
 
 
 class GenomicManifestFeedbackSchema(Schema):
@@ -201,6 +203,8 @@ class GenomicManifestFeedbackSchema(Schema):
         schema_id = SchemaID.genomic_manifest_feedback
         resource_uri = 'GenomicManifestFeedback'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class GenomicGCValidationMetricsSchema(Schema):
@@ -276,8 +280,21 @@ class GenomicGCValidationMetricsSchema(Schema):
     idat_red_md5_deleted = fields.Int16()
     vcf_md5_deleted = fields.Int16()
     vcf_tbi_deleted = fields.Int16()
+    drc_sex_concordance = fields.String(validate=validate.Length(max=128))
+    drc_contamination = fields.String(validate=validate.Length(max=128))
+    drc_mean_coverage = fields.String(validate=validate.Length(max=128))
+    drc_fp_concordance = fields.String(validate=validate.Length(max=128))
+    gvcf_path = fields.String(validate=validate.Length(max=512))
+    gvcf_received = fields.Int16()
+    gvcf_deleted = fields.Int16()
+    gvcf_md5_path = fields.String(validate=validate.Length(max=255))
+    gvcf_md5_received = fields.Int16()
+    gvcf_md5_deleted = fields.Int16()
+    drc_call_rate = fields.String(validate=validate.Length(max=128))
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics
         resource_uri = 'GenomicGCValidationMetrics'
         resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

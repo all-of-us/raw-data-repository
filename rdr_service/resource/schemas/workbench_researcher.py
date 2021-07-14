@@ -66,7 +66,10 @@ class WorkbenchResearcherSchema(Schema):
         schema_id = SchemaID.workbench_researcher
         resource_uri = 'WorkbenchResearcher'
         resource_pk_field = 'user_source_id'
-
+        # Exclude fields and/or functions to strip PII information from fields
+        # TODO:  Confirm if we should be deleting country, zip, state from current BQ schemas as PII?
+        pii_fields = ('email', 'family_name', 'given_name') # List fields that contain PII data
+        pii_filter = {}  # dict(field: lambda function).
 
 class WorkbenchInstitutionalAffiliationsSchema(Schema):
     """ Institutional Affiliations """
@@ -81,3 +84,6 @@ class WorkbenchInstitutionalAffiliationsSchema(Schema):
         schema_id = SchemaID.workbench_institutional_affiliation
         resource_uri = 'WorkbenchInstitutionalAffiliation'
         resource_pk_field = 'researcher_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+

@@ -1,30 +1,43 @@
 from datetime import datetime
 from rdr_service.code_constants import PPI_SYSTEM
-from rdr_service.etl.model.src_clean import TemporaryQuestionnaireResponse
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
     BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
-from rdr_service.model.genomics import GenomicManifestFile
+from rdr_service.model.genomics import (
+    GenomicManifestFile,
+    GenomicJobRun,
+    GenomicSet,
+    GenomicSetMember,
+    GenomicAW1Raw,
+    GenomicFileProcessed,
+    GenomicAW2Raw,
+    GenomicIncident,
+    GenomicGCValidationMetrics
+)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
+from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
     QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
-from rdr_service.model.survey import Survey
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
 from rdr_service.participant_enums import (
     DeceasedNotification,
     DeceasedReportStatus,
     DeceasedStatus,
     EnrollmentStatus,
+    PatientStatusFlag,
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -38,6 +51,7 @@ class DataGenerator:
         self.faker = faker
         self._next_unique_participant_id = 900000000
         self._next_unique_research_id = 9000000
+        self._next_unique_external_id = 4000000
         self._next_unique_participant_biobank_id = 500000000
         self._next_unique_biobank_order_id = 100000000
         self._next_unique_biobank_stored_sample_id = 800000000
@@ -47,12 +61,33 @@ class DataGenerator:
         self.session.add(model)
         self.session.commit()
 
+    def create_database_patient_status(self, **kwargs):
+        patient_status = self._patient_status(**kwargs)
+        self._commit_to_database(patient_status)
+        return patient_status
+
+    def _patient_status(self, **kwargs):
+        for field, default in [('patientStatus', PatientStatusFlag.YES),
+                               ('user', 'test_user')]:
+            if field not in kwargs:
+                kwargs[field] = default
+
+        if 'hpoId' not in kwargs:
+            kwargs['hpoId'] = self.create_database_hpo().hpoId
+        if 'organizationId' not in kwargs:
+            kwargs['organizationId'] = self.create_database_organization().organizationId
+        if 'siteId' not in kwargs:
+            kwargs['siteId'] = self.create_database_site().siteId
+
+        return PatientStatus(**kwargs)
+
     def create_database_questionnaire(self, **kwargs):
         questionnaire = self._questionnaire(**kwargs)
         self._commit_to_database(questionnaire)
         return questionnaire
 
-    def _questionnaire(self, **kwargs):
+    @staticmethod
+    def _questionnaire(**kwargs):
         for field, default in [('version', 1),
                                ('created', datetime.now()),
                                ('lastModified', datetime.now()),
@@ -67,7 +102,8 @@ class DataGenerator:
         self._commit_to_database(questionnaire_concept)
         return questionnaire_concept
 
-    def _questionnaire_concept(self, **kwargs):
+    @staticmethod
+    def _questionnaire_concept(**kwargs):
         return QuestionnaireConcept(**kwargs)
 
     def create_database_questionnaire_history(self, **kwargs):
@@ -94,7 +130,8 @@ class DataGenerator:
         self._commit_to_database(questionnaire_response_answer)
         return questionnaire_response_answer
 
-    def _questionnaire_response_answer(self, **kwargs):
+    @staticmethod
+    def _questionnaire_response_answer(**kwargs):
         return QuestionnaireResponseAnswer(**kwargs)
 
     def create_database_questionnaire_response(self, **kwargs):
@@ -102,36 +139,23 @@ class DataGenerator:
         self._commit_to_database(questionnaire_response)
         return questionnaire_response
 
-    def create_database_duplicate_temp_questionnaire_response(self, questionnaire_response, **kwargs):
-        tmp_questionnaire_response = self._tmp_questionnaire_response(questionnaire_response, **kwargs)
-        self._commit_to_database(tmp_questionnaire_response)
-        return tmp_questionnaire_response
-
     def _questionnaire_response(self, **kwargs):
         for field, default in [('created', datetime.now()),
                                ('resource', 'test'),
                                ('nonParticipantAuthor', None),
-                               ('status', QuestionnaireResponseStatus.COMPLETED)]:
+                               ('status', QuestionnaireResponseStatus.COMPLETED),
+                               ('isDuplicate', False)]:
             if field not in kwargs:
                 kwargs[field] = default
 
         if 'questionnaireResponseId' not in kwargs:
             kwargs['questionnaireResponseId'] = self.unique_questionnaire_response_id()
+        if 'questionnaireId' not in kwargs:
+            questionnaire = self.create_database_questionnaire_history()
+            kwargs['questionnaireId'] = questionnaire.questionnaireId
+            kwargs['questionnaireVersion'] = questionnaire.version
 
         return QuestionnaireResponse(**kwargs)
-
-    def _tmp_questionnaire_response(self, questionnaire_response, **kwargs):
-        for field, default in [('created', datetime.now()),
-                               ('duplicate', 1),
-                               ('removed', None),
-                               ('identifier', 'test-id')]:
-            if field not in kwargs:
-                kwargs[field] = default
-
-        if 'questionnaireResponseId' not in kwargs:
-            kwargs['questionnaireResponseId'] = questionnaire_response.questionnaireResponseId
-
-        return TemporaryQuestionnaireResponse(**kwargs)
 
     def create_database_questionnaire_question(self, **kwargs):
         questionnaire_question = self._questionnaire_question(**kwargs)
@@ -157,6 +181,11 @@ class DataGenerator:
         next_research_id = self._next_unique_research_id
         self._next_unique_research_id += 1
         return next_research_id
+
+    def unique_external_id(self):
+        next_external_id = self._next_unique_external_id
+        self._next_unique_external_id += 1
+        return next_external_id
 
     def unique_participant_biobank_id(self):
         next_biobank_id = self._next_unique_participant_biobank_id
@@ -185,7 +214,8 @@ class DataGenerator:
 
     def _site_with_defaults(self, **kwargs):
         defaults = {
-            'siteName': 'example_site'
+            'siteName': 'example_site',
+            'googleGroup': self.faker.pystr()
         }
         defaults.update(kwargs)
         return Site(**defaults)
@@ -197,7 +227,8 @@ class DataGenerator:
 
     def _organization_with_defaults(self, **kwargs):
         defaults = {
-            'displayName': 'example_org_display'
+            'displayName': 'example_org_display',
+            'externalId': self.faker.pystr()
         }
         defaults.update(kwargs)
 
@@ -217,7 +248,8 @@ class DataGenerator:
 
         return hpo
 
-    def _hpo_with_defaults(self, **kwargs):
+    @staticmethod
+    def _hpo_with_defaults(**kwargs):
         return HPO(**kwargs)
 
     def create_database_participant(self, **kwargs):
@@ -288,6 +320,22 @@ class DataGenerator:
                     defaults[f'{questionnaire_field}Authored'] = datetime.now()
 
         return ParticipantSummary(**defaults)
+
+    def create_database_consent_file(self, **kwargs):
+        consent_file = self._consent_file_with_defaults(**kwargs)
+        self._commit_to_database(consent_file)
+        return consent_file
+
+    def _consent_file_with_defaults(self, **kwargs):
+        defaults = {
+            'file_exists': True
+        }
+
+        defaults.update(kwargs)
+        if defaults.get('participant_id') is None:
+            defaults['participant_id'] = self.create_database_participant().participantId
+
+        return ConsentFile(**defaults)
 
     def create_database_biobank_specimen(self, **kwargs):
         specimen = self._biobank_specimen_with_defaults(**kwargs)
@@ -385,6 +433,8 @@ class DataGenerator:
             kwargs['logPositionId'] = log_position.logPositionId
         if 'biobankOrderId' not in kwargs:
             kwargs['biobankOrderId'] = self.unique_biobank_order_id()
+        if 'participantId' not in kwargs:
+            kwargs['participantId'] = self.create_database_participant_summary().participantId
 
         return BiobankOrder(**kwargs)
 
@@ -394,7 +444,8 @@ class DataGenerator:
 
         return biobank_mail_kit_order
 
-    def _biobank_mail_kit_order(self, **kwargs):
+    @staticmethod
+    def _biobank_mail_kit_order(**kwargs):
         for field, default in [('version', 1)]:
             if field not in kwargs:
                 kwargs[field] = default
@@ -427,7 +478,8 @@ class DataGenerator:
 
         return biobank_ordered_sample
 
-    def _biobank_ordered_sample(self, **kwargs):
+    @staticmethod
+    def _biobank_ordered_sample(**kwargs):
         for field, default in [('description', 'test ordered sample'),
                                ('processingRequired', False),
                                ('test', 'C3PO')]:
@@ -445,7 +497,8 @@ class DataGenerator:
         if 'biobankStoredSampleId' not in kwargs:
             kwargs['biobankStoredSampleId'] = self.unique_biobank_stored_sample_id()
 
-        for field, default in [('biobankOrderIdentifier', self.faker.pystr())]:
+        for field, default in [('biobankOrderIdentifier', self.faker.pystr()),
+                               ('test', self.faker.pystr(4))]:
             if field not in kwargs:
                 kwargs[field] = default
 
@@ -456,7 +509,8 @@ class DataGenerator:
         self._commit_to_database(log_position)
         return log_position
 
-    def _log_position(self, **kwargs):
+    @staticmethod
+    def _log_position(**kwargs):
         return LogPosition(**kwargs)
 
     def create_database_api_user(self, **kwargs):
@@ -464,7 +518,8 @@ class DataGenerator:
         self._commit_to_database(api_user)
         return api_user
 
-    def _api_user(self, **kwargs):
+    @staticmethod
+    def _api_user(**kwargs):
         if 'system' not in kwargs:
             kwargs['system'] = 'unit_test'
         if 'username' not in kwargs:
@@ -501,10 +556,119 @@ class DataGenerator:
             kwargs['codeId'] = module_code.codeId
         return Survey(**kwargs)
 
+    def create_database_survey_question(self, **kwargs):
+        survey_question = self._survey_question(**kwargs)
+        self._commit_to_database(survey_question)
+        return survey_question
+
+    @staticmethod
+    def _survey_question(**kwargs):
+        return SurveyQuestion(**kwargs)
+
+    def create_database_survey_question_option(self, **kwargs):
+        survey_question_option = self._survey_question_option(**kwargs)
+        self._commit_to_database(survey_question_option)
+        return survey_question_option
+
+    @staticmethod
+    def _survey_question_option(**kwargs):
+        return SurveyQuestionOption(**kwargs)
+
     def create_database_genomic_manifest_file(self, **kwargs):
         manifest = self._genomic_manifest_file(**kwargs)
         self._commit_to_database(manifest)
         return manifest
 
-    def _genomic_manifest_file(self, **kwargs):
+    @staticmethod
+    def _genomic_manifest_file(**kwargs):
         return GenomicManifestFile(**kwargs)
+
+    def create_database_genomic_job_run(self, **kwargs):
+        job_run = self._genomic_job_run(**kwargs)
+        self._commit_to_database(job_run)
+        return job_run
+
+    @staticmethod
+    def _genomic_job_run(**kwargs):
+        return GenomicJobRun(**kwargs)
+
+    def create_database_genomic_set(self, **kwargs):
+        gen_set = self._genomic_set(**kwargs)
+        self._commit_to_database(gen_set)
+        return gen_set
+
+    @staticmethod
+    def _genomic_set(**kwargs):
+        return GenomicSet(**kwargs)
+
+    def create_database_genomic_set_member(self, **kwargs):
+        m = self._genomic_set_member(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_set_member(**kwargs):
+        return GenomicSetMember(**kwargs)
+
+    def create_database_genomic_aw1_raw(self, **kwargs):
+        raw = self._genomic_aw1_raw(**kwargs)
+        self._commit_to_database(raw)
+        return raw
+
+    @staticmethod
+    def _genomic_aw1_raw(**kwargs):
+        return GenomicAW1Raw(**kwargs)
+
+    def create_database_genomic_aw2_raw(self, **kwargs):
+        raw = self._genomic_aw2_raw(**kwargs)
+        self._commit_to_database(raw)
+        return raw
+
+    @staticmethod
+    def _genomic_aw2_raw(**kwargs):
+        return GenomicAW2Raw(**kwargs)
+
+    def create_database_genomic_file_processed(self, **kwargs):
+        file = self._genomic_file_processed(**kwargs)
+        self._commit_to_database(file)
+        return file
+
+    @staticmethod
+    def _genomic_file_processed(**kwargs):
+        return GenomicFileProcessed(**kwargs)
+
+    def create_database_genomic_incident(self, **kwargs):
+        incident = self._genomic_incident(**kwargs)
+        self._commit_to_database(incident)
+        return incident
+
+    @staticmethod
+    def _genomic_incident(**kwargs):
+        return GenomicIncident(**kwargs)
+
+    def create_database_genomic_gc_validation_metrics(self, **kwargs):
+        metrics = self._genomic_validation_metrics(**kwargs)
+        self._commit_to_database(metrics)
+        return metrics
+
+    @staticmethod
+    def _genomic_validation_metrics(**kwargs):
+        return GenomicGCValidationMetrics(**kwargs)
+
+    def create_database_message_broker_record(self, **kwargs):
+        records = self._message_broker_records(**kwargs)
+        self._commit_to_database(records)
+        return records
+
+    @staticmethod
+    def _message_broker_records(**kwargs):
+        return MessageBrokerRecord(**kwargs)
+
+    def create_database_message_broker_event_data(self, **kwargs):
+        records = self._message_broker_event_data(**kwargs)
+        self._commit_to_database(records)
+        return records
+
+    @staticmethod
+    def _message_broker_event_data(**kwargs):
+        return MessageBrokerEventData(**kwargs)

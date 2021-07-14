@@ -28,6 +28,7 @@ tool_cmd = "deploy-func"
 tool_desc = "Deploy gcloud function"
 cloud_functions_dir = "gcloud_functions"
 
+
 class DeployFunctionClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, project_path, func_path):
         """
@@ -140,16 +141,14 @@ def run():
     )
     setup_i18n()
 
-    parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
-
     # Setup program arguments.
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
+
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
-
     parser.add_argument("--quiet", help="do not ask for user input", default=False, action="store_true")  # noqa
     parser.add_argument('--function', help="gcloud function directory name", required=True)
 

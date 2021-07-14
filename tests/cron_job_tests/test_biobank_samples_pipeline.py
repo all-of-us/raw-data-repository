@@ -10,7 +10,8 @@ import pytz
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, RACE_QUESTION_CODE, RACE_AIAN_CODE
+from rdr_service.code_constants import BIOBANK_TESTS, RACE_QUESTION_CODE, RACE_AIAN_CODE,\
+    WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES, WITHDRAWAL_CEREMONY_NO
 from rdr_service.config import BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN,\
     BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
@@ -23,11 +24,13 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.config_utils import get_biobank_id_prefix, to_client_biobank_id
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.offline import biobank_samples_pipeline
+from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import EnrollmentStatus, SampleStatus, get_sample_status_enum_value,\
-    SampleCollectionMethod
+    SampleCollectionMethod, WithdrawalAIANCeremonyStatus, WithdrawalStatus
 from tests import test_data
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 _BASELINE_TESTS = list(BIOBANK_TESTS)
 _FAKE_BUCKET = "rdr_fake_bucket"
@@ -35,7 +38,7 @@ _FAKE_BUCKET = "rdr_fake_bucket"
 FakeBlob = namedtuple('FakeBlob', ['name', 'updated'])
 
 
-class BiobankSamplesPipelineTest(BaseTestCase):
+class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self):
         super(BiobankSamplesPipelineTest, self).setUp()
         config.override_setting(config.BASELINE_SAMPLE_TEST_CODES, _BASELINE_TESTS)
@@ -46,6 +49,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
 
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report v1')
         config.override_setting(BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN, 'Sample Inventory Report 60d')
+
+        self.withdrawal_questionnaire = None
 
     mock_bucket_paths = [_FAKE_BUCKET, _FAKE_BUCKET + os.sep + biobank_samples_pipeline._REPORT_SUBDIR]
 
@@ -138,7 +143,8 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         ps = self.summary_dao.get(participant.participantId)
         self.assertEqual(EnrollmentStatus.FULL_PARTICIPANT, ps.enrollmentStatus)
 
-    def test_end_to_end(self):
+    @mock.patch('rdr_service.offline.biobank_samples_pipeline.dispatch_participant_rebuild_tasks')
+    def test_end_to_end(self, mock_dispatch_rebuild):
         config.override_setting(BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN, 'cloud')
 
         self.clear_default_storage()
@@ -166,7 +172,9 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         mail_kit_1sal2_participant_id = participant_ids[6]
         on_site_1sal2_participant_id = participant_ids[11]
         no_order_1sal2_participant_id = participant_ids[14]
-        test_codes[6] = test_codes[11] = test_codes[14] = '1SAL2'
+        core_minus_pm_participant_id = participant_ids[5]
+        core_participant_id = participant_ids[1]
+        test_codes[6] = test_codes[11] = test_codes[14] = test_codes[5] = test_codes[1] = '1SAL2'
 
         mailed_biobank_order = self.data_generator.create_database_biobank_order(
             participantId=mail_kit_1sal2_participant_id
@@ -187,6 +195,30 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             biobankOrderId=on_site_biobank_order.biobankOrderId,
             value='KIT-11'  # from the 12th record in the biobank_samples_1.csv
         )
+        participant_summary_dao = ParticipantSummaryDao()
+        core_minus_pm_summary = participant_summary_dao.get(core_minus_pm_participant_id)
+
+        core_minus_pm_summary.numCompletedBaselinePPIModules = 3
+        core_minus_pm_summary.consentForStudyEnrollment = 1
+        core_minus_pm_summary.consentForElectronicHealthRecords = 1
+        core_minus_pm_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
+        core_minus_pm_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        participant_summary_dao.update(core_minus_pm_summary)
+
+        core_summary = participant_summary_dao.get(core_participant_id)
+
+        core_summary.numCompletedBaselinePPIModules = 3
+        core_summary.consentForStudyEnrollment = 1
+        core_summary.consentForElectronicHealthRecords = 1
+        core_summary.enrollmentStatusMemberTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnTheBasicsTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnOverallHealthTime = '2016-11-29 12:16:00'
+        core_summary.questionnaireOnLifestyleTime = '2016-11-29 12:16:00'
+        core_summary.physicalMeasurementsStatus = 1
+        core_summary.physicalMeasurementsFinalizedTime = '2016-11-29 12:16:00'
+        participant_summary_dao.update(core_summary)
 
         samples_file = test_data.open_biobank_samples(biobank_ids=biobank_ids, tests=test_codes)
         lines = samples_file.split("\n")[1:]  # remove field name line
@@ -232,10 +264,28 @@ class BiobankSamplesPipelineTest(BaseTestCase):
         ).one()
         self.assertEqual(SampleCollectionMethod.MAIL_KIT, mail_kit_summary.sample1SAL2CollectionMethod)
 
+        core_minus_pm_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == core_minus_pm_participant_id
+        ).one()
+        self.assertEqual(core_minus_pm_summary.enrollmentStatus, EnrollmentStatus.CORE_MINUS_PM)
+        self.assertEqual(core_minus_pm_summary.enrollmentStatusCoreMinusPMTime, datetime(2017, 11, 30, 2, 59, 42))
+
+        core_summary = self.session.query(ParticipantSummary).filter(
+            ParticipantSummary.participantId == core_participant_id
+        ).one()
+        self.assertEqual(core_summary.enrollmentStatus, EnrollmentStatus.FULL_PARTICIPANT)
+        self.assertEqual(core_summary.enrollmentStatusCoreStoredSampleTime, datetime(2016, 11, 29, 18, 38, 58))
+
         no_order_summary: ParticipantSummary = self.session.query(ParticipantSummary).filter(
             ParticipantSummary.participantId == no_order_1sal2_participant_id
         ).one()
         self.assertIsNone(no_order_summary.sample1SAL2CollectionMethod)
+
+        # Check for bigquery_sync record updates.  Only expect updates for the pids with orders
+        rebuilt_participant_list = mock_dispatch_rebuild.call_args[0][0]
+        self.assertIn(on_site_1sal2_participant_id, rebuilt_participant_list)
+        self.assertIn(mail_kit_1sal2_participant_id, rebuilt_participant_list)
+        self.assertNotIn(no_order_1sal2_participant_id, rebuilt_participant_list)
 
     def test_old_csv_not_imported(self):
         self.clear_default_storage()
@@ -388,8 +438,12 @@ class BiobankSamplesPipelineTest(BaseTestCase):
             self.assertTrue(path.endswith(".csv"))
 
     def _init_report_codes(self):
-        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_QUESTION_CODE)
-        self.data_generator.create_database_code(system=PPI_SYSTEM, value=RACE_AIAN_CODE)
+        self.race_question_code = self.data_generator.create_database_code(value=RACE_QUESTION_CODE)
+        self.native_answer_code = self.data_generator.create_database_code(value=RACE_AIAN_CODE)
+
+        self.ceremony_question_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_QUESTION_CODE)
+        self.ceremony_yes_answer_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_YES)
+        self.ceremony_no_answer_code = self.data_generator.create_database_code(value=WITHDRAWAL_CEREMONY_NO)
 
     @staticmethod
     def _datetime_days_ago(num_days_ago):
@@ -464,3 +518,208 @@ class BiobankSamplesPipelineTest(BaseTestCase):
                 None,  # order origin
                 'example'  # Participant origin
             )])
+
+    def _get_questionnaire(self):
+        if self.withdrawal_questionnaire is None:
+            race_question = self.data_generator.create_database_questionnaire_question(
+                codeId=self.race_question_code.codeId
+            )
+            ceremony_question = self.data_generator.create_database_questionnaire_question(
+                codeId=self.ceremony_question_code.codeId
+            )
+            self.withdrawal_questionnaire = self.data_generator.create_database_questionnaire_history(
+                # As of writing this, the pipeline only checks for the answers, regardless of questionnaire
+                # so putting them in the same questionnaire for convenience of the test code
+                questions=[race_question, ceremony_question]
+            )
+
+        return self.withdrawal_questionnaire
+
+    def _create_participant(self, is_native_american=False, requests_ceremony=None, withdrawal_time=datetime.utcnow()):
+        participant = self.data_generator.create_database_participant(
+            withdrawalTime=withdrawal_time,
+            withdrawalStatus=WithdrawalStatus.NO_USE
+        )
+
+        # Withdrawal report only includes participants that have stored samples
+        self.data_generator.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
+
+        # Create a questionnaire response that satisfies the parameters for the test participant
+        questionnaire = self._get_questionnaire()
+        answers = []
+        for question in questionnaire.questions:
+            answer_code_id = None
+            if question.codeId == self.race_question_code.codeId and is_native_american:
+                answer_code_id = self.native_answer_code.codeId
+            elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
+                if requests_ceremony == WithdrawalAIANCeremonyStatus.REQUESTED:
+                    answer_code_id = self.ceremony_yes_answer_code.codeId
+                elif requests_ceremony == WithdrawalAIANCeremonyStatus.DECLINED:
+                    answer_code_id = self.ceremony_no_answer_code.codeId
+
+            if answer_code_id:
+                answers.append(QuestionnaireResponseAnswer(
+                    questionId=question.questionnaireQuestionId,
+                    valueCodeId=answer_code_id
+                ))
+        self.data_generator.create_database_questionnaire_response(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            answers=answers,
+            participantId=participant.participantId
+        )
+
+        return participant
+
+    def assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_date_str,
+                                          as_native_american: bool = False, needs_ceremony_indicator: str = 'NA'):
+        self.assertIn((
+            f'Z{participant.biobankId}',
+            withdrawal_date_str,
+            'Y' if as_native_american else 'N',
+            needs_ceremony_indicator,
+            participant.participantOrigin
+        ), rows)
+
+    def _generate_withdrawal_report(self):
+        with mock.patch('rdr_service.offline.sql_exporter.csv.writer') as mock_writer_class,\
+                mock.patch('rdr_service.offline.sql_exporter.SqlExporter.upload_export_file'):
+
+            # Generate the withdrawal report
+            day_range_of_report = 10
+            biobank_samples_pipeline._query_and_write_withdrawal_report(
+                SqlExporter(''), '', day_range_of_report, datetime.now()
+            )
+
+            # Check the header values written
+            mock_writer_class.return_value.writerow.assert_called_with(
+                ['biobank_id', 'withdrawal_time', 'is_native_american', 'needs_disposal_ceremony', 'participant_origin']
+            )
+
+            mock_write_rows = mock_writer_class.return_value.writerows
+            return mock_write_rows.call_args[0][0] if mock_write_rows.called else []
+
+    def test_native_american_data_in_withdrawal_report(self):
+        # Set up data for withdrawal report
+        self._init_report_codes()
+        two_days_ago = self._datetime_days_ago(2)
+        no_ceremony_native_american_participant = self._create_participant(
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.DECLINED,
+            withdrawal_time=two_days_ago
+        )
+        ceremony_native_american_participant = self._create_participant(
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.REQUESTED,
+            withdrawal_time=two_days_ago
+        )
+        native_american_participant_without_answer = self._create_participant(
+            is_native_american=True,
+            requests_ceremony=None,
+            withdrawal_time=two_days_ago
+        )
+        # Non-AIAN should not have been presented with a ceremony choice
+        non_native_american_participant = self._create_participant(
+            is_native_american=False,
+            requests_ceremony=None,
+            withdrawal_time=two_days_ago
+        )
+
+
+        # Check that the participants are written to the export with the expected values
+        withdrawal_iso_str = two_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+        rows_written = self._generate_withdrawal_report()
+        self.assert_participant_in_report_rows(
+            non_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=False,
+            needs_ceremony_indicator='NA'
+        )
+        self.assert_participant_in_report_rows(
+            ceremony_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='Y'
+        )
+        self.assert_participant_in_report_rows(
+            native_american_participant_without_answer,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='U'
+        )
+        self.assert_participant_in_report_rows(
+            no_ceremony_native_american_participant,
+            rows_written,
+            withdrawal_iso_str,
+            as_native_american=True,
+            needs_ceremony_indicator='N'
+        )
+
+        p_id = no_ceremony_native_american_participant.participantId
+        ps_bqs_data = self.make_bq_participant_summary(p_id)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.DECLINED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.DECLINED))
+
+        ps_rsrc_data = self.make_participant_resource(p_id)
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.DECLINED))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.DECLINED))
+
+        p_id = ceremony_native_american_participant.participantId
+        ps_bqs_data = self.make_bq_participant_summary(p_id)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.REQUESTED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.REQUESTED))
+
+        ps_rsrc_data = self.make_participant_resource(p_id)
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.REQUESTED))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.REQUESTED))
+
+        p_id = non_native_american_participant.participantId
+        ps_bqs_data = self.make_bq_participant_summary(p_id)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.UNSET))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.UNSET))
+
+        ps_rsrc_data = self.make_participant_resource(p_id)
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.UNSET))
+        self.assertEqual(ps_rsrc_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.UNSET))
+
+    def test_withdrawal_report_includes_participants_with_recent_samples(self):
+        """
+        Occasionally a participant will send a saliva kit and then immediately withdraw. In this scenario
+        they would never be on a withdrawal manifest because they didn't have any samples until after the
+        10-day window.
+        """
+        self._init_report_codes()
+        twenty_days_ago = self._datetime_days_ago(20)
+        five_days_ago = self._datetime_days_ago(5)
+
+        # Create a participant that has a withdrawal time outside of the report range, but recently had a sample created
+        withdrawn_participant = self.data_generator.create_database_participant(
+            withdrawalTime=twenty_days_ago,
+            withdrawalStatus=WithdrawalStatus.NO_USE
+        )
+        self.data_generator.create_database_biobank_stored_sample(
+            biobankId=withdrawn_participant.biobankId,
+            created=five_days_ago
+        )
+
+        rows_written = self._generate_withdrawal_report()
+        self.assert_participant_in_report_rows(
+            withdrawn_participant,
+            rows=rows_written,
+            withdrawal_date_str=twenty_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+        )

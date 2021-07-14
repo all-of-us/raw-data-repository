@@ -4,6 +4,7 @@
 #
 
 import argparse
+from datetime import datetime
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
@@ -36,6 +37,7 @@ class AlembicManagerClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.alembic_args = alembic_args
+        self.output = ''
 
     def run(self):
         """
@@ -73,6 +75,8 @@ class AlembicManagerClass(object):
         if se:
             _logger.error(se)
 
+        self.output = se + f'Migrations complete at {datetime.now()}'
+        _logger.info(f'Alembic command finished at {datetime.now()}')
         return code
 
 

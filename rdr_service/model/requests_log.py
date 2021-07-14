@@ -10,6 +10,7 @@ class RequestsLog(Base):
   """
 
     __tablename__ = "requests_log"
+    __rdr_internal_table__ = True
 
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -40,7 +41,6 @@ class RequestsLog(Base):
     user = Column('user', String(255), nullable=True)
     # request completed successfully
     complete = Column('complete', Boolean, nullable=True, default=0)
-
 
 
 event.listen(RequestsLog, "before_insert", model_insert_listener)

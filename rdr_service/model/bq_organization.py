@@ -14,7 +14,9 @@ class BQOrganizationSchema(BQSchema):
     external_id = BQField('external_id', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
     # Human readable display name for the organization, e.g. University of Wisconsin, Madison
     display_name = BQField('display_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
+                          fld_enum=BQObsoleteStatusEnum)
+    is_obsolete_id = BQField('is_obsolete_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQObsoleteStatusEnum)
 
 

@@ -23,16 +23,23 @@ import faker
 from rdr_service import api_util
 from rdr_service import config
 from rdr_service import main
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.concepts import Concept
 from rdr_service.dao import database_factory
+from rdr_service.dao.bq_code_dao import BQCodeGenerator
+from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
+from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.biobank_order import BiobankOrderIdentifier, BiobankOrder, BiobankOrderedSample
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
+from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.offline import sql_exporter
+from rdr_service.resource.generators.code import CodeGenerator
+from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 from rdr_service.storage import LocalFilesystemStorageProvider
 from tests.helpers.data_generator import DataGenerator
 from tests.helpers.mysql_helper import reset_mysql_instance, clear_table_on_next_reset
@@ -379,6 +386,96 @@ class BiobankTestMixin:
         return bbo
 
 
+class PDRGeneratorTestMixin:
+    """ Base class for invoking PDR / resource data generators from any unittest """
+
+    # Create generator objects for each of the supported generated data types
+    bq_code_gen = BQCodeGenerator()
+    bq_participant_summary_gen = BQParticipantSummaryGenerator()
+    bq_questionnaire_response_gen = BQPDRQuestionnaireResponseGenerator()
+    code_resource_gen = CodeGenerator()
+    participant_resource_gen = ParticipantSummaryGenerator()
+
+    def make_bq_code(self, code_id, to_dict=True):
+        """ Create generated resource data for bigquery_sync table 'code' records """
+        gen_data = self.bq_code_gen.make_bqrecord(code_id)
+        return gen_data.to_dict(serialize=True) if to_dict else gen_data
+
+    def make_code_resource(self, code_id, get_data=True):
+        """ Create generated resource data for code resource type """
+        gen_data = self.code_resource_gen.make_resource(code_id)
+        return gen_data.get_data() if get_data else gen_data
+
+    def make_bq_participant_summary(self, participant_id, to_dict=True):
+        """ Create generated resource data for bigquery_sync table pdr_participant records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        gen_data = self.bq_participant_summary_gen.make_bqrecord(participant_id)
+        # Return data as a dict by default; caller can override to get the BQRecord object
+        return gen_data.to_dict(serialize=True) if to_dict else gen_data
+
+    def make_participant_resource(self, participant_id, get_data=True):
+        """ Create generated resource data for resource table participant records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        gen_data = self.participant_resource_gen.make_resource(participant_id)
+        # Return data as a dict by default; caller can override to get the ResourceRecordSet object
+        return gen_data.get_data() if get_data else gen_data
+
+    def make_bq_questionnaire_response(self, participant_id, module_id, latest=False, convert_to_enum=False):
+        """ Create generated resource data for bigquery_sync pdr_mod_<module_id> table records """
+        participant_id = self.cast_pid_to_int(participant_id)
+        # The BQQuestionnaireResponseGenerator method returns two values: and table object and a list of BQRecords;
+        # For the purposes of the unittest uses, the table object is ignored
+        _, gen_data = self.bq_questionnaire_response_gen.make_bqrecord(participant_id, module_id, latest,
+                                                                       convert_to_enum)
+        # Return data is a list of BQRecord objects
+        return gen_data
+
+    # TODO: Refactor tests where API calls could read the record resulting from the API call from bigquery_sync?
+    def get_bq_participant_summary(self, participant_id):
+        participant_id = self.cast_pid_to_int(participant_id)
+        with self.dao.session() as session:
+            rec = session.query(BigQuerySync.resource).filter(BigQuerySync.pk_id == participant_id)\
+                          .filter(BigQuerySync.tableId == 'pdr_participant').first()
+            if not rec:
+                raise ValueError(f'Failed to lookup pdr_participant record for {participant_id} in bigquery_sync')
+
+        return rec.resource
+
+    @staticmethod
+    def cast_pid_to_int(participant_id):
+        """ Cast the participant_id as an integer, automatically stripping leading 'P' if present
+            :raises ValueError: if the value cannot be successfully cast as an integer
+        """
+        pid = participant_id
+        # Skip if pid is already an int
+        if not isinstance(pid, int):
+            try:
+                if isinstance(pid, str) and pid[0].lower() == 'p':
+                    pid = pid[1:]
+                pid = int(pid)
+            except ValueError:
+                raise ValueError(f'Invalid participant_id: {participant_id}')
+
+        return pid
+
+    @staticmethod
+    def get_generated_items(item_list, item_key=None, item_value=None, sort_key=None):
+        """
+            Extracts requested items from a provided list of dicts (e.g., ps_json['consents'])
+            Returns a filtered list of dict entries that match the item key/value, sorted if requested
+            Example:
+                get_generated_items(ps_json['modules'], item_key='mod_module', item_value='OverallHealth',
+                                  sort_key='mod_authored')
+        """
+        if not (item_key and item_value and isinstance(item_list, list)):
+            return item_list
+
+        items = list(filter(lambda x: x[item_key] == item_value, item_list))
+        if sort_key:
+            items = sorted(items, key=(lambda s: s[sort_key]))
+        return items
+
+
 class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin):
     """ Base class for unit tests."""
 
@@ -389,6 +486,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         super(BaseTestCase, self).__init__(*args, **kwargs)
         self.fake = faker.Faker()
         self.config_data_to_reset = {}
+        self.uses_database = True
 
     def _set_up_test_suite(self):
         self.setup_config()
@@ -398,6 +496,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
 
         logger = logging.getLogger()
         stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
         logger.addHandler(stream_handler)
 
         # Change this to logging.ERROR when you want to see API server errors.
@@ -410,18 +509,20 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         self.setup_storage()
         self.app = main.app.test_client()
 
-        reset_mysql_instance(with_data, with_consent_codes)
-
         # Allow printing the full diff report on errors.
         self.maxDiff = None
         self._consent_questionnaire_id = None
 
-        self.session = database_factory.get_database().make_session()
-        self.data_generator = DataGenerator(self.session, self.fake)
+        if self.uses_database:
+            reset_mysql_instance(with_data, with_consent_codes)
+
+            self.session = database_factory.get_database().make_session()
+            self.data_generator = DataGenerator(self.session, self.fake)
 
     def tearDown(self):
         super(BaseTestCase, self).tearDown()
-        self.session.close()
+        if self.uses_database:
+            self.session.close()
 
         for key, original_data in self.config_data_to_reset.items():
             config.override_setting(key, original_data)
@@ -481,7 +582,9 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "test-data", test_file_name), bucket_dir)
 
     def submit_questionnaire_response(
-        self, participant_id, questionnaire_id, race_code, gender_code, state, date_of_birth):
+        self, participant_id: str, questionnaire_id, race_code=None,
+        gender_code=None, state=None, date_of_birth=None, authored_datetime=datetime.now()
+    ):
         code_answers = []
         date_answers = []
         if race_code:
@@ -495,7 +598,8 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         qr = self.make_questionnaire_response_json(
             participant_id, questionnaire_id, code_answers=code_answers, date_answers=date_answers
         )
-        self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
+        with FakeClock(authored_datetime):
+            self.send_post("Participant/%s/QuestionnaireResponse" % participant_id, qr)
 
     def submit_consent_questionnaire_response(self, participant_id, questionnaire_id, ehr_consent_answer):
         code_answers = [("ehrConsent", Concept(PPI_SYSTEM, ehr_consent_answer))]
@@ -532,20 +636,29 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
     def send_get(self, *args, **kwargs):
         return self.send_request("GET", *args, **kwargs)
 
-    def send_request(self, method, local_path, request_data=None, query_string=None,
+    def send_request(self,
+                     method,
+                     local_path,
+                     request_data=None,
+                     query_string=None,
                      expected_status=http.client.OK,
                      headers=None,
                      expected_response_headers=None,
                      test_client=None,
                      prefix=main.API_PREFIX
                      ):
-        """Makes a JSON API call against the test client and returns its response data.
-
+        """
+        Makes a JSON API call against the test client and returns its response data.
     Args:
       method: HTTP method, as a string.
       local_path: The API endpoint's URL (excluding main.PREFIX).
       request_data: Parsed JSON payload for the request.
       expected_status: What HTTP status to assert, if not 200 (OK).
+      query_string:
+      headers:
+      expected_response_headers:
+      test_client:
+      prefix:
     """
         if test_client is None:
             test_client = self.app

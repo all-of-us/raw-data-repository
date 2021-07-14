@@ -7,6 +7,7 @@ from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.api.base_api import BaseApi
 from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
@@ -29,6 +30,10 @@ class QuestionnaireResponseApi(BaseApi):
 
     @app_util.auth_required(PTC)
     def post(self, p_id):
+        # Reject any questionnaire response POSTs for participants that are withdrawn
+        participant = ParticipantDao().get(p_id)
+        raise_if_withdrawn(participant)
+
         resp = super(QuestionnaireResponseApi, self).post(participant_id=p_id)
         if resp and 'id' in resp:
 

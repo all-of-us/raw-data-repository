@@ -4,6 +4,9 @@
   "subject": {
     "reference": "Patient/{participant_id}"
   },
+  "identifier": {
+    "value": "1234567890"
+  },
   "questionnaire": {
     "reference": "Questionnaire/{questionnaire_id}"
   },

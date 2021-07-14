@@ -1,6 +1,7 @@
 import json
 import logging
 import pytz
+import re
 from dateutil import parser
 
 from sqlalchemy.orm import load_only
@@ -54,8 +55,8 @@ class MailKitOrderDao(UpdatableDao):
         }
 
     def send_order(self, resource, pid):
-        mayo = MayoLinkApi()
-        order = self._filter_order_fields(resource, pid)
+        order, is_version_two = self._filter_order_fields(resource, pid)
+        mayo = MayoLinkApi(credentials_key='version_two' if is_version_two else 'default')
         response = mayo.post(order)
         return self.to_client_json(response, for_update=True)
 
@@ -112,10 +113,22 @@ class MailKitOrderDao(UpdatableDao):
                 "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
                 "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
                 "tests": [{"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}}],
-                "comments": "Salivary Kit Order, direct from participant",
             }
         }
-        return order
+
+        is_version_two = barcode and len(barcode) > 14
+        if is_version_two:
+            order["order"]["number"] = None
+            client_fields = {"client_passthrough_fields": {
+                "field1": barcode,
+                "field2": None,
+                "field3": None,
+                "field4": None
+            }}
+            order['order']['tests'][0]['test'].update(client_fields)
+
+        order['order']['comments'] = "Salivary Kit Order, direct from participant"
+        return order, is_version_two
 
     def to_client_json(self, model, for_update=False):
         if for_update:
@@ -139,8 +152,7 @@ class MailKitOrderDao(UpdatableDao):
             result["participantId"] = to_client_participant_id(result["participantId"])
         return result
 
-    def from_client_json(
-        self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
+    def from_client_json(self, resource_json, id_=None, expected_version=None, participant_id=None, client_id=None
     ):  # pylint: disable=unused-argument
         """Initial loading of the DV order table does not include all attributes."""
         fhir_resource = SimpleFhirR4Reader(resource_json)
@@ -254,7 +266,12 @@ class MailKitOrderDao(UpdatableDao):
                 order.id = existing_obj.id
                 order.version = expected_version
                 if order.supplierStatus.lower() == "shipped":
-                    order.barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+                    barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+                    # remove non-alpha num chars from barcode
+                    if barcode and not barcode.isalnum():
+                        barcode = re.sub(r'\W+', '', barcode)
+
+                    order.barcode = barcode
 
             with self.session() as session:
                 participant = session.query(Participant).filter(
@@ -267,7 +284,7 @@ class MailKitOrderDao(UpdatableDao):
 
         return order
 
-    def insert_biobank_order(self, pid, resource):
+    def insert_biobank_order(self, pid, resource, session=None):
         obj = BiobankOrder()
         obj.participantId = int(pid)
         obj.created = clock.CLOCK.now()
@@ -277,10 +294,13 @@ class MailKitOrderDao(UpdatableDao):
         obj.orderOrigin = resource.get("orderOrigin")
         test = self.get(resource["id"])
         obj.mailKitOrders = [test]
-        bod = BiobankOrderDao()
         obj.samples = [BiobankOrderedSample(test="1SAL2", processingRequired=False, description="salivary pilot kit")]
         self._add_identifiers_and_main_id(obj, app_util.ObjectView(resource))
-        bod.insert(obj)
+        biobank_order_dao = BiobankOrderDao()
+        if session is None:
+            biobank_order_dao.insert(obj)
+        else:
+            biobank_order_dao.insert_with_session(session, obj)
 
     def insert_mayolink_create_order_history(self, pid, resource, request_payload, response_payload):
         mayolink_create_order_history = MayolinkCreateOrderHistory()

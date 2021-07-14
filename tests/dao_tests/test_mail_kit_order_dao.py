@@ -35,8 +35,8 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.put_delivery = load_test_data_json("dv_order_api_put_supply_delivery.json")
         self.post_request = load_test_data_json("dv_order_api_post_supply_request.json")
         self.put_request = load_test_data_json("dv_order_api_put_supply_request.json")
-        self.dao = MailKitOrderDao()
 
+        self.dao = MailKitOrderDao()
         self.code_dao = CodeDao()
         self.participant_dao = ParticipantDao()
         self.summary_dao = ParticipantSummaryDao()
@@ -53,7 +53,9 @@ class MailKitOrderDaoTestBase(BaseTestCase):
                     "reference_number": self.mayolink_barcode,
                     "received": "2019-04-05 12:00:00",
                     "number": "12345",
-                    "patient": {"medical_record_number": "WEB1ABCD1234"},
+                    "patient": {
+                        "medical_record_number": "WEB1ABCD1234"
+                    },
                 }
             }
         }
@@ -61,30 +63,133 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         mayolinkapi_patcher = mock.patch(
             "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
         )
-        mayolinkapi_patcher.start()
+
+        self.mock_mayolinkapi = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
     def test_insert_biobank_order(self):
-        payload = self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
+        version_one_barcode = self.put_request['extension'][0]['valueString']
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
         request_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        self.send_put("SupplyRequest/{}".format(location), request_data=self.put_request)
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
         payload = self.send_post(
-            "SupplyDelivery", request_data=self.post_delivery, expected_status=http.client.CREATED
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
         )
         post_response = json.loads(payload.response[0])
         location = payload.location.rsplit("/", 1)[-1]
-        put_response = self.send_put("SupplyDelivery/{}".format(location), request_data=self.put_delivery)
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
+
         self.assertEqual(request_response["version"], 1)
         self.assertEqual(post_response["version"], 3)
         self.assertEqual(post_response["meta"]["versionId"].strip("W/"), '"3"')
         self.assertEqual(put_response["version"], 4)
         self.assertEqual(put_response["meta"]["versionId"].strip("W/"), '"4"')
-        self.assertEqual(put_response["barcode"], "SABR90160121INA")
+        self.assertEqual(put_response["barcode"], version_one_barcode)
         self.assertEqual(put_response["order_id"], 999999)
 
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
+        mayo_order_payload = mayo_order_payload['order']
+        mayo_payload_fields = ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments']
+
+        self.assertEqual(mayo_order_payload['number'], version_one_barcode)
+        self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
+
+    def test_insert_biobank_order_version_two_barcode(self):
+        version_two_barcode = 'SABR9016012221IN'
+        self.put_request['extension'][0]['valueString'] = version_two_barcode
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
+        payload = self.send_post(
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
+
+        self.assertEqual(put_response["barcode"], version_two_barcode)
+
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
+        mayo_order_payload = mayo_order_payload['order']
+
+        mayo_request_test_data = mayo_order_payload['tests'][0]['test']
+        self.assertEqual(mayo_request_test_data['client_passthrough_fields']['field1'], version_two_barcode)
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field2'])
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field3'])
+        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field4'])
+        self.assertEqual(
+            ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests','comments'],
+            list(mayo_order_payload.keys())
+        )
+        self.assertIsNone(mayo_order_payload['number'])  # An empty number field should be given for version two
+
+        # Make sure the correct account is used for version two
+        self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
+
+    def test_biobank_bad_barcode(self):
+        bad_barcode = 'SABR90-1601-2221IN'
+        cleaned_barcode = 'SABR9016012221IN'
+
+        self.put_request['extension'][0]['valueString'] = bad_barcode
+
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+
+        self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request
+        )
+        payload = self.send_post(
+            "SupplyDelivery",
+            request_data=self.post_delivery,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+
+        put_response = self.send_put(
+            f"SupplyDelivery/{location}",
+            request_data=self.put_delivery
+        )
+
+        self.assertEqual(put_response["barcode"], cleaned_barcode)
+
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]['order']['tests'][0]['test']
+        self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], cleaned_barcode)
+
     def test_biobank_order_finalized_and_identifier_created(self):
-        self.send_post("SupplyRequest", request_data=self.post_request, expected_status=http.client.CREATED)
+        self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
         payload = self.send_post(
             "SupplyDelivery",
             request_data=load_test_data_json("dv_order_api_post_supply_delivery_alt.json"),

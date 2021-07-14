@@ -14,7 +14,7 @@ from rdr_service.participant_enums import WorkbenchResearcherDegree, WorkbenchRe
     WorkbenchInstitutionNonAcademic, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceAccessToCare, \
     WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, WorkbenchWorkspaceAge, \
-    WorkbenchWorkspaceRaceEthnicity
+    WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAccessTier
 
 
 class BQRWBWorkspaceGenerator(BigQueryGenerator):
@@ -73,6 +73,9 @@ class BQRWBWorkspaceGenerator(BigQueryGenerator):
             data['income_level'] = str(WorkbenchWorkspaceIncomeLevel(row.income_level))
             data['income_level_id'] = int(WorkbenchWorkspaceIncomeLevel(row.income_level))
 
+            data['access_tier'] = str(WorkbenchWorkspaceAccessTier(row.access_tier))
+            data['access_tier_id'] = int(WorkbenchWorkspaceAccessTier(row.access_tier))
+
             return BQRecord(schema=BQRWBWorkspaceSchema, data=data, convert_to_enum=convert_to_enum)
 
 
@@ -91,7 +94,7 @@ def bq_workspace_update(_id, project_id=None, gen=None, w_dao=None):
 
     bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
-        gen.save_bqrecord(_id, bqr, bqtable=BQRWBWorkspace, w_dao=w_dao,
+        gen.save_bqrecord(bqr.workspace_source_id, bqr, bqtable=BQRWBWorkspace, w_dao=w_dao,
                           w_session=w_session, project_id=project_id)
 
 
@@ -239,7 +242,7 @@ def bq_researcher_update(_id, project_id=None, gen=None, w_dao=None):
 
     bqr = gen.make_bqrecord(_id)
     with w_dao.session() as w_session:
-        gen.save_bqrecord(_id, bqr, bqtable=BQRWBResearcher, w_dao=w_dao,
+        gen.save_bqrecord(bqr.user_source_id, bqr, bqtable=BQRWBResearcher, w_dao=w_dao,
                           w_session=w_session, project_id=project_id)
 
 

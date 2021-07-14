@@ -29,3 +29,5 @@ class CodeSchema(Schema):
         schema_id = SchemaID.codes
         resource_uri = 'Codes'
         resource_pk_field = 'code_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

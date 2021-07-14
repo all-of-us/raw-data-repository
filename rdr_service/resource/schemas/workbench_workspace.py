@@ -8,7 +8,7 @@ from rdr_service.participant_enums import WorkbenchResearcherEthnicity, \
     WorkbenchWorkspaceAge, WorkbenchWorkspaceStatus, WorkbenchWorkspaceSexAtBirth, WorkbenchWorkspaceGenderIdentity, \
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
-    WorkbenchWorkspaceUserRole
+    WorkbenchWorkspaceUserRole, WorkbenchWorkspaceAccessTier
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -81,11 +81,15 @@ class WorkbenchWorkspaceSchema(Schema):
     is_reviewed = fields.Boolean()
 
     cdr_version = fields.String(validate=validate.Length(max=200))
+    access_tier = fields.EnumString(enum=WorkbenchWorkspaceAccessTier)
+    access_tier_id = fields.EnumInteger(enum=WorkbenchWorkspaceAccessTier)
 
     class Meta:
         schema_id = SchemaID.workbench_workspace
         resource_uri = 'WorkbenchWorkspace'
         resource_pk_field = 'workspace_source_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function)
 
 
 class WorkbenchWorkspaceUsersSchema(Schema):
@@ -105,3 +109,5 @@ class WorkbenchWorkspaceUsersSchema(Schema):
         schema_id = SchemaID.workbench_workspace_users
         resource_uri = 'WorkbenchWorkspaceUsers'
         resource_pk_field = 'user_id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

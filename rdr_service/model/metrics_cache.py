@@ -10,6 +10,7 @@ class MetricsEnrollmentStatusCache(Base):
   """
 
     __tablename__ = "metrics_enrollment_status_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     hpoId = Column("hpo_id", String(20), primary_key=True)
     hpoName = Column("hpo_name", String(255), primary_key=True)
@@ -26,6 +27,7 @@ class MetricsRaceCache(Base):
   """
 
     __tablename__ = "metrics_race_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     type = Column("type", String(50), primary_key=True)
     registeredFlag = Column("registered_flag", Boolean, nullable=False, primary_key=True)
@@ -48,6 +50,7 @@ class MetricsRaceCache(Base):
     noAncestryChecked = Column("no_ancestry_checked", Integer, nullable=False)
     participantOrigin = Column("participant_origin", String(50), primary_key=True)
     unsetNoBasics = Column('unset_no_basics', Integer, nullable=True)
+    """Flag for individuals that have no data in TheBasics"""
 
 
 class MetricsGenderCache(Base):
@@ -55,6 +58,7 @@ class MetricsGenderCache(Base):
   """
 
     __tablename__ = "metrics_gender_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     type = Column("type", String(50), primary_key=True)
     enrollment_status = Column("enrollment_status", String(50), primary_key=True, default="")
@@ -71,6 +75,7 @@ class MetricsAgeCache(Base):
   """
 
     __tablename__ = "metrics_age_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     enrollment_status = Column("enrollment_status", String(50), primary_key=True, default="")
     type = Column("type", String(50), primary_key=True)
@@ -87,6 +92,7 @@ class MetricsRegionCache(Base):
   """
 
     __tablename__ = "metrics_region_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     enrollmentStatus = Column("enrollment_status", String(50), primary_key=True, default="")
     hpoId = Column("hpo_id", String(20), primary_key=True)
@@ -102,6 +108,7 @@ class MetricsLanguageCache(Base):
   """
 
     __tablename__ = "metrics_language_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     enrollmentStatus = Column("enrollment_status", String(50), primary_key=True, default="")
     hpoId = Column("hpo_id", String(20), primary_key=True)
@@ -116,6 +123,7 @@ class MetricsLifecycleCache(Base):
     """
 
     __tablename__ = "metrics_lifecycle_cache"
+    __rdr_internal_table__ = True
     dateInserted = Column("date_inserted", UTCDateTime, default=clock.CLOCK.now, nullable=False, primary_key=True)
     enrollmentStatus = Column('enrollment_status', String(50), primary_key=True, default='')
     type = Column("type", String(50), primary_key=True)
@@ -143,9 +151,11 @@ class MetricsLifecycleCache(Base):
 
 class MetricsCacheJobStatus(Base):
     __tablename__ = "metrics_cache_job_status"
+    __rdr_internal_table__ = True
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     cacheTableName = Column("cache_table_name", String(100), nullable=False)
     type = Column("type", String(50))
     inProgress = Column("in_progress", Boolean, default=False, nullable=False)
-    complete = Column("complete", Boolean, default=False, nullable=False)
+    stage_one_complete = Column("stage_one_complete", Boolean, default=False, nullable=False)
+    stage_two_complete = Column("stage_two_complete", Boolean, default=False, nullable=False)
     dateInserted = Column("date_inserted", UTCDateTime, nullable=False)

@@ -1,6 +1,9 @@
 import calendar
 import datetime
 import email.utils
+import flask
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import logging
 from requests.exceptions import RequestException
 from time import sleep
@@ -18,6 +21,8 @@ from rdr_service.config import GAE_PROJECT
 
 _GMT = pytz.timezone("GMT")
 SCOPE = "https://www.googleapis.com/auth/userinfo.email"
+
+GLOBAL_CLIENT_ID_KEY = 'oauth_client_id'
 
 
 def handle_database_disconnect(err):
@@ -103,9 +108,11 @@ def get_oauth_id():
     currently verifies that the provided token
     is legitimate via google API.
     - performance
-        - could be cached
         - could be validated locally instead of with API
     '''
+    if flask.g and GLOBAL_CLIENT_ID_KEY in flask.g:
+        return getattr(flask.g, GLOBAL_CLIENT_ID_KEY)
+
     retries = 5
     use_tokeninfo_endpoint = False
 
@@ -138,6 +145,8 @@ def get_oauth_id():
                         logging.error('UserInfo endpoint did not return the email')
                         use_tokeninfo_endpoint = True
                     else:
+                        if flask.g:
+                            setattr(flask.g, GLOBAL_CLIENT_ID_KEY, user_email)
                         return user_email
                 else:
                     logging.info(f"Oauth failure: {response.content} (status: {response.status_code})")
@@ -166,6 +175,7 @@ def check_cron():
 def lookup_user_info(user_email):
     return config.getSettingJson(config.USER_INFO, {}).get(user_email)
 
+
 def get_account_origin_id():
     """
     Returns the clientId value set in the config for the user.
@@ -182,7 +192,7 @@ def get_account_origin_id():
     return client_id
 
 
-def _is_self_request():
+def is_self_request():
     return (
         request.remote_addr is None
         and config.getSettingJson(config.ALLOW_NONPROD_REQUESTS, False)
@@ -271,7 +281,7 @@ def auth_required(role_whitelist):
             # are allowed through (when enabled).
             acceptable_hosts = ("None", "testbed-test", "testapp", "localhost", "127.0.0.1")
             # logging.info(str(request.headers))
-            if not _is_self_request():
+            if not is_self_request():
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
                     raise Unauthorized(f"HTTPS is required for {appid}", www_authenticate='Bearer realm="rdr"')
                 check_auth(role_whitelist)
@@ -381,3 +391,15 @@ def datetime_as_naive_utc(value):
 
 def is_care_evo_and_not_prod():
     return GAE_PROJECT != "all-of-us-rdr-prod" and get_account_origin_id() == "careevolution"
+
+
+def install_rate_limiting(app):
+    cache_location = config.getSettingJson('cache_storage_location', default='memory://')
+    default_rate_limit = config.getSettingJson('default_rate_limit', default='15/second')
+    Limiter(
+        app,
+        key_func=lambda: get_oauth_id() or get_remote_address(),
+        default_limits=[default_rate_limit],
+        storage_uri=cache_location,
+        in_memory_fallback_enabled=True  # Use local memory if cache not found (throws an error otherwise)
+    )

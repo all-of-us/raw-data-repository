@@ -30,6 +30,10 @@ def not_in_prod():
     pass
 
 class AppUtilTest(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     def setUp(self):
         super().setUp()
 
@@ -362,6 +366,27 @@ class AppUtilTest(BaseTestCase):
         # Need a request context for app_util to get a token from
         with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
             self.assertEqual(expected_user_email, app_util.get_oauth_id())
+
+    @mock.patch('rdr_service.app_util.GAE_PROJECT', 'definitely_the_server')
+    @mock.patch('rdr_service.app_util.requests')
+    def test_caching_user_info(self, mock_requests):
+        """Make sure we only call Google's API once per request for getting the user info for the API token."""
+        auth_api_response = mock.MagicMock()
+        auth_api_response.status_code = 200
+
+        expected_user_email = 'auth@test.com'
+        auth_api_response.json.return_value = {'email': expected_user_email}
+        mock_requests.get.return_value = auth_api_response
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
+            self.assertEqual(expected_user_email, app_util.get_oauth_id())
+            self.assertEqual(expected_user_email, app_util.get_oauth_id())
+            mock_requests.get.assert_called_once()  # There should only be one call to get the user info
+
+        # Make sure another request will make another call to get the new requests user info
+        another_email = 'another@test.com'
+        auth_api_response.json.return_value = {'email': another_email}
+        with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
+            self.assertEqual(another_email, app_util.get_oauth_id())
 
 
 

@@ -80,6 +80,8 @@ class BQRWBWorkspaceSchema(BQSchema):
     is_reviewed = BQField('is_reviewed', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
     cdr_version = BQField('cdr_version', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    access_tier = BQField('access_tier', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    access_tier_id = BQField('access_tier_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQRWBWorkspace(BQTable):
@@ -91,14 +93,14 @@ class BQRWBWorkspace(BQTable):
 class BQRWBWorkspaceView(BQView):
     __viewname__ = 'v_rwb_workspace'
     __viewdescr__ = 'Research Workbench Workspace View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     # We need to build a SQL statement with all fields except sub-tables and remove duplicates.
     __sql__ = """
             SELECT
                 %%FIELD_LIST%%
             FROM (
-                SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+                SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
                   FROM `{project}`.{dataset}.rwb_workspace
               ) t
               WHERE t.modified = t.max_timestamp
@@ -113,12 +115,12 @@ class BQRWBWorkspaceView(BQView):
 class BQRWBWorkspaceRaceEthnicityView(BQView):
     __viewname__ = 'v_rwb_workspace_race_ethnicity'
     __viewdescr__ = 'Research Workbench Workspace Race Ethnicity View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(race_ethnicities) as nt
           WHERE t.modified = t.max_timestamp
@@ -128,12 +130,12 @@ class BQRWBWorkspaceRaceEthnicityView(BQView):
 class BQRWBWorkspaceAgeView(BQView):
     __viewname__ = 'v_rwb_workspace_age'
     __viewdescr__ = 'Research Workbench Workspace Age View'
-    __pk_id__ = 'id'
+    __pk_id__ = 'workspace_source_id'
     __table__ = BQRWBWorkspace
     __sql__ = """
-        SELECT t.id, t.created, t.modified, nt.*
+        SELECT t.id, t.created, t.modified, t.workspace_source_id, nt.*
           FROM (
-            SELECT *, MAX(modified) OVER (PARTITION BY id) AS max_timestamp
+            SELECT *, MAX(modified) OVER (PARTITION BY workspace_source_id) AS max_timestamp
               FROM `{project}`.{dataset}.rwb_workspace
           ) t cross join unnest(ages) as nt
           WHERE t.modified = t.max_timestamp

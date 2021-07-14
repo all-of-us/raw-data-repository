@@ -95,7 +95,7 @@ class SetupLocalDB:  # pylint: disable=too-many-instance-attributes
         if user:
             self.db_user = user
 
-        self.db_connection_string = f"mysql+mysqldb://{self.db_user}:{self.rdr_password}@127.0.0.1/?charset=utf8"
+        self.db_connection_string = f"mysql+mysqldb://{self.db_user}:{self.rdr_password}@127.0.0.1/?charset=utf8mb4"
         os.environ['DB_CONNECTION_STRING'] = self.db_connection_string
 
     def set_connection_info(self):

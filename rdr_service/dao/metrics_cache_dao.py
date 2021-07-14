@@ -28,7 +28,8 @@ from rdr_service.participant_enums import (
     GenderIdentity,
     MetricsAPIVersion,
     MetricsCacheType,
-    Stratifications
+    Stratifications,
+    MetricsCronJobStage
 )
 
 TEMP_TABLE_PREFIX = 'metrics_tmp_participant_'
@@ -37,17 +38,21 @@ class MetricsCacheJobStatusDao(UpdatableDao):
     def __init__(self):
         super(MetricsCacheJobStatusDao, self).__init__(MetricsCacheJobStatus)
 
-    def set_to_complete(self, obj):
+    def set_to_complete(self, cache_type, table_name, cronjob_time, stage_number):
         with self.session() as session:
+            if stage_number == MetricsCronJobStage.STAGE_ONE:
+                update_value = {MetricsCacheJobStatus.stage_one_complete: True}
+            else:
+                update_value = {MetricsCacheJobStatus.stage_two_complete: True}
             query = (
                 sqlalchemy
                     .update(MetricsCacheJobStatus)
-                    .where(and_(MetricsCacheJobStatus.dateInserted >= obj.dateInserted.replace(microsecond=0),
-                                MetricsCacheJobStatus.cacheTableName == obj.cacheTableName,
-                                MetricsCacheJobStatus.type == obj.type,
-                                MetricsCacheJobStatus.inProgress == obj.inProgress,
-                                MetricsCacheJobStatus.complete.is_(False)))
-                    .values({MetricsCacheJobStatus.complete: True})
+                    .where(and_(MetricsCacheJobStatus.dateInserted >= cronjob_time.replace(microsecond=0),
+                                MetricsCacheJobStatus.cacheTableName == table_name,
+                                MetricsCacheJobStatus.type == cache_type,
+                                MetricsCacheJobStatus.inProgress.is_(True)
+                                ))
+                    .values(update_value)
             )
             session.execute(query)
 
@@ -55,7 +60,19 @@ class MetricsCacheJobStatusDao(UpdatableDao):
         with self.session() as session:
             query = session.query(MetricsCacheJobStatus.dateInserted)
             query = query.filter(MetricsCacheJobStatus.cacheTableName == table_name,
-                                 MetricsCacheJobStatus.complete.is_(True))
+                                 MetricsCacheJobStatus.stage_one_complete.is_(True))
+            if cache_type:
+                query = query.filter(MetricsCacheJobStatus.type == str(cache_type))
+            query = query.order_by(desc(MetricsCacheJobStatus.id))
+            record = query.first()
+            return record
+
+    def get_last_complete_stage_two_data_inserted_time(self, table_name, cache_type=None):
+        with self.session() as session:
+            query = session.query(MetricsCacheJobStatus.dateInserted)
+            query = query.filter(MetricsCacheJobStatus.cacheTableName == table_name,
+                                 MetricsCacheJobStatus.stage_one_complete.is_(True),
+                                 MetricsCacheJobStatus.stage_two_complete.is_(True))
             if cache_type:
                 query = query.filter(MetricsCacheJobStatus.type == str(cache_type))
             query = query.order_by(desc(MetricsCacheJobStatus.id))
@@ -483,6 +500,20 @@ class MetricsGenderCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsGenderCache)
+                    .where(and_(MetricsGenderCache.dateInserted == last_date_inserted_time,
+                           MetricsGenderCache.date >= start_date,
+                           MetricsGenderCache.date <= end_date,
+                           MetricsGenderCache.type == self.cache_type)
+                           )
+                    .values({MetricsGenderCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -490,9 +521,9 @@ class MetricsGenderCacheDao(BaseDao):
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
                 delete_sql = """
-                  delete from metrics_gender_cache where date_inserted < :seven_days_ago
+                  delete from metrics_gender_cache where date_inserted < :seven_days_ago and type = :type
                 """
-                params = {'seven_days_ago': seven_days_ago}
+                params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):
@@ -877,6 +908,20 @@ class MetricsAgeCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsAgeCache)
+                    .where(and_(MetricsAgeCache.dateInserted == last_date_inserted_time,
+                                MetricsAgeCache.date >= start_date,
+                                MetricsAgeCache.date <= end_date,
+                                MetricsAgeCache.type == self.cache_type)
+                           )
+                    .values({MetricsAgeCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -884,9 +929,9 @@ class MetricsAgeCacheDao(BaseDao):
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
                 delete_sql = """
-          delete from metrics_age_cache where date_inserted < :seven_days_ago
+          delete from metrics_age_cache where date_inserted < :seven_days_ago and type = :type
         """
-                params = {'seven_days_ago': seven_days_ago}
+                params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):
@@ -1335,6 +1380,20 @@ class MetricsRaceCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsRaceCache)
+                    .where(and_(MetricsRaceCache.dateInserted == last_date_inserted_time,
+                                MetricsRaceCache.date >= start_date,
+                                MetricsRaceCache.date <= end_date,
+                                MetricsRaceCache.type == self.cache_type)
+                           )
+                    .values({MetricsRaceCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -1342,9 +1401,9 @@ class MetricsRaceCacheDao(BaseDao):
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
                 delete_sql = """
-                  delete from metrics_race_cache where date_inserted < :seven_days_ago
+                  delete from metrics_race_cache where date_inserted < :seven_days_ago and type = :type
                 """
-                params = {'seven_days_ago': seven_days_ago}
+                params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):
@@ -2195,6 +2254,7 @@ class MetricsLifecycleCacheDao(BaseDao):
                                   func.sum(MetricsLifecycleCache.consentEnrollment)
                                   .label('primaryConsent'))
             query = query.filter(MetricsLifecycleCache.dateInserted == last_inserted_date)
+            query = query.filter(MetricsLifecycleCache.type == self.cache_type)
             query = query.filter(MetricsLifecycleCache.date >= start_date)
             query = query.filter(MetricsLifecycleCache.date <= end_date)
 
@@ -2223,6 +2283,20 @@ class MetricsLifecycleCacheDao(BaseDao):
         }
         return operation_funcs[self.cache_type](buckets)
 
+    def update_historical_cache_data(self, new_date_inserted_time, last_date_inserted_time, start_date, end_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy
+                    .update(MetricsLifecycleCache)
+                    .where(and_(MetricsLifecycleCache.dateInserted == last_date_inserted_time,
+                                MetricsLifecycleCache.date >= start_date,
+                                MetricsLifecycleCache.date <= end_date,
+                                MetricsLifecycleCache.type == self.cache_type)
+                           )
+                    .values({MetricsLifecycleCache.dateInserted: new_date_inserted_time})
+            )
+            session.execute(query)
+
     def delete_old_records(self, n_days_ago=7):
         with self.session() as session:
             last_inserted_record = self.get_serving_version_with_session(session)
@@ -2230,9 +2304,9 @@ class MetricsLifecycleCacheDao(BaseDao):
                 last_date_inserted = last_inserted_record.dateInserted
                 seven_days_ago = last_date_inserted - datetime.timedelta(days=n_days_ago)
                 delete_sql = """
-          delete from metrics_lifecycle_cache where date_inserted < :seven_days_ago
+          delete from metrics_lifecycle_cache where date_inserted < :seven_days_ago and type = :type
         """
-                params = {'seven_days_ago': seven_days_ago}
+                params = {'seven_days_ago': seven_days_ago, 'type': self.cache_type}
                 session.execute(delete_sql, params)
 
     def to_metrics_client_json(self, result_set):

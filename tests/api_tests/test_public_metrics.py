@@ -14,17 +14,8 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.calendar_dao import CalendarDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.hpo_dao import HPODao
-from rdr_service.dao.metrics_cache_dao import (
-    MetricsAgeCacheDao,
-    MetricsEnrollmentStatusCacheDao,
-    MetricsGenderCacheDao,
-    MetricsLanguageCacheDao,
-    MetricsLifecycleCacheDao,
-    MetricsRaceCacheDao,
-    MetricsRegionCacheDao,
-)
+from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.dao.organization_dao import OrganizationDao
-from rdr_service.dao.participant_counts_over_time_service import ParticipantCountsOverTimeService
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao, ParticipantSummaryDao
@@ -36,7 +27,6 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantGenderAnswers, ParticipantSummary
 from rdr_service.participant_enums import (
     EnrollmentStatus,
-    MetricsCacheType,
     OrganizationType,
     TEST_HPO_ID,
     TEST_HPO_NAME,
@@ -46,6 +36,8 @@ from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.mysql_helper_data import PITT_HPO_ID
 
 TIME_1 = datetime.datetime(2017, 12, 31)
+TIME_2 = datetime.datetime(2018, 1, 15)
+TIME_3 = datetime.datetime(2018, 2, 10)
 
 
 def _questionnaire_response_url(participant_id):
@@ -296,10 +288,7 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = "&stratification=ENROLLMENT_STATUS" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -460,10 +449,7 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        calculate_participant_metrics()
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -821,10 +807,12 @@ class PublicMetricsApiTest(BaseTestCase):
             )
         )
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsGenderCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=GENDER_IDENTITY" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -1104,7 +1092,6 @@ class PublicMetricsApiTest(BaseTestCase):
         )
 
     def test_public_metrics_get_age_range_api(self):
-
         dob1 = datetime.date(1978, 10, 10)
         dob2 = datetime.date(1988, 10, 10)
         dob3 = datetime.date(1988, 10, 10)
@@ -1155,10 +1142,12 @@ class PublicMetricsApiTest(BaseTestCase):
         p_ghost = Participant(participantId=5, biobankId=8, isGhostId=True)
         self._insert(p_ghost, "Ghost", "G", "AZ_TUCSON", "AZ_TUCSON_BANNER_HEALTH", time_int=self.time1, dob=dob3)
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsAgeCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=AGE_RANGE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1438,10 +1427,7 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time5,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsEnrollmentStatusCacheDao()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = "&stratification=TOTAL" "&startDate=2018-01-01" "&endDate=2018-01-08"
 
@@ -1511,10 +1497,7 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        calculate_participant_metrics()
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -1726,11 +1709,12 @@ class PublicMetricsApiTest(BaseTestCase):
         setup_participant(self.time2, [RACE_AIAN_CODE], self.az_provider_link)
         setup_participant(self.time3, [RACE_AIAN_CODE, RACE_MENA_CODE], self.az_provider_link)
 
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
 
-        service = ParticipantCountsOverTimeService()
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.METRICS_V2_API))
-        service.refresh_data_for_metrics_cache(MetricsRaceCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API))
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=RACE" "&startDate=2017-12-31" "&endDate=2018-01-08" "&version=2"
 
@@ -2009,10 +1993,7 @@ class PublicMetricsApiTest(BaseTestCase):
             state_id=1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsRegionCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs1 = "&stratification=GEO_STATE" "&endDate=2017-12-31"
 
@@ -2178,10 +2159,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs1 = "&stratification=LIFECYCLE" "&endDate=2018-01-03"
 
@@ -2310,10 +2293,7 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time4,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsLanguageCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
         qs = "&stratification=LANGUAGE" "&startDate=2017-12-30" "&endDate=2018-01-03"
 
         results = self.send_get("PublicMetrics", query_string=qs)
@@ -2407,10 +2387,12 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        with FakeClock(TIME_2):
+            calculate_participant_metrics()
+
+        # test copy historical cache for stage two
+        with FakeClock(TIME_3):
+            calculate_participant_metrics()
 
         qs = "&stratification=PRIMARY_CONSENT" "&startDate=2017-12-31" "&endDate=2018-01-08"
 
@@ -2505,10 +2487,7 @@ class PublicMetricsApiTest(BaseTestCase):
             time_fp_stored=self.time1,
         )
 
-        service = ParticipantCountsOverTimeService()
-        dao = MetricsLifecycleCacheDao(MetricsCacheType.PUBLIC_METRICS_EXPORT_API)
-        service.init_tmp_table()
-        service.refresh_data_for_metrics_cache(dao)
+        calculate_participant_metrics()
 
         qs = "&stratification=EHR_METRICS" "&startDate=2017-12-31" "&endDate=2018-01-08"
 

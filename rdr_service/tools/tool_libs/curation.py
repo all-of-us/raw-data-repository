@@ -14,7 +14,8 @@ from typing import Type
 from rdr_service import config
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
-from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean, TemporaryQuestionnaireResponse
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
@@ -160,6 +161,16 @@ class CurationExportClass(ToolBase):
         _logger.info(f'exporting {export_name}')
         gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
 
+    def export_participant_id_map(self):
+        dao = ParticipantDao()
+        export_sql = dao.get_participant_id_mapping(is_sql=True)
+
+        export_name = 'participant_id_mapping'
+        cloud_file = f'gs://{self.args.export_path}/{export_name}.csv'
+
+        _logger.info(f'exporting {export_name}')
+        gcp_sql_export_csv(self.args.project, export_sql, cloud_file, database='rdr')
+
     def run_curation_export(self):
         # Because there are no models for the data stored in the 'cdm' database, we'll
         # just use a standard MySQLDB connection.
@@ -180,6 +191,7 @@ class CurationExportClass(ToolBase):
             self.export_table(table)
 
         self.export_cope_map()
+        self.export_participant_id_map()
 
         for table in self.problematic_tables:
             self.export_table(table)
@@ -232,9 +244,6 @@ class CurationExportClass(ToolBase):
                 QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
                 QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
             )
-        ).outerjoin(
-            TemporaryQuestionnaireResponse,
-            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             Code,
             Code.codeId == QuestionnaireConcept.codeId
@@ -251,8 +260,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
-                TemporaryQuestionnaireResponse.duplicate == 0)
+            QuestionnaireResponse.isDuplicate.is_(False)
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -270,6 +278,7 @@ class CurationExportClass(ToolBase):
         column_map = {
             SrcClean.participant_id: Participant.participantId,
             SrcClean.research_id: Participant.researchId,
+            SrcClean.external_id: Participant.externalId,
             SrcClean.survey_name: module_code.value,
             SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
             SrcClean.question_ppi_code: question_code.shortValue,
@@ -321,9 +330,6 @@ class CurationExportClass(ToolBase):
             HPO
         ).join(
             QuestionnaireResponse
-        ).outerjoin(
-            TemporaryQuestionnaireResponse,
-            TemporaryQuestionnaireResponse.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
         ).join(
             QuestionnaireConcept,
             and_(
@@ -366,8 +372,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            or_(TemporaryQuestionnaireResponse.duplicate.is_(None),
-                TemporaryQuestionnaireResponse.duplicate == 0)
+            QuestionnaireResponse.isDuplicate.is_(False)
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code

@@ -9,11 +9,7 @@ from rdr_service.genomic import (
     genomic_center_manifest_handler
 )
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicJob,
-    GenomicManifestTypes,
-    GenomicSubProcessResult)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
 import rdr_service.config as config
 
 
@@ -155,26 +151,30 @@ def ingest_genomic_centers_metrics_files(provider=None):
         controller.ingest_gc_metrics()
 
 
-def reconcile_metrics_vs_genotyping_data(provider=None):
+def reconcile_metrics_vs_array_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Genotyping Files (Array) vs Listed in Manifest.
+    Array Files vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_GENOTYPING_DATA,
+    with GenomicJobController(GenomicJob.RECONCILE_ARRAY_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_genotyping_data()
+        controller.run_reconciliation_to_data(
+            genome_type='array'
+        )
 
 
-def reconcile_metrics_vs_sequencing_data(provider=None):
+def reconcile_metrics_vs_wgs_data(provider=None):
     """
     Entrypoint for GC Metrics File reconciliation
-    Sequencing Files (WGS) vs Listed in Manifest.
+    WGS Files vs Listed in Manifest.
     """
-    with GenomicJobController(GenomicJob.RECONCILE_SEQUENCING_DATA,
+    with GenomicJobController(GenomicJob.RECONCILE_WGS_DATA,
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
-        controller.run_reconciliation_to_sequencing_data()
+        controller.run_reconciliation_to_data(
+            genome_type='wgs'
+        )
 
 
 def aw3_array_manifest_workflow():
@@ -201,7 +201,7 @@ def aw4_array_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
+                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[0]
                               ) as controller:
         controller.run_general_ingestion_workflow()
 
@@ -212,7 +212,7 @@ def aw4_wgs_manifest_workflow():
     """
     with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[1])
+                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[1],
                               ) as controller:
         controller.run_general_ingestion_workflow()
 
@@ -233,7 +233,8 @@ def gem_a2_manifest_workflow():
     Entrypoint for GEM A2 Workflow
     """
     with GenomicJobController(GenomicJob.GEM_A2_MANIFEST,
-                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
+                              bucket_name=config.GENOMIC_GEM_BUCKET_NAME,
+                              sub_folder_name=config.GENOMIC_GEM_A2_MANIFEST_SUBFOLDER) as controller:
         controller.reconcile_report_states(_genome_type=config.GENOME_TYPE_ARRAY)
         controller.run_general_ingestion_workflow()
 
@@ -302,7 +303,7 @@ def scan_and_complete_feedback_records():
     """
     with GenomicJobController(GenomicJob.FEEDBACK_SCAN) as controller:
         # Get feedback records that are complete
-        fb_recs = controller.get_feedback_complete_records()
+        fb_recs = controller.get_feedback_records_to_send()
 
         for f in fb_recs:
             create_aw2f_manifest(f)
@@ -336,18 +337,16 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
         raise AttributeError("file_data is required to execute manifest file pipeline")
 
     with GenomicJobController(GenomicJob.GENOMIC_MANIFEST_FILE_TRIGGER,
-                              task_data=task_data, bq_project_id=project_id) as controller:
+                              task_data=task_data,
+                              bq_project_id=project_id) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
-
         if task_data.file_data.create_feedback_record:
             controller.insert_genomic_manifest_feedback_record(manifest_file)
-
         controller.job_result = GenomicSubProcessResult.SUCCESS
 
     if task_data.job:
         task_data.manifest_file = manifest_file
         dispatch_genomic_job_from_task(task_data)
-
     else:
         return manifest_file
 
@@ -360,8 +359,15 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     :param _task_data: dictionary of metadata needed by the controller
     """
 
-    if _task_data.job in (GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION, GenomicJob.AW5_ARRAY_MANIFEST,
-                          GenomicJob.AW5_WGS_MANIFEST, GenomicJob.AW1F_MANIFEST):
+    if _task_data.job in (
+        GenomicJob.AW1_MANIFEST,
+        GenomicJob.AW1F_MANIFEST,
+        GenomicJob.METRICS_INGESTION,
+        GenomicJob.AW4_ARRAY_WORKFLOW,
+        GenomicJob.AW4_WGS_WORKFLOW,
+        GenomicJob.AW5_ARRAY_MANIFEST,
+        GenomicJob.AW5_WGS_MANIFEST
+    ):
 
         # Ingestion Job
         with GenomicJobController(_task_data.job,
@@ -370,7 +376,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
-
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:
@@ -395,12 +400,13 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
                 project_id=project_id
             )
 
-    else:
-        logging.error(f'No task for {_task_data.job}')
 
-
-def load_awn_manifest_into_raw_table(file_path, manifest_type, project_id=None, provider=None):
-
+def load_awn_manifest_into_raw_table(
+    file_path,
+    manifest_type,
+    project_id=None,
+    provider=None
+):
     jobs = {
         "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
         "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
@@ -409,5 +415,4 @@ def load_awn_manifest_into_raw_table(file_path, manifest_type, project_id=None, 
     with GenomicJobController(jobs[manifest_type],
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
-
         controller.load_raw_awn_data_from_filepath(file_path)

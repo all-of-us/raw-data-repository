@@ -5,18 +5,12 @@
 from enum import Enum
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQField, BQFieldTypeEnum, BQFieldModeEnum
 
-from rdr_service.participant_enums import (
-    GenomicSetStatus as _GenomicSetStatus,
-    GenomicSetMemberStatus as _GenomicSetMemberStatus,
-    GenomicValidationFlag as _GenomicValidationFlag,
-    GenomicSubProcessStatus as _GenomicSubProcessStatus,
-    GenomicSubProcessResult as _GenomicSubProcessResult,
-    GenomicJob as _GenomicJob,
-    GenomicWorkflowState as _GenomicWorkflowState,
-    GenomicQcStatus as _GenomicQcStatus,
-    GenomicContaminationCategory as _GenomicContaminationCategory,
-    GenomicManifestTypes as _GenomicManifestTypes
-)
+from rdr_service.genomic_enums import GenomicSetStatus as _GenomicSetStatus, \
+    GenomicSetMemberStatus as _GenomicSetMemberStatus, GenomicValidationFlag as _GenomicValidationFlag, \
+    GenomicJob as _GenomicJob, GenomicWorkflowState as _GenomicWorkflowState, \
+    GenomicSubProcessStatus as _GenomicSubProcessStatus, GenomicSubProcessResult as _GenomicSubProcessResult, \
+    GenomicManifestTypes as _GenomicManifestTypes, GenomicContaminationCategory as _GenomicContaminationCategory, \
+    GenomicQcStatus as _GenomicQcStatus
 
 # Convert weird participant_enums to standard python enums.
 GenomicSetStatusEnum = Enum('GenomicSetStatusEnum', _GenomicSetStatus.to_dict())
@@ -169,9 +163,9 @@ class BQGenomicSetMemberSchema(BQSchema):
     fingerprint_path = BQField('fingerprint_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     aw1_file_processed_id = BQField('aw1_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     aw2_file_processed_id = BQField('aw2_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    aw2f_file_processed_id = BQField('aw2f_file_processed_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     dev_note = BQField('dev_note', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     biobank_id_str = BQField('biobank_id_str', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    aw2f_job_run_id = BQField('aw2f_job_run_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicSetMember(BQTable):
@@ -278,6 +272,7 @@ class BQGenomicManifestFileSchema(BQSchema):
     rdr_processing_complete_date = BQField('rdr_processing_complete_date', BQFieldTypeEnum.DATETIME,
                                            BQFieldModeEnum.NULLABLE)
     ignore_flag = BQField('ignore_flag', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    file_name = BQField('file_name', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQGenomicManifestFile(BQTable):
@@ -300,8 +295,6 @@ class BQGenomicManifestFileView(BQView):
       ) gmf
     WHERE gmf.rn = 1 and gmf.ignore_flag = 0
     """
-
-
 
 
 class BQGenomicManifestFeedbackSchema(BQSchema):
@@ -418,12 +411,23 @@ class BQGenomicGCValidationMetricsSchema(BQSchema):
     idat_red_md5_deleted = BQField('idat_red_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     vcf_md5_deleted = BQField('vcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     vcf_tbi_deleted = BQField('vcf_tbi_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    drc_sex_concordance = BQField('drc_sex_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_contamination = BQField('drc_contamination', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_mean_coverage = BQField('drc_mean_coverage', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    drc_fp_concordance = BQField('drc_fp_concordance', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_path = BQField('gvcf_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_received = BQField('gvcf_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_deleted = BQField('gvcf_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_path = BQField('gvcf_md5_path', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_received = BQField('gvcf_md5_received', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    gvcf_md5_deleted = BQField('gvcf_md5_deleted', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    drc_call_rate = BQField('drc_call_rate', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+
 
 class BQGenomicGCValidationMetrics(BQTable):
     """  BigQuery Table """
     __tablename__ = 'genomic_gc_validation_metrics'
     __schema__ = BQGenomicGCValidationMetricsSchema
-
 
 
 class BQGenomicGCValidationMetricsView(BQView):

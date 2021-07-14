@@ -19,31 +19,40 @@ class PhysicalMeasurements(Base):
     __tablename__ = "physical_measurements"
     physicalMeasurementsId = Column("physical_measurements_id", Integer, primary_key=True, autoincrement=False)
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False)
+    """ID of the participant that the physical measurements are for"""
     created = Column("created", UTCDateTime, nullable=False)
     final = Column("final", Boolean, nullable=False)
-    # The ID that these measurements are an amendment of (points from new to old)
+    """
+    A flag indicating whether the physical measurements have been amended. Set to 1/True when the
+    measurements are created, and then set to 0/False if the measurements are amended.
+    """
     amendedMeasurementsId = Column(
         "amended_measurements_id", Integer, ForeignKey("physical_measurements.physical_measurements_id")
     )
+    """The ID that these measurements are an amendment of (points from new to old)"""
     logPositionId = Column("log_position_id", Integer, ForeignKey("log_position.log_position_id"), nullable=False)
-    # The site that created the physical measurements.
     createdSiteId = Column("created_site_id", Integer, ForeignKey("site.site_id"))
-    # The username / email of the HealthPro user that created the physical measurements.
+    """The site that created the physical measurements."""
     createdUsername = Column("created_username", String(255))
-    # The site that finalized the physical measurements.
+    """The username / email of the HealthPro user that created the physical measurements."""
     finalizedSiteId = Column("finalized_site_id", Integer, ForeignKey("site.site_id"))
-    # The username / email of the HealthPro user that finalized the physical measurements.
+    """The site that finalized the physical measurements."""
     finalizedUsername = Column("finalized_username", String(255))
+    """The username / email of the HealthPro user that finalized the physical measurements."""
     logPosition = relationship("LogPosition")
     finalized = Column("finalized", UTCDateTime)
-    # Restored/amended measurements will be UNSET.
+    """The time at which the physical measurements were finalized"""
     status = Column("status", Enum(PhysicalMeasurementsStatus))
+    """status of the physical measurements data (restored/amended measurements will be UNSET)"""
     cancelledUsername = Column("cancelled_username", String(255))
     cancelledSiteId = Column("cancelled_site_id", Integer, ForeignKey("site.site_id"))
     cancelledTime = Column("cancelled_time", UTCDateTime)
+    """The datetime at which the physical measurements were cancelled"""
     reason = Column("reason", UnicodeText)
+    """If measurements are edited or cancelled, user notes to detail change"""
     measurements = relationship("Measurement", cascade="all, delete-orphan")
     resource = Column("resource", JSON, nullable=True)
+    """Original resource value; whole payload request that was sent"""
 
 
 class Measurement(Base):
@@ -53,6 +62,7 @@ class Measurement(Base):
     # Note: measurementId will be physicalMeasurementsId * 100 + an index. (This way we don't have to
     # generate N random unique IDs.)
     measurementId = Column("measurement_id", BIGINT, primary_key=True, autoincrement=False)
+    """A unique identifier for each Measurement (definition from CDR)"""
     physicalMeasurementsId = Column(
         "physical_measurements_id",
         Integer,
@@ -69,6 +79,7 @@ class Measurement(Base):
     valueUnit = Column("value_unit", String(255))
     valueCodeSystem = Column("value_code_system", String(255))
     valueCodeValue = Column("value_code_value", String(255))
+    valueCodeDescription = Column("value_code_description", String(512))
     valueDateTime = Column("value_datetime", UTCDateTime)
     parentId = Column("parent_id", BIGINT, ForeignKey("measurement.measurement_id"))
     qualifierId = Column("qualifier_id", BIGINT, ForeignKey("measurement.measurement_id"))

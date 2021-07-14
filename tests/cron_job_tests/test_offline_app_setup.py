@@ -11,6 +11,14 @@ class OfflineAppTest(BaseTestCase):
         self.offline_test_client = app.test_client()
         self.url_prefix = OFFLINE_PREFIX
 
+    def send_cron_request(self, path):
+        self.send_get(
+            path,
+            test_client=self.offline_test_client,
+            prefix=self.url_prefix,
+            headers={'X-Appengine-Cron': True}
+        )
+
     def test_offline_http_exceptions_get_logged(self):
         """Make sure HTTPException are logged when thrown"""
 
@@ -35,3 +43,14 @@ class OfflineAppTest(BaseTestCase):
 
             traceback = error_log_call.args[0]
             self.assertIn('throw_exception', traceback, "Traceback should show where the error was raised")
+
+    @mock.patch('rdr_service.offline.requests_log_migrator.RequestsLogMigrator.migrate_latest_requests_logs')
+    def test_request_log_migrator_route(self, mock_migrate_call):
+        test_db_name = 'test_db_name'
+        self.send_cron_request(f'MigrateRequestsLog/{test_db_name}')
+        mock_migrate_call.assert_called()
+
+    @mock.patch('rdr_service.services.data_quality.DataQualityChecker.run_data_quality_checks')
+    def test_data_quality_check_route(self, mock_checker):
+        self.send_cron_request(f'DataQualityChecks')
+        mock_checker.assert_called()

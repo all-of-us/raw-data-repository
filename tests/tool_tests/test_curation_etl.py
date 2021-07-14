@@ -40,14 +40,15 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def _setup_questionnaire_response(self, participant, questionnaire, authored=datetime(2020, 3, 15),
                                       created=datetime(2020, 3, 15), indexed_answers=None,
-                                      status=QuestionnaireResponseStatus.COMPLETED):
+                                      status=QuestionnaireResponseStatus.COMPLETED, is_duplicate=False):
         questionnaire_response = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             questionnaireId=questionnaire.questionnaireId,
             questionnaireVersion=questionnaire.version,
             authored=authored,
             created=created,
-            status=status
+            status=status,
+            isDuplicate=is_duplicate
         )
 
         if indexed_answers is None:
@@ -66,15 +67,6 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             )
 
         return questionnaire_response
-
-    def _setup_duplicate_questionnaire_response(self, questionnaire_response, duplicate=1, removed=0):
-        duplicate_qr = self.data_generator.create_database_duplicate_temp_questionnaire_response(
-            questionnaire_response,
-            duplicate=duplicate,
-            removed=removed
-        )
-
-        return duplicate_qr
 
     @staticmethod
     def run_cdm_data_generation():
@@ -311,20 +303,23 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             self.questionnaire
         )
 
-        questionnaire_response_dup = self._setup_questionnaire_response(
+        # Create another response that is a duplicate
+        duplicate_response = self._setup_questionnaire_response(
             participant,
-            self.questionnaire
+            self.questionnaire,
+            is_duplicate=True
         )
-
-        self._setup_duplicate_questionnaire_response(questionnaire_response_dup)
 
         self.run_cdm_data_generation()
 
+        # Make sure no answers from the duplicate response made it into SrcClean
         src_clean_answers = self.session.query(SrcClean).filter(
             SrcClean.participant_id == participant.participantId
         ).all()
-
-        self.assertEqual(4, len(src_clean_answers))
+        self.assertFalse(any(
+            answer_record.questionnaire_response_id == duplicate_response.questionnaireResponseId
+            for answer_record in src_clean_answers
+        ))
 
     def test_zip_code_maps_to_string_field(self):
         """

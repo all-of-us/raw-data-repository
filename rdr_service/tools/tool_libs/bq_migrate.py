@@ -32,7 +32,6 @@ LJUST_WIDTH = 75
 
 
 class BQMigration(object):
-
     _db_config = None
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -222,6 +221,49 @@ class BQMigration(object):
 
         return so
 
+    def compare_table_schemas (self, table_id, local_schema, remote_schema):
+        local = {}
+        remote = {}
+
+        # For selectively overriding default colorization of info logging in schema comparison output
+        BLUE = '\033[94m'
+        END_COLOR = '\033[0m'
+
+        # Must at least have a local schema to compare
+        if not local_schema:
+            _logger.error(f'Missing local schema definition for {table_id}')
+            return
+        else:
+            for field in json.loads(local_schema.to_json()):
+                local[field['name']] = (field['type'], field['mode'])
+
+        if remote_schema:
+            for field in json.loads(remote_schema.to_json()):
+                remote[field['name']] = (field['type'], field['mode'])
+        else:
+            # Remote schema doesn't exist; assume it's a new table.  List the column definitions and return
+            _logger.info(f'{BLUE}New table: {table_id}{END_COLOR}')
+            for col in local.keys():
+                _logger.info(f'\t{BLUE} {col} {local[col]}{END_COLOR}')
+            return
+
+        # Make a merged list of all the column keys from both local and remote schemas and compare column definitions
+        columns = sorted(local.keys() | remote.keys())
+        for col in columns:
+            if col in local.keys() and col in remote.keys():
+                if local[col] != remote[col]:
+                    # The field type or mode must have been altered in the latest local schema definition;
+                    # Will require dropping/recreating the BigQuery table
+                    _logger.error(f'\t{table_id} column {col} changed from {remote[col]} to {local[col]}')
+            elif col in local.keys() and col not in remote.keys():
+                # A new column in the local schema definition; a "safe" update to apply to existing BigQuery table
+                _logger.info(f'\t{BLUE}{table_id} column {col} {local[col]} added{END_COLOR}')
+            else:
+                # A column from the existing BigQuery table no longer exists in the local schema definition;
+                # Will require dropping/recreating the BigQuery table
+                _logger.error(f'\t{table_id} column {col} {remote[col]} removed')
+
+
     def run(self):
         """
         Main program process
@@ -240,12 +282,11 @@ class BQMigration(object):
             mod = importlib.import_module(path, var_name)
             mod_class = getattr(mod, var_name)
             bq_table = mod_class()
-            ls_obj = bq_table.get_schema()
-
             # See if we need to skip this table
             if not migrate_all and bq_table.get_name().lower() not in migrate_list:
                 continue
 
+            ls_obj = bq_table.get_schema()
             if self.args.show_schemas:
                 print('Schema: {0}\n'.format(bq_table.get_name()))
                 print(ls_obj.to_json())
@@ -258,7 +299,8 @@ class BQMigration(object):
 
                 if dataset_id is None:
                     _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'disabled'))
+                                                     format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'),
+                                                     'disabled'))
                     continue
 
                 if self.args.delete:
@@ -269,8 +311,9 @@ class BQMigration(object):
                 rs_json = self.get_table_schema(project_id, dataset_id, table_id)
 
                 if not rs_json:
-                    if self.args.check_schemas:
-                        _logger.info('{0}: {1}.{2} does not exist'.format(project_id, dataset_id, table_id))
+                    if self.args.dry_run:
+                        # A new table;  compare_table_schemas() will display the new schema details
+                        self.compare_table_schemas(table_id, ls_obj, None)
                         continue
                     else:
                         self.create_table(bq_table, project_id, dataset_id, table_id)
@@ -278,34 +321,31 @@ class BQMigration(object):
                 else:
                     try:
                         rs_obj = BQSchema(json.loads(rs_json))
-
-                        # The --check-schemas argument does a cursory check that the local schema contains the same
-                        # fields as the existing BigQuery table. If a mismatch is found and the BigQuery table has a
-                        # field the local schema does not, the BigQuery table will need to be deleted and recreated
-                        # rather than updated, when adding new fields.
-                        if self.args.check_schemas:
-                            _logger.info(f'Checking {project_id}:{dataset_id}.{table_id} schema...')
-                            for attr in dir(rs_obj):
-                                if attr.startswith('_'):
-                                    continue
-                                if not hasattr(ls_obj, attr):
-                                    _logger.error(f'\t{attr} missing from local {table_id} schema ')
+                        if self.args.dry_run:
+                            # New/added columns can be handled by re-running the command without --dry-run
+                            # Changed or removed columns mean the table should be dropped (run with --delete) first
+                            _logger.info(f'Comparing {project_id}:{dataset_id}.{table_id} schema changes...')
+                            self.compare_table_schemas(table_id, ls_obj, rs_obj)
                             continue
                     except ValueError:
                         # Something is there in BigQuery for this schema, but it is bad.
                         # If this happens, the table can be reset by deleting it
-                        # and then creating again it using this tool.
+                        # and then creating again it using this tool
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), '!!! corrupt !!!'))
+                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
+                                                                                                        '.'),
+                                                         '!!! corrupt !!!'))
                         continue
 
                     if rs_obj == ls_obj:
                         _logger.info('  {0}: {1}'.format('{0}.{1}.{2}'.
-                                format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH, '.'), 'unchanged'))
+                                                         format(project_id, dataset_id, table_id).ljust(LJUST_WIDTH,
+                                                                                                        '.'),
+                                                         'unchanged'))
                     else:
                         self.modify_table(bq_table, project_id, dataset_id, table_id)
 
-        if self.args.check_schemas:
+        if self.args.dry_run:
             return 0
 
         # Loop through view schemas
@@ -362,7 +402,8 @@ def run():
     parser.add_argument('--service-account', help='gcp iam service account', required=False)  # noqa
     parser.add_argument('--delete', help="delete schemas from BigQuery", default=False, action='store_true')  # noqa
     parser.add_argument('--show-schemas', help='print schemas to stdout', default=False, action='store_true')  # noqa
-    parser.add_argument('--check-schemas', help='Check if local schema is incompatible with existing BQ table schema',
+    parser.add_argument('--dry-run',
+                        help='(tables only) Compare local schema to existing BigQuery table schema without migrating',
                         default=False, action='store_true')  # noqa
     parser.add_argument('--names', help="a comma delimited list of table/view names.",
                         default='all', metavar='[TABLE|VIEW]')  # noqa

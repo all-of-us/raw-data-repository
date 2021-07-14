@@ -6,6 +6,7 @@
 # superfluous-parens
 # pylint: disable=W0612
 from dateutil import parser
+from google.auth.environment_vars import CREDENTIALS
 import glob
 import json
 import logging
@@ -182,6 +183,8 @@ def gcp_cleanup(account):
     for filename in files:
         service_key_id = os.path.basename(filename).split(".")[0]
         gcp_delete_iam_service_key(service_key_id, account)
+
+    clean_up_gcp_auth_environment_variables()
 
 
 def gcp_gcloud_command(group, args, flags=None):
@@ -425,6 +428,11 @@ def gcp_get_private_key_id(service_key_path):
     return private_key, service_account
 
 
+def clean_up_gcp_auth_environment_variables():
+    if CREDENTIALS in os.environ:
+        del os.environ[CREDENTIALS]
+
+
 def gcp_create_iam_service_key(service_account, account=None):
     """
   # Note: Untested
@@ -458,7 +466,7 @@ def gcp_create_iam_service_key(service_account, account=None):
         _logger.error("failed to create iam service account key. ({0}: {1}).".format(pcode, se))
         return None
 
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_key_path
+    os.environ[CREDENTIALS] = service_key_path
 
     pkid, sa = gcp_get_private_key_id(service_key_path)
 
@@ -578,6 +586,10 @@ def gcp_format_sql_instance(project, port=3320, replica=False):
     instance = "{0}=tcp:{1}".format(name, port)
 
     return instance
+
+
+def build_gcp_instance_connection_name(project_name, port, database_name, location='us-central1'):
+    return f'{project_name}:{location}:{database_name}=tcp:{port}'
 
 
 def gcp_activate_sql_proxy(instances):

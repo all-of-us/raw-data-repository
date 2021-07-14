@@ -3,18 +3,23 @@ Sync Consent Files
 
 Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
-import pytz
 import os
+import pytz
 import shutil
-from sqlalchemy import or_
 import tempfile
+from typing import Dict, List
 from zipfile import ZipFile
+
+from sqlalchemy import or_
 
 from rdr_service import config
 from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -29,6 +34,132 @@ SOURCE_BUCKET = {
 }
 DEFAULT_GOOGLE_GROUP = "no-site-assigned"
 TEMP_CONSENTS_PATH = os.path.join(tempfile.gettempdir(), "temp_consents")
+
+
+@dataclass
+class ParticipantPairingInfo:
+    org_name: str
+    site_name: str
+
+
+class ConsentSyncController:
+    def __init__(self, consent_dao, participant_dao: ParticipantDao, storage_provider: GoogleCloudStorageProvider):
+        self.consent_dao = consent_dao
+        self.participant_dao = participant_dao
+        self.storage_provider = storage_provider
+        self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
+
+    def sync_ready_files(self):
+        """Syncs any validated consent files that are ready for syncing"""
+
+        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync()
+        pairing_info_map = self._build_participant_pairing_map(file_list)
+        sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+
+        for file in file_list:
+            pairing_info = pairing_info_map.get(file.participant_id, None)
+
+            # Ignore participants that aren't paired to a configured organization
+            if pairing_info and pairing_info.org_name in sync_config:
+                org_consent_config = sync_config[pairing_info.org_name]
+
+                if org_consent_config['zip_consents']:
+                    file_sync_func = self._download_file_for_zip
+                else:
+                    file_sync_func = self._copy_file_in_cloud
+                file_sync_func(
+                    file=file,
+                    bucket_name=org_consent_config['bucket'],
+                    org_name=pairing_info.org_name,
+                    site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
+                )
+
+                file.sync_time = datetime.utcnow()
+                file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
+
+        self._zip_and_upload()
+        self.consent_dao.batch_update_consent_files(file_list)
+
+    def _zip_and_upload(self):
+        if not os.path.isdir(TEMP_CONSENTS_PATH):
+            # The directory wouldn't exist if there were no files downloaded that need to be zipped
+            return
+
+        logging.info("zipping and uploading consent files...")
+        for bucket_dir in _directories_in(TEMP_CONSENTS_PATH):
+            for org_dir in _directories_in(bucket_dir):
+                for site_dir in _directories_in(org_dir):
+                    zip_file_path = os.path.join(org_dir.path, site_dir.name + '.zip')
+                    with ZipFile(zip_file_path, 'w') as zip_file:
+                        self._zip_files_in_directory(zip_file, site_dir.path)
+                    self._upload_zip_file(
+                        zip_file_path=zip_file_path,
+                        bucket_name=bucket_dir.name,
+                        org_name=org_dir.name
+                    )
+
+        shutil.rmtree(TEMP_CONSENTS_PATH)
+
+    @classmethod
+    def _zip_files_in_directory(cls, zip_file: ZipFile, directory_path):
+        for current_path, _, files in os.walk(directory_path):
+            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
+            for file in files:
+                file_path = os.path.join(current_path, file)
+                file_path_in_zip = file_path[len(directory_path):]
+                zip_file.write(file_path, arcname=file_path_in_zip)
+
+    def _upload_zip_file(self, zip_file_path, bucket_name, org_name):
+        file_name = os.path.basename(zip_file_path)
+        self.storage_provider.upload_from_file(
+            source_file=zip_file_path,
+            path=f'{bucket_name}/{self._destination_folder}/{org_name}/{file_name}'
+        )
+
+    def _download_file_for_zip(self, file: ConsentFile, bucket_name, org_name, site_name):
+        if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
+            raise Exception(
+                'Can not download consent files to machines outside the cloud, '
+                'please sync consent files using the cloud environment'
+            )
+
+        file_name = os.path.basename(file.file_path)
+        temp_file_destination = (
+            TEMP_CONSENTS_PATH + f'/{bucket_name}/{org_name}/{site_name}/P{file.participant_id}/{file_name}'
+        )
+        os.makedirs(os.path.dirname(temp_file_destination), exist_ok=True)
+
+        self.storage_provider.download_blob(
+            source_path=file.file_path,
+            destination_path=temp_file_destination
+        )
+
+    def _copy_file_in_cloud(self, file: ConsentFile, bucket_name, org_name, site_name):
+        self.storage_provider.copy_blob(
+            source_path=file.file_path,
+            destination_path=self._build_cloud_destination_path(
+                bucket_name=bucket_name,
+                org_name=org_name,
+                site_name=site_name,
+                participant_id=file.participant_id,
+                file_name=os.path.basename(file.file_path)
+            )
+        )
+
+    def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
+        return f'{bucket_name}/{self._destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
+
+    def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
+        """
+        Returns a dictionary mapping each participant's id to the external id for their organization
+        and the google group name for their site
+        """
+        participant_ids = {file.participant_id for file in files}
+        participant_pairing_data = self.participant_dao.get_org_and_site_for_ids(participant_ids)
+        return {
+            participant_id: ParticipantPairingInfo(org_name=org_name, site_name=site_name)
+            for participant_id, org_name, site_name in participant_pairing_data
+        }
 
 
 def get_consent_destination(zipping=False, add_protocol=False, **kwargs):
@@ -178,21 +309,24 @@ def build_participant_query(session, org_ids, start_date=None, end_date=None, al
         participant_query = participant_query.filter(
             or_(
                 ParticipantSummary.consentForStudyEnrollmentTime.between(start_date, end_date),
-                ParticipantSummary.consentForElectronicHealthRecordsTime.between(start_date, end_date)
+                ParticipantSummary.consentForElectronicHealthRecordsTime.between(start_date, end_date),
+                ParticipantSummary.consentForGenomicsRORTime.between(start_date, end_date)
             )
         )
     elif start_date:
         participant_query = participant_query.filter(
             or_(
                 ParticipantSummary.consentForStudyEnrollmentTime > start_date,
-                ParticipantSummary.consentForElectronicHealthRecordsTime > start_date
+                ParticipantSummary.consentForElectronicHealthRecordsTime > start_date,
+                ParticipantSummary.consentForGenomicsRORTime > start_date
             )
         )
     elif end_date:
         participant_query = participant_query.filter(
             or_(
                 ParticipantSummary.consentForStudyEnrollmentTime < end_date,
-                ParticipantSummary.consentForElectronicHealthRecordsTime < end_date
+                ParticipantSummary.consentForElectronicHealthRecordsTime < end_date,
+                ParticipantSummary.consentForGenomicsRORTime < end_date
             )
         )
 

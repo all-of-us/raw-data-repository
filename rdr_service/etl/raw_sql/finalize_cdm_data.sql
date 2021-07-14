@@ -1510,9 +1510,10 @@ WHERE cdm_meas.parent_id IS NOT NULL;
 DROP TABLE IF EXISTS cdm.pid_rid_mapping;
 CREATE TABLE cdm.pid_rid_mapping (
     participant_id              bigint,
-    research_id                 bigint
+    research_id                 bigint,
+    external_id                 bigint
 );
-INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id FROM cdm.src_clean;
+INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id, external_id FROM cdm.src_clean;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables

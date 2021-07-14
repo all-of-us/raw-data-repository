@@ -113,6 +113,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "methodsDevelopment": True,
                 "controlSet": True,
                 "ancestry": True,
+                "accessTier": "REGISTERED",
                 "socialBehavioral": True,
                 "populationHealth": True,
                 "drugDevelopment": True,
@@ -206,19 +207,22 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]}
                        ],
-                       'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
-                                           'degree': ['PHD', 'MPH'],
-                                           'affiliations': [{'institution': 'institution2',
-                                                             'role': 'institution role 2',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'UNSET'},
-                                                            {'institution': 'institution22',
-                                                             'role': 'institution role 22',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'INDUSTRY'},
-                                                            {'institution': 'verified institution',
-                                                             'role': 'verified institution role 1',
-                                                             'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
+                       'workspaceOwner': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1',
+                            'degree': ['PHD', 'MPH'],
+                            'affiliations': [{'institution': 'institution1', 'role': 'institution role 1',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'INDUSTRY'},
+                                             {'institution': 'display name', 'role': 'verified institution role 1',
+                                              'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2',
+                            'degree': ['PHD', 'MPH'],
+                            'affiliations': [{'institution': 'institution2', 'role': 'institution role 2',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
+                                             {'institution': 'institution22', 'role': 'institution role 22',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'INDUSTRY'},
+                                             {'institution': 'verified institution',
+                                              'role': 'verified institution role 1', 'isVerified': True,
+                                              'nonAcademicAffiliation': 'UNSET'}]}],
                        'hasVerifiedInstitution': True,
                        'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
                        'reviewRequested': False, 'diseaseFocusedResearch': True,
@@ -230,6 +234,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -287,6 +292,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,
@@ -354,19 +360,22 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]}
                        ],
-                       'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
-                                           'degree': ['PHD', 'MPH'],
-                                           'affiliations': [{'institution': 'institution2',
-                                                             'role': 'institution role 2',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'UNSET'},
-                                                            {'institution': 'institution22',
-                                                             'role': 'institution role 22',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'INDUSTRY'},
-                                                            {'institution': 'verified institution',
-                                                             'role': 'verified institution role 1',
-                                                             'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
+                       'workspaceOwner': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
+                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                 'nonAcademicAffiliation': 'INDUSTRY'},
+                                {'institution': 'display name', 'role': 'verified institution role 1',
+                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
+                            ]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [{'institution': 'institution2', 'role': 'institution role 2',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
+                                             {'institution': 'institution22', 'role': 'institution role 22',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'INDUSTRY'},
+                                             {'institution': 'verified institution',
+                                              'role': 'verified institution role 1', 'isVerified': True,
+                                              'nonAcademicAffiliation': 'UNSET'}]}],
                        'hasVerifiedInstitution': True,
                        'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
                        'reviewRequested': False, 'diseaseFocusedResearch': True,
@@ -378,6 +387,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -419,19 +429,22 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
                            ]}
                        ],
-                       'workspaceOwner': [{'userId': 1, 'userName': 'given name 2 family name 2',
-                                           'degree': ['PHD', 'MPH'],
-                                           'affiliations': [{'institution': 'institution2',
-                                                             'role': 'institution role 2',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'UNSET'},
-                                                            {'institution': 'institution22',
-                                                             'role': 'institution role 22',
-                                                             'isVerified': None,
-                                                             'nonAcademicAffiliation': 'INDUSTRY'},
-                                                            {'institution': 'verified institution',
-                                                             'role': 'verified institution role 1',
-                                                             'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}]}],
+                       'workspaceOwner': [
+                           {'userId': 0, 'userName': 'given name 1 family name 1', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [
+                                {'institution': 'institution1', 'role': 'institution role 1', 'isVerified': None,
+                                 'nonAcademicAffiliation': 'INDUSTRY'},
+                                {'institution': 'display name', 'role': 'verified institution role 1',
+                                 'isVerified': True, 'nonAcademicAffiliation': 'UNSET'}
+                            ]},
+                           {'userId': 1, 'userName': 'given name 2 family name 2', 'degree': ['PHD', 'MPH'],
+                            'affiliations': [{'institution': 'institution2', 'role': 'institution role 2',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'UNSET'},
+                                             {'institution': 'institution22', 'role': 'institution role 22',
+                                              'isVerified': None, 'nonAcademicAffiliation': 'INDUSTRY'},
+                                             {'institution': 'verified institution',
+                                              'role': 'verified institution role 1', 'isVerified': True,
+                                              'nonAcademicAffiliation': 'UNSET'}]}],
                        'hasVerifiedInstitution': True,
                        'excludeFromPublicDirectory': False, 'ethicalLegalSocialImplications': True,
                        'reviewRequested': False, 'diseaseFocusedResearch': True,
@@ -443,6 +456,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string',
                        'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'REGISTERED',
                        'workspaceDemographic': {
                            "raceEthnicity": ['AIAN', 'MENA'],
                            "age": ['AGE_0_11', 'AGE_65_74'],
@@ -523,6 +537,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,
@@ -710,11 +725,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         sequest_hours_ago = now - timedelta(hours=24)
         with FakeClock(sequest_hours_ago):
             self.send_post('workbench/directory/workspaces', request_data=request_json)
-        result = self.send_get('researchHub/projectDirectory')
-        self.assertEqual(len(result['data']), 2)
+        result = self.send_get('researchHub/projectDirectory?status=ACTIVE')
+        self.assertEqual(len(result['data']), 1)
         # test search by project purpose
         result = self.send_get('researchHub/projectDirectory?projectPurpose=controlSet')
-        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 1)
         self.assertEqual(result['totalMatchedRecords'], 1)
         self.assertEqual(len(result['data']), 1)
         # test search by multiple project purpose
@@ -728,7 +743,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         # test search by generalized parameter workspaceLike
         result = self.send_get('researchHub/projectDirectory?workspaceLike=str')
-        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 1)
         self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 2)
         result = self.send_get('researchHub/projectDirectory?workspaceLike=string2')
@@ -750,7 +765,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 1)
         # test search by user id
         result = self.send_get('researchHub/projectDirectory?userId=1&userRole=owner')
-        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 1)
         self.assertEqual(result['totalMatchedRecords'], 1)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?userId=1&userRole=member')
@@ -759,7 +774,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
         self.assertEqual(len(result['data']), 2)
         # test page and page size
         result = self.send_get('researchHub/projectDirectory?page=1&pageSize=1')
-        self.assertEqual(result['totalActiveProjects'], 2)
+        self.assertEqual(result['totalActiveProjects'], 1)
         self.assertEqual(result['totalMatchedRecords'], 2)
         self.assertEqual(len(result['data']), 1)
         result = self.send_get('researchHub/projectDirectory?page=2&pageSize=1')
@@ -977,7 +992,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                     "incomeLevel": "BELOW_FEDERAL_POVERTY_LEVEL_200_PERCENT",
                     "others": "string"
                 },
-                "cdrVersion": cdr_version
+                "cdrVersionName": cdr_version
             },
             {
                 "workspaceId": 1,
@@ -1014,7 +1029,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "scientificApproaches": 'reasonForInvestigation string2',
                 "intendToStudy": 'intendToStudy string2',
                 "findingsFromStudy": 'findingsFromStudy string2',
-                "cdrVersion": cdr_version
+                "cdrVersionName": cdr_version
             }
         ]
         self.send_post('workbench/directory/workspaces', request_data=request_json)
@@ -1050,6 +1065,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': True, 'commercialPurpose': True, 'educational': True, 'otherPurpose': True,
                        'scientificApproaches': 'reasonForInvestigation string', 'intendToStudy': 'intendToStudy string',
                        'findingsFromStudy': 'findingsFromStudy string', 'focusOnUnderrepresentedPopulations': True,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': ['AIAN', 'MENA'], 'age': ['AGE_0_11', 'AGE_65_74'],
                            'sexAtBirth': None, 'genderIdentity': 'OTHER_THAN_MAN_WOMAN',
@@ -1092,7 +1108,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
                        'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
                        'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None,
+                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
@@ -1134,7 +1150,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'drugDevelopment': False, 'commercialPurpose': False, 'educational': False,
                        'otherPurpose': False, 'scientificApproaches': 'reasonForInvestigation string2',
                        'intendToStudy': 'intendToStudy string2', 'findingsFromStudy': 'findingsFromStudy string2',
-                       'focusOnUnderrepresentedPopulations': None,
+                       'focusOnUnderrepresentedPopulations': None, 'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            'raceEthnicity': None, 'age': None, 'sexAtBirth': None, 'genderIdentity': None,
                            'sexualOrientation': None, 'geography': None, 'disabilityStatus': None,
@@ -1147,6 +1163,53 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
 
         result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=1')
         self.assertEqual(len(result), 1)
+
+        # test get latest snapshot by workspace id
+        updated_request_json = [
+            {
+                "workspaceId": 1,
+                "name": "workspace name str 3",
+                "creationTime": "2019-11-25T17:43:41.085Z",
+                "modifiedTime": "2019-11-26T17:43:41.085Z",
+                "status": "INACTIVE",
+                "workspaceUsers": [
+                    {
+                        "userId": 0,
+                        "role": "OWNER",
+                        "status": "ACTIVE"
+                    },
+                    {
+                        "userId": 1,
+                        "role": "READER",
+                        "status": "ACTIVE"
+                    }
+                ],
+                "excludeFromPublicDirectory": False,
+                "ethicalLegalSocialImplications": False,
+                "diseaseFocusedResearch": True,
+                "diseaseFocusedResearchName": "disease focused research name str 2",
+                "otherPurposeDetails": "other purpose details str 2",
+                "methodsDevelopment": False,
+                "controlSet": False,
+                "ancestry": False,
+                "socialBehavioral": False,
+                "populationHealth": False,
+                "drugDevelopment": False,
+                "commercialPurpose": False,
+                "educational": False,
+                "otherPurpose": False,
+                "scientificApproaches": 'reasonForInvestigation string2',
+                "intendToStudy": 'intendToStudy string2',
+                "findingsFromStudy": 'findingsFromStudy string2',
+                "cdrVersionName": cdr_version
+            }
+        ]
+        self.send_post('workbench/directory/workspaces', request_data=updated_request_json)
+        result = self.send_get('workbench/audit/workspace/snapshots')
+        self.assertEqual(len(result), 3)
+        result = self.send_get('workbench/audit/workspace/snapshots?workspace_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['name'], 'workspace name str 3')
 
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
@@ -1224,21 +1287,11 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                 "status": "ACTIVE",
                 "workspaceUsers": [
                     {
-                        "userId": 0,
-                        "role": "OWNER",
-                        "status": "ACTIVE"
-                    },
-                    {
                         "userId": 1,
                         "role": "OWNER",
                         "status": "ACTIVE"
                     }
                 ],
-                "creator": {
-                    "userId": 1,
-                    "givenName": "aaa",
-                    "familyName": "bbb"
-                },
                 "excludeFromPublicDirectory": False,
                 "ethicalLegalSocialImplications": True,
                 "diseaseFocusedResearch": True,
@@ -1357,6 +1410,7 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'intendToStudy': 'intendToStudy string2',
                        'findingsFromStudy': 'findingsFromStudy string2',
                        'focusOnUnderrepresentedPopulations': None,
+                       'accessTier': 'UNSET',
                        'workspaceDemographic': {
                            "raceEthnicity": None,
                            "age": None,
@@ -1413,3 +1467,109 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
 
         result = self.send_get('researchHub/projectDirectory')
         self.assertEqual(len(result['data']), 2)
+
+    def test_get_audit_researchers_with_params(self):
+        researchers_json = [
+            {
+                "userId": 0,
+                "creationTime": "2019-11-26T21:21:13.056Z",
+                "modifiedTime": "2019-11-26T21:21:13.056Z",
+                "givenName": "given name 1",
+                "familyName": "family name 1",
+                "email": "tester@email.com",
+                "streetAddress1": "string",
+                "streetAddress2": "string",
+                "city": "string",
+                "state": "string",
+                "zipCode": "string",
+                "country": "string",
+                "ethnicity": "HISPANIC",
+                "gender": ["MAN"],
+                "race": ["AIAN"],
+                "degree": ["PHD", "MPH"],
+                "sexAtBirth": ["FEMALE"],
+                "sexualOrientation": "BISEXUAL",
+                "affiliations": [
+                    {
+                        "institution": "institution1",
+                        "role": "institution role 1",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionDisplayName": "display name",
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            },
+            {
+                "userId": 1,
+                "creationTime": "2019-11-27T21:21:13.056Z",
+                "modifiedTime": "2019-11-27T21:21:13.056Z",
+                "givenName": "given name 2",
+                "familyName": "family name 2",
+                "streetAddress1": "string2",
+                "streetAddress2": "string2",
+                "city": "string2",
+                "state": "string2",
+                "zipCode": "string2",
+                "country": "string2",
+                "ethnicity": "HISPANIC",
+                "sexualOrientation": "BISEXUAL",
+                "gender": ["MAN", "WOMAN"],
+                "race": ["AIAN", "WHITE"],
+                "degree": ["PHD", "MPH"],
+                "affiliations": [
+                    {
+                        "institution": "institution2",
+                        "role": "institution role 2"
+                    },
+                    {
+                        "institution": "institution22",
+                        "role": "institution role 22",
+                        "nonAcademicAffiliation": "INDUSTRY"
+                    }
+                ],
+                "verifiedInstitutionalAffiliation": {
+                    "institutionShortName": "verified institution",
+                    "institutionalRole": "verified institution role 1",
+                    "nonAcademicAffiliation": "INDUSTRY"
+                }
+            }
+        ]
+        self.send_post('workbench/directory/researchers', request_data=researchers_json)
+
+        result = self.send_get('workbench/audit/researcher/snapshots')
+        self.assertEqual(len(result), 2)
+        self.assertIsNotNone(result[0]['givenName'])
+        self.assertIsNotNone(result[0]['familyName'])
+        self.assertIsNotNone(result[0]['email'])
+        self.assertEqual(len(result[0]['affiliations']), 2)
+
+        self.assertIsNotNone(result[1]['givenName'])
+        self.assertIsNotNone(result[1]['familyName'])
+        self.assertIsNone(result[1]['email'])
+        self.assertEqual(len(result[1]['affiliations']), 3)
+
+        result = self.send_get('workbench/audit/researcher/snapshots?snapshot_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 1')
+        self.assertEqual(result[0]['familyName'], 'family name 1')
+        self.assertEqual(result[0]['email'], 'tester@email.com')
+
+        result = self.send_get('workbench/audit/researcher/snapshots?last_snapshot_id=2')
+        self.assertEmpty(result)
+
+        result = self.send_get('workbench/audit/researcher/snapshots?last_snapshot_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 2')
+        self.assertEqual(result[0]['familyName'], 'family name 2')
+        self.assertIsNone(result[0]['email'])
+
+        result = self.send_get('workbench/audit/researcher/snapshots?user_source_id=1')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['givenName'], 'given name 2')
+        self.assertEqual(result[0]['familyName'], 'family name 2')
+        self.assertIsNone(result[0]['email'])
+

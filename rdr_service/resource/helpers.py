@@ -5,6 +5,7 @@
 # Misc helper functions for resources
 #
 import datetime
+import os
 
 
 class DateRange:
@@ -109,3 +110,24 @@ class DateCollection:
 
     def any(self):
         return len(self.ranges) > 0
+
+
+def _import_rural_zipcodes():
+    """
+    Load the file app_data/rural_zipcodes.txt and return a list of rural zipcodes.
+    """
+    paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data')
+    codes = list()
+
+    for path in paths:
+        if os.path.exists(os.path.join(path, 'rural_zipcodes.txt')):
+            with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
+                # pylint: disable=unused-variable
+                for count, line in enumerate(handle):
+                    # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it back
+                    codes.append(line.split(',')[1].strip().zfill(5))
+            break
+    return codes
+
+
+RURAL_ZIPCODES = _import_rural_zipcodes()

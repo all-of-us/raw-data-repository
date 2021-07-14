@@ -21,7 +21,7 @@ from rdr_service.api_util import (
     format_json_site,
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
-from rdr_service.code_constants import BIOBANK_TESTS, PPI_SYSTEM, UNSET, ORIGINATING_SOURCES
+from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
@@ -46,10 +46,12 @@ from rdr_service.participant_enums import (
     EnrollmentStatus,
     DeceasedStatus,
     ConsentExpireStatus,
+    GenderIdentity,
     ParticipantCohort,
     PatientStatusFlag,
     PhysicalMeasurementsStatus,
     QuestionnaireStatus,
+    Race,
     SampleCollectionMethod,
     SampleStatus,
     SuspensionStatus,
@@ -99,6 +101,18 @@ _ENROLLMENT_STATUS_CASE_SQL = """
                    AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status != :completed
+                   AND samples_to_isolate_dna = :received) OR
+                  (consent_for_study_enrollment = :submitted
+                   AND consent_for_electronic_health_records = :unset
+                   AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
+                   AND physical_measurements_status != :completed
+                   AND samples_to_isolate_dna = :received)
+             THEN :core_minus_pm
+             WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
@@ -116,7 +130,12 @@ _ENROLLMENT_STATUS_SQL = """
       enrollment_status = {enrollment_status_case_sql},
       last_modified = :now
     WHERE
-      enrollment_status != :full_participant AND enrollment_status != {enrollment_status_case_sql}
+      (
+        (enrollment_status != :full_participant and enrollment_status != :core_minus_pm)
+        OR
+        (enrollment_status = :core_minus_pm AND :full_participant = {enrollment_status_case_sql})
+      )
+      AND enrollment_status != {enrollment_status_case_sql}
    """.format(
     enrollment_status_case_sql=_ENROLLMENT_STATUS_CASE_SQL
 )
@@ -289,21 +308,30 @@ def _get_dna_isolates_sql_and_params():
     )
 
 
-def _get_sample_status_time_sql_and_params():
-    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
-  on the participant summary.
-  """
-
+def _get_status_time_sql():
     dns_test_list = config.getSettingList(config.DNA_SAMPLE_TEST_CODES)
 
     status_time_sql = "%s" % ",".join(
         ["""COALESCE(sample_status_%s_time, '3000-01-01')""" % item for item in dns_test_list]
     )
+    return status_time_sql
+
+
+def _get_baseline_ppi_module_sql():
     baseline_ppi_module_fields = config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS, [])
 
     baseline_ppi_module_sql = "%s" % ",".join(
         ["""%s_time""" % re.sub("(?<!^)(?=[A-Z])", "_", item).lower() for item in baseline_ppi_module_fields]
     )
+    return baseline_ppi_module_sql
+
+
+def _get_sample_status_time_sql_and_params():
+    """Gets SQL that to update enrollmentStatusCoreStoredSampleTime field
+  on the participant summary.
+  """
+    status_time_sql = _get_status_time_sql()
+    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
 
     sub_sql = """
     SELECT
@@ -337,6 +365,51 @@ def _get_sample_status_time_sql_and_params():
       a.enrollment_status_core_stored_sample_time = b.new_core_stored_sample_time
     WHERE a.enrollment_status = 3
     AND a.enrollment_status_core_stored_sample_time IS NULL
+    """.format(
+        sub_sql=sub_sql
+    )
+
+    return sql
+
+
+def _get_core_minus_pm_time_sql_and_params():
+    """
+    Gets SQL that to update enrollmentStatusCoreMinusPMTime field on the participant summary.
+    """
+    status_time_sql = _get_status_time_sql()
+    baseline_ppi_module_sql = _get_baseline_ppi_module_sql()
+
+    sub_sql = """
+    SELECT
+      participant_id,
+      GREATEST(
+        CASE WHEN enrollment_status_member_time IS NOT NULL THEN enrollment_status_member_time
+             ELSE consent_for_electronic_health_records_time
+        END,
+        {baseline_ppi_module_sql},
+        CASE WHEN
+            LEAST(
+                {status_time_sql}
+                ) = '3000-01-01' THEN NULL
+            ELSE LEAST(
+                {status_time_sql}
+                )
+        END
+      ) AS core_minus_pm_time
+    FROM
+      participant_summary
+  """.format(
+        status_time_sql=status_time_sql, baseline_ppi_module_sql=baseline_ppi_module_sql
+    )
+
+    sql = """
+    UPDATE
+      participant_summary AS a
+      INNER JOIN ({sub_sql}) AS b ON a.participant_id = b.participant_id
+    SET
+      a.enrollment_status_core_minus_pm_time = b.core_minus_pm_time
+    WHERE a.enrollment_status = 4
+    AND a.enrollment_status_core_minus_pm_time IS NULL
     """.format(
         sub_sql=sub_sql
     )
@@ -541,6 +614,9 @@ class ParticipantSummaryDao(UpdatableDao):
         sample_status_time_sql = _get_sample_status_time_sql_and_params()
         sample_status_time_params = {}
 
+        core_minus_pm_time_sql = _get_core_minus_pm_time_sql_and_params()
+        core_minus_pm_time_params = {}
+
         counts_sql = """
     UPDATE
       participant_summary
@@ -566,6 +642,7 @@ class ParticipantSummaryDao(UpdatableDao):
             "completed": int(PhysicalMeasurementsStatus.COMPLETED),
             "received": int(SampleStatus.RECEIVED),
             "full_participant": int(EnrollmentStatus.FULL_PARTICIPANT),
+            "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
             "member": int(EnrollmentStatus.MEMBER),
             "interested": int(EnrollmentStatus.INTERESTED),
             "now": now,
@@ -581,6 +658,8 @@ class ParticipantSummaryDao(UpdatableDao):
             enrollment_status_params["participant_id"] = participant_id
             sample_status_time_sql += " AND a.participant_id = :participant_id"
             sample_status_time_params["participant_id"] = participant_id
+            core_minus_pm_time_sql += " AND a.participant_id = :participant_id"
+            core_minus_pm_time_params["participant_id"] = participant_id
 
         sample_sql = replace_null_safe_equals(sample_sql)
         counts_sql = replace_null_safe_equals(counts_sql)
@@ -589,8 +668,10 @@ class ParticipantSummaryDao(UpdatableDao):
             session.execute(sample_sql, sample_params)
             session.execute(counts_sql, counts_params)
             session.execute(enrollment_status_sql, enrollment_status_params)
+            session.commit()
             # TODO: Change this to the optimized sql in _update_dv_stored_samples()
             session.execute(sample_status_time_sql, sample_status_time_params)
+            session.execute(core_minus_pm_time_sql, core_minus_pm_time_params)
 
     def _get_num_baseline_ppi_modules(self):
         return len(config.getSettingList(config.BASELINE_PPI_QUESTIONNAIRE_FIELDS))
@@ -619,9 +700,13 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         summary.enrollmentStatusCoreOrderedSampleTime = self.calculate_core_ordered_sample_time(consent, summary)
         summary.enrollmentStatusCoreStoredSampleTime = self.calculate_core_stored_sample_time(consent, summary)
+        summary.enrollmentStatusCoreMinusPMTime = self.calculate_core_minus_pm_time(consent, summary)
 
         # [DA-1623] Participants that have 'Core' status should never lose it
-        if summary.enrollmentStatus != EnrollmentStatus.FULL_PARTICIPANT:
+        # CORE_MINUS_PM status can not downgrade, but can upgrade to FULL_PARTICIPANT
+        if summary.enrollmentStatus not in (EnrollmentStatus.FULL_PARTICIPANT, EnrollmentStatus.CORE_MINUS_PM) \
+            or (summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM
+                and enrollment_status == EnrollmentStatus.FULL_PARTICIPANT):
             # Update last modified date if status changes
             if summary.enrollmentStatus != enrollment_status:
                 summary.lastModified = clock.CLOCK.now()
@@ -641,7 +726,14 @@ class ParticipantSummaryDao(UpdatableDao):
                 and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
-            if consent_expire_status != ConsentExpireStatus.EXPIRED:
+            elif (
+                num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
+                and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
+                and samples_to_isolate_dna == SampleStatus.RECEIVED
+                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
+            ):
+                return EnrollmentStatus.CORE_MINUS_PM
+            elif consent_expire_status != ConsentExpireStatus.EXPIRED:
                 return EnrollmentStatus.MEMBER
         return EnrollmentStatus.INTERESTED
 
@@ -655,6 +747,27 @@ class ParticipantSummaryDao(UpdatableDao):
             ):
                 return participant_summary.consentForDvElectronicHealthRecordsSharingAuthored
             return participant_summary.consentForElectronicHealthRecordsAuthored
+        else:
+            return None
+
+    def calculate_core_minus_pm_time(self, consent, participant_summary):
+        if (
+            consent
+            and participant_summary.numCompletedBaselinePPIModules == self._get_num_baseline_ppi_modules()
+            and participant_summary.physicalMeasurementsStatus != PhysicalMeasurementsStatus.COMPLETED
+            and participant_summary.samplesToIsolateDNA == SampleStatus.RECEIVED
+            and (participant_summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED
+                 or participant_summary.consentCohort != ParticipantCohort.COHORT_3)
+        ) or participant_summary.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
+
+            max_core_sample_time = self.calculate_max_core_sample_time(
+                participant_summary, field_name_prefix="sampleStatus"
+            )
+
+            if max_core_sample_time and participant_summary.enrollmentStatusCoreStoredSampleTime:
+                return participant_summary.enrollmentStatusCoreStoredSampleTime
+            else:
+                return max_core_sample_time
         else:
             return None
 
@@ -756,7 +869,8 @@ class ParticipantSummaryDao(UpdatableDao):
         is_distinct_visit = not (day_has_order or day_has_measurement)
         return is_distinct_visit
 
-    def get_client_id(self):
+    @staticmethod
+    def get_client_id():
         from rdr_service import app_util, api_util
         email = app_util.get_oauth_id()
         user_info = app_util.lookup_user_info(email)
@@ -765,14 +879,25 @@ class ParticipantSummaryDao(UpdatableDao):
             client_id = 'example'  # account for temp configs that dont create the key
         return client_id
 
-    def to_client_json(self, model):
+    def get_record_from_attr(self, *, attr, value):
+        with self.session() as session:
+            record = session.query(ParticipantSummary)\
+                .filter(ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                    getattr(ParticipantSummary, attr) == value,
+                    getattr(ParticipantSummary, attr).isnot(None))
+            return record.all()
+
+    def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+        is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
+
         # Participants that withdrew more than 48 hours ago should have fields other than
         # WITHDRAWN_PARTICIPANT_FIELDS cleared.
-        if model.withdrawalStatus == WithdrawalStatus.NO_USE and (
+        should_clear_fields_for_withdrawal = model.withdrawalStatus == WithdrawalStatus.NO_USE and (
             model.withdrawalTime is None
             or model.withdrawalTime < clock.CLOCK.now() - WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
-        ):
+        )
+        if should_clear_fields_for_withdrawal:
             result = {k: result.get(k) for k in WITHDRAWN_PARTICIPANT_FIELDS}
 
         result["participantId"] = to_client_participant_id(model.participantId)
@@ -795,6 +920,14 @@ class ParticipantSummaryDao(UpdatableDao):
 
         if result.get("genderIdentityId"):
             del result["genderIdentityId"]  # deprecated in favor of genderIdentity
+
+        # Map demographic Enums if TheBasics was submitted and Skip wasn't in use
+        if is_the_basics_complete and not should_clear_fields_for_withdrawal:
+            if model.genderIdentity is None or model.genderIdentity == GenderIdentity.UNSET:
+                result['genderIdentity'] = GenderIdentity.PMI_Skip
+
+            if model.race is None or model.race == Race.UNSET:
+                result['race'] = Race.PMI_Skip
 
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # def format_patient_status_record(status_obj):
@@ -820,7 +953,14 @@ class ParticipantSummaryDao(UpdatableDao):
         for fieldname in _DATE_FIELDS:
             format_json_date(result, fieldname)
         for fieldname in _CODE_FIELDS:
-            format_json_code(result, self.code_dao, fieldname)
+            is_demographic_field = fieldname in ['educationId', 'incomeId', 'sexualOrientationId', 'sexId']
+            should_map_unset_to_skip = (
+                is_the_basics_complete and is_demographic_field and not should_clear_fields_for_withdrawal
+            )
+            format_json_code(
+                result, self.code_dao, fieldname,
+                unset_value=PMI_SKIP_CODE if should_map_unset_to_skip else UNSET
+            )
         for fieldname in _ENUM_FIELDS:
             format_json_enum(result, fieldname)
         for fieldname in _SITE_FIELDS:

@@ -21,8 +21,11 @@ class BQPDRPhysicalMeasurements(BQSchema):
     pm_status = BQField('pm_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     pm_status_id = BQField('pm_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
 
 
+# TODO:  Deprecate use of this class and add these fields to the BQBiobankOrderSchema
 class BQPDRBiospecimenSchema(BQSchema):
     """
     PDR Summary of Biobank Orders and Tests
@@ -45,6 +48,9 @@ class BQPDREhrReceiptSchema(BQSchema):
     file_timestamp = BQField('file_timestamp', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
     first_seen = BQField('first_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     last_seen = BQField('last_seen', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    participant_ehr_receipt_id = BQField('participant_ehr_receipt_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
+
 
 class BQPDRParticipantSummarySchema(BQSchema):
     """
@@ -156,13 +162,37 @@ class BQPDRParticipantSummarySchema(BQSchema):
     deceased_authored = BQField('deceased_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     deceased_status = BQField('deceased_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     deceased_status_id = BQField('deceased_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    # TODO:  Exclude date of death initially in case it constitutes PII, determine if it is needed in PDR
-    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
     # PDR-178:  CABoR details.  This is part of ConsentPII, but for various reasons the easiest way to align with
     # RDR CABoR tracking is to surface the appropriate authored date here.  Presence of a date (vs. null/None also
     # acts as the true/false flag equivalent to RDR participant_summary.consent_for_cabor field
     cabor_authored = BQField('cabor_authored', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    biobank_id = BQField('biobank_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    # PDR-236:  Support for new RDR participant_summary.enrollment_core_minus_pm_time field in PDR data
+    enrollment_core_minus_pm = BQField('enrollment_core_minus_pm', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+
+    # PDR-252:  Need to provide AIAN withdrawal ceremony status
+    withdrawal_aian_ceremony_status = \
+        BQField('withdrawal_aian_ceremony_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    withdrawal_aian_ceremony_status_id = \
+        BQField('withdrawal_aian_ceremony_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    # TODO:  Exclude date of death initially in case it constitutes PII.  Add to end of field list if it is
+    # enabled later
+    # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
+
+    # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
+    #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
+    #       completely.
+    enrl_registered_time = BQField('enrl_registered_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_time = BQField('enrl_participant_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
+    enrl_participant_plus_ehr_time = BQField('enrl_participant_plus_ehr_time', BQFieldTypeEnum.DATETIME,
+                                           BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_minus_pm_time = BQField('enrl_core_participant_minus_pm_time', BQFieldTypeEnum.DATETIME,
+                                                BQFieldModeEnum.NULLABLE)
+    enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -201,6 +231,7 @@ class BQPDRParticipantSummaryView(BQView):
         ])
     )
 
+
 class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
     __viewname__ = 'v_pdr_participant_all'
     __viewdescr__ = 'PDR Participant Summary All View'
@@ -227,12 +258,16 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
         ])
     )
 
-class BQPDRParticipantSummaryWithdrawnView(BQView):
-    __viewname__ = 'v_pdr_participant_withdrawn'
-    __viewdescr__ = 'PDR Participant Summary Withdrawn View'
-    __table__ = BQPDRParticipantSummary
-    __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
-                                                          'ps.withdrawal_status_id != 1')
+
+# TODO:  This is now a custom view in PDR BigQuery (as of PDR-262).  Needs to be disabled here so it will not be
+# updated by migrate-bq tool.   Consider moving all custom views into our model?  Some (like this one) will have
+# extremely complicated SQL definitions, so unclear if that is a viable/best solution
+# class BQPDRParticipantSummaryWithdrawnView(BQView):
+#   __viewname__ = 'v_pdr_participant_withdrawn'
+#   __viewdescr__ = 'PDR Participant Summary Withdrawn View'
+#   __table__ = BQPDRParticipantSummary
+#   __sql__ = BQPDRParticipantSummaryView.__sql__.replace('ps.withdrawal_status_id = 1',
+#                                                         'ps.withdrawal_status_id != 1')
 
 
 class BQPDRPMView(BQView):
@@ -289,7 +324,9 @@ class BQPDRModuleView(BQView):
     SELECT ps.id, ps.created, ps.modified, ps.participant_id,
            nt.mod_module, nt.mod_baseline_module,
            CAST(nt.mod_authored AS DATETIME) as mod_authored, CAST(nt.mod_created AS DATETIME) as mod_created,
-           nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_external_id
+           nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_response_status, nt.mod_response_status_id,
+           nt.mod_external_id, nt.mod_questionnaire_response_id, nt.mod_consent, nt.mod_consent_value,
+           nt.mod_consent_value_id, nt.mod_consent_expired, nt.mod_non_participant_answer
       FROM (
         SELECT *,
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
@@ -328,6 +365,7 @@ class BQPDRBioSpecView(BQView):
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
 
+
 class BQPDRPatientStatuesView(BQView):
     __viewname__ = 'v_pdr_participant_patient_status'
     __viewdescr__ = 'PDR Participant Patient Status View'
@@ -341,6 +379,7 @@ class BQPDRPatientStatuesView(BQView):
       ) ps cross join unnest(patient_statuses) as nt
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
+
 
 class BQPDRParticipantBiobankOrderView(BQView):
     __viewname__ = 'v_pdr_participant_biobank_order'
@@ -359,6 +398,9 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_processed_site_id,
              nt.bbo_finalized_site,
              nt.bbo_finalized_site_id,
+             nt.bbo_finalized_time,
+             nt.bbo_finalized_status,
+             nt.bbo_finalized_status_id,
              nt.bbo_tests_ordered,
              nt.bbo_tests_stored
         FROM (
@@ -368,6 +410,7 @@ class BQPDRParticipantBiobankOrderView(BQView):
         ) ps cross join unnest(biobank_orders) as nt
         WHERE ps.rn = 1 and ps.test_participant != 1
     """
+
 
 class BQPDRParticipantBiobankSampleView(BQView):
     __viewname__ = 'v_pdr_participant_biobank_sample'
@@ -396,6 +439,7 @@ class BQPDRParticipantBiobankSampleView(BQView):
             ) ps cross join unnest(biobank_orders) as bbo, unnest(bbo.bbo_samples) as nt
             WHERE ps.rn = 1 and ps.test_participant != 1
     """
+
 
 class BQPDREhrReceiptView(BQView):
     __viewname__ = 'v_pdr_participant_ehr_receipt'

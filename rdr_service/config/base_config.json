@@ -17,7 +17,8 @@
     "questionnaireOnCopeJuly",
     "questionnaireOnCopeNov",
     "questionnaireOnCopeDec",
-    "questionnaireOnCopeFeb"
+    "questionnaireOnCopeFeb",
+    "questionnaireOnCopeVaccineMinute1"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
@@ -62,5 +63,9 @@
     "broad": "bi",
     "northwest": "uw",
     "rdr": "rdr"
+  },
+  "rdr_slack_webhooks": {
+    "rdr_genomic_alerts": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+    "rdr_genomic_reports": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
   }
 }

@@ -70,6 +70,10 @@ RACE_HISPANIC_CODE = "WhatRaceEthnicity_Hispanic"
 RACE_FREETEXT_CODE = "WhatRaceEthnicity_FreeText"
 RACE_NONE_OF_THESE_CODE = "WhatRaceEthnicity_RaceEthnicityNoneOfThese"
 
+WITHDRAWAL_CEREMONY_QUESTION_CODE = "withdrawalaianceremony"
+WITHDRAWAL_CEREMONY_YES = "withdrawalaianceremony_yes"
+WITHDRAWAL_CEREMONY_NO = "withdrawalaianceremony_no"
+
 # Consent answer codes
 CONSENT_PERMISSION_YES_CODE = "ConsentPermission_Yes"
 CONSENT_PERMISSION_NO_CODE = "ConsentPermission_No"
@@ -93,6 +97,9 @@ CONSENT_COPE_YES_CODE = "COPE_A_44"
 CONSENT_COPE_NO_CODE = "COPE_A_13"
 CONSENT_COPE_DEFERRED_CODE = "COPE_A_231"
 
+# COPE Minute Survey Codes
+COPE_VACCINE_MINUTE_1_MODULE_CODE = "cope_vaccine1"
+
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"
 CONSENT_FOR_STUDY_ENROLLMENT_MODULE = "ConsentPII"
@@ -111,6 +118,8 @@ HEALTHCARE_ACCESS_MODULE = "HealthcareAccess"
 # A new survey was developed for November 2020
 COPE_MODULE = 'COPE'
 COPE_NOV_MODULE = 'cope_nov'
+COPE_DEC_MODULE = "cope_dec"
+COPE_FEB_MODULE = "cope_feb"
 GENETIC_ANCESTRY_MODULE = 'GeneticAncestry'
 
 # DVEHR ANSWERS
@@ -122,7 +131,6 @@ DVEHRSHARING_CONSENT_CODE_NOT_SURE = "DVEHRSharing_NotSure"
 GENETIC_ANCESTRY_CONSENT_CODE_YES = "ConsentAncestryTraits_Yes"
 GENETIC_ANCESTRY_CONSENT_CODE_NO = "ConsentAncestryTraits_No"
 GENETIC_ANCESTRY_CONSENT_CODE_NOT_SURE = "ConsentAncestryTraits_NotSure"
-
 
 BIOBANK_TESTS = [
     "1ED10",
@@ -155,7 +163,18 @@ LANGUAGE_OF_CONSENT = ["en", "es"]
 # genome type values
 GENOME_TYPE = ["aou_array", "aou_wgs"]
 GC_SITE_IDs = ['rdr', 'bcm', 'jh', 'bi', 'uw']
+AW1_BUCKETS = [
+    'prod-genomics-baylor',
+    'prod-genomics-broad',
+    'prod-genomics-northwest'
+]
+AW2_BUCKETS = [
+    'prod-genomics-data-baylor',
+    'prod-genomics-data-broad',
+    'prod-genomics-data-northwest'
+]
 
 # Source of a created participant
 ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
+
 

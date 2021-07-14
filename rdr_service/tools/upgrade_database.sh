@@ -51,7 +51,7 @@ fi
 
 if [ -z "${REVISION}" ]
 then
-  REVISION=head
+  REVISION=heads
 fi
 
 if [ "${PROJECT}" -o "${INSTANCE}" ]

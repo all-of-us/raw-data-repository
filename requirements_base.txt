@@ -7,7 +7,7 @@
 alabaster==0.7.12         # via sphinx
 alembic==1.4.2            # via -r requirements.in
 aniso8601==8.0.0          # via flask-restful
-astroid==2.4.1            # via pylint
+astroid==2.5.2            # via pylint
 babel==2.8.0              # via sphinx
 backoff==1.10.0           # via -r requirements.in
 blinker==1.4              # via -r requirements.in
@@ -28,12 +28,13 @@ fhirclient==3.2.0         # via -r requirements.in
 flask-basicauth==0.2.0    # via locust
 flask-restful==0.3.8      # via -r requirements.in
 flask==1.1.2              # via -r requirements.in, flask-basicauth, flask-restful, locust
+flask-limiter==1.4
 gevent==20.5.1            # via geventhttpclient, locust
 geventhttpclient==1.4.2   # via locust
 google-api-core[grpc]==1.17.0  # via google-api-python-client, google-cloud-bigquery, google-cloud-core, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-tasks
 google-api-python-client==1.8.3  # via -r requirements.in, google-python-cloud-debugger
 google-auth-httplib2==0.0.3  # via google-api-python-client, google-python-cloud-debugger
-google-auth==1.15.0       # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-bigquery, google-cloud-storage, google-python-cloud-debugger
+google-auth==1.28.0       # via google-api-core, google-api-python-client, google-auth-httplib2, google-cloud-bigquery, google-cloud-storage, google-python-cloud-debugger
 google-cloud-bigquery==1.24.0  # via -r requirements.in
 google-cloud-core==1.3.0  # via google-cloud-bigquery, google-cloud-datastore, google-cloud-firestore, google-cloud-logging, google-cloud-storage
 google-cloud-datastore==1.12.0  # via -r requirements.in
@@ -48,13 +49,13 @@ greenlet==0.4.15          # via gevent
 grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
 grpcio==1.29.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gunicorn==20.0.4          # via -r requirements.in
-httplib2==0.19.0          # via google-api-python-client, google-auth-httplib2, oauth2client
+httplib2==0.19.1          # via google-api-python-client, google-auth-httplib2, oauth2client
 idna==2.9                 # via requests
 imagesize==1.2.0          # via sphinx
 isodate==0.6.0            # via fhirclient
 isort==4.3.21             # via pylint
 itsdangerous==1.1.0       # via flask
-jinja2==2.11.2            # via flask, sphinx
+jinja2==2.11.3            # via flask, sphinx
 jira==2.0.0               # via -r requirements.in
 lazy-object-proxy==1.4.3  # via astroid
 locust==1.0.2             # via -r requirements.in
@@ -71,29 +72,33 @@ oauthlib[signedtoken]==3.1.0  # via jira, requests-oauthlib
 packaging==20.4           # via sphinx
 parameterized==0.7.4      # via -r requirements.in
 pbr==5.4.5                # via jira
+pdfminer.six==20201018
 # pip-tools==5.1.2          # via -r requirements.in
 protobuf==3.12.1          # via -r requirements.in, google-api-core, google-cloud-bigquery, googleapis-common-protos
 protorpc==0.12.0          # via -r requirements.in
 psutil==5.7.0             # via locust
+psycopg2-binary==2.8.6
 pyasn1-modules==0.2.8     # via google-auth, oauth2client
 pyasn1==0.4.8             # via oauth2client, pyasn1-modules, rsa
 pycparser==2.20           # via cffi
-pygments==2.6.1           # via sphinx
+pygments==2.7.4           # via sphinx
 pyjwt==1.7.1              # via oauthlib
-pylint==2.5.2             # via -r requirements.in
+pylint==2.7.4             # via -r requirements.in
 pyopenssl==19.1.0         # via requests
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via alembic, faker
 python-editor==1.0.4      # via alembic
 python-http-client==3.2.7  # via sendgrid
 pytz==2020.1              # via babel, flask-restful, google-api-core, google-cloud-firestore
-pyyaml==5.3.1             # via google-python-cloud-debugger
+pyyaml==5.4.1             # via google-python-cloud-debugger
 pyzmq==19.0.1             # via locust
+redis==3.5.3              # via flask-limiter
 requests-oauthlib==1.3.0  # via jira
 requests-toolbelt==0.9.1  # via jira
-requests[security]==2.23.0  # via -r requirements.in, fhirclient, google-api-core, googlemaps, jira, locust, requests-oauthlib, requests-toolbelt, sphinx
-rsa==4.0                  # via google-auth, oauth2client
+requests[security]==2.25.1  # via -r requirements.in, fhirclient, google-api-core, googlemaps, jira, locust, requests-oauthlib, requests-toolbelt, sphinx
+rsa==4.7.2                  # via google-auth, oauth2client
 sendgrid==6.3.1           # via -r requirements.in
+simple-geometry==0.1.4  # geometry
 simplejson==3.17.0        # via -r requirements.in
 six==1.15.0               # via astroid, cryptography, flask-restful, geventhttpclient, google-api-core, google-api-python-client, google-auth, google-cloud-bigquery, google-python-cloud-debugger, google-resumable-media, grpcio, isodate, jira, oauth2client, packaging, pip-tools, protobuf, protorpc, pyopenssl, python-dateutil
 snowballstemmer==2.0.0    # via sphinx
@@ -111,7 +116,7 @@ text-unidecode==1.3       # via faker
 toml==0.10.1              # via pylint
 typed-ast==1.4.1          # via astroid
 uritemplate==3.0.1        # via google-api-python-client
-urllib3==1.25.9           # via requests
+urllib3==1.26.5           # via requests
 werkzeug==1.0.1           # via flask
 wrapt==1.12.1             # via astroid
 xmltodict==0.12.0         # via -r requirements.in

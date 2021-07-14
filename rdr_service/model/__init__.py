@@ -21,6 +21,9 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENov'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDec'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFeb'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine1'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRWithdrawalIntro'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRStopParticipating'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -48,7 +51,8 @@ BQ_VIEWS = [
     # PDR Views
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryAllView'),
-    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
+    # Disabling BQPDRParticipantSummaryWithdrawnView as a managed view;  is now a custom/manually managed view in BQ
+    # ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummaryWithdrawnView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPMView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRGenderView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRRaceView'),
@@ -72,6 +76,8 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPENovView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEDecView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEFebView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine1View'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRWithdrawalView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),

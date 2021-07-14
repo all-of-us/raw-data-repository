@@ -1,9 +1,12 @@
 import datetime
 import json
 import logging
+from typing import Collection
 
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import make_transient
+from sqlalchemy.sql.expression import literal
+
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from rdr_service import clock
@@ -25,8 +28,10 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.participant_enums import (
     EhrStatus,
@@ -195,6 +200,12 @@ class ParticipantDao(UpdatableDao):
             )
 
             need_new_summary = True
+
+            # Participants that haven't yet consented should be withdrawn with EARLY_OUT
+            if existing_obj.participantSummary is None and obj.withdrawalStatus != WithdrawalStatus.EARLY_OUT:
+                logging.error(
+                    f'Un-consented participant {existing_obj.participantId} was withdrawn with {obj.withdrawalStatus}'
+                )
 
         if obj.suspensionStatus != existing_obj.suspensionStatus:
             obj.suspensionTime = obj.lastModified if obj.suspensionStatus == SuspensionStatus.NO_CONTACT else None
@@ -512,6 +523,47 @@ class ParticipantDao(UpdatableDao):
             if existing_participant:
                 return existing_participant
         return super(ParticipantDao, self).handle_integrity_error(tried_ids, e, obj)
+
+    def get_participant_id_mapping(self, is_sql=False):
+        with self.session() as session:
+            participant_map = (
+                session.query(
+                    Participant.participantId.label('p_id'),
+                    literal('r_id'),
+                    Participant.researchId.label('id_value'),
+                ).union(
+                    session.query(
+                        Participant.participantId.label('p_id'),
+                        literal('vibrent_id'),
+                        Participant.externalId.label('id_value'),
+                    )).filter(
+                    Participant.researchId.isnot(None),
+                    Participant.externalId.isnot(None)
+                ))
+
+            if is_sql:
+                sql = self.literal_sql_from_query(participant_map)
+                sql = sql.replace('param_1', 'id_source')
+                sql = sql.replace('param_2', 'id_source')
+                return sql
+
+            return participant_map.all()
+
+    def get_org_and_site_for_ids(self, participant_ids: Collection[int]):
+        """
+        Returns tuples of the format (participant id, org external id, site google group)
+        If a participant is unpaired to an org they will be left out, if they're unpaired to
+        a site then their third item will be null
+        """
+        with self.session() as session:
+            return (
+                session.query(Participant.participantId, Organization.externalId, Site.googleGroup)
+                .select_from(Participant)
+                .join(Organization)
+                .outerjoin(Site, Site.siteId == Participant.siteId)
+                .filter(Participant.participantId.in_(participant_ids))
+                .all()
+            )
 
 
 def _get_primary_provider_link(participant):

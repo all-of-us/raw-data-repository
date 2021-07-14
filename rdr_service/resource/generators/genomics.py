@@ -5,17 +5,12 @@
 from sqlalchemy.sql import text
 
 from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.participant_enums import (
-    GenomicSetStatus as GenomicSetStatusEnum,
-    GenomicSetMemberStatus as GenomicSetMemberStatusEnum,
-    GenomicValidationFlag as GenomicValidationFlagEnum,
-    GenomicSubProcessStatus as GenomicSubProcessStatusEnum,
-    GenomicSubProcessResult as GenomicSubProcessResultEnum,
-    GenomicJob as GenomicJobEnum,
-    GenomicWorkflowState as GenomicWorkflowStateEnum,
-    GenomicQcStatus as GenomicQcStatusEnum,
-    GenomicManifestTypes as GenomicManifestTypesEnum,
-    GenomicContaminationCategory as GenomicContaminationCategoryEnum)
+from rdr_service.genomic_enums import GenomicSetStatus as GenomicSetStatusEnum, \
+    GenomicSetMemberStatus as GenomicSetMemberStatusEnum, GenomicValidationFlag as GenomicValidationFlagEnum, \
+    GenomicJob as GenomicJobEnum, GenomicWorkflowState as GenomicWorkflowStateEnum, \
+    GenomicSubProcessStatus as GenomicSubProcessStatusEnum, GenomicSubProcessResult as GenomicSubProcessResultEnum, \
+    GenomicManifestTypes as GenomicManifestTypesEnum, GenomicContaminationCategory as GenomicContaminationCategoryEnum,\
+    GenomicQcStatus as GenomicQcStatusEnum
 from rdr_service.resource import generators, schemas
 
 

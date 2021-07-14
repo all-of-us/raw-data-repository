@@ -3,7 +3,7 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc, or_, func, distinct
+from sqlalchemy import desc, or_, and_, func, distinct
 from sqlalchemy.orm import subqueryload, joinedload
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
@@ -29,12 +29,14 @@ from rdr_service.participant_enums import WorkbenchWorkspaceStatus, WorkbenchWor
     WorkbenchWorkspaceSexualOrientation, WorkbenchWorkspaceGeography, WorkbenchWorkspaceDisabilityStatus, \
     WorkbenchWorkspaceAccessToCare, WorkbenchWorkspaceEducationLevel, WorkbenchWorkspaceIncomeLevel, \
     WorkbenchWorkspaceRaceEthnicity, WorkbenchWorkspaceAge, WorkbenchAuditWorkspaceAccessDecision, \
-    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType
+    WorkbenchAuditWorkspaceDisplayDecision, WorkbenchAuditReviewType, WorkbenchWorkspaceAccessTier
 
 
 class WorkbenchWorkspaceDao(UpdatableDao):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceApproved, order_by_ending=["id"])
+        self.is_backfill = False
+        self.workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
 
     def get_id(self, obj):
         return obj.id
@@ -181,6 +183,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 if item.get("workspaceDemographic").get('others') is not None:
                     item["others"] = item.get("workspaceDemographic").get("others")
 
+                try:
+                    if item.get("accessTier") is None:
+                        item['accessTier'] = 'UNSET'
+                    else:
+                        item["accessTier"] = item.get("accessTier")
+                    WorkbenchWorkspaceAccessTier(item['accessTier'])
+                except TypeError:
+                    raise BadRequest(f'WorkspaceID:{item.get("workspaceId")} Invalid '
+                                     f'accessTier: {item.get("accessTier")}')
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -225,7 +237,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 age=item.get("age", []),
                 others=item.get('others'),
                 workbenchWorkspaceUser=self._get_users(item.get('workspaceUsers'), item.get('creator')),
-                cdrVersion=item.get('cdrVersion'),
+                cdrVersion=item.get('cdrVersionName'),
+                accessTier=WorkbenchWorkspaceAccessTier(item.get('accessTier', 'UNSET')),
                 resource=json.dumps(item)
             )
 
@@ -258,16 +271,21 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
     def insert_with_session(self, session, workspaces):
         new_workspaces = []
-        workspace_snapshot_dao = WorkbenchWorkspaceHistoryDao()
         for workspace in workspaces:
-            is_exist = workspace_snapshot_dao.is_snapshot_exist_with_session(session, workspace.workspaceSourceId,
-                                                                             workspace.modifiedTime)
-            if is_exist:
-                continue
-            session.add(workspace)
-            new_workspaces.append(workspace)
-            if workspace.excludeFromPublicDirectory is not True:
-                self.add_approved_workspace_with_session(session, workspace)
+            if self.is_backfill:
+                backfilled_snapshot = self.backfill_workspace_with_session(session, workspace)
+                if backfilled_snapshot:
+                    new_workspaces.append(backfilled_snapshot)
+            else:
+                is_exist = self.workspace_snapshot_dao.get_exist_snapshot_with_session(session,
+                                                                                       workspace.workspaceSourceId,
+                                                                                       workspace.modifiedTime)
+                if is_exist:
+                    continue
+                session.add(workspace)
+                new_workspaces.append(workspace)
+                if workspace.excludeFromPublicDirectory is not True:
+                    self.add_approved_workspace_with_session(session, workspace)
 
         return new_workspaces
 
@@ -280,18 +298,26 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 result.append(json.loads(workspace.resource))
             return result
 
-    def get_workspace_by_workspace_id_with_session(self, session, workspace_id):
+    @staticmethod
+    def get_workspace_by_workspace_id_with_session(session, workspace_id):
         return session.query(WorkbenchWorkspaceApproved) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
 
-    def remove_workspace_by_workspace_id_with_session(self, session, workspace_id):
+    @staticmethod
+    def remove_workspace_by_workspace_id_with_session(session, workspace_id):
         workspace = session.query(WorkbenchWorkspaceApproved) \
             .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
         if workspace:
             session.delete(workspace)
 
-    def get_redcap_audit_workspaces(self, last_snapshot_id, snapshot_id):
+    def get_redcap_audit_workspaces(
+        self,
+        last_snapshot_id=None,
+        snapshot_id=None,
+        workspace_id=None
+        ):
+
         results = []
         with self.session() as session:
             query = (
@@ -300,13 +326,16 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                              joinedload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
                             WorkbenchWorkspaceSnapshot.id == WorkbenchWorkspaceUserHistory.workspaceId)
-                    .order_by(WorkbenchWorkspaceSnapshot.id)
             )
 
-            if snapshot_id is not None:
+            if workspace_id:
+                query = query.filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id)\
+                    .order_by(desc(WorkbenchWorkspaceSnapshot.id)).limit(1)
+            elif snapshot_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.id == snapshot_id)
             elif last_snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)
+                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)\
+                    .order_by(WorkbenchWorkspaceSnapshot.id)
 
             items = query.all()
             for workspace, researcher in items:
@@ -382,6 +411,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "commercialPurpose": workspace.commercialPurpose,
                     "educational": workspace.educational,
                     "otherPurpose": workspace.otherPurpose,
+                    "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
+                                                                   if workspace.accessTier else 0)),
                     "scientificApproaches": workspace.scientificApproaches,
                     "intendToStudy": workspace.intendToStudy,
                     "findingsFromStudy": workspace.findingsFromStudy,
@@ -438,8 +469,21 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
+            subquery = (
+                session.query(distinct(WorkbenchWorkspaceUser.workspaceId))
+                    .filter(WorkbenchWorkspaceUser.isCreator == 1)
+                    .subquery()
+            )
             count_query = (session.query(distinct(WorkbenchWorkspaceApproved.workspaceSourceId))
+                           .join(WorkbenchWorkspaceUser, WorkbenchResearcher, WorkbenchInstitutionalAffiliations)
                            .filter(WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                                   WorkbenchWorkspaceApproved.status == int(WorkbenchWorkspaceStatus.ACTIVE),
+                                   WorkbenchInstitutionalAffiliations.isVerified == 1,
+                                   or_(WorkbenchWorkspaceUser.isCreator == 1,
+                                       and_(
+                                           WorkbenchWorkspaceUser.role == int(WorkbenchWorkspaceUserRole.OWNER),
+                                           WorkbenchWorkspaceApproved.id.notin_(subquery)
+                                       )),
                                    or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
                                        WorkbenchWorkspaceApproved.isReviewed == 1))
                            )
@@ -502,15 +546,20 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         )
                         if affiliation.isVerified is True:
                             researcher_has_verified_institution = True
-                owner_user_id = None
+                owner_user_ids = []
+                creator_user_id = None
                 for workspace_user in workspace.workbenchWorkspaceUser:
                     if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
-                        owner_user_id = workspace_user.userId
+                        owner_user_ids.append(workspace_user.userId)
                     if workspace_user.isCreator is True:
-                        owner_user_id = workspace_user.userId
-                        break
-                if owner_user_id == researcher.userSourceId and researcher_has_verified_institution:
+                        creator_user_id = workspace_user.userId
+                # if has creator, calculate by creator; if no creator, calculate by owners
+                if creator_user_id == researcher.userSourceId and researcher_has_verified_institution:
                     workspace_has_verified_institution = True
+                elif creator_user_id is None and researcher.userSourceId in owner_user_ids and \
+                    researcher_has_verified_institution:
+                    workspace_has_verified_institution = True
+
                 user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
@@ -542,7 +591,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         result['workspaceUsers'].append(user)
                         if hit_search:
                             result['hitSearch'] = True
-                        if user.get('userId') == owner_user_id:
+                        if user.get('userId') in owner_user_ids:
                             result['workspaceOwner'].append(user)
                         if workspace_has_verified_institution:
                             result['hasVerifiedInstitution'] = True
@@ -560,7 +609,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     'modifiedTime': workspace.modifiedTime,
                     'status': str(WorkbenchWorkspaceStatus(workspace.status)),
                     'workspaceUsers': [user] if user else [],
-                    'workspaceOwner': [user] if user.get('userId') == owner_user_id else [],
+                    'workspaceOwner': [user] if user.get('userId') in owner_user_ids else [],
                     'hasVerifiedInstitution': workspace_has_verified_institution,
                     "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
                     "ethicalLegalSocialImplications": workspace.ethicalLegalSocialImplications,
@@ -571,6 +620,8 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     "methodsDevelopment": workspace.methodsDevelopment,
                     "controlSet": workspace.controlSet,
                     "ancestry": workspace.ancestry,
+                    "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
+                                                                   if workspace.accessTier else 0)),
                     "socialBehavioral": workspace.socialBehavioral,
                     "populationHealth": workspace.populationHealth,
                     "drugDevelopment": workspace.drugDevelopment,
@@ -639,6 +690,23 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             "data": expected_result
         }
 
+    def backfill_workspace_with_session(self, session, backfilled_workspace):
+        exist_approved = self.get_workspace_by_workspace_id_with_session(session,
+                                                                         backfilled_workspace.workspaceSourceId)
+        if exist_approved:
+            for k, v in backfilled_workspace:
+                if k not in ('id', 'workbenchWorkspaceUser', 'excludeFromPublicDirectory', 'isReviewed'):
+                    setattr(exist_approved, k, v)
+
+        exist_snapshot = self.workspace_snapshot_dao.get_exist_snapshot_with_session(
+            session, backfilled_workspace.workspaceSourceId, backfilled_workspace.modifiedTime)
+        if exist_snapshot:
+            for k, v in backfilled_workspace:
+                if k not in ('id', 'workbenchWorkspaceUser', 'excludeFromPublicDirectory', 'isReviewed'):
+                    setattr(exist_snapshot, k, v)
+
+        return exist_snapshot
+
     def add_approved_workspace_with_session(self, session, workspace_snapshot, is_reviewed=False):
         exist = self.get_workspace_by_workspace_id_with_session(session, workspace_snapshot.workspaceSourceId)
 
@@ -688,12 +756,13 @@ class WorkbenchWorkspaceHistoryDao(UpdatableDao):
             .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceSnapshot.id == snapshot_id).first()
 
-    def is_snapshot_exist_with_session(self, session, workspace_id, modified_time):
+    def get_exist_snapshot_with_session(self, session, workspace_id, modified_time):
         record = session.query(WorkbenchWorkspaceSnapshot) \
+            .options(subqueryload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser))\
             .filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id,
                     WorkbenchWorkspaceSnapshot.modifiedTime == modified_time) \
             .first()
-        return True if record else False
+        return record
 
     def get_all_with_children(self):
         with self.session() as session:
@@ -800,6 +869,48 @@ class WorkbenchResearcherDao(UpdatableDao):
                         raise BadRequest(
                             f"Invalid nonAcademicAffiliation: {institution.get('nonAcademicAffiliation')}")
 
+    def get_redcap_audit_researchers(
+        self,
+        last_snapshot_id=None,
+        snapshot_id=None,
+        user_source_id=None
+        ):
+        results = []
+        with self.session() as session:
+            researchers = (
+                session.query(WorkbenchResearcher)
+            )
+            if user_source_id:
+                researchers = researchers.filter(WorkbenchResearcher.userSourceId == user_source_id) \
+                    .order_by(desc(WorkbenchResearcher.id)).limit(1)
+            elif snapshot_id:
+                researchers = researchers.filter(WorkbenchResearcher.id == snapshot_id)
+            elif last_snapshot_id:
+                researchers = researchers.filter(WorkbenchResearcher.id > last_snapshot_id) \
+                    .order_by(WorkbenchResearcher.id)
+
+            for researcher in researchers.all():
+                affiliations = []
+                if researcher.workbenchInstitutionalAffiliations:
+                    for affiliation in researcher.workbenchInstitutionalAffiliations:
+                        affiliations.append(
+                            {
+                                "institution": affiliation.institution,
+                                "role": affiliation.role,
+                                "isVerified": affiliation.isVerified,
+                                "nonAcademicAffiliation":
+                                    str(WorkbenchInstitutionNonAcademic(affiliation.nonAcademicAffiliation or 0))
+                            }
+                        )
+                results.append({
+                    'givenName': researcher.givenName,
+                    'familyName': researcher.familyName,
+                    'email': researcher.email,
+                    'affiliations': affiliations
+                })
+
+            return results
+
     def from_client_json(self, resource_json, client_id=None):  # pylint: disable=unused-argument
         self._validate(resource_json)
         now = clock.CLOCK.now()
@@ -838,7 +949,8 @@ class WorkbenchResearcherDao(UpdatableDao):
 
         return researchers
 
-    def _get_affiliations(self, affiliations_json, verified_affiliation_json):
+    @staticmethod
+    def _get_affiliations(affiliations_json, verified_affiliation_json):
         now = clock.CLOCK.now()
         affiliations = []
         if affiliations_json is not None:
@@ -866,21 +978,34 @@ class WorkbenchResearcherDao(UpdatableDao):
         return affiliations
 
     def insert_with_session(self, session, researchers):
+        new_researcher_source_ids = []
         new_researchers = []
+        new_researchers_map = {}
         researcher_snapshot_dao = WorkbenchResearcherHistoryDao()
         for researcher in researchers:
             is_snapshot_exist = researcher_snapshot_dao.is_snapshot_exist_with_session(session, researcher.userSourceId,
                                                                                        researcher.modifiedTime)
             if is_snapshot_exist:
                 continue
-            exist = self.get_researcher_by_user_id_with_session(session, researcher.userSourceId)
-            if exist:
-                for attr_name in researcher.__dict__.keys():
-                    if not attr_name.startswith('_') and attr_name != 'created':
-                        setattr(exist, attr_name, getattr(researcher, attr_name))
-            else:
-                session.add(researcher)
-            new_researchers.append(researcher)
+            new_researchers_map[researcher.userSourceId] = researcher
+            new_researcher_source_ids.append(researcher.userSourceId)
+
+        exists = self.get_researchers_by_user_id_list_with_session(session, new_researcher_source_ids)
+        exist_researcher_source_ids = []
+        for exist in exists:
+            new_researcher = new_researchers_map[exist.userSourceId]
+            for attr_name in new_researcher.__dict__.keys():
+                if not attr_name.startswith('_') and attr_name != 'created':
+                    setattr(exist, attr_name, getattr(new_researcher, attr_name))
+            new_researcher.id = exist.id
+            exist_researcher_source_ids.append(exist.userSourceId)
+            new_researchers.append(new_researcher)
+
+        not_exist_list = list(set(new_researcher_source_ids) - set(exist_researcher_source_ids))
+        for source_id in not_exist_list:
+            session.add(new_researchers_map[source_id])
+            new_researchers.append(new_researchers_map[source_id])
+
         self._insert_history(session, new_researchers)
         return new_researchers
 
@@ -893,7 +1018,8 @@ class WorkbenchResearcherDao(UpdatableDao):
                 result.append(json.loads(researcher.resource))
             return result
 
-    def _insert_history(self, session, researchers):
+    @staticmethod
+    def _insert_history(session, researchers):
         session.flush()
         for researcher in researchers:
             history = WorkbenchResearcherHistory()
@@ -914,9 +1040,14 @@ class WorkbenchResearcherDao(UpdatableDao):
             history.workbenchInstitutionalAffiliations = affiliations_history
             session.add(history)
 
-    def get_researcher_by_user_id_with_session(self, session, user_id):
+    @staticmethod
+    def get_researcher_by_user_id_with_session(session, user_id):
         return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId == user_id) \
             .order_by(desc(WorkbenchResearcher.created)).first()
+
+    @staticmethod
+    def get_researchers_by_user_id_list_with_session(session, user_id_list):
+        return session.query(WorkbenchResearcher).filter(WorkbenchResearcher.userSourceId.in_(user_id_list)).all()
 
 
 class WorkbenchResearcherHistoryDao(UpdatableDao):

@@ -86,5 +86,7 @@ class CacheAllDao(UpdatableDao):
             return []
         return [self.get(id_) for id_ in ids]
 
-    def get_all(self):
+    def get_all(self, refresh_cache=False):
+        if refresh_cache:
+            self._invalidate_cache()
         return list(self._get_cache().id_to_entity.values())

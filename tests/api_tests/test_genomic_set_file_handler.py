@@ -18,7 +18,7 @@ from rdr_service.model.genomics import (
     GenomicSet,
     GenomicSetMember,
 )
-from rdr_service.participant_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, \
     GenomicWorkflowState
 from rdr_service.model.participant import Participant
 # from tests import test_data

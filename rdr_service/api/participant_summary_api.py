@@ -2,7 +2,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
-from rdr_service.api_util import AWARDEE, DEV_MAIL, PTC_HEALTHPRO_AWARDEE
+from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
 from rdr_service.app_util import auth_required, get_validated_user_info
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -10,19 +10,22 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
+from rdr_service.participant_enums import ParticipantSummaryRecord
 
 
 class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
+        self.user_info = None
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
         # Make sure participant id is in the correct range of possible values.
         if isinstance(p_id, int) and not _MIN_ID <= p_id <= _MAX_ID:
             raise NotFound(f"Participant with ID {p_id} is not found.")
         auth_awardee = None
         user_email, user_info = get_validated_user_info()
+        self.user_info = user_info
         if AWARDEE in user_info["roles"]:
             # if `user_email == DEV_MAIL and user_info.get("awardee") is not None` is True,
             # that means the value of `awardee` is mocked in the test cases, we need to read it from user_info
@@ -52,8 +55,12 @@ class ParticipantSummaryApi(BaseApi):
                     raise Forbidden
             return super(ParticipantSummaryApi, self)._query("participantId")
 
-    def _make_query(self):
-        query = super(ParticipantSummaryApi, self)._make_query()
+    def _make_query(self, check_invalid=True):
+        constraint_failed, message = self._check_constraints()
+        if constraint_failed:
+            raise BadRequest(f"{message}")
+
+        query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
         query.backfill_sync = self._get_request_arg_bool("_backfill", True)
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
@@ -65,6 +72,37 @@ class ParticipantSummaryApi(BaseApi):
             return make_sync_results_for_request(self.dao, results)
         return super(ParticipantSummaryApi, self)._make_bundle(results, id_field, participant_id)
 
+    def _check_constraints(self):
+        message = None
+        invalid = False
+        valid_roles = ['healthpro']
+
+        if not any(role in valid_roles for role in self.user_info.get('roles')):
+            return invalid, message
+
+        pair_config = {
+            'lastName': {
+                'fields': ['lastName', 'dateOfBirth'],
+                'bypass_check_args': ['hpoId']
+            },
+            'dateOfBirth': {
+                'fields': ['lastName', 'dateOfBirth'],
+                'bypass_check_args': ['hpoId']
+            }
+        }
+
+        for arg in request.args:
+            if arg in pair_config.keys():
+                constraint = pair_config[arg]
+                bypass = [val for val in constraint['bypass_check_args'] if val in request.args]
+                missing = [val for val in constraint['fields'] if val not in request.args]
+                if not bypass and missing:
+                    invalid = True
+                    message = f'Argument {missing[0]} is required with {arg}'
+                    break
+
+        return invalid, message
+
 
 class ParticipantSummaryModifiedApi(BaseApi):
     """
@@ -74,7 +112,7 @@ class ParticipantSummaryModifiedApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryModifiedApi, self).__init__(ParticipantSummaryDao())
 
-    @auth_required(PTC_HEALTHPRO_AWARDEE)
+    @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self):
         """
     Return participant_id and last_modified for all records or a subset based
@@ -113,3 +151,44 @@ class ParticipantSummaryModifiedApi(BaseApi):
                 )
 
         return response
+
+
+class ParticipantSummaryCheckLoginApi(BaseApi):
+    """
+  API to return status if data is found / not found on participant summary
+  """
+
+    def __init__(self):
+        super(ParticipantSummaryCheckLoginApi, self).__init__(ParticipantSummaryDao())
+
+    @auth_required(RDR_AND_PTC)
+    def post(self):
+        """
+        Return status of IN_USE / NOT_IN_USE if participant found / not found
+    """
+        req_data = request.get_json()
+        accepted_map = {
+            'email': 'email',
+            'login_phone_number': 'loginPhoneNumber'
+        }
+
+        if req_data:
+            if len(req_data.keys() - accepted_map.keys()):
+                raise BadRequest("Only email or login_phone_number are allowed in request")
+
+            if any([key in req_data for key in accepted_map]) \
+                    and all([val for val in req_data.values() if val is not None]):
+
+                status = ParticipantSummaryRecord.NOT_IN_USE
+                for key, value in req_data.items():
+                    found_result = self.dao.get_record_from_attr(
+                        attr=accepted_map[key],
+                        value=value
+                    )
+                    if found_result:
+                        status = ParticipantSummaryRecord.IN_USE
+                        break
+
+                return {'status': status.name}
+
+        raise BadRequest("Missing email or login_phone_number in request")

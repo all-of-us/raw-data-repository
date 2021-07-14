@@ -3,55 +3,67 @@ from rdr_service.api.base_api import BaseApi
 from werkzeug.exceptions import BadRequest
 from rdr_service.api_util import REDCAP
 from rdr_service.app_util import auth_required
-from rdr_service.dao.workbench_dao import WorkbenchWorkspaceDao, WorkbenchWorkspaceAuditDao
+from rdr_service.dao.workbench_dao import WorkbenchResearcherDao, WorkbenchWorkspaceAuditDao
 
 
-class RedcapWorkbenchAuditApi(BaseApi):
+class BaseRedcapApi(BaseApi):
     def __init__(self):
         super().__init__(WorkbenchWorkspaceAuditDao())
-        self.workspace_dao = WorkbenchWorkspaceDao()
+        self.get_filters = None
+
+    @auth_required(REDCAP)
+    def get(self):
+        get_param_config = {
+            'redcapworkbenchauditapi': {
+                'last_snapshot_id': request.args.get('last_snapshot_id'),
+                'snapshot_id': request.args.get('snapshot_id'),
+                'workspace_id': request.args.get('workspace_id')
+            },
+            'redcapresearcherauditapi': {
+                'last_snapshot_id': request.args.get('last_snapshot_id'),
+                'snapshot_id': request.args.get('snapshot_id'),
+                'user_source_id': request.args.get('user_source_id')
+            }
+
+        }
+        self.get_filters = self.validate_params(
+            get_param_config[self.__class__.__name__.lower()]
+        )
 
     @auth_required(REDCAP)
     def post(self):
         return super().post()
 
-    @auth_required(REDCAP)
-    def get(self):
-        params = {
-            'last_snapshot_id': request.args.get('last_snapshot_id'),
-            'snapshot_id': request.args.get('snapshot_id')
-        }
-
-        filters = self.validate_params(params)
-        results = self.get_filtered_results(**filters)
-
-        return results
-
-    def get_filtered_results(self, last_snapshot_id, snapshot_id):
-        """Queries DB, returns results in format consumed by front-end
-        :param last_snapshot_id: indicate the last max snapshot id which has been synced
-        :param snapshot_id: indicate the snapshot to be synced
-        :return: Filtered results
-        """
-
-        return self.workspace_dao.get_redcap_audit_workspaces(last_snapshot_id, snapshot_id)
-
-    def validate_params(self, params):
+    @staticmethod
+    def validate_params(params):
         filters = {}
-        if params['last_snapshot_id']:
+        for key in params:
             try:
-                filters['last_snapshot_id'] = int(params['last_snapshot_id'])
+                filters[key] = int(params[key]) if params[key] is not None \
+                                                   and params[key].isnumeric() \
+                                                   else None
             except TypeError:
-                raise BadRequest(f"Invalid parameter last_snapshot_id: {params['last_snapshot_id']}")
-        else:
-            filters['last_snapshot_id'] = None
-
-        if params['snapshot_id']:
-            try:
-                filters['snapshot_id'] = int(params['snapshot_id'])
-            except TypeError:
-                raise BadRequest(f"Invalid parameter snapshot_id: {params['snapshot_id']}")
-        else:
-            filters['snapshot_id'] = None
+                raise BadRequest(f"Invalid parameter {key}: {params[key]}")
 
         return filters
+
+
+class RedcapWorkbenchAuditApi(BaseRedcapApi):
+    def __init__(self):
+        super().__init__()
+        self.dao = WorkbenchWorkspaceAuditDao()
+
+    def get(self):
+        super(RedcapWorkbenchAuditApi, self).get()
+        return self.dao.workspace_dao.get_redcap_audit_workspaces(**self.get_filters)
+
+
+class RedcapResearcherAuditApi(BaseRedcapApi):
+    def __init__(self):
+        super().__init__()
+        self.dao = WorkbenchResearcherDao()
+
+    def get(self):
+        super(RedcapResearcherAuditApi, self).get()
+        return self.dao.get_redcap_audit_researchers(**self.get_filters)
+

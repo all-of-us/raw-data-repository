@@ -16,18 +16,28 @@ from werkzeug.exceptions import NotFound
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
+from rdr_service.dao.bq_code_dao import BQCodeGenerator, BQCode
+from rdr_service.dao.code_dao import Code
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_update, bq_genomic_set_member_update, \
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update
 from rdr_service.dao.bq_workbench_dao import bq_workspace_update, bq_workspace_user_update, \
     bq_institutional_affiliations_update, bq_researcher_update
+from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
+from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
+from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
+from rdr_service.model.bq_questionnaires import (
+    BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
+    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory,
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRWithdrawalIntro, BQPDRStopParticipating,
+    BQPDRCOPEVaccine1
+)
 from rdr_service.model.participant import Participant
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.resource.generators.code import CodeGenerator
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
@@ -46,6 +56,8 @@ GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'ge
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
 
 RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'institutional_affiliations')
+
+SITE_TABLES = ('hpo', 'site', 'organization')
 
 
 class ParticipantResourceClass(object):
@@ -67,38 +79,46 @@ class ParticipantResourceClass(object):
         :return: 0 if successful otherwise 1
         """
         try:
-            rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-            rebuild_participant_summary_resource(pid)
+            if not self.args.modules_only:
+                rebuild_bq_participant(pid, project_id=self.gcp_env.project)
+                rebuild_participant_summary_resource(pid)
 
-            mod_bqgen = BQPDRQuestionnaireResponseGenerator()
+            if not self.args.no_modules:
+                mod_bqgen = BQPDRQuestionnaireResponseGenerator()
 
-            # Generate participant questionnaire module response data
+                # Generate participant questionnaire module response data
 
-            modules = (
-                BQPDRConsentPII,
-                BQPDRTheBasics,
-                BQPDRLifestyle,
-                BQPDROverallHealth,
-                BQPDREHRConsentPII,
-                BQPDRDVEHRSharing,
-                BQPDRCOPEMay,
-                BQPDRCOPENov,
-                BQPDRCOPEDec,
-                BQPDRCOPEFeb
-            )
+                modules = (
+                    BQPDRConsentPII,
+                    BQPDRTheBasics,
+                    BQPDRLifestyle,
+                    BQPDROverallHealth,
+                    BQPDREHRConsentPII,
+                    BQPDRDVEHRSharing,
+                    BQPDRCOPEMay,
+                    BQPDRCOPENov,
+                    BQPDRCOPEDec,
+                    BQPDRCOPEFeb,
+                    BQPDRCOPEVaccine1,
+                    BQPDRFamilyHistory,
+                    BQPDRPersonalMedicalHistory,
+                    BQPDRHealthcareAccess,
+                    BQPDRStopParticipating,
+                    BQPDRWithdrawalIntro
+                )
 
-            for module in modules:
-                mod = module()
+                for module in modules:
+                    mod = module()
 
-                table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
-                if not table:
-                    continue
+                    table, mod_bqrs = mod_bqgen.make_bqrecord(pid, mod.get_schema().get_module_name())
+                    if not table:
+                        continue
 
-                w_dao = BigQuerySyncDao()
-                with w_dao.session() as w_session:
-                    for mod_bqr in mod_bqrs:
-                        mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
-                                                w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
+                    w_dao = BigQuerySyncDao()
+                    with w_dao.session() as w_session:
+                        for mod_bqr in mod_bqrs:
+                            mod_bqgen.save_bqrecord(mod_bqr.questionnaire_response_id, mod_bqr, bqtable=table,
+                                                    w_dao=w_dao, w_session=w_session, project_id=self.gcp_env.project)
         except NotFound:
             return 1
         return 0
@@ -132,7 +152,10 @@ class ParticipantResourceClass(object):
             count += 1
 
             if count == batch_size:
-                payload = {'batch': batch}
+                payload = {'batch': batch,
+                           'build_modules': not self.args.no_modules,
+                           'build_participant_summary': not self.args.modules_only
+                           }
 
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
@@ -155,7 +178,10 @@ class ParticipantResourceClass(object):
 
         # send last batch if needed.
         if count:
-            payload = {'batch': batch}
+            payload = {'batch': batch,
+                       'build_modules': not self.args.no_modules,
+                       'build_participant_summary': not self.args.modules_only
+                       }
             batch_count += 1
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
@@ -252,6 +278,63 @@ class ParticipantResourceClass(object):
                 _logger.error(f'Participant ID {self.args.pid} not found.')
 
         return 1
+
+
+
+class CodeResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def update_code_table(self):
+        ro_dao = BigQuerySyncDao(backup=True)
+
+        with ro_dao.session() as ro_session:
+            if not self.args.id:
+                results = ro_session.query(Code.codeId).all()
+            else:
+                # Force a list return type for the single-id lookup
+                results = ro_session.query(Code.codeId).filter(Code.codeId == self.args.id).all()
+
+        count = 0
+        total_ids = len(results)
+
+        w_dao = BigQuerySyncDao()
+        _logger.info('  Code table: rebuilding {0} records...'.format(total_ids))
+        with w_dao.session() as w_session:
+            for row in results:
+                gen = BQCodeGenerator()
+                rsc_gen = CodeGenerator()
+                bqr = gen.make_bqrecord(row.codeId)
+                gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
+                                  bqtable=BQCode, w_dao=w_dao, w_session=w_session)
+                rsc_rec = rsc_gen.make_resource(row.codeId)
+                rsc_rec.save()
+                count += 1
+                if not self.args.debug:
+                    print_progress_bar(count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete")
+
+
+    def run(self):
+
+        clr = self.gcp_env.terminal_colors
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nUpdate Code table:',
+                             clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        return self.update_code_table()
+
+
 
 
 class GenomicResourceClass(object):
@@ -454,7 +537,7 @@ class EHRReceiptClass(object):
             count += 1
 
             if count == batch_size:
-                payload = {'batch': batch}
+                payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': False}
 
                 if self.gcp_env.project == 'localhost':
                     batch_rebuild_participants_task(payload)
@@ -477,7 +560,7 @@ class EHRReceiptClass(object):
 
         # send last batch if needed.
         if count:
-            payload = {'batch': batch}
+            payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': False}
             batch_count += 1
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_participants_task(payload)
@@ -674,11 +757,69 @@ class ResearchWorkbenchResourceClass(object):
 
         return 1
 
+class SiteResourceClass(object):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.table and not self.args.all_tables:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild hpo/organization/site Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Database Table        : {0}'.format(clr.fmt(self.args.table)))
+
+        if self.args.all_tables:
+            tables = [t for t in SITE_TABLES]
+        else:
+            tables = [self.args.table]
+
+        if self.args.id:
+            _logger.info('  Record ID             : {0}'.format(clr.fmt(self.args.id)))
+        else:
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+
+        _logger.info('  Rebuild Table(s)      : {0}'.format(clr.fmt(', '.join([t for t in tables]))))
+
+        for table in tables:
+            if table == 'hpo':
+                if self.args.id:
+                    bq_hpo_update_by_id(self.args.id, self.gcp_env.project)
+                else:
+                    bq_hpo_update(self.gcp_env.project)
+            elif table == 'site':
+                if self.args.id:
+                    bq_site_update_by_id(self.args.id, self.gcp_env.project)
+                else:
+                    bq_site_update(self.gcp_env.project)
+            elif table == 'organization':
+                if self.args.id:
+                    bq_organization_update_by_id(self.gcp_env.project, self.gcp_env.project)
+                else:
+                    bq_organization_update(self.gcp_env.project)
+            else:
+                _logger.warning(f'Unknown table {table}.  Skipping rebuild for {table}')
+
+        return 0
 
 def get_id_list(fname):
     """
     Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
-    id values from a specific genomic table).
+    id values from a specific table).
     :param fname:  The filename passed with the --from-file argument
     :return: A list of integers, or None on missing/empty fname
     """
@@ -776,8 +917,20 @@ def run():
     rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
     rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
                                 action="store_true")  # noqa
+    rebuild_parser.add_argument("--no-modules", default=False, action="store_true",
+                                help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
+    rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
+                                help="only rebuild participant questionnaire response data for pdr_mod_* tables")
     update_argument(rebuild_parser, dest='from_file',
                     help="rebuild participant ids from a file with a list of pids")
+
+    # Rebuild the code table ids
+    code_parser = subparser.add_parser(
+        "code",
+        parents=[all_ids_parser]
+    )
+    code_parser.add_argument("--id", help="rebuild single code id", type=int, default=None)
+    update_argument(code_parser, dest='all_ids', help='rebuild all ids from the code table (default)')
 
     # Rebuild genomic resources.
     genomic_parser = subparser.add_parser(
@@ -799,6 +952,14 @@ def run():
         parents=[batch_parser, id_parser, all_ids_parser, table_parser, all_tables_parser, from_file_parser])
     update_argument(rw_parser, 'table', help="research workbench db table name to rebuild from")
     rw_parser.epilog = f'Possible TABLE Values: {{{",".join(RESEARCH_WORKBENCH_TABLES)}}}.'
+
+    # Rebuild hpo/site/organization tables.  Specify a single table name or all-tables
+    site_parser = subparser.add_parser(
+        "site-tables",
+        parents=[table_parser, all_tables_parser, id_parser]
+    )
+    update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
+    site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'
 
     args = parser.parse_args()
 
@@ -832,6 +993,14 @@ def run():
                 sys.exit(1)
 
             process = ResearchWorkbenchResourceClass(args, gcp_env, ids)
+            exit_code = process.run()
+
+        elif args.resource == 'code':
+            process = CodeResourceClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.resource == 'site-tables':
+            process = SiteResourceClass(args, gcp_env)
             exit_code = process.run()
 
         else:

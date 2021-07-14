@@ -1,6 +1,7 @@
 import json
-import xml.etree.ElementTree as ET
 import httplib2
+import logging
+import xml.etree.ElementTree as ET
 import xmltodict
 from werkzeug.exceptions import ServiceUnavailable
 
@@ -10,19 +11,26 @@ from rdr_service.app_util import auth_required
 
 
 class MayoLinkApi:
-    def __init__(self):
+    def __init__(self, credentials_key='default'):
         self.namespace = "http://orders.mayomedicallaboratories.com"
-        self.config_bucket = config.CONFIG_BUCKET
-        self.config = config.getSetting(config.MAYOLINK_CREDS)
-        self.path = "/" + self.config_bucket + "/" + self.config
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
-        # For now I can not figure out how to use google cloud on dev_appserver, comment out the
-        # below and manually add self.username, etc.
-        with open_cloud_file(self.path) as file_path:
-            self.creds = json.load(file_path)
-        self.username = self.creds.get("username")
-        self.pw = self.creds.get("password")
-        self.account = self.creds.get("account")
+
+        self.username, self.pw, self.account = self._get_credentials(credentials_key=credentials_key)
+
+    @classmethod
+    def _get_credentials(cls, credentials_key):
+        credentials_bucket_name = config.CONFIG_BUCKET
+        credentials_file_name = config.getSetting(config.MAYOLINK_CREDS)
+        with open_cloud_file("/" + credentials_bucket_name + "/" + credentials_file_name) as file:
+            credentials_json = json.load(file)
+            if credentials_key in credentials_json:
+                credentials = credentials_json[credentials_key]
+            else:
+                # If the key is not found, that likely means the file is still a legacy version
+                # (where the entire file was one set of credentials)
+                credentials = credentials_json
+
+        return credentials.get('username'), credentials.get('password'), credentials.get('account')
 
     @auth_required(RDR_AND_PTC)
     def post(self, order):
@@ -41,11 +49,12 @@ class MayoLinkApi:
                 result = self._xml_to_dict(content)
                 return result
             else:
+                logging.error(content)
                 raise ServiceUnavailable("Mayolink service return {} rather than 201".format(response['status']))
         except httplib2.HttpLib2Error:
-            pass
+            logging.error('HttpLib2Error exception encountered', exc_info=True)
         except OSError:
-            pass
+            logging.error('OSError exception encountered', exc_info=True)
 
         raise ServiceUnavailable("Mayolink service unavailable, please re-try later")
 
@@ -71,5 +80,5 @@ class MayoLinkApi:
                     for item in v:
                         self.create_xml_tree_from_dict(sub_element, item)
             return root
-        else:
+        elif dict_tree is not None:
             root.text = str(dict_tree)

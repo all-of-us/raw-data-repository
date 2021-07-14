@@ -5,11 +5,14 @@ from sqlalchemy import text
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_questionnaires import BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle, \
-    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb
+from rdr_service.model.bq_questionnaires import (
+    BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle,
+    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory,
+    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb,
+    BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1
+)
 from rdr_service.code_constants import PPI_SYSTEM
-from rdr_service.participant_enums import QuestionnaireResponseStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -48,12 +51,21 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # Query to get a list of questionnaire_response_id values for this participant and module
         # The list will be from most recently received/replayed response to earliest.  This mirrors how the
         # deprecated stored procedure sp_get_questionnaire_answers used to order its results
+        #
+        # PDR-254:  Updating the module response data to include a test_participant flag as a common field
+        # Intended to make filtering module response data by test_participant status more efficient in BigQuery
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id, qh2.external_id, qr.status
+                   qr.participant_id, qh2.external_id, qr.status,
+                   CASE
+                       WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 or h.name = :test_hpo THEN 1
+                       ELSE 0
+                   END as test_participant
             from questionnaire_response qr
             inner join questionnaire_history qh2 on qh2.questionnaire_id = qr.questionnaire_id
                        and qh2.version = qr.questionnaire_version
+            inner join participant p on p.participant_id = qr.participant_id
+            left join hpo h on p.hpo_id = h.hpo_id
             where qr.participant_id = :p_id and qr.questionnaire_id IN (
                 select q.questionnaire_id from questionnaire q
                 inner join questionnaire_history qh on q.version = qh.version
@@ -99,7 +111,11 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             'COPE': BQPDRCOPEMay,
             'cope_nov': BQPDRCOPENov,
             'cope_dec': BQPDRCOPEDec,
-            'cope_feb': BQPDRCOPEFeb
+            'cope_feb': BQPDRCOPEFeb,
+            'cope_vaccine1': BQPDRCOPEVaccine1,
+            # There are two different module id codes in use for the withdrawal survey
+            'withdrawal_intro': BQPDRWithdrawalIntro,
+            'StopParticipating': BQPDRStopParticipating
         }
         table = table_map.get(module_id, None)
         if table is None:
@@ -116,6 +132,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             # Retrieve all the responses for this participant/module ID (most recent first)
             qnans = []
             responses = session.execute(_participant_module_responses_sql, {'module_id': module_id, 'p_id': p_id,
+                                                                            'test_hpo': TEST_HPO_NAME,
                                                                             'system': PPI_SYSTEM})
             for qr in responses:
                 # Populate the response metadata (created, authored, etc.) into a data dict
@@ -174,7 +191,8 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'questionnaire_id',
                         'external_id',
                         'status',
-                        'status_id'
+                        'status_id',
+                        'test_participant'
                     ):
                         continue
 

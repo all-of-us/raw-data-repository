@@ -1,10 +1,12 @@
 import os
 
-from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
+from rdr_service.participant_enums import OrderStatus
+from rdr_service.resource.generators import ParticipantSummaryGenerator
 
 
 class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
@@ -37,7 +39,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             setattr(bqr, 'addr_zip', getattr(bqr, 'addr_zip')[:3])
 
         summary = bqr.to_dict()
-        # Populate BQAnalyticsBiospecimenSchema if there are biobank orders.
+        # Populate BQPDRBiospecimenSchema if there are biobank orders.
+        # TODO:  Deprecate this BQPDRBiospecimenSchema and transition PDR users to utilize BQBiobankOrderSchema data
         if hasattr(ps_bqr, 'biobank_orders'):
             data = {'biospec': list()}
             for order in ps_bqr.biobank_orders:
@@ -57,15 +60,19 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         if test['bbs_confirmed']:
                             baseline_tests_confirmed += 1
 
+                # PDR-243:  Use an OrderStatus (not the order's BiobankOrderStatus value)
+                # to align with the RDR biospecimen fields in participant summary.  TODO:  the BQPDRBiospecimenSchema
+                # will be deprecated once PDR users migrate to using the BQBiobankOrderSchema data for queries
                 data['biospec'].append({
-                    'biosp_status': order.get('bbo_status', None),
-                    'biosp_status_id': order.get('bbo_status_id', None),
+                    'biosp_status': str(OrderStatus(order.get('bbo_finalized_status', OrderStatus.UNSET))),
+                    'biosp_status_id': int(OrderStatus(order.get('bbo_finalized_status_id', OrderStatus.UNSET))),
                     'biosp_order_time': order.get('bbo_created', None),
                     'biosp_isolate_dna': dna_tests,
                     'biosp_isolate_dna_confirmed': dna_tests_confirmed,
                     'biosp_baseline_tests': baseline_tests,
-                    'biosp_baseline_tests_confirmed': baseline_tests_confirmed
+                    'biosp_baseline_tests_confirmed': baseline_tests_confirmed,
                 })
+
 
             summary = self._merge_schema_dicts(summary, data)
 
@@ -89,7 +96,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                 with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
                     # pylint: disable=unused-variable
                     for count, line in enumerate(handle):
-                        self.rural_zipcodes.append(line.split(',')[1].strip())
+                        # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it
+                        self.rural_zipcodes.append(line.split(',')[1].strip().zfill(5))
                 break
 
     def _set_contact_flags(self, ps_bqr):
@@ -162,6 +170,9 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     data['addr_state'] = addr['addr_state']
                     data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else addr['addr_zip']
                     zipcode = addr['addr_zip']
+                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
+                    if zipcode and len(zipcode) > 5:
+                        zipcode = zipcode[:5]
 
                     # See if we need to import the rural zip code list.
                     if not self.rural_zipcodes:
@@ -186,7 +197,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             data['ubr_sexual_gender_minority'] = 1
 
         # ubr_disability
-        qnans = BQParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
+        qnans = ParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
         data['ubr_disability'] = 0
         if qnans:
             if qnans.get('Employment_EmploymentStatus') == 'EmploymentStatus_UnableToWork' or \
@@ -213,8 +224,10 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         break
 
             if consent_date:
-                age = int((consent_date - ps_bqr.date_of_birth).days / 365)
-                if not 18 <= age <= 65:
+                # PDR-261:  Should not use years (integer) alone;  anyone older than 65 by even a day should be
+                # flagged as UBR, so use float
+                age = (consent_date - ps_bqr.date_of_birth).days / 365
+                if not 18.0 <= age <= 65.0:
                     data['ubr_age_at_consent'] = 1
 
         # pylint: disable=unused-variable

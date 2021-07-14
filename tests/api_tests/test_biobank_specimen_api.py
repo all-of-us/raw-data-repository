@@ -248,7 +248,7 @@ class BiobankOrderApiTest(BaseTestCase):
     def test_allow_for_null_collections_on_migration(self):
         payload = self.get_minimal_specimen_json()
         payload['attributes'] = None
-        self.send_put(f"Biobank/specimens", request_data=[payload])
+        self.send_put('Biobank/specimens', request_data=[payload])
 
         specimen = self.get_specimen_from_dao(rlims_id=payload['rlimsID'])
         saved_specimen_client_json = self.dao.to_client_json(specimen)
@@ -634,7 +634,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimens[0]['testcode'] = 'migration'
         specimens[1]['testcode'] = 'checking'
 
-        result = self.send_put(f"Biobank/specimens", request_data=specimens)
+        result = self.send_put('Biobank/specimens', request_data=specimens)
         self.assertJsonResponseMatches(result, {
             'summary': {
                 'total_received': 2,
@@ -660,7 +660,7 @@ class BiobankOrderApiTest(BaseTestCase):
 
         specimens[2]['testcode'] = 'third test code'
         specimens[4]['testcode'] = 'checking last too'
-        self.send_put(f"Biobank/specimens", request_data=specimens)
+        self.send_put('Biobank/specimens', request_data=specimens)
 
         third = self.get_specimen_from_dao(_id=third.id)
         self.assertEqual(third.testCode, 'third test code')
@@ -731,7 +731,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self._create_minimal_specimen()
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
 
-        self.send_put(f"Biobank/specimens/sabrina/status", {
+        self.send_put('Biobank/specimens/sabrina/status', {
             'status': 'new',
             'freezeThawCount': 8,
             'location': 'Washington',
@@ -771,7 +771,7 @@ class BiobankOrderApiTest(BaseTestCase):
         self._create_minimal_specimen()
         specimen = self.get_specimen_from_dao(rlims_id='sabrina')
 
-        self.send_put(f"Biobank/specimens/sabrina/disposalStatus", {
+        self.send_put('Biobank/specimens/sabrina/disposalStatus', {
             'reason': 'contaminated',
             'disposalDate': TIME_2.isoformat()
         })
@@ -927,7 +927,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.retrieve_specimen_json(result['id'])
         self.assertIsNone(specimen['attributes'])
 
-        self.send_put(f"Biobank/specimens/sabrina/attributes/attr1", {
+        self.send_put('Biobank/specimens/sabrina/attributes/attr1', {
             'value': 'test attribute'
         })
 
@@ -950,7 +950,7 @@ class BiobankOrderApiTest(BaseTestCase):
         ]
         initial_result = self.put_specimen(payload)
 
-        self.send_put(f"Biobank/specimens/sabrina/attributes/attr_one", {
+        self.send_put('Biobank/specimens/sabrina/attributes/attr_one', {
             'value': 'updated'
         })
 
@@ -972,7 +972,7 @@ class BiobankOrderApiTest(BaseTestCase):
         ]
         initial_result = self.put_specimen(payload)
 
-        self.send_delete(f"Biobank/specimens/sabrina/attributes/attr_one")
+        self.send_delete('Biobank/specimens/sabrina/attributes/attr_one')
 
         specimen = self.retrieve_specimen_json(initial_result['id'])
         self.assertEqual(1, len(specimen['attributes']), 'Should only have one attribute after the delete request')
@@ -989,7 +989,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.retrieve_specimen_json(result['id'])
         self.assertIsNone(specimen['aliquots'])
 
-        self.send_put(f"Biobank/specimens/sabrina/aliquots/first", {
+        self.send_put('Biobank/specimens/sabrina/aliquots/first', {
             'sampleType': 'first sample',
             'containerTypeID': 'tube'
         })
@@ -1010,7 +1010,7 @@ class BiobankOrderApiTest(BaseTestCase):
         ]
         initial_result = self.put_specimen(payload)
 
-        self.send_put(f"Biobank/specimens/sabrina/aliquots/salem", {
+        self.send_put('Biobank/specimens/sabrina/aliquots/salem', {
             'sampleType': 'updated'
         })
 
@@ -1018,6 +1018,50 @@ class BiobankOrderApiTest(BaseTestCase):
         aliquot = specimen['aliquots'][0]
         self.assertEqual('updated', aliquot['sampleType'])
         self.assertEqual('tube', aliquot['containerTypeID'])
+
+    def test_simplified_aliquot_nesting(self):
+        """The aliquots endpoint should allow for defining a new aliquot as a child of an existing aliquot"""
+        generic_aliquot_data = {
+            'sampleType': 'first sample',
+            'containerTypeID': 'tube'
+        }
+
+        # Create a parent aliquot to test with
+        specimen = self.data_generator.create_database_biobank_specimen()
+        parent_rlims_id = 'parent_aliquot'
+        self.send_put(f'Biobank/specimens/{specimen.rlimsId}/aliquots/{parent_rlims_id}', generic_aliquot_data)
+
+        # Create another aliquot that is nested within the first aliquot (specimen -> aliquot -> aliquot)
+        child_rlims_id = 'child_aliquot'
+        self.send_put(f'Biobank/specimens/{parent_rlims_id}/aliquots/{child_rlims_id}', generic_aliquot_data)
+
+        # Verify that the aliquot was successfully created and has the correct nesting structure
+        aliquot = self.session.query(BiobankAliquot).filter(BiobankAliquot.rlimsId == child_rlims_id).one()
+        self.assertEqual(parent_rlims_id, aliquot.parent_aliquot_rlims_id)
+        self.assertEqual(specimen.rlimsId, aliquot.specimen_rlims_id)
+
+        # Make an update to the aliquot and make sure the API modifies the existing aliquot
+        updated_sample_type = 'new updated sample type'
+        self.send_put(f'Biobank/specimens/{parent_rlims_id}/aliquots/{child_rlims_id}', {
+            'sampleType': updated_sample_type
+        })
+        with self.dao.session() as session:
+            aliquot = session.query(BiobankAliquot).filter(BiobankAliquot.id == aliquot.id).one()
+            self.assertEqual(updated_sample_type, aliquot.sampleType)
+
+    def test_aliquot_nesting_not_found_error(self):
+        """Return 404 if trying to PUT an aliquot as a child of another that doesn't exist"""
+        generic_aliquot_data = {
+            'sampleType': 'first sample',
+            'containerTypeID': 'tube'
+        }
+
+        # Try to upload an aliquot for an ID that doesn't exist, expecting a 404
+        self.send_put(
+            'Biobank/specimens/does-not-exist/aliquots/new-aliquot',
+            generic_aliquot_data,
+            expected_status=404
+        )
 
     def _create_minimal_specimen_with_aliquot(self, rlims_id='sabrina', aliquot_rlims_id='salem'):
         payload = self.get_minimal_specimen_json(rlims_id)
@@ -1029,7 +1073,7 @@ class BiobankOrderApiTest(BaseTestCase):
     def test_aliquot_status_updated_all_fields(self):
         result = self._create_minimal_specimen_with_aliquot()
 
-        self.send_put(f"Biobank/aliquots/salem/status", {
+        self.send_put('Biobank/aliquots/salem/status', {
             'status': 'new',
             'freezeThawCount': 8,
             'location': 'Washington',
@@ -1054,7 +1098,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.retrieve_specimen_json(result['id'])
         self.assertIsNone(specimen['aliquots'][0]['status']['status'])
 
-        self.send_put(f'Biobank/aliquots/salem/status', {
+        self.send_put('Biobank/aliquots/salem/status', {
             'status': 'updated'
         })
 
@@ -1064,7 +1108,7 @@ class BiobankOrderApiTest(BaseTestCase):
     def test_aliquot_disposed_all_fields(self):
         result = self._create_minimal_specimen_with_aliquot()
 
-        self.send_put(f'Biobank/aliquots/salem/disposalStatus', {
+        self.send_put('Biobank/aliquots/salem/disposalStatus', {
             'reason': 'contaminated',
             'disposalDate': TIME_2.isoformat()
         })
@@ -1079,7 +1123,7 @@ class BiobankOrderApiTest(BaseTestCase):
         specimen = self.retrieve_specimen_json(result['id'])
         self.assertIsNone(specimen['aliquots'][0]['datasets'])
 
-        self.send_put(f'Biobank/aliquots/salem/datasets/data1', {
+        self.send_put('Biobank/aliquots/salem/datasets/data1', {
             'status': 'created',
             'datasetItems': [
                 {
@@ -1122,7 +1166,7 @@ class BiobankOrderApiTest(BaseTestCase):
         ]
         result = self.put_specimen(payload)
 
-        self.send_put(f'Biobank/aliquots/salem/datasets/data_two', {
+        self.send_put('Biobank/aliquots/salem/datasets/data_two', {
             'rlimsID': 'data_two',
             'status': 'updated',
             'datasetItems': [

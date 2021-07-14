@@ -2,44 +2,35 @@
 
 This defines the APIs and the handlers for the APIs. All responses are JSON.
 """
-import os
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    try:
-        import googleclouddebugger
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
+# pylint: disable=unused-import
+import rdr_service.activate_debugger
 
 import logging
 
-# pylint: disable=unused-import
 from flask import got_request_exception, Response
 from flask_restful import Api
 from sqlalchemy.exc import DBAPIError
 from werkzeug.exceptions import HTTPException, InternalServerError
 
-from rdr_service import config_api
-from rdr_service import version_api
-from rdr_service import app_util
+from rdr_service import app_util, config_api, version_api
 from rdr_service.api import metrics_ehr_api
 from rdr_service.api.awardee_api import AwardeeApi
 from rdr_service.api.bigquery_participant_summary_api import BQParticipantSummaryApi
 from rdr_service.api.biobank_order_api import BiobankOrderApi
-from rdr_service.api.biobank_specimen_api import BiobankSpecimenApi, BiobankSpecimenStatusApi,\
-    BiobankSpecimenDisposalApi, BiobankSpecimenAttributeApi, BiobankSpecimenAliquotApi, BiobankAliquotStatusApi,\
-    BiobankAliquotDisposalApi, BiobankAliquotDatasetApi
+from rdr_service.api.biobank_specimen_api import BiobankAliquotApi, BiobankAliquotDatasetApi,\
+    BiobankAliquotDisposalApi, BiobankAliquotStatusApi, BiobankSpecimenApi, BiobankSpecimenAttributeApi,\
+    BiobankSpecimenDisposalApi, BiobankSpecimenStatusApi
+
 from rdr_service.api.check_ppi_data_api import check_ppi_data
 from rdr_service.api.data_gen_api import DataGenApi, SpecDataGenApi
 from rdr_service.api.deceased_report_api import DeceasedReportApi, DeceasedReportReviewApi
 from rdr_service.api.mail_kit_order_api import MailKitOrderApi
 from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi
 from rdr_service.api.import_codebook_api import import_codebook
-from rdr_service.api.metric_sets_api import MetricSetsApi
-from rdr_service.api.metrics_api import MetricsApi
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
-from rdr_service.api.participant_counts_over_time_api import ParticipantCountsOverTimeApi
-from rdr_service.api.participant_summary_api import ParticipantSummaryApi, ParticipantSummaryModifiedApi
+from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
+    ParticipantSummaryModifiedApi, ParticipantSummaryCheckLoginApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
 from rdr_service.api.physical_measurements_api import PhysicalMeasurementsApi, sync_physical_measurements
 from rdr_service.api.public_metrics_api import PublicMetricsApi
@@ -48,7 +39,8 @@ from rdr_service.api.questionnaire_response_api import ParticipantQuestionnaireA
 from rdr_service.api.organization_hierarchy_api import OrganizationHierarchyApi
 from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResearcherApi
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
-from rdr_service.api.redcap_workbench_audit_api import RedcapWorkbenchAuditApi
+from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
+from rdr_service.api.message_broker_api import MessageBrokerApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -76,6 +68,8 @@ got_request_exception.connect(_log_request_exception, app)
 #
 
 api = Api(app)
+app_util.install_rate_limiting(app)
+
 
 api.add_resource(
     ParticipantApi,
@@ -117,6 +111,13 @@ api.add_resource(
 )
 
 api.add_resource(
+    ParticipantSummaryCheckLoginApi,
+    API_PREFIX + "ParticipantSummary/CheckLogin",
+    endpoint="participant.summary.check_login",
+    methods=["POST"],
+)
+
+api.add_resource(
     PatientStatusApi,
     API_PREFIX + "PatientStatus/<participant_id:p_id>/Organization/<string:org_id>",
     endpoint="patient.status",
@@ -138,26 +139,8 @@ api.add_resource(
     methods=["GET", "POST", "PATCH"],
 )
 
-# TODO: remove commented metrics 1 endpoints after December 1 2020.
-#api.add_resource(MetricsApi, API_PREFIX + "Metrics", endpoint="metrics", methods=["POST"])
-
-api.add_resource(
-    ParticipantCountsOverTimeApi,
-    API_PREFIX + "ParticipantCountsOverTime",
-    endpoint="participant_counts_over_time",
-    methods=["GET"],
-)
-
 # Returns fields in metrics configs. Used in dashboards.
 api.add_resource(MetricsFieldsApi, API_PREFIX + "MetricsFields", endpoint="metrics_fields", methods=["GET"])
-
-#api.add_resource(
-#    MetricSetsApi,
-#    API_PREFIX + "MetricSets",
-#    API_PREFIX + "MetricSets/<string:ms_id>/Metrics",
-#    endpoint="metric_sets",
-#    methods=["GET"],
-#)
 
 # Used by participant_counts_over_time
 api.add_resource(metrics_ehr_api.MetricsEhrApi, API_PREFIX + "MetricsEHR", endpoint="metrics_ehr", methods=["GET"])
@@ -250,8 +233,8 @@ api.add_resource(
     )
 
 api.add_resource(
-    BiobankSpecimenAliquotApi,
-    API_PREFIX + "Biobank/specimens/<string:rlims_id>/aliquots/<string:aliquot_rlims_id>",
+    BiobankAliquotApi,
+    API_PREFIX + "Biobank/specimens/<string:parent_rlims_id>/aliquots/<string:rlims_id>",
     endpoint="biobank.parent_aliquot",
     methods=["PUT"],
     )
@@ -306,6 +289,11 @@ api.add_resource(RedcapWorkbenchAuditApi,
                  endpoint='workbench.audit',
                  methods=['GET', 'POST'])
 
+api.add_resource(RedcapResearcherAuditApi,
+                 API_PREFIX + 'workbench/audit/researcher/snapshots',
+                 endpoint='researchers.audit',
+                 methods=['GET'])
+
 api.add_resource(GenomicPiiApi,
                  API_PREFIX + "GenomicPII/<string:mode>/<participant_id:p_id>",
                  endpoint='genomic.pii',
@@ -354,6 +342,8 @@ api.add_resource(version_api.VersionApi, "/", API_PREFIX, endpoint="version", me
 # Data generator API used to load fake data into the database.
 api.add_resource(DataGenApi, API_PREFIX + "DataGen", endpoint="datagen", methods=["POST", "PUT"])
 
+# Message broker API
+api.add_resource(MessageBrokerApi, API_PREFIX + "MessageBroker", endpoint="message_broker", methods=["POST"])
 
 #
 # Non-resource endpoints

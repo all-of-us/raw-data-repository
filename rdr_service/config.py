@@ -113,6 +113,21 @@ HPO_LITE_AWARDEE = 'hpo_lite_awardee'
 HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
 HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
 
+# Buckets to listen for Pub/Sub notifications
+PUBSUB_NOTIFICATION_BUCKETS_PROD = [
+    "prod-genomics-baylor",
+    "prod-genomics-broad",
+    "prod-genomics-northwest",
+    "prod-genomics-data-baylor",
+    "prod-genomics-data-broad",
+    "prod-genomics-data-northwest",
+    "prod-drc-broad",
+]
+
+PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
+    "aou-rdr-sandbox-mock-data",
+]
+
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
 
@@ -134,8 +149,17 @@ DAYS_TO_DELETE_KEYS = "days_to_delete_keys"
 
 # service accounts exception from key deletion
 SERVICE_ACCOUNTS_WITH_LONG_LIVED_KEYS = "service_accounts_with_long_lived_keys"
+DATA_OPS_SERVICE_ACCOUNTS_TO_MANAGE = "data_ops_service_accounts_to_manage"
 
 CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
+
+DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
+
+RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
+
+DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
+
+GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

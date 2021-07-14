@@ -6,19 +6,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import JSON
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
-from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime
+from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime, UTCDateTime6
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.participant_enums import (
-    GenomicSetStatus,
-    GenomicSetMemberStatus,
-    GenomicValidationFlag,
-    GenomicSubProcessStatus,
-    GenomicSubProcessResult,
-    GenomicJob,
-    GenomicWorkflowState,
-    GenomicQcStatus,
-    GenomicManifestTypes,
-    GenomicContaminationCategory, GenomicIncidentCode, GenomicIncidentStatus)
+from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
+    GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
 
 
 class GenomicSet(Base):
@@ -77,8 +69,8 @@ class GenomicSetMember(Base):
     sexAtBirth = Column("sex_at_birth", String(20), nullable=True)
     genomeType = Column("genome_type", String(80), nullable=True)
 
-    # American Indian or Alaskan Native
     ai_an = Column('ai_an', String(2), nullable=True)
+    """Flag for if participant is American Indian/Alaska Native"""
 
     biobankId = Column("biobank_id", String(128), nullable=True, index=True)
 
@@ -96,8 +88,8 @@ class GenomicSetMember(Base):
     sampleId = Column('sample_id', String(80), nullable=True, index=True)
     sampleType = Column('sample_type', String(50), nullable=True)
 
-    sequencingFileName = Column('sequencing_file_name',
-                                String(255), nullable=True)
+    sequencingFileName = Column('sequencing_file_name', String(255), nullable=True)
+    """Name of the csv file being used for genomics sequencing"""
 
     gcSiteId = Column('gc_site_id', String(11), nullable=True)
 
@@ -129,9 +121,6 @@ class GenomicSetMember(Base):
     aw2FileProcessedId = Column('aw2_file_processed_id',
                                 Integer, ForeignKey("genomic_file_processed.id"),
                                 nullable=True)
-    aw2fFileProcessedId = Column('aw2f_file_processed_id',
-                                 Integer, ForeignKey("genomic_file_processed.id"),
-                                 nullable=True)
 
     # Reconciliation and Manifest columns
     # Reconciled to BB Manifest
@@ -171,6 +160,10 @@ class GenomicSetMember(Base):
                                  Integer, ForeignKey("genomic_job_run.id"),
                                  nullable=True)
 
+    aw2fManifestJobRunID = Column('aw2f_manifest_job_run_id',
+                                  Integer, ForeignKey("genomic_job_run.id"),
+                                  nullable=True)
+
     # CVL WGS Fields
     cvlW1ManifestJobRunId = Column('cvl_w1_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
@@ -187,7 +180,6 @@ class GenomicSetMember(Base):
     cvlW4ManifestJobRunID = Column('cvl_w4_manifest_job_run_id',
                                    Integer, ForeignKey("genomic_job_run.id"),
                                    nullable=True)
-
     cvlW4FManifestJobRunID = Column('cvl_w4f_manifest_job_run_id',
                                     Integer, ForeignKey("genomic_job_run.id"),
                                     nullable=True)
@@ -282,7 +274,7 @@ class GenomicFileProcessed(Base):
 
     # TODO: file_path, bucket_name, file_name, and upload_date to be removed
     # after genomic_manifest_file created, backfilled, and downstream partners notified.
-    filePath = Column('file_path', String(255), nullable=False)
+    filePath = Column('file_path', String(255), nullable=False, index=True)
     bucketName = Column('bucket_name', String(128), nullable=False)
     fileName = Column('file_name', String(128), nullable=False)
     fileStatus = Column('file_status',
@@ -308,6 +300,7 @@ class GenomicManifestFile(Base):
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
     manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
     filePath = Column('file_path', String(255), nullable=True, index=True)
+    fileName = Column('file_name', String(255), nullable=True, index=True)
     bucketName = Column('bucket_name', String(128), nullable=True)
     recordCount = Column('record_count', Integer, nullable=False, default=0)
     rdrProcessingComplete = Column('rdr_processing_complete', SmallInteger, nullable=False, default=0)
@@ -391,6 +384,7 @@ class GenomicAW1Raw(Base):
     collection_date = Column("collection_date", String(255), nullable=True)
     biobank_id = Column("biobank_id", String(255), nullable=True)
     sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
+    """Assigned sex at birth"""
     age = Column("age", String(255), nullable=True)
     ny_state = Column("ny_state", String(255), nullable=True)
     sample_type = Column("sample_type", String(255), nullable=True)
@@ -489,6 +483,12 @@ class GenomicGCValidationMetrics(Base):
     notes = Column('notes', String(128), nullable=True)
     siteId = Column('site_id', String(80), nullable=True)
 
+    drcSexConcordance = Column('drc_sex_concordance', String(255), nullable=True)
+    drcContamination = Column('drc_contamination', String(255), nullable=True)
+    drcCallRate = Column('drc_call_rate', String(255), nullable=True)
+    drcMeanCoverage = Column('drc_mean_coverage', String(255), nullable=True)
+    drcFpConcordance = Column('drc_fp_concordance', String(255), nullable=True)
+
     # Genotyping Data (Array) reconciliation
     idatRedReceived = Column('idat_red_received', SmallInteger, nullable=False, default=0)
     idatRedDeleted = Column('idat_red_deleted', SmallInteger, nullable=False, default=0)
@@ -558,6 +558,14 @@ class GenomicGCValidationMetrics(Base):
     craiDeleted = Column('crai_deleted', SmallInteger, nullable=False, default=0)
     craiPath = Column('crai_path', String(255), nullable=True)
 
+    gvcfReceived = Column('gvcf_received', SmallInteger, nullable=False, default=0)
+    gvcfDeleted = Column('gvcf_deleted', SmallInteger, nullable=False, default=0)
+    gvcfPath = Column('gvcf_path', String(512), nullable=True)
+
+    gvcfMd5Received = Column('gvcf_md5_received', SmallInteger, nullable=False, default=0)
+    gvcfMd5Deleted = Column('gvcf_md5_deleted', SmallInteger, nullable=False, default=0)
+    gvcfMd5Path = Column('gvcf_md5_path', String(255), nullable=True)
+
     # Ignore Record
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=True, default=0)
     devNote = Column('dev_note', String(255), nullable=True)
@@ -582,7 +590,6 @@ class GenomicSampleContamination(Base):
     # Auto-Timestamps
     created = Column('created', DateTime, nullable=True)
     modified = Column('modified', DateTime, nullable=True)
-
     sampleId = Column('sample_id', ForeignKey(BiobankStoredSample.biobankStoredSampleId), nullable=False)
     failedInJob = Column('failed_in_job', Enum(GenomicJob), nullable=False)
 
@@ -602,26 +609,91 @@ class GenomicIncident(Base):
 
     created = Column('created', DateTime)
     modified = Column('modified', DateTime)
-
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     dev_note = Column(String(255))
-
     code = Column(String(80), default=GenomicIncidentCode.UNSET.name)
-    message = Column(String(255))
+    message = Column(String(512))
     status = Column(String(80), default=GenomicIncidentStatus.OPEN.name)
-
+    slack_notification = Column(SmallInteger, nullable=False, default=0)
+    slack_notification_date = Column(DateTime, nullable=True)
     source_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     source_file_processed_id = Column(Integer, ForeignKey("genomic_file_processed.id"))
     audit_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
-
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
     gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
-
     biobank_id = Column(String(128), index=True)
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
+    data_file_path = Column(String(512))
 
 
 event.listen(GenomicIncident, 'before_insert', model_insert_listener)
 event.listen(GenomicIncident, 'before_update', model_update_listener)
+
+
+class GenomicCloudRequests(Base):
+    """
+    Used for capturing cloud requests payloads via
+    Google Cloud Functions
+    """
+    __tablename__ = 'genomic_cloud_requests'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    event_payload = Column(JSON, nullable=False)
+    topic = Column(String(255), nullable=False)
+    api_route = Column(String(255), nullable=False)
+    file_path = Column(String(255), nullable=False)
+    task = Column(String(255), nullable=False)
+    bucket_name = Column(String(255), nullable=False)
+
+
+event.listen(GenomicCloudRequests, 'before_insert', model_insert_listener)
+event.listen(GenomicCloudRequests, 'before_update', model_update_listener)
+
+
+class GenomicMemberReportState(Base):
+    """
+    Used for maintaining one-to-many relationship
+    from GenomicSetMember based on multiple report states
+    """
+
+    __tablename__ = 'genomic_member_report_state'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
+    genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    module = Column(String(80), nullable=False)
+
+
+event.listen(GenomicMemberReportState, 'before_insert', model_insert_listener)
+event.listen(GenomicMemberReportState, 'before_update', model_update_listener)
+
+
+class GenomicInformingLoop(Base):
+    """
+    Used for maintaining normalized value set of
+    informing_loop_decision ingested from MessageBrokerEventData
+    """
+
+    __tablename__ = 'genomic_informing_loop'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    message_record_id = Column(Integer, nullable=False)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
+    event_type = Column(String(256), nullable=False)
+    event_authored_time = Column(UTCDateTime6)
+    module_type = Column(String(128))
+    decision_value = Column(String(128))
+
+
+event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
+event.listen(GenomicInformingLoop, 'before_update', model_update_listener)

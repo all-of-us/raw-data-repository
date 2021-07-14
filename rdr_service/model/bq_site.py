@@ -45,13 +45,18 @@ class BQSiteSchema(BQSchema):
     google_group = BQField('google_group', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mayolink_client_number = BQField('mayolink_client_number', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
-    site_status = BQField('site_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    site_status = BQField('site_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQSiteStatus)
-    enrolling_status = BQField('enrolling_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    site_status_id = BQField('site_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                             fld_enum=BQSiteStatus)
+    enrolling_status = BQField('enrolling_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                fld_enum=BQEnrollingStatus)
-    digital_scheduling_status = BQField('digital_scheduling_status', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    enrolling_status_id = BQField('enrolling_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                                  fld_enum=BQEnrollingStatus)
+    digital_scheduling_status = BQField('digital_scheduling_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                                         fld_enum=BQDigitalSchedulingStatus)
-
+    digital_scheduling_status_id = BQField('digital_scheduling_status_id', BQFieldTypeEnum.INTEGER,
+                                           BQFieldModeEnum.NULLABLE, fld_enum=BQDigitalSchedulingStatus)
     schedule_instructions = BQField('schedule_instructions', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     schedule_instructions_es = BQField('schedule_instructions_es', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     launch_date = BQField('launch_date', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
@@ -70,9 +75,11 @@ class BQSiteSchema(BQSchema):
     phone_number = BQField('phone_number', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     admin_emails = BQField('admin_emails', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     link = BQField('link', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
-    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+    is_obsolete = BQField('is_obsolete', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE,
                           fld_enum=BQObsoleteStatusEnum)
-
+    is_obsolete_id = BQField('is_obsolete_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE,
+                             fld_enum=BQObsoleteStatusEnum)
+    site_type = BQField('site_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 class BQSite(BQTable):
     """ Organization Site BigQuery Table """

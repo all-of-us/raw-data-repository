@@ -488,6 +488,16 @@ class ParticipantDaoTest(BaseTestCase):
         with self.assertRaises(Forbidden):
             self.dao.update(p)
 
+    @mock.patch('rdr_service.dao.participant_dao.logging')
+    def test_error_log_for_incorrect_status_on_participant(self, mock_logging):
+        """Participants that have not yet consented should only be withdrawn with the status of EARLY_OUT"""
+        participant = self.data_generator.create_database_participant()
+        participant.withdrawalStatus = WithdrawalStatus.NO_USE
+        self.dao.update(participant)
+        mock_logging.error.assert_called_with(
+            f'Un-consented participant {participant.participantId} was withdrawn with NO_USE'
+        )
+
     def test_update_not_exists(self):
         p = self.data_generator._participant_with_defaults(participantId=1, biobankId=2)
         with self.assertRaises(NotFound):
@@ -586,7 +596,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.assertEqual(ep.organizationId, p2.organizationId)
 
     @mock.patch('rdr_service.dao.base_dao.logging')
-    def test_inserts_retry_after_lock_wait_timout(self, mock_logging):
+    def test_inserts_retry_after_lock_wait_timeout(self, mock_logging):
         """
         Check to make sure inserts will retry when encountering a lock wait timeout error.
         Any dao should be able to do this, but this test uses ParticipantDao
@@ -596,7 +606,7 @@ class ParticipantDaoTest(BaseTestCase):
         self.session.execute('set global innodb_lock_wait_timeout = 1')
         self.session.query(Participant).with_for_update().all()
 
-        # Use the error logging to know when the lock timout was triggered,
+        # Use the error logging to know when the lock timeout was triggered,
         # unlock the participant table after the first failure
         mock_logging.warning.side_effect = lambda *_, **__: self.session.commit()
 
@@ -630,3 +640,54 @@ class ParticipantDaoTest(BaseTestCase):
             self.dao.insert(new_participant)
 
         self.assertIn('Incorrect string value', str(exc_wrapper.exception))
+
+    def test_participant_id_mapping(self):
+        """
+        Checks that correct Raw sql for export is sent back from dao method
+        as well as checking for correct objects being
+        sent if is_sql param is false
+        """
+        num_participants = 10
+        for _ in range(num_participants):
+            self.data_generator.create_database_participant(
+                externalId=self.data_generator.unique_external_id()
+            )
+
+        expected_union = "(SELECT participant.participant_id AS p_id, 'r_id' AS id_source, " \
+                         "participant.research_id AS id_value \nFROM participant " \
+                         "UNION SELECT participant.participant_id AS p_id, 'vibrent_id' " \
+                         "AS id_source, participant.external_id AS id_value \nFROM participant)"
+
+        only_sql = self.dao.get_participant_id_mapping(is_sql=True)
+        self.assertIn(expected_union, only_sql)
+
+        only_objs = self.dao.get_participant_id_mapping()
+        self.assertEqual(len(only_objs), num_participants*2)
+
+        for obj in only_objs:
+            p_id = obj[0]
+            similar = [obj for obj in only_objs if obj[0] == p_id]
+            self.assertEqual(len(similar), 2)
+            self.assertTrue(any(obj for obj in similar if obj[1] == 'r_id'))
+            self.assertTrue(any(obj for obj in similar if obj[1] == 'vibrent_id'))
+
+    def test_loading_org_and_site_by_ids(self):
+        first_org = self.data_generator.create_database_organization(externalId='ONE')
+        second_org = self.data_generator.create_database_organization(externalId='TWO')
+
+        test_site = self.data_generator.create_database_site(googleGroup='test-site-group')
+
+        participant_one = self.data_generator.create_database_participant(
+            organizationId=first_org.organizationId,
+            siteId=test_site.siteId
+        )
+        participant_two = self.data_generator.create_database_participant(
+            organizationId=second_org.organizationId
+        )
+
+        results = self.dao.get_org_and_site_for_ids([participant_one.participantId, participant_two.participantId])
+        self.assertEqual([
+            (participant_one.participantId, first_org.externalId, test_site.googleGroup),
+            (participant_two.participantId, second_org.externalId, None)
+        ], results)
+

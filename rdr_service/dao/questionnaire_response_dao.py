@@ -3,15 +3,18 @@ import logging
 import os
 import re
 from datetime import datetime
-
+from dateutil import parser
+from hashlib import md5
 import pytz
-from sqlalchemy.orm import subqueryload
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload, subqueryload
+from typing import Dict
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
-from rdr_service.app_util import get_account_origin_id
+from rdr_service.app_util import get_account_origin_id, is_self_request
 from rdr_service import storage
 from rdr_service import clock, config
 from rdr_service.code_constants import (
@@ -29,6 +32,7 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_QUESTION_CODE,
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
+    PMI_SKIP_CODE,
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
@@ -44,10 +48,11 @@ from rdr_service.code_constants import (
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
-    COHORT_1_REVIEW_CONSENT_YES_CODE)
+    COHORT_1_REVIEW_CONSENT_YES_CODE,
+    COPE_VACCINE_MINUTE_1_MODULE_CODE)
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.dao.participant_dao import ParticipantDao, raise_if_withdrawn
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
     ParticipantRaceAnswersDao,
@@ -55,10 +60,11 @@ from rdr_service.dao.participant_summary_dao import (
 )
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
-from rdr_service.model.code import CodeType
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
     QuestionnaireStatus,
@@ -109,6 +115,163 @@ def get_first_completed_baseline_time(participant_summary):
             if field_value > baseline_time:
                 baseline_time = field_value
     return baseline_time
+
+
+class ResponseValidator:
+    def __init__(self, questionnaire_history: QuestionnaireHistory, session):
+        self.session = session
+        self._questionnaire_question_map = self._build_question_id_map(questionnaire_history)
+
+        self.survey = self._get_survey_for_questionnaire_history(questionnaire_history)
+        if self.survey is not None:
+            self._code_to_question_map = self._build_code_to_question_map()
+            if self.survey.redcapProjectId is not None:
+                logging.info('Validating imported survey')
+
+        # Get the skip code id
+        self.skip_code_id = self.session.query(Code.codeId).filter(Code.value == PMI_SKIP_CODE).scalar()
+        if self.skip_code_id is None:
+            logging.error('Unable to load PMI_SKIP code')
+
+    def _get_survey_for_questionnaire_history(self, questionnaire_history: QuestionnaireHistory):
+        survey_query = self.session.query(Survey).filter(
+            Survey.codeId.in_([concept.codeId for concept in questionnaire_history.concepts]),
+            Survey.importTime < questionnaire_history.created,
+            or_(
+                Survey.replacedTime.is_(None),
+                Survey.replacedTime > questionnaire_history.created
+            )
+        ).options(
+            joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
+        )
+        num_surveys_found = survey_query.count()
+        if num_surveys_found == 0:
+            logging.warning(
+                f'No survey definition found for questionnaire id "{questionnaire_history.questionnaireId}" '
+                f'version "{questionnaire_history.version}"'
+            )
+        elif num_surveys_found > 1:
+            logging.warning(
+                f'Multiple survey definitions found for questionnaire id "{questionnaire_history.questionnaireId}" '
+                f'version "{questionnaire_history.version}"'
+            )
+        return survey_query.first()
+
+    def _build_code_to_question_map(self) -> Dict[int, SurveyQuestion]:
+        return {survey_question.code.codeId: survey_question for survey_question in self.survey.questions}
+
+    @classmethod
+    def _build_question_id_map(cls, questionnaire_history: QuestionnaireHistory) -> Dict[int, QuestionnaireQuestion]:
+        return {question.questionnaireQuestionId: question for question in questionnaire_history.questions}
+
+    @classmethod
+    def _validate_min_max(cls, answer, min_str, max_str, parser_function, question_code):
+        try:
+            if min_str:
+                min_parsed = parser_function(min_str)
+                if answer < min_parsed:
+                    logging.warning(
+                        f'Given answer "{answer}" is less than expected min "{min_str}" for question {question_code}'
+                    )
+            if max_str:
+                max_parsed = parser_function(max_str)
+                if answer > max_parsed:
+                    logging.warning(
+                        f'Given answer "{answer}" is greater than expected max "{max_str}" for question {question_code}'
+                    )
+        except (parser.ParserError, ValueError):
+            logging.error(f'Unable to parse validation string for question {question_code}', exc_info=True)
+
+    def _check_answer_has_expected_data_type(self, answer: QuestionnaireResponseAnswer,
+                                             question_definition: SurveyQuestion,
+                                             questionnaire_question: QuestionnaireQuestion):
+        question_code_value = questionnaire_question.code.value
+
+        if answer.valueCodeId == self.skip_code_id:
+            # Any questions can be answered with a skip, there's isn't anything to check in that case
+            return
+
+        if question_definition.questionType in (SurveyQuestionType.UNKNOWN,
+                                                SurveyQuestionType.DROPDOWN,
+                                                SurveyQuestionType.RADIO,
+                                                SurveyQuestionType.CHECKBOX):
+            number_of_selectable_options = len(question_definition.options)
+            if number_of_selectable_options == 0 and answer.valueCodeId is not None:
+                logging.warning(
+                    f'Answer for {question_code_value} gives a value code id when no options are defined'
+                )
+            elif number_of_selectable_options > 0:
+                if answer.valueCodeId is None:
+                    logging.warning(
+                        f'Answer for {question_code_value} gives no value code id when the question has options defined'
+                    )
+                elif answer.valueCodeId not in [option.codeId for option in question_definition.options]:
+                    logging.warning(f'Code ID {answer.valueCodeId} is an invalid answer to {question_code_value}')
+
+        elif question_definition.questionType in (SurveyQuestionType.TEXT, SurveyQuestionType.NOTES):
+            if question_definition.validation is None and answer.valueString is None:
+                logging.warning(f'No valueString answer given for text-based question {question_code_value}')
+            elif question_definition.validation is not None and question_definition.validation != '':
+                if question_definition.validation.startswith('date'):
+                    if answer.valueDate is None:
+                        logging.warning(f'No valueDate answer given for date-based question {question_code_value}')
+                    else:
+                        self._validate_min_max(
+                            answer.valueDate,
+                            question_definition.validation_min,
+                            question_definition.validation_max,
+                            lambda validation_str: parser.parse(validation_str).date(),
+                            question_code_value
+                        )
+                elif question_definition.validation == 'integer':
+                    if answer.valueInteger is None:
+                        logging.warning(
+                            f'No valueInteger answer given for integer-based question {question_code_value}'
+                        )
+                    else:
+                        self._validate_min_max(
+                            answer.valueInteger,
+                            question_definition.validation_min,
+                            question_definition.validation_max,
+                            int,
+                            question_code_value
+                        )
+                else:
+                    logging.warning(
+                        f'Unrecognized validation string "{question_definition.validation}" '
+                        f'for question {question_code_value}'
+                    )
+        else:
+            # There aren't alot of surveys in redcap right now, so it's unclear how
+            # some of the other types would be answered
+            logging.warning(f'No validation check implemented for answer to {question_code_value} '
+                            f'with question type {question_definition.questionType}')
+
+    def check_response(self, response: QuestionnaireResponse):
+        if self.survey is None:
+            return None
+
+        question_codes_answered = set()
+        for answer in response.answers:
+            questionnaire_question = self._questionnaire_question_map.get(answer.questionId)
+            if questionnaire_question is None:
+                # This is less validation, and more getting the object that should ideally already be linked
+                logging.error(f'Unable to find question {answer.questionId} in questionnaire history')
+            else:
+                survey_question = self._code_to_question_map.get(questionnaire_question.codeId)
+                if not survey_question:
+                    logging.error(f'Question code used by the answer to question {answer.questionId} does not match a '
+                                  f'code found on the survey definition')
+                else:
+                    self._check_answer_has_expected_data_type(answer, survey_question, questionnaire_question)
+
+                    if survey_question.codeId in question_codes_answered:
+                        logging.error(f'Too many answers given for {survey_question.code.value}')
+                    elif survey_question.questionType != SurveyQuestionType.CHECKBOX:
+                        if not (
+                            survey_question.questionType == SurveyQuestionType.UNKNOWN and len(survey_question.options)
+                        ):  # UNKNOWN question types could be for a Checkbox, so multiple answers should be allowed
+                            question_codes_answered.add(survey_question.codeId)
 
 
 class QuestionnaireResponseDao(BaseDao):
@@ -195,13 +358,11 @@ class QuestionnaireResponseDao(BaseDao):
                 semantic version {questionnaire_response.questionnaireSemanticVersion} is not found"
             )
 
-        # Get the questions from the questionnaire history record.
-        q_question_ids = set([question.questionnaireQuestionId for question in questionnaire_history.questions])
-        for answer in questionnaire_response.answers:
-            if answer.questionId not in q_question_ids:
-                raise BadRequest(
-                    f"Questionnaire response contains question ID {answer.questionId} not in questionnaire."
-                )
+        try:
+            answer_validator = ResponseValidator(questionnaire_history, session)
+            answer_validator.check_response(questionnaire_response)
+        except (AttributeError, ValueError, TypeError, LookupError):
+            logging.error('Code error encountered when validating the response', exc_info=True)
 
         questionnaire_response.created = clock.CLOCK.now()
         if not questionnaire_response.authored:
@@ -335,11 +496,8 @@ class QuestionnaireResponseDao(BaseDao):
                 raise BadRequest(
                     f"Unable to find signed consent-for-enrollment file for participant"
                 )
-            raise_if_withdrawn(participant)
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
             something_changed = True
-        else:
-            raise_if_withdrawn(participant_summary)
 
         # Fetch the codes for all questions and concepts
         codes = code_dao.get_with_ids(code_ids)
@@ -545,6 +703,11 @@ class QuestionnaireResponseDao(BaseDao):
                     # them as submitted
                     participant_summary.questionnaireOnDnaProgram = QuestionnaireStatus.SUBMITTED
                     participant_summary.questionnaireOnDnaProgramAuthored = authored
+                elif code.value == COPE_VACCINE_MINUTE_1_MODULE_CODE \
+                        and participant_summary.questionnaireOnCopeVaccineMinute1 != QuestionnaireStatus.SUBMITTED:
+                    participant_summary.questionnaireOnCopeVaccineMinute1 = QuestionnaireStatus.SUBMITTED
+                    participant_summary.questionnaireOnCopeVaccineMinute1Authored = authored
+                    module_changed = True
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
@@ -615,6 +778,12 @@ class QuestionnaireResponseDao(BaseDao):
             return status_map[fhir_response.status]
 
     @classmethod
+    def calculate_answer_hash(cls, response_json):
+        answer_list_json = response_json.get('group', '')
+        answer_list_str = json.dumps(answer_list_json)
+        return md5(answer_list_str.encode('utf-8')).hexdigest()
+
+    @classmethod
     def _extension_from_fhir_object(cls, fhir_extension):
         # Get the non-empty values from the FHIR extension object for the url field and
         # any field with a name that starts with "value"
@@ -625,6 +794,16 @@ class QuestionnaireResponseDao(BaseDao):
                 filtered_values[name] = value
 
         return QuestionnaireResponseExtension(**filtered_values)
+
+    @classmethod
+    def _parse_external_identifier(cls, fhir_qr):
+        external_id = None
+        if fhir_qr.identifier:
+            external_id = fhir_qr.identifier.value
+            if external_id and len(external_id) > QuestionnaireResponse.externalId.type.length:
+                logging.warning('External id was larger than expected, unable to save it to the database.')
+                external_id = None
+        return external_id
 
     @classmethod
     def extension_models_from_fhir_objects(cls, fhir_extensions):
@@ -672,7 +851,9 @@ class QuestionnaireResponseDao(BaseDao):
             authored=authored,
             language=language,
             resource=json.dumps(resource_json),
-            status=self.read_status(fhir_qr)
+            status=self.read_status(fhir_qr),
+            answerHash=self.calculate_answer_hash(resource_json),
+            externalId=self._parse_external_identifier(fhir_qr)
         )
 
         if fhir_qr.group is not None:
@@ -842,8 +1023,9 @@ def _validate_consent_pdfs(resource):
         _raise_if_gcloud_file_missing("/{}{}".format(consent_bucket, local_pdf_path))
         found_pdf = True
 
-    if config.GAE_PROJECT == 'localhost':
+    if config.GAE_PROJECT == 'localhost' or is_self_request():
         # Pretend we found a valid consent if we're running on a development machine
+        # skip checking for self request from fake participant generating
         return True
     else:
         return found_pdf

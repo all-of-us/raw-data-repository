@@ -1,6 +1,6 @@
 {
-    "db_connection_string": "mysql+mysqldb://rdr:rdr!pwd@127.0.0.1/?charset=utf8",
-    "backup_db_connection_string": "mysql+mysqldb://rdr:rdr!pwd@127.0.0.1/?charset=utf8",
+    "db_connection_string": "mysql+mysqldb://rdr:rdr!pwd@127.0.0.1/?charset=utf8mb4",
+    "backup_db_connection_string": "mysql+mysqldb://rdr:rdr!pwd@127.0.0.1/?charset=utf8mb4",
     "unittest_db_connection_string": "<overridden in tests>",
     "db_password": "rdr!pwd",
     "db_connection_name": "",

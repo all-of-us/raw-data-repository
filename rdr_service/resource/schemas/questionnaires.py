@@ -69,7 +69,9 @@ class _QuestionnaireSchema:
             'questionnaire_response_id': fields.Int32(required=True),
             'questionnaire_id': fields.Int32(required=True),
             'external_id': fields.String(validate=validate.Length(max=100)),
-            'status': fields.String(validate=validate.Length(max=50))
+            'status': fields.String(validate=validate.Length(max=50)),
+            'status_id': fields.Int64(),
+            'test_participant': fields.Int64()
         }
 
         dao = ResourceDataDao(backup=True)

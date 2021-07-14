@@ -1,10 +1,9 @@
 import datetime
+from dateutil.parser import parse
 import http.client
 import json
 import mock
-
 import pytz
-from dateutil.parser import parse
 from sqlalchemy import or_
 from sqlalchemy.orm.session import make_transient
 
@@ -20,18 +19,16 @@ from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnsw
 from rdr_service.model.code import Code
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.utils import from_client_participant_id
+from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
+from rdr_service.model.utils import from_client_participant_id, to_client_participant_id
 from rdr_service.participant_enums import QuestionnaireDefinitionStatus, QuestionnaireResponseStatus,\
     ParticipantCohort, ParticipantCohortPilotFlag
-# For testing PDR generator content
-from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
-from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
-from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
 
-from tests.api_tests.test_participant_summary_api import participant_summary_default_values
+
+from tests.api_tests.test_participant_summary_api import participant_summary_default_values,\
+    participant_summary_default_values_no_basics
 from tests.test_data import data_path
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 from rdr_service.concepts import Concept
 
 TIME_1 = datetime.datetime(2016, 1, 1)
@@ -43,7 +40,7 @@ def _questionnaire_response_url(participant_id):
     return "Participant/%s/QuestionnaireResponse" % participant_id
 
 
-class QuestionnaireResponseApiTest(BaseTestCase):
+class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def setUp(self):
         super(QuestionnaireResponseApiTest, self).setUp()
@@ -110,12 +107,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         summary_dao.update(summary_obj)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_3):
             resource["authored"] = TIME_3.isoformat()
             self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -395,14 +387,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
             response = self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -411,6 +396,20 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         qr = questionnaire_response_dao.get(response['id'])
         self.assertEqual(qr.nonParticipantAuthor, 'CATI')
 
+    def test_emoji_questionnaire_responses(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            string_answers = [
+                ("firstName", 'test1'),
+                ("lastName", 'test2'),
+                ("email", 'test@example.com'),
+                ("streetAddress", 'test address'),
+                ("streetAddress2", 'Colombia 🇨🇴'),
+            ]
+            self.send_consent(participant_id, string_answers=string_answers)
+        response = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(response['streetAddress2'], 'Colombia 🇨🇴')
+
     def test_demographic_questionnaire_responses(self):
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
@@ -418,14 +417,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
             self.send_post(_questionnaire_response_url(participant_id), resource)
@@ -464,7 +456,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = dict(participant_summary_default_values)
+        expected = dict(participant_summary_default_values_no_basics)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -480,7 +472,6 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
             "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "primaryLanguage": "es",
-            "questionnaireOnTheBasics": "UNSET",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
@@ -490,22 +481,19 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # verify if the response is not consent, the primary language will not change
         questionnaire_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
 
-        with open(data_path("consent_for_genomic_ror_resp.json")) as f:
-            resource = json.load(f)
-            resource["subject"]["reference"] = f'Patient/{participant_id}'
-            resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_resp.json", questionnaire_id, participant_id)
 
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
 
-            summary = self.send_get("Participant/%s/Summary" % participant_id)
-            self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
 
-        with open(data_path("consent_for_genomic_ror_dont_know.json")) as f:
-            dont_know_resp = json.load(f)
-
-        dont_know_resp["subject"]["reference"] = f'Patient/{participant_id}'
-        dont_know_resp["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        dont_know_resp = self._load_response_json(
+            "consent_for_genomic_ror_dont_know.json",
+            questionnaire_id,
+            participant_id
+        )
 
         with FakeClock(TIME_2):
             self._save_codes(dont_know_resp)
@@ -517,11 +505,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
         self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED_NOT_SURE')
 
-        with open(data_path("consent_for_genomic_ror_no.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = f'Patient/{participant_id}'
-        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_no.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             self._save_codes(resource)
@@ -534,11 +518,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.assertEqual(summary['consentForGenomicsRORAuthored'], '2019-12-12T09:30:44')
 
         # Test Bad Code Value Sent returns 400
-        with open(data_path("consent_for_genomic_ror_bad_request.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = f'Patient/{participant_id}'
-        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+        resource = self._load_response_json("consent_for_genomic_ror_bad_request.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             self._save_codes(resource)
@@ -546,7 +526,9 @@ class QuestionnaireResponseApiTest(BaseTestCase):
                            resource,
                            expected_status=http.client.BAD_REQUEST)
 
-    def test_consent_with_extension_language(self):
+    def test_gror_consent_with_duplicate_answers(self):
+        """ Simulate RDR questionnaire_response payloads that contain duplicate entries in question JSON array"""
+
         with FakeClock(TIME_1):
             participant_id = self.create_participant()
             self.send_consent(participant_id, language="es")
@@ -554,7 +536,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         participant = self.send_get("Participant/%s" % participant_id)
         summary = self.send_get("Participant/%s/Summary" % participant_id)
 
-        expected = dict(participant_summary_default_values)
+        expected = dict(participant_summary_default_values_no_basics)
         expected.update({
             "genderIdentity": "UNSET",
             "firstName": self.first_name,
@@ -570,7 +552,58 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
             "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
             "primaryLanguage": "es",
-            "questionnaireOnTheBasics": "UNSET",
+            "signUpTime": TIME_1.isoformat(),
+            "consentCohort": str(ParticipantCohort.COHORT_1),
+            "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
+        })
+        self.assertJsonResponseMatches(expected, summary)
+
+        # verify if the response is not consent, the primary language will not change
+        questionnaire_id = self.create_questionnaire("consent_for_genomic_ror_question.json")
+
+        resource = self._load_response_json("consent_for_genomic_ror_resp.json",
+                                            questionnaire_id, participant_id)
+
+        # Repeat the question array element in the response JSON to simulate the duplication seen in RDR
+        # See: questionnaire_response_id 680418686
+        resource["group"]["question"].append(resource["group"]["question"][0])
+
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['consentForGenomicsROR'], 'SUBMITTED')
+
+        ps_json = self.make_bq_participant_summary(participant_id)
+        gror = self.get_generated_items(ps_json['modules'], item_key='mod_module', item_value='GROR',
+                                        sort_key='mod_authored')
+        self.assertEqual(len(gror), 1)
+        self.assertEqual(gror[0].get('mod_status', None), 'SUBMITTED')
+
+    def test_consent_with_extension_language(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+
+        participant = self.send_get("Participant/%s" % participant_id)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+
+        expected = dict(participant_summary_default_values_no_basics)
+        expected.update({
+            "genderIdentity": "UNSET",
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "email": self.email,
+            "streetAddress": self.streetAddress,
+            "streetAddress2": self.streetAddress2,
+            "numCompletedPPIModules": 0,
+            "numCompletedBaselinePPIModules": 0,
+            "biobankId": participant["biobankId"],
+            "participantId": participant_id,
+            "consentForStudyEnrollmentTime": TIME_1.isoformat(),
+            "consentForStudyEnrollmentAuthored": TIME_1.isoformat(),
+            "consentForStudyEnrollmentFirstYesAuthored": TIME_1.isoformat(),
+            "primaryLanguage": "es",
             "signUpTime": TIME_1.isoformat(),
             "consentCohort": str(ParticipantCohort.COHORT_1),
             "cohort2PilotFlag": str(ParticipantCohortPilotFlag.UNSET)
@@ -580,31 +613,23 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         # verify if the response is not consent, the primary language will not change
         questionnaire_id = self.create_questionnaire("questionnaire_family_history.json")
 
-        with open(data_path("questionnaire_family_history_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
-        with FakeClock(TIME_2):
-            self._save_codes(resource)
-            self.send_post(_questionnaire_response_url(participant_id), resource)
+        resource = self._load_response_json("questionnaire_family_history_resp.json", questionnaire_id, participant_id)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
 
         summary = self.send_get("Participant/%s/Summary" % participant_id)
-
         self.assertEqual(expected["primaryLanguage"], summary["primaryLanguage"])
 
     def test_invalid_questionnaire(self):
         participant_id = self.create_participant()
         questionnaire_id = self.create_questionnaire("questionnaire1.json")
         q = QuestionnaireDao()
-        quesstionnaire = q.get(questionnaire_id)
-        make_transient(quesstionnaire)
-        quesstionnaire.status = QuestionnaireDefinitionStatus.INVALID
+        questionnaire = q.get(questionnaire_id)
+        make_transient(questionnaire)
+        questionnaire.status = QuestionnaireDefinitionStatus.INVALID
         with q.session() as session:
-            existing_obj = q.get_for_update(session, q.get_id(quesstionnaire))
-            q._do_update(session, quesstionnaire, existing_obj)
+            existing_obj = q.get_for_update(session, q.get_id(questionnaire))
+            q._do_update(session, questionnaire, existing_obj)
         q.get(questionnaire_id)
 
         with open(data_path("questionnaire_response3.json")) as fd:
@@ -624,33 +649,22 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        resource = self._load_response_json("questionnaire_response_empty.json", questionnaire_id, participant_id)
 
-        with open(data_path("questionnaire_response_empty.json")) as fd:
-            resource = json.load(fd)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = "Questionnaire/%s" % questionnaire_id
         self.send_post(_questionnaire_response_url(participant_id), resource)  # will fail if status 200 isn't returned
 
     def test_invalid_questionnaire_linkid(self):
         """
-    DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
-    Per a PTSC group request, only log a message for invalid link ids.
-    In the future if questionnaires with bad link ids trigger a BadRequest, the code below
-    can be uncommented.
-    """
+        DA-623 - Make sure that an invalid link id in response triggers a BadRequest status.
+        Per a PTSC group request, only log a message for invalid link ids.
+        In the future if questionnaires with bad link ids trigger a BadRequest, the code below
+        can be uncommented.
+        """
         participant_id = self.create_participant()
         self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_family_history.json")
-
-        with open(data_path("questionnaire_family_history_resp.json")) as fd:
-            resource = json.load(fd)
-
-        # update resource json to set participant and questionnaire ids.
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_family_history_resp.json", questionnaire_id, participant_id)
 
         self._save_codes(resource)
         self.send_post(_questionnaire_response_url(participant_id), resource, expected_status=http.client.OK)
@@ -669,13 +683,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -719,13 +730,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -740,12 +748,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.assertIn(answer.codeId, expected_gender_code_ids)
 
         # resubmit the answers, old value should be removed
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender_2.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender_2.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -764,13 +770,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp_multiple_race.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -787,13 +790,30 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         for answer in answers:
             self.assertIn(answer.codeId, [code1.codeId, code2.codeId])
 
-        # resubmit the answers, old value should be removed
-        with open(data_path("questionnaire_the_basics_resp_multiple_race_2.json")) as f:
-            resource = json.load(f)
+        # Confirm the PDR bigquery_sync data generator builds the correct races item, e.g.
+        # bqs_data['races'] = [
+        #   { 'race':  'WhatRaceEthnicity_White', 'race_id': <code_id integer> },
+        #   { 'race': 'WhatRaceEthnicity_Hispanic', 'race_id': <code_id integer> }
+        # ]
+        bqs_data = self.make_bq_participant_summary(participant_id)
+        self.assertEqual(len(bqs_data['races']), 2)
+        for answer in bqs_data['races']:
+            self.assertIn(answer.get('race'), [code1.value, code2.value])
+            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
 
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        # Repeat the PDR data test for the resource generator output
+        ps_rsrc_data = self.make_participant_resource(participant_id, get_data=True)
+
+        self.assertEqual(len(ps_rsrc_data['races']), 2)
+        for answer in ps_rsrc_data['races']:
+            self.assertIn(answer.get('race'), [code1.value, code2.value])
+            self.assertIn(answer.get('race_id'), [code1.codeId, code2.codeId])
+
+        # resubmit the answers, old value should be removed
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_race_2.json",
+            questionnaire_id,
+            participant_id
         )
 
         with FakeClock(TIME_2):
@@ -816,14 +836,8 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
         resource["group"]["question"][2]["answer"][0]["valueCoding"]["code"] = "PMI_PreferNotToAnswer"
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
@@ -859,12 +873,10 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
 
-        with open(data_path("questionnaire_the_basics_resp_multiple_gender.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
+        resource = self._load_response_json(
+            "questionnaire_the_basics_resp_multiple_gender.json",
+            questionnaire_id,
+            participant_id
         )
         resource["group"]["question"][2]["answer"][1]["valueCoding"]["code"] = "PMI_Skip"
 
@@ -902,14 +914,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
             self.send_consent(participant_id)
 
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
 
         with FakeClock(TIME_2):
             resource["authored"] = TIME_2.isoformat()
@@ -1036,15 +1041,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         # Set up a questionnaire that usually changes participant summary
         questionnaire_id = self.create_questionnaire("questionnaire_the_basics.json")
-
-        with open(data_path("questionnaire_the_basics_resp.json")) as f:
-            resource = json.load(f)
-
-        # Get questionnaire to match participant and questionnaire
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_the_basics_resp.json", questionnaire_id, participant_id)
 
         # Submit response as in-progress
         resource['status'] = 'in-progress'
@@ -1058,35 +1055,30 @@ class QuestionnaireResponseApiTest(BaseTestCase):
 
         # PDR- 235 Add checks of the PDR generator data for module
         # response status of the "in progress" TheBasics test response
-        ps_rsrc_gen = ParticipantSummaryGenerator()
-        ps_bqs_gen = BQParticipantSummaryGenerator()
-
-        ps_rsrc_data = ps_rsrc_gen.make_resource(participant_summary.participantId).get_data()
-        ps_bqs_data = ps_bqs_gen.make_bqrecord(participant_summary.participantId).to_dict(serialize=True)
+        ps_rsrc_data = self.make_participant_resource(participant_summary.participantId)
 
         # Check data from the resource generator
-        pdr_module_dict = _get_pdr_module_dict(ps_rsrc_data, 'TheBasics', key_name='module')
-        self.assertEqual(pdr_module_dict.get('response_status'), 'IN_PROGRESS')
-        self.assertEqual(pdr_module_dict.get('response_status_id'), 0)
+        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module', item_value='TheBasics')
+        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
+        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
 
         # Check data from the bigquery_sync participant summary DAO / generator
-        pdr_module_dict = _get_pdr_module_dict(ps_bqs_data, 'TheBasics', key_name='mod_module')
-        self.assertEqual(pdr_module_dict.get('mod_response_status'), 'IN_PROGRESS')
-        self.assertEqual(pdr_module_dict.get('mod_response_status_id'), 0)
+        basics_mod = self.get_generated_items(ps_rsrc_data['modules'], item_key='module',
+                                                   item_value='TheBasics')
+        self.assertEqual(basics_mod[0].get('response_status', None), 'IN_PROGRESS')
+        self.assertEqual(basics_mod[0].get('response_status_id', None), 0)
 
         # Check the bigquery_sync questionnaire response DAO / generator
         # TODO:  Validate Resource generator data for questionnaire response when implemented
-        qr_gen = BQPDRQuestionnaireResponseGenerator()
-        table, bqrs = qr_gen.make_bqrecord(participant_summary.participantId, 'TheBasics', latest=True)
+        bqrs = self.make_bq_questionnaire_response(participant_summary.participantId, 'TheBasics', latest=True)
 
-        self.assertIsNotNone(table)
-        # bqrs is a list of BQRecord types
+        # bqrs is a list of BQRecord types;  validating the field name values
         self.assertEqual(len(bqrs), 1)
         self.assertEqual(bqrs[0].status, 'IN_PROGRESS')
         self.assertEqual(bqrs[0].status_id, 0)
 
     @mock.patch('rdr_service.dao.questionnaire_response_dao.logging')
-    def test_link_id_validation(self, mock_logging):
+    def test_link_id_does_not_exist(self, mock_logging):
         # Get a participant set up for the test
         participant_id = self.create_participant()
         self.send_consent(participant_id)
@@ -1127,12 +1119,7 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         self.send_consent(participant_id)
 
         # Check that POST doesn't fail on unknown extension fields
-        with open(data_path("questionnaire_response3.json")) as fd:
-            resource = json.load(fd)
-        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id)
-        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
-            questionnaire_id=questionnaire_id
-        )
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id)
         resource['extension'] = [{
             'url': 'test-unknown',
             'valueUri': 'testing'
@@ -1147,6 +1134,69 @@ class QuestionnaireResponseApiTest(BaseTestCase):
         )
         self.assertEqual(0, extension_query.count(),
                          'The extension was created, but the valueUri field is expected to be unrecognized')
+
+    def test_response_for_withdrawn_participant(self):
+        participant = self.data_generator.create_database_participant(withdrawalStatus=WithdrawalStatus.NO_USE)
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        with open(data_path("questionnaire_response3.json")) as fd:
+            resource = json.load(fd)
+        resource["subject"]["reference"] = resource["subject"]["reference"].format(participant_id=participant_id_str)
+        resource["questionnaire"]["reference"] = resource["questionnaire"]["reference"].format(
+            questionnaire_id=questionnaire_id
+        )
+        self._save_codes(resource)
+
+        # Send questionnaire response expecting a 403 response status
+        self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=403)
+
+    def test_storing_response_identifier(self):
+        """Verifying saving the identifier sent with the response, and make sure unexpected values don't crash"""
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant = self.data_generator.create_database_participant_summary().participant
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        # Load a response with an identifier
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id_str)
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id_str), resource)
+
+        # Verify that the external identifier was stored
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertEqual(resource['identifier']['value'], response_obj.externalId)
+
+    def test_receiving_long_identifier_fails_gracefully(self):
+        """If the identifier is unexpectedly long, we should be able to skip it and still store the response"""
+        # Set up questionnaire and participant
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        participant = self.data_generator.create_database_participant_summary().participant
+        participant_id_str = to_client_participant_id(participant.participantId)
+
+        # Load a response with an identifier
+        resource = self._load_response_json("questionnaire_response3.json", questionnaire_id, participant_id_str)
+        resource['identifier']['value'] = '1234' * 15
+        self._save_codes(resource)
+        response = self.send_post(_questionnaire_response_url(participant_id_str), resource, expected_status=200)
+
+        # Verify that the response was saved, and that the identifier was skipped
+        response_obj = self.session.query(QuestionnaireResponse).filter(
+            QuestionnaireResponse.questionnaireResponseId == response['id']
+        ).one()
+        self.assertIsNone(response_obj.externalId)
+
+    @classmethod
+    def _load_response_json(cls, template_file_name, questionnaire_id, participant_id_str):
+        with open(data_path(template_file_name)) as fd:
+            resource = json.load(fd)
+
+        resource["subject"]["reference"] = f'Patient/{participant_id_str}'
+        resource["questionnaire"]["reference"] = f'Questionnaire/{questionnaire_id}'
+
+        return resource
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

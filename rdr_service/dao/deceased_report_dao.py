@@ -1,10 +1,11 @@
 from datetime import date
 import logging
 import pytz
-from sqlalchemy import desc, func
+from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm.exc import DetachedInstanceError
 from werkzeug.exceptions import BadRequest, NotFound, Conflict, InternalServerError
 
+from rdr_service import config
 from rdr_service.clock import CLOCK
 from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.base_dao import UpdatableDao
@@ -626,14 +627,21 @@ class DeceasedReportDao(UpdatableDao):
         (PENDING, APPROVED, OR DENIED) and/or organization id (such as UNSET). Reports will be listed by date of the
         last action taken on them (authored or reviewed) with the most recent reports appearing at the top.
         """
+        ids_ignored_in_filter = config.getSettingJson(config.DECEASED_REPORT_FILTER_EXCEPTIONS, [])
 
         with self.session() as session:
             # Order reports by newest to oldest based on last date a user modified it
             query = session.query(DeceasedReport).join(Participant).order_by(
                 desc(func.coalesce(DeceasedReport.reviewed, DeceasedReport.authored))
             ).filter(
-                Participant.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN
+                or_(
+                    and_(
+                        Participant.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        Participant.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN
+                    ),
+                    Participant.participantId.in_(ids_ignored_in_filter)
+                )
+
             )
             if participant_id is not None:
                 query = query.filter(DeceasedReport.participantId == participant_id)

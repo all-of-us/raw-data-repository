@@ -1,13 +1,14 @@
 from copy import deepcopy
 import datetime
 import http.client
+
 from mock import patch
 import threading
 import unittest
 from urllib.parse import urlencode
 
-from rdr_service import config
-from rdr_service import main
+from rdr_service import config, main
+from rdr_service.api_util import PTC, CURATION
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -36,17 +37,17 @@ TIME_6 = datetime.datetime(2015, 1, 1)
 
 participant_summary_default_values = {
     "ageRange": "UNSET",
-    "race": "UNSET",
+    "race": "PMI_Skip",
     "hpoId": "UNSET",
     "awardee": "UNSET",
     "site": "UNSET",
     "organization": "UNSET",
-    "education": "UNSET",
-    "income": "UNSET",
+    "education": "PMI_Skip",
+    "income": "PMI_Skip",
     "language": "UNSET",
     "primaryLanguage": "UNSET",
-    "sex": "UNSET",
-    "sexualOrientation": "UNSET",
+    "sex": "PMI_Skip",
+    "sexualOrientation": "PMI_Skip",
     "state": "UNSET",
     "recontactMethod": "UNSET",
     "enrollmentStatus": "INTERESTED",
@@ -132,8 +133,19 @@ participant_summary_default_values = {
     "enrollmentSite": "UNSET",
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
-    "wasEhrDataAvailable": False
+    "wasEhrDataAvailable": False,
+    "questionnaireOnCopeVaccineMinute1": "UNSET"
 }
+
+participant_summary_default_values_no_basics = dict(participant_summary_default_values)
+participant_summary_default_values_no_basics.update({
+    "questionnaireOnTheBasics": "UNSET",
+    "race": "UNSET",
+    "education": "UNSET",
+    "income": "UNSET",
+    "sex": "UNSET",
+    "sexualOrientation": "UNSET"
+})
 
 
 class ParticipantSummaryMySqlApiTest(BaseTestCase):
@@ -202,6 +214,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
         new_user_info['example@example.com']['roles'] = roles
         new_user_info['example@example.com']['awardee'] = awardee
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
+    def overwrite_test_user_roles(self, roles):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['roles'] = roles
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def create_demographics_questionnaire(self):
@@ -338,13 +355,251 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(participant_id, rec["participantId"])
         self.assertEqual(last_modified, rec["lastModified"])
 
+    def test_check_login(self):
+        participant_one = self.data_generator.create_database_participant()
+        participant_two = self.data_generator.create_database_participant()
+        participant_two.withdrawalStatus = 2
+
+        participant_summary_one = self.data_generator \
+            .create_database_participant_summary(participant=participant_one)
+        participant_summary_one.loginPhoneNumber = '444-123-4567'
+        participant_summary_one.email = self.fake.email()
+        ParticipantSummaryDao().update(participant_summary_one)
+
+        participant_summary_two = self.data_generator \
+            .create_database_participant_summary(participant=participant_two)
+
+        one_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_one.email})
+        one_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"login_phone_number": participant_summary_one.loginPhoneNumber})
+        one_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_one.email,
+                                                "login_phone_number": participant_summary_one.loginPhoneNumber})
+
+        two_real_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email})
+        two_real_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"login_phone_number": participant_summary_two.loginPhoneNumber})
+        two_real_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                               {"email": participant_summary_two.email,
+                                                "login_phone_number": participant_summary_two.loginPhoneNumber})
+
+        self.assertEqual(len(one_real_email_result), 1)
+        self.assertEqual(len(one_real_phone_result), 1)
+        self.assertEqual(len(one_real_combo_result), 1)
+
+        self.assertEqual(one_real_email_result['status'], 'IN_USE')
+        self.assertEqual(one_real_phone_result['status'], 'IN_USE')
+        self.assertEqual(one_real_combo_result['status'], 'IN_USE')
+
+        self.assertEqual(len(two_real_email_result), 1)
+        self.assertEqual(len(two_real_phone_result), 1)
+        self.assertEqual(len(two_real_combo_result), 1)
+
+        self.assertEqual(two_real_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(two_real_combo_result['status'], 'NOT_IN_USE')
+
+        fake_email = self.fake.email()
+        fake_phone = '123-456-7890'
+        fake_first_name = self.fake.first_name()
+        fake_last_name = self.fake.last_name()
+        fake_street_address = self.fake.street_address()
+
+        fake_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email})
+        fake_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": fake_phone})
+        fake_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": fake_email,
+                                            "login_phone_number": fake_phone})
+
+        self.assertEqual(fake_email_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_phone_result['status'], 'NOT_IN_USE')
+        self.assertEqual(fake_combo_result['status'], 'NOT_IN_USE')
+
+        bad_key_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"bad_email_key": fake_email},
+                                              expected_status=http.client.BAD_REQUEST)
+        bad_key_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                              {"bad_phone_key": fake_phone},
+                                              expected_status=http.client.BAD_REQUEST)
+        null_key_result = self.send_post("ParticipantSummary/CheckLogin",
+                                         expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(bad_key_email_result.status_code, 400)
+        self.assertEqual(bad_key_phone_result.status_code, 400)
+        self.assertEqual(null_key_result.status_code, 400)
+
+        self.assertEqual(bad_key_email_result.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(bad_key_phone_result.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+
+        not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                         {"first_name": fake_first_name,
+                                          "last_name": fake_last_name,
+                                          "email": fake_email},
+                                         expected_status=http.client.BAD_REQUEST)
+        another_not_allowed_key = self.send_post("ParticipantSummary/CheckLogin",
+                                                 {"street_address": fake_street_address},
+                                                 expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(not_allowed_key.status_code, 400)
+        self.assertEqual(another_not_allowed_key.status_code, 400)
+
+        self.assertEqual(not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+        self.assertEqual(another_not_allowed_key.json['message'],
+                         'Only email or login_phone_number are allowed in request')
+
+        null_email_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_phone_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+        null_combo_result = self.send_post("ParticipantSummary/CheckLogin",
+                                           {"email": '',
+                                            "login_phone_number": ''},
+                                           expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(null_email_result.status_code, 400)
+        self.assertEqual(null_phone_result.status_code, 400)
+        self.assertEqual(null_combo_result.status_code, 400)
+
+        self.assertEqual(null_email_result.json['message'],
+                         'Missing email or login_phone_number in request')
+
+    def test_invalid_filters_return(self):
+        num_summary = 10
+        first_name = "Testy"
+        for num in range(num_summary):
+            if num == 1:
+                self.data_generator \
+                    .create_database_participant_summary(
+                        firstName=first_name,
+                        lastName="Tester"
+                    )
+            else:
+                self.data_generator \
+                    .create_database_participant_summary()
+
+        response_good_bad_filter = self.send_get(f"ParticipantSummary?foobarbaz=1&firstName={first_name}")
+        self.assertEqual(len(response_good_bad_filter['entry']), 1)
+        resource = response_good_bad_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_good_filter = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        self.assertEqual(len(response_good_filter['entry']), 1)
+        resource = response_good_filter['entry'][0]['resource']
+        self.assertEqual(resource['firstName'], 'Testy')
+        self.assertEqual(resource['lastName'], 'Tester')
+
+        response_bad_filter = self.send_get(
+            "ParticipantSummary?foobarbaz=1",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response_bad_filter.status_code, 400)
+        self.assertEqual(response_bad_filter.json['message'], 'No valid fields were provided')
+
+        response_no_filter = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+    def test_access_with_curation_role(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+
+        self.overwrite_test_user_roles([CURATION])
+        response = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response['entry']), 1)
+
+    def test_constraints_dob_and_lastname(self):
+        num_summary = 3
+        _date = datetime.date(1978, 10, 9)
+        last_name = "Tester_1"
+
+        for num in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=f"Testy_{num}",
+                    lastName=f"Tester_{num}",
+                    dateOfBirth=_date,
+                )
+
+        response_only_dob = self.send_get(
+                f"ParticipantSummary?dateOfBirth={_date}",
+                expected_status=http.client.BAD_REQUEST
+            )
+        self.assertEqual(response_only_dob.status_code, 400)
+        self.assertEqual(response_only_dob.json['message'], 'Argument lastName is required with dateOfBirth')
+
+        response_only_last_name = self.send_get(
+                f"ParticipantSummary?lastName={last_name}",
+                expected_status=http.client.BAD_REQUEST
+            )
+        self.assertEqual(response_only_last_name.status_code, 400)
+        self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
+
+        response_dob_last_name = self.send_get(f"ParticipantSummary?dateOfBirth={_date}&lastName={last_name}")
+        self.assertEqual(len(response_dob_last_name['entry']), 1)
+        resource = response_dob_last_name['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        response_no_filter = self.send_get("ParticipantSummary")
+        self.assertEqual(len(response_no_filter['entry']), num_summary)
+
+        response_only_dob_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&dateOfBirth={_date}")
+        self.assertEqual(len(response_only_dob_correct_role_and_awardee['entry']), 3)
+        resource = response_only_dob_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+        self.assertEqual(resource['hpoId'], 'UNSET')
+
+        response_only_lastname_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&lastName={last_name}")
+        self.assertEqual(len(response_only_lastname_correct_role_and_awardee['entry']), 1)
+        resource = response_only_lastname_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['hpoId'], 'UNSET')
+
+        response_dob_and_lastname_correct_role_and_awardee = self.send_get(
+            f"ParticipantSummary?hpoId=UNSET&dateOfBirth={_date}&lastName={last_name}")
+        self.assertEqual(len(response_dob_and_lastname_correct_role_and_awardee['entry']), 1)
+        resource = response_dob_and_lastname_correct_role_and_awardee['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+        self.assertEqual(resource['hpoId'], 'UNSET')
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        self.overwrite_test_user_roles([PTC])
+
+        response_only_dob = self.send_get(
+            f"ParticipantSummary?dateOfBirth={_date}",
+        )
+        self.assertEqual(len(response_only_dob['entry']), 3)
+        resource = response_only_dob['entry'][0]['resource']
+        self.assertEqual(resource['dateOfBirth'], '1978-10-09')
+
+        response_only_last_name = self.send_get(
+            f"ParticipantSummary?lastName={last_name}",
+        )
+
+        self.assertEqual(len(response_only_last_name['entry']), 1)
+        resource = response_only_last_name['entry'][0]['resource']
+        self.assertEqual(resource['lastName'], last_name)
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
         path = "Participant/%s" % participant_id
         participant["awardee"] = "PITT"
-        particpant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
-        self.assertEqual(particpant_update["awardee"], participant["awardee"])
+        participant_update = self.send_put(path, participant, headers={"If-Match": 'W/"1"'})
+        self.assertEqual(participant_update["awardee"], participant["awardee"])
         participant["organization"] = "AZ_TUCSON_BANNER_HEALTH"
         participant_update_2 = self.send_put(path, participant, headers={"If-Match": 'W/"2"'})
         self.assertEqual(participant_update_2["organization"], participant["organization"])
@@ -2288,7 +2543,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&awardee=PITT", [[ps_1, ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH", [])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&zipCode=78752", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&loginPhoneNumber=215-222-2222", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, ps_2], [ps_3]])
@@ -2316,16 +2570,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
-            self.assertResponses(
-                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
-            )
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2389,7 +2633,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("UNSET", new_ps_2["enrollmentStatus"])
+        self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
         self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -2427,7 +2671,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=hpoId", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&firstName=Mary", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, new_ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2713,7 +2956,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             )
             self.assertResponses("ParticipantSummary?_count=2&organization=AZ_TUCSON_BANNER_HEALTH", [])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&zipCode=78752", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&loginPhoneNumber=215-222-2222", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, ps_2], [ps_3]])
@@ -2735,16 +2977,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=INTERESTED", [[ps_1]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=MEMBER", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&enrollmentStatus=FULL_PARTICIPANT", [[ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
-            self.assertResponses(
-                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
-            )
-            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NOT_WITHDRAWN", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
@@ -2785,6 +3017,20 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&sampleOrderStatus1ED10Time=lt2016-01-04", [[]])
             self.assertResponses("ParticipantSummary?_count=2&organization=PITT_BANNER_HEALTH", [[ps_1, ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&site=hpo-site-monroeville", [[ps_1, ps_3]])
+
+            self.overwrite_test_user_roles([PTC])
+
+            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=1978-10-08", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=gt1978-10-08", [[ps_1, ps_3]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=lt1978-10-08", [[]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=le1978-10-08", [[ps_2]])
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08", [[ps_1, ps_2], [ps_3]])
+            self.assertResponses(
+                "ParticipantSummary?_count=2&dateOfBirth=ge1978-10-08&" "dateOfBirth=le1978-10-09", [[ps_1, ps_2]]
+            )
+            self.assertResponses("ParticipantSummary?_count=2&dateOfBirth=ne1978-10-09", [[ps_2, ps_3]])
+
         # Two days after participant 2 withdraws, their fields are not set for anything but
         # participant ID, HPO ID, withdrawal status, and withdrawal time
         with FakeClock(TIME_5):
@@ -2801,7 +3047,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual("UNSET", new_ps_2["sampleStatus1ED10"])
         self.assertEqual("UNSET", new_ps_2["sampleStatus1SAL"])
         self.assertEqual("UNSET", new_ps_2["samplesToIsolateDNA"])
-        self.assertEqual("UNSET", new_ps_2["enrollmentStatus"])
+        self.assertEqual("MEMBER", new_ps_2["enrollmentStatus"])
         self.assertEqual("UNSET", new_ps_2["physicalMeasurementsStatus"])
         self.assertEqual("SUBMITTED", new_ps_2["consentForStudyEnrollment"])
         self.assertIsNotNone(new_ps_2["consentForStudyEnrollmentAuthored"])
@@ -2843,13 +3089,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
             self.assertResponses("ParticipantSummary?_count=2&_sort:desc=hpoId", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&firstName=Mary", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&middleName=Q", [[ps_1, new_ps_2]])
-            self.assertResponses("ParticipantSummary?_count=2&lastName=Smith", [[ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&hpoId=PITT", [[ps_1, new_ps_2], [ps_3]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalStatus=NO_USE", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=lt2016-01-03", [[]])
             self.assertResponses("ParticipantSummary?_count=2&withdrawalTime=ge2016-01-03", [[new_ps_2]])
             self.assertResponses("ParticipantSummary?_count=2&suspensionStatus=NOT_SUSPENDED", [[ps_1, ps_3]])
-
             self.assertResponses("ParticipantSummary?_count=2&lastModified=lt2016-01-04", [[ps_3]])
 
     @unittest.skip("Only used for manual testing, should not be included in automated test suite")
@@ -3124,6 +3368,28 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_get(f'ParticipantSummary?_count=1&_sort=lastModified&awardee=PITT&_sync=true')
         self.assertEqual(first_receipt_time.isoformat(), response['entry'][0]['resource']['firstEhrReceiptTime'])
         self.assertEqual(latest_receipt_time.isoformat(), response['entry'][0]['resource']['latestEhrReceiptTime'])
+
+    def test_blank_demographics_data_mapped_to_skip(self):
+        # Create a participant summary that doesn't use skip codes for the demographics questions that weren't answered.
+        # Some early summaries show this, we should map to displaying skip to have a more consistent output.
+        participant_summary = self.data_generator.create_database_participant_summary(
+            questionnaireOnTheBasics=QuestionnaireStatus.SUBMITTED,
+            genderIdentityId=None,
+            sexId=None,
+            sexualOrientationId=None,
+            race=None,
+            educationId=None,
+            incomeId=None
+        )
+
+        # Verify that the UNSET demographic fields are mapped to skip codes
+        response = self.send_get(f'Participant/P{participant_summary.participantId}/Summary')
+        self.assertEqual(PMI_SKIP_CODE, response['genderIdentity'])
+        self.assertEqual(PMI_SKIP_CODE, response['sex'])
+        self.assertEqual(PMI_SKIP_CODE, response['sexualOrientation'])
+        self.assertEqual(PMI_SKIP_CODE, response['race'])
+        self.assertEqual(PMI_SKIP_CODE, response['education'])
+        self.assertEqual(PMI_SKIP_CODE, response['income'])
 
     def test_access_unset_participants_for_hoa_lite(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})

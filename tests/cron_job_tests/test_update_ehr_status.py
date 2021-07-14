@@ -16,11 +16,14 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.offline import update_ehr_status
 from rdr_service.participant_enums import EhrStatus
-from rdr_service.resource.generators.participant import ParticipantSummaryGenerator
-from tests.helpers.unittest_base import BaseTestCase
+from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
 
 class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.uses_database = False
+
     # pylint: disable=unused-argument
     def setUp(self, use_mysql=False, with_data=False, with_consent_codes=False):
         super(UpdateEhrStatusMakeJobsTestCase, self).setUp()
@@ -86,7 +89,7 @@ class UpdateEhrStatusMakeJobsTestCase(BaseTestCase):
         self.assertEqual(job, None)
 
 
-class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
+class UpdateEhrStatusUpdatesTestCase(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self, **kwargs):
         # pylint: disable=unused-argument
         super(UpdateEhrStatusUpdatesTestCase, self).setUp()
@@ -160,8 +163,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertEqual(latest_ehr_time, participant_summary.ehrUpdateTime)
 
         # Check generated data
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(participant_id).get_data()
+        ps_data = self.make_participant_resource(participant_id)
         self.assertEqual(str(participant_summary.ehrStatus), ps_data['ehr_status'])
         self.assertEqual(participant_summary.ehrReceiptTime, ps_data['ehr_receipt'])
         self.assertEqual(participant_summary.ehrUpdateTime, ps_data['ehr_update'])
@@ -182,8 +184,7 @@ class UpdateEhrStatusUpdatesTestCase(BaseTestCase):
         self.assertAlmostEquals(last_seen, record.lastSeen, delta=datetime.timedelta(seconds=1))
 
         # Check generated data.
-        gen = ParticipantSummaryGenerator()
-        ps_data = gen.make_resource(participant_id).get_data()
+        ps_data = self.make_participant_resource(participant_id)
         self.assertIsNotNone(ps_data['ehr_receipts'], f'PDR EHR receipt data not generated for pid {participant_id}')
 
         # Look for a matching dict entry in the ps_data['ehr_receipts'] list, since it may also contain other entries

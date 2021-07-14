@@ -10,8 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 from rdr_service.model.utils import Enum
-from rdr_service.participant_enums import GenomicWorkflowState
-
+from rdr_service.genomic_enums import GenomicWorkflowState
 
 # revision identifiers, used by Alembic.
 revision = '31d9bc8bcc95'

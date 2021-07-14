@@ -1,11 +1,7 @@
 """The main API definition file for endpoints that trigger MapReduces and batch tasks."""
-import os
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    try:
-        import googleclouddebugger
-        googleclouddebugger.enable()
-    except ImportError:
-        pass
+import rdr_service.activate_debugger  # pylint: disable=unused-import
+
+from rdr_service.genomic_enums import GenomicJob
 
 import json
 import logging
@@ -18,11 +14,16 @@ from werkzeug.exceptions import BadRequest
 
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER, RDR
+from rdr_service.app_util import nonprod
 from rdr_service.dao.base_dao import BaseDao
+from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
-    antibody_study_pipeline
+    antibody_study_pipeline, genomic_data_quality_pipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
@@ -34,11 +35,17 @@ from rdr_service.offline.participant_counts_over_time import calculate_participa
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
 from rdr_service.offline.patient_status_backfill import backfill_patient_status
 from rdr_service.offline.public_metrics_export import LIVE_METRIC_SET_ID, PublicMetricsExport
-from rdr_service.offline.sa_key_remove import delete_service_account_keys
+from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
+from rdr_service.offline.service_accounts import ServiceAccountKeyManager
+from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
+from rdr_service.services.consent.validation import ConsentValidationController
+from rdr_service.services.data_quality import DataQualityChecker
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
+from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
+from rdr_service.storage import GoogleCloudStorageProvider
 
 
 def _alert_on_exceptions(func):
@@ -193,7 +200,8 @@ def skew_duplicates():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def delete_old_keys():
-    delete_service_account_keys()
+    manager = ServiceAccountKeyManager()
+    manager.expire_old_keys()
     return '{"success": "true"}'
 
 
@@ -211,10 +219,38 @@ def exclude_ghosts():
     return '{"success": "true"}'
 
 
+def _build_validation_controller():
+    return ConsentValidationController(
+        consent_dao=ConsentDao(),
+        participant_summary_dao=ParticipantSummaryDao(),
+        hpo_dao=HPODao(),
+        storage_provider=GoogleCloudStorageProvider()
+    )
+
+
 @app_util.auth_required_cron
-@_alert_on_exceptions
+def check_for_consent_corrections():
+    validation_controller = _build_validation_controller()
+    validation_controller.check_for_corrections()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def validate_consent_files():
+    min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
+    validation_controller = _build_validation_controller()
+    validation_controller.validate_recent_uploads(min_consent_date=min_authored_timestamp)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 def run_sync_consent_files():
-    sync_consent_files.do_sync_recent_consent_files()
+    controller = ConsentSyncController(
+        consent_dao=ConsentDao(),
+        participant_dao=ParticipantDao(),
+        storage_provider=GoogleCloudStorageProvider()
+    )
+    controller.sync_ready_files()
     return '{"success": "true"}'
 
 
@@ -230,13 +266,6 @@ def manually_trigger_consent_sync():
             parameters[field_name] = request_json.get(field_name)
 
     sync_consent_files.do_sync_consent_files(zip_files=request.json.get('zip_files'), **parameters)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def run_va_sync_consent_files():
-    sync_consent_files.do_sync_recent_consent_files(all_va=True, zip_files=True)
     return '{"success": "true"}'
 
 
@@ -325,23 +354,20 @@ def genomic_data_manifest_workflow():
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_array_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_genotyping_data()
+    genomic_pipeline.reconcile_metrics_vs_array_data()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_wgs_data_reconciliation_workflow():
+    genomic_pipeline.reconcile_metrics_vs_wgs_data()
+    return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_scan_feedback_records():
     genomic_pipeline.scan_and_complete_feedback_records()
     return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_wgs_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_sequencing_data()
-    return '{"success": "true"}'
-
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -429,6 +455,20 @@ def genomic_aw4_workflow():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_data_quality_daily_incident_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def bigquery_rebuild_cron():
     """ this should always be a manually run job, but we have to schedule it at least once a year. """
     now = datetime.utcnow()
@@ -473,6 +513,13 @@ def check_enrollment_status():
 
 
 @app_util.auth_required_cron
+def flag_response_duplication():
+    detector = ResponseDuplicationDetector()
+    detector.flag_duplicate_responses()
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
 @_alert_on_exceptions
 def import_deceased_reports():
     importer = DeceasedReportImporter(config.get_config())
@@ -487,6 +534,7 @@ def import_hpo_lite_pairing():
     importer.import_pairing_data()
     return '{ "success": "true" }'
 
+
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def clean_up_request_logs():
@@ -499,6 +547,27 @@ def clean_up_request_logs():
     return '{ "success": "true" }'
 
 
+@app_util.auth_required_cron
+def check_data_quality():
+    # The cron job is scheduled for every week, so check data since the last run (with a little overlap)
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+
+    dao = BaseDao(None)
+    with dao.session() as session:
+        checker = DataQualityChecker(session)
+        checker.run_data_quality_checks(for_data_since=eight_days_ago)
+
+    return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+@nonprod
+def migrate_requests_logs(target_db):
+    migrator = RequestsLogMigrator(target_instance_name=target_db)
+    migrator.migrate_latest_requests_logs()
+    return '{ "success": "true" }'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -508,6 +577,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "EnrollmentStatusCheck",
         endpoint="enrollmentStatusCheck",
         view_func=check_enrollment_status,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "FlagResponseDuplication",
+        endpoint="flagResponseDuplication",
+        view_func=flag_response_duplication,
         methods=["GET"],
     )
 
@@ -581,14 +657,17 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files,
+        OFFLINE_PREFIX + "ValidateConsentFiles", endpoint="validate_consent_files", view_func=validate_consent_files,
         methods=["GET"]
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "SyncVaConsentFiles",
-        endpoint="sync_va_consent_files",
-        view_func=run_va_sync_consent_files,
+        OFFLINE_PREFIX + "CorrectConsentFiles", endpoint="correct_consent_files",
+        view_func=check_for_consent_corrections, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "SyncConsentFiles", endpoint="sync_consent_files", view_func=run_sync_consent_files,
         methods=["GET"]
     )
 
@@ -651,14 +730,14 @@ def _build_pipeline_app():
         view_func=genomic_array_data_reconciliation_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFeedbackManifestWorkflow",
-        endpoint="genomic_scan_feedback_records",
-        view_func=genomic_scan_feedback_records, methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicWGSReconciliationWorkflow",
         endpoint="genomic_wgs_data_reconciliation_workflow",
         view_func=genomic_wgs_data_reconciliation_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW2ManifestWorkflow",
+        endpoint="genomic_scan_feedback_records",
+        view_func=genomic_scan_feedback_records, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA1Workflow",
@@ -700,12 +779,21 @@ def _build_pipeline_app():
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW4Workflow",
-        endpoint="genomic_aw4_workflow",
-        view_func=genomic_aw4_workflow, methods=["GET"]
-    )
     # END Genomic Pipeline Jobs
+
+    # BEGIN Genomic Data Quality Jobs
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyIngestionSummary",
+        endpoint="genomic_data_quality_daily_ingestion_summary",
+        view_func=genomic_data_quality_daily_ingestion_summary, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyIncidentSummary",
+        endpoint="genomic_data_quality_daily_incident_summary",
+        view_func=genomic_data_quality_daily_incident_summary, methods=["GET"]
+    )
+    # END Genomic Data Quality Jobs
 
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "BigQueryRebuild", endpoint="bigquery_rebuild", view_func=bigquery_rebuild_cron,
@@ -748,6 +836,20 @@ def _build_pipeline_app():
         endpoint="request_log_cleanup",
         view_func=clean_up_request_logs,
         methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "DataQualityChecks",
+        endpoint="data_quality_checks",
+        view_func=check_data_quality,
+        methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + 'MigrateRequestsLog/<string:target_db>',
+        endpoint='migrate_requests_log',
+        view_func=migrate_requests_logs,
+        methods=['GET']
     )
 
     offline_app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
