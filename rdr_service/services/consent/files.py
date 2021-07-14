@@ -76,19 +76,19 @@ class ConsentFileAbstractFactory(ABC):
         ]
 
     @abstractmethod
-    def _is_primary_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+    def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
 
     @abstractmethod
-    def _is_cabor_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+    def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
 
     @abstractmethod
-    def _is_ehr_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+    def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
 
     @abstractmethod
-    def _is_gror_consent(self, blob_wrapper: _ConsentBlobWrapper) -> bool:
+    def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
 
     @abstractmethod

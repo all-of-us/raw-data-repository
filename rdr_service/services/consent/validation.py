@@ -34,6 +34,12 @@ class ValidationOutputStrategy(ABC):
     def process_results(self):
         ...
 
+    @classmethod
+    def _build_consent_list_structure(cls):
+        def participant_results():
+            return defaultdict(lambda: [])
+        return defaultdict(participant_results)
+
 
 class StoreResultStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao):
@@ -69,23 +75,18 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         self.session = session
         self.consent_dao = consent_dao
         self.participant_ids = set()
-
-        def new_participant_results():
-            return defaultdict(lambda: [])
-        self.results = defaultdict(new_participant_results)
+        self.results = self._build_consent_list_structure()
 
     def add_result(self, result: ParsingResult):
         self.results[result.participant_id][result.type].append(result)
         self.participant_ids.add(result.participant_id)
 
     def process_results(self):
+        organized_previous_results = self._build_consent_list_structure()
         previous_results = self.consent_dao.get_validation_results_for_participants(
             session=self.session,
             participant_ids=self.participant_ids
         )
-        def new_participant_results():
-            return defaultdict(lambda: [])
-        organized_previous_results = defaultdict(new_participant_results)
         for result in previous_results:
             organized_previous_results[result.participant_id][result.type].append(result)
 
@@ -122,10 +123,7 @@ class LogResultStrategy(ValidationOutputStrategy):
         self.logger = logger
         self.verbose = verbose
         self.storage_provider = storage_provider
-
-        def new_participant_results():
-            return defaultdict(lambda: [])
-        self.results = defaultdict(new_participant_results)
+        self.results = self._build_consent_list_structure()
 
     def add_result(self, result: ParsingResult):
         self.results[result.participant_id][result.type].append(result)
@@ -144,7 +142,7 @@ class LogResultStrategy(ValidationOutputStrategy):
     def _line_output_for_validation(self, file: ParsingResult, verbose: bool):
         output_line = StringIO()
         if verbose:
-            output_line.write(f'{file.id} - ')  # TODO: ljust the id
+            output_line.write(f'{str(file.id).ljust(8)} - ')
         output_line.write(f'P{file.participant_id} - {str(file.type).ljust(10)} ')
 
         if not file.file_exists:
@@ -191,9 +189,9 @@ class ConsentValidationController:
 
         self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
 
-    def check_for_corrections(self):
+    def check_for_corrections(self, session):
         """Load all of the current consent issues and see if they have been resolved yet"""
-        files_needing_correction = self.consent_dao.get_files_needing_correction()
+        files_needing_correction = self.consent_dao.get_files_needing_correction(session)
 
         # Organize the corrections needed into a dict where the key is the participant id
         # and the value is another dictionary. That secondary dictionary is keyed by consent type
@@ -234,7 +232,7 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-        self.consent_dao.batch_update_consent_files(validation_updates)
+        self.consent_dao.batch_update_consent_files(session, validation_updates)
 
     def generate_new_validations(self, session, participant_id, consent_type: ConsentType,
                                  output_strategy: ValidationOutputStrategy):
@@ -311,7 +309,7 @@ class ConsentValidationController:
         )
 
     @classmethod
-    def _organize_results(cls, results: List[ParsingResult]):
+    def _organize_results(cls, results: Collection[ParsingResult]):
         """
         Organize the validation results by participant id and then
         consent type to make it easier for checking for updates for them
