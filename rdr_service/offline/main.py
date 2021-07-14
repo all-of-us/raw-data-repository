@@ -786,8 +786,8 @@ def _build_pipeline_app():
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFeedbackReconciliation",
-        endpoint="genomic_feedback_reconciliation",
+        OFFLINE_PREFIX + "GenomicFeedbackRecordReconciliation",
+        endpoint="genomic_feedback_record_reconciliation",
         view_func=genomic_feedback_record_reconciliation, methods=["GET"]
     )
     # END Genomic Pipeline Jobs

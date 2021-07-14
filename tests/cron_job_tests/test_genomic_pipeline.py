@@ -4024,9 +4024,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertGreater(current_record.raw_feedback_count, current_record.feedbackRecordCount)
 
         genomic_pipeline.feedback_record_reconciliation()
+
         updated_records = self.manifest_feedback_dao.get_feedback_reconcile_records(test_file_path)
         self.assertTrue(len(updated_records))
-
         updated_record = updated_records[0]
         self.assertEqual(current_record.feedback_id, updated_record.feedback_id)
         self.assertEqual(current_record.raw_feedback_count, updated_record.feedbackRecordCount)
