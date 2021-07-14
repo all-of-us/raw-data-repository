@@ -234,21 +234,6 @@ class ConsentValidationController:
 
         self.consent_dao.batch_update_consent_files(session, validation_updates)
 
-    def generate_new_validations(self, session, participant_id, consent_type: ConsentType,
-                                 output_strategy: ValidationOutputStrategy):
-        summary = self.participant_summary_dao.get_with_session(session, participant_id)
-        validator = self._build_validator(summary)
-        results = []
-        if consent_type == ConsentType.PRIMARY:
-            results = validator.get_primary_validation_results()
-        elif consent_type == ConsentType.CABOR:
-            results = validator.get_cabor_validation_results()
-        elif consent_type == ConsentType.EHR:
-            results = validator.get_ehr_validation_results()
-        elif consent_type == ConsentType.GROR:
-            results = validator.get_gror_validation_results()
-        output_strategy.add_all(results)
-
     def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
                                 max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
