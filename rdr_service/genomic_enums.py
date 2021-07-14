@@ -79,23 +79,19 @@ class GenomicJob(messages.Enum):
     AW1C_INGEST = 25
     AW1CF_INGEST = 26
     AW1CF_ALERTS = 27
-
     GENOMIC_MANIFEST_FILE_TRIGGER = 28
     AW2F_MANIFEST = 29
     FEEDBACK_SCAN = 30
     RECALCULATE_CONTAMINATION_CATEGORY = 31
-
     CALCULATE_RECORD_COUNT_AW1 = 32
     CALCULATE_RECORD_COUNT_AW2 = 33  # TODO: To be implemented in future PR
-
     LOAD_AW1_TO_RAW_TABLE = 34
     LOAD_AW2_TO_RAW_TABLE = 35
-
     AW5_ARRAY_MANIFEST = 36
     AW5_WGS_MANIFEST = 37
-
     INGEST_DATA_FILES = 38
     INGEST_INFORMING_LOOP = 39
+    FEEDBACK_RECORD_RECONCILE = 40
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
