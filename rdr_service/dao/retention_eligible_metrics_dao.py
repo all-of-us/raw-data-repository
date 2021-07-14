@@ -13,9 +13,11 @@ class RetentionEligibleMetricsDao(UpdatableDao):
 
         record = query.first()
         if record:
-            if record.retentionEligibleStatus == retention_eligible_metrics_obj.retentionEligibleStatus \
-                and record.retentionType == retention_eligible_metrics_obj.retentionType \
-                and record.retentionEligibleTime == retention_eligible_metrics_obj.retentionEligibleTime:
+            if (
+                record.retentionEligibleStatus == retention_eligible_metrics_obj.retentionEligibleStatus
+                and record.retentionType == retention_eligible_metrics_obj.retentionType
+                and record.retentionEligibleTime == retention_eligible_metrics_obj.retentionEligibleTime
+            ):
                 return record.id, False
             else:
                 return record.id, True

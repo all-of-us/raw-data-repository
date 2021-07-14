@@ -1043,16 +1043,18 @@ class ParticipantSummaryDao(UpdatableDao):
     def bulk_update_retention_eligible_flags(self, upload_date):
         with self.session() as session:
             query = (
-                sqlalchemy.update(ParticipantSummary)
-                    .where(and_(ParticipantSummary.participantId == RetentionEligibleMetrics.participantId,
-                           RetentionEligibleMetrics.fileUploadDate == sqlalchemy.bindparam("file_upload_date")))
-                    .values(
-                    {
-                        ParticipantSummary.retentionEligibleStatus: RetentionEligibleMetrics.retentionEligibleStatus,
-                        ParticipantSummary.retentionEligibleTime: RetentionEligibleMetrics.retentionEligibleTime,
-                        ParticipantSummary.retentionType: RetentionEligibleMetrics.retentionType
-                    }
-                )
+                sqlalchemy.update(
+                    ParticipantSummary
+                ).where(and_(
+                    ParticipantSummary.participantId == RetentionEligibleMetrics.participantId,
+                    RetentionEligibleMetrics.fileUploadDate == sqlalchemy.bindparam("file_upload_date")
+                ))
+            ).values(
+                {
+                    ParticipantSummary.retentionEligibleStatus: RetentionEligibleMetrics.retentionEligibleStatus,
+                    ParticipantSummary.retentionEligibleTime: RetentionEligibleMetrics.retentionEligibleTime,
+                    ParticipantSummary.retentionType: RetentionEligibleMetrics.retentionType
+                }
             )
             session.execute(query, {'file_upload_date': upload_date})
 

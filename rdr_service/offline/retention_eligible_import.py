@@ -47,15 +47,15 @@ def import_retention_eligible_metrics_file(task_data):
     logging.info("import and update completed, file name: {}".format(csv_file_cloud_path))
 
 
+def _parse_field(parser_func, field_str):
+    return parser_func(field_str) if field_str not in ('', 'NULL') else None
+
+
 def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
-    retention_eligible = int(row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE]) \
-        if row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE] != '' else None
-    eligible_time = parse(row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME]) \
-        if row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME] not in ('', 'NULL') else None
-    actively_retained = int(row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED]) \
-        if row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED] != '' else None
-    passively_retained = int(row[RetentionEligibleMetricCsvColumns.PASSIVELY_RETAINED]) \
-        if row[RetentionEligibleMetricCsvColumns.PASSIVELY_RETAINED] != '' else None
+    retention_eligible = _parse_field(int, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE])
+    eligible_time = _parse_field(parse, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME])
+    actively_retained = _parse_field(int, row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED])
+    passively_retained = _parse_field(int, row[RetentionEligibleMetricCsvColumns.PASSIVELY_RETAINED])
 
     retention_type = RetentionType.UNSET
     if actively_retained and passively_retained:
@@ -65,7 +65,7 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
     elif passively_retained:
         retention_type = RetentionType.PASSIVE
 
-    kwargs = dict(
+    return RetentionEligibleMetrics(
         participantId=row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID],
         retentionEligible=retention_eligible,
         retentionEligibleTime=eligible_time,
@@ -75,10 +75,6 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
         retentionEligibleStatus=RetentionStatus.ELIGIBLE if retention_eligible else RetentionStatus.NOT_ELIGIBLE,
         retentionType=retention_type
     )
-
-    obj = RetentionEligibleMetrics(**kwargs)
-
-    return obj
 
 
 class RetentionEligibleMetricCsvColumns(object):
