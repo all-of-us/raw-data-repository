@@ -461,7 +461,7 @@ class GenomicJobController:
     def set_identifier_fields(file_path: str, name_components: list):
         if "genotyping" in file_path.lower():
             id_type = "chipwellbarcode"
-            id_value = name_components[0]  # ex: 204027270091_R02C01_Grn.idat
+            id_value = "_".join(name_components[0:2]).split('.')[0]  # ex: 204027270091_R02C01_Grn.idat
 
         elif "wgs" in file_path.lower():
             id_type = "sample_id"

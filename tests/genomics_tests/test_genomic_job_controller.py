@@ -179,7 +179,7 @@ class GenomicJobControllerTest(BaseTestCase):
             file_name='204027270091_R02C01_Grn.idat',
             file_type='Grn.idat',
             identifier_type='chipwellbarcode',
-            identifier_value='204027270091',
+            identifier_value='204027270091_R02C01',
             ignore_flag=0,
         )
 
@@ -195,7 +195,7 @@ class GenomicJobControllerTest(BaseTestCase):
             file_name='204027270091_R02C01.vcf.gz',
             file_type='vcf.gz',
             identifier_type='chipwellbarcode',
-            identifier_value='204027270091',
+            identifier_value='204027270091_R02C01',
             ignore_flag=0,
         )
 
