@@ -406,6 +406,10 @@ class GenomicJobController:
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()
 
+        if data_file_dao.get_with_file_path(file_path):
+            logging.info(f'{file_path} already exists.')
+            return 0
+
         # split file name
         file_attrs = self.parse_data_file_path(file_path)
 

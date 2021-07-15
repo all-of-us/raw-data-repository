@@ -1732,7 +1732,8 @@ class GenomicGcDataFileDao(BaseDao):
                 GenomicGcDataFile
             ).filter(
                 GenomicGcDataFile.identifier_type == 'sample_id',
-                GenomicGcDataFile.identifier_value == sample_id
+                GenomicGcDataFile.identifier_value == sample_id,
+                GenomicGcDataFile.ignore_flag == 0
             ).all()
 
     def get_with_chipwellbarcode(self, chipwellbarcode):
@@ -1741,5 +1742,15 @@ class GenomicGcDataFileDao(BaseDao):
                 GenomicGcDataFile
             ).filter(
                 GenomicGcDataFile.identifier_type == 'chipwellbarcode',
-                GenomicGcDataFile.identifier_value == chipwellbarcode
+                GenomicGcDataFile.identifier_value == chipwellbarcode,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+    def get_with_file_path(self, file_path):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.file_path == file_path,
+                GenomicGcDataFile.ignore_flag == 0
             ).all()
