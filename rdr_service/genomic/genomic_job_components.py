@@ -1839,6 +1839,7 @@ class GenomicReconciler:
 
     def reconcile_metrics_to_data_files(self, genome_type, _gc_site_id):
         if genome_type == "wgs":
+            logging.info("Running WGS reconciliation to Data Files...")
             metrics = self.metrics_dao.get_with_missing_wsg_files(_gc_site_id)
             identifier = 'sampleId'
             lookup_method = self.data_file_dao.get_with_sample_id
@@ -1846,6 +1847,7 @@ class GenomicReconciler:
             self.ready_signal = 'cvl-ready'
 
         elif genome_type == "array":
+            logging.info("Running Array reconciliation to Data Files...")
             metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
             identifier = 'chipwellbarcode'
             lookup_method = self.data_file_dao.get_with_chipwellbarcode
@@ -1861,6 +1863,8 @@ class GenomicReconciler:
             return GenomicSubProcessResult.SUCCESS
 
         required_files_set = set([f['file_type'] for f in file_types if f['required']])
+
+        logging.info("Found {len(metrics)} metrics records missing data...")
 
         for result in metrics:
             # Lookup identifier in data files table
@@ -1893,9 +1897,11 @@ class GenomicReconciler:
             # missing_data_files.append(default_filename)
 
             if metric_touched or missing_data_files:
+                logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files)
 
         if self.total_missing_data:
+            logging.info(f'Total missing data: {len(self.total_missing_data)}')
             self.process_missing_data()
 
         return GenomicSubProcessResult.SUCCESS
