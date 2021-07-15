@@ -261,11 +261,6 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
 
         with GenomicJobController(GenomicJob.INGEST_DATA_FILES,
                                   ) as controller:
-            # Disabling for refactor
-            # controller.ingest_data_files_into_gc_metrics(
-            #     self.data["file_path"],
-            #     self.data['bucket_name']
-            # )
 
             # ingest files into GenomicGcDataFile
             controller.accession_data_files(

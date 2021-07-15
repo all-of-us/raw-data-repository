@@ -448,7 +448,7 @@ class GenomicJobController:
         attr_dict = {
             'path_components': path_components,
             'name_components': name_components,
-            'file_prefix': "/".join(path_components[:-1]),
+            'file_prefix': "/".join(path_components[1:-1]),
             'file_name': path_components[-1],
             'file_type': file_type,
             'identifier_type': id_type,

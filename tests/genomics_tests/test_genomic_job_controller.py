@@ -149,10 +149,11 @@ class GenomicJobControllerTest(BaseTestCase):
         data_file_dao = GenomicGcDataFileDao()
 
         test_bucket_baylor = "fake-data-bucket-baylor"
-        test_idat_file = "Genotyping_sample_raw_data/204027270091_R02C01_Grn.idat"
-        test_vcf_file = "Genotyping_sample_raw_data/204027270091_R02C01.vcf.gz"
+        test_idat_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01_Grn.idat"
+        test_vcf_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01.vcf.gz"
 
-        test_cram_file = "Wgs_sample_raw_data/CRAMs_CRAIs/BCM_A100134256_21063006771_SIA0017196_1.cram"
+        test_cram_file = "fake-data-bucket-baylor/Wgs_sample_raw_data/" \
+                         "CRAMs_CRAIs/BCM_A100134256_21063006771_SIA0017196_1.cram"
 
         test_files = [test_idat_file, test_vcf_file, test_cram_file]
 
