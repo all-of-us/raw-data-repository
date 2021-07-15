@@ -1887,6 +1887,7 @@ class GenomicReconciler:
                 # look in files received list for the file type
                 for file_type_config in file_types:
                     if file_type_config['file_type'] == file.file_type:
+                        logging.info(f'Setting attributes for metric {_obj.id}...')
                         if not getattr(_obj, file_type_config['file_received_attribute']):
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
