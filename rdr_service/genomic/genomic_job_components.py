@@ -1882,6 +1882,8 @@ class GenomicReconciler:
             else:
                 _obj = result.GenomicGCValidationMetrics
 
+            logging.info(f'files for {_obj.id}: {files}')
+
             # Iterate file types and mark received
             for file in files:
                 # look in files received list for the file type
@@ -1912,6 +1914,7 @@ class GenomicReconciler:
 
         # Only upsert the metric if changed
         inserted_metrics_obj = self.metrics_dao.upsert(_obj)
+        logging.info(f'id {_obj.id} updated with attributes')
 
         # Update GC Metrics for PDR
         if inserted_metrics_obj:
