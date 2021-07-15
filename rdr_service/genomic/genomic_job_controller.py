@@ -67,6 +67,7 @@ class GenomicJobController:
                  bq_project_id=None,
                  task_data=None,
                  server_config=None,
+                 max_num=None
                  ):
 
         self.job_id = job_id
@@ -85,6 +86,7 @@ class GenomicJobController:
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
+        self.max_num = max_num
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
@@ -774,14 +776,14 @@ class GenomicJobController:
         Creates Genomic manifest using ManifestCompiler component
         """
         self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
-                                                  bucket_name=self.bucket_name)
+                                                  bucket_name=self.bucket_name,
+                                                  max_num=self.max_num)
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
 
             # Set the feedback manifest name based on the input manifest name
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
-
                 result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type,
                                                                                _genome_type,
                                                                                input_manifest=input_manifest)
@@ -791,7 +793,6 @@ class GenomicJobController:
 
             if result['code'] == GenomicSubProcessResult.SUCCESS:
                 logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
-
                 new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
 
                 now_time = datetime.utcnow()
