@@ -211,7 +211,8 @@ array_file_types_attributes = ({'file_path_attribute': 'idatRedPath',
 genome_centers_id_from_bucket_array = {
     'baylor': 'jh',
     'broad': 'bi',
-    'northwest': 'uw'
+    'northwest': 'uw',
+    'data': 'rdr'
 }
 
 genome_centers_id_from_bucket_wgs = {
