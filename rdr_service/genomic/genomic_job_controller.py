@@ -476,9 +476,11 @@ class GenomicJobController:
             name = bucket_name.split('-')[-1]
             return genome_centers_id_from_bucket_array[name]
 
-        if "wgs" in file_path.lower():
+        elif "wgs" in file_path.lower():
             # get from name
             return name_components[0].lower()
+        else:
+            return 'rdr'
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
@@ -643,10 +645,8 @@ class GenomicJobController:
                     gc_site_id = site_id_mapping['northwest']
 
                 # Run the reconciliation by GC
-                if genome_type == 'array':
-                    self.job_result = self.reconciler.reconcile_metrics_to_array_data(_gc_site_id=gc_site_id)
-                elif genome_type == 'wgs':
-                    self.job_result = self.reconciler.reconcile_metrics_to_wgs_data(_gc_site_id=gc_site_id)
+                self.job_result = self.reconciler.reconcile_metrics_to_data_files(genome_type,
+                                                                                  _gc_site_id=gc_site_id)
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR

@@ -238,8 +238,6 @@ class GenomicJobControllerTest(BaseTestCase):
             self.assertEqual(expected_objs[i].metadata, inserted_files[i].metadata)
             self.assertEqual(expected_objs[i].modified, inserted_files[i].modified)
 
-        # Verify cram
-
     def test_informing_loop_ingestion(self):
 
         informing_loop_dao = GenomicInformingLoopDao()
