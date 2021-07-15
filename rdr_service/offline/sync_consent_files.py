@@ -52,9 +52,9 @@ class ConsentSyncController:
     def sync_ready_files(self):
         """Syncs any validated consent files that are ready for syncing"""
 
-        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync()
-        pairing_info_map = self._build_participant_pairing_map(file_list)
         sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(org_names=sync_config.keys())
+        pairing_info_map = self._build_participant_pairing_map(file_list)
 
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)

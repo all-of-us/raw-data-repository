@@ -5,6 +5,7 @@ from sqlalchemy import or_
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 
@@ -72,8 +73,14 @@ class ConsentDao(BaseDao):
             ConsentFile.participant_id.in_(participant_ids)
         ).all()
 
-    def get_files_ready_to_sync(self) -> Collection[ConsentFile]:
+    def get_files_ready_to_sync(self, org_names=None) -> Collection[ConsentFile]:
         with self.session() as session:
-            return session.query(ConsentFile).filter(
-                ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC
-            ).all()
+            query = (
+                session.query(ConsentFile)
+                .join(Participant)
+                .join(Organization)
+                .filter(ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC)
+            )
+            if org_names is not None:
+                query = query.filter(Organization.externalId.in_(org_names))
+            return query.all()

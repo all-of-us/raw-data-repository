@@ -7,9 +7,12 @@ from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
-from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy
+from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy, StoreResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
+
+from rdr_service.offline.sync_consent_files import ConsentSyncController
+from rdr_service.dao.participant_dao import ParticipantDao
 
 tool_cmd = 'consents'
 tool_desc = 'Get reports of consent issues and modify validation records'
@@ -86,6 +89,14 @@ class ConsentTool(ToolBase):
                 self._consent_dao.batch_update_consent_files(session, [file])
 
     def validate_consents(self):
+        sync_controller = ConsentSyncController(
+            consent_dao=ConsentDao(),
+            participant_dao=ParticipantDao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        sync_controller.sync_ready_files()
+
+
         min_date = parse(self.args.min_date)
         max_date = parse(self.args.max_date) if self.args.max_date else None
 
@@ -95,8 +106,16 @@ class ConsentTool(ToolBase):
             hpo_dao=HPODao(),
             storage_provider=GoogleCloudStorageProvider()
         )
-        with self.get_session() as session:
-            controller.validate_recent_uploads(session, min_consent_date=min_date, max_consent_date=max_date)
+        with self.get_session() as session, StoreResultStrategy(
+            session=session,
+            consent_dao=controller.consent_dao
+        ) as store_strategy:
+            controller.validate_recent_uploads(
+                session,
+                store_strategy,
+                min_consent_date=min_date,
+                max_consent_date=max_date
+            )
 
     def upload_records(self):
         data_to_upload = []
@@ -105,7 +124,8 @@ class ConsentTool(ToolBase):
             for validation_data in input_csv:
                 data_to_upload.append(ConsentFile(**validation_data))
 
-        self._consent_dao.batch_update_consent_files(data_to_upload)
+        with self.get_session() as session:
+            self._consent_dao.batch_update_consent_files(session, data_to_upload)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
