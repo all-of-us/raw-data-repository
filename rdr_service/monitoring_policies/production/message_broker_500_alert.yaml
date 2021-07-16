@@ -1,0 +1,24 @@
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 300s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 60s
+    filter: metric.type="logging.googleapis.com/user/message_broker_500_error" resource.type="gae_app"
+    trigger:
+      count: 1
+  displayName: logging/user/message_broker_500_error
+  name: projects/all-of-us-rdr-prod/alertPolicies/8738808392884037845/conditions/8738808392884035832
+creationRecord:
+  mutateTime: '2021-06-23T20:50:31.908752653Z'
+  mutatedBy: yu.wang@pmi-ops.org
+displayName: message_broker_500_alert
+enabled: true
+mutationRecord:
+  mutateTime: '2021-06-23T20:50:31.908752653Z'
+  mutatedBy: yu.wang@pmi-ops.org
+name: projects/all-of-us-rdr-prod/alertPolicies/8738808392884037845
+notificationChannels:
+- projects/all-of-us-rdr-prod/notificationChannels/1388380576191610346
