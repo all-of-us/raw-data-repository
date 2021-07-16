@@ -1896,9 +1896,6 @@ class GenomicReconciler:
 
                             metric_touched = True
 
-            # if missing files
-            # missing_data_files.append(default_filename)
-
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files)
