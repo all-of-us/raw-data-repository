@@ -1,7 +1,7 @@
 """create genomic_gc_data_file
 
 Revision ID: 7dc15d7b7284
-Revises: 953dbc0cd623, d81ae8ae32ea
+Revises: 32d90a35e912
 Create Date: 2021-07-09 14:23:54.774940
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '7dc15d7b7284'
-down_revision = ('953dbc0cd623', 'd81ae8ae32ea')
+down_revision = '32d90a35e912'
 branch_labels = None
 depends_on = None
 
