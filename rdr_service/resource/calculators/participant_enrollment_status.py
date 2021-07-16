@@ -102,6 +102,7 @@ class EnrollmentStatusCalculator:
             if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
                 status = PDREnrollmentStatusEnum.ParticipantPlusEHR
             if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
+                    (cohort != ConsentCohortEnum.COHORT_3 or gror_received) and \
                     (modules and len(modules.values) >= len(self._module_enums)):
                 status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
             if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \

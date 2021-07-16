@@ -120,9 +120,8 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ Shift activity dates so we look like a cohort 3 participant with no GROR consent. """
         activity = self._shift_timestamps(get_basic_activity(), 800)
         self.esc.run(activity)
-        # GROR is considered a pre-requisite for Cohort 3 PM&B appointments and therefore Core status, but is not
-        # needed to reach CORE_MINUS_PM (e.g., ParticipantPlusEHR + biobank sample but no GROR qualifies)
-        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.CoreParticipantMinusPM)
+        # No GROR response means they cannot elevate to Core/Core Minus PM status
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
         self.assertEqual(self.esc.cohort, ConsentCohortEnum.COHORT_3)
 
     def test_cohort_3_gror_no_answer(self):
