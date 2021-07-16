@@ -49,35 +49,41 @@ class ConsentFileDaoTest(BaseTestCase):
             gror=datetime(2019, 10, 1)
         )
 
-        self.assertListsMatch(
-            expected_list=[
-                primary_participant,
-                cabor_participant,
-                ehr_participant,
-                gror_participant
-            ],
-            actual_list=self.consent_dao.get_participants_with_consents_in_range(
+        with self.consent_dao.session() as session:
+            result_list = self.consent_dao.get_participants_with_consents_in_range(
+                session,
                 start_date=datetime(2020, 3, 1),
                 end_date=datetime(2020, 7, 1)
-            ),
-            id_attribute='participantId'
-        )
-        self.assertListsMatch(
-            expected_list=[
-                primary_participant,
-                cabor_participant,
-                ehr_participant,
-                gror_participant,
-                later_primary_participant,
-                later_cabor_participant,
-                later_ehr_participant,
-                later_gror_participant
-            ],
-            actual_list=self.consent_dao.get_participants_with_consents_in_range(
+            )
+            self.assertListsMatch(
+                expected_list=[
+                    primary_participant,
+                    cabor_participant,
+                    ehr_participant,
+                    gror_participant
+                ],
+                actual_list=result_list,
+                id_attribute='participantId'
+            )
+
+            result_list = self.consent_dao.get_participants_with_consents_in_range(
+                session,
                 start_date=datetime(2020, 3, 1)
-            ),
-            id_attribute='participantId'
-        )
+            )
+            self.assertListsMatch(
+                expected_list=[
+                    primary_participant,
+                    cabor_participant,
+                    ehr_participant,
+                    gror_participant,
+                    later_primary_participant,
+                    later_cabor_participant,
+                    later_ehr_participant,
+                    later_gror_participant
+                ],
+                actual_list=result_list,
+                id_attribute='participantId'
+            )
 
     def test_ignoring_participants(self):
         """Make sure test and ghost accounts are left out of consent validation"""
@@ -94,10 +100,9 @@ class ConsentFileDaoTest(BaseTestCase):
             email='one@example.com'
         )
 
-        self.assertEqual(
-            [],
-            self.consent_dao.get_participants_with_consents_in_range(start_date=datetime(2020, 1, 1))
-        )
+        with self.consent_dao.session() as session:
+            results = self.consent_dao.get_participants_with_consents_in_range(session, start_date=datetime(2020, 1, 1))
+        self.assertEqual([], results)
 
     def test_getting_files_to_correct(self):
         """Test that all the consent files that need correcting are loaded"""
@@ -136,11 +141,13 @@ class ConsentFileDaoTest(BaseTestCase):
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING
         )
 
+        with self.consent_dao.session() as session:
+            result_list = self.consent_dao.get_files_needing_correction(session)
         self.assertListsMatch(
             expected_list=[
                 not_ready_primary, not_ready_cabor, not_ready_ehr, not_ready_gror
             ],
-            actual_list=self.consent_dao.get_files_needing_correction(),
+            actual_list=result_list,
             id_attribute='id'
         )
 
@@ -152,28 +159,30 @@ class ConsentFileDaoTest(BaseTestCase):
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
             file_path='/not_ready_ehr'
         )
-        to_update = self.consent_dao.get_files_needing_correction()
-        updates_to_send = [
-            ConsentFile(
-                type=ConsentType.EHR,
-                sync_status=ConsentSyncStatus.READY_FOR_SYNC,
-                file_path='/ready_ehr'
-            )
-        ]
-        for result in to_update:
-            result.sync_status = ConsentSyncStatus.OBSOLETE
-            updates_to_send.append(result)
+        with self.consent_dao.session() as session:
+            to_update = self.consent_dao.get_files_needing_correction(session)
+            updates_to_send = [
+                ConsentFile(
+                    type=ConsentType.EHR,
+                    sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+                    file_path='/ready_ehr'
+                )
+            ]
+            for result in to_update:
+                result.sync_status = ConsentSyncStatus.OBSOLETE
+                updates_to_send.append(result)
 
-        self.consent_dao.batch_update_consent_files(updates_to_send)
-        results = self.consent_dao.get_all()
-        self.assertEqual(2, len(results))
-        for result in results:
-            if result.file_path == '/ready_ehr':
-                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, result.sync_status)
-            elif result.file_path == '/not_ready_ehr':
-                self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
-            else:
-                self.fail('Unexpected file validation result')
+            self.consent_dao.batch_update_consent_files(session, updates_to_send)
+            session.commit()
+            results = self.consent_dao.get_all()
+            self.assertEqual(2, len(results))
+            for result in results:
+                if result.file_path == '/ready_ehr':
+                    self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, result.sync_status)
+                elif result.file_path == '/not_ready_ehr':
+                    self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
+                else:
+                    self.fail('Unexpected file validation result')
 
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))
