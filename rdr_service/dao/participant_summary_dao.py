@@ -740,10 +740,9 @@ class ParticipantSummaryDao(UpdatableDao):
         consent_cohort, gror_consent, consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
     ):
         """
-          2021-07-Note on enrollment status calculations and GROR:
+          2021-07 Note on enrollment status calculations and GROR:
           Per NIH Analytics Data Glossary and confirmation on requirements for Core participants:
-          Cohort 3 participants need a GROR response (yes/no/not sure) to qualify for PM&B and therefore
-          Core / FULL_PARTICIPANT status.  GROR not required for CORE_MINUS_PM.
+          Cohort 3 participants need any GROR response (yes/no/not sure) to elevate to Core or Core Minus PM status
         """
         if consent:
             if (
@@ -751,6 +750,7 @@ class ParticipantSummaryDao(UpdatableDao):
                 and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
                 and (consent_cohort != ParticipantCohort.COHORT_3 or
+                     # All response status enum values other than UNSET or SUBMITTED_INVALID meet the GROR requirement
                      (gror_consent and gror_consent != QuestionnaireStatus.UNSET
                       and gror_consent != QuestionnaireStatus.SUBMITTED_INVALID))
             ):
