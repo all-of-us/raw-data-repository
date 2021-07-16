@@ -11,6 +11,7 @@ from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_up
 from rdr_service.dao.bq_questionnaire_dao import bq_questionnaire_update_task
 from rdr_service.dao.bq_workbench_dao import bq_workspace_batch_update, bq_workspace_user_batch_update, \
     bq_institutional_affiliations_batch_update, bq_researcher_batch_update
+from rdr_service.offline import retention_eligible_import
 from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
@@ -169,4 +170,27 @@ class ArchiveRequestLogApi(Resource):
         log_id = data.get('log_id')
 
         RequestsLogMigrator.archive_log(log_id)
+        return '{"success": "true"}'
+
+
+class ImportRetentionEligibleFileTaskApi(Resource):
+    """
+    Cloud Task endpoint: Import Retention Eligible file
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        logging.info(f'Import Retention Eligible Metrics file: {data.get("filename")}')
+
+        # Set up file/JSON
+        task_data = {
+            "bucket": data["bucket_name"],
+            "upload_date": data["upload_date"],
+            "file_path": data["file_path"]
+        }
+
+        retention_eligible_import.import_retention_eligible_metrics_file(task_data)
+
+        logging.info('Complete.')
         return '{"success": "true"}'
