@@ -92,24 +92,36 @@ _fields_lock = threading.RLock()
 _ENROLLMENT_STATUS_CASE_SQL = """
         CASE WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
                    AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received)
@@ -644,6 +656,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrollment_status_sql = _ENROLLMENT_STATUS_SQL
         enrollment_status_params = {
             "submitted": int(QuestionnaireStatus.SUBMITTED),
+            "submitted_not_sure": int(QuestionnaireStatus.SUBMITTED_NOT_SURE),
             "unset": int(QuestionnaireStatus.UNSET),
             "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
             "completed": int(PhysicalMeasurementsStatus.COMPLETED),
@@ -652,6 +665,7 @@ class ParticipantSummaryDao(UpdatableDao):
             "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
             "member": int(EnrollmentStatus.MEMBER),
             "interested": int(EnrollmentStatus.INTERESTED),
+            "cohort_3": int(ParticipantCohort.COHORT_3),
             "now": now,
         }
 
@@ -745,6 +759,9 @@ class ParticipantSummaryDao(UpdatableDao):
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
+                and (consent_cohort != ParticipantCohort.COHORT_3 or
+                     (gror_consent and gror_consent != QuestionnaireStatus.UNSET
+                      and gror_consent != QuestionnaireStatus.SUBMITTED_INVALID))
             ):
                 return EnrollmentStatus.CORE_MINUS_PM
             elif consent_expire_status != ConsentExpireStatus.EXPIRED:

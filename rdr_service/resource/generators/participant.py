@@ -54,7 +54,7 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, COHORT_1_CUTOFF, \
-    COHORT_2_CUTOFF, ConsentCohortEnum
+    COHORT_2_CUTOFF, ConsentCohortEnum, PDREnrollmentStatusEnum
 from rdr_service.resource.helpers import DateCollection, RURAL_ZIPCODES
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
@@ -134,6 +134,15 @@ _deprecated_gror_consent_question_code_names = ('CheckDNA_Yes', 'CheckDNA_No', '
 # See: get_module_answers() method.
 _unlayered_question_codes_map = {
     'EHRConsentPII': ['EHRConsentPII_ConsentExpired', ]
+}
+
+# Temporary:  for finding/debugging mismatches in new EnrollmentStatusCalculator results to old calculation results
+_enrollment_status_map = {
+    EnrollmentStatusV2.REGISTERED:  PDREnrollmentStatusEnum.Registered,
+    EnrollmentStatusV2.PARTICIPANT: PDREnrollmentStatusEnum.Participant,
+    EnrollmentStatusV2.FULLY_CONSENTED: PDREnrollmentStatusEnum.ParticipantPlusEHR,
+    EnrollmentStatusV2.CORE_MINUS_PM: PDREnrollmentStatusEnum.CoreParticipantMinusPM,
+    EnrollmentStatusV2.CORE_PARTICIPANT: PDREnrollmentStatusEnum.CoreParticipant
 }
 
 
@@ -1184,7 +1193,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 enrollment_member_time = min(enrollment_member_time,
                                              consent['consent_module_created'] or datetime.datetime.max)
             elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
-                gror_date = consent['consent_date'] or datetime.datetime.max
                 if not 'GRORConsent' in consents:  # We only want the most recent consent answer.
                     consents['GRORConsent'] = (response_value, response_date)
                 # For enrollment status, we only need the presence of a valid GROR response (any valid answer)
@@ -1251,7 +1259,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # This assumes consent for study, completion of baseline modules, stored dna sample,
             # and physical measurements can't be reversed
             if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
-                    had_ehr_consent:
+                    had_ehr_consent and \
+                    (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_response):
                 # If they've had everything right at some point, go through and see if there was any time that they
                 # had them all at once
                 study_consent_date_range = DateCollection()
@@ -1326,11 +1335,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             data['enrollment_member'] = \
                 enrollment_member_time if enrollment_member_time != datetime.datetime.max else None
 
-        # PDR-236 WORKAROUND.  The logic for determining CORE_MINUS_PM enrollment status and calculating the new
-        # enrollment_core_minus_pm timestamp will need to be incorporated above.  For now, check the
-        # RDR participant_summary data directly and use its values.  This is done after the existing calculation
-        # because RDR and PDR use different enrollment status buckets (EnrollmentStatus vs. EnrollmentStatusV2)
-        # PDR calculations should take precedence except when RDR has CORE_MINUS_PM as the status
+        # PDR-236 WORKAROUND.   CORE_MINUS_PM was introduced after all the logic for this method was written.  We want
+        # to deprecate this overly complex method in favor of the redesigned EnrollmentStatusCalculator().  To avoid
+        # significant rework here to include CORE_MINUS_PM calculations, use the RDR to look for CORE_MINUS_PM until
+        # this method is retired.
         ps = ro_session.query(ParticipantSummary.enrollmentStatus,
                               ParticipantSummary.enrollmentStatusCoreMinusPMTime,
                               ParticipantSummary.enrollmentStatusMemberTime) \
@@ -1343,10 +1351,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if ps.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
                 data['enrollment_status'] = str(EnrollmentStatusV2.CORE_MINUS_PM)
                 data['enrollment_status_id'] = int(EnrollmentStatusV2.CORE_MINUS_PM)
+            # Logging to flag mismatches between RDR and PDR
+            elif int(ps.enrollmentStatus) != int(status):
+                logging.warning("RDR/PDR enrollment status mismatch for participant {} ({}/{})".format(
+                    p_id, str(ps.enrollmentStatus), str(status)))
 
-            # Temporary/extra QC check of pre-existing calculation logic, since we have RDR timestamp to compare to
+            # Logging for debugging cases where RDR/PDR ended up with different timestamps.
             if data['enrollment_member'] != ps.enrollmentStatusMemberTime:
                 logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
+
+        # Logging to flag inconsistent results from redesigned EnrollmentStatusCalculator
+        if _enrollment_status_map.get(status) != esc.status:
+            logging.warning("Participant {}: EnrollmentStatusCalculator {}, PDR generator: {}".format(
+                            p_id, str(esc.status), str(status)))
 
         return data
 
@@ -1379,7 +1396,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    and order['status_id'] != int(BiobankOrderStatus.CANCELLED) and 'samples' in order:
                     for sample in order['samples']:
                         if 'finalized' in sample and sample['finalized'] and \
-                            isinstance(sample['finalized'], datetime.datetime):
+                         isinstance(sample['finalized'], datetime.datetime):
                             dates.append(datetime_to_date(sample['finalized']))
         dates = list(set(dates))  # de-dup list
         data['distinct_visits'] = len(dates)
