@@ -317,6 +317,11 @@ def scan_and_complete_feedback_records():
             create_aw2f_manifest(f)
 
 
+def feedback_record_reconciliation():
+    with GenomicJobController(GenomicJob.FEEDBACK_RECORD_RECONCILE) as controller:
+        controller.reconcile_feedback_records()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
