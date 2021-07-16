@@ -3025,14 +3025,13 @@ class ManifestCompiler:
     This component compiles Genomic manifests
     based on definitions provided by ManifestDefinitionProvider
     """
-
-    def __init__(self, run_id, bucket_name=None):
+    def __init__(self, run_id, bucket_name=None, max_num=None):
         self.run_id = run_id
         self.bucket_name = bucket_name
+        self.max_num = max_num
         self.output_file_name = None
         self.manifest_def = None
         self.def_provider = None
-
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
@@ -3052,39 +3051,60 @@ class ManifestCompiler:
         )
 
         self.manifest_def = self.def_provider.get_def(manifest_type)
-
         source_data = self._pull_source_data()
+
         if source_data:
-            self.output_file_name = self.manifest_def.output_filename
+            if self.max_num and len(source_data) > self.max_num:
+                current_list = []
+                count = 0
 
-            # If the new manifest is a feedback manifest,
-            # it will have an input manifest
-            if "input_manifest" in kwargs.keys():
+                for obj in source_data:
+                    current_list.append(obj)
 
-                # AW2F manifest file name is based of of AW1
-                if manifest_type == GenomicManifestTypes.AW2F:
-                    new_name = kwargs['input_manifest'].filePath.split('/')[-1]
-                    new_name = new_name.replace('.csv', '_contamination.csv')
+                    if len(current_list) == self.max_num:
+                        count += 1
+                        self.output_file_name = self.manifest_def.output_filename
+                        self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                        logging.info(
+                            f'Preparing manifest of type {manifest_type}...'
+                            f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                        )
+                        self._write_and_upload_manifest(current_list)
+                        current_list.clear()
 
-                    self.output_file_name = self.manifest_def.output_filename.replace(
-                        "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
-                        f"{new_name}"
+                if current_list:
+                    count += 1
+                    self.output_file_name = self.manifest_def.output_filename
+                    self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                    logging.info(
+                        f'Preparing manifest of type {manifest_type}...'
+                        f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                     )
+                    self._write_and_upload_manifest(current_list)
 
-            logging.info(
-                f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-            )
-
-            self._write_and_upload_manifest(source_data)
+            else:
+                self.output_file_name = self.manifest_def.output_filename
+                # If the new manifest is a feedback manifest,
+                # it will have an input manifest
+                if "input_manifest" in kwargs.keys():
+                    # AW2F manifest file name is based of of AW1
+                    if manifest_type == GenomicManifestTypes.AW2F:
+                        new_name = kwargs['input_manifest'].filePath.split('/')[-1]
+                        new_name = new_name.replace('.csv', '_contamination.csv')
+                        self.output_file_name = self.manifest_def.output_filename.replace(
+                            "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
+                            f"{new_name}"
+                        )
+                logging.info(
+                    f'Preparing manifest of type {manifest_type}...'
+                    f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                )
+                self._write_and_upload_manifest(source_data)
 
             results = []
-
             record_count = len(source_data)
-
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-
                 if self.manifest_def.job_run_field is not None:
                     results.append(
                         self.member_dao.update_member_job_run_id(
@@ -3093,7 +3113,6 @@ class ManifestCompiler:
                             field=self.manifest_def.job_run_field
                         )
                     )
-
                 # Handle Genomic States for manifests
                 if self.manifest_def.signal != "bypass":
                     new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
@@ -3111,8 +3130,8 @@ class ManifestCompiler:
                 "code": result_code,
                 "record_count": record_count,
             }
-
             return result
+
         logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
             "code": GenomicSubProcessResult.NO_FILES,
