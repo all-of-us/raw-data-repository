@@ -3157,8 +3157,10 @@ class ManifestCompiler:
             if self.max_num and len(source_data) > self.max_num:
                 current_list = []
                 count = 0
+
                 for obj in source_data:
                     current_list.append(obj)
+
                     if len(current_list) == self.max_num:
                         count += 1
                         self.output_file_name = self.manifest_def.output_filename
@@ -3169,6 +3171,7 @@ class ManifestCompiler:
                         )
                         self._write_and_upload_manifest(current_list)
                         current_list.clear()
+
                 if current_list:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
@@ -3178,6 +3181,7 @@ class ManifestCompiler:
                         f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                     )
                     self._write_and_upload_manifest(current_list)
+
             else:
                 self.output_file_name = self.manifest_def.output_filename
                 # If the new manifest is a feedback manifest,
