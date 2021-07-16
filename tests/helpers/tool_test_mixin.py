@@ -23,6 +23,7 @@ class ToolTestMixin:
         tool_args = ToolTestMixin._build_args(tool_args)
 
         with mock.patch.object(ToolBase, 'initialize_process_context') as mock_init_env,\
+             mock.patch.object(ToolBase, 'get_session'),\
              mock.patch('rdr_service.services.config_client.ConfigClient.get_server_config') as mock_server_config:
 
             mock_init_env.return_value.__enter__.return_value = gcp_env

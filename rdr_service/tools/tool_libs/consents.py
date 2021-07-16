@@ -96,7 +96,6 @@ class ConsentTool(ToolBase):
         )
         sync_controller.sync_ready_files()
 
-
         min_date = parse(self.args.min_date)
         max_date = parse(self.args.max_date) if self.args.max_date else None
 
