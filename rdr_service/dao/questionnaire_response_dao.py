@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from typing import Dict
 from werkzeug.exceptions import BadRequest
 
-from rdr_service.dao.database_utils import format_datetime
+from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -796,28 +796,35 @@ class QuestionnaireResponseDao(BaseDao):
         current_value = current_value if current_value is not None else {}
         # sqlalchemy can't update the Json field directly, need a deepcopy to replace the old value
         new_value = copy.deepcopy(current_value)
-        if field_mapping[code_value][0] in new_value:
-            current_history = new_value[field_mapping[code_value][0]]['history']
+        health_module = field_mapping[code_value][0]
+        health_module_status = field_mapping[code_value][1]
+        if health_module in new_value:
+            current_history = new_value[health_module]['history']
             exist = False
             for item in current_history:
-                if item['status'] == field_mapping[code_value][1] and item['authoredTime'] == authored_str:
+                if item['status'] == health_module_status and item['authoredTime'] == authored_str:
                     exist = True
                     break
             if not exist:
-                new_value[field_mapping[code_value][0]]['status'] = field_mapping[code_value][1]
-                new_value[field_mapping[code_value][0]]['authoredTime'] = authored_str
-                new_value[field_mapping[code_value][0]]['history'].insert(0, {
-                        'status': field_mapping[code_value][1],
+                if authored > parse_datetime(new_value[health_module]['authoredTime']):
+                    new_value[health_module]['status'] = health_module_status
+                    new_value[health_module]['authoredTime'] = authored_str
+
+                new_value[health_module]['history'].insert(0, {
+                        'status': health_module_status,
                         'authoredTime': authored_str
                     })
+                new_value[health_module]['history'] = sorted(new_value[health_module]['history'],
+                                                             key=lambda i: parse_datetime(i['authoredTime']),
+                                                             reverse=True)
                 something_changed = True
         else:
-            new_value[field_mapping[code_value][0]] = {
-                'status': field_mapping[code_value][1],
+            new_value[health_module] = {
+                'status': health_module_status,
                 'authoredTime': authored_str,
                 'history': [
                     {
-                        'status': field_mapping[code_value][1],
+                        'status': health_module_status,
                         'authoredTime': authored_str
                     }
                 ]
