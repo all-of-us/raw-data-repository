@@ -48,6 +48,7 @@ class EnrollmentStatusCalculator:
     _signup = None
     _consented = None
     _ehr_consented = None
+    _gror_received = None
     _gror_consented = None
     _biobank_samples = None
     _physical_measurements = None
@@ -84,7 +85,7 @@ class EnrollmentStatusCalculator:
             signed_up = self.calc_signup(events)
             consented, cohort = self.calc_consent(events)
             ehr_consented = self.calc_ehr_consent(events)
-            gror_consented = self.calc_gror_consent(events)
+            gror_received = self.calc_gror_received(events)
             biobank_samples = self.calc_biobank_samples(events)
             physical_measurements = self.calc_physical_measurements(events)
             modules = self.calc_baseline_modules(events)
@@ -101,12 +102,12 @@ class EnrollmentStatusCalculator:
             if status == PDREnrollmentStatusEnum.Participant and ehr_consented:
                 status = PDREnrollmentStatusEnum.ParticipantPlusEHR
             if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and biobank_samples and \
-                    (modules and len(modules.values) >= len(self._module_enums)) and \
-                    (cohort != ConsentCohortEnum.COHORT_3 or gror_consented):
+                    (cohort != ConsentCohortEnum.COHORT_3 or gror_received) and \
+                    (modules and len(modules.values) >= len(self._module_enums)):
                 status = PDREnrollmentStatusEnum.CoreParticipantMinusPM
             if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and \
                     physical_measurements and \
-                    (cohort != ConsentCohortEnum.COHORT_3 or gror_consented):
+                    (cohort != ConsentCohortEnum.COHORT_3 or gror_received):
                 status = PDREnrollmentStatusEnum.CoreParticipant
 
             # Set the permanent enrollment status value if needed. Enrollment status can go down
@@ -226,6 +227,25 @@ class EnrollmentStatusCalculator:
 
         return self.save_calc('_ehr_consented', info)
 
+    def calc_gror_received(self, events):
+        """
+        Determine if a participant ever submitted a valid GROR response (regardless of consent status)
+        """
+        info = EnrollmentStatusInfo()
+        for ev in events:
+            if (ev.event == ParticipantEventEnum.GROR
+                     and ev.answer in [CONSENT_GROR_NO_CODE, CONSENT_GROR_YES_CODE, CONSENT_GROR_NOT_SURE]):
+                info.calculated = True
+                info.first_ts = ev.last_ts = ev.timestamp
+                info.add_value(ev)
+                break
+
+        return self.save_calc('_gror_received', info)
+
+    # Note:  New guidance from NIH as of July 2021 says GROR affirmative consent is not a requirement for Core
+    # status, so calc_gror_recieved() will replace this function in the enrollment status calculation.   Leaving this
+    # code here for potential leverage in case of a future need to confirm a GROR 'yes' consent in a participant's
+    # activity history.
     def calc_gror_consent(self, events):
         """
         Determine if participant has consented to GROR.
