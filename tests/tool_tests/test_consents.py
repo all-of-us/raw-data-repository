@@ -2,6 +2,7 @@ from datetime import date, datetime
 import mock
 from typing import List
 
+from rdr_service import config
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.tools.tool_libs.consents import ConsentTool
 from tests.helpers.tool_test_mixin import ToolTestMixin
@@ -29,24 +30,24 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
 
         self.consent_dao_mock.get_files_needing_correction.return_value = [
             ConsentFile(
-                participant_id=123123123, type=ConsentType.PRIMARY, file_exists=False
+                id=1, participant_id=123123123, type=ConsentType.PRIMARY, file_exists=False
             ),
             ConsentFile(
-                participant_id=222333444, type=ConsentType.CABOR, file_exists=False
+                id=2, participant_id=222333444, type=ConsentType.CABOR, file_exists=False
             ),
             ConsentFile(
-                participant_id=222333444, type=ConsentType.GROR, file_exists=True,
+                id=3, participant_id=222333444, type=ConsentType.GROR, file_exists=True,
                 is_signature_valid=False, is_signing_date_valid=True, other_errors='missing checkmark',
                 file_path='test_bucket/P222/GROR_no_checkmark_or_signature.pdf'
             ),
             ConsentFile(
-                participant_id=654321123, type=ConsentType.CABOR, file_exists=True,
+                id=4, participant_id=654321123, type=ConsentType.CABOR, file_exists=True,
                 is_signature_valid=True, is_signing_date_valid=False,
                 signing_date=date(2021, 12, 1), expected_sign_date=date(2020, 12, 1),
                 file_path='test_bucket/P654/Cabor_bad_date.pdf'
             ),
             ConsentFile(
-                participant_id=901987345, type=ConsentType.EHR, file_exists=True,
+                id=5, participant_id=901987345, type=ConsentType.EHR, file_exists=True,
                 is_signature_valid=False, is_signing_date_valid=True,
                 file_path='test_bucket/P901/EHR_no_signature.pdf'
             )
@@ -68,38 +69,42 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             if additional_args:
                 tool_args.update(additional_args)
 
-            self.run_tool(ConsentTool, tool_args)
+            self.run_tool(ConsentTool, tool_args, mock_session=True)
 
     def test_report_to_send_to_ptsc(self, logger_mock):
         """Check the basic report format, the one that would be sent to Vibrent or CE for correcting"""
-        self._run_consents_tool(command='report-errors')
-        logger_mock.info.assert_called_once_with('\n'.join([
-            'P123123123 - PRIMARY    missing file',
-            'P222333444 - CABOR      missing file',
-            'P222333444 - GROR       invalid signature, missing checkmark',
-            'P654321123 - CABOR      invalid signing date (expected 2020-12-01 but file has 2021-12-01)',
-            'P901987345 - EHR        invalid signature',
-        ]))
+        with mock.patch('rdr_service.tools.tool_libs.consents.input'):
+            self._run_consents_tool(command='report-errors')
+            logger_mock.info.assert_called_once_with('\n'.join([
+                'P123123123 - PRIMARY    missing file',
+                'P222333444 - CABOR      missing file',
+                'P222333444 - GROR       invalid signature, missing checkmark',
+                'P654321123 - CABOR      invalid signing date (expected 2020-12-01 but file has 2021-12-01)',
+                'P901987345 - EHR        invalid signature',
+            ]))
 
     def test_report_to_audit(self, logger_mock):
         """
         Check additional information and formatting helpful for looking into whether
         the files might have been mistakenly marked as incorrect
         """
-        self._run_consents_tool(command='report-errors', verbose=True)
-        logger_mock.info.assert_called_once_with('\n'.join([
-            'P123123123 - PRIMARY    missing file',
-            '',
-            'P222333444 - CABOR      missing file',
-            'P222333444 - GROR       invalid signature, missing checkmark - '
-            'https://example.com/test_bucket/P222/GROR_no_checkmark_or_signature.pdf',
-            '',
-            'P654321123 - CABOR      '
-            'invalid signing date (expected 2020-12-01 but file has 2021-12-01, diff of 365 days) - '
-            'https://example.com/test_bucket/P654/Cabor_bad_date.pdf',
-            '',
-            'P901987345 - EHR        invalid signature - https://example.com/test_bucket/P901/EHR_no_signature.pdf',
-        ]))
+        with mock.patch('rdr_service.tools.tool_libs.consents.input'):
+            self._run_consents_tool(command='report-errors', verbose=True)
+            logger_mock.info.assert_called_once_with('\n'.join([
+                '',
+                '1        - P123123123 - PRIMARY    missing file',
+                '',
+                '2        - P222333444 - CABOR      missing file',
+                '3        - P222333444 - GROR       invalid signature, missing checkmark',
+                'https://example.com/test_bucket/P222/GROR_no_checkmark_or_signature.pdf',
+                '',
+                '4        - P654321123 - CABOR      '
+                'invalid signing date (expected 2020-12-01 but file has 2021-12-01, diff of 365 days)',
+                'https://example.com/test_bucket/P654/Cabor_bad_date.pdf',
+                '',
+                '5        - P901987345 - EHR        invalid signature',
+                'https://example.com/test_bucket/P901/EHR_no_signature.pdf',
+            ]))
 
     def test_changing_existing_record(self, logger_mock):
         with mock.patch('rdr_service.tools.tool_libs.consents.input') as input_mock:
@@ -110,7 +115,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                 type=ConsentType.PRIMARY,
                 sync_status=ConsentSyncStatus.NEEDS_CORRECTING
             )
-            self.consent_dao_mock.get.return_value = file_to_update
+            self.consent_dao_mock.get_with_session.return_value = file_to_update
 
             input_mock.return_value = 'y'
             self._run_consents_tool(
@@ -127,14 +132,19 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                 mock.call('sync_status:    NEEDS_CORRECTING => READY_FOR_SYNC')
             ])
 
-            updated_file = self.consent_dao_mock.batch_update_consent_files.call_args_list[0].args[0][0]
+            updated_file = self.consent_dao_mock.batch_update_consent_files.call_args_list[0].args[1][0]
             self.assertEqual(file_to_update.id, updated_file.id)
             self.assertEqual(ConsentType.CABOR, updated_file.type)
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
 
     def test_validation_time_range(self, _):
-        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock:
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock,\
+                mock.patch('rdr_service.tools.tool_libs.consents.ParticipantDao'):
             controller_mock = controller_class_mock.return_value
+            self.temporarily_override_config_setting(
+                key=config.CONSENT_SYNC_BUCKETS,
+                value={}
+            )
 
             # Check without max_date
             self._run_consents_tool(
@@ -145,6 +155,8 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                 }
             )
             controller_mock.validate_recent_uploads.assert_called_with(
+                mock.ANY,
+                mock.ANY,
                 min_consent_date=datetime(2021, 4, 1),
                 max_consent_date=None
             )
@@ -158,6 +170,8 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                 }
             )
             controller_mock.validate_recent_uploads.assert_called_with(
+                mock.ANY,
+                mock.ANY,
                 min_consent_date=datetime(2021, 5, 1),
                 max_consent_date=datetime(2021, 6, 17)
             )
@@ -188,7 +202,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                     'file': 'data.csv',
                 }
             )
-            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
+            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[1]
             self.assertTrue(any([
                 (
                     record.participant_id == '4567'

@@ -148,6 +148,18 @@ class ConsentSyncControllerTest(BaseTestCase):
         # If no participants are paired, then nothing should sync
         self.storage_provider_mock.copy_blob.assert_not_called()
 
+    def test_only_loading_consents_that_will_sync(self):
+        """
+        Currently there are only a few organizations in the config to sync.
+        For performance, we just load the files that will be copied.
+        """
+        self.sync_controller.sync_ready_files()
+
+        # Check that the config was used to filter the consent files loaded
+        org_name_keys = self.consent_dao_mock.get_files_ready_to_sync.call_args.kwargs['org_names']
+        for expected_key in [self.bob_org_name, self.foo_org_name]:
+            self.assertIn(expected_key, org_name_keys)
+
     @classmethod
     def _build_expected_dest_path(cls, bucket_name, org_id, site_group, participant_id, file_name):
         return f'{bucket_name}/Participant/{org_id}/{site_group}/P{participant_id}/{file_name}'
