@@ -418,8 +418,8 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
                             query_params, backup=True, predicate=report_predicate)
         logging.info(f"Completed {report_path} report.")
 
-    # Now generate the withdrawal report, within the past n days.
-    _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
+    if config.getSetting('biobank_withdrawal_report_enabled', default=True):
+        _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
