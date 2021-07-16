@@ -142,6 +142,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.qra_dao = QuestionnaireResponseAnswerDao()
         self.qq_dao = QuestionnaireQuestionDao()
         self.report_state_dao = GenomicMemberReportStateDao()
+        self.aw1_raw_dao = GenomicAW1RawDao()
+        self.aw2_raw_dao = GenomicAW2RawDao()
+
         self._participant_i = 1
 
     mock_bucket_paths = [_FAKE_BUCKET,
@@ -3762,9 +3765,7 @@ class GenomicPipelineTest(BaseTestCase):
             "failure_mode_desc",
         ]
 
-        aw1_raw_dao = GenomicAW1RawDao()
-
-        aw1_raw_records = aw1_raw_dao.get_all()
+        aw1_raw_records = self.aw1_raw_dao.get_all()
         aw1_raw_records.sort(key=lambda x: x.id)
 
         # compare rows in DB to rows in manifest
@@ -3793,9 +3794,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Run load job
         genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
 
-        aw2_raw_dao = GenomicAW2RawDao()
-
-        aw2_raw_record = aw2_raw_dao.get(1)
+        aw2_raw_record = self.aw2_raw_dao.get(1)
 
         with open(data_path(test_manifest)) as f:
             csv_reader = csv.DictReader(f)
@@ -3954,3 +3953,81 @@ class GenomicPipelineTest(BaseTestCase):
         manifest_record = self.manifest_file_dao.get(1)
         self.assertEqual(file_name.split('/')[1], manifest_record.fileName)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+
+    def test_feedback_records_reconciled(self):
+
+        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
+        aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+        self._write_cloud_csv(
+            aw1_manifest_filename,
+            aw1_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+
+        raw_records = self.aw1_raw_dao.get_all()
+        raw_records = [obj for obj in raw_records if obj.sample_id != ""]
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath=test_file_path,
+            bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            fileName=aw1_manifest_filename,
+        )
+
+        manifest = self.data_generator.create_database_genomic_manifest_file(
+            manifestTypeId=2,
+            filePath=test_file_path
+        )
+
+        self.data_generator.create_database_genomic_manifest_feedback(
+            inputManifestFileId=manifest.id,
+            feedbackRecordCount=2
+        )
+
+        for raw in raw_records:
+            participant = self.data_generator.create_database_participant()
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId=raw.sample_id,
+                genomeType="aou_array",
+                participantId=participant.participantId
+            )
+
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=gen_member.id,
+                genomicFileProcessedId=gen_processed_file.id,
+                contamination=0.002
+            )
+
+        current_records = self.manifest_feedback_dao.get_feedback_reconcile_records()
+
+        self.assertTrue(len(current_records))
+        current_record = current_records[0]
+        self.assertNotEqual(current_record.raw_feedback_count, current_record.feedbackRecordCount)
+        self.assertGreater(current_record.raw_feedback_count, current_record.feedbackRecordCount)
+
+        genomic_pipeline.feedback_record_reconciliation()
+
+        updated_records = self.manifest_feedback_dao.get_feedback_reconcile_records(test_file_path)
+        self.assertTrue(len(updated_records))
+        updated_record = updated_records[0]
+        self.assertEqual(current_record.feedback_id, updated_record.feedback_id)
+        self.assertEqual(current_record.raw_feedback_count, updated_record.feedbackRecordCount)
+

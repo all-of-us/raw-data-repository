@@ -1431,13 +1431,15 @@ class GenomicManifestFileDao(BaseDao):
             genomic_manifest_file_update(manifest_file_obj.id)
 
 
-class GenomicManifestFeedbackDao(BaseDao):
+class GenomicManifestFeedbackDao(UpdatableDao):
+
+    validate_version_match = False
+
     def __init__(self):
-        super(GenomicManifestFeedbackDao, self).__init__(
-            GenomicManifestFeedback, order_by_ending=['id'])
+        super(GenomicManifestFeedbackDao, self).__init__(GenomicManifestFeedback, order_by_ending=['id'])
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def from_client_json(self):
         pass
@@ -1522,9 +1524,44 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFile.filePath == filepath
             ).first()
 
-    def get_feedback_records_for_aw2f(self):
-        pass
+    def get_feedback_reconcile_records(self, filepath=None):
+        with self.session() as session:
+            feedback_records = session.query(
+                GenomicManifestFeedback.id.label('feedback_id'),
+                functions.count(GenomicAW1Raw.sample_id).label('raw_feedback_count'),
+                GenomicManifestFeedback.feedbackRecordCount,
+                GenomicManifestFile.filePath,
+            ).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
+            ).join(
+                GenomicAW1Raw,
+                GenomicAW1Raw.file_path == GenomicManifestFile.filePath
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.sampleId == GenomicAW1Raw.sample_id
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicAW1Raw.sample_id.isnot(None),
+                GenomicGCValidationMetrics.contamination.isnot(None),
+                GenomicGCValidationMetrics.contamination != '',
+                GenomicSetMember.genomeType.notin_(["saliva_array", "saliva_wgs"]),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+            ).group_by(
+                GenomicManifestFeedback.id,
+                GenomicManifestFeedback.feedbackRecordCount,
+                GenomicManifestFile.filePath,
+            )
 
+            if filepath:
+                feedback_records = feedback_records.filter(
+                    GenomicManifestFile.filePath == filepath
+                )
+
+            return feedback_records.all()
 
 class GenomicAW1RawDao(BaseDao):
     def __init__(self):

@@ -396,7 +396,6 @@ class GenomicJobController:
             logging.warning('Inserting data file failure')
 
     def ingest_informing_loop_records(self, *, loop_type, records):
-
         if records:
             logging.info(f'Inserting informing loop for Participant: {records[0].participantId}')
 
@@ -413,6 +412,22 @@ class GenomicJobController:
             )
 
             self.informing_loop_dao.insert(loop_obj)
+
+    def reconcile_feedback_records(self):
+        records = self.manifest_feedback_dao.get_feedback_reconcile_records()
+        logging.info('Running feedback records reconciliation')
+
+        for record in records:
+            if record.raw_feedback_count > record.feedbackRecordCount \
+                    and record.raw_feedback_count != record.feedbackRecordCount:
+
+                logging.info(f'Updating feedback record count for file path: {record.filePath}')
+
+                feedback_record = self.manifest_feedback_dao.get(record.feedback_id)
+                feedback_record.feedbackRecordCount = record.raw_feedback_count
+                self.manifest_feedback_dao.update(feedback_record)
+
+
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
@@ -855,7 +870,6 @@ class GenomicJobController:
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
-
         if _genome_type == GENOME_TYPE_ARRAY:
             self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
 

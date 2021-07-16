@@ -452,6 +452,12 @@ def genomic_aw4_workflow():
     genomic_pipeline.aw4_wgs_manifest_workflow()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_feedback_record_reconciliation():
+    genomic_pipeline.feedback_record_reconciliation()
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -778,6 +784,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicFeedbackRecordReconciliation",
+        endpoint="genomic_feedback_record_reconciliation",
+        view_func=genomic_feedback_record_reconciliation, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 
