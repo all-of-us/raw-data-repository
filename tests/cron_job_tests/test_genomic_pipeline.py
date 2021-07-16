@@ -3049,10 +3049,10 @@ class GenomicPipelineTest(BaseTestCase):
                 (f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz',
                  f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz.tbi',
                  f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz.md5sum',
-                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_red.idat',
-                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_grn.idat',
-                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_red.idat.md5sum',
-                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_grn.idat.md5sum',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Red.idat',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Grn.idat',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Red.idat.md5sum',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Grn.idat.md5sum',
                  )
             )
 
@@ -3060,12 +3060,29 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(len(sequencing_test_files), len(stored_samples) * 7)
 
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
-
-        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow(max_num=3)  # run_id = 4
@@ -3337,8 +3354,28 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(len(sequencing_test_files), len(stored_samples) * 11)
 
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': f.split('_')[4],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
