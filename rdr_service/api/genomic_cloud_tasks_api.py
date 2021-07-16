@@ -258,7 +258,7 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         super(IngestDataFilesTaskApi, self).post()
         logging.info(f'Ingesting data files: {self.data["file_path"]}')
 
-        with GenomicJobController(GenomicJob.INGEST_DATA_FILES,
+        with GenomicJobController(GenomicJob.ACCESSION_DATA_FILES,
                                   ) as controller:
 
             # ingest files into GenomicGcDataFile
