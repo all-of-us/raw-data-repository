@@ -118,7 +118,6 @@ class MailKitOrderDao(UpdatableDao):
 
         is_version_two = barcode and len(barcode) > 14
         if is_version_two:
-            order["order"]["number"] = None
             client_fields = {"client_passthrough_fields": {
                 "field1": barcode,
                 "field2": None,

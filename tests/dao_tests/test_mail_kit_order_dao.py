@@ -145,7 +145,6 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests','comments'],
             list(mayo_order_payload.keys())
         )
-        self.assertIsNone(mayo_order_payload['number'])  # An empty number field should be given for version two
 
         # Make sure the correct account is used for version two
         self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
