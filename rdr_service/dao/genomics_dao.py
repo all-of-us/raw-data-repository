@@ -27,8 +27,8 @@ from rdr_service.model.genomics import (
     GenomicIncident,
     GenomicCloudRequests,
     GenomicMemberReportState,
-    GenomicInformingLoop
-)
+    GenomicInformingLoop,
+    GenomicGcDataFile)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1120,8 +1120,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
-                            GenomicGCValidationMetrics.ignoreFlag is not None)),
+                    GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
@@ -1752,3 +1751,44 @@ class GenomicInformingLoopDao(UpdatableDao):
 
     def from_client_json(self):
         pass
+
+
+class GenomicGcDataFileDao(BaseDao):
+    def __init__(self):
+        super(GenomicGcDataFileDao, self).__init__(
+            GenomicGcDataFile, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_with_sample_id(self, sample_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.identifier_type == 'sample_id',
+                GenomicGcDataFile.identifier_value == sample_id,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+    def get_with_chipwellbarcode(self, chipwellbarcode):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.identifier_type == 'chipwellbarcode',
+                GenomicGcDataFile.identifier_value == chipwellbarcode,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+    def get_with_file_path(self, file_path):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.file_path == file_path,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()

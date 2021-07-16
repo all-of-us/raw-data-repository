@@ -1014,7 +1014,7 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
                                                 genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
         self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifestWithFailure.csv',
                                          bucket_name,
                                          folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
@@ -1029,21 +1029,14 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
 
-        # Test the reconciliation process
-        # Upload files for RDR sample
-        sequencing_test_files_1 = (
+        # JH sample files
+        array_test_files_jh = (
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
             f'test_data_folder/10001_R01C01_Red.idat',
             f'test_data_folder/10001_R01C01_Grn.idat',
             f'test_data_folder/10001_R01C01_Red.idat.md5sum',
-        )
-        for f in sequencing_test_files_1:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
-
-        # Upload files for JH sample
-        sequencing_test_files = (
             f'test_data_folder/10002_R01C02.vcf.gz',
             f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
@@ -1052,8 +1045,30 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10002_R01C02_Red.idat.md5sum',
             f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
         )
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR)
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in array_test_files_jh:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         # change member 2 gc_site_id
         member = self.member_dao.get(2)
@@ -1075,12 +1090,12 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.idatRedMd5Received)
         self.assertEqual(0, gc_record.idatGreenMd5Received)
 
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[0]}", gc_record.vcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[1]}", gc_record.vcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[2]}", gc_record.vcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[3]}", gc_record.idatRedPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[4]}", gc_record.idatGreenPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files_1[5]}", gc_record.idatRedMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[0]}", gc_record.vcfPath)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[1]}", gc_record.vcfTbiPath)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[2]}", gc_record.vcfMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[3]}", gc_record.idatRedPath)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[4]}", gc_record.idatGreenPath)
+        self.assertEqual(f"gs://{bucket_name}/{array_test_files_jh[5]}", gc_record.idatRedMd5Path)
 
         gc_record = self.metrics_dao.get(2)
 
@@ -1133,17 +1148,38 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test the reconciliation process
         sequencing_test_files = (
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_v1.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_v1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_v2.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_v2.cram',
-            f'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_v1.vcf.gz',
+            'test_data_folder/RDR_2_1002_10002_v1.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_v2.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_v2.cram',
+            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
         )
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
 
@@ -2293,27 +2329,47 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_red.idat',
-            f'test_data_folder/10001_R01C01_grn.idat',
-            f'test_data_folder/10001_R01C01_red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_grn.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
             f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_red.idat',
-            f'test_data_folder/10002_R01C02_grn.idat',
-            f'test_data_folder/10002_R01C02_red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
             f'test_data_folder/10003_R01C03.vcf.gz',
             f'test_data_folder/10003_R01C03.vcf.gz.tbi',
             f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
-            f'test_data_folder/10003_R01C03_red.idat',
-            f'test_data_folder/10003_R01C03_grn.idat',
-            f'test_data_folder/10003_R01C03_red.idat.md5sum',
-            f'test_data_folder/10003_R01C03_grn.idat.md5sum',
+            f'test_data_folder/10003_R01C03_Red.idat',
+            f'test_data_folder/10003_R01C03_Grn.idat',
+            f'test_data_folder/10003_R01C03_Red.idat.md5sum',
+            f'test_data_folder/10003_R01C03_Grn.idat.md5sum',
         )
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
@@ -2608,8 +2664,28 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
 
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
@@ -2819,20 +2895,40 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/10001_R01C01.vcf.gz',
             f'test_data_folder/10001_R01C01.vcf.gz.tbi',
             f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
-            f'test_data_folder/10001_R01C01_red.idat',
-            f'test_data_folder/10001_R01C01_grn.idat',
-            f'test_data_folder/10001_R01C01_red.idat.md5sum',
-            f'test_data_folder/10001_R01C01_grn.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
             f'test_data_folder/10002_R01C02.vcf.gz',
             f'test_data_folder/10002_R01C02.vcf.gz.tbi',
             f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
-            f'test_data_folder/10002_R01C02_red.idat',
-            f'test_data_folder/10002_R01C02_grn.idat',
-            f'test_data_folder/10002_R01C02_red.idat.md5sum',
-            f'test_data_folder/10002_R01C02_grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
         )
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
@@ -2960,8 +3056,28 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
         )
-        for f in sequencing_test_files:
-            self._write_cloud_csv(f, 'attagc', bucket=bucket_name)
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
