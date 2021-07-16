@@ -1,0 +1,20 @@
+{
+	"resourceType": "Questionnaire",
+	"identifier": [{"value": "Vibrent_FORM_ID_1478"}],
+	"version": "V2021.04.29",
+	"status": "published",
+	"date": "2021-06-24T08:12:07+00:00",
+	"group": {
+		"linkId": "root_group",
+		"title": "Apple Health",
+		"concept": [
+			{
+				"system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+				"code": "ParticipantIntendsToShareAppleHealthKit"
+			}
+		],
+		"required": true,
+		"repeats": false
+	},
+	"id": "646"
+}

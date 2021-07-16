@@ -91,7 +91,8 @@ class GenomicJob(messages.Enum):
     AW5_WGS_MANIFEST = 37
     INGEST_DATA_FILES = 38
     INGEST_INFORMING_LOOP = 39
-    FEEDBACK_RECORD_RECONCILE = 40
+    ACCESSION_DATA_FILES = 40
+    FEEDBACK_RECORD_RECONCILE = 41
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

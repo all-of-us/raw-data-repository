@@ -537,6 +537,67 @@ class ParticipantSummary(Base):
         * Not Applicable (will apply to DVs only).
     """
 
+    digitalHealthSharingStatus = Column("digital_health_sharing_status", JSON, nullable=True)
+    """
+    This field indicates the digital health sharing status for Fitbit, Apple HealthKit and Apple EHR.
+    This field is a Json value with and current status and authored date, and also with all the consent histories.
+
+    .. code-block:: json
+        "digitalHealthSharingStatus": {
+           "fitbit": {
+             "status": "YES",
+             "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+             "history": [
+                {
+                  "status": "YES",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                {
+                  "status": "NO",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                ...
+              ]
+           },
+           "appleHealthKit": {
+             "status": "YES",
+             "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+             "history": [
+                {
+                  "status": "YES",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                {
+                  "status": "NO",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                ...
+              ]
+           },
+           "appleEHR": {
+             "status": "YES",
+             "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+             "history": [
+                {
+                  "status": "YES",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                {
+                  "status": "NO",
+                  "authoredTime": "YYYY-MM-DDThh:mm:ssZ"
+                },
+                ...
+              ]
+           }
+        }
+
+    .. note::
+        The following values are available.
+
+        * YES: start sharing
+        * NO: stop sharing
+    """
+
     # Fields for which questionnaires have been submitted, and at what times.
     consentForStudyEnrollment = Column(
         "consent_for_study_enrollment", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET

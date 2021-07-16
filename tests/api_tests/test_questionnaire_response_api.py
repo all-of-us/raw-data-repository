@@ -445,6 +445,121 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         })
         self.assertJsonResponseMatches(expected, summary)
 
+    def test_digital_health_consent(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+            apple_kit_questionnaire_id = self.create_questionnaire("apple_health_kit_start_questionnaire.json")
+            qr_json = self.make_questionnaire_response_json(
+                participant_id,
+                apple_kit_questionnaire_id,
+                authored=TIME_1
+            )
+            self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['digitalHealthSharingStatus'],
+                         {'appleHealthKit':
+                             {
+                                 'status': 'YES',
+                                 'history': [{'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                 'authoredTime': '2016-01-01T00:00:00Z'
+                             }
+                         })
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+        # test duplication consent
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['digitalHealthSharingStatus'],
+                         {'appleHealthKit':
+                             {
+                                 'status': 'YES',
+                                 'history': [{'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                 'authoredTime': '2016-01-01T00:00:00Z'
+                             }
+                         })
+        # test new consent
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            apple_kit_questionnaire_id,
+            authored=TIME_2
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['digitalHealthSharingStatus'],
+                         {'appleHealthKit':
+                             {
+                                 'status': 'YES',
+                                 'history': [{'status': 'YES', 'authoredTime': '2016-01-02T00:00:00Z'},
+                                             {'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                 'authoredTime': '2016-01-02T00:00:00Z'
+                             }
+                         })
+        # test multiple different consents
+        fitbit_questionnaire_id = self.create_questionnaire("fitbit_start_questionnaire.json")
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            fitbit_questionnaire_id,
+            authored=TIME_1
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+        fitbit_stop_questionnaire_id = self.create_questionnaire("fitbit_stop_questionnaire.json")
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            fitbit_stop_questionnaire_id,
+            authored=TIME_3
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['digitalHealthSharingStatus'],
+                         {
+                             'fitbit':
+                                 {
+                                     'status': 'NO',
+                                     'history': [{'status': 'NO', 'authoredTime': '2016-01-03T00:00:00Z'},
+                                                 {'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                     'authoredTime': '2016-01-03T00:00:00Z'
+                                 },
+                             'appleHealthKit':
+                                 {
+                                     'status': 'YES',
+                                     'history': [{'status': 'YES', 'authoredTime': '2016-01-02T00:00:00Z'},
+                                                 {'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                     'authoredTime': '2016-01-02T00:00:00Z'
+                                 }
+                         })
+
+    def test_get_digital_health_consent_out_of_order(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+        fitbit_stop_questionnaire_id = self.create_questionnaire("fitbit_stop_questionnaire.json")
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            fitbit_stop_questionnaire_id,
+            authored=TIME_3
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+
+        fitbit_start_questionnaire_id = self.create_questionnaire("fitbit_start_questionnaire.json")
+        qr_json = self.make_questionnaire_response_json(
+            participant_id,
+            fitbit_start_questionnaire_id,
+            authored=TIME_1
+        )
+        self.send_post(self.questionnaire_response_url(participant_id), qr_json)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['digitalHealthSharingStatus'],
+                         {
+                             'fitbit':
+                                 {
+                                     'status': 'NO',
+                                     'history': [{'status': 'NO', 'authoredTime': '2016-01-03T00:00:00Z'},
+                                                 {'status': 'YES', 'authoredTime': '2016-01-01T00:00:00Z'}],
+                                     'authoredTime': '2016-01-03T00:00:00Z'
+                                 }
+                         })
+
     def test_gror_consent(self):
         """WIP: The json files associated with this test may need to change.
         Requirements are still being worked out on PTSC side and this was made

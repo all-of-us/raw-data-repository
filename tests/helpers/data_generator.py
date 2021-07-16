@@ -18,6 +18,7 @@ from rdr_service.model.genomics import (
     GenomicAW2Raw,
     GenomicIncident,
     GenomicGCValidationMetrics,
+    GenomicGcDataFile,
     GenomicManifestFeedback
 )
 from rdr_service.model.log_position import LogPosition
@@ -682,3 +683,12 @@ class DataGenerator:
     @staticmethod
     def _message_broker_event_data(**kwargs):
         return MessageBrokerEventData(**kwargs)
+
+    @staticmethod
+    def _genomic_gc_data_file(**kwargs):
+        return GenomicGcDataFile(**kwargs)
+
+    def create_database_gc_data_file_record(self, **kwargs):
+        records = self._genomic_gc_data_file(**kwargs)
+        self._commit_to_database(records)
+        return records
