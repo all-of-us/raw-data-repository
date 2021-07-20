@@ -1562,6 +1562,7 @@ class GenomicManifestFeedbackDao(UpdatableDao):
 
             return feedback_records.all()
 
+
 class GenomicAW1RawDao(BaseDao):
     def __init__(self):
         super(GenomicAW1RawDao, self).__init__(
@@ -1590,14 +1591,18 @@ class GenomicAW1RawDao(BaseDao):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW1Raw).filter(
+            record = session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == biobank_id,
                 GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW1Raw.biobank_id.desc(),
+                GenomicAW1Raw.created.desc()
+            ).first()
+
+            return record
 
 
 class GenomicAW2RawDao(BaseDao):
@@ -1627,14 +1632,17 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW2Raw).filter(
+            record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.biobank_id == biobank_id,
                 GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW2Raw.biobank_id.desc(),
+                GenomicAW2Raw.created.desc()
+            ).first()
+            return record
 
 
 class GenomicIncidentDao(UpdatableDao):

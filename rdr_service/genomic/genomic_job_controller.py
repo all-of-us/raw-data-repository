@@ -301,7 +301,10 @@ class GenomicJobController:
             bid = f"{pre}{member.biobankId}"
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, member.genomeType)
+                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(
+                    biobank_id=bid,
+                    genome_type=member.genomeType
+                )
             except MultipleResultsFound:
                 multiples.append(member.id)
             except NoResultFound:
