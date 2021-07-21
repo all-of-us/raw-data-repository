@@ -4197,6 +4197,7 @@ class GenomicPipelineTest(BaseTestCase):
             genome_type='aou_array'
         )
         self.assertEqual(sorted_record.id, dao_record.id)
+        self.assertEqual(sorted_record.file_path, dao_record.file_path)
 
     def test_aw2_load_manifest_to_raw_table(self):
         # Set up test AW2 manifest
