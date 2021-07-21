@@ -4,6 +4,7 @@
 #
 
 import logging
+import datetime
 from sqlalchemy import and_, case, insert, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -19,6 +20,7 @@ from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcCle
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
@@ -356,6 +358,9 @@ class CurationExportClass(ToolBase):
         ).outerjoin(
             module_code,
             module_code.codeId == QuestionnaireConcept.codeId
+        ).outerjoin(
+            ParticipantSummary,
+            ParticipantSummary.participantId == Participant.participantId
         ).filter(
             Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
             Participant.isGhostId.isnot(True),
@@ -372,13 +377,21 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False)
+            QuestionnaireResponse.isDuplicate.is_(False),
+            or_(
+                ParticipantSummary.dateOfBirth.is_(None),
+                and_(
+                    ParticipantSummary.dateOfBirth.isnot(None),
+                    func.year(func.from_days(func.datediff(datetime.datetime.now(),
+                                                           ParticipantSummary.dateOfBirth))) >= 18
+                )
+            )
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code
 
     def _populate_src_clean(self, session):
-        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
+        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
 
         # These modules should have the latest answers for each question,
