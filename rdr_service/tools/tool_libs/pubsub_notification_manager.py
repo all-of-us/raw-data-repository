@@ -80,7 +80,7 @@ class PubSubNotificationManager(ToolBase):
 
                 notifications_dict['notifications'].append(output_dict)
 
-        print(json.dumps(notifications_dict))
+        pprint(notifications_dict)
 
         return 0
 
@@ -150,7 +150,7 @@ class PubSubNotificationManager(ToolBase):
         _logger.info(f"Notification id {self.args.id} has been deleted.")
 
         _logger.info("Removing notification from config...")
-        self.delete_notification_from_config(self.args.id)
+        self.delete_notification_from_config()
 
         return 0
 
