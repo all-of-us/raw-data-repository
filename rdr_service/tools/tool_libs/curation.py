@@ -4,7 +4,6 @@
 #
 
 import logging
-import datetime
 from sqlalchemy import and_, case, insert, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
@@ -382,7 +381,7 @@ class CurationExportClass(ToolBase):
                 ParticipantSummary.dateOfBirth.is_(None),
                 and_(
                     ParticipantSummary.dateOfBirth.isnot(None),
-                    func.year(func.from_days(func.datediff(datetime.datetime.now(),
+                    func.year(func.from_days(func.datediff(ParticipantSummary.consentForStudyEnrollmentAuthored,
                                                            ParticipantSummary.dateOfBirth))) >= 18
                 )
             )
