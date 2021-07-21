@@ -13,6 +13,14 @@ from tests.helpers.unittest_base import BaseTestCase
 
 
 class GenomicJobControllerTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicJobControllerTest, self).setUp()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.incident_dao = GenomicIncidentDao()
+        self.data_file_dao = GenomicGcDataFileDao()
+        self.informing_loop_dao = GenomicInformingLoopDao()
+        self.event_data_dao = MessageBrokenEventDataDao()
+
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
         incident_message = "1" * (GenomicIncident.message.type.length + 20)
@@ -34,7 +42,6 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
     def test_gvcf_files_ingestion(self):
-        metrics_dao = GenomicGCValidationMetricsDao()
         job_controller = GenomicJobController(job_id=38)
         bucket_name = "test_bucket"
 
@@ -80,7 +87,7 @@ class GenomicJobControllerTest(BaseTestCase):
 
         job_controller.ingest_data_files_into_gc_metrics(file_path_md5, bucket_name)
 
-        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+        metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
         self.assertIsNotNone(metrics.gvcfMd5Received)
         self.assertIsNotNone(metrics.gvcfMd5Path)
@@ -89,7 +96,7 @@ class GenomicJobControllerTest(BaseTestCase):
 
         job_controller.ingest_data_files_into_gc_metrics(file_path, bucket_name)
 
-        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+        metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
         self.assertIsNotNone(metrics.gvcfReceived)
         self.assertIsNotNone(metrics.gvcfPath)
@@ -97,7 +104,6 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(metrics.gvcfReceived, 1)
 
     def test_gvcf_files_ingestion_create_incident(self):
-        incident_dao = GenomicIncidentDao()
         bucket_name = "test_bucket"
         file_path = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz"
 
@@ -137,7 +143,7 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.INGEST_DATA_FILES) as controller:
             controller.ingest_data_files_into_gc_metrics(file_path, bucket_name)
 
-        incident = incident_dao.get(1)
+        incident = self.incident_dao.get(1)
         self.assertIsNotNone(incident)
         self.assertEqual(incident.code, GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name)
         self.assertEqual(incident.data_file_path, file_path)
@@ -146,8 +152,6 @@ class GenomicJobControllerTest(BaseTestCase):
                                            '21042005280')
 
     def test_accession_data_files(self):
-        data_file_dao = GenomicGcDataFileDao()
-
         test_bucket_baylor = "fake-data-bucket-baylor"
         test_idat_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01_Grn.idat"
         test_vcf_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01.vcf.gz"
@@ -166,7 +170,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 with GenomicJobController(GenomicJob.ACCESSION_DATA_FILES) as controller:
                     controller.accession_data_files(file_path, test_bucket_baylor)
 
-        inserted_files = data_file_dao.get_all()
+        inserted_files = self.data_file_dao.get_all()
 
         # idat
         expected_idat = GenomicGcDataFile(
@@ -240,10 +244,6 @@ class GenomicJobControllerTest(BaseTestCase):
             self.assertEqual(expected_objs[i].modified, inserted_files[i].modified)
 
     def test_informing_loop_ingestion(self):
-
-        informing_loop_dao = GenomicInformingLoopDao()
-        event_data_dao = MessageBrokenEventDataDao()
-
         loop_decision = 'informing_loop_decision'
         loop_started = 'informing_loop_started'
 
@@ -271,7 +271,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_decision_records = event_data_dao.get_informing_loop(
+        loop_decision_records = self.event_data_dao.get_informing_loop(
             message_broker_record.id,
             loop_decision
         )
@@ -282,7 +282,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 records=loop_decision_records
             )
 
-        decision_genomic_record = informing_loop_dao.get(1)
+        decision_genomic_record = self.informing_loop_dao.get(1)
 
         self.assertIsNotNone(decision_genomic_record)
         self.assertIsNotNone(decision_genomic_record.event_type)
@@ -317,7 +317,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_started_records = event_data_dao.get_informing_loop(
+        loop_started_records = self.event_data_dao.get_informing_loop(
             message_broker_record_two.id,
             loop_started
         )
@@ -328,7 +328,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 records=loop_started_records
             )
 
-        started_genomic_record = informing_loop_dao.get(2)
+        started_genomic_record = self.informing_loop_dao.get(2)
 
         self.assertIsNotNone(started_genomic_record)
         self.assertIsNotNone(started_genomic_record.event_type)
@@ -339,4 +339,5 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.participant_id, message_broker_record_two.participantId)
         self.assertEqual(started_genomic_record.event_type, loop_started)
         self.assertEqual(started_genomic_record.module_type, 'hdr')
+
 
