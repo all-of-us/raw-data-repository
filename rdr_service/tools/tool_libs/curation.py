@@ -2,15 +2,15 @@
 #
 # Template for RDR tool python program.
 #
-
 import logging
-from sqlalchemy import and_, case, insert, or_
+from sqlalchemy import and_, case, insert, or_, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
 from typing import Type
 
+from rdr_service.clock import CLOCK
 from rdr_service import config
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
@@ -377,13 +377,9 @@ class CurationExportClass(ToolBase):
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
             QuestionnaireResponse.isDuplicate.is_(False),
-            or_(
-                ParticipantSummary.dateOfBirth.is_(None),
-                and_(
-                    ParticipantSummary.dateOfBirth.isnot(None),
-                    func.year(func.from_days(func.datediff(ParticipantSummary.consentForStudyEnrollmentAuthored,
-                                                           ParticipantSummary.dateOfBirth))) >= 18
-                )
+            and_(
+                ParticipantSummary.dateOfBirth.isnot(None),
+                func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth, CLOCK.now()) >= 18
             )
         )
 
