@@ -155,7 +155,12 @@ class GenomicPipelineTest(BaseTestCase):
                          ]
 
     @staticmethod
-    def _write_cloud_csv(file_name, contents_str, bucket=None, folder=None):
+    def _write_cloud_csv(
+        file_name,
+        contents_str,
+        bucket=None,
+        folder=None,
+    ):
         bucket = _FAKE_BUCKET if bucket is None else bucket
         if folder is None:
             path = "/%s/%s" % (bucket, file_name)
@@ -169,6 +174,7 @@ class GenomicPipelineTest(BaseTestCase):
         n = clock.CLOCK.now()
         ntime = time.mktime(n.timetuple())
         os.utime(provider.get_local_path(path), (ntime, ntime))
+        return cloud_file
 
     def _make_participant(self, **kwargs):
         """
@@ -2034,30 +2040,32 @@ class GenomicPipelineTest(BaseTestCase):
         ).one()
 
     def test_ingest_specific_aw1_manifest(self):
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+        self._create_fake_datasets_for_gc_tests(3,
+                                                arr_override=True,
                                                 array_participants=range(1, 4),
-                                                genomic_workflow_state=GenomicWorkflowState.AW0)
+                                                genomic_workflow_state=GenomicWorkflowState.AW0
+                                                )
 
         self._insert_control_sample_genomic_set_member(sample_id=30003, genome_type="aou_array")
 
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
-
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         pytz.timezone('US/Central').localize(test_date)
 
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
         with clock.FakeClock(test_date):
             self._write_cloud_csv(
                 gc_manifest_filename,
                 gc_manifest_file,
-                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                bucket=bucket_name,
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
 
-        # Get bucket, subfolder, and filename from argument
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        # Get   subfolder, and filename from argument
         file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
 
         # Set up file/JSON
@@ -2087,7 +2095,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Check record count for manifest record
         manifest_record = self.manifest_file_dao.get(1)
-
         self.assertEqual(file_name.split('/')[1], manifest_record.fileName)
         self.assertEqual(2, manifest_record.recordCount)
 
@@ -2101,7 +2108,6 @@ class GenomicPipelineTest(BaseTestCase):
         # Ingest an AW1 with control sample as parent_sample_id
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("AW1-Control-Sample-Test.csv")
-
         fake_filenames = ("RDR_AoU_GEN_PKG-1908-218051.csv", "JH_AoU_GEN_PKG-1908-218051.csv")
 
         for gc_manifest_filename in fake_filenames:
@@ -4102,7 +4108,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Setup Test file
         aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
-
         aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         self._write_cloud_csv(
@@ -4144,6 +4149,7 @@ class GenomicPipelineTest(BaseTestCase):
             "contact",
             "email",
             "study_pi",
+            "site_name",
             "test_name",
             "failure_mode",
             "failure_mode_desc",
@@ -4154,14 +4160,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         # compare rows in DB to rows in manifest
         for i, aw1_file_row in enumerate(aw1_manifest_file.split("\n")):
-
             if i == 0 or aw1_file_row == "":
                 # skip header row and trailing empty rows
                 continue
 
             for j, aw1_file_column in enumerate(aw1_file_row.split(',')):
                 aw1_file_column = aw1_file_column.strip('"')
-
                 self.assertEqual(aw1_file_column, getattr(aw1_raw_records[i-1], expected_columns[j]))
 
     def test_get_latest_raw_file(self):
@@ -4239,7 +4243,7 @@ class GenomicPipelineTest(BaseTestCase):
 
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file
-        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-3.csv")
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
 
         self._write_cloud_csv(

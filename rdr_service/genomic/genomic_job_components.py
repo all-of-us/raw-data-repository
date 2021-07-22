@@ -327,7 +327,7 @@ class GenomicFileIngester:
             'gcManifestContact': 'contact',
             'gcManifestEmail': 'email',
             'gcManifestStudyPI': 'studypi',
-            'gcManifestTestName': 'testname',
+            'gcManifestTestName': 'genometype',
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
         }
@@ -361,7 +361,8 @@ class GenomicFileIngester:
             "contact": "contact",
             "email": "email",
             "study_pi": "studypi",
-            "test_name": "testname",
+            "site_name": "sitename",
+            "test_name": "genometype",
             "failure_mode": "failuremode",
             "failure_mode_desc": "failuremodedesc",
         }
@@ -403,22 +404,13 @@ class GenomicFileIngester:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row], row.values()))
             row_copy['site_id'] = _site
-
-            # TODO: Disabling this fix but leaving in
-            #  Until verified that this issue has been fixed in manifes
-            # Fix for invalid parent sample values
-            # try:
-            #     parent_sample_id = int(row_copy['parentsampleid'])
-            # except ValueError:
-            #     parent_sample_id = 0
-
             # Skip rows if biobank_id is an empty string (row is empty well)
             if row_copy['biobankid'] == "":
                 continue
 
             # Check if this sample has a control sample parent tube
             control_sample_parent = self.member_dao.get_control_sample_parent(
-                row_copy['testname'],
+                row_copy['genometype'],
                 int(row_copy['parentsampleid'])
             )
 
@@ -429,7 +421,7 @@ class GenomicFileIngester:
                 # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
                 cntrl_sample_member = self.member_dao.get_control_sample_for_gc_and_genome_type(
                     _site,
-                    row_copy['testname'],
+                    row_copy['genometype'],
                     row_copy['biobankid'],
                     row_copy['collectiontubeid'],
                     row_copy['sampleid']
@@ -451,21 +443,21 @@ class GenomicFileIngester:
             # Set the member based on collection tube ID
             # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
             member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
-                                                                     row_copy['testname'])
+                                                                     row_copy['genometype'])
 
             # Since member not found, and not a control sample,
             # check if collection tube id was swapped by Biobank
-            if member is None:
+            if not member:
                 bid = row_copy['biobankid']
 
                 # Strip biobank prefix if it's there
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
-
-                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
-                                                                             row_copy['testname'],
-                                                                             _state)
-
+                member = self.member_dao.get_member_from_biobank_id_in_state(
+                    bid,
+                    row_copy['genometype'],
+                    _state
+                )
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
                     if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
@@ -473,13 +465,12 @@ class GenomicFileIngester:
                             self._record_sample_as_contaminated(session, member.collectionTubeId)
 
                         member.collectionTubeId = row_copy['collectiontubeid']
-
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
                     _message = f"{self.job_id.name}: Cannot find genomic set member: " \
                                f"collection_tube_id: {row_copy['collectiontubeid']}, " \
                                f"biobank id: {bid}, " \
-                               f"genome type: {row_copy['testname']}"
+                               f"genome type: {row_copy['genometype']}"
 
                     self.controller.create_incident(source_job_run_id=self.job_run_id,
                                                     source_file_processed_id=self.file_obj.id,
@@ -489,16 +480,12 @@ class GenomicFileIngester:
                                                     collection_tube_id=row_copy['collectiontubeid'],
                                                     sample_id=row_copy['sampleid'],
                                                     )
-
                     # Skip rest of iteration and continue processing file
                     continue
-
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
-
             if member_changed:
                 self.member_dao.update(member)
-
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
@@ -916,7 +903,6 @@ class GenomicFileIngester:
         # Check if the member needs updating
         if self._test_aw1_data_for_member_updates(aw1_data, member):
             member = self._set_member_attributes_from_aw1(aw1_data, member)
-
             member = self._set_rdr_member_attributes_for_aw1(aw1_data, member)
             return True, member
         return False, member
@@ -1183,7 +1169,7 @@ class GenomicFileIngester:
 
                 # Update the AW1C job run ID and genome_type
                 member.cvlAW1CManifestJobRunID = self.job_run_id
-                member.genomeType = row_copy['testname']
+                member.genomeType = row_copy['genometype']
 
                 # Handle genomic state
                 _signal = "aw1c-reconciled"
@@ -1267,7 +1253,7 @@ class GenomicFileIngester:
             biobankId=aw1_data['biobankid'],
             collectionTubeId=aw1_data['collectiontubeid'],
             validationStatus=GenomicSetMemberStatus.VALID,
-            genomeType=aw1_data['testname'],
+            genomeType=aw1_data['genometype'],
             genomicWorkflowState=GenomicWorkflowState.AW1
         )
 
@@ -1389,7 +1375,7 @@ class GenomicFileValidator:
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
-        self.GC_MANIFEST_SCHEMA = (
+        self.AW1_MANIFEST_SCHEMA = (
             "packageid",
             "biobankidsampleid",
             "boxstorageunitid",
@@ -1416,7 +1402,8 @@ class GenomicFileValidator:
             "contact",
             "email",
             "studypi",
-            "testname",
+            "sitename",
+            "genometype",
             "failuremode",
             "failuremodedesc"
         )
@@ -1757,11 +1744,11 @@ class GenomicFileValidator:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
                 return self.GC_METRICS_SCHEMAS[file_type]
             if self.job_id == GenomicJob.AW1_MANIFEST:
-                return self.GC_MANIFEST_SCHEMA
+                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
             if self.job_id == GenomicJob.AW1F_MANIFEST:
-                return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
+                return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
             if self.job_id == GenomicJob.W2_INGEST:
@@ -1771,7 +1758,7 @@ class GenomicFileValidator:
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
-                return self.GC_MANIFEST_SCHEMA
+                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
                 return self.AW5_WGS_SCHEMA

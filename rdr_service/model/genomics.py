@@ -399,6 +399,7 @@ class GenomicAW1Raw(Base):
     contact = Column("contact", String(255), nullable=True)
     email = Column("email", String(255), nullable=True)
     study_pi = Column("study_pi", String(255), nullable=True)
+    site_name = Column("site_name", String(255), nullable=True, index=True)
     test_name = Column("test_name", String(255), nullable=True)
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
