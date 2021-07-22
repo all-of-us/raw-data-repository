@@ -17,6 +17,7 @@ from rdr_service.config import GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, GENOMIC_BIO
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.offline.sql_exporter import SqlExporter
 
+
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 OUTPUT_CSV_TIME_FORMAT = "%Y-%m-%d-%H-%M-%S"
@@ -136,53 +137,30 @@ def create_and_upload_genomic_biobank_manifest_file(
         project=None
     ):
 
-    _where = 'WHERE genomic_workflow_state=:workflow_state'
-    clauses = {
-        'default': {
-            'text': _where + ' AND genomic_set_id=:genomic_set_id',
-            'state': int(GenomicWorkflowState.AW0_READY)
-        },
-        'long_read': {
-            'text':  _where,
-            'state': int(GenomicWorkflowState.LR_PENDING)
-        }
+    member_dao = GenomicSetMemberDao()
+
+    wf_state_map = {
+        'default': int(GenomicWorkflowState.AW0_READY),
+        'long_read': int(GenomicWorkflowState.LR_PENDING)
     }
-    clause = clauses[project] if project else clauses['default']
+    wf_state = wf_state_map[project] if project else wf_state_map['default']
 
     result_filename = filename if filename is not None \
         else _get_output_manifest_file_name(genomic_set_id, timestamp, cohort_id, saliva)
 
-    if bucket_name is None:
+    if not bucket_name:
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
+
     exporter = SqlExporter(bucket_name)
-    export_sql = """
-      SELECT
-        '' as value,
-        collection_tube_id,
-        CONCAT(:prefix, biobank_id) as biobank_id,
-        sex_at_birth,
-        genome_type,
-        CASE
-          WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
-        END AS ny_flag,
-        CASE
-          WHEN validation_status = 1 THEN 'Y' ELSE 'N'
-        END AS validation_passed,
-        ai_an
-      FROM genomic_set_member
-      {clause}
-      ORDER BY id
-    """.format(
-        clause=clause['text']
+
+    export_sql = member_dao.get_new_participants(
+        wf_state,
+        prefix or BIOBANK_ID_PREFIX,
+        genomic_set_id,
+        is_sql=True
     )
 
-    query_params = {
-        "genomic_set_id": genomic_set_id,
-        "prefix": prefix or BIOBANK_ID_PREFIX,
-        "workflow_state": clause['state']
-    }
-
-    exporter.run_export(result_filename, export_sql, query_params)
+    exporter.run_export(result_filename, export_sql)
 
 
 def _get_output_manifest_file_name(genomic_set_id, timestamp=None, cohort_id=None, saliva=False):
