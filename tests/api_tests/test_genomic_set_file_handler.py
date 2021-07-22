@@ -374,10 +374,8 @@ class GenomicSetFileHandlerTest(BaseTestCase):
             SEX_AT_BIRTH = "sex_at_birth"
             GENOME_TYPE = "genome_type"
             NY_FLAG = "ny_flag"
-            REQUEST_ID = "request_id"
-            PACKAGE_ID = "package_id"
 
-            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, REQUEST_ID, PACKAGE_ID)
+            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG)
 
         expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-" + now_cdt_str + "-1.csv"
         path = "/" + bucket_name + "/" + expected_result_filename
