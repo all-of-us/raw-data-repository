@@ -158,18 +158,13 @@ def create_and_upload_genomic_biobank_manifest_file(
     export_sql = """
       SELECT
         '' as value,
-        CASE
-            WHEN collection_tube_id IS NOT NULL THEN collection_tube_id
-            ELSE sample_id
-        END AS sample_id,
+        collection_tube_id,
         CONCAT(:prefix, biobank_id) as biobank_id,
         sex_at_birth,
         genome_type,
         CASE
           WHEN ny_flag IS TRUE THEN 'Y' ELSE 'N'
         END AS ny_flag,
-        '' AS request_id,
-        '' AS package_id,
         CASE
           WHEN validation_status = 1 THEN 'Y' ELSE 'N'
         END AS validation_passed,
