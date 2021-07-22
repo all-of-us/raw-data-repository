@@ -377,3 +377,28 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             else:
                 self.assertEqual(expected_value, src_cln.value_string)
                 self.assertIsNone(src_cln.value_number)
+
+    def test_exclude_participants_age_under_18(self):
+        """
+        Curation team request to exclude participants that were under 18 at the time of consent.
+        """
+        self._create_consent_questionnaire()
+        dob = datetime(2000, 1, 1)
+        consent_time = datetime(2021, 1, 2)
+        self.data_generator.create_database_participant_summary(participant=self.participant,
+                                                                consentForStudyEnrollment=1,
+                                                                consentForStudyEnrollmentAuthored=consent_time,
+                                                                dateOfBirth=dob)
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(4, len(src_clean_answers))
+
+        dob = datetime(2020, 1, 1)
+        self.data_generator.create_database_participant_summary(participant=self.participant,
+                                                                consentForStudyEnrollment=1,
+                                                                consentForStudyEnrollmentAuthored=consent_time,
+                                                                dateOfBirth=dob)
+        self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(0, len(src_clean_answers))
+
