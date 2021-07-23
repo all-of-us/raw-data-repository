@@ -369,13 +369,12 @@ class GenomicSetFileHandlerTest(BaseTestCase):
         now_cdt_str = _UTC.localize(now).astimezone(_US_CENTRAL).replace(tzinfo=None).strftime(_OUTPUT_CSV_TIME_FORMAT)
 
         class ExpectedCsvColumns(object):
-            VALUE = "value"
             BIOBANK_ID = "biobank_id"
             SEX_AT_BIRTH = "sex_at_birth"
             GENOME_TYPE = "genome_type"
             NY_FLAG = "ny_flag"
 
-            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG)
+            ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG)
 
         expected_result_filename = "rdr_fake_sub_folder/Genomic-Manifest-AoU-" + now_cdt_str + "-1.csv"
         path = "/" + bucket_name + "/" + expected_result_filename
@@ -385,17 +384,14 @@ class GenomicSetFileHandlerTest(BaseTestCase):
             missing_cols = set(ExpectedCsvColumns.ALL) - set(csv_reader.fieldnames)
             self.assertEqual(len(missing_cols), 0)
             rows = list(csv_reader)
-            self.assertEqual(rows[0][ExpectedCsvColumns.VALUE], "")
             self.assertEqual(rows[0][ExpectedCsvColumns.BIOBANK_ID], "T123")
             self.assertEqual(rows[0][ExpectedCsvColumns.SEX_AT_BIRTH], "F")
             self.assertEqual(rows[0][ExpectedCsvColumns.GENOME_TYPE], "aou_array")
             self.assertEqual(rows[0][ExpectedCsvColumns.NY_FLAG], "Y")
-            self.assertEqual(rows[1][ExpectedCsvColumns.VALUE], "")
             self.assertEqual(rows[1][ExpectedCsvColumns.BIOBANK_ID], "T124")
             self.assertEqual(rows[1][ExpectedCsvColumns.SEX_AT_BIRTH], "M")
             self.assertEqual(rows[1][ExpectedCsvColumns.GENOME_TYPE], "aou_array")
             self.assertEqual(rows[1][ExpectedCsvColumns.NY_FLAG], "N")
-            self.assertEqual(rows[2][ExpectedCsvColumns.VALUE], "")
             self.assertEqual(rows[2][ExpectedCsvColumns.BIOBANK_ID], "T125")
             self.assertEqual(rows[2][ExpectedCsvColumns.SEX_AT_BIRTH], "F")
             self.assertEqual(rows[2][ExpectedCsvColumns.GENOME_TYPE], "aou_wgs")

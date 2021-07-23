@@ -93,7 +93,6 @@ _UTC = pytz.utc
 
 
 class ExpectedCsvColumns(object):
-    VALUE = "value"
     BIOBANK_ID = "biobank_id"
     COLLECTION_TUBE_ID = "collection_tube_id"
     SEX_AT_BIRTH = "sex_at_birth"
@@ -104,7 +103,7 @@ class ExpectedCsvColumns(object):
     VALIDATION_PASSED = 'validation_passed'
     AI_AN = 'ai_an'
 
-    ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
+    ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
 
 
 # noinspection DuplicatedCode
