@@ -751,7 +751,6 @@ class GenomicSetMemberDao(UpdatableDao):
     ):
         with self.session() as session:
             participants = session.query(
-                sqlalchemy.bindparam('value', ''),
                 GenomicSetMember.collectionTubeId,
                 functions.concat(biobank_prefix, GenomicSetMember.biobankId).label('biobank_id'),
                 GenomicSetMember.sexAtBirth,
