@@ -14,6 +14,7 @@ from .covid_antibody_study import BiobankCovidAntibodySampleSchema, QuestCovidAn
 from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSchema, \
     GenomicGCValidationMetricsSchema, GenomicFileProcessedSchema, GenomicManifestFileSchema, \
     GenomicManifestFeedbackSchema
+from .retention_metrics import RetentionMetricSchema
 
 __all__ = [
     'ParticipantSchema',
@@ -34,5 +35,6 @@ __all__ = [
     'GenomicGCValidationMetricsSchema',
     'GenomicFileProcessedSchema',
     'GenomicManifestFileSchema',
-    'GenomicManifestFeedbackSchema'
+    'GenomicManifestFeedbackSchema',
+    'RetentionMetricSchema'
 ]
