@@ -34,8 +34,8 @@ class GenomicSetSchemaGenerator(generators.BaseGenerator):
             row = ro_session.execute(text('select * from genomic_set where id = :id'), {'id': _pk}).first()
             data = self.ro_dao.to_dict(row)
 
-            # Populate Enum fields.
-            if data['genomic_set_status']:
+            # Populate Enum fields. Note: When Enums have a possible zero value, explicitly check for None.
+            if data['genomic_set_status'] is not None:
                 enum = GenomicSetStatusEnum(data['genomic_set_status'])
                 data['genomic_set_status'] = str(enum)
                 data['genomic_set_status_id'] = int(enum)
