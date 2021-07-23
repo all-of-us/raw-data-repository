@@ -16,7 +16,7 @@ from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
-from rdr_service.resource.tasks import batch_rebuild_participants_task
+from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task
 
 
 def log_task_headers():
@@ -193,4 +193,16 @@ class ImportRetentionEligibleFileTaskApi(Resource):
         retention_eligible_import.import_retention_eligible_metrics_file(task_data)
 
         logging.info('Complete.')
+        return '{"success": "true"}'
+
+
+class RebuildRetentionEligibleMetricsApi(Resource):
+    """
+    Cloud Task endpoint: Rebuild Retention Eligible Metrics records Resource records.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        batch_rebuild_retention_metrics_task(data)
         return '{"success": "true"}'
