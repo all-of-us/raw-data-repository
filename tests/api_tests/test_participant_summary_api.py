@@ -148,6 +148,15 @@ participant_summary_default_values_no_basics.update({
 })
 
 
+def _add_code_answer(code_answers, link_id, code):
+    if code:
+        code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
+
+
+def _make_entry(ps):
+    return {"fullUrl": "http://localhost/rdr/v1/Participant/%s/Summary" % ps["participantId"], "resource": ps}
+
+
 class ParticipantSummaryMySqlApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -209,6 +218,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
+        self.ps_dao = ParticipantSummaryDao()
 
     def overwrite_test_user_awardee(self, awardee, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
@@ -364,7 +374,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             .create_database_participant_summary(participant=participant_one)
         participant_summary_one.loginPhoneNumber = '444-123-4567'
         participant_summary_one.email = self.fake.email()
-        ParticipantSummaryDao().update(participant_summary_one)
+        self.ps_dao.update(participant_summary_one)
 
         participant_summary_two = self.data_generator \
             .create_database_participant_summary(participant=participant_two)
@@ -1921,7 +1931,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2017,7 +2027,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2108,7 +2118,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2147,7 +2157,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("COMPLETED", ps_1.get("physicalMeasurementsStatus"))
 
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
@@ -2393,7 +2403,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
         # Update version for participant 3, which has changed.
         participant_3 = self.send_get("Participant/%s" % participant_id_3)
 
@@ -2804,7 +2814,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
         self.assertEqual("SUBMITTED", ps_2["consentForDvElectronicHealthRecordsSharing"])
@@ -3444,14 +3454,12 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ], response_ids)
 
     def _remove_participant_retention_eligible(self, participant_id):
-        ps_dao = ParticipantSummaryDao()
-        summary = ps_dao.get(participant_id)
+        summary = self.ps_dao.get(participant_id)
         summary.samplesToIsolateDNA = SampleStatus.UNSET
-        ps_dao.update(summary)
+        self.ps_dao.update(summary)
 
     def _make_participant_retention_eligible(self, participant_id, **attrs):
-        ps_dao = ParticipantSummaryDao()
-        summary = ps_dao.get(participant_id)
+        summary = self.ps_dao.get(participant_id)
         summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
         summary.consentForStudyEnrollment = 1
@@ -3471,15 +3479,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         for key in attrs.keys():
             setattr(summary, key, attrs.get(key))
 
-        ps_dao.update(summary)
+        self.ps_dao.update(summary)
 
         return summary
 
-
-def _add_code_answer(code_answers, link_id, code):
-    if code:
-        code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
-
-
-def _make_entry(ps):
-    return {"fullUrl": "http://localhost/rdr/v1/Participant/%s/Summary" % ps["participantId"], "resource": ps}
