@@ -5,20 +5,22 @@ Organize all consent files from PTSC source bucket into proper awardee buckets.
 """
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import logging
 import os
 import pytz
 import shutil
 import tempfile
-from typing import Dict, List
+from typing import Collection, Dict, List
 from zipfile import ZipFile
 
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from rdr_service import config
 from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
-from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -40,6 +42,99 @@ TEMP_CONSENTS_PATH = os.path.join(tempfile.gettempdir(), "temp_consents")
 class ParticipantPairingInfo:
     org_name: str
     site_name: str
+
+
+@dataclass
+class PairingHistoryRecord:
+    org_name: str
+    start_date: datetime
+
+
+class ConsentSyncGuesser:
+    _SYNC_OVERLAP_DAYS_DELTA = timedelta(days=10)
+
+    def __init__(self, session: Session, participant_history_dao: ParticipantHistoryDao):
+        self._session = session
+        self._participant_history_dao = participant_history_dao
+
+    def check_consents(self, files: Collection[ConsentFile]):
+        # Get the latest pairing information for the participants
+        participant_ids = [file.participant_id for file in files]
+        raw_pairing_data = self._participant_history_dao.get_pairing_history(
+            session=self._session,
+            participant_ids=participant_ids
+        )
+        latest_participant_pairings: Dict[int, PairingHistoryRecord] = {}
+        for history_record in raw_pairing_data:
+            participant_id = history_record.participantId
+            possible_latest_record = PairingHistoryRecord(
+                org_name=history_record['externalId'],
+                start_date=history_record['lastModified']
+            )
+            if participant_id not in latest_participant_pairings:
+                latest_participant_pairings[participant_id] = possible_latest_record
+            else:
+                currently_stored_pairing = latest_participant_pairings[participant_id]
+                if currently_stored_pairing.start_date <= possible_latest_record.start_date:
+                    latest_participant_pairings[participant_id] = possible_latest_record
+
+    @classmethod
+    def get_sync_date(cls, file: ConsentFile, summary: ParticipantSummary, latest_pairing_info: PairingHistoryRecord):
+        """
+        This encapsulates the code for determining if a consent would have been copied using the previous process
+        for syncing the files. It checks to see if a file would have been available for sync based on any of the times
+        that a sync would have been triggered by the data available for a participant.
+        If any of them would have triggered a sync to the latest org's bucket, then the date is returned for the sync.
+        Otherwise None is returned.
+        """
+        if not cls._org_date_valid_for_sync(
+            upload_time=file.file_upload_time,
+            latest_pair_time=latest_pairing_info.start_date
+        ):
+            return None
+
+        primary_time = summary.consentForStudyEnrollmentTime
+        if cls._in_sync_time_window(
+            upload_time=file.file_upload_time,
+            consent_time=primary_time
+        ):
+            return cls._determine_sync_month(primary_time)
+
+        ehr_time = summary.consentForElectronicHealthRecordsTime
+        if cls._in_sync_time_window(
+            upload_time=file.file_upload_time,
+            consent_time=ehr_time
+        ):
+            return cls._determine_sync_month(ehr_time)
+
+        # GROR wouldn't have triggered it until the June 1st sync
+        gror_time = summary.consentForGenomicsRORTime
+        if (
+            gror_time is not None
+            and gror_time > datetime(2021, 4, 21)  # The June 1st sync would have looked for dates back to April 21st
+            and cls._in_sync_time_window(upload_time=file.file_upload_time, consent_time=gror_time)
+        ):
+            return cls._determine_sync_month(gror_time)
+
+        return None
+
+    @classmethod
+    def _in_sync_time_window(cls, consent_time: datetime, upload_time: datetime):
+        if not consent_time:
+            return False
+
+        window_start_date = datetime(consent_time.year, consent_time.month, 1) - cls._SYNC_OVERLAP_DAYS_DELTA
+        window_end_date = datetime(consent_time.year, consent_time.month, 1) + relativedelta(months=1)
+        return window_start_date <= upload_time <= window_end_date
+
+    @classmethod
+    def _determine_sync_month(cls, timestamp: datetime):
+        return datetime(timestamp.year, timestamp.month, 1) + relativedelta(months=1)
+
+    @classmethod
+    def _org_date_valid_for_sync(cls, upload_time: datetime, latest_pair_time: datetime):
+        pair_window_start = datetime(latest_pair_time.year, latest_pair_time.month, 1) - cls._SYNC_OVERLAP_DAYS_DELTA
+        return pair_window_start < upload_time
 
 
 class ConsentSyncController:

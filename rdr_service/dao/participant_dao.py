@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Collection
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql.expression import literal
 
@@ -62,6 +62,23 @@ class ParticipantHistoryDao(BaseDao):
 
     def get_id(self, obj):
         return [obj.participantId, obj.version]
+
+    @classmethod
+    def get_pairing_history(cls, session: Session, participant_ids: Collection[int]) -> Collection:
+        """Loads the pairing history for the given participants"""
+        return session.query(
+            ParticipantHistory.participantId,
+            ParticipantHistory.lastModified,
+            ParticipantHistory.hpoId,
+            ParticipantHistory.organizationId,
+            Organization.externalId,
+            ParticipantHistory.siteId
+        ).join(
+            Organization,
+            Organization.organizationId == ParticipantHistory.organizationId
+        ).filter(
+            ParticipantHistory.participantId.in_(participant_ids)
+        ).distinct().all()
 
 
 class ParticipantDao(UpdatableDao):
