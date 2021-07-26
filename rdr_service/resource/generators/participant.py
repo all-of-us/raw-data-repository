@@ -1329,8 +1329,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     logging.warning(
                         f'Enrollment Status Re-Calc: P{pid} is missing a date value, please investigate.')
 
-        data['enrollment_status'] = str(status)
-        data['enrollment_status_id'] = int(status)
         if status > EnrollmentStatusV2.REGISTERED:
             data['enrollment_member'] = \
                 enrollment_member_time if enrollment_member_time != datetime.datetime.max else None
@@ -1349,8 +1347,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # enrollment status (status could have since been upgraded if PM was later completed)
             data['enrollment_core_minus_pm'] = ps.enrollmentStatusCoreMinusPMTime
             if ps.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
-                data['enrollment_status'] = str(EnrollmentStatusV2.CORE_MINUS_PM)
-                data['enrollment_status_id'] = int(EnrollmentStatusV2.CORE_MINUS_PM)
+                status = EnrollmentStatusV2.CORE_MINUS_PM
             # Logging to flag mismatches between RDR and PDR
             elif int(ps.enrollmentStatus) != int(status):
                 logging.warning("RDR/PDR enrollment status mismatch for participant {} ({}/{})".format(
@@ -1360,11 +1357,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if data['enrollment_member'] != ps.enrollmentStatusMemberTime:
                 logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
 
+        data['enrollment_status'] = str(status)
+        data['enrollment_status_id'] = int(status)
         # Logging to flag inconsistent results from redesigned EnrollmentStatusCalculator
         if _enrollment_status_map.get(status) != esc.status:
             logging.warning("Participant {}: EnrollmentStatusCalculator {}, PDR generator: {}".format(
                             p_id, str(esc.status), str(status)))
-
         return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
