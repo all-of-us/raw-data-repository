@@ -188,7 +188,6 @@ class GenomicPipelineTest(BaseTestCase):
         n = clock.CLOCK.now()
         ntime = time.mktime(n.timetuple())
         os.utime(provider.get_local_path(path), (ntime, ntime))
-        return cloud_file
 
     def _make_participant(self, **kwargs):
         """
