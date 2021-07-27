@@ -1242,7 +1242,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                 controller.bucket_name = server_config[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
 
                 controller.generate_manifest(GenomicManifestTypes.AW2F,
-                                             _genome_type=config.GENOME_TYPE_ARRAY,
+                                             _genome_type=None,
                                              feedback_record=feedback_record)
 
             return 0

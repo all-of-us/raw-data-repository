@@ -11,6 +11,7 @@ from collections import deque, namedtuple
 from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
+from werkzeug.exceptions import NotFound
 
 from rdr_service import clock
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
@@ -3105,6 +3106,10 @@ class ManifestCompiler:
             record_count = len(source_data)
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+
+                if member is None:
+                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+
                 if self.manifest_def.job_run_field is not None:
                     results.append(
                         self.member_dao.update_member_job_run_id(
