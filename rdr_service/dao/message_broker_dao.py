@@ -1,7 +1,7 @@
 from rdr_service import clock
-from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.dao.database_utils import parse_datetime, format_datetime
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
@@ -23,7 +23,7 @@ class MessageBrokerDao(BaseDao):
             eventType=resource_json.get('event'),
             messageOrigin=client_id,
             messageDest=dest_name,
-            eventAuthoredTime=parse(resource_json.get('eventAuthoredTime')),
+            eventAuthoredTime=parse_datetime(resource_json.get('eventAuthoredTime')),
             requestTime=clock.CLOCK.now(),
             requestBody=resource_json.get('messageBody'),
             requestResource=resource_json
@@ -62,7 +62,7 @@ class MessageBrokerDao(BaseDao):
             payload = {
                 'id': message.id,
                 'eventType': message.eventType,
-                'eventAuthoredTime': message.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                'eventAuthoredTime': format_datetime(message.eventAuthoredTime),
                 'participantId': message.participantId,
                 'requestBody': message.requestBody
             }
