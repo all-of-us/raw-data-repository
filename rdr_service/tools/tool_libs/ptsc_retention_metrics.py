@@ -36,8 +36,8 @@ class PTSCRetentionMetricsClass(object):
 
         # TODO: Glob the bucket and get the latest file or get file date from command line arg.
         task_payload = {
-            'bucket': 'ptsc-metrics-all-of-us-rdr-prod',
-            'file_path': 'ptsc-metrics-all-of-us-rdr-prod/2021-07-26_retention_and_ubr_data.csv',
+            'bucket': '...',  # removed hard coded bucket.
+            'file_path': '...',  # removed hard coded path.
             'upload_date': '2021-07-26 11:24:21'
         }
         import_retention_eligible_metrics_file(task_payload)
