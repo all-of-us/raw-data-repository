@@ -68,7 +68,9 @@ class MessageBrokerApiTest(BaseTestCase):
         requests_api_patcher.stop()
 
     @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
-    def test_send_valid_message(self, request_origin):
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_send_valid_message(self, send_request, request_origin):
+        send_request.return_value = '200', {'result': 'mocked result'}, ''
         request_origin.return_value = 'color'
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
         request_json = {
@@ -154,7 +156,9 @@ class MessageBrokerApiTest(BaseTestCase):
         self.send_post("MessageBroker", request_json, expected_status=http.client.BAD_REQUEST)
 
     @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
-    def test_informing_loop(self, request_origin):
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_informing_loop(self, send_request, request_origin):
+        send_request.return_value = '200', {'result': 'mocked result'}, ''
         request_origin.return_value = 'color'
 
         participant_one = self.data_generator.create_database_participant(participantOrigin='vibrent')

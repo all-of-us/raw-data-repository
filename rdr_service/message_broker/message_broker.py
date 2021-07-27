@@ -81,13 +81,6 @@ class PtscMessageBroker(BaseMessageBroker):
         }
         return request_body
 
-    def send_request(self):
-        # PTSC's env is not ready, return mock result
-        response_code = '200'
-        response_body = {'result': 'mocked result'}
-        response_error = ''
-        return response_code, response_body, response_error
-
 
 class MessageBrokerFactory:
     @staticmethod
