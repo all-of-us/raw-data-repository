@@ -28,8 +28,8 @@ from rdr_service.model.genomics import (
     GenomicIncident,
     GenomicCloudRequests,
     GenomicMemberReportState,
-    GenomicInformingLoop
-)
+    GenomicInformingLoop,
+    GenomicGcDataFile)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1121,8 +1121,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    ((GenomicGCValidationMetrics.ignoreFlag != 1) | (
-                            GenomicGCValidationMetrics.ignoreFlag is not None)),
+                    GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
@@ -1633,13 +1632,15 @@ class GenomicManifestFileDao(BaseDao):
             genomic_manifest_file_update(manifest_file_obj.id)
 
 
-class GenomicManifestFeedbackDao(BaseDao):
+class GenomicManifestFeedbackDao(UpdatableDao):
+
+    validate_version_match = False
+
     def __init__(self):
-        super(GenomicManifestFeedbackDao, self).__init__(
-            GenomicManifestFeedback, order_by_ending=['id'])
+        super(GenomicManifestFeedbackDao, self).__init__(GenomicManifestFeedback, order_by_ending=['id'])
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def from_client_json(self):
         pass
@@ -1724,8 +1725,44 @@ class GenomicManifestFeedbackDao(BaseDao):
                 GenomicManifestFile.filePath == filepath
             ).first()
 
-    def get_feedback_records_for_aw2f(self):
-        pass
+    def get_feedback_reconcile_records(self, filepath=None):
+        with self.session() as session:
+            feedback_records = session.query(
+                GenomicManifestFeedback.id.label('feedback_id'),
+                functions.count(GenomicAW1Raw.sample_id).label('raw_feedback_count'),
+                GenomicManifestFeedback.feedbackRecordCount,
+                GenomicManifestFile.filePath,
+            ).join(
+                GenomicManifestFile,
+                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
+            ).join(
+                GenomicAW1Raw,
+                GenomicAW1Raw.file_path == GenomicManifestFile.filePath
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.sampleId == GenomicAW1Raw.sample_id
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicAW1Raw.sample_id.isnot(None),
+                GenomicGCValidationMetrics.contamination.isnot(None),
+                GenomicGCValidationMetrics.contamination != '',
+                GenomicSetMember.genomeType.notin_(["saliva_array", "saliva_wgs"]),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+            ).group_by(
+                GenomicManifestFeedback.id,
+                GenomicManifestFeedback.feedbackRecordCount,
+                GenomicManifestFile.filePath,
+            )
+
+            if filepath:
+                feedback_records = feedback_records.filter(
+                    GenomicManifestFile.filePath == filepath
+                )
+
+            return feedback_records.all()
 
 
 class GenomicAW1RawDao(BaseDao):
@@ -1756,14 +1793,18 @@ class GenomicAW1RawDao(BaseDao):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW1Raw).filter(
+            record = session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == biobank_id,
                 GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW1Raw.biobank_id.desc(),
+                GenomicAW1Raw.created.desc()
+            ).first()
+
+            return record
 
 
 class GenomicAW2RawDao(BaseDao):
@@ -1793,14 +1834,17 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW2Raw).filter(
+            record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.biobank_id == biobank_id,
                 GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW2Raw.biobank_id.desc(),
+                GenomicAW2Raw.created.desc()
+            ).first()
+            return record
 
 
 class GenomicIncidentDao(UpdatableDao):
@@ -1917,3 +1961,44 @@ class GenomicInformingLoopDao(UpdatableDao):
 
     def from_client_json(self):
         pass
+
+
+class GenomicGcDataFileDao(BaseDao):
+    def __init__(self):
+        super(GenomicGcDataFileDao, self).__init__(
+            GenomicGcDataFile, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_with_sample_id(self, sample_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.identifier_type == 'sample_id',
+                GenomicGcDataFile.identifier_value == sample_id,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+    def get_with_chipwellbarcode(self, chipwellbarcode):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.identifier_type == 'chipwellbarcode',
+                GenomicGcDataFile.identifier_value == chipwellbarcode,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+    def get_with_file_path(self, file_path):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFile
+            ).filter(
+                GenomicGcDataFile.file_path == file_path,
+                GenomicGcDataFile.ignore_flag == 0
+            ).all()

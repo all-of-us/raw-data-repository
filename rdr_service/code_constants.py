@@ -132,6 +132,14 @@ GENETIC_ANCESTRY_CONSENT_CODE_YES = "ConsentAncestryTraits_Yes"
 GENETIC_ANCESTRY_CONSENT_CODE_NO = "ConsentAncestryTraits_No"
 GENETIC_ANCESTRY_CONSENT_CODE_NOT_SURE = "ConsentAncestryTraits_NotSure"
 
+# Digital Health Share Consents
+APPLE_EHR_SHARING_MODULE = "participantintendstoshareappleehr"
+APPLE_EHR_STOP_SHARING_MODULE = "participantintendstostopsharingappleehr"
+APPLE_HEALTH_KIT_SHARING_MODULE = "participantintendstoshareapplehealthkit"
+APPLE_HEALTH_KIT_STOP_SHARING_MODULE = "participantintendstostopsharingapplehealthkit"
+FITBIT_SHARING_MODULE = "participantintendstosharefitbit"
+FITBIT_STOP_SHARING_MODULE = "participantintendstostopsharingfitbit"
+
 BIOBANK_TESTS = [
     "1ED10",
     "2ED10",

@@ -31,11 +31,10 @@ from rdr_service.dao.questionnaire_response_dao import (
 )
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
-from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort, \
-    RetentionStatus
+from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
 from tests import test_data
 from tests.test_data import (
     consent_code,
@@ -610,7 +609,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1093,7 +1092,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1169,7 +1168,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
@@ -1252,7 +1251,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         # The participant summary should be updated with the new gender identity, but nothing else
@@ -1325,7 +1324,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             patientStatus=[],
             semanticVersionForPrimaryConsent='V1',
             consentCohort=ParticipantCohort.COHORT_1,
-            retentionEligibleStatus=RetentionStatus.NOT_ELIGIBLE,
+            retentionEligibleStatus=None,
             wasEhrDataAvailable=False
         )
         # The participant summary should be updated with the new gender identity, but nothing else

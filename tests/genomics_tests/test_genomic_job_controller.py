@@ -1,14 +1,26 @@
+from datetime import datetime
+
 import mock
 
 from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao, GenomicInformingLoopDao
+from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao, GenomicInformingLoopDao, \
+    GenomicGcDataFileDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
+from rdr_service.model.genomics import GenomicGcDataFile
 from tests.helpers.unittest_base import BaseTestCase
 
 
 class GenomicJobControllerTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicJobControllerTest, self).setUp()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.incident_dao = GenomicIncidentDao()
+        self.data_file_dao = GenomicGcDataFileDao()
+        self.informing_loop_dao = GenomicInformingLoopDao()
+        self.event_data_dao = MessageBrokenEventDataDao()
+
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
         incident_message = "1" * (GenomicIncident.message.type.length + 20)
@@ -30,7 +42,6 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
     def test_gvcf_files_ingestion(self):
-        metrics_dao = GenomicGCValidationMetricsDao()
         job_controller = GenomicJobController(job_id=38)
         bucket_name = "test_bucket"
 
@@ -74,18 +85,18 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicFileProcessedId=gen_processed_file.id
         )
 
-        job_controller.ingest_data_files(file_path_md5, bucket_name)
+        job_controller.ingest_data_files_into_gc_metrics(file_path_md5, bucket_name)
 
-        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+        metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
         self.assertIsNotNone(metrics.gvcfMd5Received)
         self.assertIsNotNone(metrics.gvcfMd5Path)
         self.assertEqual(metrics.gvcfMd5Path, full_path_md5)
         self.assertEqual(metrics.gvcfMd5Received, 1)
 
-        job_controller.ingest_data_files(file_path, bucket_name)
+        job_controller.ingest_data_files_into_gc_metrics(file_path, bucket_name)
 
-        metrics = metrics_dao.get_metrics_by_member_id(gen_member.id)
+        metrics = self.metrics_dao.get_metrics_by_member_id(gen_member.id)
 
         self.assertIsNotNone(metrics.gvcfReceived)
         self.assertIsNotNone(metrics.gvcfPath)
@@ -93,7 +104,6 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(metrics.gvcfReceived, 1)
 
     def test_gvcf_files_ingestion_create_incident(self):
-        incident_dao = GenomicIncidentDao()
         bucket_name = "test_bucket"
         file_path = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz"
 
@@ -131,9 +141,9 @@ class GenomicJobControllerTest(BaseTestCase):
         )
 
         with GenomicJobController(GenomicJob.INGEST_DATA_FILES) as controller:
-            controller.ingest_data_files(file_path, bucket_name)
+            controller.ingest_data_files_into_gc_metrics(file_path, bucket_name)
 
-        incident = incident_dao.get(1)
+        incident = self.incident_dao.get(1)
         self.assertIsNotNone(incident)
         self.assertEqual(incident.code, GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name)
         self.assertEqual(incident.data_file_path, file_path)
@@ -141,11 +151,99 @@ class GenomicJobControllerTest(BaseTestCase):
                                            'genomics metric record for sample id: '
                                            '21042005280')
 
+    def test_accession_data_files(self):
+        test_bucket_baylor = "fake-data-bucket-baylor"
+        test_idat_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01_Grn.idat"
+        test_vcf_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01.vcf.gz"
+
+        test_cram_file = "fake-data-bucket-baylor/Wgs_sample_raw_data/" \
+                         "CRAMs_CRAIs/BCM_A100134256_21063006771_SIA0017196_1.cram"
+
+        test_files = [test_idat_file, test_vcf_file, test_cram_file]
+
+        test_time = datetime(2021, 7, 9, 14, 1, 1)
+
+        # run job controller method on each file
+        with clock.FakeClock(test_time):
+
+            for file_path in test_files:
+                with GenomicJobController(GenomicJob.ACCESSION_DATA_FILES) as controller:
+                    controller.accession_data_files(file_path, test_bucket_baylor)
+
+        inserted_files = self.data_file_dao.get_all()
+
+        # idat
+        expected_idat = GenomicGcDataFile(
+            id=1,
+            created=test_time,
+            modified=test_time,
+            file_path=test_idat_file,
+            gc_site_id='jh',
+            bucket_name='fake-data-bucket-baylor',
+            file_prefix='Genotyping_sample_raw_data',
+            file_name='204027270091_R02C01_Grn.idat',
+            file_type='Grn.idat',
+            identifier_type='chipwellbarcode',
+            identifier_value='204027270091_R02C01',
+            ignore_flag=0,
+        )
+
+        # vcf
+        expected_vcf = GenomicGcDataFile(
+            id=2,
+            created=test_time,
+            modified=test_time,
+            file_path=test_vcf_file,
+            gc_site_id='jh',
+            bucket_name='fake-data-bucket-baylor',
+            file_prefix='Genotyping_sample_raw_data',
+            file_name='204027270091_R02C01.vcf.gz',
+            file_type='vcf.gz',
+            identifier_type='chipwellbarcode',
+            identifier_value='204027270091_R02C01',
+            ignore_flag=0,
+        )
+
+        # cram
+        expected_cram = GenomicGcDataFile(
+            id=3,
+            created=test_time,
+            modified=test_time,
+            file_path=test_cram_file,
+            gc_site_id='bcm',
+            bucket_name='fake-data-bucket-baylor',
+            file_prefix='Wgs_sample_raw_data/CRAMs_CRAIs',
+            file_name='BCM_A100134256_21063006771_SIA0017196_1.cram',
+            file_type='cram',
+            identifier_type='sample_id',
+            identifier_value='21063006771',
+            ignore_flag=0,
+        )
+
+        # obj mapping
+        expected_objs = {
+            0: expected_idat,
+            1: expected_vcf,
+            2: expected_cram
+        }
+
+        # verify test objects match expectations
+        for i in range(3):
+            self.assertEqual(expected_objs[i].bucket_name, inserted_files[i].bucket_name)
+            self.assertEqual(expected_objs[i].created, inserted_files[i].created)
+            self.assertEqual(expected_objs[i].file_name, inserted_files[i].file_name)
+            self.assertEqual(expected_objs[i].file_path, inserted_files[i].file_path)
+            self.assertEqual(expected_objs[i].file_prefix, inserted_files[i].file_prefix)
+            self.assertEqual(expected_objs[i].file_type, inserted_files[i].file_type)
+            self.assertEqual(expected_objs[i].gc_site_id, inserted_files[i].gc_site_id)
+            self.assertEqual(expected_objs[i].id, inserted_files[i].id)
+            self.assertEqual(expected_objs[i].identifier_type, inserted_files[i].identifier_type)
+            self.assertEqual(expected_objs[i].identifier_value, inserted_files[i].identifier_value)
+            self.assertEqual(expected_objs[i].ignore_flag, inserted_files[i].ignore_flag)
+            self.assertEqual(expected_objs[i].metadata, inserted_files[i].metadata)
+            self.assertEqual(expected_objs[i].modified, inserted_files[i].modified)
+
     def test_informing_loop_ingestion(self):
-
-        informing_loop_dao = GenomicInformingLoopDao()
-        event_data_dao = MessageBrokenEventDataDao()
-
         loop_decision = 'informing_loop_decision'
         loop_started = 'informing_loop_started'
 
@@ -173,7 +271,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_decision_records = event_data_dao.get_informing_loop(
+        loop_decision_records = self.event_data_dao.get_informing_loop(
             message_broker_record.id,
             loop_decision
         )
@@ -184,7 +282,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 records=loop_decision_records
             )
 
-        decision_genomic_record = informing_loop_dao.get(1)
+        decision_genomic_record = self.informing_loop_dao.get(1)
 
         self.assertIsNotNone(decision_genomic_record)
         self.assertIsNotNone(decision_genomic_record.event_type)
@@ -219,7 +317,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_started_records = event_data_dao.get_informing_loop(
+        loop_started_records = self.event_data_dao.get_informing_loop(
             message_broker_record_two.id,
             loop_started
         )
@@ -230,7 +328,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 records=loop_started_records
             )
 
-        started_genomic_record = informing_loop_dao.get(2)
+        started_genomic_record = self.informing_loop_dao.get(2)
 
         self.assertIsNotNone(started_genomic_record)
         self.assertIsNotNone(started_genomic_record.event_type)
@@ -241,4 +339,5 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.participant_id, message_broker_record_two.participantId)
         self.assertEqual(started_genomic_record.event_type, loop_started)
         self.assertEqual(started_genomic_record.module_type, 'hdr')
+
 

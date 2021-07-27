@@ -258,14 +258,17 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         super(IngestDataFilesTaskApi, self).post()
         logging.info(f'Ingesting data files: {self.data["file_path"]}')
 
-        with GenomicJobController(GenomicJob.INGEST_DATA_FILES,
+        with GenomicJobController(GenomicJob.ACCESSION_DATA_FILES,
                                   ) as controller:
-            controller.ingest_data_files(
-                self.data["file_path"],
-                self.data['bucket_name']
-            )
+            # ingest files into GenomicGcDataFile
 
-        self.create_cloud_record()
+            for file_path in self.file_paths:
+                controller.accession_data_files(
+                    file_path,
+                    self.data['bucket_name']
+                )
+
+            self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}

@@ -2,15 +2,15 @@
 #
 # Template for RDR tool python program.
 #
-
 import logging
-from sqlalchemy import and_, case, insert, or_
+from sqlalchemy import and_, case, insert, or_, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.functions import coalesce, concat
 from typing import Type
 
+from rdr_service.clock import CLOCK
 from rdr_service import config
 from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
@@ -19,6 +19,7 @@ from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcCle
 from rdr_service.model.code import Code
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
@@ -356,6 +357,9 @@ class CurationExportClass(ToolBase):
         ).outerjoin(
             module_code,
             module_code.codeId == QuestionnaireConcept.codeId
+        ).outerjoin(
+            ParticipantSummary,
+            ParticipantSummary.participantId == Participant.participantId
         ).filter(
             Participant.withdrawalStatus != WithdrawalStatus.NO_USE,
             Participant.isGhostId.isnot(True),
@@ -372,13 +376,17 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False)
+            QuestionnaireResponse.isDuplicate.is_(False),
+            and_(
+                ParticipantSummary.dateOfBirth.isnot(None),
+                func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth, CLOCK.now()) >= 18
+            )
         )
 
         return column_map, questionnaire_answers_select, module_code, question_code
 
     def _populate_src_clean(self, session):
-        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion,
+        self._set_rdr_model_schema([Code, HPO, Participant, QuestionnaireQuestion, ParticipantSummary,
                                     QuestionnaireResponse, QuestionnaireResponseAnswer])
 
         # These modules should have the latest answers for each question,

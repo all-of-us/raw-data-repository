@@ -39,7 +39,7 @@ from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.service_accounts import ServiceAccountKeyManager
 from rdr_service.offline.sync_consent_files import ConsentSyncController
 from rdr_service.offline.table_exporter import TableExporter
-from rdr_service.services.consent.validation import ConsentValidationController
+from rdr_service.services.consent.validation import ConsentValidationController, StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
@@ -231,7 +231,8 @@ def _build_validation_controller():
 @app_util.auth_required_cron
 def check_for_consent_corrections():
     validation_controller = _build_validation_controller()
-    validation_controller.check_for_corrections()
+    with validation_controller.consent_dao.session() as session:
+        validation_controller.check_for_corrections(session)
     return '{"success": "true"}'
 
 
@@ -239,7 +240,11 @@ def check_for_consent_corrections():
 def validate_consent_files():
     min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
     validation_controller = _build_validation_controller()
-    validation_controller.validate_recent_uploads(min_consent_date=min_authored_timestamp)
+    with validation_controller.consent_dao.session() as session, StoreResultStrategy(
+        session=session,
+        consent_dao=validation_controller.consent_dao
+    ) as store_strategy:
+        validation_controller.validate_recent_uploads(session, store_strategy, min_consent_date=min_authored_timestamp)
     return '{"success": "true"}'
 
 
@@ -450,6 +455,12 @@ def genomic_aw3_wgs_workflow():
 def genomic_aw4_workflow():
     genomic_pipeline.aw4_array_manifest_workflow()
     genomic_pipeline.aw4_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_feedback_record_reconciliation():
+    genomic_pipeline.feedback_record_reconciliation()
     return '{"success": "true"}'
 
 
@@ -778,6 +789,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicFeedbackRecordReconciliation",
+        endpoint="genomic_feedback_record_reconciliation",
+        view_func=genomic_feedback_record_reconciliation, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 

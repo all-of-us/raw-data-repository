@@ -177,22 +177,30 @@ def reconcile_metrics_vs_wgs_data(provider=None):
         )
 
 
-def aw3_array_manifest_workflow():
+def aw3_array_manifest_workflow(max_num=4000):
     """
     Entrypoint for AW3 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.AW3_ARRAY, _genome_type=config.GENOME_TYPE_ARRAY)
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=max_num) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_ARRAY,
+            _genome_type=config.GENOME_TYPE_ARRAY,
+        )
 
 
-def aw3_wgs_manifest_workflow():
+def aw3_wgs_manifest_workflow(max_num=4000):
     """
     Entrypoint for AW3 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.AW3_WGS, _genome_type=config.GENOME_TYPE_WGS)
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=max_num) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_WGS,
+            _genome_type=config.GENOME_TYPE_WGS,
+        )
 
 
 def aw4_array_manifest_workflow():
@@ -307,6 +315,11 @@ def scan_and_complete_feedback_records():
 
         for f in fb_recs:
             create_aw2f_manifest(f)
+
+
+def feedback_record_reconciliation():
+    with GenomicJobController(GenomicJob.FEEDBACK_RECORD_RECONCILE) as controller:
+        controller.reconcile_feedback_records()
 
 
 def create_aw2f_manifest(feedback_record):

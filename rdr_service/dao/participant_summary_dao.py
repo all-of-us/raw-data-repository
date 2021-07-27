@@ -30,13 +30,13 @@ from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
     ParticipantRaceAnswers,
     ParticipantSummary,
     WITHDRAWN_PARTICIPANT_FIELDS,
-    WITHDRAWN_PARTICIPANT_VISIBILITY_TIME,
-    RETENTION_WINDOW
+    WITHDRAWN_PARTICIPANT_VISIBILITY_TIME
 )
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.utils import get_property_type, to_client_participant_id
@@ -56,9 +56,7 @@ from rdr_service.participant_enums import (
     SampleStatus,
     SuspensionStatus,
     WithdrawalStatus,
-    get_bucketed_age,
-    RetentionStatus,
-    RetentionType
+    get_bucketed_age
 )
 from rdr_service.query import FieldFilter, FieldJsonContainsFilter, Operator, OrderBy, PropertyType
 
@@ -92,24 +90,36 @@ _fields_lock = threading.RLock()
 _ENROLLMENT_STATUS_CASE_SQL = """
         CASE WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status = :completed
                    AND samples_to_isolate_dna = :received)
              THEN :full_participant
              WHEN (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received) OR
                   (consent_for_study_enrollment = :submitted
                    AND consent_for_electronic_health_records = :unset
                    AND consent_for_dv_electronic_health_records_sharing = :submitted
+                   AND (consent_cohort != :cohort_3 OR
+                        (consent_for_genomics_ror BETWEEN :submitted AND :submitted_not_sure)
+                       )
                    AND num_completed_baseline_ppi_modules = :num_baseline_ppi_modules
                    AND physical_measurements_status != :completed
                    AND samples_to_isolate_dna = :received)
@@ -569,13 +579,8 @@ class ParticipantSummaryDao(UpdatableDao):
             if value not in ORIGINATING_SOURCES:
                 raise BadRequest(f"No origin source found for {value}")
             return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
-        if field_name == 'retentionType':
-            return self._make_retention_type_filter('retentionEligibleStatus', value)
 
         return super(ParticipantSummaryDao, self).make_query_filter(field_name, value)
-
-    def _make_retention_type_filter(self, field_name, value):
-        return RetentionTypeFieldFilter(field_name, Operator.EQUALS, value)
 
     def _make_patient_status_field_filter(self, field_name, value):
         try:
@@ -644,6 +649,7 @@ class ParticipantSummaryDao(UpdatableDao):
         enrollment_status_sql = _ENROLLMENT_STATUS_SQL
         enrollment_status_params = {
             "submitted": int(QuestionnaireStatus.SUBMITTED),
+            "submitted_not_sure": int(QuestionnaireStatus.SUBMITTED_NOT_SURE),
             "unset": int(QuestionnaireStatus.UNSET),
             "num_baseline_ppi_modules": self._get_num_baseline_ppi_modules(),
             "completed": int(PhysicalMeasurementsStatus.COMPLETED),
@@ -652,6 +658,7 @@ class ParticipantSummaryDao(UpdatableDao):
             "core_minus_pm": int(EnrollmentStatus.CORE_MINUS_PM),
             "member": int(EnrollmentStatus.MEMBER),
             "interested": int(EnrollmentStatus.INTERESTED),
+            "cohort_3": int(ParticipantCohort.COHORT_3),
             "now": now,
         }
 
@@ -725,19 +732,29 @@ class ParticipantSummaryDao(UpdatableDao):
         self, consent, num_completed_baseline_ppi_modules, physical_measurements_status, samples_to_isolate_dna,
         consent_cohort, gror_consent, consent_expire_status=ConsentExpireStatus.NOT_EXPIRED
     ):
+        """
+          2021-07 Note on enrollment status calculations and GROR:
+          Per NIH Analytics Data Glossary and confirmation on requirements for Core participants:
+          Cohort 3 participants need any GROR response (yes/no/not sure) to elevate to Core or Core Minus PM status
+        """
         if consent:
             if (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status == PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
-                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
+                and (consent_cohort != ParticipantCohort.COHORT_3 or
+                     # All response status enum values other than UNSET or SUBMITTED_INVALID meet the GROR requirement
+                     (gror_consent and gror_consent != QuestionnaireStatus.UNSET
+                      and gror_consent != QuestionnaireStatus.SUBMITTED_INVALID))
             ):
                 return EnrollmentStatus.FULL_PARTICIPANT
             elif (
                 num_completed_baseline_ppi_modules == self._get_num_baseline_ppi_modules()
                 and physical_measurements_status != PhysicalMeasurementsStatus.COMPLETED
                 and samples_to_isolate_dna == SampleStatus.RECEIVED
-                and (gror_consent == QuestionnaireStatus.SUBMITTED or consent_cohort != ParticipantCohort.COHORT_3)
+                and (consent_cohort != ParticipantCohort.COHORT_3 or
+                     (gror_consent and gror_consent != QuestionnaireStatus.UNSET
+                      and gror_consent != QuestionnaireStatus.SUBMITTED_INVALID))
             ):
                 return EnrollmentStatus.CORE_MINUS_PM
             elif consent_expire_status != ConsentExpireStatus.EXPIRED:
@@ -936,41 +953,6 @@ class ParticipantSummaryDao(UpdatableDao):
             if model.race is None or model.race == Race.UNSET:
                 result['race'] = Race.PMI_Skip
 
-        result["retentionType"] = str(RetentionType.UNSET)
-        if model.retentionEligibleStatus == RetentionStatus.ELIGIBLE:
-            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
-            if (model.questionnaireOnHealthcareAccessAuthored and
-                model.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnFamilyHealthAuthored and
-                 model.questionnaireOnFamilyHealthAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnMedicalHistoryAuthored and
-                 model.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeNovAuthored and
-                 model.questionnaireOnCopeNovAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeJulyAuthored and
-                 model.questionnaireOnCopeJulyAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeJuneAuthored and
-                 model.questionnaireOnCopeJuneAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeMayAuthored and
-                 model.questionnaireOnCopeMayAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeDecAuthored and
-                 model.questionnaireOnCopeDecAuthored > eighteen_month_ago) or \
-                (model.questionnaireOnCopeFebAuthored and
-                 model.questionnaireOnCopeFebAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_1 and
-                 model.consentForStudyEnrollmentAuthored != model.consentForStudyEnrollmentFirstYesAuthored and
-                 model.consentForStudyEnrollmentAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_1 and model.consentForGenomicsRORAuthored and
-                 model.consentForGenomicsRORAuthored > eighteen_month_ago) or \
-                (model.consentCohort == ParticipantCohort.COHORT_2 and model.consentForGenomicsRORAuthored and
-                 model.consentForGenomicsRORAuthored > eighteen_month_ago):
-                result["retentionType"] = str(RetentionType.ACTIVE)
-            if model.ehrUpdateTime and model.ehrUpdateTime > eighteen_month_ago:
-                if result["retentionType"] == str(RetentionType.ACTIVE):
-                    result["retentionType"] = str(RetentionType.ACTIVE_AND_PASSIVE)
-                else:
-                    result["retentionType"] = str(RetentionType.PASSIVE)
-
         # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
         # def format_patient_status_record(status_obj):
         #   status_dict = self.patient_status_dao.to_client_json(status_obj)
@@ -1082,6 +1064,24 @@ class ParticipantSummaryDao(UpdatableDao):
         )
         return session.execute(query, parameter_sets)
 
+    def bulk_update_retention_eligible_flags(self, upload_date):
+        with self.session() as session:
+            query = (
+                sqlalchemy.update(
+                    ParticipantSummary
+                ).where(and_(
+                    ParticipantSummary.participantId == RetentionEligibleMetrics.participantId,
+                    RetentionEligibleMetrics.fileUploadDate == sqlalchemy.bindparam("file_upload_date")
+                ))
+            ).values(
+                {
+                    ParticipantSummary.retentionEligibleStatus: RetentionEligibleMetrics.retentionEligibleStatus,
+                    ParticipantSummary.retentionEligibleTime: RetentionEligibleMetrics.retentionEligibleTime,
+                    ParticipantSummary.retentionType: RetentionEligibleMetrics.retentionType
+                }
+            )
+            session.execute(query, {'file_upload_date': upload_date})
+
 
 def _initialize_field_type_sets():
     """Using reflection, populate _DATE_FIELDS, _ENUM_FIELDS, and _CODE_FIELDS, which are
@@ -1143,132 +1143,6 @@ class PatientStatusFieldFilter(FieldFilter):
             return query.filter(criterion)
         else:
             raise ValueError(f"Invalid operator: {self.operator}.")
-
-
-class RetentionTypeFieldFilter(FieldFilter):
-    def __init__(self, field_name, operator, value):
-        super(RetentionTypeFieldFilter, self).__init__(field_name, operator, value)
-
-    def add_to_sqlalchemy_query(self, query, field):
-        if self.value in [str(RetentionType(item)) for item in RetentionType]:
-            eighteen_month_ago = clock.CLOCK.now() - RETENTION_WINDOW
-            active_criterion = or_(
-                ParticipantSummary.questionnaireOnHealthcareAccessAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnFamilyHealthAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnMedicalHistoryAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeNovAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeJulyAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeJuneAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeMayAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeDecAuthored > eighteen_month_ago,
-                ParticipantSummary.questionnaireOnCopeFebAuthored > eighteen_month_ago,
-                and_(
-                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
-                    ParticipantSummary.consentForStudyEnrollmentAuthored !=
-                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
-                    ParticipantSummary.consentForStudyEnrollmentAuthored > eighteen_month_ago
-                ),
-                and_(
-                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_1,
-                    ParticipantSummary.consentForGenomicsRORAuthored > eighteen_month_ago
-                ),
-                and_(
-                    ParticipantSummary.consentCohort == ParticipantCohort.COHORT_2,
-                    ParticipantSummary.consentForGenomicsRORAuthored > eighteen_month_ago
-                )
-            )
-            not_active_criterion = and_(
-                or_(
-                    ParticipantSummary.questionnaireOnHealthcareAccessAuthored == None,
-                    ParticipantSummary.questionnaireOnHealthcareAccessAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnFamilyHealthAuthored == None,
-                    ParticipantSummary.questionnaireOnFamilyHealthAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnMedicalHistoryAuthored == None,
-                    ParticipantSummary.questionnaireOnMedicalHistoryAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeNovAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeNovAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeJulyAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeJulyAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeJuneAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeJuneAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeMayAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeMayAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeDecAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeDecAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.questionnaireOnCopeFebAuthored == None,
-                    ParticipantSummary.questionnaireOnCopeFebAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,
-                    ParticipantSummary.consentForStudyEnrollmentAuthored ==
-                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
-                    ParticipantSummary.consentForStudyEnrollmentAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_1,
-                    ParticipantSummary.consentForGenomicsRORAuthored == None,
-                    ParticipantSummary.consentForGenomicsRORAuthored <= eighteen_month_ago
-                ),
-                or_(
-                    ParticipantSummary.consentCohort != ParticipantCohort.COHORT_2,
-                    ParticipantSummary.consentForGenomicsRORAuthored == None,
-                    ParticipantSummary.consentForGenomicsRORAuthored <= eighteen_month_ago
-                )
-            )
-            if self.value == str(RetentionType.ACTIVE):
-                query = query.filter(
-                    field == RetentionStatus.ELIGIBLE,
-                    active_criterion,
-                    or_(
-                        ParticipantSummary.ehrUpdateTime == None,
-                        ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
-                    )
-
-                )
-            elif self.value == str(RetentionType.PASSIVE):
-                query = query.filter(
-                    field == RetentionStatus.ELIGIBLE,
-                    not_active_criterion,
-                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
-                )
-            elif self.value == str(RetentionType.ACTIVE_AND_PASSIVE):
-                query = query.filter(
-                    field == RetentionStatus.ELIGIBLE,
-                    active_criterion,
-                    ParticipantSummary.ehrUpdateTime > eighteen_month_ago
-                )
-            elif self.value == str(RetentionType.UNSET):
-                query = query.filter(
-                    or_(
-                        field == RetentionStatus.NOT_ELIGIBLE,
-                        and_(
-                            not_active_criterion,
-                            or_(
-                                ParticipantSummary.ehrUpdateTime == None,
-                                ParticipantSummary.ehrUpdateTime <= eighteen_month_ago
-                            )
-                        )
-                    )
-                )
-            return query
-        else:
-            raise ValueError(f"Invalid parameter: {self.value}.")
 
 
 class ParticipantGenderAnswersDao(UpdatableDao):

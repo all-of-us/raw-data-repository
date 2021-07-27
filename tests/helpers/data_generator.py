@@ -19,7 +19,9 @@ from rdr_service.model.genomics import (
     GenomicIncident,
     GenomicGCValidationMetrics,
     GenomicMemberReportState,
-    GenomicInformingLoop
+    GenomicInformingLoop,
+    GenomicGcDataFile,
+    GenomicManifestFeedback
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
@@ -576,6 +578,15 @@ class DataGenerator:
     def _survey_question_option(**kwargs):
         return SurveyQuestionOption(**kwargs)
 
+    @staticmethod
+    def _genomic_manifest_feedback(**kwargs):
+        return GenomicManifestFeedback(**kwargs)
+
+    def create_database_genomic_manifest_feedback(self, **kwargs):
+        feedback = self._genomic_manifest_feedback(**kwargs)
+        self._commit_to_database(feedback)
+        return feedback
+
     def create_database_genomic_manifest_file(self, **kwargs):
         manifest = self._genomic_manifest_file(**kwargs)
         self._commit_to_database(manifest)
@@ -692,3 +703,13 @@ class DataGenerator:
     @staticmethod
     def _genomic_informing_loop(**kwargs):
         return GenomicInformingLoop(**kwargs)
+
+    @staticmethod
+    def _genomic_gc_data_file(**kwargs):
+        return GenomicGcDataFile(**kwargs)
+
+    def create_database_gc_data_file_record(self, **kwargs):
+        records = self._genomic_gc_data_file(**kwargs)
+        self._commit_to_database(records)
+        return records
+

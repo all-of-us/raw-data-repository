@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import copy
 from datetime import datetime
 from dateutil import parser
 from hashlib import md5
@@ -11,6 +12,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from typing import Dict
 from werkzeug.exceptions import BadRequest
 
+from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -49,7 +51,14 @@ from rdr_service.code_constants import (
     EHR_CONSENT_EXPIRED_YES,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
     COHORT_1_REVIEW_CONSENT_YES_CODE,
-    COPE_VACCINE_MINUTE_1_MODULE_CODE)
+    COPE_VACCINE_MINUTE_1_MODULE_CODE,
+    APPLE_EHR_SHARING_MODULE,
+    APPLE_EHR_STOP_SHARING_MODULE,
+    APPLE_HEALTH_KIT_SHARING_MODULE,
+    APPLE_HEALTH_KIT_STOP_SHARING_MODULE,
+    FITBIT_SHARING_MODULE,
+    FITBIT_STOP_SHARING_MODULE
+)
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -59,7 +68,8 @@ from rdr_service.dao.participant_summary_dao import (
     ParticipantSummaryDao,
 )
 from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, QuestionnaireQuestionDao
-from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD
+from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
+    QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
@@ -645,7 +655,9 @@ class QuestionnaireResponseDao(BaseDao):
         for concept in questionnaire_history.concepts:
             code = code_map.get(concept.codeId)
             if code:
-                summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(code.value)
+                # the digital health code in code table is in lowercase, but in questionnaire payload is in CamelCased
+                summary_field = QUESTIONNAIRE_MODULE_CODE_TO_FIELD.get(
+                    code.value.lower() if self._is_digital_health_share_code(code.value) else code.value)
                 if summary_field:
                     new_status = QuestionnaireStatus.SUBMITTED
                     if code.value == CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE and not ehr_consent:
@@ -692,7 +704,14 @@ class QuestionnaireResponseDao(BaseDao):
                                 and extension.get("valueCode") not in LANGUAGE_OF_CONSENT
                             ):
                                 logging.warning(f"consent language {extension.get('valueCode')} not recognized.")
-                    if getattr(participant_summary, summary_field) != new_status:
+                    elif self._is_digital_health_share_code(code.value):
+                        digital_health_sharing_status, something_changed = self._update_digital_health_status_field(
+                            participant_summary.digitalHealthSharingStatus, code.value.lower(), authored)
+                        if something_changed:
+                            setattr(participant_summary, summary_field, digital_health_sharing_status)
+
+                    if summary_field != QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD \
+                        and getattr(participant_summary, summary_field) != new_status:
                         setattr(participant_summary, summary_field, new_status)
                         setattr(participant_summary, summary_field + "Time", questionnaire_response.created)
                         setattr(participant_summary, summary_field + "Authored", authored)
@@ -757,6 +776,62 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_gender_race_dao.update_gender_answers_with_session(
                     session, participant.participantId, gender_code_ids
                 )
+
+    def _is_digital_health_share_code(self, code_value):
+        return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,
+                                      APPLE_HEALTH_KIT_SHARING_MODULE, APPLE_HEALTH_KIT_STOP_SHARING_MODULE,
+                                      FITBIT_SHARING_MODULE, FITBIT_STOP_SHARING_MODULE]
+
+    def _update_digital_health_status_field(self, current_value, code_value, authored):
+        something_changed = False
+        authored_str = format_datetime(authored)
+        field_mapping = {
+            APPLE_HEALTH_KIT_SHARING_MODULE: ('appleHealthKit', 'YES'),
+            APPLE_HEALTH_KIT_STOP_SHARING_MODULE: ('appleHealthKit', 'NO'),
+            APPLE_EHR_SHARING_MODULE: ('appleEHR', 'YES'),
+            APPLE_EHR_STOP_SHARING_MODULE: ('appleEHR', 'NO'),
+            FITBIT_SHARING_MODULE: ('fitbit', 'YES'),
+            FITBIT_STOP_SHARING_MODULE: ('fitbit', 'NO')
+        }
+        current_value = current_value if current_value is not None else {}
+        # sqlalchemy can't update the Json field directly, need a deepcopy to replace the old value
+        new_value = copy.deepcopy(current_value)
+        health_module = field_mapping[code_value][0]
+        health_module_status = field_mapping[code_value][1]
+        if health_module in new_value:
+            current_history = new_value[health_module]['history']
+            exist = False
+            for item in current_history:
+                if item['status'] == health_module_status and item['authoredTime'] == authored_str:
+                    exist = True
+                    break
+            if not exist:
+                if authored > parse_datetime(new_value[health_module]['authoredTime']):
+                    new_value[health_module]['status'] = health_module_status
+                    new_value[health_module]['authoredTime'] = authored_str
+
+                new_value[health_module]['history'].insert(0, {
+                        'status': health_module_status,
+                        'authoredTime': authored_str
+                    })
+                new_value[health_module]['history'] = sorted(new_value[health_module]['history'],
+                                                             key=lambda i: parse_datetime(i['authoredTime']),
+                                                             reverse=True)
+                something_changed = True
+        else:
+            new_value[health_module] = {
+                'status': health_module_status,
+                'authoredTime': authored_str,
+                'history': [
+                    {
+                        'status': health_module_status,
+                        'authoredTime': authored_str
+                    }
+                ]
+            }
+            something_changed = True
+
+        return new_value, something_changed
 
     def insert(self, obj):
         if obj.questionnaireResponseId:

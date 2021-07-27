@@ -8,7 +8,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentType, ConsentSyncStatus
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import QuestionnaireStatus
-from rdr_service.services.consent.validation import ConsentValidationController
+from rdr_service.services.consent.validation import ConsentValidationController, StoreResultStrategy
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -38,6 +38,7 @@ class ConsentControllerTest(BaseTestCase):
             participant_summary_dao=self.participant_summary_dao_mock,
             storage_provider=mock.MagicMock()
         )
+        self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
     def test_correction_check(self):
         """
@@ -67,7 +68,7 @@ class ConsentControllerTest(BaseTestCase):
             ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_3')
         ]
 
-        self.consent_controller.check_for_corrections()
+        self.consent_controller.check_for_corrections(session=mock.MagicMock())
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
                 ConsentFile(file_path='/invalid_primary_1', sync_status=ConsentSyncStatus.OBSOLETE),
@@ -119,7 +120,12 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(min_consent_date=min_consent_date_checked)
+        self.consent_controller.validate_recent_uploads(
+            session=mock.MagicMock(),
+            output_strategy=self.store_strategy,
+            min_consent_date=min_consent_date_checked
+        )
+        self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
                 ConsentFile(file_path='/valid_primary_2', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
@@ -152,7 +158,12 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(min_consent_date=min_consent_date_checked)
+        self.consent_controller.validate_recent_uploads(
+            session=mock.MagicMock(),
+            output_strategy=self.store_strategy,
+            min_consent_date=min_consent_date_checked
+        )
+        self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
                 ConsentFile(file_path='/new_file_1', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
@@ -162,7 +173,7 @@ class ConsentControllerTest(BaseTestCase):
 
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""
-        actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
+        actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[1]
         self.assertEqual(len(expected_updates), len(actual_updates))
 
         for expected in expected_updates:
