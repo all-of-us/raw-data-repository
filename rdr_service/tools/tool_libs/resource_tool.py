@@ -35,9 +35,9 @@ from rdr_service.model.bq_questionnaires import (
     BQPDRCOPEVaccine1
 )
 from rdr_service.model.participant import Participant
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
-from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
-from rdr_service.resource.generators.code import CodeGenerator
+from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
@@ -81,7 +81,7 @@ class ParticipantResourceClass(object):
         try:
             if not self.args.modules_only:
                 rebuild_bq_participant(pid, project_id=self.gcp_env.project)
-                rebuild_participant_summary_resource(pid)
+                generators.participant.rebuild_participant_summary_resource(pid)
 
             if not self.args.no_modules:
                 mod_bqgen = BQPDRQuestionnaireResponseGenerator()
@@ -309,7 +309,7 @@ class CodeResourceClass(object):
         with w_dao.session() as w_session:
             for row in results:
                 gen = BQCodeGenerator()
-                rsc_gen = CodeGenerator()
+                rsc_gen = generators.code.CodeGenerator()
                 bqr = gen.make_bqrecord(row.codeId)
                 gen.save_bqrecord(row.codeId, bqr, project_id=self.gcp_env.project,
                                   bqtable=BQCode, w_dao=w_dao, w_session=w_session)
@@ -816,6 +816,131 @@ class SiteResourceClass(object):
 
         return 0
 
+
+class RetentionEligibleMetricClass:
+    """ Handle Retention Eligible Metric resource data """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param id_list: list of integer ids from retention eligible metrics table,
+                            if --table and --from-file were specified.
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+        self.id_list = id_list
+        self.res_gen = generators.RetentionEligibleMetricGenerator()
+
+    def update_single_id(self, pid):
+
+        try:
+            res = self.res_gen.make_resource(pid)
+            res.save()
+        except NotFound:
+            _logger.error(f'Participant P{pid} not found in retention_eligible_metrics table.')
+            return 1
+        return 0
+
+    def update_batch(self, pids):
+
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i:i + n]
+
+        count = 0
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(pids), prefix="{0}/{1}:".format(count, len(pids)), suffix="complete"
+            )
+
+        for batch in chunks(pids, 250):
+            if self.gcp_env.project == 'localhost':
+                for id_ in batch:
+                    self.update_single_id(id_)
+            else:
+                payload = {'rebuild_all': False, 'batch': [{'id': x} for x in pids]}
+                task.execute('batch_rebuild_retention_metrics_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            count += len(batch)
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(pids), prefix="{0}/{1}:".format(count, len(pids)), suffix="complete"
+                )
+
+    def update_many_ids(self, pids):
+        if not pids:
+            _logger.warning(f'No records found in batch, skipping.')
+            return 1
+
+        _logger.info(f'Processing retention eligible metrics batch...')
+        if self.args.batch:
+            self.update_batch(pids)
+            _logger.info(f'Processing retention eligible metrics batch complete.')
+            return 0
+
+        total_ids = len(pids)
+        count = 0
+        errors = 0
+
+        for pid in pids:
+            count += 1
+
+            if self.update_single_id(pid) != 0:
+                errors += 1
+                if self.args.debug:
+                    _logger.error(f'ID {pid} not found.')
+
+            if not self.args.debug:
+                print_progress_bar(
+                    count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete"
+                )
+
+        if errors > 0:
+            _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
+
+        return 0
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.pid and not self.args.all_pids and not self.id_list:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild Retention Eligible Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+
+        if self.args.all_pids :
+            dao = ResourceDataDao()
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+            _logger.info('=' * 90)
+            with dao.session() as session:
+                pids = session.query(RetentionEligibleMetrics.id).all()
+                self.update_many_ids(pids)
+        elif self.args.pid:
+            _logger.info('  Participant ID        : {0}'.format(clr.fmt(f'P{self.args.pid}')))
+            _logger.info('=' * 90)
+            self.update_single_id(self.args.pid)
+        elif self.id_list:
+            _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
+            _logger.info('=' * 90)
+            if len(self.id_list):
+                self.update_many_ids(self.id_list)
+
+        return 1
+
+
+
 def get_id_list(fname):
     """
     Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
@@ -857,6 +982,12 @@ def run():
 
     # Common individual arguments that may be used in multiple subparsers.  The Help text and Choices can
     # be overridden by calling update_argument() after the subparser has been created.
+    pid_parser = argparse.ArgumentParser(add_help=False)
+    pid_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)
+
+    all_pids_parser = argparse.ArgumentParser(add_help=False)
+    all_pids_parser.add_argument("--all-pids", help="rebuild all participants", default=False, action="store_true")
+
     id_parser = argparse.ArgumentParser(add_help=False)
     id_parser.add_argument("--id", help="rebuild single genomic table id", type=int, default=None)
 
@@ -913,10 +1044,7 @@ def run():
     # Rebuild participant resources
     rebuild_parser = subparser.add_parser(
         "participant",
-        parents=[from_file_parser, batch_parser])
-    rebuild_parser.add_argument("--pid", help="rebuild single participant id", type=int, default=None)  # noqa
-    rebuild_parser.add_argument("--all-pids", help="rebuild all participants", default=False,
-                                action="store_true")  # noqa
+        parents=[from_file_parser, batch_parser, pid_parser, all_pids_parser])
     rebuild_parser.add_argument("--no-modules", default=False, action="store_true",
                                 help="do not rebuild participant questionnaire response data for pdr_mod_* tables")
     rebuild_parser.add_argument("--modules-only", default=False, action="store_true",
@@ -961,6 +1089,11 @@ def run():
     update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
     site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'
 
+    retention_parser = subparser.add_parser(
+        'retention', parents=[batch_parser, from_file_parser, pid_parser, all_pids_parser])
+    update_argument(retention_parser, dest='from_file',
+                    help="rebuild retention eligibility records for specific pids read from a file.")
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1001,6 +1134,10 @@ def run():
 
         elif args.resource == 'site-tables':
             process = SiteResourceClass(args, gcp_env)
+            exit_code = process.run()
+
+        elif args.resource == 'retention':
+            process = RetentionEligibleMetricClass(args, gcp_env, ids)
             exit_code = process.run()
 
         else:

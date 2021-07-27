@@ -51,6 +51,9 @@ class SchemaID(IntEnum):
     quest_covid_antibody_test = 5010
     quest_covid_antibody_test_result = 5020
 
+    # Metrics
+    retention_metrics = 2120
+
 
 # Used to calculate participant enrollment cohort.
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
@@ -130,3 +133,17 @@ class ParticipantEventEnum(IntEnum):
     FULLY_CONSENTED = 108
     CORE_MINUS_PM = 112
     CORE_PARTICIPANT = 114
+
+
+class RetentionStatusEnum(IntEnum):
+    """ Whether a participant meets retention-eligible criteria """
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
+
+
+class RetentionTypeEnum(IntEnum):
+    """ Participant retention type """
+    UNSET = 0
+    ACTIVE = 1
+    PASSIVE = 2
+    ACTIVE_AND_PASSIVE = 3

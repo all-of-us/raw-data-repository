@@ -35,6 +35,7 @@ queue:
   max_concurrent_requests: 25
   retry_parameters:
     min_backoff_seconds: 30
+    task_retry_limit: 5
 
 - name: genomics
   target: resource
