@@ -18,6 +18,7 @@ from google.cloud.exceptions import GatewayTimeout
 from google.cloud.storage import Blob
 from google.cloud._helpers import UTC
 from google.cloud._helpers import _RFC3339_MICROS
+from rdr_service.config import GAE_PROJECT
 from rdr_service.provider import Provider
 
 
@@ -401,11 +402,15 @@ class GoogleCloudStorageCSVReader:
         :return: temp file handle.
         """
         tmp_file = tempfile.NamedTemporaryFile(prefix='cloud_')
-        with GoogleCloudStorageProvider().open(cloud_csv_file, 'rt') as csv_file:
+        if GAE_PROJECT == 'localhost':
+            provider = LocalFilesystemStorageProvider()
+        else:
+            provider = GoogleCloudStorageProvider()
+        with provider.open(cloud_csv_file, 'rt') as csv_file:
             chunk_size = 1000 * 1024 * 10  # 10MB chunk.
             while True:
                 chunk = csv_file.read(chunk_size)
-                tmp_file.write(chunk)
+                tmp_file.write(chunk.encode('utf-8') if isinstance(chunk, str) else chunk)
                 if not chunk or len(chunk) < chunk_size:
                     break
         tmp_file.seek(0)
