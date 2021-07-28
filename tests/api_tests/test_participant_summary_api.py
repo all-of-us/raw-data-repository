@@ -8,7 +8,7 @@ import unittest
 from urllib.parse import urlencode
 
 from rdr_service import config, main
-from rdr_service.api_util import PTC, CURATION
+from rdr_service.api_util import PTC, CURATION, HEALTHPRO
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -489,9 +489,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             if num == 1:
                 self.data_generator \
                     .create_database_participant_summary(
-                        firstName=first_name,
-                        lastName="Tester"
-                    )
+                    firstName=first_name,
+                    lastName="Tester"
+                )
             else:
                 self.data_generator \
                     .create_database_participant_summary()
@@ -536,22 +536,22 @@ class ParticipantSummaryApiTest(BaseTestCase):
         for num in range(num_summary):
             self.data_generator \
                 .create_database_participant_summary(
-                    firstName=f"Testy_{num}",
-                    lastName=f"Tester_{num}",
-                    dateOfBirth=_date,
-                )
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=_date,
+            )
 
         response_only_dob = self.send_get(
-                f"ParticipantSummary?dateOfBirth={_date}",
-                expected_status=http.client.BAD_REQUEST
-            )
+            f"ParticipantSummary?dateOfBirth={_date}",
+            expected_status=http.client.BAD_REQUEST
+        )
         self.assertEqual(response_only_dob.status_code, 400)
         self.assertEqual(response_only_dob.json['message'], 'Argument lastName is required with dateOfBirth')
 
         response_only_last_name = self.send_get(
-                f"ParticipantSummary?lastName={last_name}",
-                expected_status=http.client.BAD_REQUEST
-            )
+            f"ParticipantSummary?lastName={last_name}",
+            expected_status=http.client.BAD_REQUEST
+        )
         self.assertEqual(response_only_last_name.status_code, 400)
         self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
 
@@ -1021,7 +1021,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_get(sort_by_lastmodified)
         self.assertGreaterEqual(len(sync_again["entry"]), 14)
         # The last 14 participants from sort_lm_response should be equal to the sync_again response.
-        #self.assertEqual(sort_lm_response["entry"][7:], sync_again["entry"][:13])
+        # self.assertEqual(sort_lm_response["entry"][7:], sync_again["entry"][:13])
 
         one_min_modified = list()
         for i in sync_again["entry"]:
@@ -3453,6 +3453,35 @@ class ParticipantSummaryApiTest(BaseTestCase):
             mar_participant_id
         ], response_ids)
 
+    def test_response_for_pid_not_found_in_post(self):
+        bad_pid = 'P12345'
+        response = self.send_post(f'Participant/{bad_pid}/Summary', expected_status=http.client.NOT_FOUND)
+        self.assertEqual(response.status_code, 404)
+        bad_message = f'Participant {bad_pid} was not found'
+        self.assertEqual(bad_message, response.json['message'])
+
+    def test_response_for_correct_roles(self):
+        participant_one = self.send_post("Participant", {})
+        prefix_pid = participant_one["participantId"]
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary',
+                                  expected_status=403)
+        self.assertEqual(response.status_code, 403)
+
+        bad_message = "You don't have the permission to access the " \
+                      "requested resource. It is either read-protected or " \
+                      "not readable by the server."
+        self.assertEqual(bad_message, response.json['message'])
+
+        self.overwrite_test_user_roles([PTC])
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        self.assertIsNotNone(response)
+        self.assertEqual(response['participantId'], prefix_pid)
+
+
     def _remove_participant_retention_eligible(self, participant_id):
         summary = self.ps_dao.get(participant_id)
         summary.samplesToIsolateDNA = SampleStatus.UNSET
@@ -3478,8 +3507,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         for key in attrs.keys():
             setattr(summary, key, attrs.get(key))
-
         self.ps_dao.update(summary)
-
         return summary
 

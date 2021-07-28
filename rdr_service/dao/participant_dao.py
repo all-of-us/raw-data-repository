@@ -67,7 +67,6 @@ class ParticipantHistoryDao(BaseDao):
 class ParticipantDao(UpdatableDao):
     def __init__(self):
         super(ParticipantDao, self).__init__(Participant)
-
         self.hpo_dao = HPODao()
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()

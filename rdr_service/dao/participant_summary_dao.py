@@ -1,4 +1,5 @@
 import datetime
+import faker
 import re
 import threading
 
@@ -25,10 +26,13 @@ from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_S
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
+
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
+
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
@@ -437,15 +441,31 @@ class ParticipantSummaryDao(UpdatableDao):
         self.site_dao = SiteDao()
         self.organization_dao = OrganizationDao()
         self.patient_status_dao = PatientStatusDao()
+        self.participant_dao = ParticipantDao()
+        self.faker = faker.Faker()
+
+    def from_client_json(self, participant_id):
+        current_summary, ps = self.get_by_participant_id(participant_id), None
+
+        if not current_summary:
+            participant = self.participant_dao.get(participant_id)
+            defaults = {
+                "participantId": participant.participantId,
+                "biobankId": participant.biobankId,
+                "hpoId": participant.hpoId,
+                "firstName": self.faker.first_name(),
+                "lastName": self.faker.first_name(),
+                "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+                "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+                "participantOrigin": participant.participantOrigin,
+                "isEhrDataAvailable": False,
+            }
+            ps = ParticipantSummary(**defaults)
+
+        return ps
 
     def get_id(self, obj):
         return obj.participantId
-
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # def get_eager_child_loading_query_options(self):
-    #   return [
-    #     sqlalchemy.orm.subqueryload(self.model_type.patientStatus)
-    #   ]
 
     def get_with_children(self, obj_id):
         with self.session() as session:
@@ -453,6 +473,14 @@ class ParticipantSummaryDao(UpdatableDao):
             # return self.get_with_session(session, obj_id,
             #                              options=self.get_eager_child_loading_query_options())
             return self.get_with_session(session, obj_id)
+
+    def get_by_participant_id(self, participant_id):
+        with self.session() as session:
+            return session.query(
+                ParticipantSummary
+            ).filter(
+                ParticipantSummary.participantId == participant_id
+            ).one_or_none()
 
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""

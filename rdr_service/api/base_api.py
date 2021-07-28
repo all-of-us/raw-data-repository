@@ -167,14 +167,19 @@ class BaseApi(Resource):
         return self.dao.insert(m)
 
     def post(self, participant_id=None):
-        """Handles a POST (insert) request.
-
-    Args:
-      participant_id: The ancestor id.
-    """
+        """
+        Handles a POST (insert) request.
+        participant_id: The ancestor id.
+        """
         resource = request.get_json(force=True)
         m = self._get_model_to_insert(resource, participant_id)
         result = self._do_insert(m)
+
+        # issue with computed db values via PTSC POST
+        # in test env to ParticipantSummary
+        if result.__class__.__name__.lower() == 'participantsummary':
+            result.wasEhrDataAvailable = None
+
         if participant_id or (result and hasattr(result, 'participantId')):
             if not participant_id:
                 participant_id = getattr(result, 'participantId')
