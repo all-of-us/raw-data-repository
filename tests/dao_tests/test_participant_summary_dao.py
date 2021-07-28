@@ -558,7 +558,6 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertEqual(EnrollmentStatus.CORE_MINUS_PM, summary.enrollmentStatus)
         self.assertEqual(sample_time, summary.enrollmentStatusCoreMinusPMTime)
 
-
     def testCoreStatusRemains(self):
         member_time = datetime.datetime(2020, 6, 1)
         participant_summary = self.data_generator._participant_summary_with_defaults(
@@ -1019,6 +1018,19 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         # A cancelled order (even after amending) should reduce count (unless some other valid order on same day)
         summary = self.dao.get(self.participant.participantId)
         self.assertEqual(summary.numberDistinctVisits, 0)
+
+    def test_get_participant_summary_from_pid(self):
+        participant_one = self.data_generator.create_database_participant()
+        pid = participant_one.participantId
+
+        participant_summary = self.dao.get_by_participant_id(pid)
+        self.assertIsNone(participant_summary)
+
+        self.data_generator.create_database_participant_summary(participant=participant_one)
+
+        participant_summary = self.dao.get_by_participant_id(pid)
+        self.assertIsNotNone(participant_summary)
+        self.assertEqual(pid, participant_summary.participantId)
 
     @staticmethod
     def _get_amended_info(order):
