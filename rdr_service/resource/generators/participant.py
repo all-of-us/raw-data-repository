@@ -350,11 +350,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # credentials but are not correctly flagged in the participant table
         test_participant = p.isGhostId == 1 or p.isTestParticipant == 1 or (hpo and hpo.name == TEST_HPO_NAME)
 
+        # TODO: Workaround for PDR-364 is to pull cohort value from participant_summary. LIMITED USE CASE ONLY
+        cohort = ConsentCohortEnum.UNSET if not p or not p.participantSummary \
+                    or p.participantSummary.consentCohort is None \
+                    else ConsentCohortEnum(int(p.participantSummary.consentCohort))
+
         data = {
             'participant_id': f'P{p_id}',
             'biobank_id': p.biobankId,
             'research_id': p.researchId,
             'participant_origin': p.participantOrigin,
+            'consent_cohort': cohort.name,
+            'consent_cohort_id': cohort.value,
             'last_modified': p.lastModified,
             'sign_up_time': p.signUpTime,
             'hpo': hpo.name if hpo else None,
@@ -569,15 +576,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             filter(QuestionnaireResponse.questionnaireId ==
                    QuestionnaireConcept.questionnaireId).label('codeId')
 
-        # TODO: Workaround for PDR-364 is to pull cohort value from participant_summary. LIMITED USE CASE ONLY
-        query = ro_session.query(ParticipantSummary.consentCohort).filter(ParticipantSummary.participantId == p_id)
-        value = query.first()
-        cohort = ConsentCohortEnum.UNSET if not value or value[0] is None else ConsentCohortEnum(int(value[0]))
-        data = {
-            'consent_cohort': cohort.name,
-            'consent_cohort_id': cohort.value
-        }
-
         # Responses are sorted by authored date ascending and then created date descending
         # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
@@ -592,6 +590,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         modules = list()
         consents = list()
+        data = dict()
 
         if results:
             # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
