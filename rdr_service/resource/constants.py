@@ -124,6 +124,7 @@ class ParticipantEventEnum(IntEnum):
     cope_feb = 52,
     GeneticAncestry = 53
     cope_vaccine1 = 54
+    cope_vaccine2 = 55
 
     # Genomics: 70 - 99
 
