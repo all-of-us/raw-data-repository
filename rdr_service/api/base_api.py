@@ -156,7 +156,7 @@ class BaseApi(Resource):
 
     def _get_model_to_insert(self, resource, participant_id=None):
         # Children of participants accept a participant_id parameter to from_client_json; others don't.
-        if participant_id is not None:
+        if participant_id:
             return self.dao.from_client_json(
                 resource, participant_id=participant_id, client_id=app_util.get_oauth_id()
             )

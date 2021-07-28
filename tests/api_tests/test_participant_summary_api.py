@@ -3481,7 +3481,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertIsNotNone(response)
         self.assertEqual(response['participantId'], prefix_pid)
 
-
     def _remove_participant_retention_eligible(self, participant_id):
         summary = self.ps_dao.get(participant_id)
         summary.samplesToIsolateDNA = SampleStatus.UNSET

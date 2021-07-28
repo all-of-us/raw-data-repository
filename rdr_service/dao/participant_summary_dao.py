@@ -444,9 +444,9 @@ class ParticipantSummaryDao(UpdatableDao):
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
 
-    def from_client_json(self, participant_id):
+    # pylint: disable=unused-argument
+    def from_client_json(self, resource, participant_id, client_id):
         current_summary, ps = self.get_by_participant_id(participant_id), None
-
         if not current_summary:
             participant = self.participant_dao.get(participant_id)
             defaults = {
