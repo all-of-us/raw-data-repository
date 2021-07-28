@@ -1876,6 +1876,9 @@ class GenomicReconciler:
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
 
+            if len(missing_data_files) > 0:
+                self.any_missing_data = True
+
             metric_touched = False
 
             # WGS query results requre GenomicGCValidationMetrics model to be specified
@@ -1903,7 +1906,7 @@ class GenomicReconciler:
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
         if self.any_missing_data:
-            logging.info(f'Missing Data...')
+            logging.info('Missing Data...')
             self.process_missing_data()
 
         return GenomicSubProcessResult.SUCCESS
