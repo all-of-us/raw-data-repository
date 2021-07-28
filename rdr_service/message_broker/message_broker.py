@@ -3,6 +3,7 @@ import requests
 from rdr_service import clock
 from datetime import timedelta
 
+from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.message_broker_metadata_dao import MessageBrokerMetadataDao
 from rdr_service.dao.message_broker_dest_auth_info_dao import MessageBrokerDestAuthInfoDao
 
@@ -60,9 +61,8 @@ class BaseMessageBroker:
         request_body = self.make_request_body()
 
         # Token should be included in the HTTP Authorization header using the Bearer scheme.
-        response = requests.post(dest_url, data=request_body,
-                                 headers={"Content-type": "application/json", "Authorization": "Bearer " + token})
-        if response.status_code == "200":
+        response = requests.post(dest_url, json=request_body, headers={"Authorization": "Bearer " + token})
+        if response.status_code == 200:
             return response.status_code, response.json(), ''
         else:
             return response.status_code, response.text, response.text
@@ -75,18 +75,11 @@ class PtscMessageBroker(BaseMessageBroker):
     def make_request_body(self):
         request_body = {
             'event': self.message.eventType,
-            'eventAuthoredTime': self.message.eventAuthoredTime,
+            'eventAuthoredTime': format_datetime(self.message.eventAuthoredTime),
             'participantId': str(self.message.participantId),
             'messageBody': self.message.requestBody
         }
         return request_body
-
-    def send_request(self):
-        # PTSC's env is not ready, return mock result
-        response_code = '200'
-        response_body = {'result': 'mocked result'}
-        response_error = ''
-        return response_code, response_body, response_error
 
 
 class MessageBrokerFactory:
