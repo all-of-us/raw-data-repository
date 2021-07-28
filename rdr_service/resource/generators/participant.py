@@ -41,7 +41,7 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
-from rdr_service.model.participant import Participant
+from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -388,6 +388,30 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # TODO:  Enable this field definition in the BQ model if it's determined it should be included in PDR
             'date_of_death': deceased_date_of_death
         }
+
+        # Collect participant pairing history
+        pairing = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId,
+                                   ParticipantHistory.organizationId, ParticipantHistory.siteId). \
+            filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified).all()
+
+        pairing_history = None
+        if pairing:
+            pairing_history = list()
+            for item in pairing:
+                hpo = ro_session.query(HPO.name).filter(HPO.hpoId == item.hpoId).first()
+                organization = ro_session.query(Organization.externalId). \
+                    filter(Organization.organizationId == item.organizationId).first()
+                pairing_history.append({
+                    'last_modified': item.lastModified,
+                    'hpo': hpo.name if hpo else None,
+                    'hpo_id': item.hpoId,
+                    'organization': organization.externalId if organization else None,
+                    'organization_id': item.organizationId,
+                    'site': self._lookup_site_name(p.siteId, ro_session),
+                    'site_id': item.siteId
+                })
+
+        data['pairing_history'] = pairing_history
 
         # Record participant activity events
         data['activity'] = [

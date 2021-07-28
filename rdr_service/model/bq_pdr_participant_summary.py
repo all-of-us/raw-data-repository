@@ -10,7 +10,8 @@ from rdr_service.model.bq_participant_summary import (
     BQModuleStatusSchema,
     BQConsentSchema,
     BQPatientStatusSchema,
-    BQBiobankOrderSchema
+    BQBiobankOrderSchema,
+    BQParticipantPairingHistorySchema
 )
 
 
@@ -193,6 +194,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
                                                 BQFieldModeEnum.NULLABLE)
     enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
                                          BQFieldModeEnum.NULLABLE)
+    pairing_history = BQRecordField('pairing_history', schema=BQParticipantPairingHistorySchema)
 
 
 class BQPDRParticipantSummary(BQTable):
@@ -452,5 +454,19 @@ class BQPDREhrReceiptView(BQView):
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(ehr_receipts) as nt
+      WHERE ps.rn = 1 and ps.test_participant != 1
+  """
+
+class BQPDRPairingHistoryView(BQView):
+    __viewname__ = 'v_pdr_participant_pairing_history'
+    __viewdescr__ = 'PDR Participant Pairing History View'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
+      FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+          FROM `{project}`.{dataset}.pdr_participant
+      ) ps cross join unnest(pairing_history) as nt
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
