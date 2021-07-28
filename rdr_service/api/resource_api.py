@@ -216,7 +216,7 @@ class ResourceRequestApi(Resource):
                 elif isinstance(_id, str):
                     query = query.filter(ResourceData.resourcePKAltID == _id)
                 else:
-                    raise ValueError(f'Invalid resource id: {_id}.')
+                    raise BadRequest(f'Invalid resource identifier.')
                 # sql = self.dao.query_to_text(query)
                 if '_count' in resource.uri_args:
                     return {"count": query.count()}
