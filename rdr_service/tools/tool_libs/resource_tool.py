@@ -925,7 +925,7 @@ class RetentionEligibleMetricClass:
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
             _logger.info('=' * 90)
             with dao.session() as session:
-                pids = session.query(RetentionEligibleMetrics.id).all()
+                pids = session.query(RetentionEligibleMetrics.participantId).all()
                 self.update_many_ids(pids)
         elif self.args.pid:
             _logger.info('  Participant ID        : {0}'.format(clr.fmt(f'P{self.args.pid}')))

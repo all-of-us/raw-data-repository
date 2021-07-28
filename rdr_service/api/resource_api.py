@@ -205,11 +205,12 @@ class ResourceRequestApi(Resource):
             raise BadRequest('Resource request without Resource id.')
 
         with self.dao.session() as session:
-
             # Return the meta data for the requested Resource Data record.
             for _id in [resource.pk_id, resource.pk_alt_id]:
                 query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified,
-                                      ResourceData.resource)
+                        ResourceData.resource).join(ResourceSchema, ResourceType).\
+                        filter(ResourceType.resourceURI == resource.resource_uri,
+                               ResourceSchema.resourceTypeID == ResourceType.id)
                 if isinstance(_id, int):
                     query = query.filter(ResourceData.resourcePKID == _id)
                 elif isinstance(_id, str):
