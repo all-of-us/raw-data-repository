@@ -25,6 +25,6 @@ class RetentionMetricSchema(Schema):
 
     class Meta:
         schema_id = SchemaID.retention_metrics
-        resource_uri = 'RetentionMetrics'
+        resource_uri = 'RetentionMetric'
         resource_pk_field = 'participant_id'
         pii_fields = None
