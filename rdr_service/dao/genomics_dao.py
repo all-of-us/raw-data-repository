@@ -4,6 +4,7 @@ import pytz
 import sqlalchemy
 import logging
 from dateutil import parser
+from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
@@ -1081,7 +1082,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 )
                 .outerjoin(
                     GenomicGcDataFileMissing,
-                    GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -1121,7 +1123,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 )
                 .outerjoin(
                     GenomicGcDataFileMissing,
-                    GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
