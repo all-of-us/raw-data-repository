@@ -28,7 +28,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW1RawDao,
     GenomicAW2RawDao,
     GenomicIncidentDao,
-    GenomicMemberReportStateDao)
+    GenomicMemberReportStateDao, GenomicGcDataFileMissingDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -134,6 +134,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.missing_file_dao = GenomicGcDataFileMissingDao()
         self.sample_dao = BiobankStoredSampleDao()
         self.mk_dao = MailKitOrderDao()
         self.site_dao = SiteDao()
@@ -1119,11 +1120,19 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
+        # TODO: Disabling incidents for missing files. A future PR will address this.
+        # processed_file = self.file_processed_dao.get(1)
+        # incident = self.incident_dao.get_by_source_file_id(processed_file.id)
+        # self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
+        # self.assertEqual(True, any([i for i in incident if i.slack_notification]))
+        # self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
+
+        missing_file = self.missing_file_dao.get(1)
+        self.assertEqual("rdr", missing_file.gc_site_id)
+        self.assertEqual("Grn.idat.md5sum", missing_file.file_type)
+        self.assertEqual(2, missing_file.run_id)
+        self.assertEqual(1, missing_file.gc_validation_metric_id)
+        self.assertEqual(0, missing_file.resolved)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -1211,11 +1220,19 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
 
-        processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
+        # TODO: Disabling incidents for missing files. A future PR will address this.
+        # processed_file = self.file_processed_dao.get(1)
+        # incident = self.incident_dao.get_by_source_file_id(processed_file.id)
+        # self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
+        # self.assertEqual(True, any([i for i in incident if i.slack_notification]))
+        # self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
+
+        missing_file = self.missing_file_dao.get(1)
+        self.assertEqual("rdr", missing_file.gc_site_id)
+        self.assertEqual("cram.crai", missing_file.file_type)
+        self.assertEqual(2, missing_file.run_id)
+        self.assertEqual(1, missing_file.gc_validation_metric_id)
+        self.assertEqual(0, missing_file.resolved)
 
         run_obj = self.job_run_dao.get(2)
 
