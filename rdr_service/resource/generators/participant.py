@@ -53,8 +53,8 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
     TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
-from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, COHORT_1_CUTOFF, \
-    COHORT_2_CUTOFF, ConsentCohortEnum, PDREnrollmentStatusEnum
+from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
+    PDREnrollmentStatusEnum
 from rdr_service.resource.helpers import DateCollection, RURAL_ZIPCODES
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
@@ -569,6 +569,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             filter(QuestionnaireResponse.questionnaireId ==
                    QuestionnaireConcept.questionnaireId).label('codeId')
 
+        # TODO: Workaround for PDR-364 is to pull cohort value from participant_summary. LIMITED USE CASE ONLY
+        query = ro_session.query(ParticipantSummary.consentCohort).filter(ParticipantSummary.participantId == p_id)
+        value = query.first()
+        cohort = ConsentCohortEnum.UNSET if not value or value[0] is None else ConsentCohortEnum(int(value[0]))
+        data = {
+            'consent_cohort': cohort.name,
+            'consent_cohort_id': cohort.value
+        }
+
         # Responses are sorted by authored date ascending and then created date descending
         # This should result in a list where any replays of a response are adjacent (most recently created first)
         query = ro_session.query(
@@ -581,13 +590,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
-        data = {
-            'consent_cohort': ConsentCohortEnum.UNSET.name,
-            'consent_cohort_id': ConsentCohortEnum.UNSET.value
-        }
         modules = list()
         consents = list()
-        consent_dt = None
 
         if results:
             # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
@@ -619,17 +623,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
-                    # Calculate Consent Cohort from ConsentPII authored
-                    if consent_dt is None and module_name == 'ConsentPII' and row.authored:
-                        consent_dt = row.authored
-                        if consent_dt < COHORT_1_CUTOFF:
-                            cohort = ConsentCohortEnum.COHORT_1
-                        elif COHORT_1_CUTOFF <= consent_dt <= COHORT_2_CUTOFF:
-                            cohort = ConsentCohortEnum.COHORT_2
-                        else:
-                            cohort = ConsentCohortEnum.COHORT_3
-                        data['consent_cohort'] = cohort.name
-                        data['consent_cohort_id'] = cohort.value
 
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
