@@ -3,10 +3,13 @@ import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 
+from rdr_service import config
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
+from rdr_service.dao.participant_dao import ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
 from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy, StoreResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
@@ -35,6 +38,18 @@ class ConsentTool(ToolBase):
             self.validate_consents()
         elif self.args.command == 'upload':
             self.upload_records()
+        elif self.args.command == 'check-retro-sync':
+            self.check_retro_sync()
+
+    def check_retro_sync(self):
+        with self.get_session() as session:
+            consent_dao = ConsentDao()
+            sync_config = self.get_server_config()[config.CONSENT_SYNC_BUCKETS]
+            files = consent_dao.get_files_ready_to_sync(org_names=sync_config.keys(), session=session)
+
+            retro_files = [file for file in files if file.file_upload_time < datetime(2021, 6, 1)]
+            guesser = ConsentSyncGuesser(session=session, participant_history_dao=ParticipantHistoryDao())
+            guesser.check_consents(retro_files)
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
@@ -200,6 +215,8 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
         help='CSV file defining validation record data that should be added to the database',
         required=True
     )
+
+    subparsers.add_parser('check-retro-sync')
 
 
 def run():

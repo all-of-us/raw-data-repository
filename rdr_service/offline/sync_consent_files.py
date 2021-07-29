@@ -21,6 +21,7 @@ from rdr_service import config
 from rdr_service.api_util import copy_cloud_file, download_cloud_file, get_blob, list_blobs, parse_date
 from rdr_service.dao import database_factory
 from rdr_service.dao.participant_dao import ParticipantDao, ParticipantHistoryDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -64,12 +65,12 @@ class ConsentSyncGuesser:
             session=self._session,
             participant_ids=participant_ids
         )
-        latest_participant_pairings: Dict[int, PairingHistoryRecord] = {}
+        latest_participant_pairings = {}
         for history_record in raw_pairing_data:
             participant_id = history_record.participantId
             possible_latest_record = PairingHistoryRecord(
-                org_name=history_record['externalId'],
-                start_date=history_record['lastModified']
+                org_name=history_record.externalId,
+                start_date=history_record.lastModified
             )
             if participant_id not in latest_participant_pairings:
                 latest_participant_pairings[participant_id] = possible_latest_record
@@ -77,6 +78,18 @@ class ConsentSyncGuesser:
                 currently_stored_pairing = latest_participant_pairings[participant_id]
                 if currently_stored_pairing.start_date <= possible_latest_record.start_date:
                     latest_participant_pairings[participant_id] = possible_latest_record
+
+        participant_summaries = ParticipantSummaryDao.get_by_ids_with_session(self._session, participant_ids)
+        for summary in participant_summaries:
+            pairing_info = latest_participant_pairings[summary.participantId]
+            latest_participant_pairings[summary.participantId] = (pairing_info, summary)
+
+        for file in files:
+            pairing_info, summary = latest_participant_pairings[file.participant_id]
+            sync_date = self.get_sync_date(file=file, summary=summary, latest_pairing_info=pairing_info)
+            if sync_date is not None:
+                file.sync_time = sync_date
+                file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
 
     @classmethod
     def get_sync_date(cls, file: ConsentFile, summary: ParticipantSummary, latest_pairing_info: PairingHistoryRecord):
