@@ -11,7 +11,7 @@ from rdr_service.model.bq_participant_summary import (
     BQConsentSchema,
     BQPatientStatusSchema,
     BQBiobankOrderSchema,
-    BQParticipantPairingHistorySchema
+    BQPairingHistorySchema
 )
 
 
@@ -194,7 +194,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
                                                 BQFieldModeEnum.NULLABLE)
     enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
                                          BQFieldModeEnum.NULLABLE)
-    pairing_history = BQRecordField('pairing_history', schema=BQParticipantPairingHistorySchema)
+    pairing_history = BQRecordField('pairing_history', schema=BQPairingHistorySchema)
 
 
 class BQPDRParticipantSummary(BQTable):

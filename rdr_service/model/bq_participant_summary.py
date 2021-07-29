@@ -205,7 +205,7 @@ class BQEhrReceiptSchema(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
 
 
-class BQParticipantPairingHistorySchema(BQSchema):
+class BQPairingHistorySchema(BQSchema):
     """
     Participant pairing history
     """
@@ -352,7 +352,7 @@ class BQParticipantSummarySchema(BQSchema):
                                                 BQFieldModeEnum.NULLABLE)
     enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
                                          BQFieldModeEnum.NULLABLE)
-    pairing_history = BQRecordField('pairing_history', schema=BQParticipantPairingHistorySchema)
+    pairing_history = BQRecordField('pairing_history', schema=BQPairingHistorySchema)
 
 
 class BQParticipantSummary(BQTable):

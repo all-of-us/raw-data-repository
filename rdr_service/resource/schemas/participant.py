@@ -243,7 +243,7 @@ class EhrReceiptSchema(Schema):
         pii_filter = {}  # dict(field: lambda function).
 
 
-class ParticipantParingHistorySchema(Schema):
+class PairingHistorySchema(Schema):
     """
     Participant pairing history
     """
@@ -348,7 +348,7 @@ class ParticipantSchema(Schema):
     sexual_orientation = fields.String(validate=validate.Length(max=80))
     sexual_orientation_id = fields.Int32()
 
-    pairing_history = fields.Nested(ParticipantParingHistorySchema, many=True)
+    pairing_history = fields.Nested(PairingHistorySchema, many=True)
     pm = fields.Nested(PhysicalMeasurementsSchema, many=True)
 
     races = fields.Nested(RaceSchema, many=True)
