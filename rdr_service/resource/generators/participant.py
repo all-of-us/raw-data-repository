@@ -395,9 +395,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
                                    ParticipantHistory.organizationId, Organization.externalId.label('organization'),
                                    ParticipantHistory.siteId, Site.googleGroup.label('site')). \
-                join(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
-                join(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
-                join(Site, Site.siteId == ParticipantHistory.siteId).\
+                outerjoin(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
+                outerjoin(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
+                outerjoin(Site, Site.siteId == ParticipantHistory.siteId).\
                 filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified)
         # sql = self.ro_dao.query_to_text(query)
         pairing = query.all()
