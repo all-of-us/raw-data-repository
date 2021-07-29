@@ -45,6 +45,7 @@ from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
@@ -390,24 +391,26 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         }
 
         # Collect participant pairing history
-        pairing = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId,
-                                   ParticipantHistory.organizationId, ParticipantHistory.siteId). \
-            filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified).all()
-
         pairing_history = None
+        query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
+                                   ParticipantHistory.organizationId, Organization.externalId.label('organization'),
+                                   ParticipantHistory.siteId, Site.googleGroup.label('site')). \
+                join(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
+                join(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
+                join(Site, Site.siteId == ParticipantHistory.siteId).\
+                filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified)
+        # sql = self.ro_dao.query_to_text(query)
+        pairing = query.all()
         if pairing:
             pairing_history = list()
             for item in pairing:
-                hpo = ro_session.query(HPO.name).filter(HPO.hpoId == item.hpoId).first()
-                organization = ro_session.query(Organization.externalId). \
-                    filter(Organization.organizationId == item.organizationId).first()
                 pairing_history.append({
                     'last_modified': item.lastModified,
-                    'hpo': hpo.name if hpo else None,
+                    'hpo': item.hpo,
                     'hpo_id': item.hpoId,
-                    'organization': organization.externalId if organization else None,
+                    'organization': item.organization,
                     'organization_id': item.organizationId,
-                    'site': self._lookup_site_name(p.siteId, ro_session),
+                    'site': item.site,
                     'site_id': item.siteId
                 })
 
