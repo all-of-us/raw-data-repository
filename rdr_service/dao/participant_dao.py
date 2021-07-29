@@ -78,7 +78,7 @@ class ParticipantHistoryDao(BaseDao):
             Organization.organizationId == ParticipantHistory.organizationId
         ).filter(
             ParticipantHistory.participantId.in_(participant_ids)
-        ).distinct().all()
+        ).order_by(ParticipantHistory.lastModified).distinct().all()
 
 
 class ParticipantDao(UpdatableDao):

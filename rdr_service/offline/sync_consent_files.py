@@ -76,7 +76,8 @@ class ConsentSyncGuesser:
                 latest_participant_pairings[participant_id] = possible_latest_record
             else:
                 currently_stored_pairing = latest_participant_pairings[participant_id]
-                if currently_stored_pairing.start_date <= possible_latest_record.start_date:
+                if currently_stored_pairing.start_date <= possible_latest_record.start_date \
+                        and currently_stored_pairing.org_name != possible_latest_record.org_name:
                     latest_participant_pairings[participant_id] = possible_latest_record
 
         participant_summaries = ParticipantSummaryDao.get_by_ids_with_session(self._session, participant_ids)
