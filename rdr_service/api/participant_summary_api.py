@@ -71,6 +71,10 @@ class ParticipantSummaryApi(BaseApi):
         if not participant:
             raise NotFound(f"Participant P{p_id} was not found")
 
+        participant_summary = self.dao.get_by_participant_id(p_id)
+        if participant_summary:
+            raise BadRequest(f"Participant Summary for P{p_id} already exists, updates are not allowed.")
+
         return super(ParticipantSummaryApi, self).post(p_id)
 
     def _make_query(self, check_invalid=True):

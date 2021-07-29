@@ -446,23 +446,27 @@ class ParticipantSummaryDao(UpdatableDao):
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
-        current_summary, ps = self.get_by_participant_id(participant_id), None
-        if not current_summary:
-            participant = self.participant_dao.get(participant_id)
-            defaults = {
-                "participantId": participant.participantId,
-                "biobankId": participant.biobankId,
-                "hpoId": participant.hpoId,
-                "firstName": self.faker.first_name(),
-                "lastName": self.faker.first_name(),
-                "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
-                "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
-                "participantOrigin": participant.participantOrigin,
-                "isEhrDataAvailable": False,
-            }
-            ps = ParticipantSummary(**defaults)
+        column_names = self.to_dict(ParticipantSummary())
 
-        return ps
+        participant = self.participant_dao.get(participant_id)
+        static_keys = ["participantId", "biobankId"]
+        from_payload_attrs = {key: value for key, value in resource.items() if key in
+                       column_names and key not in static_keys}
+
+        defaults_attrs = {
+            "participantId": participant.participantId,
+            "biobankId": participant.biobankId,
+            "hpoId": participant.hpoId,
+            "firstName": self.faker.first_name(),
+            "lastName": self.faker.first_name(),
+            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+            "participantOrigin": participant.participantOrigin,
+            "isEhrDataAvailable": False,
+        }
+        combined = {key: from_payload_attrs.get(key, defaults_attrs[key]) for key in defaults_attrs}
+
+        return ParticipantSummary(**combined)
 
     def get_id(self, obj):
         return obj.participantId

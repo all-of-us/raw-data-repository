@@ -1,10 +1,11 @@
-from copy import deepcopy
 import datetime
+import faker
 import http.client
-
-from mock import patch
 import threading
 import unittest
+
+from copy import deepcopy
+from mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import config, main
@@ -219,6 +220,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
         self.ps_dao = ParticipantSummaryDao()
+        self.faker = faker.Faker()
 
     def overwrite_test_user_awardee(self, awardee, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
@@ -3455,12 +3457,15 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
     def test_response_for_pid_not_found_in_post(self):
         bad_pid = 'P12345'
+
         response = self.send_post(f'Participant/{bad_pid}/Summary', expected_status=http.client.NOT_FOUND)
+
         self.assertEqual(response.status_code, 404)
+
         bad_message = f'Participant {bad_pid} was not found'
         self.assertEqual(bad_message, response.json['message'])
 
-    def test_response_for_correct_roles(self):
+    def test_response_for_correct_roles_post(self):
         participant_one = self.send_post("Participant", {})
         prefix_pid = participant_one["participantId"]
 
@@ -3473,6 +3478,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         bad_message = "You don't have the permission to access the " \
                       "requested resource. It is either read-protected or " \
                       "not readable by the server."
+
         self.assertEqual(bad_message, response.json['message'])
 
         self.overwrite_test_user_roles([PTC])
@@ -3480,6 +3486,73 @@ class ParticipantSummaryApiTest(BaseTestCase):
         response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
         self.assertIsNotNone(response)
         self.assertEqual(response['participantId'], prefix_pid)
+
+    def test_summary_created_on_post_if_doesnt_exist(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+
+        participant_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(participant_summary)
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        self.assertIsNotNone(response)
+
+        participant_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNotNone(participant_summary)
+        self.assertEqual(int(pid), participant_summary.participantId)
+
+    def test_insert_defaults_not_overwritten_post(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+        biobank_id = participant_one["biobankId"]
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        post_payload = {
+            "participantId": 12344543,
+            "biobankId": 12344543,
+        }
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', post_payload)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response['participantId'], prefix_pid)
+        self.assertEqual(response['biobankId'], biobank_id)
+
+    def test_reinsert_throws_exception(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+        post_payload = {}
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload
+        )
+        self.assertIsNotNone(response)
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNotNone(has_summary)
+
+        bad_message = f"Participant Summary for {prefix_pid} already exists, updates are not allowed."
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload,
+            expected_status=400
+        )
+
+        self.assertEqual(bad_message, response.json['message'])
+        self.assertEqual(response.status_code, 400)
 
     def _remove_participant_retention_eligible(self, participant_id):
         summary = self.ps_dao.get(participant_id)

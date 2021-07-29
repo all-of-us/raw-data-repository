@@ -448,7 +448,7 @@ class ParticipantDao(UpdatableDao):
 
         if test_flag:
             participant = self.get(id_)
-        if participant is None:
+        if not participant:
             participant = Participant(participantId=id_)
 
         # biobankId, lastModified, signUpTime are set by DAO.
