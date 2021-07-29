@@ -64,6 +64,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantBiobankOrderView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantBiobankSampleView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDREhrReceiptView'),
+    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPairingHistoryView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRConsentPIIView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRTheBasicsView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRLifestyleView'),

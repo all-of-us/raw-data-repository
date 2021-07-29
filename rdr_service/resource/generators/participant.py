@@ -41,10 +41,11 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
-from rdr_service.model.participant import Participant
+from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
@@ -395,6 +396,32 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # TODO:  Enable this field definition in the BQ model if it's determined it should be included in PDR
             'date_of_death': deceased_date_of_death
         }
+
+        # Collect participant pairing history
+        pairing_history = None
+        query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
+                                   ParticipantHistory.organizationId, Organization.externalId.label('organization'),
+                                   ParticipantHistory.siteId, Site.googleGroup.label('site')). \
+                outerjoin(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
+                outerjoin(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
+                outerjoin(Site, Site.siteId == ParticipantHistory.siteId).\
+                filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified)
+        # sql = self.ro_dao.query_to_text(query)
+        pairing = query.all()
+        if pairing:
+            pairing_history = list()
+            for item in pairing:
+                pairing_history.append({
+                    'last_modified': item.lastModified,
+                    'hpo': item.hpo,
+                    'hpo_id': item.hpoId,
+                    'organization': item.organization,
+                    'organization_id': item.organizationId,
+                    'site': item.site,
+                    'site_id': item.siteId
+                })
+
+        data['pairing_history'] = pairing_history
 
         # Record participant activity events
         data['activity'] = [
