@@ -165,22 +165,21 @@ class ConsentTool(ToolBase):
                 validation_controller.revalidate_record(session, _id)
 
     def generate_ce(self):
+        consent_dao = ConsentDao()
         validation_controller = ConsentValidationController(
-            consent_dao=ConsentDao(),
+            consent_dao=consent_dao,
             participant_summary_dao=ParticipantSummaryDao(),
             storage_provider=GoogleCloudStorageProvider()
         )
-        with self.get_session() as session:
-            # with LogResultStrategy(
-            #     logger=logger,
-            #     verbose=True,
-            #     storage_provider=GoogleCloudStorageProvider()
-            # ) as output_strategy:
-            # validation_controller.validate_recent_uploads(session, output_strategy)
-            validation_controller.generate_records_for_ce(session,
-                                                          min_consent_date=datetime(2021, 6, 24, tzinfo=pytz.utc))
-
-        input('Press Enter to exit...')
+        with self.get_session() as session, StoreResultStrategy(
+            session=session,
+            consent_dao=consent_dao
+        ) as store_strategy:
+            validation_controller.generate_records_for_ce(
+                session=session,
+                min_consent_date=datetime(2021, 6, 27, tzinfo=pytz.utc),
+                output_strategy=store_strategy
+            )
 
     def validate(self):
         validation_controller = ConsentValidationController(

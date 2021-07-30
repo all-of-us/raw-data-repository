@@ -247,13 +247,10 @@ class ConsentValidationController:
             sync_status=ConsentSyncStatus.READY_FOR_SYNC
         )
 
-    def generate_records_for_ce(self, session, min_consent_date):
-        validation_results: List[ParsingResult] = []
-        validated_participant_ids = []
+    def generate_records_for_ce(self, session, min_consent_date, output_strategy: ValidationOutputStrategy):
         summaries = self.consent_dao.get_ce_participants_with_consents(session, start_date=min_consent_date)
         for summary in summaries:
             print(f'on {summary.participantId}')
-            validated_participant_ids.append(summary.participantId)
             consent_factory: files.ConsentFileAbstractFactory = files.ConsentFileAbstractFactory.get_file_factory(
                 participant_id=summary.participantId,
                 participant_origin=summary.participantOrigin,
@@ -264,20 +261,7 @@ class ConsentValidationController:
                 for blob in consent_factory.consent_blobs
                 if blob.blob.updated >= min_consent_date
             ]
-            validation_results.extend(validation_records)
-
-        results_to_store = []
-        previous_results = self.consent_dao.get_validation_results_for_participants(
-            session,
-            participant_ids=validated_participant_ids
-        )
-        for possible_new_result in validation_results:
-            if not any(
-                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
-            ):
-                results_to_store.append(possible_new_result)
-
-        self.consent_dao.batch_update_consent_files(session, results_to_store)
+            output_strategy.add_all(validation_records)
 
     def generate_new_validations(self, session, participant_id, consent_type: ConsentType,
                                  output_strategy: ValidationOutputStrategy):
