@@ -62,7 +62,9 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.field_mappings import QUESTION_CODE_TO_FIELD
 from rdr_service.model.code import CodeType
-from rdr_service.participant_enums import UNSET_HPO_ID, make_primary_provider_link_for_hpo
+from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.participant_enums import UNSET_HPO_ID, make_primary_provider_link_for_hpo, RetentionStatus, \
+    RetentionType
 
 _ANSWER_SPECS_BUCKET = "all-of-us-rdr-fake-data-spec"
 _ANSWER_SPECS_FILE = "answer_specs.csv"
@@ -702,16 +704,17 @@ class FakeParticipantGenerator(object):
                              requested_site=None):
         participant_response, creation_time, hpo = self._create_participant(requested_hpo,
                                                                             site=requested_site)
+        participant_id = participant_response["participantId"]
+        retention_time = creation_time
 
         if requested_site is None:
-            participant_id = participant_response["participantId"]
             california_hpo = hpo is not None and hpo.name in _CALIFORNIA_HPOS
             consent_time, last_qr_time, the_basics_submission_time = self._submit_questionnaire_responses(
                 participant_id, california_hpo, creation_time
             )
 
             if consent_time:
-                last_request_time = last_qr_time
+                last_request_time = retention_time = last_qr_time
                 # Potentially include physical measurements and biobank orders if the client requested it
                 # and the participant has submitted the basics questionnaire.
                 if include_physical_measurements and the_basics_submission_time:
@@ -727,6 +730,29 @@ class FakeParticipantGenerator(object):
                     )
                     last_request_time = max(last_request_time, last_hpo_change_time)
                 self._submit_status_changes(participant_id, last_request_time)
+
+        # Create a retention_eligible_metrics record for the participant.
+        rec = RetentionEligibleMetrics()
+        rec.participantId = int(participant_id[1:])
+        rec.retentionEligible = True if random.randint(0, 1) else False
+        rec.retentionEligibleStatus = \
+            RetentionStatus.NOT_ELIGIBLE if rec.retentionEligible else RetentionStatus.ELIGIBLE
+        rec.retentionType = RetentionType.UNSET
+        if rec.retentionEligible:
+            rec.retentionEligibleTime = retention_time
+            rec.activelyRetained = True if random.randint(0, 1) else False
+            rec.passivelyRetained = True if random.randint(0, 1) else False
+            rec.fileUploadDate = retention_time
+            if rec.activelyRetained and not rec.passivelyRetained:
+                rec.retentionType = RetentionType.ACTIVE
+            elif not rec.activelyRetained and rec.passivelyRetained:
+                rec.retentionType = RetentionType.PASSIVE
+            elif rec.activelyRetained and rec.passivelyRetained:
+                rec.retentionType = RetentionType.ACTIVE_AND_PASSIVE
+
+        with HPODao().session() as session:
+            session.add(rec)
+            session.commit()
 
     def add_pm_and_biospecimens_to_participants(self, participant_id):
         logging.info("Adding PM&B for %s", participant_id)
@@ -772,6 +798,7 @@ class FakeParticipantGenerator(object):
         participant_response = self._client.request_json(
             "Participant", method="POST", body=participant_json, pretend_date=creation_time
         )
+
         return (participant_response, creation_time, hpo)
 
     def _random_code_answer(self, question_code):

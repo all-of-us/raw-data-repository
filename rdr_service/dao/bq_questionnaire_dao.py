@@ -9,7 +9,7 @@ from rdr_service.model.bq_questionnaires import (
     BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle,
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory,
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb,
-    BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1
+    BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1, BQPDRCOPEVaccine2
 )
 from rdr_service.code_constants import PPI_SYSTEM
 from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
@@ -113,6 +113,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
             'cope_dec': BQPDRCOPEDec,
             'cope_feb': BQPDRCOPEFeb,
             'cope_vaccine1': BQPDRCOPEVaccine1,
+            'cope_vaccine2': BQPDRCOPEVaccine2,
             # There are two different module id codes in use for the withdrawal survey
             'withdrawal_intro': BQPDRWithdrawalIntro,
             'StopParticipating': BQPDRStopParticipating

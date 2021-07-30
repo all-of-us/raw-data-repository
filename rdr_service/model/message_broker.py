@@ -86,7 +86,7 @@ class MessageBrokerDestAuthInfo(Base):
     """access client secret"""
     tokenEndpoint = Column("token_endpoint", String(512))
     """token endpoint"""
-    accessToken = Column("access_token", String(512))
+    accessToken = Column("access_token", String(4000))
     """access token for the destination API"""
     expiredAt = Column("expired_at", UTCDateTime6, nullable=True)
     """access token expired time"""
