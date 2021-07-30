@@ -3524,6 +3524,39 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(response['participantId'], prefix_pid)
         self.assertEqual(response['biobankId'], biobank_id)
 
+    def test_payload_gets_inserted_into_values(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        first_name = self.fake.first_name()
+        last_name = self.fake.first_name()
+        email = self.fake.email()
+        zip_code = '73097'
+
+        post_payload = {
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "zipCode": zip_code,
+            "suspensionStatus": "NO_CONTACT"
+        }
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload
+        )
+        self.assertIsNotNone(response)
+        self.assertEqual(response['firstName'], post_payload['firstName'])
+        self.assertEqual(response['lastName'], post_payload['lastName'])
+        self.assertEqual(response['email'], post_payload['email'])
+        self.assertEqual(response['zipCode'], post_payload['zipCode'])
+        self.assertEqual(response['suspensionStatus'], post_payload['suspensionStatus'])
+
     def test_reinsert_throws_exception(self):
         participant_one = self.send_post("Participant", {})
 

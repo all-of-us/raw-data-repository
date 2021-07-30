@@ -20,6 +20,7 @@ from rdr_service.api_util import (
     format_json_hpo,
     format_json_org,
     format_json_site,
+    parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
@@ -446,14 +447,15 @@ class ParticipantSummaryDao(UpdatableDao):
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
-        column_names = self.to_dict(ParticipantSummary())
-
+        column_names = self.to_dict(self.model_type)
         participant = self.participant_dao.get(participant_id)
         static_keys = ["participantId", "biobankId"]
-        from_payload_attrs = {key: value for key, value in resource.items() if key in
-                       column_names and key not in static_keys}
 
-        defaults_attrs = {
+        payload_attrs = {key: value for key, value in resource.items()
+                         if key in column_names and key not in
+                         static_keys}
+
+        default_attrs = {
             "participantId": participant.participantId,
             "biobankId": participant.biobankId,
             "hpoId": participant.hpoId,
@@ -464,9 +466,11 @@ class ParticipantSummaryDao(UpdatableDao):
             "participantOrigin": participant.participantOrigin,
             "isEhrDataAvailable": False,
         }
-        combined = {key: from_payload_attrs.get(key, defaults_attrs[key]) for key in defaults_attrs}
+        default_attrs.update(payload_attrs)
 
-        return ParticipantSummary(**combined)
+        self.parse_resource_enums(default_attrs)
+
+        return self.model_type(**default_attrs)
 
     def get_id(self, obj):
         return obj.participantId
@@ -490,6 +494,15 @@ class ParticipantSummaryDao(UpdatableDao):
         """Participant summaries don't have a version value; drop it from validation logic."""
         if not existing_obj:
             raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
+
+    def parse_resource_enums(self, resource):
+        for key in resource.keys():
+            if key in self.to_dict(self.model_type):
+                _type = getattr(self.model_type, key)
+                if _type.expression.type.__class__.__name__.lower() == 'enum':
+                    _cls = _type.expression.type.enum_type
+                    parse_json_enum(resource, key, _cls)
+        return resource
 
     def _has_withdrawn_filter(self, query):
         for field_filter in query.field_filters:

@@ -1032,6 +1032,22 @@ class ParticipantSummaryDaoTest(BaseTestCase):
         self.assertIsNotNone(participant_summary)
         self.assertEqual(pid, participant_summary.participantId)
 
+    def test_parse_enums_from_resource(self):
+        resource = {
+            "withdrawalStatus": "NO_USE",
+            "suspensionStatus": "NOT_SUSPENDED"
+        }
+
+        all_strings = all([val for val in resource.values()
+                           if isinstance(type(val), str)])
+        self.assertTrue(all_strings)
+
+        resource = self.dao.parse_resource_enums(resource)
+
+        all_enums = all([key for key in resource.keys()
+                         if type(key).__class__.__name__ == '_EnumClass'])
+        self.assertTrue(all_enums)
+
     @staticmethod
     def _get_amended_info(order):
         amendment = dict(
