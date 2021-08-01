@@ -65,3 +65,7 @@ locust   # Used in tools/load_test_locustfile.py
 
 # Documentation
 sphinx
+
+# Automated spreadsheet report generation (e.g., for consent validation metrics reporting)
+pandas
+gspread
