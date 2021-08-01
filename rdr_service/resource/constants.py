@@ -28,6 +28,7 @@ class SchemaID(IntEnum):
     participant_consents = 2060
     participant_modules = 2070
     participant_address = 2080
+    participant_pairing_history = 2085
     patient_statuses = 2090
     ehr_recept = 2100
     pdr_participant = 2110

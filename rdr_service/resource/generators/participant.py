@@ -41,10 +41,11 @@ from rdr_service.model.ehr import ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements, PhysicalMeasurementsStatus
 from rdr_service.model.organization import Organization
-from rdr_service.model.participant import Participant
+from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 # TODO:  Using participant_summary as a workaround.  Replace with new participant_profile when it's available
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
@@ -396,6 +397,32 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'date_of_death': deceased_date_of_death
         }
 
+        # Collect participant pairing history
+        pairing_history = None
+        query = ro_session.query(ParticipantHistory.lastModified, ParticipantHistory.hpoId, HPO.name.label('hpo'),
+                                   ParticipantHistory.organizationId, Organization.externalId.label('organization'),
+                                   ParticipantHistory.siteId, Site.googleGroup.label('site')). \
+                outerjoin(HPO, HPO.hpoId == ParticipantHistory.hpoId).\
+                outerjoin(Organization, Organization.organizationId == ParticipantHistory.organizationId).\
+                outerjoin(Site, Site.siteId == ParticipantHistory.siteId).\
+                filter(ParticipantHistory.participantId == p_id).order_by(ParticipantHistory.lastModified)
+        # sql = self.ro_dao.query_to_text(query)
+        pairing = query.all()
+        if pairing:
+            pairing_history = list()
+            for item in pairing:
+                pairing_history.append({
+                    'last_modified': item.lastModified,
+                    'hpo': item.hpo,
+                    'hpo_id': item.hpoId,
+                    'organization': item.organization,
+                    'organization_id': item.organizationId,
+                    'site': item.site,
+                    'site_id': item.siteId
+                })
+
+        data['pairing_history'] = pairing_history
+
         # Record participant activity events
         data['activity'] = [
             _act(data['sign_up_time'], ActivityGroupEnum.Profile, ParticipantEventEnum.SignupTime),
@@ -679,14 +706,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         mod_ca['answer_id'] = consent['consent_value_id']
 
                         # Compare against the last consent response processed to filter replays/duplicates
-                        if not self.is_replay(last_consent_processed, consent, created_key='consent_module_created'):
+                        if not self.is_replay(last_consent_processed, consent,
+                                              ignore_keys=['consent_module_created', 'questionnaire_response_id']):
                             consents.append(consent)
                             consent_added = True
 
                         last_consent_processed = consent.copy()
 
                 # consent_added == True means we already know it wasn't a replayed consent
-                if consent_added or not self.is_replay(last_mod_processed, module_data, created_key='module_created'):
+                if consent_added or not self.is_replay(last_mod_processed, module_data,
+                                                       ignore_keys=['module_created', 'questionnaire_response_id']):
+
                     modules.append(module_data)
 
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
@@ -1564,32 +1594,30 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
 
     @staticmethod
-    def is_replay(prev_data_dict, data_dict, created_key=None):
+    def is_replay(prev_data_dict, data_dict, ignore_keys=None):
         """
         Compares two module or consent data dictionaries to identify replayed responses
         Replayed/resent responses are usually the result of trying to resolve a data issue, and are basically
-        duplicate QuestionnaireResponse payloads except for differing creation timestamps
+        duplicate QuestionnaireResponse payloads except for differing creation timestamps and questionnaire response ids
 
         :param prev_data_dict: data dictionary to compare
         :param data_dict: data dictionary to compare
-        :param created_key:  Dict key for the created timestamp value
-        :return:  Boolean, True if the dictionaries match on everything except the created timestamp value
+        :param ignore_keys:  List of dict fields that should be excluded from matching.  E.g., created timestamp field
+        :return:  Boolean, True if the dictionaries match on everything except the excluded keys
         """
         # Confirm both data dictionaries are populated
         if not bool(prev_data_dict) or not bool(data_dict):
             return False
 
-        # Validate we're comparing "like" dictionaries, with a valid created timestamp key name
+        # Validate we're comparing "like" dictionaries
         prev_data_dict_keys = sorted(list(prev_data_dict.keys()))
         data_dict_keys = sorted(list(data_dict.keys()))
         if prev_data_dict_keys != data_dict_keys:
             return False
-        if not (created_key and created_key in data_dict_keys):
-            return False
 
-        # Content must match on everything but created timestamp value
+        # Content must match on everything except the specifically excluded field names
         for key in data_dict.keys():
-            if key == created_key:
+            if ignore_keys and key in ignore_keys:
                 continue
             if data_dict[key] != prev_data_dict[key]:
                 return False
