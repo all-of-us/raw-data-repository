@@ -58,7 +58,7 @@ class ConsentSyncGuesser:
         self._session = session
         self._participant_history_dao = participant_history_dao
 
-    def check_consents(self, files: Collection[ConsentFile]):
+    def check_consents(self, files: Collection[ConsentFile], session):
         # Get the latest pairing information for the participants
         participant_ids = [file.participant_id for file in files]
         raw_pairing_data = self._participant_history_dao.get_pairing_history(
@@ -85,12 +85,17 @@ class ConsentSyncGuesser:
             pairing_info = latest_participant_pairings[summary.participantId]
             latest_participant_pairings[summary.participantId] = (pairing_info, summary)
 
+        count = 0
         for file in files:
             pairing_info, summary = latest_participant_pairings[file.participant_id]
             sync_date = self.get_sync_date(file=file, summary=summary, latest_pairing_info=pairing_info)
             if sync_date is not None:
                 file.sync_time = sync_date
-                file.sync_status = ConsentSyncStatus.READY_FOR_SYNC
+                file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
+
+            count += 1
+            if count % 500 == 0:
+                session.commit()
 
     @classmethod
     def get_sync_date(cls, file: ConsentFile, summary: ParticipantSummary, latest_pairing_info: PairingHistoryRecord):

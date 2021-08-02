@@ -49,7 +49,7 @@ class ConsentTool(ToolBase):
 
             retro_files = [file for file in files if file.file_upload_time < datetime(2021, 6, 1)]
             guesser = ConsentSyncGuesser(session=session, participant_history_dao=ParticipantHistoryDao())
-            guesser.check_consents(retro_files)
+            guesser.check_consents(retro_files, session=session)
 
     def report_files_for_correction(self):
         min_validation_date = parse(self.args.since) if self.args.since else None
