@@ -862,8 +862,8 @@ class RetentionEligibleMetricClass:
                 for id_ in batch:
                     self.update_single_id(id_)
             else:
-                payload = {'rebuild_all': False, 'batch': [{'id': x} for x in pids]}
-                task.execute('batch_rebuild_retention_metrics_task', payload=payload, in_seconds=15,
+                payload = {'rebuild_all': False, 'batch': [x[0] for x in pids]}
+                task = task.execute('batch_rebuild_retention_eligible_task', payload=payload, in_seconds=15,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
             count += len(batch)
