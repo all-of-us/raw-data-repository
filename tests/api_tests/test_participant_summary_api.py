@@ -1,14 +1,15 @@
-from copy import deepcopy
 import datetime
+import faker
 import http.client
-
-from mock import patch
 import threading
 import unittest
+
+from copy import deepcopy
+from mock import patch
 from urllib.parse import urlencode
 
 from rdr_service import config, main
-from rdr_service.api_util import PTC, CURATION
+from rdr_service.api_util import PTC, CURATION, HEALTHPRO
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (CONSENT_PERMISSION_NO_CODE, CONSENT_PERMISSION_YES_CODE,
                                         DVEHRSHARING_CONSENT_CODE_NO, DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -148,6 +149,15 @@ participant_summary_default_values_no_basics.update({
 })
 
 
+def _add_code_answer(code_answers, link_id, code):
+    if code:
+        code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
+
+
+def _make_entry(ps):
+    return {"fullUrl": "http://localhost/rdr/v1/Participant/%s/Summary" % ps["participantId"], "resource": ps}
+
+
 class ParticipantSummaryMySqlApiTest(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -209,6 +219,8 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
+        self.ps_dao = ParticipantSummaryDao()
+        self.faker = faker.Faker()
 
     def overwrite_test_user_awardee(self, awardee, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
@@ -364,7 +376,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             .create_database_participant_summary(participant=participant_one)
         participant_summary_one.loginPhoneNumber = '444-123-4567'
         participant_summary_one.email = self.fake.email()
-        ParticipantSummaryDao().update(participant_summary_one)
+        self.ps_dao.update(participant_summary_one)
 
         participant_summary_two = self.data_generator \
             .create_database_participant_summary(participant=participant_two)
@@ -479,9 +491,9 @@ class ParticipantSummaryApiTest(BaseTestCase):
             if num == 1:
                 self.data_generator \
                     .create_database_participant_summary(
-                        firstName=first_name,
-                        lastName="Tester"
-                    )
+                    firstName=first_name,
+                    lastName="Tester"
+                )
             else:
                 self.data_generator \
                     .create_database_participant_summary()
@@ -526,22 +538,22 @@ class ParticipantSummaryApiTest(BaseTestCase):
         for num in range(num_summary):
             self.data_generator \
                 .create_database_participant_summary(
-                    firstName=f"Testy_{num}",
-                    lastName=f"Tester_{num}",
-                    dateOfBirth=_date,
-                )
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=_date,
+            )
 
         response_only_dob = self.send_get(
-                f"ParticipantSummary?dateOfBirth={_date}",
-                expected_status=http.client.BAD_REQUEST
-            )
+            f"ParticipantSummary?dateOfBirth={_date}",
+            expected_status=http.client.BAD_REQUEST
+        )
         self.assertEqual(response_only_dob.status_code, 400)
         self.assertEqual(response_only_dob.json['message'], 'Argument lastName is required with dateOfBirth')
 
         response_only_last_name = self.send_get(
-                f"ParticipantSummary?lastName={last_name}",
-                expected_status=http.client.BAD_REQUEST
-            )
+            f"ParticipantSummary?lastName={last_name}",
+            expected_status=http.client.BAD_REQUEST
+        )
         self.assertEqual(response_only_last_name.status_code, 400)
         self.assertEqual(response_only_last_name.json['message'], 'Argument dateOfBirth is required with lastName')
 
@@ -1011,7 +1023,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.send_get(sort_by_lastmodified)
         self.assertGreaterEqual(len(sync_again["entry"]), 14)
         # The last 14 participants from sort_lm_response should be equal to the sync_again response.
-        #self.assertEqual(sort_lm_response["entry"][7:], sync_again["entry"][:13])
+        # self.assertEqual(sort_lm_response["entry"][7:], sync_again["entry"][:13])
 
         one_min_modified = list()
         for i in sync_again["entry"]:
@@ -1921,7 +1933,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2017,7 +2029,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2108,7 +2120,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_1, "1SAL", time=TIME_4)
         self._store_biobank_sample(participant_1, "2ED10", time=TIME_5)
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual(TIME_6.isoformat(), ps_1.get("enrollmentStatusMemberTime"))
@@ -2147,7 +2159,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         ps_1 = self.send_get("Participant/%s/Summary" % participant_id_1)
         self.assertEqual("COMPLETED", ps_1.get("physicalMeasurementsStatus"))
 
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         # cancel a physical measurement
         path = "Participant/%s/PhysicalMeasurements" % participant_id_1
@@ -2393,7 +2405,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
         # Update version for participant 3, which has changed.
         participant_3 = self.send_get("Participant/%s" % participant_id_3)
 
@@ -2804,7 +2816,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self._store_biobank_sample(participant_3, "1SAL")
         self._store_biobank_sample(participant_3, "2ED10")
         # Update participant summaries based on these changes.
-        ParticipantSummaryDao().update_from_biobank_stored_samples()
+        self.ps_dao.update_from_biobank_stored_samples()
 
         ps_2 = self.send_get("Participant/%s/Summary" % participant_id_2)
         self.assertEqual("SUBMITTED", ps_2["consentForDvElectronicHealthRecordsSharing"])
@@ -3443,15 +3455,145 @@ class ParticipantSummaryApiTest(BaseTestCase):
             mar_participant_id
         ], response_ids)
 
+    def test_response_for_pid_not_found_in_post(self):
+        bad_pid = 'P12345'
+
+        response = self.send_post(f'Participant/{bad_pid}/Summary', expected_status=http.client.NOT_FOUND)
+
+        self.assertEqual(response.status_code, 404)
+
+        bad_message = f'Participant {bad_pid} was not found'
+        self.assertEqual(bad_message, response.json['message'])
+
+    def test_response_for_correct_roles_post(self):
+        participant_one = self.send_post("Participant", {})
+        prefix_pid = participant_one["participantId"]
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary',
+                                  expected_status=403)
+        self.assertEqual(response.status_code, 403)
+
+        bad_message = "You don't have the permission to access the " \
+                      "requested resource. It is either read-protected or " \
+                      "not readable by the server."
+
+        self.assertEqual(bad_message, response.json['message'])
+
+        self.overwrite_test_user_roles([PTC])
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        self.assertIsNotNone(response)
+        self.assertEqual(response['participantId'], prefix_pid)
+
+    def test_summary_created_on_post_if_doesnt_exist(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+
+        participant_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(participant_summary)
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', {})
+        self.assertIsNotNone(response)
+
+        participant_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNotNone(participant_summary)
+        self.assertEqual(int(pid), participant_summary.participantId)
+
+    def test_insert_defaults_not_overwritten_post(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+        biobank_id = participant_one["biobankId"]
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        post_payload = {
+            "participantId": 12344543,
+            "biobankId": 12344543,
+        }
+
+        response = self.send_post(f'Participant/{prefix_pid}/Summary', post_payload)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response['participantId'], prefix_pid)
+        self.assertEqual(response['biobankId'], biobank_id)
+
+    def test_payload_gets_inserted_into_values(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        first_name = self.fake.first_name()
+        last_name = self.fake.first_name()
+        email = self.fake.email()
+        zip_code = '73097'
+
+        post_payload = {
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "zipCode": zip_code,
+            "suspensionStatus": "NO_CONTACT"
+        }
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload
+        )
+        self.assertIsNotNone(response)
+        self.assertEqual(response['firstName'], post_payload['firstName'])
+        self.assertEqual(response['lastName'], post_payload['lastName'])
+        self.assertEqual(response['email'], post_payload['email'])
+        self.assertEqual(response['zipCode'], post_payload['zipCode'])
+        self.assertEqual(response['suspensionStatus'], post_payload['suspensionStatus'])
+
+    def test_reinsert_throws_exception(self):
+        participant_one = self.send_post("Participant", {})
+
+        prefix_pid = participant_one["participantId"]
+        pid = prefix_pid.split('P')[1]
+        post_payload = {}
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNone(has_summary)
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload
+        )
+        self.assertIsNotNone(response)
+
+        has_summary = self.ps_dao.get_by_participant_id(pid)
+        self.assertIsNotNone(has_summary)
+
+        bad_message = f"Participant Summary for {prefix_pid} already exists, updates are not allowed."
+
+        response = self.send_post(
+            f'Participant/{prefix_pid}/Summary',
+            post_payload,
+            expected_status=400
+        )
+
+        self.assertEqual(bad_message, response.json['message'])
+        self.assertEqual(response.status_code, 400)
+
     def _remove_participant_retention_eligible(self, participant_id):
-        ps_dao = ParticipantSummaryDao()
-        summary = ps_dao.get(participant_id)
+        summary = self.ps_dao.get(participant_id)
         summary.samplesToIsolateDNA = SampleStatus.UNSET
-        ps_dao.update(summary)
+        self.ps_dao.update(summary)
 
     def _make_participant_retention_eligible(self, participant_id, **attrs):
-        ps_dao = ParticipantSummaryDao()
-        summary = ps_dao.get(participant_id)
+        summary = self.ps_dao.get(participant_id)
         summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
         summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
         summary.consentForStudyEnrollment = 1
@@ -3470,16 +3612,6 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         for key in attrs.keys():
             setattr(summary, key, attrs.get(key))
-
-        ps_dao.update(summary)
-
+        self.ps_dao.update(summary)
         return summary
 
-
-def _add_code_answer(code_answers, link_id, code):
-    if code:
-        code_answers.append((link_id, Concept(PPI_SYSTEM, code)))
-
-
-def _make_entry(ps):
-    return {"fullUrl": "http://localhost/rdr/v1/Participant/%s/Summary" % ps["participantId"], "resource": ps}
