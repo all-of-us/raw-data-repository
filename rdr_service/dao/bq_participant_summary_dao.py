@@ -60,7 +60,9 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
         :return: BQRecord object
         """
         # NOTE: Generator code is now only in 'rdr_service/resource/generators/participant.py'.
-        summary = ParticipantSummaryGenerator().make_resource(p_id).get_data()
+
+        res = ParticipantSummaryGenerator().make_resource(p_id)
+        summary = res.get_data()
 
         # Add sub-table field prefixes back in and map a few other fields.
         for k, v in SUB_PREFIXES.items():  # pylint: disable=unused-variable

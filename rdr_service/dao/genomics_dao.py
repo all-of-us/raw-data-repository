@@ -4,6 +4,7 @@ import pytz
 import sqlalchemy
 import logging
 from dateutil import parser
+from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
@@ -28,7 +29,7 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile)
+    GenomicGcDataFile, GenomicGcDataFileMissing)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1079,12 +1080,18 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
+                .outerjoin(
+                    GenomicGcDataFileMissing,
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
+                )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGcDataFileMissing.id.is_(None),
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) |
                      (GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
@@ -1114,12 +1121,18 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
+                .outerjoin(
+                    GenomicGcDataFileMissing,
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
+                )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
@@ -1562,6 +1575,7 @@ class GenomicManifestFeedbackDao(UpdatableDao):
 
             return feedback_records.all()
 
+
 class GenomicAW1RawDao(BaseDao):
     def __init__(self):
         super(GenomicAW1RawDao, self).__init__(
@@ -1590,14 +1604,18 @@ class GenomicAW1RawDao(BaseDao):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW1Raw).filter(
+            record = session.query(GenomicAW1Raw).filter(
                 GenomicAW1Raw.biobank_id == biobank_id,
                 GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW1Raw.biobank_id.desc(),
+                GenomicAW1Raw.created.desc()
+            ).first()
+
+            return record
 
 
 class GenomicAW2RawDao(BaseDao):
@@ -1627,14 +1645,17 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, biobank_id, genome_type):
-
+    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
         with self.session() as session:
-            return session.query(GenomicAW2Raw).filter(
+            record = session.query(GenomicAW2Raw).filter(
                 GenomicAW2Raw.biobank_id == biobank_id,
                 GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
-            ).one()
+            ).order_by(
+                GenomicAW2Raw.biobank_id.desc(),
+                GenomicAW2Raw.created.desc()
+            ).first()
+            return record
 
 
 class GenomicIncidentDao(UpdatableDao):
@@ -1791,4 +1812,34 @@ class GenomicGcDataFileDao(BaseDao):
             ).filter(
                 GenomicGcDataFile.file_path == file_path,
                 GenomicGcDataFile.ignore_flag == 0
+            ).all()
+
+
+class GenomicGcDataFileMissingDao(BaseDao):
+    def __init__(self):
+        super(GenomicGcDataFileMissingDao, self).__init__(
+            GenomicGcDataFileMissing, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    def get_with_metrics_id(self, metric_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.gc_validation_metric_id == metric_id,
+                GenomicGcDataFileMissing.ignore_flag == 0
+            ).all()
+
+    def get_with_run_id(self, run_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.run_id == run_id,
+                GenomicGcDataFileMissing.ignore_flag == 0
             ).all()

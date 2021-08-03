@@ -3,6 +3,7 @@ import mock
 from datetime import timedelta
 
 from rdr_service import clock
+from rdr_service.dao.database_utils import format_datetime
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerDestAuthInfo
@@ -68,7 +69,9 @@ class MessageBrokerApiTest(BaseTestCase):
         requests_api_patcher.stop()
 
     @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
-    def test_send_valid_message(self, request_origin):
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_send_valid_message(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
         request_origin.return_value = 'color'
         participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
         request_json = {
@@ -86,7 +89,7 @@ class MessageBrokerApiTest(BaseTestCase):
         result = self.send_post("MessageBroker", request_json)
         self.assertEqual(result, {'event': 'result_viewed',
                                   'participantId': participant.participantId,
-                                  'responseCode': '200',
+                                  'responseCode': 200,
                                   'responseBody': {'result': 'mocked result'},
                                   'errorMessage': ''})
 
@@ -133,7 +136,7 @@ class MessageBrokerApiTest(BaseTestCase):
         # request without participant id
         request_json = {
             "event": "result_viewed",
-            "eventAuthoredTime": str(clock.CLOCK.now()),
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "messageBody": {
                 "result_type": "hdr_v1",
                 "report_revision_number": 0
@@ -145,7 +148,7 @@ class MessageBrokerApiTest(BaseTestCase):
         request_json = {
             "event": "result_viewed",
             "participantId": "111",
-            "eventAuthoredTime": str(clock.CLOCK.now()),
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "messageBody": {
                 "result_type": "hdr_v1",
                 "report_revision_number": 0
@@ -154,7 +157,9 @@ class MessageBrokerApiTest(BaseTestCase):
         self.send_post("MessageBroker", request_json, expected_status=http.client.BAD_REQUEST)
 
     @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
-    def test_informing_loop(self, request_origin):
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_informing_loop(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
         request_origin.return_value = 'color'
 
         participant_one = self.data_generator.create_database_participant(participantOrigin='vibrent')
@@ -167,7 +172,7 @@ class MessageBrokerApiTest(BaseTestCase):
 
         request_json_decision = {
             "event": "informing_loop_decision",
-            "eventAuthoredTime": str(clock.CLOCK.now()),
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": str(participant_one.participantId),
             "messageBody": {
                 'module_type': 'hdr',
@@ -179,7 +184,7 @@ class MessageBrokerApiTest(BaseTestCase):
 
         records = self.record_dao.get_all()
         record = records[0]
-        event_time = record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+        event_time = format_datetime(record.eventAuthoredTime)
 
         payload = {
             'id': record.id,
@@ -206,13 +211,13 @@ class MessageBrokerApiTest(BaseTestCase):
 
         for loop_record in loop_decision_records:
             self.assertIsNotNone(loop_record.valueString)
-            self.assertEqual(loop_record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"), event_time)
+            self.assertEqual(format_datetime(loop_record.eventAuthoredTime), event_time)
             self.assertTrue(any(obj for obj in loop_decision_records if obj.valueString == 'hdr'))
             self.assertTrue(any(obj for obj in loop_decision_records if obj.valueString == 'yes'))
 
         request_json_started = {
             "event": "informing_loop_started",
-            "eventAuthoredTime": str(clock.CLOCK.now()),
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": str(participant_two.participantId),
             "messageBody": {
                 'module_type': 'hdr',
@@ -223,7 +228,7 @@ class MessageBrokerApiTest(BaseTestCase):
 
         records = self.record_dao.get_all()
         record = records[1]
-        event_time = record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+        event_time = format_datetime(record.eventAuthoredTime)
 
         payload = {
             'id': record.id,
@@ -250,5 +255,5 @@ class MessageBrokerApiTest(BaseTestCase):
 
         for loop_record in loop_started_records:
             self.assertIsNotNone(loop_record.valueString)
-            self.assertEqual(loop_record.eventAuthoredTime.strftime("%Y-%m-%dT%H:%M:%SZ"), event_time)
+            self.assertEqual(format_datetime(loop_record.eventAuthoredTime), event_time)
             self.assertTrue(any(obj for obj in loop_decision_records if obj.valueString == 'hdr'))

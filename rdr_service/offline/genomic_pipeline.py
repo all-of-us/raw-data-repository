@@ -327,7 +327,7 @@ def create_aw2f_manifest(feedback_record):
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
                               ) as controller:
         controller.generate_manifest(GenomicManifestTypes.AW2F,
-                                     _genome_type=config.GENOME_TYPE_ARRAY,
+                                     _genome_type=None,
                                      feedback_record=feedback_record)
 
 

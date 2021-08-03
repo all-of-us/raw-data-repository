@@ -219,6 +219,72 @@
       "event_types": [
         "OBJECT_FINALIZE"
       ]
+    },
+    {
+      "bucket": "prod-genomics-baylor",
+      "id": "45",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Wgs_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "prod-genomics-baylor",
+      "id": "46",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Genotyping_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "prod-genomics-broad",
+      "id": "40",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "wgs_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "prod-genomics-broad",
+      "id": "41",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Genotyping_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "id": "55",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Wgs_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "id": "56",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod",
+      "payload_format": "JSON_API_V1",
+      "object_name_prefix": "Genotyping_sample_raw_data/",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ]
     }
   ]
 }

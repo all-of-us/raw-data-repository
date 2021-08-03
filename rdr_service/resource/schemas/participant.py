@@ -243,6 +243,27 @@ class EhrReceiptSchema(Schema):
         pii_filter = {}  # dict(field: lambda function).
 
 
+class PairingHistorySchema(Schema):
+    """
+    Participant pairing history
+    """
+    last_modified = fields.DateTime(
+        description='Last time the participant pairing was updated.')
+    hpo = fields.String(validate=validate.Length(max=20))
+    hpo_id = fields.Int32()
+    organization = fields.String(validate=validate.Length(max=255))
+    organization_id = fields.Int32()
+    site = fields.String(validate=validate.Length(max=255))
+    site_id = fields.Int32()
+
+    class Meta:
+        schema_id = SchemaID.participant_pairing_history
+        resource_uri = 'Participant/{participant_id}/PairingHistory'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
+
 class ParticipantSchema(Schema):
     """ Participant Activity Summary Schema """
     last_modified = fields.DateTime(
@@ -327,6 +348,7 @@ class ParticipantSchema(Schema):
     sexual_orientation = fields.String(validate=validate.Length(max=80))
     sexual_orientation_id = fields.Int32()
 
+    pairing_history = fields.Nested(PairingHistorySchema, many=True)
     pm = fields.Nested(PhysicalMeasurementsSchema, many=True)
 
     races = fields.Nested(RaceSchema, many=True)

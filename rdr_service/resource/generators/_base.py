@@ -2,6 +2,7 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import copy
 from dateutil import parser
 from dateutil.parser import ParserError
 import hashlib
@@ -15,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.code import Code
+from rdr_service.model.participant import Participant
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.resource_schema import ResourceSchema
 from rdr_service.model.resource_type import ResourceType
@@ -42,9 +44,11 @@ class ResourceRecordSet(object):
         self._meta = self._schema.Meta
 
         if data:
+            # Make a copy of the data before calling _load_data().
+            self._data = copy.deepcopy(data)
             data = self._load_data(self._schema, data)
-            self._resource = self._schema.dump(data)
-            self._data = data
+            data.update(self._schema.dump(data))
+            self._resource = data
 
     def _load_data(self, schema, data):
         """
@@ -66,6 +70,23 @@ class ResourceRecordSet(object):
                     data[name] = val if type(meta) == fields.DateTime else val.date()
                 except (ParserError, TypeError):
                     pass
+            # Only provide enum name string, not full class + name.
+            if name in data and type(meta) == fields.EnumString:
+                try:
+                    data[name] = data[name].name
+                except AttributeError:
+                    pass
+
+        # Remove any extra fields that are not declared in the schema.
+        schema_fields = schema._declared_fields.keys()
+        data_fields = data.keys()
+        remove = list()
+        for field in data_fields:
+            if field not in schema_fields:
+                remove.append(field)
+        for field in remove:
+            data.pop(field)
+
         return data
 
     def _get_or_create_type_record(self, dao, schema_meta):
@@ -163,7 +184,15 @@ class ResourceRecordSet(object):
         with w_dao.session() as session:
             for resource in resources:
 
-                hpo_id = resource['hpo_id'] if 'hpo_id' in resource else None
+                # Attempt to find hpo_id for this resource record.
+                if 'hpo_id' in resource:
+                    hpo_id = resource['hpo_id']
+                elif 'participant_id' in resource and resource['participant_id']:
+                    pid = int(re.sub('[^0-9]', '', str(resource['participant_id'])))
+                    hpo_id = session.query(Participant.hpoId).filter(Participant.participantId == pid).first()
+                else:
+                    hpo_id = None
+
                 # TODO: Populate parent resource values in URI in recursive calls.
                 res_uri = type_rec.resourceURI + '/' + str(resource[type_rec.resourcePKField])
 

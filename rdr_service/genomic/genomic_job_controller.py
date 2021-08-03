@@ -97,6 +97,8 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
+        self.aw1_raw_dao = GenomicAW1RawDao()
+        self.aw2_raw_dao = GenomicAW2RawDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -279,11 +281,10 @@ class GenomicJobController:
         if self.job_id not in [GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION]:
             raise AttributeError(f"{self.job_id.name} is invalid for this workflow")
 
-        member_dao = GenomicSetMemberDao()
-        raw_dao = GenomicAW1RawDao() if self.job_id == GenomicJob.AW1_MANIFEST else GenomicAW2RawDao()
+        raw_dao = self.aw1_raw_dao if self.job_id == GenomicJob.AW1_MANIFEST else self.aw2_raw_dao
 
         # Get member records
-        members = member_dao.get_members_from_member_ids(member_ids)
+        members = self.member_dao.get_members_from_member_ids(member_ids)
         update_recs = []
         completed_members = []
         multiples = []
@@ -300,7 +301,10 @@ class GenomicJobController:
             bid = f"{pre}{member.biobankId}"
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(bid, member.genomeType)
+                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(
+                    biobank_id=bid,
+                    genome_type=member.genomeType
+                )
             except MultipleResultsFound:
                 multiples.append(member.id)
             except NoResultFound:
@@ -313,7 +317,7 @@ class GenomicJobController:
             paths = self.get_unique_file_paths_for_raw_records([rec[1] for rec in update_recs])
             file_proc_map = self.map_file_paths_to_fp_id(paths)
             # Process records
-            with member_dao.session() as session:
+            with self.member_dao.session() as session:
                 for record_to_update in update_recs:
                     # AW1
                     if self.job_id == GenomicJob.AW1_MANIFEST:

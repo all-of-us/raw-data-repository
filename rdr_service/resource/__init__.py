@@ -29,10 +29,10 @@ class SchemaMeta(object):
         """
         if 'resource_uri' not in kwargs or 'schema_id' not in kwargs:
             raise ValueError('Missing schema type information')
-        if not isinstance(kwargs['schema_id'], SchemaID):
-            raise ValueError('Schema ID value must be a SchemaID Enum object.')
         if not isinstance(kwargs['resource_uri'], str):
             raise ValueError('Schema resource URI must be a string')
+        if not isinstance(kwargs['schema_id'], SchemaID):
+            raise ValueError(f'Schema ID has not been set on Schema object {kwargs["resource_uri"]}.')
         # if not isinstance(kwargs['resource_pk_field'], str):
         #     raise ValueError('Schema resource PK field must be a string')
 
