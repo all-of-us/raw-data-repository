@@ -21,6 +21,15 @@ class GenomicQueryClass:
             'gsm': aliased(GenomicSetMember),
         }
 
+        self.subqueries = {
+            'aw3_wgs_parent_sample_id': (
+                sqlalchemy.select([GenomicSetMember.gcManifestParentSampleId]).select_from(GenomicSetMember).where(
+                    (GenomicSetMember.genomeType == "aou_array") &
+                    (GenomicSetMember.aw3ManifestJobRunID.isnot(None))
+                )
+            )
+        }
+
         self.genomic_data_config = {
             GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
                 [
@@ -128,7 +137,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &
                 (GenomicGCValidationMetrics.cramReceived == 1) &
                 (GenomicGCValidationMetrics.cramMd5Received == 1) &
-                (GenomicGCValidationMetrics.craiReceived == 1)
+                (GenomicGCValidationMetrics.craiReceived == 1) &
+                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']))
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                         [
