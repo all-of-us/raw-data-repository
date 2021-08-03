@@ -1137,9 +1137,6 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
-                    (GenomicGCValidationMetrics.rawVcfReceived == 0) |
-                    (GenomicGCValidationMetrics.rawVcfTbiReceived == 0) |
-                    (GenomicGCValidationMetrics.rawVcfMd5Received == 0) |
                     (GenomicGCValidationMetrics.cramReceived == 0) |
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
                     (GenomicGCValidationMetrics.craiReceived == 0)
