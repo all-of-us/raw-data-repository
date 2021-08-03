@@ -12,7 +12,6 @@ import sys
 import os
 import gspread
 import pandas
-import pytz
 from time import sleep
 from datetime import datetime
 from gspread.utils import rowcol_to_a1
