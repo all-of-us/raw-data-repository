@@ -1,4 +1,5 @@
 import datetime
+import faker
 import re
 import threading
 
@@ -19,16 +20,20 @@ from rdr_service.api_util import (
     format_json_hpo,
     format_json_org,
     format_json_site,
+    parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
+
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
+
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
@@ -437,15 +442,38 @@ class ParticipantSummaryDao(UpdatableDao):
         self.site_dao = SiteDao()
         self.organization_dao = OrganizationDao()
         self.patient_status_dao = PatientStatusDao()
+        self.participant_dao = ParticipantDao()
+        self.faker = faker.Faker()
+
+    # pylint: disable=unused-argument
+    def from_client_json(self, resource, participant_id, client_id):
+        column_names = self.to_dict(self.model_type)
+        participant = self.participant_dao.get(participant_id)
+        static_keys = ["participantId", "biobankId"]
+
+        payload_attrs = {key: value for key, value in resource.items()
+                         if key in column_names and key not in
+                         static_keys}
+
+        default_attrs = {
+            "participantId": participant.participantId,
+            "biobankId": participant.biobankId,
+            "hpoId": participant.hpoId,
+            "firstName": self.faker.first_name(),
+            "lastName": self.faker.first_name(),
+            "withdrawalStatus": WithdrawalStatus.NOT_WITHDRAWN,
+            "suspensionStatus": SuspensionStatus.NOT_SUSPENDED,
+            "participantOrigin": participant.participantOrigin,
+            "isEhrDataAvailable": False,
+        }
+        default_attrs.update(payload_attrs)
+
+        self.parse_resource_enums(default_attrs)
+
+        return self.model_type(**default_attrs)
 
     def get_id(self, obj):
         return obj.participantId
-
-    # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-    # def get_eager_child_loading_query_options(self):
-    #   return [
-    #     sqlalchemy.orm.subqueryload(self.model_type.patientStatus)
-    #   ]
 
     def get_with_children(self, obj_id):
         with self.session() as session:
@@ -454,10 +482,27 @@ class ParticipantSummaryDao(UpdatableDao):
             #                              options=self.get_eager_child_loading_query_options())
             return self.get_with_session(session, obj_id)
 
+    def get_by_participant_id(self, participant_id):
+        with self.session() as session:
+            return session.query(
+                ParticipantSummary
+            ).filter(
+                ParticipantSummary.participantId == participant_id
+            ).one_or_none()
+
     def _validate_update(self, session, obj, existing_obj):  # pylint: disable=unused-argument
         """Participant summaries don't have a version value; drop it from validation logic."""
         if not existing_obj:
             raise NotFound(f"{self.model_type.__name__} with id {id} does not exist")
+
+    def parse_resource_enums(self, resource):
+        for key in resource.keys():
+            if key in self.to_dict(self.model_type):
+                _type = getattr(self.model_type, key)
+                if _type.expression.type.__class__.__name__.lower() == 'enum':
+                    _cls = _type.expression.type.enum_type
+                    parse_json_enum(resource, key, _cls)
+        return resource
 
     def _has_withdrawn_filter(self, query):
         for field_filter in query.field_filters:
