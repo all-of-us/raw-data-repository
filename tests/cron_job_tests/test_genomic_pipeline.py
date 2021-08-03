@@ -1161,9 +1161,6 @@ class GenomicPipelineTest(BaseTestCase):
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
             'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            'test_data_folder/RDR_2_1002_10002_v1.vcf.gz',
-            'test_data_folder/RDR_2_1002_10002_v1.vcf.gz.tbi',
-            'test_data_folder/RDR_2_1002_10002_v2.vcf.gz.md5sum',
             'test_data_folder/RDR_2_1002_10002_v2.cram',
             'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
         )
@@ -1199,9 +1196,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(1, gc_record.hfVcfReceived)
         self.assertEqual(1, gc_record.hfVcfTbiReceived)
         self.assertEqual(1, gc_record.hfVcfMd5Received)
-        self.assertEqual(1, gc_record.rawVcfReceived)
-        self.assertEqual(1, gc_record.rawVcfTbiReceived)
-        self.assertEqual(1, gc_record.rawVcfMd5Received)
+        self.assertEqual(0, gc_record.rawVcfReceived)
+        self.assertEqual(0, gc_record.rawVcfTbiReceived)
+        self.assertEqual(0, gc_record.rawVcfMd5Received)
         self.assertEqual(1, gc_record.cramReceived)
         self.assertEqual(1, gc_record.cramMd5Received)
         self.assertEqual(0, gc_record.craiReceived)
@@ -1209,11 +1206,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[0]}", gc_record.hfVcfPath)
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[1]}", gc_record.hfVcfTbiPath)
         self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[2]}", gc_record.hfVcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.rawVcfPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.rawVcfTbiPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[5]}", gc_record.rawVcfMd5Path)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[6]}", gc_record.cramPath)
-        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[7]}", gc_record.cramMd5Path)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[3]}", gc_record.cramPath)
+        self.assertEqual(f"gs://{bucket_name}/{sequencing_test_files[4]}", gc_record.cramMd5Path)
 
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
@@ -3190,9 +3184,6 @@ class GenomicPipelineTest(BaseTestCase):
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
             f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.gz',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.tbi',
-            f'test_data_folder/RDR_2_1002_10002_1.vcf.gz.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.cram',
             f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
             f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
@@ -3291,8 +3282,6 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
             self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
-            self.assertEqual(metric.rawVcfPath, row["vcf_raw_path"])
-            self.assertEqual(metric.rawVcfTbiPath, row["vcf_raw_index_path"])
             self.assertEqual(metric.cramPath, row["cram_path"])
             self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
             self.assertEqual(metric.craiPath, row["crai_path"])
