@@ -1,12 +1,13 @@
 import csv
 import datetime
-import time
-import os
 import mock
+import os
 import operator
-from copy import deepcopy
-
 import pytz
+import random
+import time
+
+from copy import deepcopy
 from dateutil.parser import parse
 from itertools import chain
 
@@ -58,6 +59,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_mappings import array_file_types_attributes
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -68,6 +70,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode
+
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
 from tests.test_data import data_path
@@ -4469,4 +4472,74 @@ class GenomicPipelineTest(BaseTestCase):
         updated_record = updated_records[0]
         self.assertEqual(current_record.feedback_id, updated_record.feedback_id)
         self.assertEqual(current_record.raw_feedback_count, updated_record.feedbackRecordCount)
+
+    def test_missing_files_resolved_clean_up(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath='/test_file_path',
+            bucketName='test_bucket',
+            fileName='test_file_name',
+        )
+
+        gen_metric = self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=gen_member.id,
+            genomicFileProcessedId=gen_processed_file.id
+        )
+
+        today = datetime.datetime.today()
+        date_one = today - datetime.timedelta(5)
+        date_two = today - datetime.timedelta(2)
+
+        for num in range(12):
+            self.data_generator.create_database_gc_data_missing_file(
+                resolved=1 if num > 3 else 0,
+                resolved_date=date_one if num % 2 == 0 else date_two,
+                gc_validation_metric_id=gen_metric.id,
+                run_id=gen_job_run.id,
+                gc_site_id='rdr',
+                file_type=random.choice(array_file_types_attributes)['file_type']
+            )
+
+        current_missing_files = self.missing_file_dao.get_all()
+        self.assertEqual(len(current_missing_files), 12)
+
+        delete_eligible = [file for file in current_missing_files if file.resolved == 1 and file.resolved_date is not
+                           None]
+
+        self.assertEqual(len(delete_eligible), 8)
+
+        will_be_deleted = [file for file in delete_eligible if file.resolved_date.date() == date_one.date()]
+
+        self.assertEqual(len(will_be_deleted), 4)
+
+        genomic_pipeline.genomic_missing_files_clean_up(num_days=4)
+
+        current_missing_files = self.missing_file_dao.get_all()
+
+        self.assertEqual(len(current_missing_files), 8)
+
+        for file in will_be_deleted:
+            self.assertIsNone(self.missing_file_dao.get(file.id))
 

@@ -1,8 +1,9 @@
 import collections
-
+import logging
 import pytz
 import sqlalchemy
-import logging
+
+from datetime import datetime, timedelta
 from dateutil import parser
 from sqlalchemy import and_
 
@@ -1843,3 +1844,14 @@ class GenomicGcDataFileMissingDao(BaseDao):
                 GenomicGcDataFileMissing.run_id == run_id,
                 GenomicGcDataFileMissing.ignore_flag == 0
             ).all()
+
+    def remove_resolved_from_days(self, *, num_days=90):
+        delete_date = datetime.utcnow() - timedelta(days=num_days)
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.resolved == 1,
+                GenomicGcDataFileMissing.resolved_date.isnot(None),
+                GenomicGcDataFileMissing.resolved_date < delete_date
+            ).delete()

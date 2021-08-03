@@ -312,7 +312,6 @@ def scan_and_complete_feedback_records():
     with GenomicJobController(GenomicJob.FEEDBACK_SCAN) as controller:
         # Get feedback records that are complete
         fb_recs = controller.get_feedback_records_to_send()
-
         for f in fb_recs:
             create_aw2f_manifest(f)
 
@@ -320,6 +319,11 @@ def scan_and_complete_feedback_records():
 def feedback_record_reconciliation():
     with GenomicJobController(GenomicJob.FEEDBACK_RECORD_RECONCILE) as controller:
         controller.reconcile_feedback_records()
+
+
+def genomic_missing_files_clean_up(num_days=90):
+    with GenomicJobController(GenomicJob.MISSING_FILES_CLEANUP) as controller:
+        controller.genomic_missing_files_clean_up(num_days)
 
 
 def create_aw2f_manifest(feedback_record):

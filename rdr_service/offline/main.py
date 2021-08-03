@@ -88,21 +88,6 @@ def _alert_on_exceptions(func):
     return alert_on_exceptions_wrapper
 
 
-# @app_util.auth_required_cron
-# @_alert_on_exceptions
-# def recalculate_metrics():
-#     # TODO: This should be refactored or removed.
-#     in_progress = MetricsVersionDao().get_version_in_progress()
-#     if in_progress:
-#         logging.info("=========== Metrics pipeline already running ============")
-#         return '{"metrics-pipeline-status": "running"}'
-#     else:
-#         bucket_name = app_identity.get_default_gcs_bucket_name()  # pylint: disable=undefined-variable
-#         logging.info("=========== Starting metrics export ============")
-#         MetricsExport.start_export_tasks(bucket_name, int(config.getSetting(config.METRICS_SHARDS, 1)))
-#         return '{"metrics-pipeline-status": "started"}'
-
-
 @app_util.auth_required_cron
 def recalculate_public_metrics():
     logging.info("generating public metrics")
@@ -463,6 +448,17 @@ def genomic_feedback_record_reconciliation():
     genomic_pipeline.feedback_record_reconciliation()
     return '{"success": "true"}'
 
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_missing_files_clean_up():
+    genomic_pipeline.genomic_missing_files_clean_up()
+    return '{"success": "true"}'
+
+# @app_util.auth_required_cron
+# @_alert_on_exceptions
+# def genomic_feedback_record_reconciliation():
+#     genomic_pipeline.feedback_record_reconciliation()
+#     return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -630,10 +626,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "SkewDuplicates", endpoint="skew_duplicates", view_func=skew_duplicates, methods=["GET"]
     )
 
-    # offline_app.add_url_rule(
-    #     PREFIX + "MetricsRecalculate", endpoint="metrics_recalc", view_func=recalculate_metrics, methods=["GET"]
-    # )
-
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "PublicMetricsRecalculate",
         endpoint="public_metrics_recalc",
@@ -795,6 +787,17 @@ def _build_pipeline_app():
         endpoint="genomic_feedback_record_reconciliation",
         view_func=genomic_feedback_record_reconciliation, methods=["GET"]
     )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicMissingFilesCleanUp",
+        endpoint="genomic_missing_files_clean_up",
+        view_func=genomic_missing_files_clean_up, methods=["GET"]
+    )
+    # offline_app.add_url_rule(
+    #     OFFLINE_PREFIX + "GenomicMissingFilesResolved",
+    #     endpoint="genomic_missing_files_resolved",
+    #     view_func=genomic_missing_files_resolved, methods=["GET"]
+    # )
+
     # END Genomic Pipeline Jobs
 
     # BEGIN Genomic Data Quality Jobs

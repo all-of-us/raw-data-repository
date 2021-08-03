@@ -47,7 +47,9 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicGCValidationMetricsDao,
     GenomicInformingLoopDao,
-    GenomicGcDataFileDao)
+    GenomicGcDataFileDao,
+    GenomicGcDataFileMissingDao
+)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -99,6 +101,7 @@ class GenomicJobController:
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
+        self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -504,6 +507,13 @@ class GenomicJobController:
                 feedback_record = self.manifest_feedback_dao.get(record.feedback_id)
                 feedback_record.feedbackRecordCount = record.raw_feedback_count
                 self.manifest_feedback_dao.update(feedback_record)
+
+    def genomic_missing_files_clean_up(self, num_days=90):
+        logging.info('Running missing resolved files cleanup')
+
+        self.missing_files_dao.remove_resolved_from_days(
+            num_days=num_days
+        )
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
