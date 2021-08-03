@@ -126,9 +126,6 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.hfVcfReceived == 1) &
                 (GenomicGCValidationMetrics.hfVcfTbiReceived == 1) &
                 (GenomicGCValidationMetrics.hfVcfMd5Received == 1) &
-                (GenomicGCValidationMetrics.rawVcfReceived == 1) &
-                (GenomicGCValidationMetrics.rawVcfTbiReceived == 1) &
-                (GenomicGCValidationMetrics.rawVcfMd5Received == 1) &
                 (GenomicGCValidationMetrics.cramReceived == 1) &
                 (GenomicGCValidationMetrics.cramMd5Received == 1) &
                 (GenomicGCValidationMetrics.craiReceived == 1)
