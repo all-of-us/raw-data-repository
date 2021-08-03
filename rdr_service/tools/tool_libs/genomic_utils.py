@@ -1038,10 +1038,14 @@ class GenomicProcessRunner(GenomicManifestBase):
                 return 1
 
         if self.gen_job_name == 'AW3_WGS_WORKFLOW':
-            self.run_aw3_wgs_manifest()
+            self.run_aw3_manifest(job=GenomicJob.AW3_WGS_WORKFLOW,
+                                  manifest_type=GenomicManifestTypes.AW3_WGS,
+                                  genome_type=config.GENOME_TYPE_WGS)
 
         if self.gen_job_name == 'AW3_ARRAY_WORKFLOW':
-            self.run_aw3_array_manifest()
+            self.run_aw3_manifest(job=GenomicJob.AW3_ARRAY_WORKFLOW,
+                                  manifest_type=GenomicManifestTypes.AW3_ARRAY,
+                                  genome_type=config.GENOME_TYPE_ARRAY)
 
         if self.gen_job_name in (
             'METRICS_INGESTION',
@@ -1257,35 +1261,19 @@ class GenomicProcessRunner(GenomicManifestBase):
             _logger.error(e)
             return 1
 
-    def run_aw3_wgs_manifest(self):
+    def run_aw3_manifest(self, job, manifest_type, genome_type):
         server_config = self.get_server_config()
 
-
-        # Run the AW3 WGS Workflow
-        with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
+        # Run the AW3 Workflow
+        with GenomicJobController(job_id=job,
                                   max_num=4000,
                                   bq_project_id=self.gcp_env.project) as controller:
 
             controller.bucket_name = server_config[config.DRC_BROAD_BUCKET_NAME][0]
 
             controller.generate_manifest(
-                GenomicManifestTypes.AW3_WGS,
-                _genome_type=config.GENOME_TYPE_WGS,
-            )
-
-    def run_aw3_array_manifest(self):
-        server_config = self.get_server_config()
-
-        # Run the AW3 Array Workflow
-        with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
-                                  max_num=4000,
-                                  bq_project_id=self.gcp_env.project) as controller:
-
-            controller.bucket_name = server_config[config.DRC_BROAD_BUCKET_NAME][0]
-
-            controller.generate_manifest(
-                GenomicManifestTypes.AW3_ARRAY,
-                _genome_type=config.GENOME_TYPE_ARRAY,
+                manifest_type=manifest_type,
+                _genome_type=genome_type,
             )
 
     def run_calculate_record_counts_aw1(self, manifest_id):
