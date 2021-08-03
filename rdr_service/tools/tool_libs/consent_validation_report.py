@@ -73,6 +73,23 @@ class ProgramTemplateClass(object):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
+
+        Other attributes:
+        doc_id:   Google UID for the doc (documentId in doc URL: https://docs.google.com/document/d/documentId/edit)
+                  Can be passed to the tool via --doc-id parameter, or read from CONSENT_DOC_ID environment variable
+                  Eventually, it will be defined in the app config items
+        worksheet:  Returned from gspread add_worksheet() when a sheet is added to the gsheets doc
+        daily_data:  A pandas dataframe of the results from the DAILY_REPORT_SQL query
+        consent_errors_found:  True/False if the daily_data contains NEEDS_CORRECTING consent records
+        report_date:   Date of the consent validation run (created date for records in RDR consent_file table)
+        dob_date_cutoff:  report_date-125 years (will flag DOB values more than 125 years ago as invalid)
+        sheet_rows:  Max rows for the sheet being created (arbitrary, trying to accommodate expected "worst case")
+        sheet_cols:  Max cols, derived from the DAILY_REPORT_COLUMN_MAP values
+        max_retries:  How many times to retry a sheet write operation if the gspread/gsheets API call fails
+        max_daily_reports:  How many tabs/sheets to keep in the spreadsheet file before deleting the oldest
+        row_pos:  Keeps track of the current row position in the spreadsheet, as content is written
+        row_layout:  A dict with known values and formatting options of report sections, passed to gspread/gsheets API
+                     The keys are arbitrary names given to each of the known sections/content areas in the daily report
         """
         self.args = args
         self.gcp_env = gcp_env
@@ -107,7 +124,7 @@ class ProgramTemplateClass(object):
         self.sheet_cols = max(DAILY_REPORT_COLUMN_MAP.values())
 
         # Retry limit if a gspread/sheets API request fails
-        self.max_retries = 5
+        self.max_retries = 3
 
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
         self.max_daily_reports = 30
@@ -169,6 +186,11 @@ class ProgramTemplateClass(object):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
         from the specified report date (records with matching created date).   Sets self.daily_data to the dataframe
+
+        Notes on the DAILY_REPORT_SQL logic, to prevent flagging errors that should only be counted when there wasn't
+        a higher-level error related to the consent:
+        - A signature_missing error will only be true when the consent file exists
+        - An invalid_signing_date error will only be true when the signature is valid (exists)
         """
         if not db_conn:
             raise(EnvironmentError, 'No active DB connection object')
@@ -193,10 +215,9 @@ class ProgramTemplateClass(object):
                    cf.type,
                    cf.file_path,
                    -- CASE Statements to calculate the known tracked error conditions
-                   -- Signature and signing date fields can only be mapped to errors if the file exists
                    CASE WHEN cf.file_exists = 0 THEN 1 ELSE 0 END AS missing_file,
                    CASE WHEN (cf.file_exists and cf.is_signature_valid = 0) THEN 1 ELSE 0 END AS signature_missing,
-                   CASE WHEN (cf.file_exists and cf.is_signing_date_valid = 0) THEN 1 ELSE 0
+                   CASE WHEN (cf.is_signature_valid and cf.is_signing_date_valid = 0) THEN 1 ELSE 0
                    END AS invalid_signing_date,
                    CASE WHEN (p.date_of_birth is null or p.date_of_birth < "{}" or p.date_of_birth > "{}"
                               or (p.consent_for_study_enrollment_authored is not null
