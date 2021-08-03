@@ -1040,6 +1040,9 @@ class GenomicProcessRunner(GenomicManifestBase):
         if self.gen_job_name == 'AW3_WGS_WORKFLOW':
             self.run_aw3_wgs_manifest()
 
+        if self.gen_job_name == 'AW3_ARRAY_WORKFLOW':
+            self.run_aw3_array_manifest()
+
         if self.gen_job_name in (
             'METRICS_INGESTION',
             'AW4_ARRAY_WORKFLOW',
@@ -1258,7 +1261,7 @@ class GenomicProcessRunner(GenomicManifestBase):
         server_config = self.get_server_config()
 
 
-        # Run the AW2F Workflow
+        # Run the AW3 WGS Workflow
         with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
                                   max_num=4000,
                                   bq_project_id=self.gcp_env.project) as controller:
@@ -1268,6 +1271,21 @@ class GenomicProcessRunner(GenomicManifestBase):
             controller.generate_manifest(
                 GenomicManifestTypes.AW3_WGS,
                 _genome_type=config.GENOME_TYPE_WGS,
+            )
+
+    def run_aw3_array_manifest(self):
+        server_config = self.get_server_config()
+
+        # Run the AW3 Array Workflow
+        with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
+                                  max_num=4000,
+                                  bq_project_id=self.gcp_env.project) as controller:
+
+            controller.bucket_name = server_config[config.DRC_BROAD_BUCKET_NAME][0]
+
+            controller.generate_manifest(
+                GenomicManifestTypes.AW3_ARRAY,
+                _genome_type=config.GENOME_TYPE_ARRAY,
             )
 
     def run_calculate_record_counts_aw1(self, manifest_id):
@@ -2137,7 +2155,8 @@ def run():
                                            'AW5_WGS_MANIFEST',
                                            'AW2F_MANIFEST',
                                            'CALCULATE_RECORD_COUNT_AW1',
-                                           'AW3_WGS_WORKFLOW'
+                                           'AW3_WGS_WORKFLOW',
+                                           'AW3_ARRAY_WORKFLOW'
                                        ],
                                        type=str
                                        )
