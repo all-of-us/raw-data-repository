@@ -116,13 +116,6 @@ class GenomicQueryClass:
                 ).join(
                     Participant,
                     Participant.participantId == ParticipantSummary.participantId
-                ).join(
-                    self.aliases['gsm'],
-                    sqlalchemy.and_(
-                        self.aliases['gsm'].gcManifestParentSampleId == GenomicSetMember.gcManifestParentSampleId,
-                        self.aliases['gsm'].genomeType == 'aou_array',
-                        self.aliases['gsm'].aw3ManifestJobRunID.isnot(None)
-                    )
                 )
             ).where(
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
