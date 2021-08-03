@@ -1,5 +1,6 @@
 import datetime
 import http.client
+from typing import Collection
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.utils import from_client_participant_id
@@ -10,6 +11,7 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.biobank_order_dao import BiobankOrderDao
 from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.questionnaire import QuestionnaireQuestion
@@ -767,6 +769,45 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(TEST_HPO_ID, updated_participant.hpoId)
         self.assertIsNone(updated_participant.organizationId)
         self.assertIsNone(updated_participant.siteId)
+
+    def test_org_change_preps_files(self):
+        """
+        When a participant is paired to an organization for the first time, or changes organizations, any
+        consent files that have been synced will need to be synced again to the new organization
+        """
+        # Create an unpaired participant and some consent files that have been synced
+        participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+        self.data_generator.create_database_consent_file(
+            participant_id=participant.participantId,
+            type=ConsentType.EHR,
+            sync_status=ConsentSyncStatus.SYNC_COMPLETE
+        )
+
+        # Pair the participant to an organization through the API
+        test_org_external_id = 'test_org'
+        self.data_generator.create_database_organization(externalId=test_org_external_id)
+        self.send_put(f'Participant/P{participant.participantId}', {
+            'participantId': f'P{participant.participantId}',
+            'organization': test_org_external_id,
+            'withdrawalStatus': 'NOT_WITHDRAWN',
+            'suspensionStatus': 'NOT_SUSPENDED',
+            'meta': {'versionId': 'W/"1"'}
+        }, headers={"If-Match": 'W/"1"'})
+
+        # Make sure all the participant's consent files were set to READY_TO_SYNC
+        participant_consent_files: Collection[ConsentFile] = self.session.query(ConsentFile).filter(
+            ConsentFile.participant_id == participant.participantId
+        ).all()
+        self.assertEqual(2, len(participant_consent_files))  # making sure we got the consent files
+        self.assertTrue(
+            all([file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in participant_consent_files])
+        )
+
 
 def _add_code_answer(code_answers, link_id, code):
     if code:

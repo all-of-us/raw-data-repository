@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Collection
 
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
@@ -73,14 +74,33 @@ class ConsentDao(BaseDao):
             ConsentFile.participant_id.in_(participant_ids)
         ).all()
 
-    def get_files_ready_to_sync(self, org_names=None) -> Collection[ConsentFile]:
-        with self.session() as session:
-            query = (
-                session.query(ConsentFile)
-                .join(Participant)
-                .join(Organization)
-                .filter(ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC)
-            )
-            if org_names is not None:
-                query = query.filter(Organization.externalId.in_(org_names))
-            return query.all()
+    @classmethod
+    def _get_ready_to_sync_with_session(cls, session: Session, org_names=None):
+        query = (
+            session.query(ConsentFile)
+            .join(Participant)
+            .join(Organization)
+            .filter(ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC)
+        )
+        if org_names is not None:
+            query = query.filter(Organization.externalId.in_(org_names))
+        return query.all()
+
+    def get_files_ready_to_sync(self, org_names=None, session: Session = None) -> Collection[ConsentFile]:
+        if session is None:
+            with self.session() as dao_session:
+                return self._get_ready_to_sync_with_session(session=dao_session, org_names=org_names)
+        else:
+            return self._get_ready_to_sync_with_session(session=session, org_names=org_names)
+
+    @classmethod
+    def set_previously_synced_files_as_ready(cls, session: Session, participant_id: int):
+        session.query(
+            ConsentFile
+        ).filter(
+            ConsentFile.sync_status == ConsentSyncStatus.SYNC_COMPLETE,
+            ConsentFile.participant_id == participant_id
+        ).update({
+            ConsentFile.sync_status: ConsentSyncStatus.READY_FOR_SYNC,
+            ConsentFile.sync_time: None
+        })
