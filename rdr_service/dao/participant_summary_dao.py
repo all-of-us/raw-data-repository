@@ -7,6 +7,7 @@ import sqlalchemy
 import sqlalchemy.orm
 from sqlalchemy import or_, and_
 from sqlalchemy.sql import expression
+from typing import Collection
 
 # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
 # from sqlalchemy.orm import selectinload
@@ -481,6 +482,15 @@ class ParticipantSummaryDao(UpdatableDao):
             # return self.get_with_session(session, obj_id,
             #                              options=self.get_eager_child_loading_query_options())
             return self.get_with_session(session, obj_id)
+
+    @classmethod
+    def get_by_ids_with_session(cls, session: sqlalchemy.orm.Session,
+                                obj_ids: Collection) -> Collection[ParticipantSummary]:
+        return session.query(
+            ParticipantSummary
+        ).filter(
+            ParticipantSummary.participantId.in_(obj_ids)
+        ).all()
 
     def get_by_participant_id(self, participant_id):
         with self.session() as session:
