@@ -1876,7 +1876,7 @@ class GenomicReconciler:
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
 
-            if len(missing_data_files) > 0:
+            if missing_data_files:
                 self.any_missing_data = True
 
             metric_touched = False
