@@ -508,12 +508,28 @@ class GenomicJobController:
                 feedback_record.feedbackRecordCount = record.raw_feedback_count
                 self.manifest_feedback_dao.update(feedback_record)
 
-    def genomic_missing_files_clean_up(self, num_days=90):
-        logging.info('Running missing resolved files cleanup')
+    def gc_missing_files_record_clean_up(self, num_days=90):
+        logging.info('Running missing resolved data files cleanup')
 
         self.missing_files_dao.remove_resolved_from_days(
             num_days=num_days
         )
+
+    def resolve_missing_gc_files(self):
+        logging.info('Resolving missing gc data files')
+
+        need_to_resolve = self.missing_files_dao.get_files_to_resolve()
+        if need_to_resolve:
+
+            resolve_arrays = [obj for obj in need_to_resolve if obj.genomeType == 'aou_array']
+            self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
+
+            resolve_wgs = [obj for obj in need_to_resolve if obj.genomeType == 'aou_wgs']
+            self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
+
+            logging.info('Resolving missing gc data files complete')
+        else:
+            logging.info('No missing gc data files to resolve')
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):

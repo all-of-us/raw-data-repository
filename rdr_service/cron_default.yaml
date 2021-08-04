@@ -139,8 +139,8 @@ cron:
   timezone: America/New_York
   schedule: every saturday 22:00
   target: offline
-- description: Genomic Missing Files Resolved
-  url: /offline/GenomicMissingFilesResolved
+- description: Genomic Missing Files Resolve
+  url: /offline/GenomicMissingFilesResolve
   timezone: America/New_York
   schedule: every 1 hour
   target: offline

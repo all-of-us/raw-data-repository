@@ -323,7 +323,12 @@ def feedback_record_reconciliation():
 
 def genomic_missing_files_clean_up(num_days=90):
     with GenomicJobController(GenomicJob.MISSING_FILES_CLEANUP) as controller:
-        controller.genomic_missing_files_clean_up(num_days)
+        controller.gc_missing_files_record_clean_up(num_days)
+
+
+def genomic_missing_files_resolve():
+    with GenomicJobController(GenomicJob.RESOLVE_MISSING_FILES) as controller:
+        controller.resolve_missing_gc_files()
 
 
 def create_aw2f_manifest(feedback_record):

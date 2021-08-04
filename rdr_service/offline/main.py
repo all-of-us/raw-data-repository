@@ -442,11 +442,13 @@ def genomic_aw4_workflow():
     genomic_pipeline.aw4_wgs_manifest_workflow()
     return '{"success": "true"}'
 
+
 @app_util.auth_required_cron
 @_alert_on_exceptions
 def genomic_feedback_record_reconciliation():
     genomic_pipeline.feedback_record_reconciliation()
     return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -454,11 +456,13 @@ def genomic_missing_files_clean_up():
     genomic_pipeline.genomic_missing_files_clean_up()
     return '{"success": "true"}'
 
-# @app_util.auth_required_cron
-# @_alert_on_exceptions
-# def genomic_feedback_record_reconciliation():
-#     genomic_pipeline.feedback_record_reconciliation()
-#     return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
+def genomic_missing_files_resolve():
+    genomic_pipeline.genomic_missing_files_resolve()
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
@@ -792,11 +796,11 @@ def _build_pipeline_app():
         endpoint="genomic_missing_files_clean_up",
         view_func=genomic_missing_files_clean_up, methods=["GET"]
     )
-    # offline_app.add_url_rule(
-    #     OFFLINE_PREFIX + "GenomicMissingFilesResolved",
-    #     endpoint="genomic_missing_files_resolved",
-    #     view_func=genomic_missing_files_resolved, methods=["GET"]
-    # )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicMissingFilesResolve",
+        endpoint="genomic_missing_files_resolve",
+        view_func=genomic_missing_files_resolve, methods=["GET"]
+    )
 
     # END Genomic Pipeline Jobs
 

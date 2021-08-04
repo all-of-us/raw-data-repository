@@ -29,7 +29,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW1RawDao,
     GenomicAW2RawDao,
     GenomicIncidentDao,
-    GenomicMemberReportStateDao, GenomicGcDataFileMissingDao)
+    GenomicMemberReportStateDao,
+    GenomicGcDataFileDao,
+    GenomicGcDataFileMissingDao
+)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -59,7 +62,7 @@ from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
-from rdr_service.genomic.genomic_mappings import array_file_types_attributes
+from rdr_service.genomic.genomic_mappings import array_file_types_attributes, wgs_file_types_attributes
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import (
     SampleStatus,
@@ -137,6 +140,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.set_dao = GenomicSetDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.data_file_dao = GenomicGcDataFileDao()
         self.missing_file_dao = GenomicGcDataFileMissingDao()
         self.sample_dao = BiobankStoredSampleDao()
         self.mk_dao = MailKitOrderDao()
@@ -4461,6 +4465,132 @@ class GenomicPipelineTest(BaseTestCase):
         updated_record = updated_records[0]
         self.assertEqual(current_record.feedback_id, updated_record.feedback_id)
         self.assertEqual(current_record.raw_feedback_count, updated_record.feedbackRecordCount)
+
+    def resolve_gc_missing_files(self):
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath='/test_file_path',
+            bucketName='test_bucket',
+            fileName='test_file_name',
+        )
+
+        array_metrics = []
+        wgs_metrics = []
+        wgs_member_sample_ids = []
+
+        for num in range(2):
+            array_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId=f"1001534{num}",
+                sampleId=f"21042005280{num}",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.AW1
+            )
+
+            array_metric = self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=array_member.id,
+                genomicFileProcessedId=gen_processed_file.id,
+                chipwellbarcode=f"1000{num}_R01C0{num}"
+            )
+            array_metrics.append(array_metric)
+
+            wgs_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId=f"1001534{num}",
+                sampleId=f"21042005290{num}",
+                genomeType="aou_wgs",
+                genomicWorkflowState=GenomicWorkflowState.AW1
+            )
+            wgs_member_sample_ids.append(f"21042005290{num}")
+
+            wgs_metric = self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=wgs_member.id,
+                genomicFileProcessedId=gen_processed_file.id
+            )
+            wgs_metrics.append(wgs_metric)
+
+        for i, attr in enumerate(array_file_types_attributes[0:2]):
+            file_name = f"1000{i}_R01C0{i}_{attr['file_type']}"
+            self.data_generator.create_database_gc_data_file_record(
+                file_path=f'{bucket_name}/test_data_folder/{file_name}',
+                gc_site_id='rdr',
+                bucket_name=bucket_name,
+                file_name=file_name,
+                file_type=attr['file_type'],
+                identifier_type='chipwellbarcode',
+                identifier_value=f'1000{i}_R01C0{i}'
+            )
+
+            self.data_generator.create_database_gc_data_missing_file(
+                gc_validation_metric_id=array_metrics[i].id,
+                run_id=gen_job_run.id,
+                gc_site_id='rdr',
+                file_type=attr['file_type']
+            )
+
+        for i, attr in enumerate(wgs_file_types_attributes[0:2]):
+            file_name = f"1000{i}_R01C0{i}.{attr['file_type']}"
+            self.data_generator.create_database_gc_data_file_record(
+                file_path=f'{bucket_name}/test_data_folder/{file_name}',
+                gc_site_id='rdr',
+                bucket_name=bucket_name,
+                file_name=file_name,
+                file_type=attr['file_type'],
+                identifier_type='sample_id',
+                identifier_value=wgs_member_sample_ids[i]
+            )
+
+            self.data_generator.create_database_gc_data_missing_file(
+                gc_validation_metric_id=wgs_metrics[i].id,
+                run_id=gen_job_run.id,
+                gc_site_id='rdr',
+                file_type=attr['file_type']
+            )
+
+        all_data_files = self.data_file_dao.get_all()
+        all_missing_files = self.missing_file_dao.get_all()
+
+        self.assertEqual(len(all_data_files), 4)
+        self.assertEqual(len(all_missing_files), 4)
+
+        need_resolve_files = self.missing_file_dao.get_files_to_resolve()
+
+        self.assertEqual(len(need_resolve_files), 4)
+
+        array = [file for file in need_resolve_files if file.genomeType == 'aou_array']
+        wgs = [file for file in need_resolve_files if file.genomeType == 'aou_wgs']
+
+        self.assertEqual(len(need_resolve_files) / 2, len(array))
+        self.assertEqual(len(need_resolve_files) / 2, len(wgs))
+
+        genomic_pipeline.genomic_missing_files_resolve()
+
+        need_resolve_files = self.missing_file_dao.get_files_to_resolve()
+
+        self.assertEqual(len(need_resolve_files), 0)
+
+        all_missing_files = self.missing_file_dao.get_all()
+
+        self.assertTrue(all(
+            file for file in all_missing_files
+            if file.resolved == 1 and file.resolved_date is not None
+        ))
 
     def test_missing_files_resolved_clean_up(self):
 

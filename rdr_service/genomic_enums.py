@@ -93,7 +93,8 @@ class GenomicJob(messages.Enum):
     INGEST_INFORMING_LOOP = 39
     ACCESSION_DATA_FILES = 40
     FEEDBACK_RECORD_RECONCILE = 41
-    MISSING_FILES_CLEANUP = 42
+    RESOLVE_MISSING_FILES = 42
+    MISSING_FILES_CLEANUP = 43
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
