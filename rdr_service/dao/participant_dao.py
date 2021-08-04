@@ -84,7 +84,6 @@ class ParticipantHistoryDao(BaseDao):
 class ParticipantDao(UpdatableDao):
     def __init__(self):
         super(ParticipantDao, self).__init__(Participant)
-
         self.hpo_dao = HPODao()
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
@@ -466,7 +465,7 @@ class ParticipantDao(UpdatableDao):
 
         if test_flag:
             participant = self.get(id_)
-        if participant is None:
+        if not participant:
             participant = Participant(participantId=id_)
 
         # biobankId, lastModified, signUpTime are set by DAO.
