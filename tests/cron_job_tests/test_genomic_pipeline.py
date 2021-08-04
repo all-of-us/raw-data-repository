@@ -4573,8 +4573,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(len(need_resolve_files), 4)
 
-        array = [file for file in need_resolve_files if file.genomeType == 'aou_array']
-        wgs = [file for file in need_resolve_files if file.genomeType == 'aou_wgs']
+        array = [file for file in need_resolve_files if file.identifier_type == 'chipwellbarcode']
+        wgs = [file for file in need_resolve_files if file.identifier_type == 'sample_id']
 
         self.assertEqual(len(need_resolve_files) / 2, len(array))
         self.assertEqual(len(need_resolve_files) / 2, len(wgs))

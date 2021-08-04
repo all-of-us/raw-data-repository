@@ -1861,13 +1861,17 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 GenomicGcDataFileMissing.id,
                 GenomicGcDataFileMissing.gc_validation_metric_id,
                 GenomicGcDataFileMissing.file_type,
-                GenomicSetMember.genomeType,
                 sqlalchemy.case(
                     [
                         (GenomicSetMember.genomeType == 'aou_array', GenomicGCValidationMetrics.chipwellbarcode),
                         (GenomicSetMember.genomeType == 'aou_wgs',
                          GenomicSetMember.sampleId)
-                    ],)
+                    ], ).label('identifier_value'),
+                sqlalchemy.case(
+                    [
+                        (GenomicSetMember.genomeType == 'aou_array', 'chipwellbarcode'),
+                        (GenomicSetMember.genomeType == 'aou_wgs', 'sample_id')
+                    ], ).label('identifier_type')
             ).join(
                 GenomicGCValidationMetrics,
                 GenomicGCValidationMetrics.id == GenomicGcDataFileMissing.gc_validation_metric_id
@@ -1887,15 +1891,13 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
     def batch_update_resolved_file(self, records):
         file_dao = GenomicGcDataFileDao()
         method_map = {
-            'aou_array': file_dao.get_with_chipwellbarcode,
-            'aou_wgs': file_dao.get_with_sample_id
+            'chipwellbarcode': file_dao.get_with_chipwellbarcode,
+            'sample_id': file_dao.get_with_sample_id
         }
-        genome_type = records[0].genomeType
-        get_method = method_map[genome_type]
+        get_method = method_map[records[0].identifier_type]
 
         for record in records:
-            identifier = record[4]
-            data_records = get_method(identifier)
+            data_records = get_method(record.identifier_value)
             has_file_type_record = any([obj for obj in data_records if obj.file_type == record.file_type])
             if has_file_type_record:
                 update_record = self.get(record.id)

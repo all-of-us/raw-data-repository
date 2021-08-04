@@ -521,10 +521,10 @@ class GenomicJobController:
         need_to_resolve = self.missing_files_dao.get_files_to_resolve()
         if need_to_resolve:
 
-            resolve_arrays = [obj for obj in need_to_resolve if obj.genomeType == 'aou_array']
+            resolve_arrays = [obj for obj in need_to_resolve if obj.identifier_type == 'chipwellbarcode']
             self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
 
-            resolve_wgs = [obj for obj in need_to_resolve if obj.genomeType == 'aou_wgs']
+            resolve_wgs = [obj for obj in need_to_resolve if obj.identifier_type == 'sample_id']
             self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
 
             logging.info('Resolving missing gc data files complete')
