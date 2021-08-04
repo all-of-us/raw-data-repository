@@ -85,7 +85,7 @@ class ConsentSyncGuesser:
             pairing_info = latest_participant_pairings[summary.participantId]
             latest_participant_pairings[summary.participantId] = (pairing_info, summary)
 
-        count = 0
+        modified_files_count = 0
         for file in files:
             pairing_info, summary = latest_participant_pairings[file.participant_id]
             sync_date = self.get_sync_date(file=file, summary=summary, latest_pairing_info=pairing_info)
@@ -93,9 +93,9 @@ class ConsentSyncGuesser:
                 file.sync_time = sync_date
                 file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
 
-            count += 1
-            if count % 500 == 0:
-                session.commit()
+                modified_files_count += 1
+                if modified_files_count % 500 == 0:
+                    session.commit()
 
     @classmethod
     def get_sync_date(cls, file: ConsentFile, summary: ParticipantSummary, latest_pairing_info: PairingHistoryRecord):
