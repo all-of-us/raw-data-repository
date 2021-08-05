@@ -1,4 +1,5 @@
 import datetime
+import mock
 
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden
 
@@ -27,6 +28,13 @@ class BiobankOrderDaoTest(BaseTestCase):
         self.participant = Participant(participantId=123, biobankId=555)
         ParticipantDao().insert(self.participant)
         self.dao = BiobankOrderDao()
+
+        # Patching to prevent consent validation checks from running
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController.build_controller'
+        )
+        build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
 
     def _make_biobank_order(self, **kwargs):
         """Makes a new BiobankOrder (same values every time) with valid/complete defaults.

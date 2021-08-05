@@ -22,6 +22,13 @@ class HpoLitePairingImporterTest(BaseTestCase):
                                     '1': 'ORG_TEST'
                                 })
 
+        # Patching to prevent consent validation checks from running
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController.build_controller'
+        )
+        build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
+
     @staticmethod
     def _redcap_hpo_lite_pairing_record(participant_id, paired_date, hpo_name, user_email, hpo_lite_pairing_complete):
         """Build out a record that matches the codes we're expecting from redcap"""
