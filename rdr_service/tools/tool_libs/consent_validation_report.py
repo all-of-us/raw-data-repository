@@ -103,7 +103,6 @@ class ProgramTemplateClass(object):
         if not self.doc_id:
             raise ValueError('Please use the --doc-id arg or export CONSENT_DOC_ID environment var')
 
-
         self.worksheet = None   # Set to the newly created worksheet from gspread add_worksheet()
         self.daily_data = None  # Set to the pandas dataframe result generated from the DAILY_REPORT_SQL query
         self.consent_errors_found = False  # Set to True if daily_data dataframe contains NEEDS_CORRECTING values
@@ -182,6 +181,28 @@ class ProgramTemplateClass(object):
             },
         }
 
+    def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
+        """
+        Use the rowcol_to_a1() gspread method to construct an A1 cell range notation
+        At a minimum, a row position is needed (first column will be used by default if no start_col is provided)
+        Returns:  a string such as 'A1:A1'  or 'A5:N5'
+        """
+
+        # Automatically fill in end range to match start range (e.g., result 'A1:A1'), if end range values not specified
+        end_row = end_row or start_row
+        end_col = end_col or start_col
+
+        # Sanity check on row and column values vs. defined spreadsheet dimensions
+        if start_row > self.sheet_rows or end_row > self.sheet_rows:
+            raise ValueError(f'Row value exceeds maximum of {self.sheet_rows}')
+        if start_col > self.sheet_cols or end_col > self.sheet_cols:
+            raise ValueError(f'Column value exceeds maximum of {self.sheet_cols}')
+
+        return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
+
+
+
+
     def get_daily_consent_validation_results(self, db_conn=None):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
@@ -215,47 +236,36 @@ class ProgramTemplateClass(object):
                    cf.type,
                    cf.file_path,
                    -- CASE Statements to calculate the known tracked error conditions
-                   CASE WHEN cf.file_exists = 0 THEN 1 ELSE 0 END AS missing_file,
-                   CASE WHEN (cf.file_exists and cf.is_signature_valid = 0) THEN 1 ELSE 0 END AS signature_missing,
-                   CASE WHEN (cf.is_signature_valid and cf.is_signing_date_valid = 0) THEN 1 ELSE 0
-                   END AS invalid_signing_date,
-                   CASE WHEN (p.date_of_birth is null or p.date_of_birth < "{}" or p.date_of_birth > "{}"
-                              or (p.consent_for_study_enrollment_authored is not null
-                                  and p.date_of_birth > p.consent_for_study_enrollment_authored ) )
-                        THEN 1 ELSE 0
-                   END AS invalid_dob,
-                   CASE WHEN TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored) < 18
-                        THEN 1 ELSE 0
-                   END AS invalid_age_at_consent,
-                   CASE
+                   NOT cf.file_exists AS missing_file,
+                   (cf.file_exists and NOT is_signature_valid) AS signature_missing,
+                   (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
+                   -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
+                   -- DOB later than the consent authored date
+                   (p.date_of_birth is null or p.date_of_birth < "{dob_cutoff}"
+                    or p.date_of_birth > "{report_date}")
+                    or (p.consent_for_study_enrollment_authored is not null
+                        and p.date_of_birth > p.consent_for_study_enrollment_authored )
+                       AS invalid_dob,
+                   TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored) < 18
+                      AS invalid_age_at_consent,
                    -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
-                     WHEN (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%')
-                     THEN 1 ELSE 0
-                   END AS checkbox_unchecked,
-                   CASE
-                     WHEN (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
-                     THEN 1 ELSE 0
-                   END AS non_va_consent_for_va,
-                   CASE
-                     WHEN (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
-                     THEN 1 ELSE 0
-                   END AS va_consent_for_non_va
+                   (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
+                   (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
+                      AS non_va_consent_for_va,
+                   (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
+                      AS va_consent_for_non_va
             FROM consent_file cf
             JOIN participant_summary p on p.participant_id = cf.participant_id
             LEFT OUTER JOIN hpo h on p.hpo_id = h.hpo_id
             LEFT OUTER JOIN organization o on p.organization_id = o.organization_id
             -- Limit the pulled records to those in either a NEEDS_CORRECTING, READY_TO_SYNC, or SYNC_COMPLETED status
             -- The other statuses are not relevant to the daily report metrics
-            WHERE DATE(cf.created) = "{}" AND cf.sync_status IN (1, 2, 4)
+            WHERE DATE(cf.created) = "{report_date}" AND cf.sync_status IN (1, 2, 4)
             -- TODO:   DELETE THIS CLAUSE AFTER CE file validations are implemented
             AND p.participant_origin = 'vibrent'
         """
-
-        # DAILY_REPORT_SQL string has three placeholders to populate:
-        # dob_date_cutoff and the report_date are used for validating DOB, and report_date is also used in the
-        # WHERE clause to filter on records created on that date.
-        report_date_filter = self.report_date.strftime("%Y-%m-%d")
-        sql = DAILY_REPORT_SQL.format(self.dob_date_cutoff, report_date_filter, report_date_filter)
+        sql = DAILY_REPORT_SQL.format(report_date=self.report_date.strftime("%Y-%m-%d"),
+                                      dob_cutoff=self.dob_date_cutoff)
 
         # Load daily validation results into a pandas dataframe and save as instance variable
         df = self.daily_data = pandas.read_sql_query(sql, db_conn)
@@ -307,9 +317,10 @@ class ProgramTemplateClass(object):
 
         banner = self.row_layout.get(banner_key)
         if banner:
-            # Banner text rows only have one cell of text to populate in column A; E.g., cell_range = 'A1' or 'A3', etc.
-            cell_range = rowcol_to_a1(row_pos, 1)
-            self.write_to_worksheet(cell_range, banner.get('values'), format_specs=banner.get('format'))
+            # Banner text is a single-cell range with column position 1 (default)
+            self.write_to_worksheet(self.make_a1_notation(row_pos),
+                                    banner.get('values'),
+                                    format_specs=banner.get('format'))
             self.row_pos = row_pos + 1
 
     def add_count_header_section(self, row_pos=None, hpo=None):
@@ -324,8 +335,8 @@ class ProgramTemplateClass(object):
         if hpo:
             section['values'][0] = hpo
         # E.g. cell_range = 'A5:N5' for row 5
-        cell_range = rowcol_to_a1(row_pos, 1) + ':' + rowcol_to_a1(row_pos, self.sheet_cols)
-        self.write_to_worksheet(cell_range, section.get('values'), format_specs=section.get('format'))
+        self.write_to_worksheet(self.make_a1_notation(row_pos, end_col=self.sheet_cols),
+                                section.get('values'), format_specs=section.get('format'))
         self.row_pos = row_pos + 1
 
 
@@ -344,8 +355,9 @@ class ProgramTemplateClass(object):
             # Organization name string gets written once to column A only in the first pass through this loop
             # E.g., cell_range = 'A7' for row_pos 7
             if org and consent == CONSENTS_LIST[0]:
-                cell_range = rowcol_to_a1(row_pos, 1)
-                self.write_to_worksheet(cell_range, [org],
+                # Organization text is a single-cell range
+                self.write_to_worksheet(self.make_a1_notation(row_pos),
+                                        [org],
                                         format_specs={'textFormat': {'bold': True}, 'wrapStrategy': 'wrap' })
 
             # Skip row creation if no consents of this type were processed that day.  Otherwise, we'll print a summary
@@ -361,9 +373,9 @@ class ProgramTemplateClass(object):
                             & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
 
             # Partial row population for the summary counts column cells.  E.g., cell_range = 'C7:F7' for row_pos 7
-            cell_range = rowcol_to_a1(row_pos, DAILY_REPORT_COLUMN_MAP.get('consent_type')) + ':' + \
-                         rowcol_to_a1(row_pos, DAILY_REPORT_COLUMN_MAP.get('total_errors'))
             consent_summary_values =[str(ConsentType(consent)), expected, ready, errors]
+            cell_range = self.make_a1_notation(row_pos, start_col=DAILY_REPORT_COLUMN_MAP.get('consent_type'),
+                                      end_col=DAILY_REPORT_COLUMN_MAP.get('total_errors'))
             self.write_to_worksheet(cell_range, consent_summary_values)
 
             if errors:
@@ -375,12 +387,12 @@ class ProgramTemplateClass(object):
                     if count:
                         tracked_error_values.append(int(count))   # Cast sum() int64 dtype result to int for gsheets?
                     else:
-                        tracked_error_values.append(None)
+                        tracked_error_values.append(None)  # Suppress printing 0s in errors cols for better readability
 
                 # Partial row write for the individual error counts columns E.g. cell_range = 'G7:N7' for row_pos 7
-                cell_range = rowcol_to_a1(row_pos, DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[0])) + ':' + \
-                        rowcol_to_a1(row_pos, DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1]))
-
+                cell_range = self.make_a1_notation(row_pos,
+                                                   start_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[0]),
+                                                   end_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1]))
                 self.write_to_worksheet(cell_range, tracked_error_values)
 
             row_pos += 1
