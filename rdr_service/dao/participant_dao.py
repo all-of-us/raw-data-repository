@@ -44,7 +44,6 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     make_primary_provider_link_for_id,
 )
-from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy
 
 
 class ParticipantHistoryDao(BaseDao):
@@ -275,8 +274,9 @@ class ParticipantDao(UpdatableDao):
                 # Get valid files ready for sync when a participant is paired to an organization
                 ConsentDao.set_previously_synced_files_as_ready(session, obj.participantId)
 
-                controller = ConsentValidationController.build_controller()
-                with ReplacementStoringStrategy(
+                import rdr_service.services.consent.validation as validation
+                controller = validation.ConsentValidationController.build_controller()
+                with validation.ReplacementStoringStrategy(
                     session=session,
                     consent_dao=controller.consent_dao
                 ) as store_strategy:
