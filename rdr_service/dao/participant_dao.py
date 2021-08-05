@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Collection
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql.expression import literal
 
@@ -65,11 +65,27 @@ class ParticipantHistoryDao(BaseDao):
     def get_id(self, obj):
         return [obj.participantId, obj.version]
 
+    @classmethod
+    def get_pairing_history(cls, session: Session, participant_ids: Collection[int]) -> Collection:
+        """Loads the pairing history for the given participants"""
+        return session.query(
+            ParticipantHistory.participantId,
+            ParticipantHistory.lastModified,
+            ParticipantHistory.hpoId,
+            ParticipantHistory.organizationId,
+            Organization.externalId,
+            ParticipantHistory.siteId
+        ).join(
+            Organization,
+            Organization.organizationId == ParticipantHistory.organizationId
+        ).filter(
+            ParticipantHistory.participantId.in_(participant_ids)
+        ).order_by(ParticipantHistory.lastModified).distinct().all()
+
 
 class ParticipantDao(UpdatableDao):
     def __init__(self):
         super(ParticipantDao, self).__init__(Participant)
-
         self.hpo_dao = HPODao()
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
@@ -465,7 +481,7 @@ class ParticipantDao(UpdatableDao):
 
         if test_flag:
             participant = self.get(id_)
-        if participant is None:
+        if not participant:
             participant = Participant(participantId=id_)
 
         # biobankId, lastModified, signUpTime are set by DAO.

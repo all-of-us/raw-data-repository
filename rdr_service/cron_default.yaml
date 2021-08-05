@@ -134,6 +134,16 @@ cron:
   timezone: America/New_York
   schedule: every day 6:00
   target: offline
+- description: Genomic Missing Files Clean Up
+  url: /offline/GenomicMissingFilesCleanUp
+  timezone: America/New_York
+  schedule: every saturday 22:00
+  target: offline
+- description: Genomic Missing Files Resolve
+  url: /offline/GenomicMissingFilesResolve
+  timezone: America/New_York
+  schedule: every 2 hours
+  target: offline
 - description: Clean up request logs
   url: /offline/CleanUpRequestLogs
   timezone: America/New_York

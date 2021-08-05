@@ -3,8 +3,9 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
 from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
-from rdr_service.app_util import auth_required, get_validated_user_info
+from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -12,11 +13,19 @@ from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
 from rdr_service.code_constants import UNSET
 from rdr_service.participant_enums import ParticipantSummaryRecord
 
+PTC_ALLOWED_ENVIRONMENTS = [
+    'all-of-us-rdr-sandbox',
+    'all-of-us-rdr-stable',
+    'all-of-us-rdr-ptsc-1-test',
+    'localhost'
+]
+
 
 class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
+        self.participant_dao = ParticipantDao()
 
     @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
@@ -54,6 +63,19 @@ class ParticipantSummaryApi(BaseApi):
                 elif requested_awardee != auth_awardee:
                     raise Forbidden
             return super(ParticipantSummaryApi, self)._query("participantId")
+
+    @auth_required(RDR_AND_PTC)
+    @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
+    def post(self, p_id):
+        participant = self.participant_dao.get(p_id)
+        if not participant:
+            raise NotFound(f"Participant P{p_id} was not found")
+
+        participant_summary = self.dao.get_by_participant_id(p_id)
+        if participant_summary:
+            raise BadRequest(f"Participant Summary for P{p_id} already exists, updates are not allowed.")
+
+        return super(ParticipantSummaryApi, self).post(p_id)
 
     def _make_query(self, check_invalid=True):
         constraint_failed, message = self._check_constraints()
@@ -147,7 +169,10 @@ class ParticipantSummaryModifiedApi(BaseApi):
             items = query.all()
             for item in items:
                 response.append(
-                    {"participantId": "P{0}".format(item.participantId), "lastModified": item.lastModified.isoformat()}
+                    {
+                        "participantId": "P{0}".format(item.participantId),
+                        "lastModified": item.lastModified.isoformat()
+                    }
                 )
 
         return response
@@ -165,7 +190,7 @@ class ParticipantSummaryCheckLoginApi(BaseApi):
     def post(self):
         """
         Return status of IN_USE / NOT_IN_USE if participant found / not found
-    """
+        """
         req_data = request.get_json()
         accepted_map = {
             'email': 'email',
