@@ -249,7 +249,8 @@ class ProgramTemplateClass(object):
                    cf.sync_status,
                    cf.type,
                    cf.file_path,
-                   -- CASE Statements to calculate the known tracked error conditions
+                   -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
+                   -- (1 if error found)
                    NOT cf.file_exists AS missing_file,
                    (cf.file_exists and NOT is_signature_valid) AS signature_missing,
                    (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
