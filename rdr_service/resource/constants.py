@@ -28,6 +28,7 @@ class SchemaID(IntEnum):
     participant_consents = 2060
     participant_modules = 2070
     participant_address = 2080
+    participant_pairing_history = 2085
     patient_statuses = 2090
     ehr_recept = 2100
     pdr_participant = 2110
@@ -50,6 +51,9 @@ class SchemaID(IntEnum):
     biobank_covid_antibody_sample = 5000
     quest_covid_antibody_test = 5010
     quest_covid_antibody_test_result = 5020
+
+    # Metrics
+    retention_metrics = 2120
 
 
 # Used to calculate participant enrollment cohort.
@@ -121,6 +125,7 @@ class ParticipantEventEnum(IntEnum):
     cope_feb = 52,
     GeneticAncestry = 53
     cope_vaccine1 = 54
+    cope_vaccine2 = 55
 
     # Genomics: 70 - 99
 
@@ -130,3 +135,17 @@ class ParticipantEventEnum(IntEnum):
     FULLY_CONSENTED = 108
     CORE_MINUS_PM = 112
     CORE_PARTICIPANT = 114
+
+
+class RetentionStatusEnum(IntEnum):
+    """ Whether a participant meets retention-eligible criteria """
+    NOT_ELIGIBLE = 1
+    ELIGIBLE = 2
+
+
+class RetentionTypeEnum(IntEnum):
+    """ Participant retention type """
+    UNSET = 0
+    ACTIVE = 1
+    PASSIVE = 2
+    ACTIVE_AND_PASSIVE = 3

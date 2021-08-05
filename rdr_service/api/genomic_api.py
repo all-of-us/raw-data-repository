@@ -9,10 +9,13 @@ from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
 from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao, GenomicOutreachDaoV2
 
-ALLOWED_ENVIRONMENTS = ['all-of-us-rdr-sandbox',
-                        'all-of-us-rdr-stable',
-                        'all-of-us-rdr-ptsc-1-test',
-                        'localhost']
+PTC_ALLOWED_ENVIRONMENTS = [
+    'all-of-us-rdr-sandbox',
+    'all-of-us-rdr-stable',
+    'all-of-us-rdr-ptsc-1-test',
+    'localhost'
+]
+
 
 
 class GenomicPiiApi(BaseApi):
@@ -54,7 +57,7 @@ class GenomicOutreachApi(BaseApi):
         return BadRequest
 
     @auth_required(RDR_AND_PTC)
-    @restrict_to_gae_project(ALLOWED_ENVIRONMENTS)
+    @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def post(self, p_id, mode=None):
         """
         Generates a genomic test participant from payload

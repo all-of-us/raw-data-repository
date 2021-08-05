@@ -47,7 +47,9 @@ from rdr_service.dao.genomics_dao import (
     GenomicAW2RawDao,
     GenomicGCValidationMetricsDao,
     GenomicInformingLoopDao,
-    GenomicGcDataFileDao)
+    GenomicGcDataFileDao,
+    GenomicGcDataFileMissingDao
+)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -99,6 +101,7 @@ class GenomicJobController:
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.aw1_raw_dao = GenomicAW1RawDao()
         self.aw2_raw_dao = GenomicAW2RawDao()
+        self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -504,6 +507,29 @@ class GenomicJobController:
                 feedback_record = self.manifest_feedback_dao.get(record.feedback_id)
                 feedback_record.feedbackRecordCount = record.raw_feedback_count
                 self.manifest_feedback_dao.update(feedback_record)
+
+    def gc_missing_files_record_clean_up(self, num_days=90):
+        logging.info('Running missing resolved data files cleanup')
+
+        self.missing_files_dao.remove_resolved_from_days(
+            num_days=num_days
+        )
+
+    def resolve_missing_gc_files(self):
+        logging.info('Resolving missing gc data files')
+
+        need_to_resolve = self.missing_files_dao.get_files_to_resolve(limit=200)
+        if need_to_resolve:
+
+            resolve_arrays = [obj for obj in need_to_resolve if obj.identifier_type == 'chipwellbarcode']
+            self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
+
+            resolve_wgs = [obj for obj in need_to_resolve if obj.identifier_type == 'sample_id']
+            self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
+
+            logging.info('Resolving missing gc data files complete')
+        else:
+            logging.info('No missing gc data files to resolve')
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):

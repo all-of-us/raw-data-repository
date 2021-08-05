@@ -1,3 +1,4 @@
+import csv
 import io
 import logging
 import os
@@ -370,3 +371,99 @@ def get_storage_provider():
     provider_class = StorageProvider.get_provider(default=default_provider)
     return provider_class()
 
+
+class GoogleCloudStorageCSVReader:
+    """
+    Read a CSV file from a bucket and yield rows or chunks of rows.
+    """
+    def __init__(self, cloud_csv_file, column_names:list=None, delimiter=','):
+        """
+        :param cloud_csv_file: bucket and file blob name of cloud csv file.
+        :param column_names: list of column names if first row does not have the col names.
+        """
+        if not cloud_csv_file or not isinstance(cloud_csv_file, str):
+            raise ValueError('Invalid cloud storage csv file name.')
+
+        self.cloud_csv_file = cloud_csv_file
+        self.column_names = column_names
+        self._delimiter = delimiter
+        self._tmp_file = None  # Temp file object handle.
+        self._strio = None  # StringIO object
+        self._header = None  # delimited string of column names.
+        self._reader = None  # csv.DictReader object.
+        self._batch_size = 1000  # number of rows from temp file to read.
+
+    @staticmethod
+    def _copy_blob_to_temp(cloud_csv_file):
+        """
+        Copy the cloud storage blob to the local temporary directory.
+        :param cloud_csv_file: bucket and file blob name of cloud csv file.
+        :return: temp file handle.
+        """
+        tmp_file = tempfile.NamedTemporaryFile(prefix='cloud_')
+        provider = get_storage_provider()
+        with provider.open(cloud_csv_file, 'rt') as csv_file:
+            chunk_size = 1000 * 1024 * 10  # 10MB chunk.
+            while True:
+                chunk = csv_file.read(chunk_size)
+                tmp_file.write(chunk.encode('utf-8') if isinstance(chunk, str) else chunk)
+                if not chunk or len(chunk) < chunk_size:
+                    break
+        tmp_file.seek(0)
+        return tmp_file
+
+    def _read_batch_from_file(self):
+        """
+        Read a batch of rows from the temp file into a stringIO object and return a CSV Reader.
+        Note: We load chunks of records into the StringIO object so we don't ever load all of the records
+        into memory at the sametime.
+        :return: rows read count
+        """
+        count = 0
+        if not self._strio:
+            self._strio = io.StringIO()
+        else:
+            self._strio.seek(0)
+            self._strio.truncate(0)
+        self._strio.write(self._header)
+
+        while True:
+            line = self._tmp_file.readline().decode('utf-8')
+            if line:
+                self._strio.write(line)
+                count += 1
+            if count == self._batch_size or not line:
+                break
+
+        self._strio.seek(0)
+        self._reader = csv.DictReader(self._strio, delimiter=self._delimiter)
+        return count
+
+    def __iter__(self):
+        # Copy cloud storage blob to local temp file.
+        self._tmp_file = self._copy_blob_to_temp(self.cloud_csv_file)
+        # Prepare CSV column header row.
+        if self.column_names is None:
+            self._header = self._tmp_file.readline().decode('utf-8')
+            self.column_names = [s.strip() for s in self._header.split(self._delimiter)]
+        else:
+            self._header = ', '.join(self.column_names)
+
+        count = self._read_batch_from_file()
+        if not count:
+            return None
+
+        return self
+
+    def __next__(self):
+
+        try:
+            row = next(self._reader)
+        except StopIteration:
+            count = self._read_batch_from_file()
+            if not count:
+                self._tmp_file.close()
+                raise StopIteration
+            row = next(self._reader)
+
+        return row

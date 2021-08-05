@@ -13,7 +13,7 @@ from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGener
 from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
     BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory, \
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRStopParticipating, BQPDRWithdrawalIntro
-from rdr_service.resource.generators import ParticipantSummaryGenerator
+from rdr_service.resource import generators
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
 
@@ -22,10 +22,10 @@ def batch_rebuild_participants_task(payload, project_id=None):
     Loop through all participants in batch and generate the BQ participant summary data and
     store it in the biguqery_sync table.
     Warning: this will force a rebuild and eventually a re-sync for every participant record.
-    :param project_id: String identifier for the GAE project
     :param payload: Dict object with list of participants to work on.
+    :param project_id: String identifier for the GAE project
     """
-    res_gen = ParticipantSummaryGenerator()
+    res_gen = generators.ParticipantSummaryGenerator()
 
     ps_bqgen = BQParticipantSummaryGenerator()
     pdr_bqgen = BQPDRParticipantSummaryGenerator()
@@ -86,6 +86,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
                 if not table:
                     continue
 
+                # TODO: Switch this to ResourceDataDAO, but make sure we don't break anything when the switch is made.
                 w_dao = BigQuerySyncDao()
                 with w_dao.session() as w_session:
                     for mod_bqr in mod_bqrs:
@@ -93,3 +94,20 @@ def batch_rebuild_participants_task(payload, project_id=None):
                                                 w_dao=w_dao, w_session=w_session, project_id=project_id)
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt BigQuery data for {count} participants.')
+
+
+def batch_rebuild_retention_metrics_task(payload):
+    """
+    Rebuild all or a batch of Retention Eligible Metrics
+    :param payload: Dict object with list of participants to work on.
+    """
+    res_gen = generators.RetentionEligibleMetricGenerator()
+    batch = payload.get('batch')
+    count = 0
+
+    for pid in batch:
+        res = res_gen.make_resource(pid)
+        res.save()
+        count += 1
+
+    logging.info(f'End time: {datetime.utcnow()}, rebuilt {count} Retention Metrics records.')

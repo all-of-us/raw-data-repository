@@ -92,7 +92,7 @@ api.add_resource(
     API_PREFIX + "Participant/<participant_id:p_id>/Summary",
     API_PREFIX + "ParticipantSummary",
     endpoint="participant.summary",
-    methods=["GET"],
+    methods=["GET", "POST"],
 )
 
 # BigQuery version of Participant Summary API

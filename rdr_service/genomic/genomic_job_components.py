@@ -11,6 +11,7 @@ from collections import deque, namedtuple
 from copy import deepcopy
 from dateutil.parser import parse
 import sqlalchemy
+from werkzeug.exceptions import NotFound
 
 from rdr_service import clock
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
@@ -39,7 +40,7 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
     GenomicAW1Raw,
-    GenomicAW2Raw)
+    GenomicAW2Raw, GenomicGcDataFileMissing)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -59,7 +60,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFeedbackDao,
     GenomicManifestFileDao,
     GenomicAW1RawDao,
-    GenomicAW2RawDao, GenomicGcDataFileDao)
+    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -1824,13 +1825,14 @@ class GenomicReconciler:
         self.cvl_file_name = None
         self.file_list = None
         self.ready_signal = None
-        self.total_missing_data = []
+        self.any_missing_data = False
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.file_dao = GenomicFileProcessedDao()
         self.data_file_dao = GenomicGcDataFileDao()
+        self.data_file_missing_dao = GenomicGcDataFileMissingDao()
 
         # Other components
         self.file_mover = file_mover
@@ -1874,6 +1876,9 @@ class GenomicReconciler:
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
 
+            if missing_data_files:
+                self.any_missing_data = True
+
             metric_touched = False
 
             # WGS query results requre GenomicGCValidationMetrics model to be specified
@@ -1898,15 +1903,15 @@ class GenomicReconciler:
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
-                self.update_reconciled_metric(_obj, missing_data_files)
+                self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
-        if self.total_missing_data:
-            logging.info(f'Total missing data: {len(self.total_missing_data)}')
+        if self.any_missing_data:
+            logging.info('Missing Data...')
             self.process_missing_data()
 
         return GenomicSubProcessResult.SUCCESS
 
-    def update_reconciled_metric(self, _obj, missing_data_files):
+    def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
         member = self.member_dao.get(_obj.genomicSetMemberId)
 
         # Only upsert the metric if changed
@@ -1931,35 +1936,46 @@ class GenomicReconciler:
             incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
 
             if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
-                self.total_missing_data.append((_obj.genomicFileProcessedId, missing_data_files, member))
+                for file_type in missing_data_files:
+                    missing_file_object = GenomicGcDataFileMissing(
+                        gc_site_id=_gc_site_id,
+                        file_type=file_type,
+                        run_id=self.run_id,
+                        gc_validation_metric_id=_obj.id
+                    )
+                    self.data_file_missing_dao.insert(missing_file_object)
 
         # Update Member
         if next_state is not None and next_state != member.genomicWorkflowState:
             self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
     def process_missing_data(self):
-        description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
-        description += f"\nGenomic Job Run ID: {self.run_id}"
-
-        for f in self.total_missing_data:
-            file = self.file_dao.get(f[0])
-            description += self._compile_missing_data_alert(
-                file_name=file.fileName,
-                missing_data=f[1]
-            )
-            self.controller.create_incident(
-                source_job_run_id=self.run_id,
-                source_file_processed_id=file.id,
-                code=GenomicIncidentCode.MISSING_FILES.name,
-                message=description,
-                genomic_set_member_id=f[2].id,
-                biobank_id=f[2].biobankId,
-                sample_id=f[2].sampleId if f[2].sampleId else "",
-                collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
-                slack=True
-            )
-        # reset total missing data after incident created.
-        self.total_missing_data = []
+        # TODO: Disabling missing file alerts temporarily
+        #  The files will be stored in the DB instead.
+        #  A future PR will handle the alerts
+        # description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
+        # description += f"\nGenomic Job Run ID: {self.run_id}"
+        # missing_files = self.data_file_missing_dao.get_with_run_id(self.run_id)
+        #
+        # for f in missing_files:
+        #     file = self.file_dao.get(f[0])
+        #     description += self._compile_missing_data_alert(
+        #         file_name=file.fileName,
+        #         missing_data=f[1]
+        #     )
+        #     self.controller.create_incident(
+        #         source_job_run_id=self.run_id,
+        #         source_file_processed_id=file.id,
+        #         code=GenomicIncidentCode.MISSING_FILES.name,
+        #         message=description,
+        #         genomic_set_member_id=f[2].id,
+        #         biobank_id=f[2].biobankId,
+        #         sample_id=f[2].sampleId if f[2].sampleId else "",
+        #         collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
+        #         slack=True
+        #     )
+        # reset missing data flag after incident created.
+        self.any_missing_data = False
 
     @staticmethod
     def _compile_missing_data_alert(file_name, missing_data):
@@ -3105,6 +3121,10 @@ class ManifestCompiler:
             record_count = len(source_data)
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+
+                if member is None:
+                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+
                 if self.manifest_def.job_run_field is not None:
                     results.append(
                         self.member_dao.update_member_job_run_id(

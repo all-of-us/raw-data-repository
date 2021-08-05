@@ -1,5 +1,8 @@
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
+from rdr_service.resource import generators
 
 
 class RetentionEligibleMetricsDao(UpdatableDao):
@@ -24,8 +27,25 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         else:
             return None, None
 
+    def _submit_rebuild_task(self, pids):
+        """
+        Rebuild Retention Eligible Metrics resource records
+        :param pids: List of participant ids.
+        """
+        # Rebuild participant for BigQuery
+        if GAE_PROJECT == 'localhost':
+            res_gen = generators.RetentionEligibleMetricGenerator()
+            for pid in pids:
+                res = res_gen.make_resource(pid)
+                res.save()
+        else:
+            task = GCPCloudTask()
+            params = {'batch': pids}
+            task.execute('batch_rebuild_retention_eligible_task', queue='resource-tasks', payload=params,
+                         in_seconds=15)
+
     def upsert_all_with_session(self, session, retention_eligible_metrics_records):
-        upsert_count = 0
+        update_queue = list()
         for record in retention_eligible_metrics_records:
             dup_id, need_update = self._find_dup_with_session(session, record)
             if dup_id and not need_update:
@@ -33,5 +53,10 @@ class RetentionEligibleMetricsDao(UpdatableDao):
             elif dup_id and need_update:
                 record.id = dup_id
             session.merge(record)
-            upsert_count = upsert_count + 1
-        return upsert_count
+            # Batch up records for resource rebuilding.
+            update_queue.append(int(record.participantId))
+
+        session.commit()
+        if update_queue:
+            self._submit_rebuild_task(update_queue)
+        return len(update_queue)
