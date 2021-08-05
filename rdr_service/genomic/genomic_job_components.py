@@ -1825,7 +1825,6 @@ class GenomicReconciler:
         self.cvl_file_name = None
         self.file_list = None
         self.ready_signal = None
-        self.any_missing_data = False
 
         # Dao components
         self.member_dao = GenomicSetMemberDao()
@@ -1905,10 +1904,6 @@ class GenomicReconciler:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
-        if self.any_missing_data:
-            logging.info('Missing Data...')
-            self.process_missing_data()
-
         return GenomicSubProcessResult.SUCCESS
 
     def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
@@ -1944,52 +1939,46 @@ class GenomicReconciler:
                         gc_validation_metric_id=_obj.id
                     )
                     self.data_file_missing_dao.insert(missing_file_object)
+                self.process_missing_data(_obj)
 
         # Update Member
         if next_state is not None and next_state != member.genomicWorkflowState:
             self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
-    def process_missing_data(self):
-        # TODO: Disabling missing file alerts temporarily
-        #  The files will be stored in the DB instead.
-        #  A future PR will handle the alerts
-        # description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
-        # description += f"\nGenomic Job Run ID: {self.run_id}"
-        # missing_files = self.data_file_missing_dao.get_with_run_id(self.run_id)
-        #
-        # for f in missing_files:
-        #     file = self.file_dao.get(f[0])
-        #     description += self._compile_missing_data_alert(
-        #         file_name=file.fileName,
-        #         missing_data=f[1]
-        #     )
-        #     self.controller.create_incident(
-        #         source_job_run_id=self.run_id,
-        #         source_file_processed_id=file.id,
-        #         code=GenomicIncidentCode.MISSING_FILES.name,
-        #         message=description,
-        #         genomic_set_member_id=f[2].id,
-        #         biobank_id=f[2].biobankId,
-        #         sample_id=f[2].sampleId if f[2].sampleId else "",
-        #         collection_tube_id=f[2].collectionTubeId if f[2].collectionTubeId else "",
-        #         slack=True
-        #     )
-        # reset missing data flag after incident created.
-        self.any_missing_data = False
+    def process_missing_data(self, metric):
+        missing_files = self.data_file_missing_dao.get_with_run_id(self.run_id)
+        file = self.file_dao.get(metric.genomicFileProcessedId)
+        member = self.member_dao.get(metric.genomicSetMemberId)
+        description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
+        description += f"\nGenomic Job Run ID: {self.run_id}"
+        description += self._compile_missing_data_alert(
+            file_name=file.fileName,
+            missing_files=missing_files
+        )
+        self.controller.create_incident(
+            source_job_run_id=self.run_id,
+            source_file_processed_id=file.id,
+            code=GenomicIncidentCode.MISSING_FILES.name,
+            message=description,
+            genomic_set_member_id=member.id,
+            biobank_id=member.biobankId,
+            sample_id=member.sampleId if member.sampleId else "",
+            collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
+            slack=True
+        )
 
     @staticmethod
-    def _compile_missing_data_alert(file_name, missing_data):
+    def _compile_missing_data_alert(file_name, missing_files):
         """
         Compiles the description to include in a GenomicAlert
         :param file_name:
         :param missing_data: list of files
         :return: summary, description
         """
-        file_list = '\n'.join([md for md in missing_data])
+        file_list = '\n'.join([mf.file_type for mf in missing_files])
         description = f"\nManifest File: {file_name}"
-        description += "\nMissing Genotype Data:"
+        description += "\nMissing Data File(s):"
         description += f"\n{file_list}"
-
         return description
 
     def generate_cvl_reconciliation_report(self):
