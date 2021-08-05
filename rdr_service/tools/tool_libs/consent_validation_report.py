@@ -179,7 +179,7 @@ class ProgramTemplateClass(object):
                            'Total Errors',
                            'Missing File',
                            'Signature Missing',
-                           'Signature Date Mismatch',
+                           'Signature Date Invalid',
                            'Invalid DOB',
                            'Age at Primary Consent <18',
                            'Checkbox Unchecked',
