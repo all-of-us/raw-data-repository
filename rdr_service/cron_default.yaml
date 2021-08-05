@@ -142,7 +142,7 @@ cron:
 - description: Genomic Missing Files Resolve
   url: /offline/GenomicMissingFilesResolve
   timezone: America/New_York
-  schedule: every 1 hour
+  schedule: every 2 hours
   target: offline
 - description: Clean up request logs
   url: /offline/CleanUpRequestLogs
