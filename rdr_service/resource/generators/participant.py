@@ -61,7 +61,7 @@ from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
 
 _consent_module_question_map = {
-    # module: question code string
+    # { module: question code string }
     'ConsentPII': None,
     'DVEHRSharing': 'DVEHRSharing_AreYouInterested',
     'EHRConsentPII': 'EHRConsentPII_ConsentPermission',
@@ -72,25 +72,17 @@ _consent_module_question_map = {
     'cope_nov': 'section_participation',
     'cope_dec': 'section_participation',
     'cope_feb': 'section_participation',
-    'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits'
+    'GeneticAncestry': 'GeneticAncestry_ConsentAncestryTraits',
+    'covid_19_serology_results': 'covid_19_serology_results_decision'
 }
 
-# _consent_expired_question_map must contain every module ID from _consent_module_question_map.
+# _consent_expired_question_map, for expired consents. { module: question code string }
 _consent_expired_question_map = {
-    'ConsentPII': None,
-    'DVEHRSharing': None,
-    'EHRConsentPII': 'EHRConsentPII_ConsentExpired',
-    'GROR': None,
-    'PrimaryConsentUpdate': None,
-    'ProgramUpdate': None,
-    'COPE': None,
-    'cope_nov': None,
-    'cope_dec': None,
-    'cope_feb': None,
-    'GeneticAncestry': None
+    'EHRConsentPII': 'EHRConsentPII_ConsentExpired'
 }
 
-# Possible answer codes for the consent module questions and what submittal status the answers correspond to
+# Possible answer codes for the consent module questions and what submittal status the answers correspond to.
+# { answer code string: BQModuleStatusEnum value }
 _consent_answer_status_map = {
     'ConsentPermission_Yes': BQModuleStatusEnum.SUBMITTED,
     'ConsentPermission_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
@@ -112,6 +104,9 @@ _consent_answer_status_map = {
     'ConsentAncestryTraits_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
     'ConsentAncestryTraits_NotSure': BQModuleStatusEnum.SUBMITTED_NOT_SURE,
     'PMI_Skip': BQModuleStatusEnum.UNSET,
+    # covid_19_serology_results_decision
+    'Decision_Yes': BQModuleStatusEnum.SUBMITTED,
+    'Decision_No': BQModuleStatusEnum.SUBMITTED_NO_CONSENT,
 }
 
 # PDR-252:  When RDR starts accepting QuestionnaireResponse payloads for withdrawal screens, AIAN participants
@@ -682,8 +677,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                             consent['consent_value'] = module_data['consent_value'] = consent_value
                             consent['consent_value_id'] = module_data['consent_value_id'] = \
                                 self._lookup_code_id(consent_value, ro_session)
-                            consent['consent_expired'] = module_data['consent_expired'] = \
-                                qnan.get(_consent_expired_question_map[module_name] or 'None', None)
+                            if module_name in _consent_expired_question_map:
+                                consent['consent_expired'] = module_data['consent_expired'] = \
+                                    qnan.get(_consent_expired_question_map[module_name] or 'None', None)
                             # TODO: Should we have also have a 'consent_expired_id', if so what would the integer
                             #  value be (there is only a question code_id in the code table, no answer code_id)?
 
