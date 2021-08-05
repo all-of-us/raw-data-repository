@@ -1,5 +1,6 @@
 import datetime
 import http.client
+import mock
 from typing import Collection
 
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -19,6 +20,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
     OrganizationType,
+    QuestionnaireStatus,
     SuspensionStatus,
     TEST_HPO_ID,
     TEST_HPO_NAME,
@@ -41,6 +43,8 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.provider_link_2 = {"primary": True, "organization": {"reference": "Organization/PITT"}}
         self.summary_dao = ParticipantSummaryDao()
 
+        self.data_generator.create_database_hpo(name='VA')  # VA hpo needed for consent validation
+
         # Needed by test_switch_to_test_account
         self.hpo_dao = HPODao()
         self.hpo_dao.insert(
@@ -49,6 +53,12 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.order = BiobankOrderDao()
 
         self._ehr_questionnaire_id = None
+
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController._build_validator'
+        )
+        self.mock_build_validator = build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
 
     def test_participant_id_out_of_range(self):
         self.send_get("Participant/P12345678", expected_status=404)
@@ -770,20 +780,29 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertIsNone(updated_participant.organizationId)
         self.assertIsNone(updated_participant.siteId)
 
+    def _send_pairing_request(self, participant_id, org_name):
+        self.send_put(f'Participant/P{participant_id}', {
+            'participantId': f'P{participant_id}',
+            'organization': org_name,
+            'withdrawalStatus': 'NOT_WITHDRAWN',
+            'suspensionStatus': 'NOT_SUSPENDED',
+            'meta': {'versionId': 'W/"1"'}
+        }, headers={"If-Match": 'W/"1"'})
+
     def test_org_change_preps_files(self):
         """
         When a participant is paired to an organization for the first time, or changes organizations, any
         consent files that have been synced will need to be synced again to the new organization
         """
         # Create an unpaired participant and some consent files that have been synced
-        participant = self.data_generator.create_database_participant()
+        summary = self.data_generator.create_database_participant_summary()
         self.data_generator.create_database_consent_file(
-            participant_id=participant.participantId,
+            participant_id=summary.participantId,
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.SYNC_COMPLETE
         )
         self.data_generator.create_database_consent_file(
-            participant_id=participant.participantId,
+            participant_id=summary.participantId,
             type=ConsentType.EHR,
             sync_status=ConsentSyncStatus.SYNC_COMPLETE
         )
@@ -791,22 +810,78 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         # Pair the participant to an organization through the API
         test_org_external_id = 'test_org'
         self.data_generator.create_database_organization(externalId=test_org_external_id)
-        self.send_put(f'Participant/P{participant.participantId}', {
-            'participantId': f'P{participant.participantId}',
-            'organization': test_org_external_id,
-            'withdrawalStatus': 'NOT_WITHDRAWN',
-            'suspensionStatus': 'NOT_SUSPENDED',
-            'meta': {'versionId': 'W/"1"'}
-        }, headers={"If-Match": 'W/"1"'})
+        self._send_pairing_request(participant_id=summary.participantId, org_name=test_org_external_id)
 
         # Make sure all the participant's consent files were set to READY_TO_SYNC
         participant_consent_files: Collection[ConsentFile] = self.session.query(ConsentFile).filter(
-            ConsentFile.participant_id == participant.participantId
+            ConsentFile.participant_id == summary.participantId
         ).all()
         self.assertEqual(2, len(participant_consent_files))  # making sure we got the consent files
         self.assertTrue(
             all([file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in participant_consent_files])
         )
+
+    def test_org_change_retro_validates(self):
+        """
+        When a participant is paired to an organization for the first time, or changes organizations, any
+        consent files that have been synced will need to be synced again to the new organization
+        """
+        # Create an unpaired participant and some consent files that have been synced
+        summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED
+        )
+        self.data_generator.create_database_consent_file(
+            participant_id=summary.participantId,
+            type=ConsentType.EHR,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            file_path='bad_ehr'
+        )
+
+        # Pair the participant to an organization through the API
+        # configure the validation controller to generate new files for the participant
+        mock_validator = self.mock_build_validator.return_value
+        mock_validator.get_primary_validation_results.return_value = [
+            ConsentFile(
+                participant_id=summary.participantId,
+                type=ConsentType.PRIMARY,
+                file_path='valid_primary',
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC
+            )
+        ]
+        mock_validator.get_ehr_validation_results.return_value = [
+            ConsentFile(
+                participant_id=summary.participantId,
+                type=ConsentType.EHR,
+                file_path='bad_ehr',
+                sync_status=ConsentSyncStatus.NEEDS_CORRECTING
+            ),
+            ConsentFile(
+                participant_id=summary.participantId,
+                type=ConsentType.EHR,
+                file_path='valid_ehr',
+                sync_status=ConsentSyncStatus.READY_FOR_SYNC
+            )
+        ]
+
+        test_org_external_id = 'test_org'
+        self.data_generator.create_database_organization(externalId=test_org_external_id)
+        self._send_pairing_request(participant_id=summary.participantId, org_name=test_org_external_id)
+
+        # Check on the participant's consent files
+        participant_consent_files: Collection[ConsentFile] = self.session.query(ConsentFile).filter(
+            ConsentFile.participant_id == summary.participantId
+        ).all()
+        self.assertEqual(3, len(participant_consent_files))  # making sure we got the consent files
+        for file in participant_consent_files:
+            if file.file_path == 'valid_ehr':
+                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, file.sync_status)
+            elif file.file_path == 'bad_ehr':
+                self.assertEqual(ConsentSyncStatus.OBSOLETE, file.sync_status)
+            elif file.file_path == 'valid_primary':
+                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, file.sync_status)
+            else:
+                self.fail(f'Unexpected file: {file.file_path}')
 
 
 def _add_code_answer(code_answers, link_id, code):

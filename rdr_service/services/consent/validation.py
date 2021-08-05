@@ -54,18 +54,19 @@ class StoreResultStrategy(ValidationOutputStrategy):
             self.process_results()
             self._results = []
 
-    def process_results(self):
-        previous_results = self._consent_dao.get_validation_results_for_participants(
+    def _get_existing_results_for_participants(self):
+        return self._consent_dao.get_validation_results_for_participants(
             session=self._session,
             participant_ids={result.participant_id for result in self._results}
         )
-        new_results_to_store = []
-        for possible_new_result in self._results:
-            if not any(
-                [possible_new_result.file_path == previous_result.file_path for previous_result in previous_results]
-            ):
-                new_results_to_store.append(possible_new_result)
 
+    @classmethod
+    def _file_in_collection(cls, file, collection):
+        return any([file.file_path == possible_matching_file.file_path for possible_matching_file in collection])
+
+    def process_results(self):
+        previous_results = self._get_existing_results_for_participants()
+        new_results_to_store = [file for file in self._results if not self._file_in_collection(file, previous_results)]
         self._consent_dao.batch_update_consent_files(self._session, new_results_to_store)
         self._session.commit()
 
@@ -189,6 +190,15 @@ class ConsentValidationController:
 
         self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
 
+    @classmethod
+    def build_controller(cls):
+        return ConsentValidationController(
+            consent_dao=ConsentDao(),
+            participant_summary_dao=ParticipantSummaryDao(),
+            hpo_dao=HPODao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+
     def check_for_corrections(self, session):
         """Load all of the current consent issues and see if they have been resolved yet"""
         files_needing_correction = self.consent_dao.get_files_needing_correction(session)
@@ -244,30 +254,43 @@ class ConsentValidationController:
         ):
             validator = self._build_validator(summary)
 
-            if self._has_new_consent(
+            if self._has_consent(
                 consent_status=summary.consentForStudyEnrollment,
                 authored=summary.consentForStudyEnrollmentFirstYesAuthored,
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_primary_validation_results()))
-            if self._has_new_consent(
+            if self._has_consent(
                 consent_status=summary.consentForCABoR,
                 authored=summary.consentForCABoRAuthored,
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_cabor_validation_results()))
-            if self._has_new_consent(
+            if self._has_consent(
                 consent_status=summary.consentForElectronicHealthRecords,
                 authored=summary.consentForElectronicHealthRecordsAuthored,
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_ehr_validation_results()))
-            if self._has_new_consent(
+            if self._has_consent(
                 consent_status=summary.consentForGenomicsROR,
                 authored=summary.consentForGenomicsRORAuthored,
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
+
+    def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
+        summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
+        validator = self._build_validator(summary)
+
+        if self._has_consent(consent_status=summary.consentForStudyEnrollment):
+            output_strategy.add_all(validator.get_primary_validation_results())
+        if self._has_consent(consent_status=summary.consentForCABoR):
+            output_strategy.add_all(validator.get_cabor_validation_results())
+        if self._has_consent(consent_status=summary.consentForElectronicHealthRecords):
+            output_strategy.add_all(validator.get_ehr_validation_results())
+        if self._has_consent(consent_status=summary.consentForGenomicsROR):
+            output_strategy.add_all(validator.get_gror_validation_results())
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
@@ -278,8 +301,8 @@ class ConsentValidationController:
             return results
 
     @classmethod
-    def _has_new_consent(cls, consent_status, authored, min_authored):
-        return consent_status == QuestionnaireStatus.SUBMITTED and (not min_authored or authored > min_authored)
+    def _has_consent(cls, consent_status, authored=None, min_authored=None):
+        return consent_status == QuestionnaireStatus.SUBMITTED and (min_authored is None or authored > min_authored)
 
     def _build_validator(self, participant_summary: ParticipantSummary) -> 'ConsentValidator':
         consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
