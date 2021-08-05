@@ -136,8 +136,22 @@ class ProgramTemplateClass(object):
             # The banner at the top of each report, e.g.: Report Date: Jul 22, 2021 (generated
             'report_date': {
                 'values': ['Report for Date: ' + self.report_date.strftime("%b %-d, %Y") + \
-                           ' (generated on {} Central)'.format(datetime.now().strftime("%c"))],
+                           ' (generated on {} Central)'.format(datetime.now().strftime("%x %X"))],
                 'format': {'textFormat': {'fontSize': 12, 'bold': True}}
+            },
+            # Display any additional details of note, such as current limitations of validation tools
+            'report-notes': {
+                'values': [
+                    'Notes:',
+                    'Daily validation is currently only done for PTSC consent files (does not include CareEvolution)',
+                    'Checkbox validation currently only performed on GROR consents',
+                ],
+                'format': {'textFormat':
+                               {'fontSize': 10,
+                                'italic': True,
+                                'foregroundColor': {"red": 0.0, "green": 0.0, "blue": 1.0}
+                                }
+                           }
             },
             # This text only appears if there were no validation errors that day
             'no_errors': {
@@ -183,12 +197,14 @@ class ProgramTemplateClass(object):
 
     def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
         """
-        Use the rowcol_to_a1() gspread method to construct an A1 cell range notation
-        At a minimum, a row position is needed (first column will be used by default if no start_col is provided)
+        Use the rowcol_to_a1() gspread method to construct an A1 cell range notation string
+        A starting row position is required.  A starting col of 1 is the presumed default.  If no ending row/col is
+        provided, then assume the ending position is the same row and/or column
+
         Returns:  a string such as 'A1:A1'  or 'A5:N5'
         """
 
-        # Automatically fill in end range to match start range (e.g., result 'A1:A1'), if end range values not specified
+        # Assume single row / single col if no ending coordinate is provided
         end_row = end_row or start_row
         end_col = end_col or start_col
 
@@ -200,13 +216,11 @@ class ProgramTemplateClass(object):
 
         return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
 
-
-
-
     def get_daily_consent_validation_results(self, db_conn=None):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
         from the specified report date (records with matching created date).   Sets self.daily_data to the dataframe
+        Some of the columns retrieved will also be used to populate a CSV file sent to PTSC
 
         Notes on the DAILY_REPORT_SQL logic, to prevent flagging errors that should only be counted when there wasn't
         a higher-level error related to the consent:
@@ -275,19 +289,15 @@ class ProgramTemplateClass(object):
         # df = self.daily_data = pandas.read_csv('20210722_consents.csv')
 
         # Pandas: filter all NEEDS_CORRECTING rows in the dataframe; shape[0] is resulting row count
-        self.consent_errors_found = df.loc[(df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0] > 0
-
-        # TODO:  Remove after development is complete; for quick confirmation via console output if there were errors
-        if self.consent_errors_found:
-            _logger.info(df.loc[(df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))])
+        self.consent_errors_found = df.loc[df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0
 
     def write_to_worksheet(self, cell_range, values, format_specs=None):
         """
         A helper routine that will perform the worksheet write operations, especially until this tool can be updated to
         use gspread/gsheets batch update requests.
 
-        There's a rate limit of gsheets API requests per minute, so if there are an unusually large number of validation
-        validation records across many organizations, we can exceed the limit by doing unbatched writes.
+        There's a rate limit of gsheets API requests per minute, so if there are an unusually large number of daily
+        validation records across many organizations, we can exceed the limit doing the unbatched writes.
         """
         formatting_complete = False
         write_complete = False
@@ -300,28 +310,37 @@ class ProgramTemplateClass(object):
                     formatting_complete = True
                 self.worksheet.update(cell_range, [values])
                 write_complete = True
-            except APIError:
-                _logger.info('Pausing 60 seconds to stay within gsheets request rate limit...')
-                sleep(60)
-                _logger.info('Resuming....')
+            except APIError as e:
+                # TODO:  Looks like we're getting rate limit exceptions on two consecutive passes through the loop,
+                #  despite the pause?
+                if 'RATE_LIMIT_EXCEEDED' in str(e):
+                    _logger.info('Pausing 60 seconds to stay within gsheets request rate limit...')
+                    sleep(60)
+                    _logger.info('Resuming....')
+                else:
+                    raise e
             finally:
                 i += 1
 
     def add_banner_text_row(self, banner_key, row_pos=None):
         """
-          Add a row with the requested banner text (e.g., Report Date line)
-          Gets the values and formatting information from the instance row_layout dictionary
+          Add a row or rows with the requested banner text (e.g., Report Date line).  A banner section can contain
+          multiple lines of text (e.g., 'report-notes' banner key)
+
+          Gets the values and formatting information from the class row_layout dictionary
         """
         if not row_pos:
             row_pos = self.row_pos
 
         banner = self.row_layout.get(banner_key)
         if banner:
-            # Banner text is a single-cell range with column position 1 (default)
-            self.write_to_worksheet(self.make_a1_notation(row_pos),
-                                    banner.get('values'),
-                                    format_specs=banner.get('format'))
-            self.row_pos = row_pos + 1
+            banner_format = banner.get('format', None)
+            for banner_row in banner.get('values', []):
+                # Each row of banner text is a single-cell range with column position 1 (default)
+                self.write_to_worksheet(self.make_a1_notation(row_pos), [banner_row], format_specs=banner_format)
+                row_pos += 1
+
+        self.row_pos = row_pos
 
     def add_count_header_section(self, row_pos=None, hpo=None):
         """
@@ -331,14 +350,13 @@ class ProgramTemplateClass(object):
             row_pos = self.row_pos
 
         section = self.row_layout.get('count_section')
-        # Replace the first col empty value in the the pre-populated values list with an HPO name, if provided
+        # Replace the first (empty) col in the the pre-populated values list with an HPO name, if provided
         if hpo:
             section['values'][0] = hpo
-        # E.g. cell_range = 'A5:N5' for row 5
+        # A header section covers all cells in the row
         self.write_to_worksheet(self.make_a1_notation(row_pos, end_col=self.sheet_cols),
                                 section.get('values'), format_specs=section.get('format'))
         self.row_pos = row_pos + 1
-
 
     def add_consent_counts(self, df, row_pos=None, org=None):
         """
@@ -353,9 +371,7 @@ class ProgramTemplateClass(object):
         for consent in CONSENTS_LIST:
 
             # Organization name string gets written once to column A only in the first pass through this loop
-            # E.g., cell_range = 'A7' for row_pos 7
             if org and consent == CONSENTS_LIST[0]:
-                # Organization text is a single-cell range
                 self.write_to_worksheet(self.make_a1_notation(row_pos),
                                         [org],
                                         format_specs={'textFormat': {'bold': True}, 'wrapStrategy': 'wrap' })
@@ -363,7 +379,7 @@ class ProgramTemplateClass(object):
             # Skip row creation if no consents of this type were processed that day.  Otherwise, we'll print a summary
             # for each consent type in this organization's list of processed consents, regardless of whether that
             # consent was the one with the errors.
-            expected = df.loc[(df.type == consent)].shape[0]
+            expected = df.loc[df.type == consent].shape[0]
             if not expected:
                 continue
 
@@ -372,10 +388,11 @@ class ProgramTemplateClass(object):
             errors = df.loc[(df.type == consent)\
                             & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
 
-            # Partial row population for the summary counts column cells.  E.g., cell_range = 'C7:F7' for row_pos 7
+            # Write summary values to columns C-F:
             consent_summary_values =[str(ConsentType(consent)), expected, ready, errors]
-            cell_range = self.make_a1_notation(row_pos, start_col=DAILY_REPORT_COLUMN_MAP.get('consent_type'),
-                                      end_col=DAILY_REPORT_COLUMN_MAP.get('total_errors'))
+            cell_range = self.make_a1_notation(row_pos,
+                                               start_col=DAILY_REPORT_COLUMN_MAP.get('consent_type'),
+                                               end_col=DAILY_REPORT_COLUMN_MAP.get('total_errors'))
             self.write_to_worksheet(cell_range, consent_summary_values)
 
             if errors:
@@ -383,13 +400,14 @@ class ProgramTemplateClass(object):
                 # values to populate the error-specific columns in this consent's row
                 tracked_error_values = []
                 for error in TRACKED_CONSENT_ERRORS:
-                    count = df.loc[(df.type == consent)][error].sum()
+                    # Pandas: sum up all occurrences of this tracked error (field = 1) after filtering on consent type
+                    count = df.loc[df.type == consent][error].sum()
                     if count:
                         tracked_error_values.append(int(count))   # Cast sum() int64 dtype result to int for gsheets?
                     else:
                         tracked_error_values.append(None)  # Suppress printing 0s in errors cols for better readability
 
-                # Partial row write for the individual error counts columns E.g. cell_range = 'G7:N7' for row_pos 7
+                # Write out individual error counts to columns G-N:
                 cell_range = self.make_a1_notation(row_pos,
                                                    start_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[0]),
                                                    end_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1]))
@@ -414,7 +432,7 @@ class ProgramTemplateClass(object):
             hpo_df = self.daily_data[self.daily_data.hpo == hpo]   # Yields an HPO-filtered dataframe
 
             # If any rec associated with this HPO has consents with errors,  create HPO block section header
-            if hpo_df.loc[(hpo_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]:
+            if hpo_df.loc[hpo_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
                 self.add_count_header_section(hpo=hpo)
             else:
                 continue
@@ -427,17 +445,22 @@ class ProgramTemplateClass(object):
                 org_df = hpo_df[hpo_df.organization == org]   # Yields an Org-filtered dataframe from the HPO frame
 
                 # Add breakdown of consent and error counts for any organization that had any NEEDS_CORRECTING consents
-                if org_df.loc[(org_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]:
+                if org_df.loc[org_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
                     self.add_consent_counts(org_df, row_pos=self.row_pos + 1, org=org)
                 else:
                     continue
 
     def add_daily_summary(self):
         """ Add content that appears on every daily consent validation report regardless of errors """
+
         self.add_banner_text_row('report_date')
+
+        # Add any explanatory text / details about the report that have been included in the layout
+        self.add_banner_text_row('report-notes', row_pos=self.row_pos+1)
 
         if not self.consent_errors_found:
             self.add_banner_text_row('no_errors', row_pos=self.row_pos + 1)
+
         self.add_banner_text_row('total_counts', row_pos=self.row_pos + 1)
 
         # Daily summary counts for all the consents that were processed (regardless of whether errors were detected)
@@ -458,7 +481,9 @@ class ProgramTemplateClass(object):
 
         # Add the new worksheet (to leftmost tab position / index 0)
         self.worksheet = spreadsheet.add_worksheet(self.report_date.strftime("%b %d %Y"),
-                                                   rows=self.sheet_rows, cols=self.sheet_cols, index=0)
+                                                   rows=self.sheet_rows,
+                                                   cols=self.sheet_cols,
+                                                   index=0)
         self.add_daily_summary()
         if self.consent_errors_found:
             # Google sheets doesn't have flexible/multiple freezing options.  Freeze all rows above the current position
