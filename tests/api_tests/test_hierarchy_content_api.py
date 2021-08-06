@@ -1,7 +1,5 @@
 import datetime
 import mock
-import random
-import string
 
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
@@ -1400,7 +1398,7 @@ class HierarchyContentApiTest(BaseTestCase):
             ]
         }
 
-        too_long_message = ''.join(random.choice(string.ascii_letters) for i in range(5000))
+        too_long_message = ''.join('a' for i in range(5000))
         request_json['extension'][4]['valueString'] = too_long_message
 
         response = self.send_put('organization/hierarchy', request_data=request_json, expected_status=400)
@@ -1408,7 +1406,7 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json['message'], 'Value for scheduleInstructions cannot exceed char limit of 4096')
 
-        correct_length_message = ''.join(random.choice(string.ascii_letters) for i in range(4096))
+        correct_length_message = ''.join('a' for i in range(4096))
         request_json['extension'][4]['valueString'] = correct_length_message
 
         response = self.send_put('organization/hierarchy', request_data=request_json)
