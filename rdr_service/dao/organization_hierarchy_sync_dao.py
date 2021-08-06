@@ -257,6 +257,7 @@ class OrganizationHierarchySyncDao(BaseDao):
         schedule_instructions = self._get_value_from_extention(hierarchy_org_obj,
                                                                HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                                'scheduling-instructions')
+
         notes_spanish = self._get_value_from_extention(hierarchy_org_obj,
                                                        HIERARCHY_CONTENT_SYSTEM_PREFIX +
                                                        'notes-spanish')
@@ -288,9 +289,14 @@ class OrganizationHierarchySyncDao(BaseDao):
                       isObsolete=is_obsolete,
                       resourceId=hierarchy_org_obj.id)
 
+        entity_lengths_failed, message = self.validate_str_lengths(entity)
+        if entity_lengths_failed:
+            raise BadRequest(f"{message}")
+
         existing_map = {entity.googleGroup: entity for entity in self.site_dao.get_all(refresh_cache=True)}
         existing_entity = existing_map.get(entity.googleGroup)
         new_site = None
+
         with self.site_dao.session() as session:
             if existing_entity:
                 self._populate_lat_lng_and_time_zone(entity, existing_entity)
@@ -326,7 +332,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         site_id = self.site_dao.get_by_google_group(google_group).siteId
         bq_site_update_by_id(site_id)
 
-    def _generate_fake_participants_for_site(self, new_site):
+    @staticmethod
+    def _generate_fake_participants_for_site(new_site):
         if config.GAE_PROJECT in ['localhost',
                                   "all-of-us-rdr-stable",
                                   "all-of-us-rdr-sandbox"]:
@@ -359,7 +366,8 @@ class OrganizationHierarchySyncDao(BaseDao):
 
             logging.info(f"{n} participants imported.")
 
-    def _get_type(self, hierarchy_org_obj):
+    @staticmethod
+    def _get_type(hierarchy_org_obj):
         obj_type = None
         type_arr = hierarchy_org_obj.type
         for type_item in type_arr:
@@ -371,7 +379,8 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         return obj_type
 
-    def _get_value_from_identifier(self, hierarchy_org_obj, system):
+    @staticmethod
+    def _get_value_from_identifier(hierarchy_org_obj, system):
         identifier_arr = hierarchy_org_obj.identifier
         for identifier in identifier_arr:
             if identifier.system == system:
@@ -379,8 +388,10 @@ class OrganizationHierarchySyncDao(BaseDao):
         else:
             return None
 
-    def _get_value_from_extention(self, hierarchy_org_obj, url, value_key='valueString'):
+    @staticmethod
+    def _get_value_from_extention(hierarchy_org_obj, url, value_key='valueString'):
         extension_arr = hierarchy_org_obj.extension
+
         for extension in extension_arr:
             if extension.url == url:
                 ext_json = extension.as_json()
@@ -388,7 +399,8 @@ class OrganizationHierarchySyncDao(BaseDao):
         else:
             return None
 
-    def _get_contact_point(self, hierarchy_org_obj, code):
+    @staticmethod
+    def _get_contact_point(hierarchy_org_obj, code):
         if not hierarchy_org_obj.contact:
             return None
         contact_arr = hierarchy_org_obj.contact
@@ -398,8 +410,8 @@ class OrganizationHierarchySyncDao(BaseDao):
                 if telecom.system == code:
                     return telecom.value
 
-
-    def _get_address(self, hierarchy_org_obj):
+    @staticmethod
+    def _get_address(hierarchy_org_obj):
         if hierarchy_org_obj.address:
             try:
                 address = hierarchy_org_obj.address[0]
@@ -415,7 +427,8 @@ class OrganizationHierarchySyncDao(BaseDao):
 
         return address_1, address_2, city, state, postal_code
 
-    def _get_reference(self, hierarchy_org_obj):
+    @staticmethod
+    def _get_reference(hierarchy_org_obj):
         try:
             return hierarchy_org_obj.partOf.reference.split('/')[1]
         except IndexError:

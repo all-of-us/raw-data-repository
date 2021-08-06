@@ -55,8 +55,8 @@ class SiteSchema(Schema):
     digital_scheduling_status = fields.EnumString(enum=DigitalSchedulingStatusEnum)
     digital_scheduling_status_id = fields.EnumInteger(enum=DigitalSchedulingStatusEnum)
 
-    schedule_instructions = fields.String(validate=validate.Length(max=2048))
-    schedule_instructions_es = fields.String(validate=validate.Length(max=2048))
+    schedule_instructions = fields.String(validate=validate.Length(max=4096))
+    schedule_instructions_es = fields.String(validate=validate.Length(max=4096))
     launch_date = fields.Date()
     notes = fields.Text()
     notes_es = fields.Text()
