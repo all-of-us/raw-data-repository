@@ -55,9 +55,43 @@ class HierarchyContentApiTest(BaseTestCase):
                            organizationType=OrganizationType.HPO, resourceId='h123458'))
         self.site_dao = SiteDao()
         self.org_dao = OrganizationDao()
+        self._setup_data()
+
+    def _setup_data(self):
+        organization_dao = OrganizationDao()
+        site_dao = SiteDao()
+        org_1 = organization_dao.insert(Organization(externalId='ORG_1', displayName='Organization 1',
+                                                     hpoId=PITT_HPO_ID, resourceId='o123456'))
+        organization_dao.insert(Organization(externalId='AARDVARK_ORG', displayName='Aardvarks Rock',
+                                             hpoId=PITT_HPO_ID, resourceId='o123457'))
+
+        site_dao.insert(Site(siteName='Site 1',
+                             googleGroup='hpo-site-1',
+                             mayolinkClientNumber=123456,
+                             organizationId=org_1.organizationId,
+                             siteStatus=SiteStatus.ACTIVE,
+                             enrollingStatus=EnrollingStatus.ACTIVE,
+                             launchDate=datetime.datetime(2016, 1, 1),
+                             notes='notes',
+                             latitude=12.1,
+                             longitude=13.1,
+                             directions='directions',
+                             physicalLocationName='locationName',
+                             address1='address1',
+                             address2='address2',
+                             city='Austin',
+                             state='TX',
+                             zipCode='78751',
+                             phoneNumber='555-555-5555',
+                             adminEmails='alice@example.com, bob@example.com',
+                             link='http://www.example.com'))
+        site_dao.insert(Site(siteName='Zebras Rock',
+                             googleGroup='aaaaaaa',
+                             organizationId=org_1.organizationId,
+                             enrollingStatus=EnrollingStatus.INACTIVE,
+                             siteStatus=SiteStatus.INACTIVE))
 
     def test_create_new_hpo(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
@@ -94,7 +128,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(_make_awardee_resource('TEST_HPO_NAME', 'Test new HPO display name', 'DV'), result)
 
     def test_update_existing_hpo(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
@@ -132,7 +165,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(result['type'], 'DV')
 
     def test_create_new_organization(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
@@ -176,7 +208,6 @@ class HierarchyContentApiTest(BaseTestCase):
                       result_after['organizations'])
 
     def test_update_existing_organization(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
@@ -441,7 +472,6 @@ class HierarchyContentApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
     def test_create_new_site(self, time_zone, lat_long):
-        self._setup_data()
         lat_long.return_value = 100, 110
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
@@ -579,7 +609,6 @@ class HierarchyContentApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
     def test_update_existing_site(self, time_zone, lat_long):
-        self._setup_data()
         lat_long.return_value = 100, 110
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
@@ -717,7 +746,6 @@ class HierarchyContentApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
     def test_update_existing_site_new_payload(self, time_zone, lat_long):
-        self._setup_data()
         lat_long.return_value = 100, 110
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
@@ -826,7 +854,6 @@ class HierarchyContentApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
     def test_insert_new_site_new_payload(self, time_zone, lat_long):
-        self._setup_data()
         lat_long.return_value = 100, 110
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
@@ -946,7 +973,6 @@ class HierarchyContentApiTest(BaseTestCase):
 
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao._get_time_zone')
     def test_insert_site_no_address_inactive(self, time_zone):
-        self._setup_data()
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
             "resourceType": "Organization",
@@ -1053,7 +1079,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(existing_entity.longitude, None)
 
     def test_create_hpo_new_payload(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "65b32423-f3c3-4f91-a0fb-db1d513c7e72",
@@ -1095,7 +1120,6 @@ class HierarchyContentApiTest(BaseTestCase):
         self.assertEqual(truthiness['displayName'], 'Arizona')
 
     def test_create_new_organization_new_payload(self):
-        self._setup_data()
         request_json = {
             "resourceType": "Organization",
             "id": "35e40061-e2c4-4bc6-9441-1a8fee5f9dce",
@@ -1140,7 +1164,6 @@ class HierarchyContentApiTest(BaseTestCase):
     @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
                 '_get_time_zone')
     def test_create_new_popup_site_without_pmb(self, time_zone, lat_long):
-        self._setup_data()
         lat_long.return_value = 100, 110
         time_zone.return_value = 'America/Los_Angeles'
         request_json = {
@@ -1264,36 +1287,135 @@ class HierarchyContentApiTest(BaseTestCase):
         result = self.send_get('Awardee')
         self.assertIn('hpo-site-awesome-testing', str(result))
 
-    def _setup_data(self):
-        organization_dao = OrganizationDao()
-        site_dao = SiteDao()
-        org_1 = organization_dao.insert(Organization(externalId='ORG_1', displayName='Organization 1',
-                                                     hpoId=PITT_HPO_ID, resourceId='o123456'))
-        organization_dao.insert(Organization(externalId='AARDVARK_ORG', displayName='Aardvarks Rock',
-                                             hpoId=PITT_HPO_ID, resourceId='o123457'))
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_lat_long_for_site')
+    @mock.patch('rdr_service.dao.organization_hierarchy_sync_dao.OrganizationHierarchySyncDao.'
+                '_get_time_zone')
+    def test_setup_instructions_length(self, time_zone, lat_long):
+        lat_long.return_value = 100, 110
+        time_zone.return_value = 'America/Los_Angeles'
+        request_json = {
+            "resourceType": "Organization",
+            "id": "a893282c-2717-4a20-b276-d5c9c2c0e51f",
+            'meta': {
+                'versionId': '1'
+            },
+            "extension": [
+                {
+                    "url": "http://all-of-us.org/fhir/sites/enrolling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/digital-scheduling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/ptsc-scheduling-status",
+                    "valueString": "true"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/notes",
+                    "valueString": "This is a note about an organization"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/scheduling-instructions",
+                    "valueString": "Please schedule appointments up to a week before intended date."
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/anticipated-launch-date",
+                    "valueString": "07-22-2019"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/location-name",
+                    "valueString": "Thompson Building 2"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/directions",
+                    "valueString": "Exit 95 N and make a left onto Fake Street"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/mayolink-client-#",
+                    "valueString": "123456"
+                },
+                {
+                    "url": "http://all-of-us.org/fhir/sites/site-type",
+                    "valueString": "Modified Clinic Site"
+                }
+            ],
+            "identifier": [
+                {
+                    "system": "http://all-of-us.org/fhir/sites/site-id",
+                    "value": "hpo-site-awesome-testing"
+                },
+                {
+                    "system": "http://all-of-us.org/fhir/sites/google-group-identifier",
+                    "value": "Awesome Genomics Testing"
+                }
+            ],
+            "active": True,
+            "type": [
+                {
+                    "coding": [
+                        {
+                            "code": "SITE",
+                            "system": "http://all-of-us.org/fhir/sites/type"
+                        }
+                    ]
+                }
+            ],
+            "name": "Awesome Genomics Testing",
+            "partOf": {
+                "reference": "Organization/o123457"
+            },
+            "address": [{
+                "line": [
+                    "1855 4th Street",
+                    "AAC5/6"
+                ],
+                "city": "San Francisco",
+                "state": "CA",
+                "postalCode": "94158"
+            }],
+            "contact": [
+                {
+                    "telecom": [{
+                        "system": "phone",
+                        "value": "7031234567"
+                    }]
+                },
+                {
+                    "telecom": [{
+                        "system": "email",
+                        "value": "support@awesome-testing.com"
+                    }]
+                },
+                {
+                    "telecom": [{
+                        "system": "url",
+                        "value": "http://awesome-genomic-testing.com"
+                    }]
+                }
+            ]
+        }
 
-        site_dao.insert(Site(siteName='Site 1',
-                             googleGroup='hpo-site-1',
-                             mayolinkClientNumber=123456,
-                             organizationId=org_1.organizationId,
-                             siteStatus=SiteStatus.ACTIVE,
-                             enrollingStatus=EnrollingStatus.ACTIVE,
-                             launchDate=datetime.datetime(2016, 1, 1),
-                             notes='notes',
-                             latitude=12.1,
-                             longitude=13.1,
-                             directions='directions',
-                             physicalLocationName='locationName',
-                             address1='address1',
-                             address2='address2',
-                             city='Austin',
-                             state='TX',
-                             zipCode='78751',
-                             phoneNumber='555-555-5555',
-                             adminEmails='alice@example.com, bob@example.com',
-                             link='http://www.example.com'))
-        site_dao.insert(Site(siteName='Zebras Rock',
-                             googleGroup='aaaaaaa',
-                             organizationId=org_1.organizationId,
-                             enrollingStatus=EnrollingStatus.INACTIVE,
-                             siteStatus=SiteStatus.INACTIVE))
+        too_long_message = ''.join('a' for i in range(5000))
+        request_json['extension'][4]['valueString'] = too_long_message
+
+        response = self.send_put('organization/hierarchy', request_data=request_json, expected_status=400)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json['message'], 'Value for scheduleInstructions cannot exceed char limit of 4096')
+
+        correct_length_message = ''.join('a' for i in range(4096))
+        request_json['extension'][4]['valueString'] = correct_length_message
+
+        response = self.send_put('organization/hierarchy', request_data=request_json)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response['extension'][4]['valueString'], correct_length_message)
+
+        existing_entity = self.site_dao.get_by_google_group('hpo-site-awesome-testing')
+
+        self.assertEqual(existing_entity.scheduleInstructions, correct_length_message)
+
+
