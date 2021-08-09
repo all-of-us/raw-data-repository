@@ -1930,30 +1930,30 @@ class GenomicReconciler:
 
             incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
 
+            for file_type in missing_data_files:
+                missing_file_object = GenomicGcDataFileMissing(
+                    gc_site_id=_gc_site_id,
+                    file_type=file_type,
+                    run_id=self.run_id,
+                    gc_validation_metric_id=_obj.id
+                )
+                self.data_file_missing_dao.insert(missing_file_object)
+
             if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
-                for file_type in missing_data_files:
-                    missing_file_object = GenomicGcDataFileMissing(
-                        gc_site_id=_gc_site_id,
-                        file_type=file_type,
-                        run_id=self.run_id,
-                        gc_validation_metric_id=_obj.id
-                    )
-                    self.data_file_missing_dao.insert(missing_file_object)
-                self.process_missing_data(_obj)
+                self.process_missing_data(_obj, missing_data_files)
 
         # Update Member
         if next_state is not None and next_state != member.genomicWorkflowState:
             self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
 
-    def process_missing_data(self, metric):
-        missing_files = self.data_file_missing_dao.get_with_run_id(self.run_id)
+    def process_missing_data(self, metric, missing_data_files):
         file = self.file_dao.get(metric.genomicFileProcessedId)
         member = self.member_dao.get(metric.genomicSetMemberId)
         description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
         description += f"\nGenomic Job Run ID: {self.run_id}"
         description += self._compile_missing_data_alert(
             file_name=file.fileName,
-            missing_files=missing_files
+            missing_files=missing_data_files
         )
         self.controller.create_incident(
             source_job_run_id=self.run_id,
@@ -1975,7 +1975,7 @@ class GenomicReconciler:
         :param missing_data: list of files
         :return: summary, description
         """
-        file_list = '\n'.join([mf.file_type for mf in missing_files])
+        file_list = '\n'.join([mf for mf in missing_files])
         description = f"\nManifest File: {file_name}"
         description += "\nMissing Data File(s):"
         description += f"\n{file_list}"
