@@ -10,6 +10,7 @@ import argparse
 import logging
 import sys
 import os
+import csv
 import gspread
 import pandas
 from time import sleep
@@ -27,10 +28,11 @@ _logger = logging.getLogger("rdr_logger")
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "consent-report"
-tool_desc = "Publish consent validation metrics to a google sheet document"
+tool_desc = "Publish consent validation metrics to a google sheets doc and/or create a CSV with consent error details"
 
-# This list matches the names of the column names / calculated fields returned from the DAILY_REPORT_SQL query
-# NOTE:  Errors added to this list should also have an entry in the DAILY_REPORT_COLUMN_MAP for enabling reporting
+# This list matches the names of the column names / calculated fields returned from the custom SQL query that pulls
+# data from the RDR consent_file table.  NOTE:  Errors added to this list should also have an entry in the
+# the DAILY_REPORT_COLUMN_MAP for enabling reporting in the google sheets doc
 TRACKED_CONSENT_ERRORS = [
     'missing_file',
     'signature_missing',
@@ -42,26 +44,113 @@ TRACKED_CONSENT_ERRORS = [
     'va_consent_for_non_va'
 ]
 
+# The PTSC CSV file has some identifying information columns about consents with errors, plus the error status columns
+PTSC_CSV_COLUMN_HEADERS = ['participant_id', 'type', 'file_path', 'file_upload_time'] + TRACKED_CONSENT_ERRORS
+
 # 1-based Spreadsheet Column positions for the pieces of information to be added during generation
 DAILY_REPORT_COLUMN_MAP = {
 
-    'banner': 1,   # Banner text, e.g., Report Date or No consent errors detected text written to Column A
-    'hpo': 1, # Col A HPO or Organization name string
+    # -- Keys for the summary information columns
+    'banner': 1,   # Banner text (e.g., Report Date text) always written to Column A
+    'hpo': 1,      # Also use column A for HPO or Organization name strings
     'organization': 1,
-    # Column B intentionally left blank;  Summary counts are in columns C-F:
-    'consent_type': 3,
+    # Column B intentionally left blank
+    'consent_type': 3, # Column C
     'expected': 4,
     'ready_to_sync': 5,
-    'total_errors': 6,
+    'consents_with_errors': 6,
+    'total_errors': 7,   # Column G
     # -- Keys for each of the error conditions defined in the TRACKED_CONSENT_ERRORS list.  Column list may grow
-    'missing_file': 7,    # Column G
-    'signature_missing': 8,
-    'invalid_signing_date': 9,
-    'invalid_dob': 10,
-    'invalid_age_at_consent': 11,
-    'checkbox_unchecked': 12,
-    'non_va_consent_for_va': 13,
-    'va_consent_for_non_va': 14   # Column N
+    'missing_file': 8,    # Column H
+    'signature_missing': 9,
+    'invalid_signing_date': 10,
+    'invalid_dob': 11,
+    'invalid_age_at_consent': 12,
+    'checkbox_unchecked': 13,
+    'non_va_consent_for_va': 14,
+    'va_consent_for_non_va': 15   # Column O
+}
+
+# TODO:  Convert to SQLAlchemy when refactoring for automation.  Raw SQL used initially for fast prototyping of reports
+CONSENT_REPORT_SQL_BODY =  """
+            SELECT cf.participant_id,
+                   p.date_of_birth,
+                   -- age_at_consent is specific/relevant to PRIMARY consent type (uses its authored date)
+                   CASE WHEN cf.type = 1 THEN
+                        CASE WHEN (p.date_of_birth IS NULL or p.consent_for_study_enrollment_authored IS NULL) THEN NULL
+                             ELSE TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored)
+                        END
+                   END AS age_at_consent,
+                   CASE
+                      WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
+                      ELSE '(No HPO details)'
+                   END AS hpo,
+                   CASE
+                      WHEN o.display_name IS NOT NULL THEN o.display_name ELSE '(No organization details)'
+                   END AS organization,
+                   cf.sync_status,
+                   cf.type,
+                   cf.file_path,
+                   cf.file_upload_time,
+                   -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
+                   -- (1 if error found)
+                   NOT cf.file_exists AS missing_file,
+                   (cf.file_exists and NOT is_signature_valid) AS signature_missing,
+                   (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
+                   -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
+                   -- DOB later than the consent authored date
+                   (p.date_of_birth is null or p.date_of_birth < "{dob_cutoff}"
+                    or p.date_of_birth > "{report_date}")
+                    or (p.consent_for_study_enrollment_authored is not null
+                        and p.date_of_birth > p.consent_for_study_enrollment_authored )
+                       AS invalid_dob,
+                    -- Invalid age at consent error only applies to PRIMARY consent type
+                   (cf.type = 1 and TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored) < 18)
+                      AS invalid_age_at_consent,
+                   -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
+                   (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
+                   (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
+                      AS non_va_consent_for_va,
+                   (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
+                      AS va_consent_for_non_va
+            FROM consent_file cf
+            JOIN participant_summary p on p.participant_id = cf.participant_id
+            LEFT OUTER JOIN hpo h on p.hpo_id = h.hpo_id
+            LEFT OUTER JOIN organization o on p.organization_id = o.organization_id
+        """
+
+
+# Daily report filter for validation results on all newly received consents (based on file upload date) in
+# NEEDS_CORRECTING, READY_TO_SYNC, or SYNC_COMPLETE state; other states not relevant to the daily report.  Also
+# contains entries for missing file errors that were added to the consent_file table on the report date
+DAILY_REPORT_NEW_UPLOADS_SQL_FILTER = """
+            WHERE (DATE(cf.file_upload_time) = "{report_date}"
+                    OR (DATE(cf.created) = "{report_date}" and NOT cf.file_exists))
+                AND cf.sync_status IN (1,2,4)
+    """
+
+# Filter to produce report for all NEEDS_CORRECTING validation records created on the report date (e.g., may include
+# retrospective validation results)
+DAILY_REPORT_ALL_ERRORS_SQL_FILTER = """
+            WHERE DATE(cf.created) = "{report_date}"
+                  AND cf.sync_status = 1
+    """
+
+# Filter to produce a report of all remaining NEEDS_CORRECTING consents, regardless of date
+ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1'
+
+# TODO:  Remove this when we expand consent validation to include CE consents
+VIBRENT_SQL_FILTER = 'AND p.participant_origin = "vibrent"'
+
+# Define the allowable --report-type arguments and their associated SQL.
+REPORT_TYPES = {
+    # Daily uploads = validation for all files uploaded on the report date + missing files flagged on the report date
+    'daily_uploads':  CONSENT_REPORT_SQL_BODY + DAILY_REPORT_NEW_UPLOADS_SQL_FILTER + VIBRENT_SQL_FILTER,
+    # Daily errors = any errors from the report date.  May include retrospective validations of old files
+    # performed on that date as well as the newly uploaded files from that date
+    'daily_errors':  CONSENT_REPORT_SQL_BODY + DAILY_REPORT_ALL_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER,
+    # Unresolved errors = Any consent_file entries still in a NEEDS_CORRECTING state (regardless of date)
+    'unresolved_errors':  CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
 }
 
 # Iterable list of the ConsentType enum ints (used to compare against DB consent_file.type field values)
@@ -79,8 +168,8 @@ class ProgramTemplateClass(object):
                   Can be passed to the tool via --doc-id parameter, or read from CONSENT_DOC_ID environment variable
                   Eventually, it will be defined in the app config items
         worksheet:  Returned from gspread add_worksheet() when a sheet is added to the gsheets doc
-        daily_data:  A pandas dataframe of the results from the DAILY_REPORT_SQL query
-        consent_errors_found:  True/False if the daily_data contains NEEDS_CORRECTING consent records
+        consent_df:  A pandas dataframe of the results from the report SQL query
+        consent_errors_found:  True/False if the consent_df contains NEEDS_CORRECTING consent records
         report_date:   Date of the consent validation run (created date for records in RDR consent_file table)
         dob_date_cutoff:  report_date-125 years (will flag DOB values more than 125 years ago as invalid)
         sheet_rows:  Max rows for the sheet being created (arbitrary, trying to accommodate expected "worst case")
@@ -88,6 +177,7 @@ class ProgramTemplateClass(object):
         max_retries:  How many times to retry a sheet write operation if the gspread/gsheets API call fails
         max_daily_reports:  How many tabs/sheets to keep in the spreadsheet file before deleting the oldest
         row_pos:  Keeps track of the current row position in the spreadsheet, as content is written
+        write_requests:  Tracks number of gsheets API requests, to throttle for rate limit restrictions
         row_layout:  A dict with known values and formatting options of report sections, passed to gspread/gsheets API
                      The keys are arbitrary names given to each of the known sections/content areas in the daily report
         """
@@ -104,14 +194,25 @@ class ProgramTemplateClass(object):
             raise ValueError('Please use the --doc-id arg or export CONSENT_DOC_ID environment var')
 
         self.worksheet = None   # Set to the newly created worksheet from gspread add_worksheet()
-        self.daily_data = None  # Set to the pandas dataframe result generated from the DAILY_REPORT_SQL query
-        self.consent_errors_found = False  # Set to True if daily_data dataframe contains NEEDS_CORRECTING values
+        self.consent_df = None  # Set to the pandas dataframe result generated from the report SQL query
+        self.consent_errors_found = False  # Set to True if consent_df dataframe contains NEEDS_CORRECTING values
 
         if args.report_date:
             self.report_date = args.report_date
         else:
             # Default to today's date
             self.report_date = datetime.now()
+
+        if args.csv_file:
+            self.csv_filename = args.csv_file
+        else:
+            self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
+
+        if args.report_type:
+            if not args.report_type in REPORT_TYPES.keys():
+                raise ValueError(f'invalid report type option: {args.report_type}')
+            else:
+                self.report_sql = REPORT_TYPES.get(args.report_type)
 
         # Decision by DRC/NIH stakeholders to use 125 years ago as the cutoff date for flagging invalid DOB
         self.dob_date_cutoff = datetime(self.report_date.year-125,
@@ -128,8 +229,9 @@ class ProgramTemplateClass(object):
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
         self.max_daily_reports = 30
 
-        # A row position tracker updated as content is added to the daily report worksheet
+        # Trackers updated as content is added to the daily report worksheet
         self.row_pos = 1
+        self.write_requests = 0
 
         # Pre-populated details about the sections of the daily report;  used when calling gspread methods
         self.row_layout = {
@@ -143,7 +245,11 @@ class ProgramTemplateClass(object):
             'report-notes': {
                 'values': [
                     'Notes:',
-                    'Daily validation is currently only done for PTSC consent files (does not include CareEvolution)',
+                    'All errors except missing files pertain to new or retransmitted consent files uploaded ' + \
+                        'on the report date',
+                    'Missing file counts may include discoveries made on the report date as part of the ongoing' + \
+                        ' effort to validate consents for all previously enrolled/consented participants',
+                    'Validation is currently only done for PTSC consent files (does not include CareEvolution)',
                     'Checkbox validation currently only performed on GROR consents',
                 ],
                 'format': {'textFormat':
@@ -159,13 +265,13 @@ class ProgramTemplateClass(object):
                 'format': {'textFormat': {'fontSize': 12, 'italic': True}}
             },
             # The banner text that precedes the summarized counts (across all hpos/orgs) for the day
-            'total_counts': {
+            'total_consent_counts': {
                 'values': ['Total Consent Validation Counts'],
                 'format': {'textFormat': {'bold': True}}
             },
             # The banner text that precedes the start of the HPO-specific counts sections (only if errors exist)
             'counts_by_org': {
-                'values': ['Counts by HPO/Organization (for entities having one or more consent errors)'],
+                'values': ['Consent Errors by HPO/Organization'],
                 'format': {'textFormat': {'bold': True}}
             },
             # The shaded header row that we insert with all the column headers.  Precedes the total counts summary
@@ -176,6 +282,7 @@ class ProgramTemplateClass(object):
                            'Consent Type',
                            'Expected',
                            'Ready to Sync',
+                           'Consents with Errors',
                            'Total Errors',
                            'Missing File',
                            'Signature Missing',
@@ -201,7 +308,7 @@ class ProgramTemplateClass(object):
         A starting row position is required.  A starting col of 1 is the presumed default.  If no ending row/col is
         provided, then assume the ending position is the same row and/or column
 
-        Returns:  a string such as 'A1:A1'  or 'A5:N5'
+        Returns:  a string such as 'A1:A1' (single cell), 'A5:N5' (multiple columns on the same row), etc.
         """
 
         # Assume single row / single col if no ending coordinate is provided
@@ -219,78 +326,69 @@ class ProgramTemplateClass(object):
     def get_daily_consent_validation_results(self, db_conn=None):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
-        from the specified report date (records with matching created date).   Sets self.daily_data to the dataframe
-        Some of the columns retrieved will also be used to populate a CSV file sent to PTSC
-
-        Notes on the DAILY_REPORT_SQL logic, to prevent flagging errors that should only be counted when there wasn't
-        a higher-level error related to the consent:
-        - A signature_missing error will only be true when the consent file exists
-        - An invalid_signing_date error will only be true when the signature is valid (exists)
+        from the specified report date.   Sets self.consent_df to the dataframe.  The results will also be
+        used to populate a CSV file with details on newly flagged errors, sent to PTSC
         """
         if not db_conn:
             raise(EnvironmentError, 'No active DB connection object')
 
-        DAILY_REPORT_SQL = """
-            SELECT cf.participant_id,
-                   p.date_of_birth,
-                   -- age_at_consent is specific/relevant to PRIMARY consent type (uses its authored date)
-                   CASE WHEN cf.type = 1 THEN
-                        CASE WHEN (p.date_of_birth IS NULL or p.consent_for_study_enrollment_authored IS NULL) THEN NULL
-                             ELSE TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored)
-                        END
-                   END AS age_at_consent,
-                   CASE
-                      WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
-                      ELSE '(No HPO details)'
-                   END AS hpo,
-                   CASE
-                      WHEN o.display_name IS NOT NULL THEN o.display_name ELSE '(No organization details)'
-                   END AS organization,
-                   cf.sync_status,
-                   cf.type,
-                   cf.file_path,
-                   -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
-                   -- (1 if error found)
-                   NOT cf.file_exists AS missing_file,
-                   (cf.file_exists and NOT is_signature_valid) AS signature_missing,
-                   (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
-                   -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
-                   -- DOB later than the consent authored date
-                   (p.date_of_birth is null or p.date_of_birth < "{dob_cutoff}"
-                    or p.date_of_birth > "{report_date}")
-                    or (p.consent_for_study_enrollment_authored is not null
-                        and p.date_of_birth > p.consent_for_study_enrollment_authored )
-                       AS invalid_dob,
-                   TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored) < 18
-                      AS invalid_age_at_consent,
-                   -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
-                   (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
-                   (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
-                      AS non_va_consent_for_va,
-                   (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
-                      AS va_consent_for_non_va
-            FROM consent_file cf
-            JOIN participant_summary p on p.participant_id = cf.participant_id
-            LEFT OUTER JOIN hpo h on p.hpo_id = h.hpo_id
-            LEFT OUTER JOIN organization o on p.organization_id = o.organization_id
-            -- Limit the pulled records to those in either a NEEDS_CORRECTING, READY_TO_SYNC, or SYNC_COMPLETED status
-            -- The other statuses are not relevant to the daily report metrics
-            WHERE DATE(cf.created) = "{report_date}" AND cf.sync_status IN (1, 2, 4)
-            -- TODO:   DELETE THIS CLAUSE AFTER CE file validations are implemented
-            AND p.participant_origin = 'vibrent'
-        """
-        sql = DAILY_REPORT_SQL.format(report_date=self.report_date.strftime("%Y-%m-%d"),
-                                      dob_cutoff=self.dob_date_cutoff)
+        sql = self.report_sql.format(report_date=self.report_date.strftime("%Y-%m-%d"), dob_cutoff=self.dob_date_cutoff)
 
-        # Load daily validation results into a pandas dataframe and save as instance variable
-        df = self.daily_data = pandas.read_sql_query(sql, db_conn)
+        # Load daily validation results into a pandas dataframe.  Fill in any null/NaN error count columns with
+        # (uint8) 0s
+        df = pandas.read_sql_query(sql, db_conn)
+        # Fill any null/NaN error count columns with 0s;  cast all error counts to uint8
+        for error_type in TRACKED_CONSENT_ERRORS:
+            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
 
         # NOTE: For testing w/o hitting the prod DB:  can comment out the pandas.read_sql_query statement and use a
         # saved off CSV results file instead, e.g.:
-        # df = self.daily_data = pandas.read_csv('20210722_consents.csv')
+        # df = self.consent_df = pandas.read_csv('20210722_consents.csv')
 
-        # Pandas: filter all NEEDS_CORRECTING rows in the dataframe; shape[0] is resulting row count
+        # Pandas: Row count (shape[0]) of dataframe filtered on NEEDS_CORRECTING > 0 means errors exist
         self.consent_errors_found = df.loc[df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0
+
+        # Save resulting dataframe to instance variable
+        self.consent_df = df
+
+    def create_csv_errors_file(self):
+        """
+        Generate a CSV file with the consent error details (originally just for PTSC).
+        TODO:  May need to simultaneously create two CSV files once we add validations for CE?  Unless API is done?
+        """
+        errors_df = self.consent_df[self.consent_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)]
+
+        # Initialize the list of lists which will be passed to CSV writer writerows(), with the first row of headers
+        output_rows = [PTSC_CSV_COLUMN_HEADERS]
+
+        # iterrows() allows us to iterate through the dataframe similar to a result set of records.  It also returns
+        # an index, which is unused here and replaced with _ to keep pylint happy
+        for _, df_row in errors_df.iterrows():
+            # If file_path was null/file was missing, coerce file details to empty strings
+            if not df_row['file_path']:
+                file_path = file_upload_time = ''
+            else:
+                file_path = df_row['file_path']
+                file_upload_time = df_row['file_upload_time']
+
+            # Generating values at the start of each CSV line such as:
+            # P111111111,GROR,ptc-uploads-all-of-us-prod/Participant/P11111111/GROR__000.pdf,2021-08-10 01:38:21,...
+            csv_values = [
+                'P' + str(df_row['participant_id']),
+                str(ConsentType(df_row['type'])),
+                file_path,
+                file_upload_time
+            ]
+            # Add the 0/1 values for each of the row's error flag fields
+            for error_type in TRACKED_CONSENT_ERRORS:
+                csv_values.append(df_row[error_type])
+
+            output_rows.append(csv_values)
+
+        # Write out the csv file to the local directory
+        with open(self.csv_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerows(output_rows)
 
     def write_to_worksheet(self, cell_range, values, format_specs=None):
         """
@@ -303,19 +401,25 @@ class ProgramTemplateClass(object):
         formatting_complete = False
         write_complete = False
         i = 0
+        self.write_requests += 1
+        # Rate limits are 100 writes per user every 100 seconds;  inject a pause every 25 writes
+        if self.write_requests % 25 == 0:
+            sleep(25)
+
         while not write_complete and i < self.max_retries:
             try:
-                # Do the formatting first so if it triggers retry, we don't write the cell data again on next attempt
+                # Do the formatting first so if it triggers retry, we don't write the cell data again on next pass
                 if format_specs and not formatting_complete:
                     self.worksheet.format(cell_range, format_specs)
                     formatting_complete = True
-                self.worksheet.update(cell_range, [values])
+
+                if len(values):   # May have empty values list if this is to write formatting only
+                    self.worksheet.update(cell_range, [values])
                 write_complete = True
+
             except APIError as e:
-                # TODO:  Looks like we're getting rate limit exceptions on two consecutive passes through the loop,
-                #  despite the pause?
                 if 'RATE_LIMIT_EXCEEDED' in str(e):
-                    _logger.info('Pausing 60 seconds to stay within gsheets request rate limit...')
+                    _logger.info('gsheets rate limit per 100 seconds exceeded, pausing...')
                     sleep(60)
                     _logger.info('Resuming....')
                 else:
@@ -359,61 +463,76 @@ class ProgramTemplateClass(object):
                                 section.get('values'), format_specs=section.get('format'))
         self.row_pos = row_pos + 1
 
-    def add_consent_counts(self, df, row_pos=None, org=None):
+    def add_consent_counts(self, df, row_pos=None, org=None, show_all_counts=False):
         """
           Builds and populates a subsection of rows, with one row per consent type, indicating its status/error counts
           This method can be called on either the full daily data unfiltered dataframe for the daily total summary
           counts, or an Organization-specific dataframe for its error counts
+
+          :param show_all_counts:  Set to True by caller if lines for consents with 0 error counts should be shown
         """
         if not row_pos:
             row_pos = self.row_pos
 
         # Using integer ConsentType enum values to compare against consent_file.type (df.type) values
         for consent in CONSENTS_LIST:
-
-            # Organization name string gets written once to column A only in the first pass through this loop
+            # Organization name string (if present) gets written once to column A in the first pass through this loop
             if org and consent == CONSENTS_LIST[0]:
                 self.write_to_worksheet(self.make_a1_notation(row_pos),
                                         [org],
-                                        format_specs={'textFormat': {'bold': True}, 'wrapStrategy': 'wrap' })
+                                        format_specs={'textFormat': {'fontSize': 9, 'bold': True},
+                                                      'wrapStrategy': 'wrap' })
 
-            # Skip row creation if no consents of this type were processed that day.  Otherwise, we'll print a summary
-            # for each consent type in this organization's list of processed consents, regardless of whether that
-            # consent was the one with the errors.
-            expected = df.loc[df.type == consent].shape[0]
-            if not expected:
+            expected_count = df.loc[df.type == consent].shape[0]
+            # Won't generate spreadsheet rows for consents that had no entries in the daily validation results
+            if not expected_count:
                 continue
 
-            ready = df.loc[(df.type == consent)\
+            ready_count = df.loc[(df.type == consent)\
                            & (df.sync_status != int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
-            errors = df.loc[(df.type == consent)\
-                            & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
 
-            # Write summary values to columns C-F:
-            consent_summary_values =[str(ConsentType(consent)), expected, ready, errors]
-            cell_range = self.make_a1_notation(row_pos,
-                                               start_col=DAILY_REPORT_COLUMN_MAP.get('consent_type'),
-                                               end_col=DAILY_REPORT_COLUMN_MAP.get('total_errors'))
-            self.write_to_worksheet(cell_range, consent_summary_values)
+            # Filtered dataframe of records for this consent type in NEEDS_CORRECTING status, for further analysis
+            consents_with_errors = df.loc[(df.type == consent)\
+                            & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))]
+            consent_error_count = consents_with_errors.shape[0]
 
-            if errors:
-                # This consent had an error count.   Calculate which error(s) and how many, and build a list of
-                # values to populate the error-specific columns in this consent's row
-                tracked_error_values = []
+            if not consent_error_count and not show_all_counts:
+                # No errors/nothing to report for this consent type
+                continue
+
+            # Starting column position of values to be written out at conclusion of this pass
+            first_val_column = DAILY_REPORT_COLUMN_MAP.get('consent_type')
+            consent_summary_values = [str(ConsentType(consent)), expected_count, ready_count, consent_error_count]
+            tracked_error_values = [0]  # The first index will be total error count for all errors for this consent
+            if consent_error_count:
+                #  Build a list of counts for each tracked error type.  Ending column position for the row write will
+                # be the last of the tracked errors columns
+                total_errors = 0
+                last_val_column = DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1])
                 for error in TRACKED_CONSENT_ERRORS:
-                    # Pandas: sum up all occurrences of this tracked error (field = 1) after filtering on consent type
-                    count = df.loc[df.type == consent][error].sum()
-                    if count:
-                        tracked_error_values.append(int(count))   # Cast sum() int64 dtype result to int for gsheets?
+                    # Pandas: sum all the 1s in this error type df column. Cast result from int64 to int for gsheets
+                    error_count = int(consents_with_errors[error].sum())
+                    if error_count:
+                        tracked_error_values.append(error_count)
+                        total_errors += error_count
                     else:
-                        tracked_error_values.append(None)  # Suppress printing 0s in errors cols for better readability
+                        # Suppress writing 0s to the spreadsheet individual error columns, for better readability.
+                        # Only columns with an error count to report will have values in them.
+                        tracked_error_values.append(None)
 
-                # Write out individual error counts to columns G-N:
-                cell_range = self.make_a1_notation(row_pos,
-                                                   start_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[0]),
-                                                   end_col=DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1]))
-                self.write_to_worksheet(cell_range, tracked_error_values)
+                # Update the final tally of total count of all errors for this consent
+                tracked_error_values[0] = total_errors
 
+            else:
+                # No errors exist for this consent, just writing out the summary values
+                last_val_column = DAILY_REPORT_COLUMN_MAP.get('total_errors')
+
+            cell_range = self.make_a1_notation(row_pos,
+                                               start_col=first_val_column,
+                                               end_col=last_val_column)
+
+            # Combine the summary values and the error count values into one list containing all the row's values
+            self.write_to_worksheet(cell_range, consent_summary_values + tracked_error_values)
             row_pos += 1
 
         self.row_pos = row_pos + 1
@@ -426,11 +545,11 @@ class ProgramTemplateClass(object):
         """
         self.add_banner_text_row('counts_by_org', row_pos=self.row_pos + 1)
 
-        # Iterate through list of distinct HPOs found in the full daily results dataframe.  May include UNSET HPO
-        # value, mapped to string '(No HPO details)' by the DAILY_REPORT_SQL query
-        hpos = self.daily_data['hpo'].unique()
+        # Iterate through list of distinct HPOs found in the full daily results dataframe.
+        # Includes UNSET HPO (Mapped to '(No HPO Details)' in the daily report SQL query
+        hpos = self.consent_df['hpo'].unique()
         for hpo in sorted(hpos):
-            hpo_df = self.daily_data[self.daily_data.hpo == hpo]   # Yields an HPO-filtered dataframe
+            hpo_df = self.consent_df[self.consent_df.hpo == hpo]   # Yields an HPO-filtered dataframe
 
             # If any rec associated with this HPO has consents with errors,  create HPO block section header
             if hpo_df.loc[hpo_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
@@ -438,16 +557,18 @@ class ProgramTemplateClass(object):
             else:
                 continue
 
-            # Now iterate over distinct organizations in the HPO-specific dataframe to build subsections for
-            # any organization in that HPO that had the consent errors.  May include UNSET/null organization, which
-            # is mapped to '(No organization details)' by DAILY_REPORT_SQL query
+            # Iterate over distinct organizations in the HPO dataframe and build error report for each
+            # May include null/UNSET organization (mapped to '(No Organization Details)' by daily report SQL query
             orgs = hpo_df['organization'].unique()
             for org in sorted(orgs):
                 org_df = hpo_df[hpo_df.organization == org]   # Yields an Org-filtered dataframe from the HPO frame
-
-                # Add breakdown of consent and error counts for any organization that had any NEEDS_CORRECTING consents
+                # If this org had consent errors, add the error counts
                 if org_df.loc[org_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
                     self.add_consent_counts(org_df, row_pos=self.row_pos + 1, org=org)
+                    # Add a bottom border after the org counts
+                    self.write_to_worksheet(self.make_a1_notation(self.row_pos - 1, end_col=self.sheet_cols),
+                                            [],  # No cell data, just formatting
+                                            format_specs={'borders': {'bottom': {'style': 'SOLID'}}})
                 else:
                     continue
 
@@ -455,42 +576,48 @@ class ProgramTemplateClass(object):
         """ Add content that appears on every daily consent validation report regardless of errors """
 
         self.add_banner_text_row('report_date')
-
         # Add any explanatory text / details about the report that have been included in the layout
         self.add_banner_text_row('report-notes', row_pos=self.row_pos+1)
-
         if not self.consent_errors_found:
             self.add_banner_text_row('no_errors', row_pos=self.row_pos + 1)
-
-        self.add_banner_text_row('total_counts', row_pos=self.row_pos + 1)
-
-        # Daily summary counts for all the consents that were processed (regardless of whether errors were detected)
+        self.add_banner_text_row('total_consent_counts', row_pos=self.row_pos + 1)
+        # Daily summary counts for all the consents that were processed.  Show all counts regardless of errors
         self.add_count_header_section(hpo='All Entities')
-        self.add_consent_counts(self.daily_data)
-
+        self.add_consent_counts(self.consent_df, show_all_counts=True)
+        # Add a bottom border after the summary counts
+        self.write_to_worksheet(self.make_a1_notation(self.row_pos-1, end_col=self.sheet_cols),
+                                [], # No cell data, just formatting
+                                format_specs={'borders': {'bottom': { 'style': 'SOLID_THICK'}}} )
 
     def create_daily_report(self, spreadsheet):
         """
         Add a new daily report tab/sheet to the google sheet file, with the validation details for that date
         """
-        existing_sheets = spreadsheet.worksheets()
-        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of daily reports
-        # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
-        # leftmost tab (index 0).   This truncates the rightmost tabs
-        for ws_index in range(len(existing_sheets), self.max_daily_reports-1, -1):
-            spreadsheet.del_worksheet(existing_sheets[ws_index-1])
+        if not self.args.csv_only:
+            existing_sheets = spreadsheet.worksheets()
+            # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of daily reports
+            # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
+            # leftmost tab (index 0).   This deletes sheets from the existing_sheets list, starting at the rightmost tab
+            for ws_index in range(len(existing_sheets), self.max_daily_reports-1, -1):
+                spreadsheet.del_worksheet(existing_sheets[ws_index-1])
 
-        # Add the new worksheet (to leftmost tab position / index 0)
-        self.worksheet = spreadsheet.add_worksheet(self.report_date.strftime("%b %d %Y"),
-                                                   rows=self.sheet_rows,
-                                                   cols=self.sheet_cols,
-                                                   index=0)
-        self.add_daily_summary()
+            # Add the new worksheet (to leftmost tab position / index 0)
+            self.worksheet = spreadsheet.add_worksheet(self.report_date.strftime("%b %d %Y"),
+                                                       rows=self.sheet_rows,
+                                                       cols=self.sheet_cols,
+                                                       index=0)
+            self.add_daily_summary()
+
         if self.consent_errors_found:
-            # Google sheets doesn't have flexible/multiple freezing options.  Freeze all rows above the current position
-            # so HPO/Org-specific section(s) are scrollable while still seeing column header names from Total Counts
-            self.worksheet.freeze(rows=self.row_pos - 1)
-            self.add_daily_errors()
+            if not self.args.csv_only:
+                # Google sheets doesn't have flexible/multiple freezing options.  Freeze all rows above the current
+                # position.  Makes so HPO/Org-specific section(s) scrollable while still seeing column header names
+                self.worksheet.freeze(rows=self.row_pos - 1)
+                self.add_daily_errors()
+            if not self.args.sheet_only:
+                self.create_csv_errors_file()
+        else:
+            _logger.info('No errors to report')
 
         _logger.info('Report complete')
 
@@ -529,11 +656,21 @@ def run():
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     # TODO:  Replace CONSENT_DOC_ID environment variable with reading the doc ID value from the config settings
-    parser.add_argument("--doc-id", help="A google sheet ID which can override a CONSENT_DOC_ID env var")
+    parser.add_argument("--doc-id", type=str,
+                        help="A google sheet ID which can override a CONSENT_DOC_ID env var")
+    parser.add_argument("--report-type", type=str, default="daily_uploads", metavar='REPORT',
+                        help="Report to generate.  Default is daily_uploads")
     parser.add_argument("--report-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
                         help="Date of the consent validation job in YYYY-MM-DD format.  Default is today's date")
+    parser.add_argument("--csv-file", type=str,
+                        help="output filename for the CSV error list. " +\
+                                           " Default is YYYYMMDD_consent_errors.csv where YYYYMMDD is the report date")
+    parser.add_argument("--sheet-only", default=False, action="store_true",
+                        help="Only generate the googlesheet report, skip generating the CSV file")
+    parser.add_argument("--csv-only", default=False, action="store_true",
+                        help="Only generate the CSV errors file, skip generating google sheet content")
+    parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES.keys())}}}.'
     args = parser.parse_args()
-
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = ProgramTemplateClass(args, gcp_env)
