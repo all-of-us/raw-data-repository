@@ -892,6 +892,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             if mod['module'] == 'covid_19_serology_results':
                 decision_found = True
                 self.assertEqual(mod['consent_value'], 'Decision_No')
+                self.assertEqual(mod['status'], 'SUBMITTED_NO_CONSENT')
                 break
         self.assertEqual(decision_found, True)
 
