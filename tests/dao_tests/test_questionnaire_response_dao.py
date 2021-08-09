@@ -4,7 +4,6 @@ import mock
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from concepts import Concept
 from rdr_service import config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
@@ -22,6 +21,7 @@ from rdr_service.code_constants import (
     THE_BASICS_PPI_MODULE
 )
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.concepts import Concept
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -870,7 +870,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         self.assertEqual(num_completed_ppi_after_setup + 1, participant_summary.numCompletedPPIModules)
 
     def test_covid_19_serology_results(self):
-        """Make sure the dao fills in the summary data for the first COPE minute survey"""
+        """ Test the covid 19 serology results survey"""
         self.insert_codes()
         participant_id = self.create_participant()
         self.send_consent(participant_id)
