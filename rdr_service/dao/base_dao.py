@@ -521,6 +521,22 @@ class BaseDao(object):
         logging.warning(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts, tried {all_tried_ids}.")
         raise ServiceUnavailable(f"Giving up after {MAX_INSERT_ATTEMPTS} insert attempts.")
 
+    @staticmethod
+    def validate_str_lengths(obj):
+        _obj = dict(obj)
+        invalid = False
+        message = None
+        for key, val in _obj.items():
+            _type = getattr(obj.__class__, str(key))
+            _type = _type.expression.type
+            if _type.__class__.__name__.lower() == 'string' and val:
+                if len(val) > _type.length:
+                    invalid = True
+                    message = f'Value for {key} cannot exceed char limit of {_type.length}'
+                    break
+
+        return invalid, message
+
     def handle_integrity_error(self, tried_ids, e, _):
         logging.warning(f"Failed insert with {tried_ids}: {str(e)}")
 
