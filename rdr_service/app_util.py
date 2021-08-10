@@ -271,7 +271,8 @@ def auth_required(role_allowed_list):
   role_allowed_list can be a string or list of strings specifying one or
   more roles that are allowed to call the function. """
 
-    assert role_allowed_list, "Can't call `auth_required` with empty role_allowed_list."
+    if not role_allowed_list:
+        raise AssertionError("Can't call auth_required with empty role_allowed_list.")
 
     if not isinstance(role_allowed_list, list):
         role_allowed_list = [role_allowed_list]
