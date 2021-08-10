@@ -11,3 +11,4 @@ class OrganizationHierarchyApi(UpdatableApi):
     @auth_required(PTC)
     def put(self):
         return super(OrganizationHierarchyApi, self).put(None, skip_etag=True)
+

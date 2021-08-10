@@ -23,9 +23,9 @@ class Site(Base):
     enrollingStatus = Column("enrolling_status", Enum(EnrollingStatus))
     digitalSchedulingStatus = Column("digital_scheduling_status", Enum(DigitalSchedulingStatus))
     """Can participant schedule appointments online"""
-    scheduleInstructions = Column("schedule_instructions", String(2048))
+    scheduleInstructions = Column("schedule_instructions", String(4096))
     """Contains the script from the communications to schedule an appointment with the site in English"""
-    scheduleInstructions_ES = Column("schedule_instructions_es", String(2048))
+    scheduleInstructions_ES = Column("schedule_instructions_es", String(4096))
     """Contains the script from the communications to schedule an appointment with the site in Spanish"""
     launchDate = Column("launch_date", Date)
     notes = Column("notes", UnicodeText)

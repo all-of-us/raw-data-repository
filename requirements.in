@@ -2,6 +2,15 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+# DEPRECATED -- MAKE EDITS TO requirements_base.txt IF CHANGING PROJECT PACKAGE REQUIREMENTS
+#
+# This file was originally created to use with pip-tools as a way of keeping developer virtual environments in
+# sync, using pip-tools / pip-compile / pip-sync.  However, current procedure is to add specific package version
+# requirements to the requirements_base.txt file (referenced in requirements.txt)
+#
+# Leaving this requirements.in file in the codebase in case there is an attempt to revive use of pip-tools.   Any
+# more recently added packages from the requirements_base.txt file not included below would need to be incorporated
+# -----------------------------------------------------------------------------------------------------------------
 #
 # Note: Steps to update local venv packages before running pip-compile on this file
 #
