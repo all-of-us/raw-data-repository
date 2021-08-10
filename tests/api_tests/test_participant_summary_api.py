@@ -1,6 +1,7 @@
 import datetime
 import faker
 import http.client
+import mock
 import threading
 import unittest
 
@@ -168,6 +169,13 @@ class ParticipantSummaryMySqlApiTest(BaseTestCase):
             "identifier": [{"system": "http://any-columbia-mrn-system", "value": "MRN456"}],
         }
 
+        # Patching to prevent consent validation checks from running
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController.build_controller'
+        )
+        build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
+
     def testUpdate_raceCondition(self):
         self.create_questionnaire("questionnaire3.json")
         participant = self.send_post("Participant", {})
@@ -221,6 +229,13 @@ class ParticipantSummaryApiTest(BaseTestCase):
         )
         self.ps_dao = ParticipantSummaryDao()
         self.faker = faker.Faker()
+
+        # Patching to prevent consent validation checks from running
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController.build_controller'
+        )
+        build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
 
     def overwrite_test_user_awardee(self, awardee, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
