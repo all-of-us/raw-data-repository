@@ -137,10 +137,10 @@ DAILY_REPORT_ALL_ERRORS_SQL_FILTER = """
     """
 
 # Filter to produce a report of all remaining NEEDS_CORRECTING consents, regardless of date
-ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1'
+ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1 '
 
 # TODO:  Remove this when we expand consent validation to include CE consents
-VIBRENT_SQL_FILTER = 'AND p.participant_origin = "vibrent"'
+VIBRENT_SQL_FILTER = ' AND p.participant_origin = "vibrent"'
 
 # Define the allowable --report-type arguments and their associated SQL.
 REPORT_TYPES = {
@@ -208,16 +208,17 @@ class ProgramTemplateClass(object):
         else:
             self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
 
-        if args.report_type:
-            if not args.report_type in REPORT_TYPES.keys():
-                raise ValueError(f'invalid report type option: {args.report_type}')
-            else:
-                self.report_sql = REPORT_TYPES.get(args.report_type)
-
         # Decision by DRC/NIH stakeholders to use 125 years ago as the cutoff date for flagging invalid DOB
         self.dob_date_cutoff = datetime(self.report_date.year-125,
                                         self.report_date.month,
                                         self.report_date.day).strftime("%Y-%m-%d")
+
+        if args.report_type:
+            if not args.report_type in REPORT_TYPES.keys():
+                raise ValueError(f'invalid report type option: {args.report_type}')
+            else:
+                self.report_sql = REPORT_TYPES.get(args.report_type)\
+                    .format(report_date=self.report_date.strftime("%Y-%m-%d"), dob_cutoff=self.dob_date_cutoff)
 
         # Max dimensions for the daily sheet (max rows is a guesstimate?)
         self.sheet_rows = 500
@@ -332,18 +333,15 @@ class ProgramTemplateClass(object):
         if not db_conn:
             raise(EnvironmentError, 'No active DB connection object')
 
-        sql = self.report_sql.format(report_date=self.report_date.strftime("%Y-%m-%d"), dob_cutoff=self.dob_date_cutoff)
-
-        # Load daily validation results into a pandas dataframe.  Fill in any null/NaN error count columns with
-        # (uint8) 0s
-        df = pandas.read_sql_query(sql, db_conn)
-        # Fill any null/NaN error count columns with 0s;  cast all error counts to uint8
-        for error_type in TRACKED_CONSENT_ERRORS:
-            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
-
         # NOTE: For testing w/o hitting the prod DB:  can comment out the pandas.read_sql_query statement and use a
         # saved off CSV results file instead, e.g.:
         # df = self.consent_df = pandas.read_csv('20210722_consents.csv')
+
+        # Load daily validation results into a pandas dataframe.  Fill in any null/NaN error count columns with
+        # (uint8) 0s
+        df = pandas.read_sql_query(self.report_sql, db_conn)
+        for error_type in TRACKED_CONSENT_ERRORS:
+            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
 
         # Pandas: Row count (shape[0]) of dataframe filtered on NEEDS_CORRECTING > 0 means errors exist
         self.consent_errors_found = df.loc[df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0
