@@ -29,6 +29,7 @@ def cron_required(x):
 def not_in_prod():
     pass
 
+
 class AppUtilTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,7 +51,6 @@ class AppUtilTest(BaseTestCase):
         from rdr_service.config import LocalFilesystemConfigProvider
         fs = LocalFilesystemConfigProvider()
         fs.store(config.USER_INFO, self.user_info)
-        #config.insert_config(config.USER_INFO, self.user_info)
 
     def test_date_header(self):
         response = lambda: None  # Dummy object; functions can have arbitrary attrs set on them.
@@ -87,20 +87,20 @@ class AppUtilTest(BaseTestCase):
         )
 
     def test_valid_ip(self):
-        allowed_ips = app_util.get_whitelisted_ips(self.user_info["example@example.com"])
-        app_util.enforce_ip_whitelisted("123.210.0.1", allowed_ips)
-        app_util.enforce_ip_whitelisted("123.210.111.0", allowed_ips)
+        allowed_ips = app_util.get_allowed_ips(self.user_info["example@example.com"])
+        app_util.enforce_ip_allowed("123.210.0.1", allowed_ips)
+        app_util.enforce_ip_allowed("123.210.111.0", allowed_ips)
 
-        app_util.enforce_ip_whitelisted("1234:5678::", allowed_ips)
-        app_util.enforce_ip_whitelisted("1234:5678:9999::", allowed_ips)
+        app_util.enforce_ip_allowed("1234:5678::", allowed_ips)
+        app_util.enforce_ip_allowed("1234:5678:9999::", allowed_ips)
 
     def test_invalid_ip(self):
-        allowed_ips = app_util.get_whitelisted_ips(self.user_info["example@example.com"])
+        allowed_ips = app_util.get_allowed_ips(self.user_info["example@example.com"])
         with self.assertRaises(Forbidden):
-            app_util.enforce_ip_whitelisted("100.100.0.1", allowed_ips)
+            app_util.enforce_ip_allowed("100.100.0.1", allowed_ips)
 
         with self.assertRaises(Forbidden):
-            app_util.enforce_ip_whitelisted("5555::", allowed_ips)
+            app_util.enforce_ip_allowed("5555::", allowed_ips)
 
     # @patch("rdr_service.app_util.request")
     # def test_auth_required_http_identity_set(self, mock_request):

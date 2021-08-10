@@ -72,13 +72,13 @@ def nonprod(func):
     return wrapped
 
 
-def check_auth(role_whitelist):
+def check_auth(role_allowed_list):
     """Raises Unauthorized or Forbidden if the current user is not allowed."""
     user_email, user_info = get_validated_user_info()
-    if set(user_info.get("roles", [])) & set(role_whitelist):
+    if set(user_info.get("roles", [])) & set(role_allowed_list):
         return
 
-    logging.warning(f"User {user_email} has roles {user_info.get('roles')}, but {role_whitelist} is required")
+    logging.warning(f"User {user_email} has roles {user_info.get('roles')}, but {role_allowed_list} is required")
     raise Forbidden()
 
 
@@ -200,7 +200,8 @@ def is_self_request():
     )
 
 
-def get_whitelisted_ips(user_info):
+def get_allowed_ips(user_info):
+    # double_check
     if not user_info.get("whitelisted_ip_ranges"):
         return None
     return [
@@ -210,32 +211,33 @@ def get_whitelisted_ips(user_info):
     ]
 
 
-def enforce_ip_whitelisted(request_ip, whitelisted_ips):
-    if whitelisted_ips == None:  # No whitelist means "don't apply restrictions"
+def enforce_ip_allowed(request_ip, allowed_ips):
+    if not allowed_ips:  # No allowed ips means "don't apply restrictions"
         return
-    logging.info("IP RANGES ALLOWED: {}".format(whitelisted_ips))
+    logging.info("IP RANGES ALLOWED: {}".format(allowed_ips))
     ip = netaddr.IPAddress(request_ip)
-    if not bool([True for rng in whitelisted_ips if ip in rng]):
+    if not bool([True for rng in allowed_ips if ip in rng]):
         logging.info("IP {} NOT ALLOWED".format(ip))
-        raise Forbidden("Client IP not whitelisted: {}".format(ip))
+        raise Forbidden("Client IP not allowed: {}".format(ip))
     logging.info("IP {} ALLOWED".format(ip))
 
 
-def get_whitelisted_appids(user_info):
+def get_allowed_appids(user_info):
+    # double_check
     return user_info.get("whitelisted_appids")
 
 
-def enforce_appid_whitelisted(request_app_id, whitelisted_appids):
-    if not whitelisted_appids:  # No whitelist means "don't apply restrictions"
+def enforce_appid_allowed(request_app_id, allowed_appids):
+    if not allowed_appids:  # No allowed_appids means "don't apply restrictions"
         return
     if request_app_id:
-        if request_app_id in whitelisted_appids:
+        if request_app_id in allowed_appids:
             logging.info("APP ID {} ALLOWED".format(request_app_id))
             return
         else:
-            logging.info("APP ID {} NOT FOUND IN {}".format(request_app_id, whitelisted_appids))
+            logging.info("APP ID {} NOT FOUND IN {}".format(request_app_id, allowed_appids))
     else:
-        logging.info("NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}".format(whitelisted_appids))
+        logging.info("NO APP ID FOUND WHEN REQUIRED TO BE ONE OF: {}".format(allowed_appids))
     raise Forbidden()
 
 
@@ -263,15 +265,15 @@ def request_logging():
     logging.info("Request protocol: HTTPS={}".format(request.environ.get("HTTPS")))
 
 
-def auth_required(role_whitelist):
+def auth_required(role_allowed_list):
     """A decorator that keeps the function from being called without auth.
-  role_whitelist can be a string or list of strings specifying one or
+  role_allowed_list can be a string or list of strings specifying one or
   more roles that are allowed to call the function. """
 
-    assert role_whitelist, "Can't call `auth_required` with empty role_whitelist."
+    assert role_allowed_list, "Can't call `auth_required` with empty role_allowed_list."
 
-    if not isinstance(role_whitelist, list):
-        role_whitelist = [role_whitelist]
+    if not isinstance(role_allowed_list, list):
+        role_allowed_list = [role_allowed_list]
 
     def auth_required_wrapper(func):
         def wrapped(*args, **kwargs):
@@ -284,7 +286,7 @@ def auth_required(role_whitelist):
             if not is_self_request():
                 if request.scheme.lower() != "https" and appid not in acceptable_hosts:
                     raise Unauthorized(f"HTTPS is required for {appid}", www_authenticate='Bearer realm="rdr"')
-                check_auth(role_whitelist)
+                check_auth(role_allowed_list)
             request.logged = False
             result = func(*args, **kwargs)
             if request.logged is False:
@@ -344,9 +346,8 @@ def get_validated_user_info():
             addr = request.headers.get('X-Appengine-User-Ip')
         else:
             addr = request.remote_addr
-        enforce_ip_whitelisted(addr, get_whitelisted_ips(user_info))
-        # TODO: Probably need to remove appid whitelisted if testing in staging works out. 11-6-2019
-        enforce_appid_whitelisted(request.headers.get("X-Appengine-Inbound-Appid"), get_whitelisted_appids(user_info))
+        enforce_ip_allowed(addr, get_allowed_ips(user_info))
+        enforce_appid_allowed(request.headers.get("X-Appengine-Inbound-Appid"), get_allowed_appids(user_info))
         logging.info(f"User {user_email} ALLOWED")
         return (user_email, user_info)
 
