@@ -41,7 +41,7 @@ class AppUtilTest(BaseTestCase):
         self.user_info = {
             "example@example.com": {
                 "roles": ["role1", "role2"],
-                "whitelisted_ip_ranges": {"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]},
+                "allow_list_ip_ranges": {"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]},
                 "clientId": "example"
             }
         }
@@ -205,7 +205,7 @@ class AppUtilTest(BaseTestCase):
             mock_get_oauth_id.return_value = "bob@example.com"
             mock_lookup_user_info.return_value = {
                 "roles": ["bar"],
-                "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
+                "allow_list_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
             }
 
             with self.assertRaises(Forbidden):
@@ -224,7 +224,7 @@ class AppUtilTest(BaseTestCase):
         mock_request.headers = {}
         with mock.patch("rdr_service.app_util.request", mock_request):
             mock_get_oauth_id.return_value = "bob@example.com"
-            mock_lookup_user_info.return_value = {"roles": ["foo"], "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
+            mock_lookup_user_info.return_value = {"roles": ["foo"], "allow_list_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
 
             mock_request.remote_addr = "10.0.0.2"
             self.assertEqual(2, foo_bar_role(1))
@@ -240,7 +240,7 @@ class AppUtilTest(BaseTestCase):
         with mock.patch("rdr_service.app_util.request", mock_request):
             mock_get_oauth_id.return_value = "bob@example.com"
 
-            mock_lookup_user_info.return_value = {"roles": ["bar"], "whitelisted_appids": ["must-be-this-id"]}
+            mock_lookup_user_info.return_value = {"roles": ["bar"], "allow_list_appids": ["must-be-this-id"]}
 
             with self.assertRaises(Forbidden):
                 foo_bar_role(1)

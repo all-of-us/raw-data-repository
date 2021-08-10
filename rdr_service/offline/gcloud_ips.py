@@ -1,4 +1,4 @@
-# To support validating AppEngine calls by IP whitelisting, we need to know
+# To support validating AppEngine calls by IP allowed list, we need to know
 # which DNS blocks are used by AppEngine.  This code implements the algorithm
 # described at https://cloud.google.com/appengine/kb/ for recursively expanding
 # DNS blocks used by AppEngine.

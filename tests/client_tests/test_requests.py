@@ -1,4 +1,3 @@
-import http.client
 import unittest
 
 from tests.client_tests.base import BaseClientTest
@@ -11,7 +10,7 @@ class RequestsTest(BaseClientTest):
         response, _ = self.client.request(
             "Participant", method="POST", body="{}", authenticated=False, check_status=False
         )
-        self.assertEqual(response.status, http.client.UNAUTHORIZED)
+        self.assertEqual(response.status, 400)
 
     def test_header_values(self):
         response, _ = self.client.request("Participant", method="POST", body="{}")

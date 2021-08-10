@@ -187,8 +187,7 @@ def get_account_origin_id():
     from rdr_service.api_util import DEV_MAIL
     if not client_id:
         if auth_email == DEV_MAIL:
-            client_id = "example"  # TODO: This is a hack because something sets up configs different
-            # when running all tests and it doesnt have the clientId key.
+            client_id = "example"
     return client_id
 
 
@@ -202,12 +201,13 @@ def is_self_request():
 
 def get_allowed_ips(user_info):
     # double_check
-    if not user_info.get("whitelisted_ip_ranges"):
+    allowed_ip_ranges = user_info.get("allow_list_ip_ranges") or user_info.get("whitelisted_ip_ranges")
+    if not allowed_ip_ranges:
         return None
     return [
         netaddr.IPNetwork(rng)
-        for rng in user_info["whitelisted_ip_ranges"].get("ip6", [])
-        + user_info["whitelisted_ip_ranges"].get("ip4", [])
+        for rng in allowed_ip_ranges.get("ip6", [])
+        + allowed_ip_ranges.get("ip4", [])
     ]
 
 
@@ -224,7 +224,8 @@ def enforce_ip_allowed(request_ip, allowed_ips):
 
 def get_allowed_appids(user_info):
     # double_check
-    return user_info.get("whitelisted_appids")
+    allowed_app_ids = user_info.get("allow_list_appids") or user_info.get("whitelisted_appids")
+    return allowed_app_ids
 
 
 def enforce_appid_allowed(request_app_id, allowed_appids):
