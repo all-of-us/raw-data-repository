@@ -1,4 +1,5 @@
 import sqlalchemy
+from sqlalchemy import distinct
 from sqlalchemy.orm import aliased
 
 from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
@@ -33,7 +34,7 @@ class GenomicQueryClass:
         self.genomic_data_config = {
             GenomicManifestTypes.AW3_ARRAY: (sqlalchemy.select(
                 [
-                    GenomicGCValidationMetrics.chipwellbarcode,
+                    distinct(GenomicGCValidationMetrics.chipwellbarcode),
                     sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                     GenomicSetMember.sampleId,
                     GenomicSetMember.sexAtBirth,
@@ -80,7 +81,7 @@ class GenomicQueryClass:
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
-                    sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+                    distinct(sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId)),
                     GenomicSetMember.sampleId,
                     sqlalchemy.func.concat(get_biobank_id_prefix(),
                                            GenomicSetMember.biobankId, '_',
