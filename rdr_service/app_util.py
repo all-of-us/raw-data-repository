@@ -187,6 +187,8 @@ def get_account_origin_id():
     from rdr_service.api_util import DEV_MAIL
     if not client_id:
         if auth_email == DEV_MAIL:
+            # TODO: This is a hack because something sets up configs different
+            # when running all tests and it doesnt have the clientId key.
             client_id = "example"
     return client_id
 
