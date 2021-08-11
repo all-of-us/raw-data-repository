@@ -69,7 +69,6 @@ class WorkbenchResearcherSchema(Schema):
     given_name = fields.String(validate=validate.Length(max=100))
     family_name = fields.String(validate=validate.Length(max=100))
     email = fields.String(validate=validate.Length(max=250))
-    city = fields.String(validate=validate.Length(max=80))
     state = fields.String(validate=validate.Length(max=80))
     zip_code = fields.String(validate=validate.Length(max=80))
     country = fields.String(validate=validate.Length(max=80))

@@ -33,8 +33,7 @@ class WorkbenchGeneratorTest(BaseTestCase):
             degree=[1, 8],
             gender=[1, 2],
             userSourceId=1,
-            givenName='test',
-            city='city'
+            givenName='test'
         )
 
     def test_workbench_workspace_generator(self):
@@ -78,9 +77,8 @@ class WorkbenchGeneratorTest(BaseTestCase):
 
         data = res.get_resource()
         self.assertIsInstance(data, dict)
-        self.assertEqual(len(data.keys()), 22)
+        self.assertEqual(len(data.keys()), 21)
         self.assertEqual(data['user_source_id'], 1)
         self.assertEqual(data['given_name'], 'test')
-        self.assertEqual(data['city'], 'city')
         self.assertEqual(data['genders'], [{'gender': 'MAN', 'gender_id': 1}, {'gender': 'WOMAN', 'gender_id': 2}])
         self.assertEqual(data['degrees'], [{'degree': 'PHD', 'degree_id': 1}, {'degree': 'MBA', 'degree_id': 8}])
