@@ -1406,7 +1406,7 @@ class GenomicOutreachDaoV2(BaseDao):
         pass
 
     def to_client_json(self, _dict):
-        report_statuses, report, p_status, p_module, p_decision = [], {}, None, None, None
+        report_statuses, report, p_status, p_module = [], {}, None, None
 
         for p in _dict['data']:
             p_type = p[-1]
@@ -1414,19 +1414,21 @@ class GenomicOutreachDaoV2(BaseDao):
                 p_status, p_module = self._determine_report_state(p[1])
                 report = {
                     "module": p_module.lower(),
-                    "type": p_type,
+                    "type": 'result',
                     "status": p_status,
                     "participant_id": f'P{p[0]}',
                 }
             elif 'informingLoop' in p_type:
-                p_status, p_module, p_decision = 'completed', p[1], p[2]
+                p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
+                p_module = p.module_type
                 report = {
                     "module": p_module.lower(),
-                    "type": p_type,
+                    "type": 'informingLoop',
                     "status": p_status,
-                    "decision": p_decision,
                     "participant_id": f'P{p[0]}',
                 }
+                if p_status == 'completed':
+                    report['decision'] = p.decision_value
 
             report_statuses.append(report)
 
@@ -1451,8 +1453,8 @@ class GenomicOutreachDaoV2(BaseDao):
 
         with self.session() as session:
             if 'informingLoop' in self.type:
-                # informingLoop decisions only
-                loop_query = (
+                # informingLoop
+                decision_loop = (
                     session.query(
                         GenomicInformingLoop.participant_id,
                         GenomicInformingLoop.module_type,
@@ -1473,17 +1475,52 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.module_type.in_(self.module)
                     )
                 )
+                ready_loop = (
+                    session.query(
+                        GenomicSetMember.participantId.label('participant_id'),
+                        GenomicMemberReportState.module.label('module_type'),
+                        literal('informingLoop')
+                    )
+                    .join(
+                        ParticipantSummary,
+                        ParticipantSummary.participantId == GenomicSetMember.participantId
+                    )
+                    .join(
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    ).join(
+                        GenomicMemberReportState,
+                        GenomicMemberReportState.participant_id == GenomicSetMember.participantId
+                    )
+                    .filter(
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        ParticipantSummary.consentForGenomicsROR == 1,
+                        GenomicGCValidationMetrics.processingStatus == 'Pass',
+                        GenomicSetMember.ai_an == 'N',
+                        GenomicMemberReportState.module.in_(self.module)
+                    )
+                )
+
                 if pid:
-                    loop_query = loop_query.filter(
+                    decision_loop = decision_loop.filter(
                         ParticipantSummary.participantId == pid
                     )
+                    ready_loop = ready_loop.filter(
+                        ParticipantSummary.participantId == pid
+                    )
+
                 if start_date:
-                    loop_query = loop_query.filter(
+                    decision_loop = decision_loop.filter(
+                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                    )
+                    ready_loop = ready_loop.filter(
                         GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
                         GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
                     )
 
-                informing_loops = loop_query.all()
+                informing_loops = decision_loop.all() or [] + ready_loop.all() or []
 
             if 'result' in self.type:
                 # results
@@ -1523,12 +1560,6 @@ class GenomicOutreachDaoV2(BaseDao):
 
     @staticmethod
     def _determine_report_state(status):
-        """
-        Reads 'status' from ptsc and determines which report state value
-        to set
-        :param status: string
-        :return: GenomicWorkflowState for report state
-        """
         report_state_mapping = {
             'gem': {
                 GenomicReportState.GEM_RPT_READY: "ready",
