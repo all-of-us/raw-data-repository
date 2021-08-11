@@ -15,20 +15,48 @@ class DegreeSchema(Schema):
     degree = fields.EnumString(enum=WorkbenchResearcherDegree)
     degree_id = fields.EnumInteger(enum=WorkbenchResearcherDegree)
 
+    class Meta:
+        schema_id = SchemaID.workbench_researcher_degree
+        resource_uri = 'WorkbenchResearcher/{id}/Degrees'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
 
 class SexAtBirthSchema(Schema):
     sex_at_birth = fields.EnumString(enum=WorkbenchResearcherSexAtBirth)
     sex_at_birth_id = fields.EnumInteger(enum=WorkbenchResearcherSexAtBirth)
 
+    class Meta:
+        schema_id = SchemaID.workbench_researcher_sex_at_birth
+        resource_uri = 'WorkbenchResearcher/{id}/SexAtBirth'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
 
 class WorkbenchGenderSchema(Schema):
     gender = fields.EnumString(enum=WorkbenchResearcherGender)
-    gender_id = fields.EnumString(enum=WorkbenchResearcherGender)
+    gender_id = fields.EnumInteger(enum=WorkbenchResearcherGender)
+
+    class Meta:
+        schema_id = SchemaID.workbench_researcher_gender
+        resource_uri = 'WorkbenchResearcher/{id}/Genders'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class WorkbenchRaceSchema(Schema):
     race = fields.EnumString(enum=WorkbenchResearcherRace)
-    race_id = fields.EnumString(enum=WorkbenchResearcherRace)
+    race_id = fields.EnumInteger(enum=WorkbenchResearcherRace)
+
+    class Meta:
+        schema_id = SchemaID.workbench_researcher_race
+        resource_uri = 'WorkbenchResearcher/{id}/Races'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class WorkbenchResearcherSchema(Schema):
@@ -41,6 +69,7 @@ class WorkbenchResearcherSchema(Schema):
     given_name = fields.String(validate=validate.Length(max=100))
     family_name = fields.String(validate=validate.Length(max=100))
     email = fields.String(validate=validate.Length(max=250))
+    city = fields.String(validate=validate.Length(max=80))
     state = fields.String(validate=validate.Length(max=80))
     zip_code = fields.String(validate=validate.Length(max=80))
     country = fields.String(validate=validate.Length(max=80))
@@ -49,13 +78,13 @@ class WorkbenchResearcherSchema(Schema):
     ethnicity = fields.EnumString(enum=WorkbenchResearcherEthnicity, required=True)
     ethnicity_id = fields.EnumInteger(enum=WorkbenchResearcherEthnicity, required=True)
 
-    genders = fields.Nested(WorkbenchGenderSchema)
-    races = fields.Nested(WorkbenchRaceSchema)
-    sex_at_birth = fields.Nested(SexAtBirthSchema)
+    genders = fields.Nested(WorkbenchGenderSchema, many=True)
+    races = fields.Nested(WorkbenchRaceSchema, many=True)
+    sex_at_birth = fields.Nested(SexAtBirthSchema, many=True)
 
     education = fields.EnumString(enum=WorkbenchResearcherEducation, required=True)
     education_id = fields.EnumInteger(enum=WorkbenchResearcherEducation, required=True)
-    degrees = fields.Nested(DegreeSchema)
+    degrees = fields.Nested(DegreeSchema, many=True)
     disability = fields.EnumString(enum=WorkbenchResearcherDisability, required=True)
     disability_id = fields.EnumInteger(enum=WorkbenchResearcherDisability, required=True)
 
@@ -70,6 +99,7 @@ class WorkbenchResearcherSchema(Schema):
         # TODO:  Confirm if we should be deleting country, zip, state from current BQ schemas as PII?
         pii_fields = ('email', 'family_name', 'given_name') # List fields that contain PII data
         pii_filter = {}  # dict(field: lambda function).
+
 
 class WorkbenchInstitutionalAffiliationsSchema(Schema):
     """ Institutional Affiliations """

@@ -9,6 +9,8 @@ from .retention_metrics import RetentionEligibleMetricGenerator
 from .genomics import GenomicSetSchemaGenerator, GenomicManifestFileSchemaGenerator, GenomicJobRunSchemaGenerator, \
     GenomicGCValidationMetricsSchemaGenerator, GenomicFileProcessedSchemaGenerator, GenomicSetMemberSchemaGenerator, \
     GenomicManifestFeedbackSchemaGenerator
+from .workbench import WBWorkspaceGenerator, WBWorkspaceUsersGenerator, WBInstitutionalAffiliationsGenerator, \
+    WBResearcherGenerator
 
 __all__ = [
     'BaseGenerator',
@@ -22,5 +24,9 @@ __all__ = [
     'GenomicGCValidationMetricsSchemaGenerator',
     'GenomicFileProcessedSchemaGenerator',
     'GenomicSetMemberSchemaGenerator',
-    'GenomicManifestFeedbackSchemaGenerator'
+    'GenomicManifestFeedbackSchemaGenerator',
+    'WBWorkspaceGenerator',
+    'WBWorkspaceUsersGenerator',
+    'WBInstitutionalAffiliationsGenerator',
+    'WBResearcherGenerator'
 ]
