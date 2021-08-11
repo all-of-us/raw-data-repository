@@ -1399,6 +1399,12 @@ class GenomicOutreachDaoV2(BaseDao):
         self.type = self.allowed_types
         self.report_query_state = self.get_report_state_query_config()
 
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
     def to_client_json(self, _dict):
         report_statuses, report, p_status, p_module = [], {}, None, None
 
@@ -1448,8 +1454,7 @@ class GenomicOutreachDaoV2(BaseDao):
         return client_json
 
     def outreach_lookup(self, pid=None, start_date=None, end_date=None):
-        informing_loops = []
-        results = []
+        informing_loops, results = [], []
 
         if not end_date:
             end_date = clock.CLOCK.now()
@@ -1578,8 +1583,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 GenomicReportState.HDR_RPT_DELETED: "deleted"
             }
         }
-        p_status = None
-        p_module = None
+        p_status, p_module = None, None
 
         for key, value in report_state_mapping.items():
             if status in value.keys():
