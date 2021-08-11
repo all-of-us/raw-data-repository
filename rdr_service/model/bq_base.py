@@ -443,13 +443,16 @@ class BQTable(object):
 class BQView(object):
     __viewname__ = None  # type: str
     __viewdescr__ = None  # type: str
-    __table__ = None  # type: BQTable
+    __table__: BQTable = None
     __pk_id__ = 'id'  # type: (str, list)
     __sql__ = None  # type: str
 
     def __init__(self):
 
-        if not self.__sql__ and self.__table__:
+        if not hasattr(self, '__table__'):
+            raise ValueError('Class must have "__table__" properties defined.')
+
+        if not self.__sql__:
             tbl = self.__table__()
             fields = tbl.get_schema().get_fields()
             pk = ', '.join(self.__pk_id__) if isinstance(self.__pk_id__, list) else str(self.__pk_id__)

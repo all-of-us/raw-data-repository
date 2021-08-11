@@ -4,14 +4,14 @@ import logging
 from sqlalchemy import text
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
-from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_base import BQRecord, BQFieldTypeEnum
 from rdr_service.model.bq_questionnaires import (
     BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle,
     BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory,
     BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb,
     BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1, BQPDRCOPEVaccine2
 )
-from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM, PMI_SKIP_CODE
 from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
 
 
@@ -192,23 +192,29 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                         'questionnaire_id',
                         'external_id',
                         'status',
-                        'status_id',
-                        'test_participant'
+                        'status_id'
                     ):
                         continue
 
                     fld_value = getattr(bqr, fld_name, None)
-                    if fld_value is None:  # Let empty strings pass.
+                    # Check to see if the field has been forced to boolean and set the default.
+                    if field['type'] == BQFieldTypeEnum.INTEGER.name:
+                        setattr(bqr, fld_name, 0)
+                    if fld_value is None:
                         continue
                     # question responses values need to be coerced to a String type.
                     if isinstance(fld_value, (datetime.date, datetime.datetime)):
                         setattr(bqr, fld_name, fld_value.isoformat())
+                    # Check to see if the field has been forced to boolean, set to 1 because we have a value.
+                    elif field['type'] == BQFieldTypeEnum.INTEGER.name:
+                        if fld_value != PMI_SKIP_CODE:
+                            setattr(bqr, fld_name, 1)
+                    # Truncate zip codes to 3 digits
+                    elif fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and \
+                            len(fld_value) > 2:
+                        setattr(bqr, fld_name, fld_value[:3])
                     else:
                         setattr(bqr, fld_name, str(fld_value))
-
-                    # Truncate zip codes to 3 digits
-                    if fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and len(fld_value) > 2:
-                        setattr(bqr, fld_name, fld_value[:3])
 
                 bqrs.append(bqr)
                 if latest:
