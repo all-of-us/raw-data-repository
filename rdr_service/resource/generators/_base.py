@@ -43,6 +43,12 @@ class ResourceRecordSet(object):
         self._schema = schema()
         self._meta = self._schema.Meta
 
+        # Make sure 'participant_id' is a string(10) type.
+        if 'participant_id' in self._schema.fields and (
+                    not isinstance(self._schema.fields['participant_id'], fields.String) or
+                    self._schema.fields['participant_id'].validate.max != 10):
+            raise TypeError('Participant ID must be defined as String(10) in schema.')
+
         if data:
             # Make a copy of the data before calling _load_data().
             self._data = copy.deepcopy(data)
@@ -183,15 +189,18 @@ class ResourceRecordSet(object):
 
         with w_dao.session() as session:
             for resource in resources:
+                pid = None
+                hpo_id = None
 
+                if 'participant_id' in resource and resource['participant_id']:
+                    pid = int(re.sub('[^0-9]', '', str(resource['participant_id'])))
+                    # Force the 'participant_id' field to a string with a 'P' prefix.
+                    resource['participant_id'] = f'P{pid}'
                 # Attempt to find hpo_id for this resource record.
                 if 'hpo_id' in resource:
                     hpo_id = resource['hpo_id']
-                elif 'participant_id' in resource and resource['participant_id']:
-                    pid = int(re.sub('[^0-9]', '', str(resource['participant_id'])))
+                elif pid:
                     hpo_id = session.query(Participant.hpoId).filter(Participant.participantId == pid).first()
-                else:
-                    hpo_id = None
 
                 # TODO: Populate parent resource values in URI in recursive calls.
                 res_uri = type_rec.resourceURI + '/' + str(resource[type_rec.resourcePKField])
@@ -205,13 +214,12 @@ class ResourceRecordSet(object):
                 rec.resourceSchemaID = schema_rec.id
                 rec.uri = res_uri
                 rec.hpoId = hpo_id
-                rec.resourcePKID = resource[pk_fld] if isinstance(resource[pk_fld], int) else None
+                if pk_fld in ['participant_id']:
+                    rec.resourcePKID = pid
+                else:
+                    rec.resourcePKID = resource[pk_fld] if isinstance(resource[pk_fld], int) else None
                 rec.resourcePKAltID = str(resource[pk_fld]) if isinstance(resource[pk_fld], str) else None
                 rec.resource = resource
-
-                if pk_fld in ['participant_id']:
-                    rec.resourcePKID = int(re.sub('[^0-9]', '', rec.resourcePKAltID))
-
                 # TODO: Populate rec.parent_id and rec.parent_type_id in recursive calls.
 
                 session.add(rec)
