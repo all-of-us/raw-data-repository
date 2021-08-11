@@ -97,7 +97,7 @@ def run_migrations_offline():
                 context.run_migrations(engine_name=name)
 
 
-autogen_blacklist = set(["aggregate_metrics_ibfk_1"])
+autogen_denied_list = set(["aggregate_metrics_ibfk_1"])
 
 
 def include_object_fn(engine_name):
@@ -109,8 +109,8 @@ def include_object_fn(engine_name):
         # TODO(calbach): File an issue against alembic.
         if type_ == "foreign_key_constraint" and obj.table.schema == "metrics":
             return False
-        if name in autogen_blacklist:
-            logger.info("skipping blacklisted %s", name)
+        if name in autogen_denied_list:
+            logger.info("skipping not allowed %s", name)
             return False
         if type_ == "table" and reflected:
             # This normally wouldn't be necessary, except that our RDR models do not

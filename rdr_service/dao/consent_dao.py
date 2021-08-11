@@ -92,3 +92,15 @@ class ConsentDao(BaseDao):
                 return self._get_ready_to_sync_with_session(session=dao_session, org_names=org_names)
         else:
             return self._get_ready_to_sync_with_session(session=session, org_names=org_names)
+
+    @classmethod
+    def set_previously_synced_files_as_ready(cls, session: Session, participant_id: int):
+        session.query(
+            ConsentFile
+        ).filter(
+            ConsentFile.sync_status == ConsentSyncStatus.SYNC_COMPLETE,
+            ConsentFile.participant_id == participant_id
+        ).update({
+            ConsentFile.sync_status: ConsentSyncStatus.READY_FOR_SYNC,
+            ConsentFile.sync_time: None
+        })
