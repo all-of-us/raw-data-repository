@@ -1875,9 +1875,6 @@ class GenomicReconciler:
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
 
-            if missing_data_files:
-                self.any_missing_data = True
-
             metric_touched = False
 
             # WGS query results requre GenomicGCValidationMetrics model to be specified

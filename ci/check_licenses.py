@@ -1,7 +1,7 @@
 """Checks the licenses of all installed packages.
 
 Goes through the list of installed packages, ensuring that each has a license
-that we have whitelisted.
+that we have in allowed list.
 """
 
 import argparse
@@ -15,16 +15,16 @@ class InvalidLicenseException(BaseException):
     pass
 
 
-def check_licenses(whitelist, root, exceptions):
-    """Enumerates the installed packages checking licenses against the whitelist.
+def check_licenses(allowed_list, root, exceptions):
+    """Enumerates the installed packages checking licenses against the allowed list.
 
   Args:
-    whitelist: A list of strings, each the name of a supported license.
+    allowed_list: A list of strings, each the name of a supported license.
     root: Ignore packages outside this directory path.
     exceptions: List of package names to ignore.
 
   Raises:
-    InvalidLicenseException: If a license for an installed package is not in the whitelist.
+    InvalidLicenseException: If a license for an installed package is not in the allowed list.
   """
     installed = pkg_resources.WorkingSet()
 
@@ -54,7 +54,7 @@ def check_licenses(whitelist, root, exceptions):
                 segments = segments[1:]
             if segments:
                 for segment in segments:
-                    _verify_license(pkg, segment, whitelist)
+                    _verify_license(pkg, segment, allowed_list)
                     license_checked = True
 
         if license_checked:
@@ -62,15 +62,15 @@ def check_licenses(whitelist, root, exceptions):
             # (less standard) license tag.
             continue
 
-        _verify_license(pkg, pkg_info["License"], whitelist)
+        _verify_license(pkg, pkg_info["License"], allowed_list)
 
 
-def _verify_license(pkg, lic, whitelist):
+def _verify_license(pkg, lic, allowed_list):
     pkgname = pkg.project_name
-    if lic not in whitelist:
+    if lic not in allowed_list:
         raise InvalidLicenseException(
             '{} has unknown license "{}"\n{} is installed in: {}\nKnown licenses are {}.'.format(
-                pkgname, lic, pkgname, pkg.location, whitelist
+                pkgname, lic, pkgname, pkg.location, allowed_list
             )
         )
     print(("{} : {} OK!".format(pkgname, lic)))

@@ -8,7 +8,7 @@
     "example@example.com": {
       "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem", "redcap", "biobank"],
       "clientId": "example",
-      "whitelisted_ip_ranges": {
+      "allow_list_ip_ranges": {
         "ip6": ["::1/64"],
         "ip4": ["127.0.0.1/32"]
       }
@@ -16,7 +16,7 @@
       "example@spellman.com": {
         "roles": ["ptc", "healthpro", "exporter", "storefront", "rdr", "workbench", "gem"],
         "clientId": "vibrent",
-        "whitelisted_ip_ranges": {
+        "allow_list_ip_ranges": {
           "ip6": ["::1/64"],
           "ip4": ["127.0.0.1/32"]
         }
@@ -24,7 +24,7 @@
     "awardee-pitt@pmi-drc-api-test.iam.gserviceaccount.com": {
       "roles": ["awardee_sa"],
       "awardee": "PITT",
-      "whitelisted_ip_ranges" : {
+      "allow_list_ip_ranges" : {
 	"ip4": ["136.142.28.15", "136.142.28.122", "136.142.28.123", "136.142.28.76", "136.142.202.70", "136.142.202.71", "136.142.202.72", "136.142.202.73", "136.142.202.74", "136.142.202.75", "136.142.202.76", "136.142.202.77", "136.142.202.78"]
       }
     }
