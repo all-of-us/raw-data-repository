@@ -312,7 +312,6 @@ def scan_and_complete_feedback_records():
     with GenomicJobController(GenomicJob.FEEDBACK_SCAN) as controller:
         # Get feedback records that are complete
         fb_recs = controller.get_feedback_records_to_send()
-
         for f in fb_recs:
             create_aw2f_manifest(f)
 
@@ -322,12 +321,22 @@ def feedback_record_reconciliation():
         controller.reconcile_feedback_records()
 
 
+def genomic_missing_files_clean_up(num_days=90):
+    with GenomicJobController(GenomicJob.MISSING_FILES_CLEANUP) as controller:
+        controller.gc_missing_files_record_clean_up(num_days)
+
+
+def genomic_missing_files_resolve():
+    with GenomicJobController(GenomicJob.RESOLVE_MISSING_FILES) as controller:
+        controller.resolve_missing_gc_files()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
                               ) as controller:
         controller.generate_manifest(GenomicManifestTypes.AW2F,
-                                     _genome_type=config.GENOME_TYPE_ARRAY,
+                                     _genome_type=None,
                                      feedback_record=feedback_record)
 
 

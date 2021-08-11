@@ -10,4 +10,5 @@ class MessageBrokerMetadataDao(BaseDao):
         with self.session() as session:
             query = session.query(MessageBrokerMetadata).filter(MessageBrokerMetadata.eventType == event,
                                                                 MessageBrokerMetadata.destination == dest)
-            return query.first()
+            metadata = query.first()
+            return metadata.url if metadata else None

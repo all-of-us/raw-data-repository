@@ -12,8 +12,7 @@ from rdr_service.offline.sql_exporter import SqlExporter
 _TABLE_PATTERN = re.compile("^[A-Za-z0-9_]+$")
 _INSTANCE_PATTERN = re.compile("^[A-Za-z0-9_-]+$")
 
-# TODO(calbach): Factor this out into the datastore config.
-_DEIDENTIFY_DB_TABLE_WHITELIST = {
+_DEIDENTIFY_DB_TABLE_ALLOWED = {
     "rdr": set(["ppi_participant_view", "physical_measurements_view", "questionnaire_response_answer_view"])
 }
 
@@ -130,18 +129,20 @@ class TableExporter(object):
 
         deidentify_salt = None
         if deidentify:
-            if database not in _DEIDENTIFY_DB_TABLE_WHITELIST:
+            if database not in _DEIDENTIFY_DB_TABLE_ALLOWED:
                 raise BadRequest(
                     "deidentified exports are only supported for database: {}".format(
-                        list(_DEIDENTIFY_DB_TABLE_WHITELIST.keys())
+                        list(_DEIDENTIFY_DB_TABLE_ALLOWED.keys())
                     )
                 )
             tableset = set(tables)
-            table_whitelist = _DEIDENTIFY_DB_TABLE_WHITELIST[database]
-            if not tableset.issubset(table_whitelist):
+            table_allowed_list = _DEIDENTIFY_DB_TABLE_ALLOWED[database]
+            if not tableset.issubset(table_allowed_list):
                 raise BadRequest(
                     "deidentified exports are unsupported for tables:"
-                    "[{}] (must be in [{}])".format(", ".join(tableset - table_whitelist), ", ".join(table_whitelist))
+                    "[{}] (must be in [{}])".format(
+                        ", ".join(tableset - table_allowed_list), ", ".join(table_allowed_list)
+                    )
                 )
             # This salt must be identical across all tables exported, otherwise the exported particpant
             # IDs will not be consistent. Used with sha1, so ensure this value isn't too short.

@@ -208,7 +208,7 @@ class DeployAppClass(ToolBase):
             Developers: Robert Abram, Yu Wang, Josh Kanuch, Kenny Skaggs, Peggy Bertsch, Darryl Tharpe
             Needed By Date/Event: <target release date>
             Priority: <Low, Medium, High>
-            Configuration/Change Manager: Bhinnata Piya
+            Configuration/Change Manager: Megan Morris
 
             Anticipated Impact: <None, Low, Medium, High>
             Software Impact: <Software Impact>

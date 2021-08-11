@@ -19,7 +19,8 @@ from rdr_service.model.genomics import (
     GenomicIncident,
     GenomicGCValidationMetrics,
     GenomicGcDataFile,
-    GenomicManifestFeedback
+    GenomicManifestFeedback,
+    GenomicGcDataFileMissing
 )
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpo import HPO
@@ -692,3 +693,13 @@ class DataGenerator:
         records = self._genomic_gc_data_file(**kwargs)
         self._commit_to_database(records)
         return records
+
+    @staticmethod
+    def _genomic_gc_data_missing_file(**kwargs):
+        return GenomicGcDataFileMissing(**kwargs)
+
+    def create_database_gc_data_missing_file(self, **kwargs):
+        records = self._genomic_gc_data_missing_file(**kwargs)
+        self._commit_to_database(records)
+        return records
+

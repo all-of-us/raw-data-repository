@@ -1,8 +1,7 @@
 import logging
-import csv
 
 from dateutil.parser import parse
-from rdr_service.api_util import open_cloud_file
+from rdr_service.storage import GoogleCloudStorageCSVReader
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
@@ -10,41 +9,103 @@ from rdr_service.participant_enums import RetentionType, RetentionStatus
 
 _BATCH_SIZE = 1000
 
+# Note: depreciated to switch to using GoogleCloudStorageCSVReader version.
+# def import_retention_eligible_metrics_file(task_data):
+#     """
+#     Import PTSC retention eligible metric file from bucket.
+#     :param task_data: Cloud function event dict.
+#     """
+#     csv_file_cloud_path = task_data["file_path"]
+#     upload_date = task_data["upload_date"]
+#     dao = RetentionEligibleMetricsDao()
+#
+#     # Copy bucket file to local temp file.
+#     logging.info(f"Opening gs://{csv_file_cloud_path}.")
+#     tmp_file = tempfile.NamedTemporaryFile(prefix='ptsc_')
+#     with GoogleCloudStorageProvider().open(csv_file_cloud_path, 'rt') as csv_file:
+#         while True:
+#             chunk = csv_file.read(_CHUNK_SIZE)
+#             tmp_file.write(chunk)
+#             if not chunk or len(chunk) < _CHUNK_SIZE:
+#                 break
+#     tmp_file.seek(0)
+#
+#     header = tmp_file.readline().decode('utf-8')
+#     missing_cols = set(RetentionEligibleMetricCsvColumns.ALL) - set(header.split(','))
+#     if missing_cols:
+#         raise DataError(f"CSV is missing columns {missing_cols}, had columns {header}.")
+#
+#     strio = io.StringIO()
+#     strio.write(header + '\n')
+#     batch_count = upsert_count = 0
+#     records = list()
+#
+#     with dao.session() as session:
+#         while True:
+#             # Create a mini-csv file with a _BATCH_SIZE number of records in the StringIO obj.
+#             line = tmp_file.readline().decode('utf-8')
+#             if line:
+#                 strio.write(line + '\n')
+#                 batch_count += 1
+#
+#             if batch_count == _BATCH_SIZE or not line:
+#                 strio.seek(0)
+#                 csv_reader = csv.DictReader(strio, delimiter=",")
+#                 for row in csv_reader:
+#                     if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
+#                         continue
+#                     record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
+#                     records.append(record)
+#                 upsert_count += dao.upsert_all_with_session(session, records)
+#                 if not line:
+#                     break
+#                 # reset for next batch, re-use objects.
+#                 batch_count = 0
+#                 records.clear()
+#                 strio.seek(0)
+#                 strio.truncate(0)
+#                 strio.write(header + '\n')
+#
+#     tmp_file.close()
+#
+#     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
+#     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
+#     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
 def import_retention_eligible_metrics_file(task_data):
-    bucket_name = task_data["bucket"]
+    """
+    Import PTSC retention eligible metric file from bucket.
+    :param task_data: Cloud function event dict.
+    """
     csv_file_cloud_path = task_data["file_path"]
     upload_date = task_data["upload_date"]
-    with open_cloud_file(csv_file_cloud_path) as csv_file:
-        logging.info("Opening  CSV in {}: {}.".format(bucket_name, csv_file_cloud_path))
-        csv_reader = csv.DictReader(csv_file, delimiter=",")
-        missing_cols = set(RetentionEligibleMetricCsvColumns.ALL) - set(csv_reader.fieldnames)
-        if missing_cols:
-            raise DataError("CSV is missing columns %s, had columns %s." % (missing_cols, csv_reader.fieldnames))
+    dao = RetentionEligibleMetricsDao()
 
-        retention_eligible_metrics_dao = RetentionEligibleMetricsDao()
-        records = []
-        rows = list(csv_reader)
-        with retention_eligible_metrics_dao.session() as session:
-            count = 0
-            for row in rows:
-                if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
-                    continue
-                record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
-                records.append(record)
-                if len(records) >= _BATCH_SIZE:
-                    upsert_count = retention_eligible_metrics_dao.upsert_all_with_session(session, records)
-                    session.commit()
-                    records = []
-                    count = count + upsert_count
-            if records:
-                upsert_count = retention_eligible_metrics_dao.upsert_all_with_session(session, records)
-                session.commit()
-                count = count + upsert_count
-        logging.info("Updating participant summary retention eligible flags for {} participants...".format(count))
-    participant_summary_dao = ParticipantSummaryDao()
-    participant_summary_dao.bulk_update_retention_eligible_flags(upload_date)
-    logging.info("import and update completed, file name: {}".format(csv_file_cloud_path))
+    # Copy bucket file to local temp file.
+    logging.info(f"Reading gs://{csv_file_cloud_path}.")
+    csv_reader = GoogleCloudStorageCSVReader(csv_file_cloud_path)
+
+    batch_count = upsert_count = 0
+    records = list()
+    with dao.session() as session:
+        for row in csv_reader:
+            if not row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID]:
+                continue
+            record = _create_retention_eligible_metrics_obj_from_row(row, upload_date)
+            records.append(record)
+            batch_count += 1
+
+            if batch_count == _BATCH_SIZE:
+                upsert_count += dao.upsert_all_with_session(session, records)
+                records.clear()
+                batch_count = 0
+
+        if records:
+            upsert_count += dao.upsert_all_with_session(session, records)
+
+    logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
+    ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
+    logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
 
 def _parse_field(parser_func, field_str):

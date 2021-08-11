@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
@@ -10,6 +11,8 @@ from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
 
+TIME = datetime(2000, 1, 10)
+
 
 class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
@@ -18,6 +21,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
+        self.data_generator.create_database_participant_summary(participant=self.participant,
+                                                                dateOfBirth=datetime(1982, 1, 9))
 
         self.module_code = self.data_generator.create_database_code(value='src_clean_test')
 
@@ -377,3 +382,21 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             else:
                 self.assertEqual(expected_value, src_cln.value_string)
                 self.assertIsNone(src_cln.value_number)
+
+    def test_exclude_participants_age_under_18(self):
+        """
+        Curation team request to exclude participants that were under 18 at the time of ETL run.
+        """
+        self._create_consent_questionnaire()
+        with FakeClock(TIME):
+            self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(4, len(src_clean_answers))
+
+        dob = datetime(1982, 1, 11)
+        self.data_generator.create_database_participant_summary(participant=self.participant, dateOfBirth=dob)
+        with FakeClock(TIME):
+            self.run_cdm_data_generation()
+        src_clean_answers = self.session.query(SrcClean).all()
+        self.assertEqual(0, len(src_clean_answers))
+

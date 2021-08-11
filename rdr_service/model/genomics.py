@@ -726,3 +726,27 @@ class GenomicGcDataFile(Base):
 
 event.listen(GenomicGcDataFile, 'before_insert', model_insert_listener)
 event.listen(GenomicGcDataFile, 'before_update', model_update_listener)
+
+
+class GenomicGcDataFileMissing(Base):
+    """
+    Used for tracking missing genomic data files produced by the GCs
+    """
+
+    __tablename__ = 'genomic_gc_data_file_missing'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    gc_site_id = Column(String(64), nullable=False, index=True)
+    file_type = Column(String(128), nullable=False, index=True)  # gc data file extension
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=False)
+    gc_validation_metric_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"), nullable=False)
+    resolved = Column(SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
+    resolved_date = Column(DateTime, nullable=True)  # 0 is no, 1 is yes
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
+
+
+event.listen(GenomicGcDataFileMissing, 'before_insert', model_insert_listener)
+event.listen(GenomicGcDataFileMissing, 'before_update', model_update_listener)

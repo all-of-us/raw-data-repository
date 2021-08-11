@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Collection
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.sql.expression import literal
 
@@ -24,6 +24,7 @@ from rdr_service.api_util import (
 from rdr_service.app_util import get_oauth_id, lookup_user_info, get_account_origin_id, is_care_evo_and_not_prod
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
+from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
@@ -63,11 +64,27 @@ class ParticipantHistoryDao(BaseDao):
     def get_id(self, obj):
         return [obj.participantId, obj.version]
 
+    @classmethod
+    def get_pairing_history(cls, session: Session, participant_ids: Collection[int]) -> Collection:
+        """Loads the pairing history for the given participants"""
+        return session.query(
+            ParticipantHistory.participantId,
+            ParticipantHistory.lastModified,
+            ParticipantHistory.hpoId,
+            ParticipantHistory.organizationId,
+            Organization.externalId,
+            ParticipantHistory.siteId
+        ).join(
+            Organization,
+            Organization.organizationId == ParticipantHistory.organizationId
+        ).filter(
+            ParticipantHistory.participantId.in_(participant_ids)
+        ).order_by(ParticipantHistory.lastModified).distinct().all()
+
 
 class ParticipantDao(UpdatableDao):
     def __init__(self):
         super(ParticipantDao, self).__init__(Participant)
-
         self.hpo_dao = HPODao()
         self.organization_dao = OrganizationDao()
         self.site_dao = SiteDao()
@@ -252,8 +269,23 @@ class ParticipantDao(UpdatableDao):
                     obj.organizationId = None
                     need_new_summary = True
 
-        # No pairing updates sent, keep existing values.
-        if update_pairing == False:
+        if update_pairing:
+            if obj.organizationId != existing_obj.organizationId and existing_obj.participantSummary is not None:
+                # Get valid files ready for sync when a participant is paired to an organization
+                ConsentDao.set_previously_synced_files_as_ready(session, obj.participantId)
+
+                import rdr_service.services.consent.validation as validation
+                controller = validation.ConsentValidationController.build_controller()
+                with validation.ReplacementStoringStrategy(
+                    session=session,
+                    consent_dao=controller.consent_dao
+                ) as store_strategy:
+                    controller.validate_all_for_participant(
+                        participant_id=obj.participantId,
+                        output_strategy=store_strategy
+                    )
+        else:
+            # No pairing updates sent, keep existing values.
             obj.siteId = existing_obj.siteId
             obj.organizationId = existing_obj.organizationId
             obj.hpoId = existing_obj.hpoId
@@ -449,7 +481,7 @@ class ParticipantDao(UpdatableDao):
 
         if test_flag:
             participant = self.get(id_)
-        if participant is None:
+        if not participant:
             participant = Participant(participantId=id_)
 
         # biobankId, lastModified, signUpTime are set by DAO.

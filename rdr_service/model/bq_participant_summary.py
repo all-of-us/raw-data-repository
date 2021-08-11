@@ -205,6 +205,19 @@ class BQEhrReceiptSchema(BQSchema):
                                          BQFieldModeEnum.NULLABLE)
 
 
+class BQPairingHistorySchema(BQSchema):
+    """
+    Participant pairing history
+    """
+    last_modified = BQField('last_modified', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.REQUIRED)
+    hpo = BQField('hpo', BQFieldTypeEnum.STRING, BQFieldModeEnum.REQUIRED)
+    hpo_id = BQField('hpo_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.REQUIRED)
+    organization = BQField('organization', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    organization_id = BQField('organization_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    site = BQField('site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    site_id = BQField('site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+
 class BQParticipantSummarySchema(BQSchema):
     """
     Note: Do not use camelCase for property names. Property names must exactly match BQ
@@ -339,6 +352,7 @@ class BQParticipantSummarySchema(BQSchema):
                                                 BQFieldModeEnum.NULLABLE)
     enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
                                          BQFieldModeEnum.NULLABLE)
+    pairing_history = BQRecordField('pairing_history', schema=BQPairingHistorySchema)
 
 
 class BQParticipantSummary(BQTable):

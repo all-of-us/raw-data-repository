@@ -354,7 +354,6 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     exporter.run_export(file_path, withdrawal_report_query, backup=True)
     logging.info(f"Completed {file_path} report.")
 
-
 def _query_and_write_reports(exporter, now, report_type, path_received,
                              path_missing, path_modified,
                              path_withdrawals, path_salivary_missing=None):
@@ -395,27 +394,50 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
     native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
 
     # break into three steps to avoid OOM issue
-    report_paths = [path_received, path_missing, path_modified]
-    report_predicates = [received_predicate, missing_predicate, modified_predicate]
+    report_paths = [path_missing, path_modified]
+    report_predicates = [missing_predicate, modified_predicate]
+
+    query_params = {
+        "race_question_code_id": race_question_code.codeId,
+        "native_american_race_code_id": native_american_race_code.codeId,
+        "biobank_id_prefix": get_biobank_id_prefix(),
+        "pmi_ops_system": _PMI_OPS_SYSTEM,
+        "ce_quest_system": _CE_QUEST_SYSTEM,
+        "kit_id_system": _KIT_ID_SYSTEM,
+        "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
+        "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
+        "dv_order_filter": 0
+    }
+
+    # Generate received report
+    received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
+    if config.getSettingJson('enable_biobank_manifest_received_flags', default=False):
+        received_report_select += """,
+            group_concat(ny_flag) ny_flag,
+            group_concat(sex_at_birth_flag) sex_at_birth_flag
+        """
+    logging.info(f"Writing {path_received} report.")
+    exporter.run_export(
+        path_received,
+        replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL),
+        query_params,
+        backup=True,
+        predicate=received_predicate
+    )
+    logging.info(f"Completed {path_received} report.")
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
-        dv_filter = 1 if report_path == path_missing else 0
-        #with exporter.open_writer(report_path, report_predicate) as report_writer:
-        query_params = {
-                    "race_question_code_id": race_question_code.codeId,
-                    "native_american_race_code_id": native_american_race_code.codeId,
-                    "biobank_id_prefix": get_biobank_id_prefix(),
-                    "pmi_ops_system": _PMI_OPS_SYSTEM,
-                    "ce_quest_system": _CE_QUEST_SYSTEM,
-                    "kit_id_system": _KIT_ID_SYSTEM,
-                    "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
-                    "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
-                    "dv_order_filter": dv_filter
-                }
+        if report_path == path_missing:
+            query_params['dv_order_filter'] = 1
 
         logging.info(f"Writing {report_path} report.")
-        exporter.run_export(report_path, replace_isodate(_RECONCILIATION_REPORT_SQL),
-                            query_params, backup=True, predicate=report_predicate)
+        exporter.run_export(
+            report_path,
+            replace_isodate(_RECONCILIATION_REPORT_SELECTS_SQL + _RECONCILIATION_REPORT_SOURCE_SQL),
+            query_params,
+            backup=True,
+            predicate=report_predicate
+        )
         logging.info(f"Completed {report_path} report.")
 
     if config.getSetting('biobank_withdrawal_report_enabled', default=True):
@@ -470,6 +492,9 @@ _ORDER_JOINS = """
     LEFT OUTER JOIN
       site finalized_site
     ON biobank_order.finalized_site_id = finalized_site.site_id
+    LEFT OUTER JOIN
+      site collected_site
+    ON biobank_order.collected_site_id = collected_site.site_id
     LEFT OUTER JOIN
       hpo finalized_site_hpo
     ON finalized_site.hpo_id = finalized_site_hpo.hpo_id
@@ -611,8 +636,7 @@ def _participant_has_answer(question_code_value, answer_value):
 # ordered sample.)
 # Column order should match _*_INDEX constants above.
 # Biobank ID formatting must match to_client_biobank_id.
-_RECONCILIATION_REPORT_SQL = (
-    """
+_RECONCILIATION_REPORT_SELECTS_SQL = """
   SELECT
     CONCAT(:biobank_id_prefix, raw_biobank_id) biobank_id,
     order_test sent_test,
@@ -650,6 +674,9 @@ _RECONCILIATION_REPORT_SQL = (
     GROUP_CONCAT(edited_cancelled_restored_site_reason) edited_cancelled_restored_site_reason,
     GROUP_CONCAT(DISTINCT order_origin) biobank_order_origin,
     participant_origin
+"""
+_RECONCILIATION_REPORT_SOURCE_SQL = (
+    """
   FROM
    (SELECT
       participant.biobank_id raw_biobank_id,
@@ -689,15 +716,33 @@ _RECONCILIATION_REPORT_SQL = (
       """
     + _get_status_flag_sql()
     + """,
-    participant.participant_origin
+    participant.participant_origin,
+    case when collected_site.site_id is not null then (case when collected_site.state = 'NY' then 'Y' else 'N' end)
+       when mko_state_code.code_id is not null then
+            (case when mko_state_code.value like 'state_ny' then 'Y' else 'N' end)
+       else 'NA'
+    end ny_flag,
+    case when sex_code.value like 'sexatbirth_male' then 'M'
+       when sex_code.value like 'sexatbirth_female' then 'F'
+       else 'NA'
+    end sex_at_birth_flag
     FROM """
     + _ORDER_JOINS
     + """
+    LEFT OUTER JOIN
+        participant_summary
+    ON participant_summary.participant_id = participant.participant_id
+    LEFT OUTER JOIN
+        code sex_code
+    ON participant_summary.sex_id = sex_code.code_id
     LEFT OUTER JOIN
         biobank_mail_kit_order dv_order
     ON dv_order.biobank_order_id = biobank_order.biobank_order_id
         AND dv_order.is_test_sample IS NOT TRUE
         AND dv_order.associated_hpo_id IS NULL
+    LEFT OUTER JOIN
+        code mko_state_code
+    ON mko_state_code.code_id = dv_order.state_id
     LEFT OUTER JOIN
       biobank_order_identifier kit_id_identifier
     ON biobank_order.biobank_order_id = kit_id_identifier.biobank_order_id
@@ -755,11 +800,20 @@ _RECONCILIATION_REPORT_SQL = (
       NULL edited_cancelled_restored_site_time,
       NULL edited_cancelled_restored_site_reason,
       NULL order_origin,
-      participant.participant_origin
+      participant.participant_origin,
+      'NA' ny_flag,
+      case when sex_code.value like 'sexatbirth_male' then 'M'
+           when sex_code.value like 'sexatbirth_female' then 'F'
+           else 'NA'
+      end sex_at_birth_flag
     FROM
       biobank_stored_sample
       LEFT OUTER JOIN
         participant ON biobank_stored_sample.biobank_id = participant.biobank_id
+      LEFT OUTER JOIN
+        participant_summary ON participant_summary.participant_id = participant.participant_id
+      LEFT OUTER JOIN
+        code sex_code ON participant_summary.sex_id = sex_code.code_id
     WHERE biobank_stored_sample.confirmed IS NOT NULL AND NOT EXISTS (
       SELECT 0 FROM """
     + _ORDER_JOINS + """

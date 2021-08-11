@@ -15,6 +15,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
     GenomicCloudRequestsDao,
+    GenomicGcDataFileDao
 )
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
 from rdr_service.model.participant import Participant
@@ -330,6 +331,8 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
 class GenomicCloudTasksApiTest(BaseTestCase):
     def setUp(self):
         super(GenomicCloudTasksApiTest, self).setUp()
+        self.data_file_dao = GenomicGcDataFileDao()
+        self.cloud_req_dao = GenomicCloudRequestsDao()
 
     @mock.patch('rdr_service.offline.genomic_pipeline.dispatch_genomic_job_from_task')
     def test_calculate_record_count_task_api(self, dispatch_job_mock):
@@ -608,7 +611,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
     @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
     def test_create_cloud_record(self, ingest_mock):
-        cloud_req_dao = GenomicCloudRequestsDao()
+
         base_payload = {
             "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
             "attributes": {
@@ -669,7 +672,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
             self.assertEqual(ingest_mock.called, True)
 
-            cloud_record = cloud_req_dao.get(current_id)
+            cloud_record = self.cloud_req_dao.get(current_id)
 
             self.assertEqual(cloud_record.api_route, data['api_route'])
             self.assertIsNotNone(cloud_record.event_payload)
@@ -678,7 +681,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             self.assertEqual(cloud_record.task, data['task'])
             self.assertEqual(cloud_record.file_path, data['file_path'])
 
-        self.assertEqual(len(mappings), len(cloud_req_dao.get_all()))
+        self.assertEqual(len(mappings), len(self.cloud_req_dao.get_all()))
 
     @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
     def test_batching_manifest_task_api(self, ingest_mock):
@@ -752,3 +755,33 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertIsNotNone(insert_informing_loop)
         self.assertEqual(insert_informing_loop['success'], True)
+
+    def test_batch_data_file_task_api(self):
+
+        test_bucket_baylor = "fake-data-bucket-baylor"
+        test_idat_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01_Grn.idat"
+        test_vcf_file = "fake-data-bucket-baylor/Genotyping_sample_raw_data/204027270091_R02C01.vcf.gz"
+        test_cram_file = "fake-data-bucket-baylor/Wgs_sample_raw_data/" \
+                         "CRAMs_CRAIs/BCM_A100134256_21063006771_SIA0017196_1.cram"
+
+        test_file_paths = [test_idat_file, test_vcf_file, test_cram_file]
+
+        data = {
+            "file_path": test_file_paths,
+            "bucket_name": test_bucket_baylor
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='IngestDataFilesTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        inserted_files = self.data_file_dao.get_all()
+
+        self.assertEqual(len(inserted_files), len(test_file_paths))
+        self.assertTrue(all([file for file in inserted_files if file.bucket_name == test_bucket_baylor]))
+        self.assertTrue(all([file for file in inserted_files if file.file_path in test_file_paths]))

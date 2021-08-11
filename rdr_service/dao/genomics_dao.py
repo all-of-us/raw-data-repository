@@ -1,9 +1,11 @@
 import collections
-
+import logging
 import pytz
 import sqlalchemy
-import logging
+
+from datetime import datetime, timedelta
 from dateutil import parser
+from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
@@ -28,7 +30,7 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile)
+    GenomicGcDataFile, GenomicGcDataFileMissing)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1116,12 +1118,18 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
+                .outerjoin(
+                    GenomicGcDataFileMissing,
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
+                )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGcDataFileMissing.id.is_(None),
                     ((GenomicGCValidationMetrics.ignoreFlag != 1) |
                      (GenomicGCValidationMetrics.ignoreFlag is not None)),
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
@@ -1151,19 +1159,22 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
+                .outerjoin(
+                    GenomicGcDataFileMissing,
+                    and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
+                         GenomicGcDataFileMissing.resolved == 0)
+                )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
-                    (GenomicGCValidationMetrics.rawVcfReceived == 0) |
-                    (GenomicGCValidationMetrics.rawVcfTbiReceived == 0) |
-                    (GenomicGCValidationMetrics.rawVcfMd5Received == 0) |
                     (GenomicGCValidationMetrics.cramReceived == 0) |
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
                     (GenomicGCValidationMetrics.craiReceived == 0)
@@ -1837,3 +1848,99 @@ class GenomicGcDataFileDao(BaseDao):
                 GenomicGcDataFile.file_path == file_path,
                 GenomicGcDataFile.ignore_flag == 0
             ).all()
+
+
+class GenomicGcDataFileMissingDao(UpdatableDao):
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicGcDataFileMissingDao, self).__init__(
+            GenomicGcDataFileMissing, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_with_metrics_id(self, metric_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.gc_validation_metric_id == metric_id,
+                GenomicGcDataFileMissing.ignore_flag == 0
+            ).all()
+
+    def get_with_run_id(self, run_id):
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.run_id == run_id,
+                GenomicGcDataFileMissing.ignore_flag == 0
+            ).all()
+
+    def remove_resolved_from_days(self, *, num_days=90):
+        delete_date = datetime.utcnow() - timedelta(days=num_days)
+        with self.session() as session:
+            return session.query(
+                GenomicGcDataFileMissing
+            ).filter(
+                GenomicGcDataFileMissing.resolved == 1,
+                GenomicGcDataFileMissing.resolved_date.isnot(None),
+                GenomicGcDataFileMissing.resolved_date < delete_date
+            ).delete()
+
+    def get_files_to_resolve(self, limit=None):
+        with self.session() as session:
+            results = session.query(
+                GenomicGcDataFileMissing.id,
+                GenomicGcDataFileMissing.gc_validation_metric_id,
+                GenomicGcDataFileMissing.file_type,
+                sqlalchemy.case(
+                    [
+                        (GenomicSetMember.genomeType == 'aou_array', GenomicGCValidationMetrics.chipwellbarcode),
+                        (GenomicSetMember.genomeType == 'aou_wgs',
+                         GenomicSetMember.sampleId)
+                    ], ).label('identifier_value'),
+                sqlalchemy.case(
+                    [
+                        (GenomicSetMember.genomeType == 'aou_array', 'chipwellbarcode'),
+                        (GenomicSetMember.genomeType == 'aou_wgs', 'sample_id')
+                    ], ).label('identifier_type')
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.id == GenomicGcDataFileMissing.gc_validation_metric_id
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).filter(
+                GenomicGcDataFileMissing.resolved == 0,
+                GenomicGcDataFileMissing.resolved_date.is_(None)
+            )
+
+            if limit:
+                results = results.limit(limit)
+
+            return results.all()
+
+    def batch_update_resolved_file(self, records):
+        file_dao = GenomicGcDataFileDao()
+        method_map = {
+            'chipwellbarcode': file_dao.get_with_chipwellbarcode,
+            'sample_id': file_dao.get_with_sample_id
+        }
+        get_method = method_map[records[0].identifier_type]
+
+        for record in records:
+            data_records = get_method(record.identifier_value)
+            has_file_type_record = any([obj for obj in data_records if obj.file_type == record.file_type])
+            if has_file_type_record:
+                update_record = self.get(record.id)
+                update_record.resolved = 1
+                update_record.resolved_date = datetime.utcnow()
+                self.update(update_record)
+
+
+
