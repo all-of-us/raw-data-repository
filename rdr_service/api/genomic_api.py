@@ -203,7 +203,7 @@ class GenomicOutreachApiV2(BaseApi):
                 payload['data'] = participant_data
                 return self._make_response(payload)
 
-            raise NotFound(f'No participants found in date range.')
+            raise NotFound('No participants found in date range.')
 
         raise BadRequest
 

@@ -683,7 +683,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
 
         resp = self.send_get(
-            f'GenomicOutreachV2?module=gem',
+            'GenomicOutreachV2?module=gem',
             expected_status=http.client.BAD_REQUEST
         )
 
