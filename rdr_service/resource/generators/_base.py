@@ -61,6 +61,9 @@ class ResourceRecordSet(object):
         Recursive function to load data into this object.  Convert datetime and date string values.
         :param data: dict
         """
+        # Force the 'participant_id' field value to a string with a 'P' prefix.
+        if 'participant_id' in data and str(data['participant_id'])[0] != 'P':
+            data['participant_id'] = f'P{data["participant_id"]}'
         # Convert date or datetime fields if necessary.
         for name, meta in schema._declared_fields.items():
             if isinstance(meta, fields.Nested):
