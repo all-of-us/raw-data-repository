@@ -29,6 +29,7 @@ def cron_required(x):
 def not_in_prod():
     pass
 
+
 class AppUtilTest(BaseTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,7 +41,7 @@ class AppUtilTest(BaseTestCase):
         self.user_info = {
             "example@example.com": {
                 "roles": ["role1", "role2"],
-                "whitelisted_ip_ranges": {"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]},
+                "allow_list_ip_ranges": {"ip6": ["1234:5678::/32"], "ip4": ["123.210.0.1/16"]},
                 "clientId": "example"
             }
         }
@@ -50,7 +51,6 @@ class AppUtilTest(BaseTestCase):
         from rdr_service.config import LocalFilesystemConfigProvider
         fs = LocalFilesystemConfigProvider()
         fs.store(config.USER_INFO, self.user_info)
-        #config.insert_config(config.USER_INFO, self.user_info)
 
     def test_date_header(self):
         response = lambda: None  # Dummy object; functions can have arbitrary attrs set on them.
@@ -87,20 +87,20 @@ class AppUtilTest(BaseTestCase):
         )
 
     def test_valid_ip(self):
-        allowed_ips = app_util.get_whitelisted_ips(self.user_info["example@example.com"])
-        app_util.enforce_ip_whitelisted("123.210.0.1", allowed_ips)
-        app_util.enforce_ip_whitelisted("123.210.111.0", allowed_ips)
+        allowed_ips = app_util.get_allowed_ips(self.user_info["example@example.com"])
+        app_util.enforce_ip_allowed("123.210.0.1", allowed_ips)
+        app_util.enforce_ip_allowed("123.210.111.0", allowed_ips)
 
-        app_util.enforce_ip_whitelisted("1234:5678::", allowed_ips)
-        app_util.enforce_ip_whitelisted("1234:5678:9999::", allowed_ips)
+        app_util.enforce_ip_allowed("1234:5678::", allowed_ips)
+        app_util.enforce_ip_allowed("1234:5678:9999::", allowed_ips)
 
     def test_invalid_ip(self):
-        allowed_ips = app_util.get_whitelisted_ips(self.user_info["example@example.com"])
+        allowed_ips = app_util.get_allowed_ips(self.user_info["example@example.com"])
         with self.assertRaises(Forbidden):
-            app_util.enforce_ip_whitelisted("100.100.0.1", allowed_ips)
+            app_util.enforce_ip_allowed("100.100.0.1", allowed_ips)
 
         with self.assertRaises(Forbidden):
-            app_util.enforce_ip_whitelisted("5555::", allowed_ips)
+            app_util.enforce_ip_allowed("5555::", allowed_ips)
 
     # @patch("rdr_service.app_util.request")
     # def test_auth_required_http_identity_set(self, mock_request):
@@ -205,7 +205,7 @@ class AppUtilTest(BaseTestCase):
             mock_get_oauth_id.return_value = "bob@example.com"
             mock_lookup_user_info.return_value = {
                 "roles": ["bar"],
-                "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
+                "allow_list_ip_ranges": {"ip4": ["10.0.0.2/32"], "ip6": []},
             }
 
             with self.assertRaises(Forbidden):
@@ -224,7 +224,7 @@ class AppUtilTest(BaseTestCase):
         mock_request.headers = {}
         with mock.patch("rdr_service.app_util.request", mock_request):
             mock_get_oauth_id.return_value = "bob@example.com"
-            mock_lookup_user_info.return_value = {"roles": ["foo"], "whitelisted_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
+            mock_lookup_user_info.return_value = {"roles": ["foo"], "allow_list_ip_ranges": {"ip4": ["10.0.0.2/32"]}}
 
             mock_request.remote_addr = "10.0.0.2"
             self.assertEqual(2, foo_bar_role(1))
@@ -240,7 +240,7 @@ class AppUtilTest(BaseTestCase):
         with mock.patch("rdr_service.app_util.request", mock_request):
             mock_get_oauth_id.return_value = "bob@example.com"
 
-            mock_lookup_user_info.return_value = {"roles": ["bar"], "whitelisted_appids": ["must-be-this-id"]}
+            mock_lookup_user_info.return_value = {"roles": ["bar"], "allow_list_appids": ["must-be-this-id"]}
 
             with self.assertRaises(Forbidden):
                 foo_bar_role(1)

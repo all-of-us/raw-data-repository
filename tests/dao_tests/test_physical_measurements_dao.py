@@ -1,5 +1,6 @@
 import datetime
 import json
+import mock
 
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -67,6 +68,13 @@ class PhysicalMeasurementsDaoTest(BaseTestCase):
         self.participant_summary_dao = ParticipantSummaryDao()
         self.measurement_json = json.dumps(load_measurement_json(self.participant.participantId, TIME_1.isoformat()))
         self.biobank = BiobankOrderDao()
+
+        # Patching to prevent consent validation checks from running
+        build_validator_patch = mock.patch(
+            'rdr_service.services.consent.validation.ConsentValidationController.build_controller'
+        )
+        build_validator_patch.start()
+        self.addCleanup(build_validator_patch.stop)
 
     def test_from_client_json(self):
         measurement = self.dao.from_client_json(json.loads(self.measurement_json))
