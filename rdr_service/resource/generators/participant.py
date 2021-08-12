@@ -51,7 +51,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
     DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
-    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
+    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX, SampleCollectionMethod
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
@@ -928,15 +928,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
                    bo.finalized_time,
-                   case when exists (
-                     select bmko.participant_id
-                     from biobank_mail_kit_order bmko
-                     where bmko.biobank_order_id = bo.biobank_order_id
-                        and bo.participant_id = bmko.participant_id
-                        and bmko.associated_hpo_id is null
-                   )
-                   then 1 else 0 end as dv_order
-             from biobank_order bo where participant_id = :p_id
+                   case when bmko.id is not null then 1 else 2 end as collection_method
+             from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
+             where bo.participant_id = :p_id
              order by bo.created desc;
          """
 
@@ -1026,7 +1020,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'status': str(bb_order_status),
                 'status_id': int(bb_order_status),
-                'dv_order': row.dv_order,
+                'collection_method': str(SampleCollectionMethod(row.collection_method)),
+                'collection_method_id': int(SampleCollectionMethod(row.collection_method)),
                 'collected_site': row.collected_site,
                 'collected_site_id': row.collected_site_id,
                 'processed_site': row.processed_site,
@@ -1058,6 +1053,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order = {
                 'finalized_time': None,
                 'biobank_order_id': 'UNSET',
+                'collection_method': str(SampleCollectionMethod.UNSET),
+                'collection_method_id': int(SampleCollectionMethod.UNSET),
                 'tests_stored': len(orderless_stored_samples),
                 'samples': orderless_stored_samples,
                 'isolate_dna': sum([r['dna_test'] for r in orderless_stored_samples]),
