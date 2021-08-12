@@ -229,7 +229,8 @@ class BQPDRParticipantSummaryView(BQView):
             'biospec',
             'patient_statuses',
             'biobank_orders',
-            'ehr_receipts'
+            'ehr_receipts',
+            'pairing_history'
         ])
     )
 
@@ -256,7 +257,8 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
             'biospec',
             'patient_statuses',
             'biobank_orders',
-            'ehr_receipts'
+            'ehr_receipts',
+            'pairing_history'
         ])
     )
 
