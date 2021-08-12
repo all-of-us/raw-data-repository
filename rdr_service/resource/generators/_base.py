@@ -62,7 +62,7 @@ class ResourceRecordSet(object):
         :param data: dict
         """
         # Force the 'participant_id' field value to a string with a 'P' prefix.
-        if 'participant_id' in data and str(data['participant_id'])[0] != 'P':
+        if 'participant_id' in data and data['participant_id'] and str(data['participant_id'])[0] != 'P':
             data['participant_id'] = f'P{data["participant_id"]}'
         # Convert date or datetime fields if necessary.
         for name, meta in schema._declared_fields.items():
