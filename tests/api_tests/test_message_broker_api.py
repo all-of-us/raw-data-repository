@@ -3,6 +3,7 @@ import mock
 from datetime import timedelta
 
 from rdr_service import clock
+from rdr_service.model.utils import to_client_participant_id
 from rdr_service.dao.database_utils import format_datetime
 from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.message_broker.message_broker import MessageBrokerFactory
@@ -77,7 +78,7 @@ class MessageBrokerApiTest(BaseTestCase):
         request_json = {
             "event": "result_viewed",
             "eventAuthoredTime": "2021-05-19T21:05:41Z",
-            "participantId": str(participant.participantId),
+            "participantId": to_client_participant_id(participant.participantId),
             "messageBody": {
                 "test_str": "str",
                 "test_int": 0,
@@ -88,7 +89,7 @@ class MessageBrokerApiTest(BaseTestCase):
         }
         result = self.send_post("MessageBroker", request_json)
         self.assertEqual(result, {'event': 'result_viewed',
-                                  'participantId': participant.participantId,
+                                  'participantId': to_client_participant_id(participant.participantId),
                                   'responseCode': 200,
                                   'responseBody': {'result': 'mocked result'},
                                   'errorMessage': ''})
@@ -147,7 +148,7 @@ class MessageBrokerApiTest(BaseTestCase):
         # participant not exist
         request_json = {
             "event": "result_viewed",
-            "participantId": "111",
+            "participantId": "P111",
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "messageBody": {
                 "result_type": "hdr_v1",
@@ -173,7 +174,7 @@ class MessageBrokerApiTest(BaseTestCase):
         request_json_decision = {
             "event": "informing_loop_decision",
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
-            "participantId": str(participant_one.participantId),
+            "participantId": to_client_participant_id(participant_one.participantId),
             "messageBody": {
                 'module_type': 'hdr',
                 'decision_value': 'yes'
@@ -218,7 +219,7 @@ class MessageBrokerApiTest(BaseTestCase):
         request_json_started = {
             "event": "informing_loop_started",
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
-            "participantId": str(participant_two.participantId),
+            "participantId": to_client_participant_id(participant_two.participantId),
             "messageBody": {
                 'module_type': 'hdr',
             }
