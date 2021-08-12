@@ -1,0 +1,84 @@
+{
+  "resourceType": "Questionnaire",
+  "identifier": [
+    {
+      "value": "Vibrent_FORM_ID_1489"
+    }
+  ],
+  "version": "V2021V2021.04.29",
+  "status": "published",
+  "date": "2021-07-29T09:47:16+00:00",
+  "group": {
+    "linkId": "root_group",
+    "title": "COVID-19 Research: Your Antibody Result",
+    "concept": [
+      {
+        "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+        "code": "covid_19_serology_results"
+      }
+    ],
+    "required": true,
+    "repeats": false,
+    "question": [
+      {
+        "linkId": "covid_19_serology_results_decision",
+        "concept": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "covid_19_serology_results_decision"
+          }
+        ],
+        "text": "QUESTION LABEL WAS NOT DEFINED, PLEASE CONTACT ADMINISTRATOR",
+        "type": "choice",
+        "repeats": false,
+        "option": [
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "Decision_Yes",
+            "display": "Yes, I want to see my COVID-19 antibody study result.",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "S\u00ed, quiero ver el resultado del estudio de mis anticuerpos contra el COVID-19."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+            "code": "Decision_No",
+            "display": "No, I do not want to see my COVID-19 antibody study result.",
+            "_display": {
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/translation",
+                  "extension": [
+                    {
+                      "url": "lang",
+                      "valueCode": "es"
+                    },
+                    {
+                      "url": "content",
+                      "valueString": "No, no quiero ver el resultado del estudio de mis anticuerpos contra el COVID-19."
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "id": "669"
+}
