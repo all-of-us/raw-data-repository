@@ -66,7 +66,10 @@ class StoreResultStrategy(ValidationOutputStrategy):
 
     def process_results(self):
         previous_results = self._get_existing_results_for_participants()
-        new_results_to_store = [file for file in self._results if not self._file_in_collection(file, previous_results)]
+        new_results_to_store = _ValidationOutputHelper.get_new_validation_results(
+            existing_results=previous_results,
+            results_to_filter=self._results
+        )
         self._consent_dao.batch_update_consent_files(self._session, new_results_to_store)
         self._session.commit()
 
@@ -103,10 +106,11 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                             results_to_update.append(result)
                     results_to_update.append(ready_for_sync)
                 else:
-                    for possible_new_result in result_list:
-                        if not any([possible_new_result.file_path == previous_result.file_path
-                                    for previous_result in previous_type_list]):
-                            results_to_update.append(possible_new_result)
+                    new_results = _ValidationOutputHelper.get_new_validation_results(
+                        existing_results=previous_type_list,
+                        results_to_filter=result_list
+                    )
+                    results_to_update.extend(new_results)
 
         self.consent_dao.batch_update_consent_files(self.session, results_to_update)
 
@@ -179,6 +183,32 @@ class LogResultStrategy(ValidationOutputStrategy):
             blob_name='/'.join(name_parts)
         )
         return blob.generate_signed_url(datetime.utcnow() + timedelta(hours=2))
+
+
+class _ValidationOutputHelper:
+    """Class for containing generic and reusable code for output strategies"""
+
+    @classmethod
+    def get_new_validation_results(cls, existing_results: Collection[ParsingResult],
+                                   results_to_filter: Collection[ParsingResult]):
+        """
+        Checks each validation result in results_to_filter
+        and returns a list of results that are not in existing_results
+        """
+        return [file for file in results_to_filter if not cls._is_file_in_collection(file, existing_results)]
+
+    @classmethod
+    def _is_file_in_collection(cls, file: ParsingResult, file_collection: Collection[ParsingResult]):
+        if file.file_exists:
+            return any(
+                [file.file_path == possible_matching_file.file_path for possible_matching_file in file_collection]
+            )
+        else:
+            return any([
+                file.type == possible_matching_file.type
+                and file.participant_id == possible_matching_file.participant_id
+                for possible_matching_file in file_collection
+            ])
 
 
 class ConsentValidationController:

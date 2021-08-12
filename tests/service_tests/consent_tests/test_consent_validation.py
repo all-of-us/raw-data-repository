@@ -7,7 +7,7 @@ from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, Conse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent import files
-from rdr_service.services.consent.validation import ConsentValidator
+from rdr_service.services.consent.validation import ConsentValidator, StoreResultStrategy
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -275,6 +275,51 @@ class ConsentValidationTesting(BaseTestCase):
             ],
             self.validator.get_gror_validation_results()
         )
+
+    def test_missing_file_validation_storage(self):
+        """
+        A bug was found with the validation storage strategies. This ensures that any records that indicate
+        missing files don't interfere with each other and all the needed records get stored.
+        """
+        # mock a consent DAO so we can isolate the output strategy instance
+        consent_dao_mock = mock.MagicMock()
+
+        # Create two participant ids with missing files
+        # one will have a missing PRIMARY and will get a new validation for a missing GROR
+        # the other will have a missing EHR and will get a new validation for a missing PRIMARY
+        new_gror_participant_id = 1234
+        new_primary_participant_id = 5678
+        consent_dao_mock.get_validation_results_for_participants.return_value = [
+            ConsentFile(participant_id=new_gror_participant_id, type=ConsentType.PRIMARY, file_exists=False),
+            ConsentFile(participant_id=new_primary_participant_id, type=ConsentType.EHR, file_exists=False)
+        ]
+
+        # Create some results to provide to the output strategy for each participant
+        new_primary_result = ConsentFile(
+            participant_id=new_primary_participant_id,
+            type=ConsentType.PRIMARY,
+            file_exists=False
+        )
+        previous_ehr_result = ConsentFile(
+            participant_id=new_primary_participant_id,
+            type=ConsentType.EHR,
+            file_exists=False
+        )
+        new_gror_result = ConsentFile(
+            participant_id=new_gror_participant_id,
+            type=ConsentType.GROR,
+            file_exists=False
+        )
+
+        # Create a new storage validation strategy and provide the new validation results for each participant
+        with StoreResultStrategy(
+            session=mock.MagicMock(),
+            consent_dao=consent_dao_mock
+        ) as output_strategy:
+            output_strategy.add_all([new_primary_result, previous_ehr_result, new_gror_result])
+
+        # Verify that both records that provide new validation information were stored
+        consent_dao_mock.batch_update_consent_files.assert_called_with(mock.ANY, [new_primary_result, new_gror_result])
 
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
