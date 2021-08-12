@@ -141,13 +141,13 @@ class ConsentControllerTest(BaseTestCase):
         new validation records for consents that have already been checked
         """
         self.consent_dao_mock.get_validation_results_for_participants.return_value = [
-            ConsentFile(file_path='/previous_1'),
-            ConsentFile(file_path='/previous_2'),
+            ConsentFile(file_path='/previous_1', file_exists=True),
+            ConsentFile(file_path='/previous_2', file_exists=True),
         ]
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1')
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1', file_exists=True),
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2', file_exists=True),
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1', file_exists=True)
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
