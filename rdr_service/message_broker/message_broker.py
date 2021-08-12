@@ -3,6 +3,7 @@ import requests
 from rdr_service import clock
 from datetime import timedelta
 
+from rdr_service.model.utils import to_client_participant_id
 from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.message_broker_metadata_dao import MessageBrokerMetadataDao
 from rdr_service.dao.message_broker_dest_auth_info_dao import MessageBrokerDestAuthInfoDao
@@ -76,7 +77,7 @@ class PtscMessageBroker(BaseMessageBroker):
         request_body = {
             'event': self.message.eventType,
             'eventAuthoredTime': format_datetime(self.message.eventAuthoredTime),
-            'participantId': str(self.message.participantId),
+            'participantId': to_client_participant_id(self.message.participantId),
             'messageBody': self.message.requestBody
         }
         return request_body
