@@ -16,6 +16,8 @@ from rdr_service.offline.requests_log_migrator import RequestsLogMigrator
 from rdr_service.offline.sync_consent_files import cloudstorage_copy_objects_task
 from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
+from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
+    res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task
 
 
@@ -147,12 +149,16 @@ class RebuildResearchWorkbenchTableRecordsApi(Resource):
 
         if table == 'workspace':
             bq_workspace_batch_update(batch)
+            res_workspace_batch_update(batch)
         elif table == 'workspace_user':
             bq_workspace_user_batch_update(batch)
+            res_workspace_user_batch_update(batch)
         elif table == 'institutional_affiliations':
             bq_institutional_affiliations_batch_update(batch)
+            res_institutional_affiliations_batch_update(batch)
         elif table == 'researcher':
             bq_researcher_batch_update(batch)
+            res_researcher_batch_update(batch)
 
         logging.info(f'Rebuild complete.')
         return '{"success": "true"}'
