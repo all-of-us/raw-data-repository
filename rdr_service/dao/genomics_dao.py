@@ -120,9 +120,9 @@ class GenomicSetDao(UpdatableDao):
     """
         existing_valid_query = (
             sqlalchemy.select([sqlalchemy.func.count().label("existing_count")])
-                .select_from(
+            .select_from(
                 sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id))
-                .where(
+            .where(
                 (GenomicSet.genomicSetStatus == GenomicSetStatus.VALID)
                 & (GenomicSetMember.participantId == Participant.participantId)
             )
@@ -142,7 +142,7 @@ class GenomicSetDao(UpdatableDao):
                     existing_valid_query.label("existing_valid_genomic_count"),
                 ]
             )
-                .select_from(
+            .select_from(
                 sqlalchemy.join(
                     sqlalchemy.join(
                         sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id),
@@ -153,7 +153,7 @@ class GenomicSetDao(UpdatableDao):
                     ParticipantSummary.participantId == Participant.participantId,
                 )
             )
-                .where((GenomicSet.id == genomic_set_id))
+            .where((GenomicSet.id == genomic_set_id))
         )
 
 
@@ -197,15 +197,16 @@ class GenomicSetMemberDao(UpdatableDao):
         with self.session() as session:
             self.update_biobank_id_with_session(session, genomic_set_id)
 
-    def update_biobank_id_with_session(self, session, genomic_set_id):
+    @staticmethod
+    def update_biobank_id_with_session(session, genomic_set_id):
         query = (
             sqlalchemy.update(GenomicSetMember)
-                .where(GenomicSetMember.genomicSetId == sqlalchemy.bindparam("genomic_set_id_param"))
-                .values(
+            .where(GenomicSetMember.genomicSetId == sqlalchemy.bindparam("genomic_set_id_param"))
+            .values(
                 {
                     GenomicSetMember.biobankId.name: sqlalchemy.select([Participant.biobankId])
-                        .where(Participant.participantId == GenomicSetMember.participantId)
-                        .limit(1)
+                    .where(Participant.participantId == GenomicSetMember.participantId)
+                    .limit(1)
                 }
             )
         )
@@ -225,7 +226,8 @@ class GenomicSetMemberDao(UpdatableDao):
         with self.session() as session:
             return self.bulk_update_validation_status_with_session(session, member_update_params_iterable)
 
-    def bulk_update_validation_status_with_session(self, session, member_update_params_iterable):
+    @staticmethod
+    def bulk_update_validation_status_with_session(session, member_update_params_iterable):
         """
     Perform a bulk update of validation statuses in a given session.
 
@@ -240,8 +242,8 @@ class GenomicSetMemberDao(UpdatableDao):
         )
         query = (
             sqlalchemy.update(GenomicSetMember)
-                .where(GenomicSetMember.id == sqlalchemy.bindparam("member_id"))
-                .values(
+            .where(GenomicSetMember.id == sqlalchemy.bindparam("member_id"))
+            .values(
                 {
                     GenomicSetMember.validationStatus.name: sqlalchemy.bindparam("status"),
                     GenomicSetMember.validationFlags.name: sqlalchemy.bindparam("flags"),
@@ -270,7 +272,8 @@ class GenomicSetMemberDao(UpdatableDao):
                 session, genomic_set_id, client_id_package_id_pair_iterable
             )
 
-    def bulk_update_package_id_with_session(self, session, genomic_set_id, client_id_package_id_pair_iterable):
+    @staticmethod
+    def bulk_update_package_id_with_session(session, genomic_set_id, client_id_package_id_pair_iterable):
         """
     Perform a bulk update of package id in a given session.
 
@@ -284,12 +287,12 @@ class GenomicSetMemberDao(UpdatableDao):
 
         query = (
             sqlalchemy.update(GenomicSetMember)
-                .where(
+            .where(
                 (GenomicSetMember.genomicSetId == genomic_set_id)
                 & (GenomicSetMember.biobankId == sqlalchemy.bindparam("biobank_id_param"))
                 & (GenomicSetMember.genomeType == sqlalchemy.bindparam("genome_type_param"))
             )
-                .values(
+            .values(
                 {
                     GenomicSetMember.packageId.name: sqlalchemy.bindparam("package_id_param"),
                     GenomicSetMember.biobankOrderClientId.name: sqlalchemy.bindparam("client_id_param"),
@@ -313,16 +316,16 @@ class GenomicSetMemberDao(UpdatableDao):
             return self.bulk_update_genotyping_sample_manifest_data_with_session(session,
                                                                                  genotyping_data_iterable)
 
-    def bulk_update_genotyping_sample_manifest_data_with_session(self, session,
-                                                                 genotyping_data_iterable):
+    @staticmethod
+    def bulk_update_genotyping_sample_manifest_data_with_session(session, genotyping_data_iterable):
         query = (
             sqlalchemy
-                .update(GenomicSetMember)
-                .where(
+            .update(GenomicSetMember)
+            .where(
                 (GenomicSetMember.biobankId == sqlalchemy.bindparam('biobank_id_param')) &
                 (GenomicSetMember.genomeType == sqlalchemy.bindparam('genome_type_param'))
             )
-                .values({
+            .values({
                 GenomicSetMember.sampleId.name: sqlalchemy.bindparam('sample_id_param'),
                 GenomicSetMember.sampleType.name: sqlalchemy.bindparam('sample_type_param')
             })
@@ -486,7 +489,7 @@ class GenomicSetMemberDao(UpdatableDao):
     def get_gem_consent_removal_date(self, member):
         """
         Calculates the earliest removal date between GROR or Primary Consent
-        :param participant_id
+        :param member
         :return: datetime
         """
         # get both Primary and GROR dates and consent statuses
@@ -551,46 +554,48 @@ class GenomicSetMemberDao(UpdatableDao):
         try:
             logging.info(f'Updating reportConsentRemovalDate for member ID {member.id}.')
             member.reportConsentRemovalDate = date
-            updated_member = self.update(member)
+            self.update(member)
 
             # Update member for PDR
             bq_genomic_set_member_update(member.id)
             genomic_set_member_update(member.id)
 
-            return updated_member
-
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
-    def update_member_job_run_id(self, member, job_run_id, field, project_id=None):
+    def update_member_job_run_id(self, member_ids, job_run_id, field, project_id=None):
         """
         Updates the GenomicSetMember with a job_run_id for an arbitrary workflow
         :param project_id:
-        :param member: the GenomicSetMember object to update
+        :param member_ids: the GenomicSetMember object ids to update
         :param job_run_id:
         :param field: the field for the job-run workflow (i.e. reconciliation, cvl, etc.)
         :return: query result or result code of error
         """
-        if field not in self.valid_job_id_fields:
+        if not field or field not in self.valid_job_id_fields:
             logging.error(f'{field} is not a valid job ID field.')
             return GenomicSubProcessResult.ERROR
-        setattr(member, field, job_run_id)
+
         try:
             logging.info(f'Updating {field} with run ID.')
-            updated_member = self.update(member)
 
-            # Update member for PDR
-            bq_genomic_set_member_update(member.id, project_id=project_id)
-            genomic_set_member_update(member.id)
+            if type(member_ids) is not list:
+                member_ids = [member_ids]
 
-            return updated_member
+            for m_id in member_ids:
+                member = self.get(m_id)
+                setattr(member, field, job_run_id)
+                self.update(member)
 
-        except OperationalError:
-            logging.error(f'Error updating member id: {member.id}.')
-            return GenomicSubProcessResult.ERROR
+                # Update member for PDR
+                bq_genomic_set_member_update(member.id, project_id=project_id)
+                genomic_set_member_update(member.id)
 
-        except Exception as e:  # pylint: disable=broad-except
+            return GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
@@ -604,13 +609,11 @@ class GenomicSetMemberDao(UpdatableDao):
 
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
-        updated_member = self.update(member)
+        self.update(member)
 
         # Update member for PDR
         bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
-
-        return updated_member
 
     def update_member_sequencing_file(self, member, job_run_id, filename):
         """
@@ -784,7 +787,8 @@ class GenomicJobRunDao(UpdatableDao):
         with self.session() as session:
             return self._get_last_runtime_with_session(session, job_id)
 
-    def _get_last_runtime_with_session(self, session, job_id):
+    @staticmethod
+    def _get_last_runtime_with_session(session, job_id):
         return session.query(functions.max(GenomicJobRun.startTime))\
             .filter(GenomicJobRun.jobId == job_id,
                     GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS)\
@@ -806,7 +810,8 @@ class GenomicJobRunDao(UpdatableDao):
         with self.session() as session:
             return self._update_run_record_with_session(session, run_id, result, status)
 
-    def _update_run_record_with_session(self, session, run_id, result, status):
+    @staticmethod
+    def _update_run_record_with_session(session, run_id, result, status):
         """
         UPDATES the job_run record.
         :param run_id: the ID of the current genomic's job
@@ -814,8 +819,8 @@ class GenomicJobRunDao(UpdatableDao):
         """
         query = (
             sqlalchemy.update(GenomicJobRun)
-                .where(GenomicJobRun.id == sqlalchemy.bindparam("run_id_param"))
-                .values(
+            .where(GenomicJobRun.id == sqlalchemy.bindparam("run_id_param"))
+            .values(
                 {
                     GenomicJobRun.runResult: sqlalchemy.bindparam("run_result_param"),
                     GenomicJobRun.runStatus: sqlalchemy.bindparam("run_status_param"),
@@ -927,7 +932,8 @@ class GenomicFileProcessedDao(UpdatableDao):
             return self._update_file_record_with_session(session, file_id,
                                                          file_status, file_result)
 
-    def _update_file_record_with_session(self, session, file_id,
+    @staticmethod
+    def _update_file_record_with_session(session, file_id,
                                          file_status, file_result):
         """
         updates the file record with session

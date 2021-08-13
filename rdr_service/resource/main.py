@@ -117,7 +117,7 @@ def _build_resource_app():
     # Ingest Informing Loop
     _api.add_resource(genomic_cloud_tasks_api.IngestInformingLoopTaskApi,
                       TASK_PREFIX + "IngestInformingLoopTaskApi",
-                      endpoint="ingest_informing_loop", methods=["POST"])
+                      endpoint="ingest_informing_loop_task", methods=["POST"])
 
     # Update Genomic Set Member Job Run
     _api.add_resource(genomic_cloud_tasks_api.GenomicSetMemberJobRunApi,
