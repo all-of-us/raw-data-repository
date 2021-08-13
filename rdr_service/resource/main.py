@@ -114,10 +114,15 @@ def _build_resource_app():
                       TASK_PREFIX + "CalculateContaminationCategoryApi",
                       endpoint="calculate_contamination_category_task", methods=["POST"])
 
-    # Calculate Contamination Category
+    # Ingest Informing Loop
     _api.add_resource(genomic_cloud_tasks_api.IngestInformingLoopTaskApi,
                       TASK_PREFIX + "IngestInformingLoopTaskApi",
                       endpoint="ingest_informing_loop", methods=["POST"])
+
+    # Update Genomic Set Member Job Run
+    _api.add_resource(genomic_cloud_tasks_api.GenomicSetMemberJobRunApi,
+                      TASK_PREFIX + "GenomicSetMemberJobRunApi",
+                      endpoint="genomic_set_member_job_run_task", methods=["POST"])
 
     #
     # End Genomic Cloud Task API endpoints
