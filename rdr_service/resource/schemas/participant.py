@@ -9,7 +9,7 @@ from marshmallow import validate
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
     SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
-    WithdrawalAIANCeremonyStatus, BiobankOrderStatus
+    WithdrawalAIANCeremonyStatus, BiobankOrderStatus, SampleCollectionMethod
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -174,7 +174,10 @@ class BiobankOrderSchema(Schema):
     created = fields.DateTime()
     status = fields.EnumString(enum=BiobankOrderStatus)
     status_id = fields.EnumInteger(enum=BiobankOrderStatus)
-    dv_order = fields.Boolean()
+    collection_method = fields.EnumString(enum=SampleCollectionMethod,
+        description='Collection method name used for biobank order.')
+    collection_method_id = fields.EnumInteger(enum=SampleCollectionMethod,
+        description='Collection method id value used for biobank order.')
     collected_site = fields.String(validate=validate.Length(max=255))
     collected_site_id = fields.Int32()
     processed_site = fields.String(validate=validate.Length(max=255))
