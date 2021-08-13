@@ -1,4 +1,5 @@
 import datetime
+import http.client
 import pytz
 
 from dateutil import parser
@@ -15,9 +16,11 @@ from rdr_service.dao.genomics_dao import (
     GenomicJobRunDao,
     GenomicGCValidationMetricsDao,
     GenomicCloudRequestsDao,
+    GenomicInformingLoopDao,
+    GenomicMemberReportStateDao,
     GenomicGcDataFileDao
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -32,7 +35,6 @@ from rdr_service.participant_enums import (
 
 class GenomicApiTestBase(BaseTestCase):
     def setUp(self):
-
         self.participant_incrementer = 1
 
         super(GenomicApiTestBase, self).setUp()
@@ -42,7 +44,6 @@ class GenomicApiTestBase(BaseTestCase):
         self.job_run_dao = GenomicJobRunDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.set_dao = GenomicSetDao()
-
         self._setup_data()
 
     def _setup_data(self):
@@ -326,6 +327,561 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         }
 
         self.send_post(local_path, request_data=payload, expected_status=404)
+
+
+class GenomicOutreachApiV2Test(GenomicApiTestBase):
+    def setUp(self):
+        super(GenomicOutreachApiV2Test, self).setUp()
+        self.loop_dao = GenomicInformingLoopDao()
+        self.result_dao = GenomicMemberReportStateDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.num_participants = 5
+
+    def test_validate_params(self):
+        bad_response = 'GenomicOutreach accepted params: start_date | end_date | participant_id | module | type'
+
+        response_one = self.send_get(
+            "GenomicOutreachV2?wwqwqw=ewewe",
+            expected_status=http.client.BAD_REQUEST
+        )
+        self.assertEqual(response_one.json['message'], bad_response)
+        self.assertEqual(response_one.status_code, 400)
+
+        response_two = self.send_get(
+            "GenomicOutreachV2?wwqwqw=ewewe&participant_id=P2",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_two.json['message'], bad_response)
+        self.assertEqual(response_two.status_code, 400)
+
+        bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
+
+        response_three = self.send_get(
+            "GenomicOutreachV2?participant_id=",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_three.json['message'], bad_response)
+        self.assertEqual(response_three.status_code, 400)
+
+        bad_response = 'GenomicOutreach accepted modules: gem | hdr | pgx'
+
+        response_four = self.send_get(
+            "GenomicOutreachV2?module=ewewewew",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_four.json['message'], bad_response)
+        self.assertEqual(response_four.status_code, 400)
+
+        bad_response = 'GenomicOutreach accepted types: result | informingLoop'
+
+        response_five = self.send_get(
+            "GenomicOutreachV2?type=ewewewew",
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(response_five.json['message'], bad_response)
+        self.assertEqual(response_five.status_code, 400)
+
+    def test_get_participant_lookup(self):
+        first_participant = None
+        second_participant = None
+        third_participant = None
+        fake_date = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date,
+                consentForStudyEnrollmentAuthored=fake_date
+            )
+
+            module = 'GEM'
+            report_state = GenomicReportState.GEM_RPT_READY
+
+            if num == 0:
+                first_participant = participant
+            elif num == 1:
+                second_participant = participant
+                module = 'PGX'
+                report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            if num == 3:
+                third_participant = participant
+                self.data_generator.create_database_genomic_informing_loop(
+                    message_record_id=1,
+                    event_type='informing_loop_decision',
+                    module_type=module,
+                    participant_id=participant.participantId,
+                    decision_value='maybe_later'
+                )
+
+        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        self.assertEqual(len(total_num_set), 6)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'gem',
+                    'type': 'result',
+                    'status': 'ready',
+                    'participant_id': f'P{first_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+        self.assertEqual(expected, resp)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={second_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'pgx',
+                    'type': 'result',
+                    'status': 'pending_delete',
+                    'participant_id': f'P{second_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+        self.assertEqual(expected, resp)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={third_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'gem',
+                    'type': 'informingLoop',
+                    'status': 'completed',
+                    'decision': 'maybe_later',
+                    'participant_id': f'P{third_participant.participantId}'
+                },
+                {
+                    'module': 'gem',
+                    'type': 'result',
+                    'status': 'ready',
+                    'participant_id': f'P{third_participant.participantId}'
+                },
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+
+        self.assertEqual(len(resp['data']), 2)
+        self.assertEqual(len(resp['data'][0]), 5)
+        self.assertEqual(expected, resp)
+
+    def test_get_not_found_participant(self):
+
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        bad_id = 111111111
+        bad_response = f'Participant P{bad_id} does not exist in the Genomic system.'
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id={bad_id}', expected_status=http.client.NOT_FOUND)
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 404)
+
+    def test_get_by_type(self):
+        self.num_participants = 10
+        fake_date_one = parser.parse('2020-05-29T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_three = parser.parse('2020-05-31T08:00:01-05:00')
+        workflow_date = fake_date_one
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        informing_loop_type = 'informingLoop'
+        result_type = 'result'
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date_one,
+                consentForStudyEnrollmentAuthored=fake_date_one
+            )
+
+            module = 'GEM'
+            report_state = GenomicReportState.GEM_RPT_READY
+
+            if num > 4:
+                workflow_date = fake_date_two
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                genomicWorkflowStateModifiedTime=workflow_date
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            if num % 2 == 0:
+                self.data_generator.create_database_genomic_informing_loop(
+                    message_record_id=1,
+                    event_type='informing_loop_decision',
+                    module_type=module,
+                    participant_id=participant.participantId,
+                    decision_value='maybe_later'
+                )
+
+        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        self.assertEqual(len(total_num_set), 15)
+
+        bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
+
+        resp = self.send_get(
+            f'GenomicOutreachV2?type={informing_loop_type}',
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 400)
+
+        resp = self.send_get(
+            f'GenomicOutreachV2?type={result_type}',
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 400)
+
+        bad_response = 'No participants found in date range.'
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_three}&type={informing_loop_type}',
+                expected_status=http.client.NOT_FOUND
+            )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 404)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&type={informing_loop_type}'
+            )
+
+        self.assertEqual(len(resp['data']), 2)
+        all_loops = all(obj for obj in resp['data'] if obj['type'] == informing_loop_type)
+        self.assertTrue(all_loops)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&type={result_type}'
+            )
+
+        self.assertEqual(len(resp['data']), 5)
+        all_results = all(obj for obj in resp['data'] if obj['type'] == result_type)
+        self.assertTrue(all_results)
+
+    def test_get_by_module(self):
+        self.num_participants = 10
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        workflow_date = fake_date_two
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date_two,
+                consentForStudyEnrollmentAuthored=fake_date_two
+            )
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                genomicWorkflowStateModifiedTime=workflow_date
+            )
+
+            if num % 2 == 0:
+                module = 'PGX'
+                report_state = GenomicReportState.PGX_RPT_READY
+            else:
+                module = 'GEM'
+                report_state = GenomicReportState.GEM_RPT_READY
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant.participantId,
+                decision_value='maybe_later'
+            )
+
+        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        self.assertEqual(len(total_num_set), 20)
+
+        bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
+
+        resp = self.send_get(
+            'GenomicOutreachV2?module=gem',
+            expected_status=http.client.BAD_REQUEST
+        )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 400)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&module=GEM'
+            )
+
+        self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+        all_gem = all(obj for obj in resp['data'] if obj['module'] == 'gem')
+        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        self.assertTrue(all_gem)
+        self.assertTrue(loop_and_result)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}&module=PGX'
+            )
+
+        self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+        all_pgx = all(obj for obj in resp['data'] if obj['module'] == 'pgx')
+        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        self.assertTrue(all_pgx)
+        self.assertTrue(loop_and_result)
+
+    def test_get_by_date_range(self):
+        self.num_participants = 10
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        module = 'GEM'
+        report_state = GenomicReportState.GEM_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            if num % 2 == 0:
+                workflow_date = fake_date_two
+            else:
+                workflow_date = fake_date_one
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date_two,
+                consentForStudyEnrollmentAuthored=fake_date_two
+            )
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                genomicWorkflowStateModifiedTime=workflow_date
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=1,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant.participantId,
+                decision_value='maybe_later'
+            )
+
+        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        self.assertEqual(len(total_num_set), 20)
+
+        bad_response = 'No participants found in date range.'
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_two}',
+                expected_status=http.client.NOT_FOUND
+            )
+
+        self.assertEqual(resp.json['message'], bad_response)
+        self.assertEqual(resp.status_code, 404)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        self.assertTrue(loop_and_result)
+
+    def test_get_only_ready_informing_loop(self):
+        self.num_participants = 10
+        first_participant = None
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        gen_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run.id,
+            startTime=clock.CLOCK.now(),
+            filePath='/test_file_path',
+            bucketName='test_bucket',
+            fileName='test_file_name',
+        )
+
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            if num == 0:
+                first_participant = participant
+
+            if num % 2 == 0:
+                workflow_date = fake_date_two
+            else:
+                workflow_date = fake_date_one
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsROR=1,
+            )
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_wgs" if num & 2 == 0 else "aou_array",
+                participantId=participant.participantId,
+                ai_an='N',
+                aw3ManifestJobRunID=gen_job_run.id,
+                genomicWorkflowStateModifiedTime=workflow_date
+            )
+
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=gen_member.id,
+                genomicFileProcessedId=gen_processed_file.id,
+                processingStatus='Pass'
+            )
+
+        resp = self.send_get(f'GenomicOutreachV2?participant_id={first_participant.participantId}')
+
+        self.assertEqual(len(resp['data']), 2)
+        has_two_records = all(obj for obj in resp['data'] if obj['participant_id'] == first_participant.participantId)
+        self.assertTrue(has_two_records)
+
+        ready_modules = ['hdr', 'pgx']
+        has_both_modules = all(obj for obj in resp['data'] if obj['module'] in ready_modules)
+        self.assertTrue(has_both_modules)
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        all_members = self.member_dao.get_all()
+        members_in_response = [
+            m for m in all_members if m.genomeType == 'aou_wgs'
+            and m.genomicWorkflowStateModifiedTime is not None
+            and m.genomicWorkflowStateModifiedTime.replace(microsecond=0, tzinfo=pytz.UTC).isoformat() ==
+            fake_date_two.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        ]
+
+        self.assertEqual(len(members_in_response), 3)
+        self.assertEqual(len(members_in_response) * 2, 6)
+
+        members_in_response_pids = [obj.participantId for obj in members_in_response]
+
+        all_members_in_response = all(m for m in resp['data'] if m['participant_id'] in members_in_response_pids)
+        self.assertTrue(all_members_in_response)
+
+        all_ready_status_in_resp = all(m for m in resp['data'] if m['type'] == 'informingLoop'
+                                       and m['status'] == 'ready')
+        self.assertTrue(all_ready_status_in_resp)
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):

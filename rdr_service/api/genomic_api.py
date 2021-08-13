@@ -4,12 +4,10 @@ from flask import request
 from werkzeug.exceptions import NotFound, BadRequest
 
 from rdr_service import clock
-from rdr_service import config
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
-from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao
-
+from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao, GenomicOutreachDaoV2
 
 PTC_ALLOWED_ENVIRONMENTS = [
     'all-of-us-rdr-sandbox',
@@ -133,15 +131,14 @@ class GenomicOutreachApi(BaseApi):
         m = self._do_insert(model)
 
         response_data = {
-                            'date': m.genomicWorkflowStateModifiedTime,
-                            'data': [
-                                (m.participantId, m.genomicWorkflowState),
-                            ]
-                        }
+            'date': m.genomicWorkflowStateModifiedTime,
+            'data': [
+                (m.participantId, m.genomicWorkflowState),
+            ]
+        }
 
         # Log to requests_log
         log_api_request(log=request.log_record)
-
         return self._make_response(response_data)
 
     @staticmethod
@@ -150,5 +147,95 @@ class GenomicOutreachApi(BaseApi):
         Checks that the mode in the endpoint is valid
         :param mode: "GEM" or "RHP"
         """
-        if mode.lower() not in config.GENOMIC_API_MODES:
-            raise BadRequest(f"GenomicOutreach Mode required to be one of {config.GENOMIC_API_MODES}.")
+        modes = ['gem', 'rhp']
+        if mode.lower() not in modes:
+            raise BadRequest(f"GenomicOutreach Mode required to be one of {modes}.")
+
+
+class GenomicOutreachApiV2(BaseApi):
+    def __init__(self):
+        super(GenomicOutreachApiV2, self).__init__(GenomicOutreachDaoV2())
+        self.validate_params()
+
+    @auth_required(RDR_AND_PTC)
+    # will removed when testing is starting
+    @restrict_to_gae_project('localhost')
+    def get(self):
+        if not request.args.get('participant_id'):
+            self._check_global_args(
+                request.args.get('module'),
+                request.args.get('type')
+            )
+        return self.get_outreach()
+
+    def get_outreach(self):
+        """
+        Returns the outreach resource based on the request parameters
+        :return:
+        """
+        start_date = request.args.get("start_date", None)
+        pid = request.args.get("participant_id", None)
+        end_date = clock.CLOCK.now() \
+            if not request.args.get("end_date") \
+            else parser.parse(request.args.get("end_date"))
+
+        payload = {
+            'date': clock.CLOCK.now()
+        }
+
+        if not pid and not start_date:
+            raise BadRequest('Participant ID or Start Date is required for GenomicOutreach lookup.')
+
+        if pid:
+            if pid.startswith("P"):
+                pid = pid[1:]
+            participant_data = self.dao.outreach_lookup(pid=pid)
+            if participant_data:
+                payload['data'] = participant_data
+                return self._make_response(payload)
+
+            raise NotFound(f'Participant P{pid} does not exist in the Genomic system.')
+
+        if start_date:
+            start_date = parser.parse(start_date)
+            participant_data = self.dao.outreach_lookup(start_date=start_date, end_date=end_date)
+            if participant_data:
+                payload['data'] = participant_data
+                return self._make_response(payload)
+
+            raise NotFound('No participants found in date range.')
+
+        raise BadRequest
+
+    def _check_global_args(self, module, _type):
+        """
+        Checks that the mode in the endpoint is valid
+        :param module: "GEM" / "PGX" / "HDR"
+        :param _type: "result" / "informingLoop" / "appointment"
+        """
+        current_module = None
+        current_type = None
+
+        if module:
+            if module.lower() not in self.dao.allowed_modules:
+                raise BadRequest(
+                    f"GenomicOutreach accepted modules: {' | '.join(self.dao.allowed_modules)}")
+            else:
+                current_module = module.lower()
+        if _type:
+            if _type not in self.dao.allowed_types:
+                raise BadRequest(f"GenomicOutreach accepted types: {' | '.join(self.dao.allowed_types)}")
+            else:
+                current_type = _type
+
+        self.dao.set_globals(
+            module=current_module,
+            _type=current_type
+        )
+
+    @staticmethod
+    def validate_params():
+        valid_params = ['start_date', 'end_date', 'participant_id', 'module', 'type']
+        request_keys = list(request.args.keys())
+        if any(arg for arg in request_keys if arg not in valid_params):
+            raise BadRequest(f"GenomicOutreach accepted params: {' | '.join(valid_params)}")
