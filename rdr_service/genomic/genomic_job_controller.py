@@ -888,9 +888,13 @@ class GenomicJobController:
         """
         Creates Genomic manifest using ManifestCompiler component
         """
-        self.manifest_compiler = ManifestCompiler(run_id=self.job_run.id,
-                                                  bucket_name=self.bucket_name,
-                                                  max_num=self.max_num)
+        self.manifest_compiler = ManifestCompiler(
+            run_id=self.job_run.id,
+            bucket_name=self.bucket_name,
+            max_num=self.max_num,
+            controller=self
+        )
+
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
 
