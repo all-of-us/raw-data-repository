@@ -99,6 +99,7 @@ CONSENT_COPE_DEFERRED_CODE = "COPE_A_231"
 
 # COPE Minute Survey Codes
 COPE_VACCINE_MINUTE_1_MODULE_CODE = "cope_vaccine1"
+COPE_VACCINE_MINUTE_2_MODULE_CODE = "cope_vaccine2"
 
 # Module names for questionnaires / consent forms
 CONSENT_FOR_GENOMICS_ROR_MODULE = "GROR"
