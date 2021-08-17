@@ -866,16 +866,23 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
             Search a list of biobank_stored_sample rows to find a match to the biobank_ordered_sample record
-            (same test and order identifier)
+            (same test and order identifier).
             :param stored_samples: list of biobank_stored_sample rows
             :param ordered_sample: a biobank_ordered_sample row
-            :return:
+            :return: the biobank_stored_sample row that matches the ordered sample
             """
             match = None
+
+            # Note:  There are a group of biobank ordered samples in RDR that have two different biobank stored sample
+            # records (for the same test), one of which is missing a confirmed timestamp.  The reason for this in the
+            # RDR data has not been determined, but suggests the biobank included the same sample in two different
+            # manifests with inconsistent confirmed details. So, override a match without a confirmed timestamp with a
+            # match that has one, if found
             for sample in stored_samples:
                 if sample.test == ordered_sample.test and sample.biobank_order_id == ordered_sample.order_id:
-                    match = sample
-                    break
+                    if not match or (not match.confirmed and sample.confirmed):
+                        match = sample
+
             return match
 
         def _make_sample_dict_from_row(bss=None, bos=None):
