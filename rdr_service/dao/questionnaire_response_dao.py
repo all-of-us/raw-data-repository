@@ -52,6 +52,7 @@ from rdr_service.code_constants import (
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
     COHORT_1_REVIEW_CONSENT_YES_CODE,
     COPE_VACCINE_MINUTE_1_MODULE_CODE,
+    COPE_VACCINE_MINUTE_2_MODULE_CODE,
     APPLE_EHR_SHARING_MODULE,
     APPLE_EHR_STOP_SHARING_MODULE,
     APPLE_HEALTH_KIT_SHARING_MODULE,
@@ -726,6 +727,11 @@ class QuestionnaireResponseDao(BaseDao):
                         and participant_summary.questionnaireOnCopeVaccineMinute1 != QuestionnaireStatus.SUBMITTED:
                     participant_summary.questionnaireOnCopeVaccineMinute1 = QuestionnaireStatus.SUBMITTED
                     participant_summary.questionnaireOnCopeVaccineMinute1Authored = authored
+                    module_changed = True
+                elif code.value == COPE_VACCINE_MINUTE_2_MODULE_CODE \
+                        and participant_summary.questionnaireOnCopeVaccineMinute2 != QuestionnaireStatus.SUBMITTED:
+                    participant_summary.questionnaireOnCopeVaccineMinute2 = QuestionnaireStatus.SUBMITTED
+                    participant_summary.questionnaireOnCopeVaccineMinute2Authored = authored
                     module_changed = True
 
         if module_changed:

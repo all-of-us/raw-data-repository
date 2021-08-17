@@ -136,7 +136,8 @@ participant_summary_default_values = {
     "sample1SAL2CollectionMethod": "UNSET",
     "isEhrDataAvailable": False,
     "wasEhrDataAvailable": False,
-    "questionnaireOnCopeVaccineMinute1": "UNSET"
+    "questionnaireOnCopeVaccineMinute1": "UNSET",
+    "questionnaireOnCopeVaccineMinute2": "UNSET"
 }
 
 participant_summary_default_values_no_basics = dict(participant_summary_default_values)
