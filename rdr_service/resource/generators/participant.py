@@ -149,6 +149,7 @@ def _act(timestamp, group: ActivityGroupEnum, event: ParticipantEventEnum, **kwa
         'group': group.name,
         'group_id': group.value,
         'event': event,
+        'event_name': event.name
     }
     # Check for additional key/value pairs to add to this activity record.
     if kwargs:
@@ -254,16 +255,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         # Test that all timestamps are datetime or None.
         msg = None
+        cleaned = list()
         for ev in activity:
+            if isinstance(ev['timestamp'], datetime.datetime):
+                cleaned.append(ev)
+                continue
             if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
                 try:
                     ev['timestamp'] = parser.parse(ev['timestamp'])
+                    cleaned.append(ev)
                 except ParserError:
                     msg = f'Participant activity timestamp is invalid for P{p_id}.'
-                    ev['timestamp'] = None
         if msg:
             logging.error(msg)
-        return activity
+        return cleaned
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -1078,7 +1083,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     # Find minimum confirmed date of DNA tests if we have any.
                     if order['isolate_dna']:
                         try:
-                            tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
+                            tmp_ts = min([r['created'] for r in order['samples'] if r['created'] is not None])
                             act_key = ParticipantEventEnum.BiobankConfirmed
                             act_ts = tmp_ts
                         except ValueError:  # No confirmed timestamps in list.
