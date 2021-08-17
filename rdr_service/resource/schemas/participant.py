@@ -157,6 +157,7 @@ class BiobankSampleSchema(Schema):
     disposed = fields.DateTime()
     disposed_reason = fields.String(validate=validate.Length(max=50))
     disposed_reason_id = fields.Int32()
+    biobank_stored_sample_id = fields.String(validate=validate.Length(max=80))
 
     class Meta:
         schema_id = SchemaID.participant_biobank_order_samples
