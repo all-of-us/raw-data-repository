@@ -436,7 +436,8 @@ class BQPDRParticipantBiobankSampleView(BQView):
                nt.bbs_status_id,
                nt.bbs_disposed,
                nt.bbs_disposed_reason,
-               nt.bbs_disposed_reason_id
+               nt.bbs_disposed_reason_id,
+               nt.bbs_biobank_stored_sample_id
            FROM (
               SELECT *,
                   ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn

@@ -907,6 +907,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return {}
 
             return {
+                'biobank_stored_sample_id': bss.biobank_stored_sample_id if bss else None,
                 'test': test,
                 'baseline_test': 1 if test in self._baseline_sample_test_codes else 0,  # Boolean field
                 'dna_test': 1 if test in self._dna_sample_test_codes else 0,  # Boolean field
