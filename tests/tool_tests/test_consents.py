@@ -69,7 +69,16 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             if additional_args:
                 tool_args.update(additional_args)
 
-            self.run_tool(ConsentTool, tool_args, mock_session=True)
+            self.run_tool(
+                ConsentTool,
+                tool_args,
+                mock_session=True,
+                server_config={
+                    config.CONSENT_PDF_BUCKET: {
+                        'vibrent': 'test-bucket-name'
+                    }
+                }
+            )
 
     def test_report_to_send_to_ptsc(self, logger_mock):
         """Check the basic report format, the one that would be sent to Vibrent or CE for correcting"""
