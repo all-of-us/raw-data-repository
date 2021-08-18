@@ -1,5 +1,6 @@
 import mock
 
+from rdr_service import config
 from rdr_service.services.consent import files
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -12,6 +13,11 @@ class ConsentFactoryTest(BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentFactoryTest, self).setUp(*args, **kwargs)
         self.storage_provider_mock = mock.MagicMock()
+
+        # Provide a config value that gives bucket names for the factories to read
+        self.temporarily_override_config_setting(config.CONSENT_PDF_BUCKET, {
+            'vibrent': 'test-bucket-name'
+        })
 
         # Patch the PDF wrapper class to simply return the blob object that was meant to be parsed
         pdf_patcher = mock.patch('rdr_service.services.consent.files.Pdf.from_google_storage_blob')
