@@ -3056,12 +3056,15 @@ class ManifestCompiler:
                 "record_count": 0,
             }
 
-        validation_failed, _ = self._validate_source_data(source_data)
+        validation_failed, message = self._validate_source_data(source_data, manifest_type)
         if validation_failed:
             self.controller.create_incident(
-                slack=True
+                source_job_run_id=self.run_id,
+                code=GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name,
+                slack=True,
+                message=message
             )
-            return GenomicSubProcessResult.ERROR
+            raise RuntimeError
 
         if self.max_num and len(source_data) > self.max_num:
             current_list = []
@@ -3149,10 +3152,50 @@ class ManifestCompiler:
         with self.member_dao.session() as session:
             return session.execute(self.manifest_def.source_data).fetchall()
 
-    @staticmethod
-    def _validate_source_data():
+    def _validate_source_data(self, data, manifest_type):
         invalid = False
         message = None
+
+        if manifest_type in [
+            GenomicManifestTypes.AW3_ARRAY,
+            GenomicManifestTypes.AW3_WGS
+        ]:
+            prefix = get_biobank_id_prefix()
+            path_positions = []
+
+            for i, col in enumerate(self.manifest_def.columns):
+                if 'sample_id' in col:
+                    sample_ids = [row[i] for row in data]
+                if 'biobank_id' in col:
+                    biobank_ids = [row[i] for row in data]
+                if '_path' in col:
+                    path_positions.append(i)
+
+            needs_prefixes = any(bid for bid in biobank_ids if prefix not in bid)
+            if needs_prefixes:
+                message = 'Biobank IDs are missing correct prefix'
+                invalid = True
+                return invalid, message
+
+            biobank_ids.clear()
+
+            dup_sample_ids = {sample_id for sample_id in sample_ids if sample_ids.count(sample_id) > 1}
+            if dup_sample_ids:
+                message = f'Sample IDs {list(dup_sample_ids)} are not distinct'
+                invalid = True
+                return invalid, message
+
+            sample_ids.clear()
+
+            for row in data:
+                for i, val in enumerate(row):
+                    if i in path_positions and val:
+                        if not val.startswith('gs://') \
+                            or (val.startswith('gs://')
+                                and len(val.split('gs://')[1].split('/')) != 3):
+                            message = f'Path {val} is invalid formatting'
+                            invalid = True
+                            return invalid, message
 
         return invalid, message
 
