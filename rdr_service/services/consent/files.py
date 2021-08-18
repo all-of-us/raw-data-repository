@@ -9,6 +9,7 @@ from google.cloud.storage.blob import Blob
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
 
+from rdr_service import config
 from rdr_service.storage import GoogleCloudStorageProvider
 
 
@@ -157,7 +158,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return VibrentGrorConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
-        return 'ptc-uploads-all-of-us-rdr-prod'
+        return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
 
     def _get_source_prefix(self) -> str:
         return 'Participant'
@@ -189,7 +190,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pass
 
     def _get_source_bucket(self) -> str:
-        return 'ce-uploads-all-of-us-rdr-prod'
+        return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
 
     def _get_source_prefix(self) -> str:
         return 'Participants'
