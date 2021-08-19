@@ -3,6 +3,7 @@ import datetime
 
 from dateutil.parser import parse
 from rdr_service.clock import CLOCK
+from rdr_service.app_util import nonprod
 from rdr_service.storage import GoogleCloudStorageCSVReader
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -111,6 +112,7 @@ def import_retention_eligible_metrics_file(task_data):
     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
 
+@nonprod
 def calculate_retention_eligible_metrics():
     # Calculate retention eligible metrics
     # This method is for lower env only, Prod env will import from file use above method
