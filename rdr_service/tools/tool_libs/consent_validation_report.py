@@ -636,7 +636,7 @@ class ProgramTemplateClass(object):
         # Build the report
         self.get_daily_consent_validation_results(db_conn=db_conn)
 
-        # To Do:  refactor so common consent from the daily report can be leveraged into the weekly "all unresolved"
+        # TODO:  refactor so common content from the daily report can be leveraged into the weekly "all unresolved"
         # report
         self.create_daily_report(gs_file)
 
