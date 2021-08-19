@@ -44,6 +44,5 @@ class RetentionEligibleMetricGenerator(generators.BaseGenerator):
                        RetentionStatusEnum(data['retention_eligible_status'])
             if data['retention_type'] is not None:
                 data['retention_type'] = data['retention_type_id'] = RetentionTypeEnum(data['retention_type'])
-            data['participant_id'] = 'P' + str(data['participant_id'])
 
             return generators.ResourceRecordSet(schemas.RetentionMetricSchema, data)

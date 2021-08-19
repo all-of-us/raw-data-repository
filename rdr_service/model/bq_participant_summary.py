@@ -148,6 +148,8 @@ class BQBiobankSampleSchema(BQSchema):
     bbs_disposed = BQField('bbs_disposed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     bbs_disposed_reason = BQField('bbs_disposed_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbs_disposed_reason_id = BQField('bbs_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbs_biobank_stored_sample_id = BQField('bbs_biobank_stored_sample_id', BQFieldTypeEnum.STRING,
+                                           BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):
@@ -158,7 +160,6 @@ class BQBiobankOrderSchema(BQSchema):
     bbo_created = BQField('bbo_created', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     bbo_status = BQField('bbo_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_status_id = BQField('bbo_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
-    bbo_dv_order = BQField('bbo_dv_order', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_collected_site = BQField('bbo_collected_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_collected_site_id = BQField('bbo_collected_site_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     bbo_processed_site = BQField('bbo_processed_site', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
@@ -174,6 +175,8 @@ class BQBiobankOrderSchema(BQSchema):
     bbo_finalized_status = BQField('bbo_finalized_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbo_finalized_status_id = BQField('bbo_finalized_status_id',
                                       BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbo_collection_method = BQField('bbo_collection_method', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    bbo_collection_method_id = BQField('bbo_collection_method_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPatientStatusSchema(BQSchema):

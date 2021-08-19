@@ -51,7 +51,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
     DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
-    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX
+    TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX, SampleCollectionMethod
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
@@ -149,6 +149,7 @@ def _act(timestamp, group: ActivityGroupEnum, event: ParticipantEventEnum, **kwa
         'group': group.name,
         'group_id': group.value,
         'event': event,
+        'event_name': event.name
     }
     # Check for additional key/value pairs to add to this activity record.
     if kwargs:
@@ -254,16 +255,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         # Test that all timestamps are datetime or None.
         msg = None
+        cleaned = list()
         for ev in activity:
+            if isinstance(ev['timestamp'], datetime.datetime):
+                cleaned.append(ev)
+                continue
             if ev['timestamp'] is not None and not isinstance(ev['timestamp'], datetime.datetime):
                 try:
                     ev['timestamp'] = parser.parse(ev['timestamp'])
+                    cleaned.append(ev)
                 except ParserError:
                     msg = f'Participant activity timestamp is invalid for P{p_id}.'
-                    ev['timestamp'] = None
         if msg:
             logging.error(msg)
-        return activity
+        return cleaned
 
     def _prep_participant(self, p_id, ro_session):
         """
@@ -866,16 +871,23 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         def _get_stored_sample_row(stored_samples, ordered_sample):
             """
             Search a list of biobank_stored_sample rows to find a match to the biobank_ordered_sample record
-            (same test and order identifier)
+            (same test and order identifier).
             :param stored_samples: list of biobank_stored_sample rows
             :param ordered_sample: a biobank_ordered_sample row
-            :return:
+            :return: the biobank_stored_sample row that matches the ordered sample
             """
             match = None
+
+            # Note:  There are a group of biobank ordered samples in RDR that have two different biobank stored sample
+            # records (for the same test), one of which is missing a confirmed timestamp.  The reason for this in the
+            # RDR data has not been determined, but suggests the biobank included the same sample in two different
+            # manifests with inconsistent confirmed details. So, override a match without a confirmed timestamp with a
+            # match that has one, if found
             for sample in stored_samples:
                 if sample.test == ordered_sample.test and sample.biobank_order_id == ordered_sample.order_id:
-                    match = sample
-                    break
+                    if not match or (not match.confirmed and sample.confirmed):
+                        match = sample
+
             return match
 
         def _make_sample_dict_from_row(bss=None, bos=None):
@@ -902,6 +914,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 return {}
 
             return {
+                'biobank_stored_sample_id': bss.biobank_stored_sample_id if bss else None,
                 'test': test,
                 'baseline_test': 1 if test in self._baseline_sample_test_codes else 0,  # Boolean field
                 'dna_test': 1 if test in self._dna_sample_test_codes else 0,  # Boolean field
@@ -924,15 +937,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    bo.processed_site_id, (select google_group from site where site.site_id = bo.processed_site_id) as processed_site,
                    bo.finalized_site_id, (select google_group from site where site.site_id = bo.finalized_site_id) as finalized_site,
                    bo.finalized_time,
-                   case when exists (
-                     select bmko.participant_id
-                     from biobank_mail_kit_order bmko
-                     where bmko.biobank_order_id = bo.biobank_order_id
-                        and bo.participant_id = bmko.participant_id
-                        and bmko.associated_hpo_id is null
-                   )
-                   then 1 else 0 end as dv_order
-             from biobank_order bo where participant_id = :p_id
+                   case when bmko.id is not null then 1 else 2 end as collection_method
+             from biobank_order bo left outer join biobank_mail_kit_order bmko on bmko.biobank_order_id = bo.biobank_order_id
+             where bo.participant_id = :p_id
              order by bo.created desc;
          """
 
@@ -1022,7 +1029,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'status': str(bb_order_status),
                 'status_id': int(bb_order_status),
-                'dv_order': row.dv_order,
+                'collection_method': str(SampleCollectionMethod(row.collection_method)),
+                'collection_method_id': int(SampleCollectionMethod(row.collection_method)),
                 'collected_site': row.collected_site,
                 'collected_site_id': row.collected_site_id,
                 'processed_site': row.processed_site,
@@ -1054,6 +1062,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order = {
                 'finalized_time': None,
                 'biobank_order_id': 'UNSET',
+                'collection_method': str(SampleCollectionMethod.UNSET),
+                'collection_method_id': int(SampleCollectionMethod.UNSET),
                 'tests_stored': len(orderless_stored_samples),
                 'samples': orderless_stored_samples,
                 'isolate_dna': sum([r['dna_test'] for r in orderless_stored_samples]),
@@ -1081,7 +1091,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     # Find minimum confirmed date of DNA tests if we have any.
                     if order['isolate_dna']:
                         try:
-                            tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
+                            tmp_ts = min([r['created'] for r in order['samples'] if r['created'] is not None])
                             act_key = ParticipantEventEnum.BiobankConfirmed
                             act_ts = tmp_ts
                         except ValueError:  # No confirmed timestamps in list.

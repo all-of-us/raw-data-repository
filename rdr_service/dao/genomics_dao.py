@@ -9,6 +9,7 @@ from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
+from sqlalchemy.sql.expression import literal
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
@@ -1386,6 +1387,242 @@ class GenomicOutreachDao(BaseDao):
         }
 
         return state_mapping[resource_status]
+
+
+class GenomicOutreachDaoV2(BaseDao):
+    def __init__(self):
+        super(GenomicOutreachDaoV2, self).__init__(
+            GenomicSetMember, order_by_ending=['id'])
+        self.allowed_modules = ['gem', 'hdr', 'pgx']
+        self.module = self.allowed_modules
+        self.allowed_types = ['result', 'informingLoop']
+        self.type = self.allowed_types
+        self.report_query_state = self.get_report_state_query_config()
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def to_client_json(self, _dict):
+        report_statuses, report, p_status, p_module = [], {}, None, None
+
+        for p in _dict['data']:
+            p_type = p[-1]
+            if 'result' in p_type:
+                p_status, p_module = self._determine_report_state(p[1])
+                report = {
+                    "module": p_module.lower(),
+                    "type": 'result',
+                    "status": p_status,
+                    "participant_id": f'P{p[0]}',
+                }
+                report_statuses.append(report)
+            elif 'informingLoop' in p_type:
+                ready_modules = ['hdr', 'pgx']
+                p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
+                if p_status == 'ready':
+                    for module in ready_modules:
+                        report = {
+                            "module": module,
+                            "type": 'informingLoop',
+                            "status": p_status,
+                            "participant_id": f'P{p[0]}',
+                        }
+                        report_statuses.append(report)
+                elif p_status == 'completed':
+                    report = {
+                        "module": p.module_type.lower(),
+                        "type": 'informingLoop',
+                        "status": p_status,
+                        "decision": p.decision_value,
+                        "participant_id": f'P{p[0]}',
+                    }
+                    report_statuses.append(report)
+
+        # handle date
+        try:
+            ts = pytz.utc.localize(_dict['date'])
+        except ValueError:
+            ts = _dict['date']
+
+        client_json = {
+            "data": report_statuses,
+            "timestamp": ts
+        }
+        return client_json
+
+    def outreach_lookup(self, pid=None, start_date=None, end_date=None):
+        informing_loops, results = [], []
+
+        if not end_date:
+            end_date = clock.CLOCK.now()
+
+        with self.session() as session:
+            if 'informingLoop' in self.type:
+                # informingLoop
+                decision_loop = (
+                    session.query(
+                        GenomicInformingLoop.participant_id,
+                        GenomicInformingLoop.module_type,
+                        GenomicInformingLoop.decision_value,
+                        literal('informingLoop')
+                    )
+                    .join(
+                        ParticipantSummary,
+                        ParticipantSummary.participantId == GenomicInformingLoop.participant_id
+                    )
+                    .join(
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                    ).filter(
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        GenomicInformingLoop.decision_value.isnot(None),
+                        GenomicInformingLoop.module_type.in_(self.module)
+                    )
+                )
+                ready_loop = (
+                    session.query(
+                        GenomicSetMember.participantId.label('participant_id'),
+                        literal('informingLoop')
+                    )
+                    .join(
+                        ParticipantSummary,
+                        ParticipantSummary.participantId == GenomicSetMember.participantId
+                    )
+                    .join(
+                        GenomicGCValidationMetrics,
+                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                    )
+                    .filter(
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        ParticipantSummary.consentForGenomicsROR == 1,
+                        GenomicGCValidationMetrics.processingStatus == 'Pass',
+                        GenomicSetMember.ai_an == 'N',
+                        GenomicSetMember.genomeType == 'aou_wgs',
+                        GenomicSetMember.aw3ManifestJobRunID.isnot(None)
+                    )
+                )
+
+                if pid:
+                    decision_loop = decision_loop.filter(
+                        ParticipantSummary.participantId == pid
+                    )
+                    ready_loop = ready_loop.filter(
+                        ParticipantSummary.participantId == pid
+                    )
+
+                if start_date:
+                    decision_loop = decision_loop.filter(
+                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                    )
+                    ready_loop = ready_loop.filter(
+                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                    )
+
+                informing_loops = decision_loop.all() + ready_loop.all()
+
+            if 'result' in self.type:
+                # results
+                result_query = (
+                    session.query(
+                        GenomicMemberReportState.participant_id,
+                        GenomicMemberReportState.genomic_report_state,
+                        literal('result')
+                    )
+                    .join(
+                        ParticipantSummary,
+                        ParticipantSummary.participantId == GenomicMemberReportState.participant_id
+                    )
+                    .join(
+                        GenomicSetMember,
+                        GenomicSetMember.participantId == GenomicMemberReportState.participant_id
+                    )
+                    .filter(
+                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
+                    )
+                )
+                if pid:
+                    result_query = result_query.filter(
+                        ParticipantSummary.participantId == pid
+                    )
+                if start_date:
+                    result_query = result_query.filter(
+                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                    )
+
+                results = result_query.all()
+
+            return informing_loops + results
+
+    @staticmethod
+    def _determine_report_state(status):
+        report_state_mapping = {
+            'gem': {
+                GenomicReportState.GEM_RPT_READY: "ready",
+                GenomicReportState.GEM_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.GEM_RPT_DELETED: "deleted"
+            },
+            'pgx': {
+                GenomicReportState.PGX_RPT_READY: "ready",
+                GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.PGX_RPT_DELETED: "deleted"
+            },
+            'hdr': {
+                GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
+                GenomicReportState.HDR_RPT_POSITIVE: "positive",
+                GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.HDR_RPT_DELETED: "deleted"
+            }
+        }
+        p_status, p_module = None, None
+
+        for key, value in report_state_mapping.items():
+            if status in value.keys():
+                p_status = value[status]
+                p_module = key
+                break
+
+        return p_status, p_module
+
+    def get_report_state_query_config(self):
+        report_state_query_mapping = {
+            'gem': [GenomicReportState.GEM_RPT_READY,
+                    GenomicReportState.GEM_RPT_PENDING_DELETE,
+                    GenomicReportState.GEM_RPT_DELETED],
+            'pgx': [GenomicReportState.PGX_RPT_READY,
+                    GenomicReportState.PGX_RPT_PENDING_DELETE,
+                    GenomicReportState.PGX_RPT_DELETED],
+            'hdr': [GenomicReportState.HDR_RPT_UNINFORMATIVE,
+                    GenomicReportState.HDR_RPT_POSITIVE,
+                    GenomicReportState.HDR_RPT_PENDING_DELETE,
+                    GenomicReportState.HDR_RPT_DELETED]
+        }
+        mappings = []
+        if not self.module:
+            for value in report_state_query_mapping.values():
+                mappings.extend(value)
+        else:
+            for mod in self.module:
+                for key, value in report_state_query_mapping.items():
+                    if mod == key:
+                        mappings.extend(value)
+        return mappings
+
+    def set_globals(self, module, _type):
+        if module:
+            self.module = [module]
+            self.report_query_state = self.get_report_state_query_config()
+        if _type:
+            self.type = [_type]
 
 
 class GenomicManifestFileDao(BaseDao):

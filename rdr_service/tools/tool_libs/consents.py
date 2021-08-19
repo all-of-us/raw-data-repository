@@ -30,6 +30,10 @@ class ConsentTool(ToolBase):
     def run(self):
         super(ConsentTool, self).run()
 
+        # Overwrite the local config consent buckets with what is available from the target environment
+        server_config = self.get_server_config()
+        config.override_setting(config.CONSENT_PDF_BUCKET, server_config[config.CONSENT_PDF_BUCKET])
+
         if self.args.command == 'report-errors':
             self.report_files_for_correction()
         elif self.args.command == 'modify':

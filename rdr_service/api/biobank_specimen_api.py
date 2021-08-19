@@ -62,6 +62,10 @@ class BiobankSpecimenApi(BiobankApiBase):
                             self.dao.update_with_session(session, m)
                         else:
                             self.dao.insert_with_session(session, m)
+                        for obj in session.deleted:
+                            logging.info(f'removing {obj} {getattr(obj, "rlimsId", "NA")}')
+                        for obj in session.dirty:
+                            logging.info(f'updating {obj} {getattr(obj, "rlimsId", "NA")}')
                         session.commit()
                     except BadRequest as e:
                         logging.error('RLIMS Migration: BadRequest encountered', exc_info=True)

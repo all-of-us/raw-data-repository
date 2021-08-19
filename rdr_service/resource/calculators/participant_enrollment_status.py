@@ -73,7 +73,8 @@ class EnrollmentStatusCalculator:
         """
         :param activity: A list of activity dictionary objects created by the ParticipantSummaryGenerator.
         """
-        self.activity = sorted([JSONObject(r) for r in activity if r['timestamp']], key=lambda i: i.timestamp)
+        self.activity = [JSONObject(r) for r in activity if r['timestamp']]
+        self.activity.sort(key=lambda i: i.timestamp)
         # Work through activity by slicing to determine current enrollment status.
         # This method allows us to iterate once through the data and still catch participants
         # that might have been considered a Core Participant at one point, but would not by

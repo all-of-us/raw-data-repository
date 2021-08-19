@@ -71,7 +71,7 @@ class BQParticipantSummaryGenerator(BigQueryGenerator):
             summary[k] = [self._fix_prefixes(k, r) for r in summary[k]]
         # Convert participant id to an integer
         if 'participant_id' in summary and summary['participant_id']:
-            summary['participant_id'] = int(re.sub("[^0-9]", "", summary['participant_id']))
+            summary['participant_id'] = int(re.sub("[^0-9]", "", str(summary['participant_id'])))
 
         return BQRecord(schema=BQParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
 
