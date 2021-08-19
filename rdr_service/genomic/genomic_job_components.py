@@ -3192,7 +3192,7 @@ class ManifestCompiler:
                     if i in path_positions and val:
                         if not val.startswith('gs://') \
                             or (val.startswith('gs://')
-                                and len(val.split('gs://')[1].split('/')) != 3):
+                                and len(val.split('gs://')[1].split('/')) < 3):
                             message = f'Path {val} is invalid formatting'
                             invalid = True
                             return invalid, message
