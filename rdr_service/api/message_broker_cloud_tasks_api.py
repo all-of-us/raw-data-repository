@@ -80,6 +80,8 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
                 payload['event_type'] = self.event_type
                 payload['records'] = informing_records
                 _task = GCPCloudTask()
-                _task.execute('ingest_informing_loop',
-                              payload=payload,
-                              queue='genomics')
+                _task.execute(
+                    'ingest_informing_loop_task',
+                    payload=payload,
+                    queue='genomics'
+                )
