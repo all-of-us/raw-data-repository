@@ -72,6 +72,19 @@ DAILY_REPORT_COLUMN_MAP = {
     'va_consent_for_non_va': 15   # Column O
 }
 
+# Maps the currently validated consent types to the authored date field that will be used in the report SQL query
+CONSENT_AUTHORED_FIELDS = {
+    # For PRIMARY:  use earliest consent authored (to distinguish from PrimaryConsentUpdate authored, which are not
+    # yet included in the validation)
+    ConsentType.PRIMARY : 'consent_for_study_enrollment_first_yes_authored',
+    ConsentType.CABOR: 'consent_for_cabor_authored',
+    ConsentType.EHR: 'consent_for_electronic_health_records_authored',
+    ConsentType.GROR: 'consent_for_genomics_ror_authored',
+}
+
+# List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
+CONSENTS_LIST = [int(v) for v in CONSENT_AUTHORED_FIELDS.keys()]
+
 # TODO:  Convert to SQLAlchemy when refactoring for automation.  Raw SQL used initially for fast prototyping of reports
 CONSENT_REPORT_SQL_BODY =  """
             SELECT cf.participant_id,
@@ -131,7 +144,6 @@ ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1 '
 # TODO:  Remove this when we expand consent validation to include CE consents
 VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
 
-
 # Define the allowable --report-type arguments and their associated SQL.
 REPORT_TYPES = {
     # Daily uploads = validation for all consents authored on the report date + missing files flagged on the report date
@@ -139,19 +151,6 @@ REPORT_TYPES = {
     # Unresolved errors = Any consent_file entries still in a NEEDS_CORRECTING state (all-time)
     'unresolved_errors':  CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
 }
-
-# Maps the currently validated consent types to the authored date field that will be used in the report SQL query
-CONSENT_AUTHORED_FIELDS = {
-    # For PRIMARY:  use earliest consent authored (to distinguish from PrimaryConsentUpdate authored, which are not
-    # yet included in the validation)
-    ConsentType.PRIMARY : 'consent_for_study_enrollment_first_yes_authored',
-    ConsentType.CABOR: 'consent_for_cabor_authored',
-    ConsentType.EHR: 'consent_for_electronic_health_records_authored',
-    ConsentType.GROR: 'consent_for_genomics_ror_authored',
-}
-
-# List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
-CONSENTS_LIST = [int(v) for v in CONSENT_AUTHORED_FIELDS.keys()]
 
 class ProgramTemplateClass(object):
 
