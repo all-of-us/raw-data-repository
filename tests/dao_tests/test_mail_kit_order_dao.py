@@ -142,9 +142,10 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field3'])
         self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field4'])
         self.assertEqual(
-            ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests','comments'],
+            ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments'],
             list(mayo_order_payload.keys())
         )
+        self.assertIsNone(mayo_order_payload['patient']['race'])
 
         # Make sure the correct account is used for version two
         self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
