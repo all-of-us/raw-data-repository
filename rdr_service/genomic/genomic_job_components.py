@@ -1854,6 +1854,7 @@ class GenomicReconciler:
 
         logging.info("Found {len(metrics)} metrics records missing data...")
 
+        member_ids = []
         for result in metrics:
             # Lookup identifier in data files table
             id_value = getattr(result, identifier)
@@ -1861,10 +1862,9 @@ class GenomicReconciler:
 
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
-
             metric_touched = False
 
-            # WGS query results requre GenomicGCValidationMetrics model to be specified
+            # WGS query results require GenomicGCValidationMetrics model to be specified
             if isinstance(result, GenomicGCValidationMetrics):
                 _obj = result
             else:
@@ -1881,18 +1881,25 @@ class GenomicReconciler:
                         if not getattr(_obj, file_type_config['file_received_attribute']):
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
-
                             metric_touched = True
+                            member_ids.append(_obj.genomicSetMemberId)
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
+            if member_ids:
+                payload = {
+                    'member_ids': member_ids,
+                    'job_run_id': self.run_id,
+                    'field': 'reconcileMetricsSequencingJobRunId',
+                    'project_id': self.controller.bq_project_id
+                }
+                self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
+
         return GenomicSubProcessResult.SUCCESS
 
     def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
-        member = self.member_dao.get(_obj.genomicSetMemberId)
-
         # Only upsert the metric if changed
         inserted_metrics_obj = self.metrics_dao.upsert(_obj)
         logging.info(f'id {_obj.id} updated with attributes')
@@ -1903,17 +1910,13 @@ class GenomicReconciler:
                                                     project_id=self.controller.bq_project_id)
             genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
+        member = self.member_dao.get(_obj.genomicSetMemberId)
         next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=self.ready_signal)
-
-        self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                 project_id=self.controller.bq_project_id)
 
         # Handle for missing data files
         if missing_data_files:
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-
             incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
-
             for file_type in missing_data_files:
                 missing_file_object = GenomicGcDataFileMissing(
                     gc_site_id=_gc_site_id,
@@ -1935,10 +1938,12 @@ class GenomicReconciler:
         member = self.member_dao.get(metric.genomicSetMemberId)
         description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
         description += f"\nGenomic Job Run ID: {self.run_id}"
-        description += self._compile_missing_data_alert(
-            file_name=file.fileName,
-            missing_files=missing_data_files
-        )
+
+        file_list = '\n'.join([mf for mf in missing_data_files])
+        description = f"\nManifest File: {file.fileName}"
+        description += "\nMissing Data File(s):"
+        description += f"\n{file_list}"
+
         self.controller.create_incident(
             source_job_run_id=self.run_id,
             source_file_processed_id=file.id,
@@ -1950,20 +1955,6 @@ class GenomicReconciler:
             collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
             slack=True
         )
-
-    @staticmethod
-    def _compile_missing_data_alert(file_name, missing_files):
-        """
-        Compiles the description to include in a GenomicAlert
-        :param file_name:
-        :param missing_data: list of files
-        :return: summary, description
-        """
-        file_list = '\n'.join([mf for mf in missing_files])
-        description = f"\nManifest File: {file_name}"
-        description += "\nMissing Data File(s):"
-        description += f"\n{file_list}"
-        return description
 
     def generate_cvl_reconciliation_report(self):
         """
@@ -1978,16 +1969,14 @@ class GenomicReconciler:
             self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
             self._write_cvl_report_to_file(members)
 
-            results = []
-            for member in members:
-                results.append(self.member_dao.update_member_job_run_id(
-                    member, job_run_id=self.run_id,
-                    field='reconcileCvlJobRunId')
-                )
+            payload = {
+                'member_ids': [m.id for m in members],
+                'job_run_id': self.run_id,
+                'field': 'reconcileCvlJobRunId',
+            }
+            self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
 
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
+            return GenomicSubProcessResult.SUCCESS
 
         return GenomicSubProcessResult.NO_FILES
 
@@ -3028,6 +3017,7 @@ class ManifestCompiler:
         self.output_file_name = None
         self.manifest_def = None
         self.def_provider = None
+
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
@@ -3092,7 +3082,6 @@ class ManifestCompiler:
                     f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                 )
                 self._write_and_upload_manifest(current_list)
-
         else:
             self.output_file_name = self.manifest_def.output_filename
             # If the new manifest is a feedback manifest,
@@ -3112,36 +3101,40 @@ class ManifestCompiler:
             )
             self._write_and_upload_manifest(source_data)
 
-        results = []
-        for row in source_data:
-            member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-            if member is None:
-                raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+            member_ids = []
+            for row in source_data:
+                member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+                if member is None:
+                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-            if self.manifest_def.job_run_field is not None:
-                results.append(
-                    self.member_dao.update_member_job_run_id(
-                        member,
-                        job_run_id=self.run_id,
-                        field=self.manifest_def.job_run_field
-                    )
-                )
-            # Handle Genomic States for manifests
-            if self.manifest_def.signal != "bypass":
-                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                                signal=self.manifest_def.signal)
+                if self.manifest_def.job_run_field is not None:
+                    member_ids.append(member.id)
 
-                if new_state is not None or new_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, new_state)
+                # Handle Genomic States for manifests
+                if self.manifest_def.signal != "bypass":
+                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                                  signal=self.manifest_def.signal)
 
-        # Assemble result dict
-        result_code = GenomicSubProcessResult.SUCCESS \
-            if GenomicSubProcessResult.ERROR not in results \
-            else GenomicSubProcessResult.ERROR
+                    if new_state is not None or new_state != member.genomicWorkflowState:
+                        self.member_dao.update_member_state(member, new_state)
 
+            if member_ids:
+                payload = {
+                    'member_ids': member_ids,
+                    'job_run_id': self.run_id,
+                    'field': self.manifest_def.job_run_field,
+                }
+                self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
+
+            return {
+                "code": GenomicSubProcessResult.SUCCESS,
+                "record_count": len(source_data),
+            }
+
+        logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
-            "code": result_code,
-            "record_count": len(source_data),
+            "code": GenomicSubProcessResult.NO_FILES,
+            "record_count": 0,
         }
 
     def _pull_source_data(self):

@@ -14,11 +14,12 @@ import csv
 import gspread
 import pandas
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 from gspread.utils import rowcol_to_a1
 from gspread.exceptions import APIError
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
@@ -71,16 +72,23 @@ DAILY_REPORT_COLUMN_MAP = {
     'va_consent_for_non_va': 15   # Column O
 }
 
+# Maps the currently validated consent types to the authored date field that will be used in the report SQL query
+CONSENT_AUTHORED_FIELDS = {
+    # For PRIMARY:  use earliest consent authored (to distinguish from PrimaryConsentUpdate authored, which are not
+    # yet included in the validation)
+    ConsentType.PRIMARY : 'consent_for_study_enrollment_first_yes_authored',
+    ConsentType.CABOR: 'consent_for_cabor_authored',
+    ConsentType.EHR: 'consent_for_electronic_health_records_authored',
+    ConsentType.GROR: 'consent_for_genomics_ror_authored',
+}
+
+# List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
+CONSENTS_LIST = [int(v) for v in CONSENT_AUTHORED_FIELDS.keys()]
+
 # TODO:  Convert to SQLAlchemy when refactoring for automation.  Raw SQL used initially for fast prototyping of reports
 CONSENT_REPORT_SQL_BODY =  """
             SELECT cf.participant_id,
-                   p.date_of_birth,
-                   -- age_at_consent is specific/relevant to PRIMARY consent type (uses its authored date)
-                   CASE WHEN cf.type = 1 THEN
-                        CASE WHEN (p.date_of_birth IS NULL or p.consent_for_study_enrollment_authored IS NULL) THEN NULL
-                             ELSE TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored)
-                        END
-                   END AS age_at_consent,
+                   ps.date_of_birth,
                    CASE
                       WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
                       ELSE '(No HPO details)'
@@ -99,62 +107,50 @@ CONSENT_REPORT_SQL_BODY =  """
                    (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
                    -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
                    -- DOB later than the consent authored date
-                   (p.date_of_birth is null or p.date_of_birth < "{dob_cutoff}"
-                    or p.date_of_birth > "{report_date}")
-                    or (p.consent_for_study_enrollment_authored is not null
-                        and p.date_of_birth > p.consent_for_study_enrollment_authored )
-                       AS invalid_dob,
-                    -- Invalid age at consent error only applies to PRIMARY consent type
-                   (cf.type = 1 and TIMESTAMPDIFF(YEAR, p.date_of_birth, p.consent_for_study_enrollment_authored) < 18)
-                      AS invalid_age_at_consent,
+                   (ps.date_of_birth is null or ps.date_of_birth < "{dob_cutoff}" or ps.date_of_birth > "{report_date}")
+                    or (ps.consent_for_study_enrollment_authored is not null
+                        and ps.date_of_birth > ps.consent_for_study_enrollment_first_yes_authored )
+                    AS invalid_dob,
+                   TIMESTAMPDIFF(YEAR, COALESCE(ps.date_of_birth, CURRENT_DATE),
+                                 ps.consent_for_study_enrollment_first_yes_authored) < 18
+                    AS invalid_age_at_consent,
                    -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
                    (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
                    (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
                       AS non_va_consent_for_va,
                    (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
                       AS va_consent_for_non_va
-            FROM consent_file cf
-            JOIN participant_summary p on p.participant_id = cf.participant_id
-            LEFT OUTER JOIN hpo h on p.hpo_id = h.hpo_id
-            LEFT OUTER JOIN organization o on p.organization_id = o.organization_id
+            FROM participant_summary ps
+            -- Eliminate test/ghost pids from the result
+            JOIN participant p on p.participant_id = ps.participant_id
+                 AND p.is_test_participant = 0 and (p.is_ghost_id is null or not p.is_ghost_id) and p.hpo_id != 21
+            JOIN consent_file cf ON ps.participant_id = cf.participant_id
+            LEFT OUTER JOIN hpo h ON p.hpo_id = h.hpo_id
+            LEFT OUTER JOIN organization o on ps.organization_id = o.organization_id
         """
 
-
-# Daily report filter for validation results on all newly received consents (based on file upload date) in
-# NEEDS_CORRECTING, READY_TO_SYNC, or SYNC_COMPLETE state; other states not relevant to the daily report.  Also
-# contains entries for missing file errors that were added to the consent_file table on the report date
-DAILY_REPORT_NEW_UPLOADS_SQL_FILTER = """
-            WHERE (DATE(cf.file_upload_time) = "{report_date}"
-                    OR (DATE(cf.created) = "{report_date}" and NOT cf.file_exists))
-                AND cf.sync_status IN (1,2,4)
-    """
-
-# Filter to produce report for all NEEDS_CORRECTING validation records created on the report date (e.g., may include
-# retrospective validation results)
-DAILY_REPORT_ALL_ERRORS_SQL_FILTER = """
-            WHERE DATE(cf.created) = "{report_date}"
-                  AND cf.sync_status = 1
+# Daily report filter for validation results on all newly received and validated consents:
+# - For each consent type, filter on participants whose consent authored date for that consent matches the report date
+# - Find corresponding consent_file entries for the consent type, in NEEDS_CORRECTING/READY_TO_SYNC/SYNC_COMPLETE
+DAILY_NEW_CONSENTS_SQL_FILTER = """
+            WHERE cf.type = {consent_type}
+                  AND DATE(ps.{authored_field}) = "{report_date}"
+                  AND cf.sync_status IN (1,2,4)
     """
 
 # Filter to produce a report of all remaining NEEDS_CORRECTING consents, regardless of date
 ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1 '
 
 # TODO:  Remove this when we expand consent validation to include CE consents
-VIBRENT_SQL_FILTER = ' AND p.participant_origin = "vibrent"'
+VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
 
 # Define the allowable --report-type arguments and their associated SQL.
 REPORT_TYPES = {
-    # Daily uploads = validation for all files uploaded on the report date + missing files flagged on the report date
-    'daily_uploads':  CONSENT_REPORT_SQL_BODY + DAILY_REPORT_NEW_UPLOADS_SQL_FILTER + VIBRENT_SQL_FILTER,
-    # Daily errors = any errors from the report date.  May include retrospective validations of old files
-    # performed on that date as well as the newly uploaded files from that date
-    'daily_errors':  CONSENT_REPORT_SQL_BODY + DAILY_REPORT_ALL_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER,
-    # Unresolved errors = Any consent_file entries still in a NEEDS_CORRECTING state (regardless of date)
+    # Daily uploads = validation for all consents authored on the report date + missing files flagged on the report date
+    'daily_uploads':  CONSENT_REPORT_SQL_BODY + DAILY_NEW_CONSENTS_SQL_FILTER + VIBRENT_SQL_FILTER,
+    # Unresolved errors = Any consent_file entries still in a NEEDS_CORRECTING state (all-time)
     'unresolved_errors':  CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
 }
-
-# Iterable list of the ConsentType enum ints (used to compare against DB consent_file.type field values)
-CONSENTS_LIST = [int(v) for v in ConsentType]
 
 class ProgramTemplateClass(object):
 
@@ -200,8 +196,8 @@ class ProgramTemplateClass(object):
         if args.report_date:
             self.report_date = args.report_date
         else:
-            # Default to today's date
-            self.report_date = datetime.now()
+            # Default to yesterday's date as the filter for consent authored date
+            self.report_date = datetime.now() - timedelta(1)
 
         if args.csv_file:
             self.csv_filename = args.csv_file
@@ -217,8 +213,7 @@ class ProgramTemplateClass(object):
             if not args.report_type in REPORT_TYPES.keys():
                 raise ValueError(f'invalid report type option: {args.report_type}')
             else:
-                self.report_sql = REPORT_TYPES.get(args.report_type)\
-                    .format(report_date=self.report_date.strftime("%Y-%m-%d"), dob_cutoff=self.dob_date_cutoff)
+                self.report_sql = REPORT_TYPES.get(args.report_type)
 
         # Max dimensions for the daily sheet (max rows is a guesstimate?)
         self.sheet_rows = 500
@@ -228,30 +223,27 @@ class ProgramTemplateClass(object):
         self.max_retries = 3
 
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
-        self.max_daily_reports = 30
+        self.max_daily_reports = 32 # A month's worth + an extra sheet to contain a legend / notes as needed
 
         # Trackers updated as content is added to the daily report worksheet
         self.row_pos = 1
         self.write_requests = 0
 
-        # Pre-populated details about the sections of the daily report;  used when calling gspread methods
+        # Pre-populated details about the sections of the reports;  used when calling gspread methods
         self.row_layout = {
             # The banner at the top of each report, e.g.: Report Date: Jul 22, 2021 (generated
             'report_date': {
-                'values': ['Report for Date: ' + self.report_date.strftime("%b %-d, %Y") + \
-                           ' (generated on {} Central)'.format(datetime.now().strftime("%x %X"))],
+                'values': ['Report for consents authored on: ' + self.report_date.strftime("%b %-d, %Y") + \
+                           f' 12:00AM-11:59PM UTC (generated on {datetime.now().strftime("%x %X")} Central)'],
                 'format': {'textFormat': {'fontSize': 12, 'bold': True}}
             },
             # Display any additional details of note, such as current limitations of validation tools
             'report-notes': {
                 'values': [
                     'Notes:',
-                    'All errors except missing files pertain to new or retransmitted consent files uploaded ' + \
-                        'on the report date',
-                    'Missing file counts may include discoveries made on the report date as part of the ongoing' + \
-                        ' effort to validate consents for all previously enrolled/consented participants',
                     'Validation is currently only done for PTSC consent files (does not include CareEvolution)',
                     'Checkbox validation currently only performed on GROR consents',
+                    'Total Errors can exceed Consents with Errors if any consents had multiple validation errors'
                 ],
                 'format': {'textFormat':
                                {'fontSize': 10,
@@ -333,13 +325,21 @@ class ProgramTemplateClass(object):
         if not db_conn:
             raise(EnvironmentError, 'No active DB connection object')
 
+        df = pandas.DataFrame()
+        for consent_int in CONSENTS_LIST:
+            sql = self.report_sql.format(authored_field=CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)],
+                                         consent_type=consent_int,
+                                         dob_cutoff=self.dob_date_cutoff,
+                                         report_date=self.report_date.strftime("%Y-%m-%d"))
+
+            df = df.append(pandas.read_sql_query(sql, db_conn))
+
         # NOTE: For testing w/o hitting the prod DB:  can comment out the pandas.read_sql_query statement and use a
         # saved off CSV results file instead, e.g.:
         # df = self.consent_df = pandas.read_csv('20210722_consents.csv')
 
         # Load daily validation results into a pandas dataframe.  Fill in any null/NaN error count columns with
         # (uint8) 0s
-        df = pandas.read_sql_query(self.report_sql, db_conn)
         for error_type in TRACKED_CONSENT_ERRORS:
             df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
 
@@ -603,7 +603,7 @@ class ProgramTemplateClass(object):
             self.worksheet = spreadsheet.add_worksheet(self.report_date.strftime("%b %d %Y"),
                                                        rows=self.sheet_rows,
                                                        cols=self.sheet_cols,
-                                                       index=0)
+                                                       index=1)
             self.add_daily_summary()
 
         if self.consent_errors_found:
@@ -635,6 +635,9 @@ class ProgramTemplateClass(object):
 
         # Build the report
         self.get_daily_consent_validation_results(db_conn=db_conn)
+
+        # TODO:  refactor so common content from the daily report can be leveraged into the weekly "all unresolved"
+        # report
         self.create_daily_report(gs_file)
 
 
@@ -646,20 +649,21 @@ def run():
     )
     setup_i18n()
 
-    # Setup program arguments.
+    # Setup program arguments.  NOTE:  This tool defaults to PRODUCTION project/service account
     parser = argparse.ArgumentParser(prog=tool_cmd, description=tool_desc)
     parser.add_argument("--debug", help="enable debug output", default=False, action="store_true")  # noqa
     parser.add_argument("--log-file", help="write output to a log file", default=False, action="store_true")  # noqa
-    parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
+    parser.add_argument("--project", help="gcp project name", default=RdrEnvironment.PROD.value)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
-    parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--service-account", help="gcp iam service account",
+                        default=f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com') #noqa
     # TODO:  Replace CONSENT_DOC_ID environment variable with reading the doc ID value from the config settings
     parser.add_argument("--doc-id", type=str,
                         help="A google sheet ID which can override a CONSENT_DOC_ID env var")
     parser.add_argument("--report-type", type=str, default="daily_uploads", metavar='REPORT',
                         help="Report to generate.  Default is daily_uploads")
     parser.add_argument("--report-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
-                        help="Date of the consent validation job in YYYY-MM-DD format.  Default is today's date")
+                        help="Date of the consents (authored) in YYYY-MM-DD format.  Default is yesterday's date")
     parser.add_argument("--csv-file", type=str,
                         help="output filename for the CSV error list. " +\
                                            " Default is YYYYMMDD_consent_errors.csv where YYYYMMDD is the report date")
@@ -669,6 +673,7 @@ def run():
                         help="Only generate the CSV errors file, skip generating google sheet content")
     parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES.keys())}}}.'
     args = parser.parse_args()
+
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
         process = ProgramTemplateClass(args, gcp_env)

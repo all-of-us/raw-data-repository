@@ -148,6 +148,8 @@ class BQBiobankSampleSchema(BQSchema):
     bbs_disposed = BQField('bbs_disposed', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     bbs_disposed_reason = BQField('bbs_disposed_reason', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     bbs_disposed_reason_id = BQField('bbs_disposed_reason_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    bbs_biobank_stored_sample_id = BQField('bbs_biobank_stored_sample_id', BQFieldTypeEnum.STRING,
+                                           BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankOrderSchema(BQSchema):

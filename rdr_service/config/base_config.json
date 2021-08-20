@@ -18,7 +18,8 @@
     "questionnaireOnCopeNov",
     "questionnaireOnCopeDec",
     "questionnaireOnCopeFeb",
-    "questionnaireOnCopeVaccineMinute1"
+    "questionnaireOnCopeVaccineMinute1",
+    "questionnaireOnCopeVaccineMinute2"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",

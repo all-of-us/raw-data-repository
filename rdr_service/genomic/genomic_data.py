@@ -132,6 +132,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.cramReceived == 1) &
                 (GenomicGCValidationMetrics.cramMd5Received == 1) &
                 (GenomicGCValidationMetrics.craiReceived == 1) &
+                (GenomicGCValidationMetrics.gvcfReceived == 1) &
+                (GenomicGCValidationMetrics.gvcfMd5Received == 1) &
                 (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']))
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(

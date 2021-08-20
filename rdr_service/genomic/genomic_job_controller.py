@@ -10,13 +10,16 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs
-
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import (
+    GAE_PROJECT,
     GENOMIC_GC_METRICS_BUCKET_NAME,
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
-    MissingConfigException, RDR_SLACK_WEBHOOKS)
+    MissingConfigException,
+    RDR_SLACK_WEBHOOKS
+)
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
@@ -1085,6 +1088,16 @@ class GenomicJobController:
 
         logging.warning(message)
 
+    @staticmethod
+    def execute_cloud_task(payload, endpoint):
+        if GAE_PROJECT != 'localhost':
+            _task = GCPCloudTask()
+            _task.execute(
+                endpoint,
+                payload=payload,
+                queue='genomics'
+            )
+
     def _end_run(self):
         """Updates the genomic_job_run table with end result"""
         self.job_run_dao.update_run_record(
@@ -1183,13 +1196,7 @@ class GenomicJobController:
         :return: sendgrid response
         """
         sg = sendgrid.SendGridAPIClient(api_key=config.getSetting(config.SENDGRID_KEY))
-
         response = sg.client.mail.send.post(request_body=_email)
-
-        # print(response.status_code)
-        # print(response.body)
-        # print(response.headers)
-
         return response
 
 

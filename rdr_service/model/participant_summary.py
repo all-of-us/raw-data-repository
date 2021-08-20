@@ -818,6 +818,14 @@ class ParticipantSummary(Base):
     questionnaireOnCopeVaccineMinute1Authored = Column("questionnaire_on_cope_vaccine_minute_1_authored", UTCDateTime)
     "Indicates the time at which the participant completed the first COPE Covid Vaccine Minute survey"
 
+    questionnaireOnCopeVaccineMinute2 = Column(
+        "questionnaire_on_cope_vaccine_minute_2", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
+    )
+    "Indicates whether the participant has submitted a response to the second COPE Covid Vaccine Minute survey"
+
+    questionnaireOnCopeVaccineMinute2Authored = Column("questionnaire_on_cope_vaccine_minute_2_authored", UTCDateTime)
+    "Indicates the time at which the participant completed the second COPE Covid Vaccine Minute survey"
+
     questionnaireOnDnaProgram = Column(
         "questionnaire_on_dna_program", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
