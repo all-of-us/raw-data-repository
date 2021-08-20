@@ -3003,7 +3003,13 @@ class ManifestCompiler:
     This component compiles Genomic manifests
     based on definitions provided by ManifestDefinitionProvider
     """
-    def __init__(self, run_id, bucket_name=None, max_num=None, controller=None):
+    def __init__(
+        self,
+        run_id,
+        bucket_name=None,
+        max_num=None,
+        controller=None
+    ):
         self.run_id = run_id
         self.bucket_name = bucket_name
         self.max_num = max_num
@@ -3033,26 +3039,30 @@ class ManifestCompiler:
         self.manifest_def = self.def_provider.get_def(manifest_type)
         source_data = self._pull_source_data()
 
-        if source_data:
-            if self.max_num and len(source_data) > self.max_num:
-                current_list = []
-                count = 0
+        if not source_data:
+            logging.info(f'No records found for manifest type: {manifest_type}.')
+            return {
+                "code": GenomicSubProcessResult.NO_FILES,
+                "record_count": 0,
+            }
 
-                for obj in source_data:
-                    current_list.append(obj)
+        validation_failed, message = self._validate_source_data(source_data, manifest_type)
+        if validation_failed:
+            self.controller.create_incident(
+                source_job_run_id=self.run_id,
+                code=GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name,
+                slack=True,
+                message=message
+            )
+            raise RuntimeError
 
-                    if len(current_list) == self.max_num:
-                        count += 1
-                        self.output_file_name = self.manifest_def.output_filename
-                        self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
-                        logging.info(
-                            f'Preparing manifest of type {manifest_type}...'
-                            f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-                        )
-                        self._write_and_upload_manifest(current_list)
-                        current_list.clear()
+        if self.max_num and len(source_data) > self.max_num:
+            current_list = []
+            count = 0
 
-                if current_list:
+            for obj in source_data:
+                current_list.append(obj)
+                if len(current_list) == self.max_num:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
@@ -3061,28 +3071,37 @@ class ManifestCompiler:
                         f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                     )
                     self._write_and_upload_manifest(current_list)
+                    current_list.clear()
 
-            else:
+            if current_list:
+                count += 1
                 self.output_file_name = self.manifest_def.output_filename
-                # If the new manifest is a feedback manifest,
-                # it will have an input manifest
-                if "input_manifest" in kwargs.keys():
-                    # AW2F manifest file name is based of of AW1
-                    if manifest_type == GenomicManifestTypes.AW2F:
-                        new_name = kwargs['input_manifest'].filePath.split('/')[-1]
-                        new_name = new_name.replace('.csv', '_contamination.csv')
-                        self.output_file_name = self.manifest_def.output_filename.replace(
-                            "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
-                            f"{new_name}"
-                        )
+                self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
                     f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                 )
-                self._write_and_upload_manifest(source_data)
+                self._write_and_upload_manifest(current_list)
+        else:
+            self.output_file_name = self.manifest_def.output_filename
+            # If the new manifest is a feedback manifest,
+            # it will have an input manifest
+            if "input_manifest" in kwargs.keys():
+                # AW2F manifest file name is based of of AW1
+                if manifest_type == GenomicManifestTypes.AW2F:
+                    new_name = kwargs['input_manifest'].filePath.split('/')[-1]
+                    new_name = new_name.replace('.csv', '_contamination.csv')
+                    self.output_file_name = self.manifest_def.output_filename.replace(
+                        "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
+                        f"{new_name}"
+                    )
+            logging.info(
+                f'Preparing manifest of type {manifest_type}...'
+                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+            )
+            self._write_and_upload_manifest(source_data)
 
             member_ids = []
-            record_count = len(source_data)
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
                 if member is None:
@@ -3107,14 +3126,12 @@ class ManifestCompiler:
                 }
                 self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
 
-            result = {
+            return {
                 "code": GenomicSubProcessResult.SUCCESS,
-                "record_count": record_count,
+                "record_count": len(source_data),
             }
-            return result
 
         logging.info(f'No records found for manifest type: {manifest_type}.')
-
         return {
             "code": GenomicSubProcessResult.NO_FILES,
             "record_count": 0,
@@ -3127,6 +3144,53 @@ class ManifestCompiler:
         """
         with self.member_dao.session() as session:
             return session.execute(self.manifest_def.source_data).fetchall()
+
+    def _validate_source_data(self, data, manifest_type):
+        invalid = False
+        message = None
+
+        if manifest_type in [
+            GenomicManifestTypes.AW3_ARRAY,
+            GenomicManifestTypes.AW3_WGS
+        ]:
+            prefix = get_biobank_id_prefix()
+            path_positions = []
+
+            for i, col in enumerate(self.manifest_def.columns):
+                if 'sample_id' in col:
+                    sample_ids = [row[i] for row in data]
+                if 'biobank_id' in col:
+                    biobank_ids = [row[i] for row in data]
+                if '_path' in col:
+                    path_positions.append(i)
+
+            needs_prefixes = any(bid for bid in biobank_ids if prefix not in bid)
+            if needs_prefixes:
+                message = 'Biobank IDs are missing correct prefix'
+                invalid = True
+                return invalid, message
+
+            biobank_ids.clear()
+
+            dup_sample_ids = {sample_id for sample_id in sample_ids if sample_ids.count(sample_id) > 1}
+            if dup_sample_ids:
+                message = f'Sample IDs {list(dup_sample_ids)} are not distinct'
+                invalid = True
+                return invalid, message
+
+            sample_ids.clear()
+
+            for row in data:
+                for i, val in enumerate(row):
+                    if i in path_positions and val:
+                        if not val.startswith('gs://') \
+                            or (val.startswith('gs://')
+                                and len(val.split('gs://')[1].split('/')) < 3):
+                            message = f'Path {val} is invalid formatting'
+                            invalid = True
+                            return invalid, message
+
+        return invalid, message
 
     def _write_and_upload_manifest(self, source_data):
         """

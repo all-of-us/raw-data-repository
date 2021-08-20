@@ -340,4 +340,3 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.event_type, loop_started)
         self.assertEqual(started_genomic_record.module_type, 'hdr')
 
-
