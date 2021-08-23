@@ -29,6 +29,7 @@ class BaseGenomicTaskApi(Resource):
     def __init__(self):
         self.data = None
         self.cloud_req_dao = GenomicCloudRequestsDao()
+        self.member_dao = GenomicSetMemberDao()
         self.file_paths = None
 
     @task_auth_required
@@ -334,10 +335,8 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculate contamination category
     """
-
     def __init__(self):
         super(CalculateContaminationCategoryApi, self).__init__()
-        self.dao = GenomicSetMemberDao()
 
     def post(self):
         super(CalculateContaminationCategoryApi, self).post()
@@ -360,7 +359,7 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
         genomic_ingester = GenomicFileIngester(job_id=GenomicJob.RECALCULATE_CONTAMINATION_CATEGORY)
 
         # Get genomic_set_member and gc metric objects
-        with self.dao.session() as s:
+        with self.member_dao.session() as s:
             record = s.query(GenomicSetMember, GenomicGCValidationMetrics).filter(
                 GenomicSetMember.id == member_id,
                 GenomicSetMember.collectionTubeId != None,
@@ -422,3 +421,26 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
 
         logging.info('Complete.')
         return {"success": True}
+
+
+class GenomicSetMemberJobRunApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Update GenomicSetMember field with job run id
+    """
+    def post(self):
+        super(GenomicSetMemberJobRunApi, self).post()
+        member_ids = self.data.get('member_ids')
+        job_run_id = self.data.get('job_run_id')
+        field = self.data.get('field')
+
+        if not member_ids:
+            logging.warning('List of member ids are required.')
+            return {"success": False}
+
+        logging.info(f'Updating genomic set member field {field} with job run id {job_run_id}')
+
+        self.member_dao.update_member_job_run_id(member_ids, job_run_id, field)
+
+        logging.info('Complete.')
+        return {"success": True}
+

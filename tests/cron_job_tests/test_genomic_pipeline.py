@@ -1023,7 +1023,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    def test_gc_metrics_reconciliation_vs_array_data(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gc_metrics_reconciliation_vs_array_data(self, cloud_task):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
@@ -1094,6 +1095,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
 
+        self.assertTrue(cloud_task.called)
+
         gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
@@ -1125,12 +1128,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member updated with job ID
         member = self.member_dao.get(1)
-        self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
 
         # Test member updated with job ID
         member = self.member_dao.get(2)
-        self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         missing_file = self.missing_file_dao.get(1)
@@ -1151,7 +1152,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_aw2_wgs_reconciliation_vs_wgs_data(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw2_wgs_reconciliation_vs_wgs_data(self, cloud_task):
 
         # Create the fake ingested data
         self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
@@ -1203,6 +1205,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
 
+        self.assertTrue(cloud_task.called)
+
         gc_record = self.metrics_dao.get(1)
 
         # Test the gc_metrics were updated with reconciliation data
@@ -1224,7 +1228,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
-        self.assertEqual(2, member.reconcileMetricsSequencingJobRunId)
         self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
 
         missing_file = self.missing_file_dao.get(1)
@@ -2311,7 +2314,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(GenomicJob.AW1F_ALERTS, job_run.jobId)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
 
-    def test_gem_a1_manifest_end_to_end(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gem_a1_manifest_end_to_end(self, cloud_task):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -2398,6 +2402,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
+        self.assertTrue(cloud_task.called)
+
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
         a1_time = datetime.datetime(2020, 4, 1, 0, 0, 0, 0)
@@ -2424,7 +2430,6 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.id == 1
             ).one()
 
-        self.assertEqual(4, test_member_1.gemA1ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.A1, test_member_1.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2561,7 +2566,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_gem_a3_manifest_workflow(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_gem_a3_manifest_workflow(self, cloud_task):
         # Create A1 manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.GEM_A1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -2595,15 +2601,15 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_now):
             genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
 
+        self.assertTrue(cloud_task.called)
+
         # Test the members' job run ID
         # Picked up by job
         test_member_3 = self.member_dao.get(3)
-        self.assertEqual(2, test_member_3.gemA3ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
 
         # picked up by job
         test_member_2 = self.member_dao.get(2)
-        self.assertEqual(2, test_member_2.gemA3ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_2.genomicWorkflowState)
 
         members = self.member_dao.get_all()
@@ -2651,7 +2657,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_cvl_w1_manifest(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_cvl_w1_manifest(self, cloud_task):
 
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
@@ -2714,6 +2721,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
+        self.assertTrue(cloud_task.called)
+
         # Run the W1 manifest workflow
         fake_dt = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
 
@@ -2724,7 +2733,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member was updated
         member = self.member_dao.get(2)
-        self.assertEqual(4, member.cvlW1ManifestJobRunId)
         self.assertEqual(GenomicWorkflowState.W1, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2819,7 +2827,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_cvl_w3_manifest_generation(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_cvl_w3_manifest_generation(self, cloud_task):
         # Create W1 manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.CREATE_CVL_W1_MANIFESTS,
                                               startTime=clock.CLOCK.now(),
@@ -2841,9 +2850,10 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_now):
             genomic_pipeline.create_cvl_w3_manifest()  # run_id 2
 
+        self.assertTrue(cloud_task.called)
+
         # Test member was updated
         member = self.member_dao.get(1)
-        self.assertEqual(2, member.cvlW3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.W3, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -2887,7 +2897,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_aw3_array_manifest_generation(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_manifest_generation(self, cloud_task):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -2957,6 +2968,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
+        self.assertTrue(cloud_task.called)
+
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -2967,8 +2980,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member was updated
         member = self.member_dao.get(2)
-
-        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -3030,7 +3041,8 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_aw3_array_manifest_with_max_num(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_array_manifest_with_max_num(self, cloud_task):
         stored_samples = [
             (1, 1001),
             (2, 1002),
@@ -3108,11 +3120,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
+        self.assertTrue(cloud_task.called)
+
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow(max_num=3)  # run_id = 4
 
         member = self.member_dao.get(2)
-        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -3155,7 +3168,183 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
-    def test_aw3_wgs_manifest_generation(self):
+    def test_aw3_array_manifest_validation(self):
+        stored_samples = [
+            (1, 1001),
+            (2, 1002),
+            (3, 1003),
+            (4, 1004),
+            (5, 1005),
+            (6, 1006),
+        ]
+
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW3_ARRAY_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        self._create_fake_datasets_for_gc_tests(
+            len(stored_samples),
+            arr_override=True,
+            array_participants=range(1, len(stored_samples) + 1),
+            recon_gc_man_id=1,
+            genome_center='jh',
+            genomic_workflow_state=GenomicWorkflowState.AW1
+        )
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+
+        self._create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples(stored_samples)
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        sequencing_test_files = []
+        for sample in stored_samples:
+            sequencing_test_files.append(
+                (f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz.tbi',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}.vcf.gz.md5sum',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Red.idat',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Grn.idat',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Red.idat.md5sum',
+                 f'test_data_folder/1000{sample[0]}_R01C0{sample[0]}_Grn.idat.md5sum',
+                 )
+            )
+
+        sequencing_test_files = [file for file in chain.from_iterable(sequencing_test_files)]
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
+
+        incident_name = GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name
+        should_be_incident_count = 0
+
+        current_members = self.member_dao.get_all()
+
+        first_sample_id = current_members[0].sampleId
+        last_sample_id = None
+        last_id = None
+
+        for i, _ in enumerate(current_members):
+            if (i + 1) == len(current_members):
+                member = self.member_dao.get(current_members[i].id)
+                last_id = i + 1
+                last_sample_id = member.sampleId
+                member.sampleId = first_sample_id
+                self.member_dao.update(member)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            f"Sample IDs ['{first_sample_id}'] are not distinct"
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        member = self.member_dao.get(last_id)
+        member.sampleId = last_sample_id
+        self.member_dao.update(member)
+
+        current_metrics = self.metrics_dao.get_all()
+
+        bad_data_path = None
+        last_id = None
+
+        for i, _ in enumerate(current_metrics):
+            if (i + 1) == len(current_metrics):
+                metric = self.metrics_dao.get(current_metrics[i].id)
+                last_id = i + 1
+                edited_path = metric.idatRedPath.split('gs://')
+                edited_path = edited_path[1]
+                bad_data_path = edited_path
+                metric.idatRedPath = edited_path
+                self.metrics_dao.upsert(metric)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(5)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            f"Path {bad_data_path} is invalid formatting"
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        no_bucket_path = 'gs://test_data_folder/10006_R01C06_Red.idat'
+        update_metric = self.metrics_dao.get(last_id)
+        update_metric.idatRedPath = no_bucket_path
+        self.metrics_dao.upsert(update_metric)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(6)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            f"Path {no_bucket_path} is invalid formatting"
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        all_incidents = [incident for incident in self.incident_dao.get_all() if incident.code ==
+                         incident_name]
+
+        self.assertEqual(len(all_incidents), should_be_incident_count)
+        self.assertTrue(all(i for i in all_incidents if i.slack_notification == 1 and i.slack_notification_date is
+                            not None))
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw3_wgs_manifest_generation(self, cloud_task):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
                                               startTime=clock.CLOCK.now(),
@@ -3176,7 +3365,6 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         self._update_test_sample_ids()
-
         self._create_stored_samples([(2, 1002)])
 
         # Create corresponding array genomic_set_members
@@ -3228,6 +3416,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
 
+        self.assertTrue(cloud_task.called)
+
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
@@ -3238,8 +3428,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member was updated
         member = self.member_dao.get(2)
-
-        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -3309,6 +3497,184 @@ class GenomicPipelineTest(BaseTestCase):
             run_obj = self.job_run_dao.get(4)
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw3_wgs_manifest_validation(self):
+        stored_samples = [
+            (2, 1002),
+            (3, 1003),
+            (4, 1004),
+            (5, 1005),
+            (6, 1006),
+        ]
+
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW3_WGS_WORKFLOW,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        self._create_fake_datasets_for_gc_tests(
+            len(stored_samples) + 1,
+            arr_override=False,
+            recon_gc_man_id=1,
+            genome_center='rdr',
+            genomic_workflow_state=GenomicWorkflowState.AW1
+        )
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        self._create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples(stored_samples)
+
+        for i in range(1, 8):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000 + i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        sequencing_test_files = []
+        for sample in stored_samples:
+            sequencing_test_files.append(
+                (f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz.tbi',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.vcf.gz.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz.tbi',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.vcf.gz.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram.md5sum',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.cram.crai',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.gvcf.gz',
+                 f'test_data_folder/RDR_{sample[0]}_100{sample[0]}_1000{sample[0]}_1.hard-filtered.gvcf.gz.md5sum',)
+            )
+
+        sequencing_test_files = [file for file in chain.from_iterable(sequencing_test_files)]
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': f.split('_')[4],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
+
+        incident_name = GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name
+        should_be_incident_count = 0
+
+        current_members = self.member_dao.get_all()
+        current_members = [m for m in current_members if m.genomeType == 'aou_wgs']
+
+        first_sample_id = current_members[0].sampleId
+        last_sample_id = None
+        last_id = None
+
+        for i, _ in enumerate(current_members):
+            if (i + 1) == len(current_members):
+                member = self.member_dao.get(current_members[i].id)
+                last_id = i + 1
+                last_sample_id = member.sampleId
+                member.sampleId = first_sample_id
+                self.member_dao.update(member)
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+
+        # still is success with same sample_ids becuase of distinct on query
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        member = self.member_dao.get(last_id)
+        member.sampleId = last_sample_id
+        self.member_dao.update(member)
+
+        current_metrics = self.metrics_dao.get_all()
+
+        bad_data_path = None
+        last_id = None
+
+        for i, _ in enumerate(current_metrics):
+            if (i + 1) == len(current_metrics):
+                metric = self.metrics_dao.get(current_metrics[i].id)
+                last_id = i + 1
+                edited_path = metric.rawVcfMd5Path.split('gs://')
+                edited_path = edited_path[1]
+                bad_data_path = edited_path
+                metric.rawVcfMd5Path = edited_path
+                self.metrics_dao.upsert(metric)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(5)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            f'Path {bad_data_path} is invalid formatting'
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        no_bucket_path = 'gs://test_data_folder/RDR_6_1006_10006_1.vcf.gz.md5sum'
+        update_metric = self.metrics_dao.get(last_id)
+        update_metric.rawVcfMd5Path = no_bucket_path
+        self.metrics_dao.upsert(update_metric)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(6)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            f'Path {no_bucket_path} is invalid formatting'
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        all_incidents = [incident for incident in self.incident_dao.get_all() if incident.code ==
+                         incident_name]
+
+        self.assertEqual(len(all_incidents), should_be_incident_count)
+        self.assertTrue(all(i for i in all_incidents if i.slack_notification == 1 and i.slack_notification_date is
+                            not None))
 
     def test_aw3_wgs_manifest_with_max_num(self):
         stored_samples = [
@@ -3405,7 +3771,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member was updated
         member = self.member_dao.get(2)
-        self.assertEqual(4, member.aw3ManifestJobRunID)
         self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
         # Test the manifest file contents
@@ -3847,7 +4212,8 @@ class GenomicPipelineTest(BaseTestCase):
         # manifest_feedback
         self.assertEqual(1, feedback_record.inputManifestFileId)
 
-    def test_aw2f_manifest_generation_e2e(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_aw2f_manifest_generation_e2e(self, cloud_task):
         # Create test genomic members
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=range(1, 4),
@@ -3927,18 +4293,14 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_dt):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
+        self.assertTrue(cloud_task.called)
+
         # Test manifest feedback record was updated
         manifest_feedback_record = self.manifest_feedback_dao.get(1)
 
         self.assertEqual(1, manifest_feedback_record.inputManifestFileId)  # id = 1 is the AW1
         self.assertEqual(2, manifest_feedback_record.feedbackManifestFileId)  # id = 2 is the AW2F
 
-        # check aw2f_job_run_id
-        members = self.member_dao.get_all()
-
-        for member in members:
-            if member.id in (1, 2):
-                self.assertEqual(7, member.aw2fManifestJobRunID)
 
         # Test the manifest file contents
         expected_aw2f_columns = (

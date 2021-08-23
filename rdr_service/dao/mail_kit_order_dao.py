@@ -126,6 +126,10 @@ class MailKitOrderDao(UpdatableDao):
             }}
             order['order']['tests'][0]['test'].update(client_fields)
 
+            # The system that the biobank uses to process orders can't take race strings greater than 20 characters
+            # and the race data isn't needed here
+            order['order']['patient']['race'] = None
+
         order['order']['comments'] = "Salivary Kit Order, direct from participant"
         return order, is_version_two
 
