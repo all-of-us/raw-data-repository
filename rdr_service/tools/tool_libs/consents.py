@@ -105,7 +105,7 @@ class ConsentTool(ToolBase):
                     parser_func=ConsentSyncStatus,
                     callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
                 )
-                self._consent_dao.batch_update_consent_files(session, [file])
+                self._consent_dao.batch_update_consent_files([file], session)
 
     def validate_consents(self):
         sync_controller = ConsentSyncController(
@@ -143,7 +143,7 @@ class ConsentTool(ToolBase):
                 data_to_upload.append(ConsentFile(**validation_data))
 
         with self.get_session() as session:
-            self._consent_dao.batch_update_consent_files(session, data_to_upload)
+            self._consent_dao.batch_update_consent_files(data_to_upload, session)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):

@@ -172,7 +172,7 @@ class ConsentFileDaoTest(BaseTestCase):
                 result.sync_status = ConsentSyncStatus.OBSOLETE
                 updates_to_send.append(result)
 
-            self.consent_dao.batch_update_consent_files(session, updates_to_send)
+            self.consent_dao.batch_update_consent_files(updates_to_send, session)
             session.commit()
             results = self.consent_dao.get_all()
             self.assertEqual(2, len(results))
