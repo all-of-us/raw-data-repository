@@ -388,6 +388,29 @@ class AppUtilTest(BaseTestCase):
         with Flask('test').test_request_context(headers={'Authorization': 'Bearer token'}):
             self.assertEqual(another_email, app_util.get_oauth_id())
 
+    def test_batch_manager(self):
+        processed_objects = []
+
+        def dummy_callback(obj_list):
+            processed_objects.extend(obj_list)
+
+        with app_util.BatchManager(batch_size=3, callback=dummy_callback) as batch_manager:
+            batch_manager.add(4)
+            batch_manager.add(2)
+
+            # Since the batch size hasn't been reached, make sure nothing's been processed yet
+            self.assertEqual([], processed_objects)
+
+            # Add one more to make a complete batch and trigger the batch processing
+            batch_manager.add(6)
+            self.assertEqual([4, 2, 6], processed_objects)
+
+            # Add another and make sure it doesn't get processed on it's own
+            batch_manager.add(10)
+            self.assertEqual([4, 2, 6], processed_objects)
+
+        # Make sure that the batch processes the remaining items when the context closes
+        self.assertEqual([4, 2, 6, 10], processed_objects)
 
 
 if __name__ == "__main__":
