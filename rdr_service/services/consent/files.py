@@ -76,6 +76,13 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_gror_consent(blob_wrapper)
         ]
 
+    def get_primary_update_consents(self) -> List['PrimaryConsentUpdateFile']:
+        return [
+            self._build_primary_update_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_primary_update_consent(blob_wrapper)
+        ]
+
     @abstractmethod
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
@@ -93,6 +100,10 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -106,6 +117,10 @@ class ConsentFileAbstractFactory(ABC):
 
     @abstractmethod
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
+        ...
+
+    @abstractmethod
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
         ...
 
     @abstractmethod
@@ -145,6 +160,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return basename(blob_wrapper.blob.name).startswith('GROR')
 
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        return basename(blob_wrapper.blob.name).startswith('PrimaryConsentUpdate')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -156,6 +174,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
         return VibrentGrorConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
+        return VibrentPrimaryConsentUpdateFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -177,6 +198,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pass
 
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pass
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         pass
 
@@ -187,6 +211,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pass
 
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
+        pass
+
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
         pass
 
     def _get_source_bucket(self) -> str:
@@ -272,6 +299,25 @@ class GrorConsentFile(ConsentFile, ABC):
         ...
 
 
+class PrimaryConsentUpdateFile(ConsentFile, ABC):
+    """
+    Updated consent file received for cohort 1 participants that
+    needed to agree to (or decline) new wording for DNA data
+    """
+
+    def is_agreement_selected(self):
+        for element in self._get_agreement_check_elements():
+            for child in element:
+                if isinstance(child, LTCurve):
+                    return True
+
+        return False
+
+    @abstractmethod
+    def _get_agreement_check_elements(self):
+        ...
+
+
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -348,6 +394,28 @@ class VibrentGrorConsentFile(GrorConsentFile):
             search_box = Rect.from_edges(left=70, right=73, bottom=475, top=478)
 
         return self.pdf.get_elements_intersecting_box(search_box, page=self._SIGNATURE_PAGE)
+
+
+class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
+    _SIGNATURE_PAGE = 15
+
+    def _get_signature_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=150, right=400, bottom=155, top=160),
+            page=self._SIGNATURE_PAGE
+        )
+
+    def _get_date_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=130, right=400, bottom=110, top=115),
+            page=self._SIGNATURE_PAGE
+        )
+
+    def _get_agreement_check_elements(self):
+        return self.pdf.get_elements_intersecting_box(
+            Rect.from_edges(left=70, right=73, bottom=475, top=478),
+            page=self._SIGNATURE_PAGE
+        )
 
 
 class Pdf:

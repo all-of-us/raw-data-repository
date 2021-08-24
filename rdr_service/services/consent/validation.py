@@ -253,6 +253,8 @@ class ConsentValidationController:
                     new_validation_results = validator.get_ehr_validation_results()
                 elif consent_type == ConsentType.GROR:
                     new_validation_results = validator.get_gror_validation_results()
+                elif consent_type == ConsentType.PRIMARY_UPDATE:
+                    new_validation_results = validator.get_primary_update_validation_results()
 
                 file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
                 if file_ready_for_sync is not None:
@@ -308,6 +310,13 @@ class ConsentValidationController:
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
+            if self._has_primary_update_consent(
+                summary=summary,
+                min_authored=min_consent_date
+            ):
+                output_strategy.add_all(
+                    self._process_validation_results(validator.get_primary_update_validation_results())
+                )
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
@@ -321,6 +330,8 @@ class ConsentValidationController:
             output_strategy.add_all(validator.get_ehr_validation_results())
         if self._has_consent(consent_status=summary.consentForGenomicsROR):
             output_strategy.add_all(validator.get_gror_validation_results())
+        if self._has_primary_update_consent(summary):
+            output_strategy.add_all(validator.get_primary_update_validation_results())
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
@@ -333,6 +344,17 @@ class ConsentValidationController:
     @classmethod
     def _has_consent(cls, consent_status, authored=None, min_authored=None):
         return consent_status == QuestionnaireStatus.SUBMITTED and (min_authored is None or authored > min_authored)
+
+    @classmethod
+    def _has_primary_update_consent(cls, summary: ParticipantSummary, min_authored=None):
+        if min_authored is None and summary.consentForStudyEnrollmentAuthored > min_authored:
+            return (
+                summary.consentCohort == 1 and
+                summary.consentForStudyEnrollmentAuthored.date() !=
+                summary.consentForStudyEnrollmentFirstYesAuthored.date()
+            )
+        else:
+            return False
 
     def _build_validator(self, participant_summary: ParticipantSummary) -> 'ConsentValidator':
         consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
@@ -423,6 +445,13 @@ class ConsentValidator:
             consent_type=ConsentType.GROR,
             additional_validation=check_for_checkmark,
             expected_sign_datetime=self.participant_summary.consentForGenomicsRORAuthored
+        )
+
+    def get_primary_update_validation_results(self) -> List[ParsingResult]:
+        return self._generate_validation_results(
+            consent_files=self.factory.get_primary_update_consents(),
+            consent_type=ConsentType.PRIMARY_UPDATE,
+            expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored
         )
 
     def _validate_is_va_file(self, consent, result: ParsingResult):
