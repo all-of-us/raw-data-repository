@@ -154,3 +154,8 @@ cron:
   timezone: America/New_York
   schedule: every sunday 3:00
   target: offline
+- description: Calculate retention metrics
+  url: /offline/UpdateRetentionEligibleMetrics
+  timezone: America/New_York
+  schedule: every day 1:15
+  target: offline
