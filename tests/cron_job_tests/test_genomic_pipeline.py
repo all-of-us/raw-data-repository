@@ -4832,7 +4832,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(current_record.feedback_id, updated_record.feedback_id)
         self.assertEqual(current_record.raw_feedback_count, updated_record.feedbackRecordCount)
 
-    def resolve_gc_missing_files(self):
+    def test_resolve_gc_missing_files(self):
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
