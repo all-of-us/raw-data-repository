@@ -347,7 +347,7 @@ class ConsentValidationController:
 
     @classmethod
     def _has_primary_update_consent(cls, summary: ParticipantSummary, min_authored=None):
-        if min_authored is None and summary.consentForStudyEnrollmentAuthored > min_authored:
+        if min_authored is None or summary.consentForStudyEnrollmentAuthored > min_authored:
             return (
                 summary.consentCohort == 1 and
                 summary.consentForStudyEnrollmentAuthored.date() !=
