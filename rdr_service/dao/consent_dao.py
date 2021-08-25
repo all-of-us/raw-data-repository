@@ -63,9 +63,16 @@ class ConsentDao(BaseDao):
         return query.all()
 
     @classmethod
-    def batch_update_consent_files(cls, session, consent_files: Collection[ConsentFile]):
+    def _batch_update_consent_files_with_session(cls, session, consent_files: Collection[ConsentFile]):
         for file_record in consent_files:
             session.merge(file_record)
+
+    def batch_update_consent_files(self, consent_files: Collection[ConsentFile], session=None):
+        if session is None:
+            with self.session() as dao_session:
+                return self._batch_update_consent_files_with_session(dao_session, consent_files)
+        else:
+            return self._batch_update_consent_files_with_session(session, consent_files)
 
     @classmethod
     def get_validation_results_for_participants(cls, session,

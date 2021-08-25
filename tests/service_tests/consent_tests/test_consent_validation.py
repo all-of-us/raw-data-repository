@@ -319,7 +319,7 @@ class ConsentValidationTesting(BaseTestCase):
             output_strategy.add_all([new_primary_result, previous_ehr_result, new_gror_result])
 
         # Verify that both records that provide new validation information were stored
-        consent_dao_mock.batch_update_consent_files.assert_called_with(mock.ANY, [new_primary_result, new_gror_result])
+        consent_dao_mock.batch_update_consent_files.assert_called_with([new_primary_result, new_gror_result], mock.ANY)
 
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
