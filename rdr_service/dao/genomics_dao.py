@@ -614,19 +614,24 @@ class GenomicSetMemberDao(UpdatableDao):
         if is_job_run and field not in self.valid_job_id_fields:
             logging.error(f'{field} is not a valid job ID field.')
             return GenomicSubProcessResult.ERROR
+        try:
+            if type(member_ids) is not list:
+                member_ids = [member_ids]
 
-        if type(member_ids) is not list:
-            member_ids = [member_ids]
+            for m_id in member_ids:
+                member = self.get(m_id)
+                setattr(member, field, value)
+                self.update(member)
 
-        for m_id in member_ids:
-            member = self.get(m_id)
-            setattr(member, field, value)
-            self.update(member)
+                bq_genomic_set_member_update(member.id, project_id=project_id)
+                genomic_set_member_update(member.id)
 
-            bq_genomic_set_member_update(member.id, project_id=project_id)
-            genomic_set_member_update(member.id)
+            return GenomicSubProcessResult.SUCCESS
 
-        return GenomicSubProcessResult.SUCCESS
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
 
     def update_member_state(self, member, new_state, project_id=None):
         """
