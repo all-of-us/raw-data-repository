@@ -70,7 +70,7 @@ class StoreResultStrategy(ValidationOutputStrategy):
             existing_results=previous_results,
             results_to_filter=self._results
         )
-        self._consent_dao.batch_update_consent_files(self._session, new_results_to_store)
+        self._consent_dao.batch_update_consent_files(new_results_to_store, self._session)
         self._session.commit()
 
 
@@ -112,7 +112,7 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                     )
                     results_to_update.extend(new_results)
 
-        self.consent_dao.batch_update_consent_files(self.session, results_to_update)
+        self.consent_dao.batch_update_consent_files(results_to_update, self.session)
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
@@ -272,7 +272,7 @@ class ConsentValidationController:
                         if matching_previous_result is None:
                             validation_updates.append(new_result)
 
-        self.consent_dao.batch_update_consent_files(session, validation_updates)
+        self.consent_dao.batch_update_consent_files(validation_updates, session)
 
     def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
                                 max_consent_date=None):
