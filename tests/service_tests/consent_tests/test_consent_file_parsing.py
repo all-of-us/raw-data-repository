@@ -361,41 +361,6 @@ class ConsentFileParsingTest(BaseTestCase):
 
         return [basic_gror_case, no_confirmation_case, spanish_gror_case]
 
-    def _get_vibrent_ehr_test_data(self) -> List['EhrConsentTestData']:
-        six_empty_pages = [[], [], [], [], [], []]  # The EHR signature is expected to be on the 7th page
-        basic_ehr_pdf = self._build_pdf(pages=[
-            *six_empty_pages,
-            [
-                self._build_form_element(text='Test ehr', bbox=(125, 150, 450, 180)),
-                self._build_form_element(text='Dec 21, 2019', bbox=(125, 100, 450, 130))
-            ]
-        ])
-        basic_ehr_case = EhrConsentTestData(
-            file=files.VibrentEhrConsentFile(pdf=basic_ehr_pdf, blob=mock.MagicMock()),
-            expected_signature='Test ehr',
-            expected_sign_date=date(2019, 12, 21)
-        )
-
-        va_ehr_pdf = self._build_pdf(pages=[
-            *six_empty_pages,
-            [
-                self._build_pdf_element(
-                    cls=LTTextLineHorizontal,
-                    text='We may ask you to go to a local clinic to be measured'
-                ),
-                self._build_form_element(text='Test va ehr', bbox=(125, 150, 450, 180)),
-                self._build_form_element(text='Oct 10, 2020', bbox=(125, 100, 450, 130))
-            ]
-        ])
-        va_ehr_case = EhrConsentTestData(
-            file=files.VibrentEhrConsentFile(pdf=va_ehr_pdf, blob=mock.MagicMock()),
-            expected_signature='Test va ehr',
-            expected_sign_date=date(2020, 10, 10),
-            expected_to_be_va_file=True
-        )
-
-        return [basic_ehr_case, va_ehr_case]
-
     def _get_vibrent_primary_update_test_data(self) -> List['PrimaryUpdateConsentTestData']:
         # The GROR signature is expected to be on the 10th page
         thirteen_empty_pages = [
