@@ -16,9 +16,8 @@ class ConsentDao(BaseDao):
         super(ConsentDao, self).__init__(ConsentFile)
 
     @classmethod
-    def get_participants_with_consents_in_range(cls, session, start_date,
-                                                end_date=None) -> Collection[ParticipantSummary]:
-        query = session.query(
+    def _get_query_non_test_summaries(cls, session):
+        return session.query(
             ParticipantSummary
         ).join(
             Participant,
@@ -32,6 +31,11 @@ class ConsentDao(BaseDao):
                 ParticipantSummary.email.notlike('%@example.com')
             )
         )
+
+    @classmethod
+    def get_participants_with_consents_in_range(cls, session, start_date,
+                                                end_date=None) -> Collection[ParticipantSummary]:
+        query = cls._get_query_non_test_summaries(session)
         if end_date is None:
             query = query.filter(
                 or_(
@@ -52,6 +56,17 @@ class ConsentDao(BaseDao):
             )
         summaries = query.all()
         return summaries
+
+    @classmethod
+    def get_participants_needing_validation(cls, session) -> Collection[ParticipantSummary]:
+        query = cls._get_query_non_test_summaries(session)
+        query = query.outerjoin(
+            ConsentFile,
+            ConsentFile.participant_id == ParticipantSummary.participantId
+        ).filter(
+            ConsentFile.id.is_(None)
+        ).limit(5000)
+        return query.all()
 
     @classmethod
     def get_files_needing_correction(cls, session, min_modified_datetime: datetime = None) -> Collection[ConsentFile]:
