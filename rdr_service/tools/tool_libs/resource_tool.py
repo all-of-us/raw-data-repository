@@ -28,12 +28,7 @@ from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.bq_questionnaires import (
-    BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth,
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory,
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRWithdrawalIntro, BQPDRStopParticipating,
-    BQPDRCOPEVaccine1
-)
+from rdr_service.model import bq_questionnaires as bq_modules
 from rdr_service.model.participant import Participant
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
@@ -89,22 +84,23 @@ class ParticipantResourceClass(object):
                 # Generate participant questionnaire module response data
 
                 modules = (
-                    BQPDRConsentPII,
-                    BQPDRTheBasics,
-                    BQPDRLifestyle,
-                    BQPDROverallHealth,
-                    BQPDREHRConsentPII,
-                    BQPDRDVEHRSharing,
-                    BQPDRCOPEMay,
-                    BQPDRCOPENov,
-                    BQPDRCOPEDec,
-                    BQPDRCOPEFeb,
-                    BQPDRCOPEVaccine1,
-                    BQPDRFamilyHistory,
-                    BQPDRPersonalMedicalHistory,
-                    BQPDRHealthcareAccess,
-                    BQPDRStopParticipating,
-                    BQPDRWithdrawalIntro
+                    bq_modules.BQPDRConsentPII,
+                    bq_modules.BQPDRTheBasics,
+                    bq_modules.BQPDRLifestyle,
+                    bq_modules.BQPDROverallHealth,
+                    bq_modules.BQPDREHRConsentPII,
+                    bq_modules.BQPDRDVEHRSharing,
+                    bq_modules.BQPDRCOPEMay,
+                    bq_modules.BQPDRCOPENov,
+                    bq_modules.BQPDRCOPEDec,
+                    bq_modules.BQPDRCOPEFeb,
+                    bq_modules.BQPDRCOPEVaccine1,
+                    bq_modules.BQPDRCOPEVaccine2,
+                    bq_modules.BQPDRFamilyHistory,
+                    bq_modules.BQPDRPersonalMedicalHistory,
+                    bq_modules.BQPDRHealthcareAccess,
+                    bq_modules.BQPDRStopParticipating,
+                    bq_modules.BQPDRWithdrawalIntro
                 )
 
                 for module in modules:

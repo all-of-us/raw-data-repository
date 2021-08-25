@@ -6,13 +6,12 @@
 import logging
 from datetime import datetime
 
+
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
 from rdr_service.dao.bq_pdr_participant_summary_dao import BQPDRParticipantSummaryGenerator
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
-from rdr_service.model.bq_questionnaires import BQPDRConsentPII, BQPDRTheBasics, BQPDRLifestyle, BQPDROverallHealth, \
-    BQPDREHRConsentPII, BQPDRDVEHRSharing, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb, BQPDRFamilyHistory, \
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRStopParticipating, BQPDRWithdrawalIntro
+from rdr_service.model import bq_questionnaires as bq_modules
 from rdr_service.resource import generators
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
 
@@ -64,21 +63,23 @@ def batch_rebuild_participants_task(payload, project_id=None):
         if build_modules:
             # Generate participant questionnaire module response data
             modules = (
-                BQPDRConsentPII,
-                BQPDRTheBasics,
-                BQPDRLifestyle,
-                BQPDROverallHealth,
-                BQPDREHRConsentPII,
-                BQPDRDVEHRSharing,
-                BQPDRCOPEMay,
-                BQPDRCOPENov,
-                BQPDRCOPEDec,
-                BQPDRCOPEFeb,
-                BQPDRFamilyHistory,
-                BQPDRPersonalMedicalHistory,
-                BQPDRHealthcareAccess,
-                BQPDRStopParticipating,
-                BQPDRWithdrawalIntro
+                bq_modules.BQPDRConsentPII,
+                bq_modules.BQPDRTheBasics,
+                bq_modules.BQPDRLifestyle,
+                bq_modules.BQPDROverallHealth,
+                bq_modules.BQPDREHRConsentPII,
+                bq_modules.BQPDRDVEHRSharing,
+                bq_modules.BQPDRCOPEMay,
+                bq_modules.BQPDRCOPENov,
+                bq_modules.BQPDRCOPEDec,
+                bq_modules.BQPDRCOPEFeb,
+                bq_modules.BQPDRCopeVaccine1,
+                bq_modules.BQPDRCOPEVaccine2,
+                bq_modules.BQPDRFamilyHistory,
+                bq_modules.BQPDRPersonalMedicalHistory,
+                bq_modules.BQPDRHealthcareAccess,
+                bq_modules.BQPDRStopParticipating,
+                bq_modules.BQPDRWithdrawalIntro
             )
             for module in modules:
                 mod = module()

@@ -7,6 +7,12 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQFieldModeEnum, BQFieldTypeEnum
 from rdr_service.code_constants import PPI_SYSTEM
 
+#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, TO ENSURE THEY ARE PROPAGATED TO BIGQUERY, INCLUDING
+#   DURING PDR DATA REBUILDS, THE MODULE LISTS IN THE FOLLOWING FILES MUST ALSO BE UPDATED:
+#   rdr_service/resource/tasks.py
+#   rdr_service/tools/tool_libs/resource_tool.py
+#   rdr_service/model/__init__.py
+#
 class _BQModuleSchema(BQSchema):
     """
     Helper for dynamically generating a BQSchema for a specific questionnaire
