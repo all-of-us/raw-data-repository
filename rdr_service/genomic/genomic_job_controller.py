@@ -62,18 +62,20 @@ from rdr_service.services.slack_utils import SlackMessageHandler
 class GenomicJobController:
     """This class controls the tracking of Genomics subprocesses"""
 
-    def __init__(self, job_id,
-                 bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 sub_folder_name=None,
-                 sub_folder_tuple=None,
-                 archive_folder_name=None,
-                 bucket_name_list=None,
-                 storage_provider=None,
-                 bq_project_id=None,
-                 task_data=None,
-                 server_config=None,
-                 max_num=None
-                 ):
+    def __init__(
+        self,
+        job_id,
+        bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
+        sub_folder_name=None,
+        sub_folder_tuple=None,
+        archive_folder_name=None,
+        bucket_name_list=None,
+        storage_provider=None,
+        bq_project_id=None,
+        task_data=None,
+        server_config=None,
+        max_num=None
+    ):
 
         self.job_id = job_id
         self.job_run = None
@@ -92,6 +94,7 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
         self.max_num = max_num
+        self.member_ids_for_update = []
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
@@ -906,19 +909,22 @@ class GenomicJobController:
             # Set the feedback manifest name based on the input manifest name
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
-                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type,
-                                                                               _genome_type,
-                                                                               input_manifest=input_manifest)
+                result = self.manifest_compiler.generate_and_transfer_manifest(
+                    manifest_type,
+                    _genome_type,
+                    input_manifest=input_manifest
+                )
 
             else:
-                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type, _genome_type)
+                result = self.manifest_compiler.generate_and_transfer_manifest(
+                    manifest_type,
+                    _genome_type
+                )
 
             if result['code'] == GenomicSubProcessResult.SUCCESS:
                 logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
                 new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
-
                 now_time = datetime.utcnow()
-
                 new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(new_file_path)
 
                 if not new_manifest_record:
@@ -935,6 +941,13 @@ class GenomicJobController:
                     )
                     new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
+                    # if self.member_ids_for_update:
+                    #     self.execute_cloud_task({
+                    #         'member_ids': self.member_ids_for_update,
+                    #         'job_run_id': self.run_id,
+                    #         'field': self.manifest_def.job_run_field,
+                    #     }, 'genomic_set_member_job_run_task')
+                    #
                     bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
                     genomic_manifest_file_update(new_manifest_obj.id)
 

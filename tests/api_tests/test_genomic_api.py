@@ -1342,17 +1342,17 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertTrue(all([file for file in inserted_files if file.bucket_name == test_bucket_baylor]))
         self.assertTrue(all([file for file in inserted_files if file.file_path in test_file_paths]))
 
-    @mock.patch('rdr_service.dao.genomics_dao.GenomicSetMemberDao.update_member_job_run_id')
-    def test_set_member_job_run_api(self, update_mock):
+    @mock.patch('rdr_service.dao.genomics_dao.GenomicSetMemberDao.batch_update_member_field')
+    def test_set_member_update_api(self, update_mock):
+
+        from rdr_service.resource import main as resource_main
 
         data = {
             'member_ids': [],
         }
 
-        from rdr_service.resource import main as resource_main
-
         update_member = self.send_post(
-            local_path='GenomicSetMemberJobRunApi',
+            local_path='GenomicSetMemberUpdateApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
@@ -1363,11 +1363,24 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         data['member_ids'] = [1, 2, 3]
 
         update_member = self.send_post(
-            local_path='GenomicSetMemberJobRunApi',
+            local_path='GenomicSetMemberUpdateApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
         )
 
-        self.assertTrue(update_mock.called)
+        self.assertFalse(update_member['success'])
+
+        data['field'] = 'testFieldKey'
+        data['value'] = 1
+
+        update_member = self.send_post(
+            local_path='GenomicSetMemberUpdateApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
         self.assertTrue(update_member['success'])
+        self.assertTrue(update_mock.called)
+
