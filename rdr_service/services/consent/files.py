@@ -161,7 +161,12 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return basename(blob_wrapper.blob.name).startswith('GROR')
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        return basename(blob_wrapper.blob.name).startswith('PrimaryConsentUpdate')
+        return (
+            basename(blob_wrapper.blob.name).startswith('PrimaryConsentUpdate')
+            and blob_wrapper.get_parsed_pdf().get_page_number_of_text([
+                "Do you agree to this updated consent?"
+            ]) is not None
+        )
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -299,7 +304,7 @@ class GrorConsentFile(ConsentFile, ABC):
         ...
 
 
-class PrimaryConsentUpdateFile(ConsentFile, ABC):
+class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
     """
     Updated consent file received for cohort 1 participants that
     needed to agree to (or decline) new wording for DNA data
@@ -308,7 +313,7 @@ class PrimaryConsentUpdateFile(ConsentFile, ABC):
     def is_agreement_selected(self):
         for element in self._get_agreement_check_elements():
             for child in element:
-                if isinstance(child, LTCurve):
+                if isinstance(child, LTChar) and child.get_text() == '4':
                     return True
 
         return False
@@ -397,7 +402,7 @@ class VibrentGrorConsentFile(GrorConsentFile):
 
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
-    _SIGNATURE_PAGE = 15
+    _SIGNATURE_PAGE = 13
 
     def _get_signature_elements(self):
         return self.pdf.get_elements_intersecting_box(
@@ -413,7 +418,7 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
 
     def _get_agreement_check_elements(self):
         return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=70, right=73, bottom=475, top=478),
+            Rect.from_edges(left=38, right=40, bottom=676, top=678),
             page=self._SIGNATURE_PAGE
         )
 
