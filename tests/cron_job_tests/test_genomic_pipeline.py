@@ -1097,8 +1097,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field', 'project_id']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'field', 'value', 'is_job_run']
+        self.assertTrue(list(cloud_task_args.keys()) == req_keys)
 
         gc_record = self.metrics_dao.get(1)
 
@@ -1210,8 +1210,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         gc_record = self.metrics_dao.get(1)
 
@@ -2410,8 +2410,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # finally run the manifest workflow
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
@@ -2612,8 +2612,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # Test the members' job run ID
         # Picked up by job
@@ -2735,8 +2735,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # Run the W1 manifest workflow
         fake_dt = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
@@ -2867,8 +2867,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # Test member was updated
         member = self.member_dao.get(1)
@@ -2988,14 +2988,18 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
+
+        self.assertTrue(cloud_task.called)
+        cloud_task_args = cloud_task.call_args.args[0]
+        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -3143,8 +3147,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow(max_num=3)  # run_id = 4
@@ -3442,14 +3446,18 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # finally run the AW3 manifest workflow
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+
+        self.assertTrue(cloud_task.called)
+        cloud_task_args = cloud_task.call_args.args[0]
+        self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
 
         aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -3632,7 +3640,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow() # run_id = 4
 
         # still is success with same sample_ids becuase of distinct on query
         run_obj = self.job_run_dao.get(4)
@@ -4322,8 +4330,8 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
-        req_keys = ['member_ids', 'job_run_id', 'field']
-        self.assertTrue(all([key for key in req_keys if key in cloud_task_args.keys()]))
+        req_keys = ['member_ids', 'is_job_run', 'field', 'value']
+        self.assertTrue(set(cloud_task_args.keys()) == set(req_keys))
 
         # Test manifest feedback record was updated
         manifest_feedback_record = self.manifest_feedback_dao.get(1)

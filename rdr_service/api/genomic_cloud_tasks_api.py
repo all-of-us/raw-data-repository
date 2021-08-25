@@ -433,6 +433,7 @@ class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
         field = self.data.get('field')
         value = self.data.get('value')
         is_job_run = self.data.get('is_job_run')
+        project_id = self.data.get('project_id')
 
         if not member_ids:
             logging.warning('List of member ids are required.')
@@ -446,7 +447,8 @@ class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
             member_ids,
             field,
             value,
-            is_job_run
+            is_job_run,
+            project_id
         )
 
         logging.info('Complete.')

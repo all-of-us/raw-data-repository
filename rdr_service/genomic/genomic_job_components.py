@@ -1890,9 +1890,9 @@ class GenomicReconciler:
             if self.controller.member_ids_for_update:
                 self.controller.execute_cloud_task({
                     'member_ids': self.controller.member_ids_for_update,
-                    'job_run_id': self.run_id,
                     'field': 'reconcileMetricsSequencingJobRunId',
-                    'project_id': self.controller.bq_project_id
+                    'value': self.run_id,
+                    'is_job_run': True,
                 }, 'genomic_set_member_update_task')
 
         return GenomicSubProcessResult.SUCCESS
@@ -1969,8 +1969,9 @@ class GenomicReconciler:
 
             self.controller.execute_cloud_task({
                 'member_ids': [m.id for m in members],
-                'job_run_id': self.run_id,
                 'field': 'reconcileCvlJobRunId',
+                'value': self.run_id,
+                'is_job_run': True,
             }, 'genomic_set_member_update_task')
 
             return GenomicSubProcessResult.SUCCESS
@@ -3033,8 +3034,9 @@ class ManifestCompiler:
             if self.controller.member_ids_for_update:
                 self.controller.execute_cloud_task({
                     'member_ids': self.controller.member_ids_for_update,
-                    'job_run_id': self.run_id,
                     'field': self.manifest_def.job_run_field,
+                    'value': self.run_id,
+                    'is_job_run': True
                 }, 'genomic_set_member_update_task')
 
             return {
