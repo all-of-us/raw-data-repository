@@ -321,6 +321,54 @@ class ConsentValidationTesting(BaseTestCase):
         # Verify that both records that provide new validation information were stored
         consent_dao_mock.batch_update_consent_files.assert_called_with(mock.ANY, [new_primary_result, new_gror_result])
 
+    def test_primary_update_agreement_check(self):
+        self.participant_summary.consentForStudyEnrollmentAuthored = datetime.combine(
+            self._default_signing_date,
+            datetime.now().time()
+        ) + timedelta(days=100)
+        self.consent_factory_mock.get_primary_update_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.PrimaryConsentUpdateFile,
+                is_agreement_selected=False
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.PRIMARY_UPDATE,
+                    'other_errors': 'missing consent check mark',
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_primary_update_validation_results()
+        )
+
+    def test_primary_update_missing_check_and_non_va(self):
+        self.participant_summary.consentForStudyEnrollmentAuthored = datetime.combine(
+            self._default_signing_date,
+            datetime.now().time()
+        ) + timedelta(days=100)
+        self.participant_summary.hpoId = self.va_hpo.hpoId
+        self.consent_factory_mock.get_primary_update_consents.return_value = [
+            self._mock_consent(
+                consent_class=files.PrimaryConsentUpdateFile,
+                is_agreement_selected=False,
+                get_is_va_consent=False
+            )
+        ]
+        self.assertMatchesExpectedResults(
+            [
+                {
+                    'participant_id': self.participant_summary.participantId,
+                    'type': ConsentType.PRIMARY_UPDATE,
+                    'other_errors': 'missing consent check mark, non-veteran consent for veteran participant',
+                    'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
+                }
+            ],
+            self.validator.get_primary_update_validation_results()
+        )
+
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
             'get_signature_on_file': self._default_signature,

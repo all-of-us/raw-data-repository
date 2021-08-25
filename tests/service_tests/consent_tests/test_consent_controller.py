@@ -175,7 +175,6 @@ class ConsentControllerTest(BaseTestCase):
             ]
         )
 
-
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""
         actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[1]
