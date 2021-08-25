@@ -713,8 +713,6 @@ class BQPDRCOPEFebSchema(_BQModuleSchema):
         'cdc_covid_19_n_a2',
         'cdc_covid_19_n_a4',
         'cdc_covid_19_n_a8',
-        'cdc_covid_xx_a_date1',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_other',
         'dmfs_29a',
         'basics_xx',
@@ -744,10 +742,8 @@ class BQPDRCOPEVaccine1Schema(_BQModuleSchema):
     """ COPE Vaccine Survey 1 (initial) """
     _module = 'cope_vaccine1'
     _force_boolean_fields = (
-        'cdc_covid_xx_a_date1',
         'cdc_covid_xx_b_firstdose_other',
         'cdc_covid_xx_symptom_cope_350',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_seconddose_other',
         'cdc_covid_xx_symptom_seconddose_cope_350',
         'dmfs_29a',
@@ -774,10 +770,8 @@ class BQPDRCOPEVaccine2Schema(_BQModuleSchema):
     """ COPE Vaccine Survey 2 (Fall 2021) """
     _module = 'cope_vaccine2'
     _force_boolean_fields = (
-        'cdc_covid_xx_a_date1',
         'cdc_covid_xx_b_firstdose_other',
         'cdc_covid_xx_symptom_cope_350',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_seconddose_other',
         'cdc_covid_xx_symptom_seconddose_cope_350',
         'dmfs_29a',
