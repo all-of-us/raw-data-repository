@@ -37,9 +37,9 @@ def upgrade_rdr():
         "On gsm.aw3_manifest_job_run_id = gjr.id"
         "Inner join genomic_file_processed gfp"
         "On gjr.id = gfp.run_id"
-        "Inner join genomic_manifest_file"
-        "On gfp.genomic_manifest_file_id = genomic_manifest_file.id"
-        "SET gsm.aw3_manifest_file_id = genomic_manifest_file.id"
+        "Inner join genomic_manifest_file gmf"
+        "On gfp.genomic_manifest_file_id = gmf.id"
+        "SET gsm.aw3_manifest_file_id = gmf.id"
         "Where gsm.aw3_manifest_job_run_id is not null"
         "and gsm.aw3_manifest_file_id is null"
     )
