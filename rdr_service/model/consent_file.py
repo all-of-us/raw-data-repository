@@ -12,6 +12,7 @@ class ConsentType(messages.Enum):
     EHR = 3
     GROR = 4
     UNKNOWN = 5
+    PRIMARY_UPDATE = 6
 
 
 class ConsentSyncStatus(messages.Enum):
@@ -23,7 +24,6 @@ class ConsentSyncStatus(messages.Enum):
     LEGACY = 5
     DELAYING_SYNC = 6
     UNKNOWN = 7
-
 
 
 class ConsentFile(Base):

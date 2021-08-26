@@ -10,7 +10,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.participant_enums import QuestionnaireStatus
+from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -253,6 +253,8 @@ class ConsentValidationController:
                     new_validation_results = validator.get_ehr_validation_results()
                 elif consent_type == ConsentType.GROR:
                     new_validation_results = validator.get_gror_validation_results()
+                elif consent_type == ConsentType.PRIMARY_UPDATE:
+                    new_validation_results = validator.get_primary_update_validation_results()
 
                 file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
                 if file_ready_for_sync is not None:
@@ -308,6 +310,13 @@ class ConsentValidationController:
                 min_authored=min_consent_date
             ):
                 output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
+            if self._has_primary_update_consent(
+                summary=summary,
+                min_authored=min_consent_date
+            ):
+                output_strategy.add_all(
+                    self._process_validation_results(validator.get_primary_update_validation_results())
+                )
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
@@ -321,6 +330,8 @@ class ConsentValidationController:
             output_strategy.add_all(validator.get_ehr_validation_results())
         if self._has_consent(consent_status=summary.consentForGenomicsROR):
             output_strategy.add_all(validator.get_gror_validation_results())
+        if self._has_primary_update_consent(summary):
+            output_strategy.add_all(validator.get_primary_update_validation_results())
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
@@ -333,6 +344,17 @@ class ConsentValidationController:
     @classmethod
     def _has_consent(cls, consent_status, authored=None, min_authored=None):
         return consent_status == QuestionnaireStatus.SUBMITTED and (min_authored is None or authored > min_authored)
+
+    @classmethod
+    def _has_primary_update_consent(cls, summary: ParticipantSummary, min_authored=None):
+        if min_authored is None or summary.consentForStudyEnrollmentAuthored > min_authored:
+            return (
+                summary.consentCohort == ParticipantCohort.COHORT_1 and
+                summary.consentForStudyEnrollmentAuthored.date() !=
+                summary.consentForStudyEnrollmentFirstYesAuthored.date()
+            )
+        else:
+            return False
 
     def _build_validator(self, participant_summary: ParticipantSummary) -> 'ConsentValidator':
         consent_factory = files.ConsentFileAbstractFactory.get_file_factory(
@@ -425,13 +447,41 @@ class ConsentValidator:
             expected_sign_datetime=self.participant_summary.consentForGenomicsRORAuthored
         )
 
-    def _validate_is_va_file(self, consent, result: ParsingResult):
+    def get_primary_update_validation_results(self) -> List[ParsingResult]:
+        def extra_primary_update_checks(consent: files.PrimaryConsentUpdateFile, result):
+            errors_detected = []
+
+            if not consent.is_agreement_selected():
+                errors_detected.append('missing consent check mark')
+
+            va_version_error_str = self._check_for_va_version_mismatch(consent)
+            if va_version_error_str:
+                errors_detected.append(va_version_error_str)
+
+            if errors_detected:
+                result.other_errors = ', '.join(errors_detected)
+                result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+
+        return self._generate_validation_results(
+            consent_files=self.factory.get_primary_update_consents(),
+            consent_type=ConsentType.PRIMARY_UPDATE,
+            additional_validation=extra_primary_update_checks,
+            expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored
+        )
+
+    def _check_for_va_version_mismatch(self, consent):
         is_va_consent = consent.get_is_va_consent()
         if self.participant_summary.hpoId == self.va_hpo_id and not is_va_consent:
-            result.other_errors = 'non-veteran consent for veteran participant'
-            result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
+            return 'non-veteran consent for veteran participant'
         elif self.participant_summary.hpoId != self.va_hpo_id and is_va_consent:
-            result.other_errors = 'veteran consent for non-veteran participant'
+            return 'veteran consent for non-veteran participant'
+
+        return None
+
+    def _validate_is_va_file(self, consent, result: ParsingResult):
+        mismatch_error_str = self._check_for_va_version_mismatch(consent)
+        if mismatch_error_str:
+            result.other_errors = mismatch_error_str
             result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
     def _generate_validation_results(self, consent_files: List[files.ConsentFile], consent_type: ConsentType,
