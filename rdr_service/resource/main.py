@@ -120,9 +120,9 @@ def _build_resource_app():
                       endpoint="ingest_informing_loop_task", methods=["POST"])
 
     # Update Genomic Set Member Job Run
-    _api.add_resource(genomic_cloud_tasks_api.GenomicSetMemberJobRunApi,
-                      TASK_PREFIX + "GenomicSetMemberJobRunApi",
-                      endpoint="genomic_set_member_job_run_task", methods=["POST"])
+    _api.add_resource(genomic_cloud_tasks_api.GenomicSetMemberUpdateApi,
+                      TASK_PREFIX + "GenomicSetMemberUpdateApi",
+                      endpoint="genomic_set_member_update_task", methods=["POST"])
 
     #
     # End Genomic Cloud Task API endpoints

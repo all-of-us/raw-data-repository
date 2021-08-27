@@ -1854,7 +1854,6 @@ class GenomicReconciler:
 
         logging.info("Found {len(metrics)} metrics records missing data...")
 
-        member_ids = []
         for result in metrics:
             # Lookup identifier in data files table
             id_value = getattr(result, identifier)
@@ -1882,20 +1881,19 @@ class GenomicReconciler:
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
                             metric_touched = True
-                            member_ids.append(_obj.genomicSetMemberId)
+                            self.controller.member_ids_for_update.append(_obj.genomicSetMemberId)
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
-            if member_ids:
-                payload = {
-                    'member_ids': member_ids,
-                    'job_run_id': self.run_id,
+            if self.controller.member_ids_for_update:
+                self.controller.execute_cloud_task({
+                    'member_ids': self.controller.member_ids_for_update,
                     'field': 'reconcileMetricsSequencingJobRunId',
-                    'project_id': self.controller.bq_project_id
-                }
-                self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
+                    'value': self.run_id,
+                    'is_job_run': True,
+                }, 'genomic_set_member_update_task')
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -1959,7 +1957,7 @@ class GenomicReconciler:
     def generate_cvl_reconciliation_report(self):
         """
         The main method for the CVL Reconciliation report,
-        ouptuts report file to the cvl subfolder and updates
+        outputs report file to the cvl subfolder and updates
         genomic_set_member
         :return: result code
         """
@@ -1969,12 +1967,12 @@ class GenomicReconciler:
             self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
             self._write_cvl_report_to_file(members)
 
-            payload = {
+            self.controller.execute_cloud_task({
                 'member_ids': [m.id for m in members],
-                'job_run_id': self.run_id,
                 'field': 'reconcileCvlJobRunId',
-            }
-            self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
+                'value': self.run_id,
+                'is_job_run': True,
+            }, 'genomic_set_member_update_task')
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -2012,90 +2010,6 @@ class GenomicReconciler:
             if new_state is not None or new_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, new_state)
                 self.member_dao.update_report_consent_removal_date(member, None)
-
-    @staticmethod
-    def _check_genotyping_file_exists(bucket_name, filename):
-        files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.endswith(filename)]
-        return 1 if len(filenames) > 0 else 0
-
-    def _get_full_filename(self, filename):
-        """ Searches file_list for names ending in filename
-        :param filename: file name to match
-        :return: first filename in list
-        """
-        filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
-        return filenames[0] if len(filenames) > 0 else 0
-
-    def _get_full_filename_with_expression(self, expression):
-        """ Searches file_list for names that match the expression
-        :param expression: pattern to match
-        :return: file name with highest revision number
-        """
-        filenames = [name for name in self.file_list if re.search(expression, name)]
-
-        def sort_filenames(name):
-            version = name.split('.')[0].split('_')[-1]
-
-            if version[0].isalpha():
-                version = version[1:]
-
-            return int(version)
-
-        # Naturally sort the list in descending order of revisions
-        # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
-        filenames.sort(reverse=True, key=sort_filenames)
-
-        return filenames[0] if len(filenames) > 0 else 0
-
-    def _get_sequence_files(self, bucket_name):
-        """
-        Checks the bucket for sequencing files based on naming convention
-        :param bucket_name:
-        :return: file list or result code
-        """
-        try:
-            files = list_blobs('/' + bucket_name)
-            # TODO: naming_convention is not yet finalized
-            naming_convention = r"^gc_sequencing_t\d*\.txt$"
-            files = [s.name for s in files
-                     if self.archive_folder not in s.name.lower()
-                     if re.search(naming_convention,
-                                  s.name.lower())]
-            if not files:
-                logging.info(
-                    f'No valid sequencing files in bucket {bucket_name}'
-                )
-                return GenomicSubProcessResult.NO_FILES
-            return files
-        except FileNotFoundError:
-            return GenomicSubProcessResult.ERROR
-
-    def _parse_seq_filename(self, filename):
-        """
-        Takes a sequencing filename and returns the biobank id.
-        :param filename:
-        :return: biobank_id
-        """
-        # TODO: naming_convention is not yet finalized
-        try:
-            # pull biobank ID from filename
-            return filename.lower().split('_')[-1].split('.')[0][1:]
-        except IndexError:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
-
-    def _update_genomic_set_member_seq_reconciliation(self, member, seq_file_name, job_run_id):
-        """
-        Uses member DAO to update GenomicSetMember object
-        with sequencing reconciliation data
-        :param member: the GenomicSetMember to update
-        :param seq_file_name:
-        :param job_run_id:
-        :return: query result
-        """
-        return self.member_dao.update_member_sequencing_file(member,
-                                                             job_run_id,
-                                                             seq_file_name)
 
     def _write_cvl_report_to_file(self, members):
         """
@@ -3101,14 +3015,13 @@ class ManifestCompiler:
             )
             self._write_and_upload_manifest(source_data)
 
-            member_ids = []
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
                 if member is None:
                     raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-                if self.manifest_def.job_run_field is not None:
-                    member_ids.append(member.id)
+                if self.manifest_def.job_run_field:
+                    self.controller.member_ids_for_update.append(member.id)
 
                 # Handle Genomic States for manifests
                 if self.manifest_def.signal != "bypass":
@@ -3118,13 +3031,13 @@ class ManifestCompiler:
                     if new_state is not None or new_state != member.genomicWorkflowState:
                         self.member_dao.update_member_state(member, new_state)
 
-            if member_ids:
-                payload = {
-                    'member_ids': member_ids,
-                    'job_run_id': self.run_id,
+            if self.controller.member_ids_for_update:
+                self.controller.execute_cloud_task({
+                    'member_ids': self.controller.member_ids_for_update,
                     'field': self.manifest_def.job_run_field,
-                }
-                self.controller.execute_cloud_task(payload, 'genomic_set_member_job_run_task')
+                    'value': self.run_id,
+                    'is_job_run': True
+                }, 'genomic_set_member_update_task')
 
             return {
                 "code": GenomicSubProcessResult.SUCCESS,
