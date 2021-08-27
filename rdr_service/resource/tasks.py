@@ -73,7 +73,7 @@ def batch_rebuild_participants_task(payload, project_id=None):
                 bq_modules.BQPDRCOPENov,
                 bq_modules.BQPDRCOPEDec,
                 bq_modules.BQPDRCOPEFeb,
-                bq_modules.BQPDRCopeVaccine1,
+                bq_modules.BQPDRCOPEVaccine1,
                 bq_modules.BQPDRCOPEVaccine2,
                 bq_modules.BQPDRFamilyHistory,
                 bq_modules.BQPDRPersonalMedicalHistory,
