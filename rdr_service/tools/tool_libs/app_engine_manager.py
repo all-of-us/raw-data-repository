@@ -47,9 +47,7 @@ class DeployAppClass(ToolBase):
     jira_ready = False
     deploy_version = None
     deploy_root = None
-
     _current_git_branch = None
-
     _jira_handler = None
 
     def __init__(self, args, gcp_env=None, tool_name=None):
@@ -172,7 +170,8 @@ class DeployAppClass(ToolBase):
 
         return True
 
-    def clean_up_config_files(self, config_files):
+    @staticmethod
+    def clean_up_config_files(config_files):
         """
         Remove the config files.
         :param config_files: list of config files.
@@ -301,7 +300,12 @@ class DeployAppClass(ToolBase):
 
         # Attempt to change state to In Progress.
         ticket = self._jira_handler.set_ticket_transition(
-            ticket, self._jira_handler.get_ticket_transition_by_name(ticket, 'Open'))
+            ticket,
+            self._jira_handler.get_ticket_transition_by_name(
+                ticket,
+                'Created'
+            )
+        )
 
         # Attempt to link the PD release tracker ticket.
         pd_summary = f"Release tracker for {self.args.git_target}"
@@ -413,7 +417,6 @@ class DeployAppClass(ToolBase):
 
         _logger.info(self.add_jira_comment(f"App deployed to '{self.gcp_env.project}'."))
         if self.environment == RdrEnvironment.STABLE:
-            self.tag_people()
             self.create_jira_roc_ticket()
 
         # Automatic doc build limited to stable or prod deploy (unless overridden)
@@ -663,6 +666,7 @@ class SplitTrafficClass(object):
             return 1
 
         return 0
+
 
 class AppConfigClass(object):
 
