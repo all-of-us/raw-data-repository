@@ -172,7 +172,8 @@ class DeployAppClass(ToolBase):
 
         return True
 
-    def clean_up_config_files(self, config_files):
+    @staticmethod
+    def clean_up_config_files(config_files):
         """
         Remove the config files.
         :param config_files: list of config files.
@@ -301,7 +302,12 @@ class DeployAppClass(ToolBase):
 
         # Attempt to change state to In Progress.
         ticket = self._jira_handler.set_ticket_transition(
-            ticket, self._jira_handler.get_ticket_transition_by_name(ticket, 'Open'))
+            ticket,
+            self._jira_handler.get_ticket_transition_by_name(
+                ticket,
+                'Created'
+            )
+        )
 
         # Attempt to link the PD release tracker ticket.
         pd_summary = f"Release tracker for {self.args.git_target}"

@@ -42,8 +42,9 @@ def new_participant_workflow():
     Sources from newly-created biobank_stored_samples
     from the BiobankSamplesPipeline.
     """
-    with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
-        controller.run_new_participant_workflow()
+    if config.getSettingJson(config.GENOMIC_CRON_JOBS).get('new_participant_workflow'):
+        with GenomicJobController(GenomicJob.NEW_PARTICIPANT_WORKFLOW) as controller:
+            controller.run_new_participant_workflow()
 
 
 def c2_participant_workflow():
