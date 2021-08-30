@@ -415,7 +415,7 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             bq_genomic_manifest_feedback_batch_update(batch)
             genomic_manifest_feedback_batch_update(batch)
 
-        logging.info(f'Rebuild complete.')
+        logging.info('Rebuild complete.')
 
         self.create_cloud_record()
 
@@ -423,23 +423,33 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class GenomicSetMemberJobRunApi(BaseGenomicTaskApi):
+class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Update GenomicSetMember field with job run id
     """
     def post(self):
-        super(GenomicSetMemberJobRunApi, self).post()
+        super(GenomicSetMemberUpdateApi, self).post()
         member_ids = self.data.get('member_ids')
-        job_run_id = self.data.get('job_run_id')
         field = self.data.get('field')
+        value = self.data.get('value')
+        is_job_run = self.data.get('is_job_run')
+        project_id = self.data.get('project_id')
 
         if not member_ids:
             logging.warning('List of member ids are required.')
             return {"success": False}
 
-        logging.info(f'Updating genomic set member field {field} with job run id {job_run_id}')
+        if not field or not value:
+            logging.warning('Combination of field/value is required.')
+            return {"success": False}
 
-        self.member_dao.update_member_job_run_id(member_ids, job_run_id, field)
+        self.member_dao.batch_update_member_field(
+            member_ids,
+            field,
+            value,
+            is_job_run,
+            project_id
+        )
 
         logging.info('Complete.')
         return {"success": True}

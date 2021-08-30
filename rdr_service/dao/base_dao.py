@@ -165,7 +165,6 @@ class BaseDao(object):
         """Override to validate a model before any db write (insert or update)."""
         pass
 
-
     def _validate_insert(self, session, obj):
         """Override to validate a new model before inserting it (not applied to updates)."""
         self._validate_model(session, obj)
@@ -299,7 +298,8 @@ class BaseDao(object):
         else:
             return None
 
-    def _parse_value(self, prop, property_type, value):
+    @staticmethod
+    def _parse_value(prop, property_type, value):
         if value is None:
             return None
         try:
@@ -356,7 +356,8 @@ class BaseDao(object):
             )
             return Results(items, token, more_available=False, total=total)
 
-    def _make_pagination_token(self, item_dict, field_names):
+    @staticmethod
+    def _make_pagination_token(item_dict, field_names):
         vals = [item_dict.get(field_name) for field_name in field_names]
         vals_json = json.dumps(vals, default=json_serial)
         return urlsafe_b64encode(str.encode(vals_json))
@@ -403,7 +404,8 @@ class BaseDao(object):
             query = self._add_filter(query, field_filter, f)
         return query
 
-    def _add_filter(self, query, field_filter, f):
+    @staticmethod
+    def _add_filter(query, field_filter, f):
         try:
             return field_filter.add_to_sqlalchemy_query(query, f)
         except ValueError as e:
@@ -485,10 +487,12 @@ class BaseDao(object):
             query = query.order_by(f)
         return query
 
-    def _get_random_id(self):
+    @staticmethod
+    def _get_random_id():
         return random.randint(_MIN_ID, _MAX_ID)
 
-    def _get_random_research_id(self):
+    @staticmethod
+    def _get_random_research_id():
         return random.randint(_MIN_RESEARCH_ID, _MAX_RESEARCH_ID)
 
     def _insert_with_random_id(self, obj, fields):

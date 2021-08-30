@@ -192,7 +192,8 @@ class ConsentSyncController:
                 file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
 
         self._zip_and_upload()
-        self.consent_dao.batch_update_consent_files(file_list)
+        with self.consent_dao.session() as session:
+            self.consent_dao.batch_update_consent_files(file_list, session)
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):

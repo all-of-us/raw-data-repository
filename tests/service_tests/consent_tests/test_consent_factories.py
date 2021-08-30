@@ -40,6 +40,10 @@ class ConsentFactoryTest(BaseTestCase):
         self.another_ehr = self._mock_pdf(name='EHRConsentPII_2.pdf')
         self.signature_image = self._mock_pdf(name='EHRConsentPII.png')
         self.gror_file = self._mock_pdf(name='GROR_234.pdf')
+        self.primary_update_file = self._mock_pdf(
+            name='PrimaryConsentUpdate_7890.pdf',
+            text_in_file='Do you agree to this updated consent?'
+        )
 
         self.storage_provider_mock.list.return_value = [
             self.primary_file,
@@ -49,7 +53,8 @@ class ConsentFactoryTest(BaseTestCase):
             self.ehr_file,
             self.another_ehr,
             self.signature_image,
-            self.gror_file
+            self.gror_file,
+            self.primary_update_file
         ]
 
         self.vibrent_factory = files.ConsentFileAbstractFactory.get_file_factory(
@@ -103,6 +108,13 @@ class ConsentFactoryTest(BaseTestCase):
             actual_files=self.vibrent_factory.get_gror_consents()
         )
 
+    def test_vibrent_primary_update_consent(self):
+        self.assertConsentListEquals(
+            expected_class=files.VibrentPrimaryConsentUpdateFile,
+            expected_files=[self.primary_update_file],
+            actual_files=self.vibrent_factory.get_primary_update_consents()
+        )
+
     def assertConsentListEquals(self, expected_class, expected_files, actual_files):
         for file_object in actual_files:
             self.assertIsInstance(file_object, expected_class)
@@ -124,10 +136,10 @@ class ConsentFactoryTest(BaseTestCase):
             # The code uses strings when there aren't translations, and tuples when there are
             for search_item in search_list:
                 if isinstance(search_item, str) and search_item not in text_in_file:
-                    return False
+                    return None
                 elif not any([search_str in text_in_file for search_str in search_item]):
-                    return False
-            return True
+                    return None
+            return 1
         pdf_mock.get_page_number_of_text.side_effect = page_number_for_text
 
         return pdf_mock

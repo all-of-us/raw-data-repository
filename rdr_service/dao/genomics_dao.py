@@ -166,17 +166,19 @@ class GenomicSetMemberDao(UpdatableDao):
 
     def __init__(self):
         super(GenomicSetMemberDao, self).__init__(GenomicSetMember, order_by_ending=["id"])
-        self.valid_job_id_fields = ('reconcileMetricsBBManifestJobRunId',
-                                    'reconcileMetricsSequencingJobRunId',
-                                    'reconcileCvlJobRunId',
-                                    'cvlW1ManifestJobRunId',
-                                    'gemA1ManifestJobRunId',
-                                    'reconcileGCManifestJobRunId',
-                                    'gemA3ManifestJobRunId',
-                                    'cvlW3ManifestJobRunID',
-                                    'aw3ManifestJobRunID',
-                                    'aw4ManifestJobRunID',
-                                    'aw2fManifestJobRunID')
+        self.valid_job_id_fields = (
+            'reconcileMetricsBBManifestJobRunId',
+            'reconcileMetricsSequencingJobRunId',
+            'reconcileCvlJobRunId',
+            'cvlW1ManifestJobRunId',
+            'gemA1ManifestJobRunId',
+            'reconcileGCManifestJobRunId',
+            'gemA3ManifestJobRunId',
+            'cvlW3ManifestJobRunID',
+            'aw3ManifestJobRunID',
+            'aw4ManifestJobRunID',
+            'aw2fManifestJobRunID'
+        )
         self.report_state_dao = GenomicMemberReportStateDao()
 
     def get_id(self, obj):
@@ -601,6 +603,37 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
+    def batch_update_member_field(
+        self,
+        member_ids,
+        field,
+        value,
+        is_job_run=False,
+        project_id=None
+    ):
+
+        if is_job_run and field not in self.valid_job_id_fields:
+            logging.error(f'{field} is not a valid job ID field.')
+            return GenomicSubProcessResult.ERROR
+        try:
+            if type(member_ids) is not list:
+                member_ids = [member_ids]
+
+            for m_id in member_ids:
+                member = self.get(m_id)
+                setattr(member, field, value)
+                self.update(member)
+
+                bq_genomic_set_member_update(member.id, project_id=project_id)
+                genomic_set_member_update(member.id)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
+
     def update_member_state(self, member, new_state, project_id=None):
         """
         Sets the member's state to a new state
@@ -616,21 +649,6 @@ class GenomicSetMemberDao(UpdatableDao):
         # Update member for PDR
         bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
-
-    def update_member_sequencing_file(self, member, job_run_id, filename):
-        """
-        Updates the sequencing filename of the GenomicSetMember
-        :param member:
-        :param filename:
-        :param job_run_id:
-        :return: query result or result code of error
-        """
-        member.reconcileMetricsSequencingJobRunId = job_run_id
-        member.sequencingFileName = filename
-        try:
-            return self.update(member)
-        except OperationalError:
-            return GenomicSubProcessResult.ERROR
 
     def get_members_for_cvl_reconciliation(self):
         """

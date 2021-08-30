@@ -16,9 +16,8 @@ class ConsentDao(BaseDao):
         super(ConsentDao, self).__init__(ConsentFile)
 
     @classmethod
-    def get_participants_with_consents_in_range(cls, session, start_date,
-                                                end_date=None) -> Collection[ParticipantSummary]:
-        query = session.query(
+    def _get_query_non_test_summaries(cls, session):
+        return session.query(
             ParticipantSummary
         ).join(
             Participant,
@@ -32,6 +31,11 @@ class ConsentDao(BaseDao):
                 ParticipantSummary.email.notlike('%@example.com')
             )
         )
+
+    @classmethod
+    def get_participants_with_consents_in_range(cls, session, start_date,
+                                                end_date=None) -> Collection[ParticipantSummary]:
+        query = cls._get_query_non_test_summaries(session)
         if end_date is None:
             query = query.filter(
                 or_(
@@ -54,6 +58,17 @@ class ConsentDao(BaseDao):
         return summaries
 
     @classmethod
+    def get_participants_needing_validation(cls, session) -> Collection[ParticipantSummary]:
+        query = cls._get_query_non_test_summaries(session)
+        query = query.outerjoin(
+            ConsentFile,
+            ConsentFile.participant_id == ParticipantSummary.participantId
+        ).filter(
+            ConsentFile.id.is_(None)
+        ).limit(5000)
+        return query.all()
+
+    @classmethod
     def get_files_needing_correction(cls, session, min_modified_datetime: datetime = None) -> Collection[ConsentFile]:
         query = session.query(ConsentFile).filter(
             ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
@@ -63,9 +78,16 @@ class ConsentDao(BaseDao):
         return query.all()
 
     @classmethod
-    def batch_update_consent_files(cls, session, consent_files: Collection[ConsentFile]):
+    def _batch_update_consent_files_with_session(cls, session, consent_files: Collection[ConsentFile]):
         for file_record in consent_files:
             session.merge(file_record)
+
+    def batch_update_consent_files(self, consent_files: Collection[ConsentFile], session=None):
+        if session is None:
+            with self.session() as dao_session:
+                return self._batch_update_consent_files_with_session(dao_session, consent_files)
+        else:
+            return self._batch_update_consent_files_with_session(session, consent_files)
 
     @classmethod
     def get_validation_results_for_participants(cls, session,

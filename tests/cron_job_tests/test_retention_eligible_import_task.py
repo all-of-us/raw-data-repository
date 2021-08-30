@@ -9,6 +9,7 @@ from rdr_service.participant_enums import RetentionStatus, RetentionType
 from tests.helpers.unittest_base import BaseTestCase
 
 _FAKE_RETENTION_ELIGIBLE_BUCKET = "rdr_fake_retention_eligible_bucket"
+TIME_1 = datetime.datetime(2020, 4, 1)
 
 
 class RetentionEligibleImportTest(BaseTestCase):
@@ -113,6 +114,89 @@ class RetentionEligibleImportTest(BaseTestCase):
         ps = self.send_get("ParticipantSummary?retentionType=UNSET&retentionEligibleStatus=NOT_ELIGIBLE"
                            "&_includeTotal=TRUE")
         self.assertEqual(len(ps['entry']), 1)
+
+    def test_lower_env_retention_metric_cronjob(self):
+        ps1 = self.data_generator.create_database_participant_summary()
+        ps2 = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentAuthored=TIME_1,
+            sampleStatus1ED10Time=TIME_1,
+            questionnaireOnTheBasicsAuthored=TIME_1,
+            questionnaireOnOverallHealthAuthored=TIME_1,
+            questionnaireOnLifestyleAuthored=TIME_1,
+            consentForElectronicHealthRecordsAuthored=TIME_1,
+            consentForDvElectronicHealthRecordsSharingAuthored=TIME_1,
+            consentForStudyEnrollment=1,
+            consentForElectronicHealthRecords=1,
+            questionnaireOnTheBasics=1,
+            questionnaireOnOverallHealth=1,
+            questionnaireOnLifestyle=1,
+            withdrawalStatus=1,
+            suspensionStatus=1,
+            samplesToIsolateDNA=1
+        )
+
+        retention_window = datetime.timedelta(days=100)
+        in_eighteen_month = datetime.datetime.now() - retention_window
+        ps3 = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentAuthored=TIME_1,
+            sampleStatus1ED10Time=TIME_1,
+            questionnaireOnTheBasicsAuthored=TIME_1,
+            questionnaireOnOverallHealthAuthored=TIME_1,
+            questionnaireOnLifestyleAuthored=TIME_1,
+            consentForElectronicHealthRecordsAuthored=TIME_1,
+            consentForDvElectronicHealthRecordsSharingAuthored=TIME_1,
+            questionnaireOnHealthcareAccessAuthored=in_eighteen_month,
+            consentForStudyEnrollment=1,
+            consentForElectronicHealthRecords=1,
+            questionnaireOnTheBasics=1,
+            questionnaireOnOverallHealth=1,
+            questionnaireOnLifestyle=1,
+            withdrawalStatus=1,
+            suspensionStatus=1,
+            samplesToIsolateDNA=1
+        )
+
+        ps4 = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollmentAuthored=TIME_1,
+            sampleStatus1ED10Time=TIME_1,
+            questionnaireOnTheBasicsAuthored=TIME_1,
+            questionnaireOnOverallHealthAuthored=TIME_1,
+            questionnaireOnLifestyleAuthored=TIME_1,
+            consentForElectronicHealthRecordsAuthored=TIME_1,
+            consentForDvElectronicHealthRecordsSharingAuthored=TIME_1,
+            questionnaireOnHealthcareAccessAuthored=in_eighteen_month,
+            ehrUpdateTime=in_eighteen_month,
+            consentForStudyEnrollment=1,
+            consentForElectronicHealthRecords=1,
+            questionnaireOnTheBasics=1,
+            questionnaireOnOverallHealth=1,
+            questionnaireOnLifestyle=1,
+            withdrawalStatus=1,
+            suspensionStatus=1,
+            samplesToIsolateDNA=1
+        )
+
+        retention_eligible_import.calculate_retention_eligible_metrics()
+
+        p1 = self.send_get(f'Participant/P{ps1.participantId}/Summary')
+        p2 = self.send_get(f'Participant/P{ps2.participantId}/Summary')
+        p3 = self.send_get(f'Participant/P{ps3.participantId}/Summary')
+        p4 = self.send_get(f'Participant/P{ps4.participantId}/Summary')
+
+        self.assertEqual(p1['retentionEligibleStatus'], str(RetentionStatus.NOT_ELIGIBLE))
+        self.assertEqual(p1['retentionType'], str(RetentionType.UNSET))
+
+        self.assertEqual(p2['retentionEligibleStatus'], str(RetentionStatus.ELIGIBLE))
+        self.assertEqual(p2['retentionEligibleTime'], TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
+        self.assertEqual(p2['retentionType'], str(RetentionType.PASSIVE))
+
+        self.assertEqual(p3['retentionEligibleStatus'], str(RetentionStatus.ELIGIBLE))
+        self.assertEqual(p3['retentionEligibleTime'], TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
+        self.assertEqual(p3['retentionType'], str(RetentionType.ACTIVE))
+
+        self.assertEqual(p4['retentionEligibleStatus'], str(RetentionStatus.ELIGIBLE))
+        self.assertEqual(p4['retentionEligibleTime'], TIME_1.strftime("%Y-%m-%dT%H:%M:%S"))
+        self.assertEqual(p4['retentionType'], str(RetentionType.ACTIVE_AND_PASSIVE))
 
     def _create_ingestion_test_file(self, test_data_filename, bucket_name, participant_ids, folder=None):
         test_data_file = self._open_test_file(test_data_filename, participant_ids)

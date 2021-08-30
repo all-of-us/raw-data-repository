@@ -196,6 +196,10 @@ class GenomicSetMember(Base):
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
 
+    aw3ManifestFileId = Column('aw3_manifest_file_id',
+                               Integer, ForeignKey("genomic_manifest_file.id"),
+                               nullable=True)
+
     gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
                                             String(10), nullable=True)
 

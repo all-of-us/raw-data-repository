@@ -7,6 +7,7 @@ from flask_limiter.util import get_remote_address
 import logging
 from requests.exceptions import RequestException
 from time import sleep
+from typing import Callable, Collection
 import urllib.parse
 
 import netaddr
@@ -408,3 +409,34 @@ def install_rate_limiting(app):
         storage_uri=cache_location,
         in_memory_fallback_enabled=True  # Use local memory if cache not found (throws an error otherwise)
     )
+
+
+class BatchManager:
+    """Useful for applying a function to a batch of objects."""
+
+    def __init__(self, batch_size: int, callback: Callable[[Collection], None]):
+        """
+        Initializes the instance of the batch manager.
+        :param batch_size: The number of items to collect before sending them to the callback.
+        :param callback: A method that is meant to process the collected batches.
+            It should only have one parameter to accept the batch of objects and should not return any value.
+        """
+        self._batch_size = batch_size
+        self._callback = callback
+        self._collected_objects = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._callback(self._collected_objects)
+
+    def add(self, obj):
+        """
+        Adds an object to the current batch. If adding the object causes the number of objects to reach the batch_size
+        then the callback is called with the objects (including the one that was just added).
+        """
+        self._collected_objects.append(obj)
+        if len(self._collected_objects) == self._batch_size:
+            self._callback(self._collected_objects)
+            self._collected_objects = []

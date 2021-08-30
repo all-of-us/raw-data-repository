@@ -7,6 +7,12 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQFieldModeEnum, BQFieldTypeEnum
 from rdr_service.code_constants import PPI_SYSTEM
 
+#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, TO ENSURE THEY ARE PROPAGATED TO BIGQUERY, INCLUDING
+#   DURING PDR DATA REBUILDS, THE MODULE LISTS IN THE FOLLOWING FILES MUST ALSO BE UPDATED:
+#   rdr_service/resource/tasks.py
+#   rdr_service/tools/tool_libs/resource_tool.py
+#   rdr_service/model/__init__.py
+#
 class _BQModuleSchema(BQSchema):
     """
     Helper for dynamically generating a BQSchema for a specific questionnaire
@@ -713,8 +719,6 @@ class BQPDRCOPEFebSchema(_BQModuleSchema):
         'cdc_covid_19_n_a2',
         'cdc_covid_19_n_a4',
         'cdc_covid_19_n_a8',
-        'cdc_covid_xx_a_date1',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_other',
         'dmfs_29a',
         'basics_xx',
@@ -744,10 +748,8 @@ class BQPDRCOPEVaccine1Schema(_BQModuleSchema):
     """ COPE Vaccine Survey 1 (initial) """
     _module = 'cope_vaccine1'
     _force_boolean_fields = (
-        'cdc_covid_xx_a_date1',
         'cdc_covid_xx_b_firstdose_other',
         'cdc_covid_xx_symptom_cope_350',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_seconddose_other',
         'cdc_covid_xx_symptom_seconddose_cope_350',
         'dmfs_29a',
@@ -774,10 +776,8 @@ class BQPDRCOPEVaccine2Schema(_BQModuleSchema):
     """ COPE Vaccine Survey 2 (Fall 2021) """
     _module = 'cope_vaccine2'
     _force_boolean_fields = (
-        'cdc_covid_xx_a_date1',
         'cdc_covid_xx_b_firstdose_other',
         'cdc_covid_xx_symptom_cope_350',
-        'cdc_covid_xx_a_date2',
         'cdc_covid_xx_b_seconddose_other',
         'cdc_covid_xx_symptom_seconddose_cope_350',
         'dmfs_29a',

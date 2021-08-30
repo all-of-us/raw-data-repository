@@ -32,7 +32,7 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
     GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
-    GenomicSubProcessResult, GenomicIncidentCode
+    GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes
 from rdr_service.genomic.genomic_job_components import (
     GenomicFileIngester,
     GenomicReconciler,
@@ -62,18 +62,20 @@ from rdr_service.services.slack_utils import SlackMessageHandler
 class GenomicJobController:
     """This class controls the tracking of Genomics subprocesses"""
 
-    def __init__(self, job_id,
-                 bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
-                 sub_folder_name=None,
-                 sub_folder_tuple=None,
-                 archive_folder_name=None,
-                 bucket_name_list=None,
-                 storage_provider=None,
-                 bq_project_id=None,
-                 task_data=None,
-                 server_config=None,
-                 max_num=None
-                 ):
+    def __init__(
+        self,
+        job_id,
+        bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
+        sub_folder_name=None,
+        sub_folder_tuple=None,
+        archive_folder_name=None,
+        bucket_name_list=None,
+        storage_provider=None,
+        bq_project_id=None,
+        task_data=None,
+        server_config=None,
+        max_num=None
+    ):
 
         self.job_id = job_id
         self.job_run = None
@@ -92,6 +94,7 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
         self.max_num = max_num
+        self.member_ids_for_update = []
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
@@ -520,14 +523,16 @@ class GenomicJobController:
     def resolve_missing_gc_files(self):
         logging.info('Resolving missing gc data files')
 
-        need_to_resolve = self.missing_files_dao.get_files_to_resolve(limit=200)
-        if need_to_resolve:
+        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit=200)
+        if files_to_resolve:
 
-            resolve_arrays = [obj for obj in need_to_resolve if obj.identifier_type == 'chipwellbarcode']
-            self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
+            resolve_arrays = [obj for obj in files_to_resolve if obj.identifier_type == 'chipwellbarcode']
+            if resolve_arrays:
+                self.missing_files_dao.batch_update_resolved_file(resolve_arrays)
 
-            resolve_wgs = [obj for obj in need_to_resolve if obj.identifier_type == 'sample_id']
-            self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
+            resolve_wgs = [obj for obj in files_to_resolve if obj.identifier_type == 'sample_id']
+            if resolve_wgs:
+                self.missing_files_dao.batch_update_resolved_file(resolve_wgs)
 
             logging.info('Resolving missing gc data files complete')
         else:
@@ -904,18 +909,24 @@ class GenomicJobController:
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
                 version_num = kwargs['feedback_record'].version
-                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type,
-                                                                               _genome_type,
-                                                                               version=version_num,
-                                                                               input_manifest=input_manifest)
+                result = self.manifest_compiler.generate_and_transfer_manifest(
+                    manifest_type,
+                    _genome_type,
+                    version=version_num,
+                    input_manifest=input_manifest
+                )
 
             else:
-                result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type, _genome_type)
+                result = self.manifest_compiler.generate_and_transfer_manifest(
+                    manifest_type,
+                    _genome_type
+                )
 
             if result['code'] == GenomicSubProcessResult.SUCCESS:
-                logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
-                new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
 
+                logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
+
+                new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
                 now_time = datetime.utcnow()
 
                 new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(new_file_path)
@@ -960,6 +971,14 @@ class GenomicJobController:
                     upload_date=now_time,
                     manifest_file_id=new_manifest_record.id
                 )
+
+                file_record_attr = self.update_member_file_record(manifest_type)
+                if self.member_ids_for_update and file_record_attr:
+                    self.execute_cloud_task({
+                        'member_ids': self.member_ids_for_update,
+                        'field': file_record_attr,
+                        'value': new_manifest_record.id,
+                    }, 'genomic_set_member_update_task')
 
                 # For BQ/PDR
                 bq_genomic_file_processed_update(new_file_record.id, self.bq_project_id)
@@ -1089,6 +1108,19 @@ class GenomicJobController:
                 self.incident_dao.update(incident)
 
         logging.warning(message)
+
+    @staticmethod
+    def update_member_file_record(manifest_type):
+        file_attr = None
+
+        attributes_map = {
+            GenomicManifestTypes.AW3_ARRAY: 'aw3ManifestFileId',
+            GenomicManifestTypes.AW3_WGS: 'aw3ManifestFileId'
+        }
+        if manifest_type in attributes_map.keys():
+            file_attr = attributes_map[manifest_type]
+
+        return file_attr
 
     @staticmethod
     def execute_cloud_task(payload, endpoint):

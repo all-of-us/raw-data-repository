@@ -142,7 +142,7 @@ cron:
 - description: Genomic Missing Files Resolve
   url: /offline/GenomicMissingFilesResolve
   timezone: America/New_York
-  schedule: every 2 hours
+  schedule: every 6 hours
   target: offline
 - description: Clean up request logs
   url: /offline/CleanUpRequestLogs
@@ -153,4 +153,9 @@ cron:
   url: /offline/DataQualityChecks
   timezone: America/New_York
   schedule: every sunday 3:00
+  target: offline
+- description: Calculate retention metrics
+  url: /offline/UpdateRetentionEligibleMetrics
+  timezone: America/New_York
+  schedule: every day 1:15
   target: offline
