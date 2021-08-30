@@ -193,13 +193,12 @@ class GenomicJobController:
 
         return feedback_file
 
-    def get_feedback_records_to_send(self):
+    def get_feedback_records_to_send(self, _num=60):
         """
-        Retrieves genomic_manifest_feedback records that are complete
-        and have not had a feedback_manifest_ID
-        :return: list of GenomicManifestFeedback
+        Retrieves genomic_manifest_feedback records that are past _num.
+        :return: list of GenomicManifestFeedback records
         """
-        return self.manifest_feedback_dao.get_feedback_count_within_threshold(self.feedback_threshold)
+        return self.manifest_feedback_dao.get_feedback_records_past_date_cutoff(num_days=_num)
 
     def ingest_awn_data_for_member(self, file_path, member):
         """

@@ -4228,7 +4228,7 @@ class GenomicPipelineTest(BaseTestCase):
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-4.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
-        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        test_date = datetime.datetime(2020, 11, 20, 0, 0, 0, 0)
         pytz.timezone('US/Central').localize(test_date)
 
         with clock.FakeClock(test_date):
@@ -4245,7 +4245,7 @@ class GenomicPipelineTest(BaseTestCase):
             "bucket": bucket_name,
             "file_data": {
                 "create_feedback_record": True,
-                "upload_date": "2020-11-20 00:00:00",
+                "upload_date": test_date,
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
                 "file_path": f"{bucket_name}/{sub_folder}/{gc_manifest_filename}"
             }
@@ -4283,14 +4283,18 @@ class GenomicPipelineTest(BaseTestCase):
             session.add(new_record)
             session.merge(metrics_record_2)
 
-        # Test feedback count
-        fb = self.manifest_feedback_dao.get(1)
-        self.assertEqual(2, fb.feedbackRecordCount)
+        # run AW2F workflow before 60 days
+        dt_40d = test_date + datetime.timedelta(days=40)
+        with clock.FakeClock(dt_40d):
+            genomic_pipeline.scan_and_complete_feedback_records()
+
+        # Should not call cloud task since no records
+        self.assertFalse(cloud_task.called)
 
         # run the AW2F manifest workflow
-        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        dt_60d = test_date + datetime.timedelta(days=60)
 
-        with clock.FakeClock(fake_dt):
+        with clock.FakeClock(dt_60d):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
         self.assertTrue(cloud_task.called)
