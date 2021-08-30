@@ -903,8 +903,10 @@ class GenomicJobController:
             # Set the feedback manifest name based on the input manifest name
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
+                version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(manifest_type,
                                                                                _genome_type,
+                                                                               version=version_num,
                                                                                input_manifest=input_manifest)
 
             else:
@@ -941,6 +943,7 @@ class GenomicJobController:
 
                     r.feedbackManifestFileId = new_manifest_record.id
                     r.feedbackComplete = 1
+                    r.version += 1
                     r.feedbackCompleteDate = now_time
 
                     with self.manifest_feedback_dao.session() as session:

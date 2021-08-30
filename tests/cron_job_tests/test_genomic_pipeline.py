@@ -4288,7 +4288,7 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(dt_40d):
             genomic_pipeline.scan_and_complete_feedback_records()
 
-        # Should not call cloud task since no records
+        # Should NOT call cloud task since no records
         self.assertFalse(cloud_task.called)
 
         # run the AW2F manifest workflow
@@ -4297,6 +4297,7 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(dt_60d):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
+        # Should call cloud task since there are records
         self.assertTrue(cloud_task.called)
 
         # Test manifest feedback record was updated
@@ -4304,7 +4305,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(1, manifest_feedback_record.inputManifestFileId)  # id = 1 is the AW1
         self.assertEqual(2, manifest_feedback_record.feedbackManifestFileId)  # id = 2 is the AW2F
-
 
         # Test the manifest file contents
         expected_aw2f_columns = (
@@ -4348,7 +4348,7 @@ class GenomicPipelineTest(BaseTestCase):
         gc_manifest_filename = gc_manifest_filename.replace('.csv', '')
 
         with open_cloud_file(os.path.normpath(
-                f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination.csv')) as csv_file:
+                f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination_1.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = len(set(expected_aw2f_columns)) - len(set(csv_reader.fieldnames))
             self.assertEqual(0, missing_cols)

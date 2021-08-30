@@ -348,6 +348,7 @@ class GenomicManifestFeedback(Base):
     ignore = Column('ignore', SmallInteger, nullable=False, default=0)
     # Replaces `ignore` DA-1865
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    version = Column(Integer, nullable=False, default=1)
 
 
 event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
