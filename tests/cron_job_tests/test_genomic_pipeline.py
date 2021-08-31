@@ -458,7 +458,9 @@ class GenomicPipelineTest(BaseTestCase):
                 validation_status=GenomicSetMemberStatus.VALID,
                 validation_flags=None,
                 biobankId=p,
-                sex_at_birth='F', genome_type=gt, ny_flag='Y',
+                sex_at_birth='F',
+                genome_type=gt,
+                ny_flag='Y',
                 sequencing_filename=kwargs.get('sequencing_filename'),
                 recon_bb_manifest_job_id=kwargs.get('bb_man_id'),
                 recon_sequencing_job_id=kwargs.get('recon_seq_id'),
@@ -3363,6 +3365,27 @@ class GenomicPipelineTest(BaseTestCase):
             incident_name
         )
 
+        updated_member = self.member_dao.get(3)
+        updated_member.sexAtBirth = 'A'
+        self.member_dao.update(updated_member)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(7)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            'Invalid Sex at Birth values'
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
         all_incidents = [incident for incident in self.incident_dao.get_all() if incident.code ==
                          incident_name]
 
@@ -3695,6 +3718,27 @@ class GenomicPipelineTest(BaseTestCase):
 
         incident = self.incident_dao.get_by_message(
             f'Path {no_bucket_path} is invalid formatting'
+        )
+
+        self.assertIsNotNone(incident)
+        self.assertEqual(
+            incident.code,
+            incident_name
+        )
+
+        updated_member = self.member_dao.get(3)
+        updated_member.sexAtBirth = 'A'
+        self.member_dao.update(updated_member)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()
+
+        should_be_incident_count += 1
+        run_obj = self.job_run_dao.get(7)
+        self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+
+        incident = self.incident_dao.get_by_message(
+            'Invalid Sex at Birth values'
         )
 
         self.assertIsNotNone(incident)

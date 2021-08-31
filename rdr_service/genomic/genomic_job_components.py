@@ -3068,12 +3068,15 @@ class ManifestCompiler:
         ]:
             prefix = get_biobank_id_prefix()
             path_positions = []
+            biobank_ids, sample_ids, sex_at_birth = [], [], []
 
             for i, col in enumerate(self.manifest_def.columns):
                 if 'sample_id' in col:
                     sample_ids = [row[i] for row in data]
                 if 'biobank_id' in col:
                     biobank_ids = [row[i] for row in data]
+                if 'sex_at_birth' in col:
+                    sex_at_birth = [row[i] for row in data]
                 if '_path' in col:
                     path_positions.append(i)
 
@@ -3092,6 +3095,14 @@ class ManifestCompiler:
                 return invalid, message
 
             sample_ids.clear()
+
+            invalid_sex_values = any(val for val in sex_at_birth if val not in ['M', 'F', 'NA'])
+            if invalid_sex_values:
+                message = 'Invalid Sex at Birth values'
+                invalid = True
+                return invalid, message
+
+            sex_at_birth.clear()
 
             for row in data:
                 for i, val in enumerate(row):
