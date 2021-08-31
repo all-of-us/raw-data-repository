@@ -9,8 +9,7 @@ from rdr_service.code_constants import (
     CONSENT_PERMISSION_NO_CODE,
     DVEHRSHARING_CONSENT_CODE_YES,
     EHR_CONSENT_EXPIRED_YES,
-    DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE,
-    DVEHRSHARING_CONSENT_CODE_NOT_SURE
+    DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE
 )
 from rdr_service import config
 from rdr_service.participant_enums import PhysicalMeasurementsStatus
@@ -213,9 +212,8 @@ class EnrollmentStatusCalculator:
         info = EnrollmentStatusInfo()
         for ev in events:
             if ev.event in [ParticipantEventEnum.EHRConsentPII, ParticipantEventEnum.DVEHRSharing]:
-                # See if we need to reset the info object.
-                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES,
-                                 DVEHRSHARING_CONSENT_CODE_NOT_SURE]:
+                # See if we need to reset the info object. Do not reset if 'DVEHRSHARING_CONSENT_CODE_NOT_SURE'.
+                if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]:
                     self._ehr_consented = None  # Reset any saved info.
                     info = EnrollmentStatusInfo()
                     continue
