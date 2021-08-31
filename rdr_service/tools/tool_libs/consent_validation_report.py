@@ -96,6 +96,7 @@ CONSENT_REPORT_SQL_BODY =  """
                    CASE
                       WHEN o.display_name IS NOT NULL THEN o.display_name ELSE '(No organization details)'
                    END AS organization,
+                   DATE(ps.{authored_field}) AS consent_authored_date,
                    cf.sync_status,
                    cf.type,
                    cf.file_path,
@@ -107,9 +108,9 @@ CONSENT_REPORT_SQL_BODY =  """
                    (cf.is_signature_valid and NOT cf.is_signing_date_valid) AS invalid_signing_date,
                    -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
                    -- DOB later than the consent authored date
-                   (ps.date_of_birth is null or ps.date_of_birth < "{dob_cutoff}" or ps.date_of_birth > "{report_date}")
+                   (ps.date_of_birth is null or ps.date_of_birth > "{report_date}"
                     or (ps.consent_for_study_enrollment_authored is not null
-                        and ps.date_of_birth > ps.consent_for_study_enrollment_first_yes_authored )
+                        and TIMESTAMPDIFF(YEAR, ps.consent_for_study_enrollment_authored, ps.date_of_birth) > 124))
                     AS invalid_dob,
                    TIMESTAMPDIFF(YEAR, COALESCE(ps.date_of_birth, CURRENT_DATE),
                                  ps.consent_for_study_enrollment_first_yes_authored) < 18
@@ -132,7 +133,7 @@ CONSENT_REPORT_SQL_BODY =  """
 # Daily report filter for validation results on all newly received and validated consents:
 # - For each consent type, filter on participants whose consent authored date for that consent matches the report date
 # - Find corresponding consent_file entries for the consent type, in NEEDS_CORRECTING/READY_TO_SYNC/SYNC_COMPLETE
-DAILY_NEW_CONSENTS_SQL_FILTER = """
+DAILY_CONSENTS_SQL_FILTER = """
             WHERE cf.type = {consent_type}
                   AND DATE(ps.{authored_field}) = "{report_date}"
                   AND cf.sync_status IN (1,2,4)
@@ -144,15 +145,11 @@ ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1 '
 # TODO:  Remove this when we expand consent validation to include CE consents
 VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
 
-# Define the allowable --report-type arguments and their associated SQL.
-REPORT_TYPES = {
-    # Daily uploads = validation for all consents authored on the report date + missing files flagged on the report date
-    'daily_uploads':  CONSENT_REPORT_SQL_BODY + DAILY_NEW_CONSENTS_SQL_FILTER + VIBRENT_SQL_FILTER,
-    # Unresolved errors = Any consent_file entries still in a NEEDS_CORRECTING state (all-time)
-    'unresolved_errors':  CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
-}
+# Define the allowable --report-type arguments
+REPORT_TYPES = ['daily_uploads', 'weekly_status']
 
-class ProgramTemplateClass(object):
+# Parent class for common/generic report attributes and methods
+class ConsentReport(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
@@ -167,7 +164,6 @@ class ProgramTemplateClass(object):
         consent_df:  A pandas dataframe of the results from the report SQL query
         consent_errors_found:  True/False if the consent_df contains NEEDS_CORRECTING consent records
         report_date:   Date of the consent validation run (created date for records in RDR consent_file table)
-        dob_date_cutoff:  report_date-125 years (will flag DOB values more than 125 years ago as invalid)
         sheet_rows:  Max rows for the sheet being created (arbitrary, trying to accommodate expected "worst case")
         sheet_cols:  Max cols, derived from the DAILY_REPORT_COLUMN_MAP values
         max_retries:  How many times to retry a sheet write operation if the gspread/gsheets API call fails
@@ -179,55 +175,131 @@ class ProgramTemplateClass(object):
         """
         self.args = args
         self.gcp_env = gcp_env
+        if not args.report_type in REPORT_TYPES:
+            raise ValueError(f'invalid report type option: {args.report_type}')
+        else:
+            self.report_type = args.report_type
+
+        # Defaults, overridden as needed by child classes
+        self.worksheet = None
+        self.sheet_rows = 500
+        self.sheet_cols = 30
+        self.row_layout = None
+        self.report_sql = CONSENT_REPORT_SQL_BODY
+        self.consent_df = None
+        # Retry limit if a gspread/sheets API request fails
+        self.max_retries = 3
+        # Trackers updated as content is added to the daily report worksheet
+        self.row_pos = 1
+        self.write_requests = 0
+
+    def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
+        """
+        Use the rowcol_to_a1() gspread method to construct an A1 cell range notation string
+        A starting row position is required.  A starting col of 1 is the presumed default.  If no ending row/col is
+        provided, then assume the ending position is the same row and/or column
+
+        Returns:  a string such as 'A1:A1' (single cell), 'A5:N5' (multiple columns on the same row), etc.
+        """
+
+        # Assume single row / single col if no ending coordinate is provided
+        end_row = end_row or start_row
+        end_col = end_col or start_col
+
+        # Sanity check on row and column values vs. defined spreadsheet dimensions
+        if start_row > self.sheet_rows or end_row > self.sheet_rows:
+            raise ValueError(f'Row value exceeds maximum of {self.sheet_rows}')
+        if start_col > self.sheet_cols or end_col > self.sheet_cols:
+            raise ValueError(f'Column value exceeds maximum of {self.sheet_cols}')
+
+        return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
+
+    def write_to_worksheet(self, cell_range, values, format_specs=None):
+        """
+        A helper routine that will perform the worksheet write operations, especially until this tool can be updated to
+        use gspread/gsheets batch update requests.
+
+        There's a rate limit of gsheets API requests per minute, so if there are an unusually large number of daily
+        validation records across many organizations, we can exceed the limit doing the unbatched writes.
+        """
+        formatting_complete = False
+        write_complete = False
+        i = 0
+        self.write_requests += 1
+        # Rate limits are 100 writes per user every 100 seconds;  inject a pause every 25 writes
+        if self.write_requests % 25 == 0:
+            sleep(25)
+
+        while not write_complete and i < self.max_retries:
+            try:
+                # Do the formatting first so if it triggers retry, we don't write the cell data again on next pass
+                if format_specs and not formatting_complete:
+                    self.worksheet.format(cell_range, format_specs)
+                    formatting_complete = True
+
+                if len(values):   # May have empty values list if this is to write formatting only
+                    self.worksheet.update(cell_range, [values])
+                write_complete = True
+
+            except APIError as e:
+                if 'RATE_LIMIT_EXCEEDED' in str(e):
+                    _logger.info('gsheets rate limit per 100 seconds exceeded, pausing...')
+                    sleep(60)
+                    _logger.info('Resuming....')
+                else:
+                    raise e
+            finally:
+                i += 1
+
+    def add_banner_text_row(self, banner_key, row_pos=None):
+        """
+          Add a row or rows with the requested banner text (e.g., Report Date line).  A banner section can contain
+          multiple lines of text (e.g., 'report-notes' banner key)
+
+          Gets the values and formatting information from the class row_layout dictionary
+        """
+        if not row_pos:
+            row_pos = self.row_pos
+
+        banner = self.row_layout.get(banner_key)
+        if banner:
+            banner_format = banner.get('format', None)
+            for banner_row in banner.get('values', []):
+                # Each row of banner text is a single-cell range with column position 1 (default)
+                self.write_to_worksheet(self.make_a1_notation(row_pos), [banner_row], format_specs=banner_format)
+                row_pos += 1
+
+        self.row_pos = row_pos
+
+class DailyConsentReport(ConsentReport):
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+
+        super().__init__(args, gcp_env)
 
         if args.doc_id:
             self.doc_id = args.doc_id
         else:
-            # TODO:  If doc_id was not passed in, get it from environment var for now.  Update to read it from config
-            self.doc_id = os.environ['CONSENT_DOC_ID']
-
+            self.doc_id = os.environ['DAILY_CONSENT_DOC_ID']
         if not self.doc_id:
-            raise ValueError('Please use the --doc-id arg or export CONSENT_DOC_ID environment var')
-
-        self.worksheet = None   # Set to the newly created worksheet from gspread add_worksheet()
-        self.consent_df = None  # Set to the pandas dataframe result generated from the report SQL query
-        self.consent_errors_found = False  # Set to True if consent_df dataframe contains NEEDS_CORRECTING values
-
+            raise ValueError('Please use the --doc-id arg or export DAILY_CONSENT_DOC_ID environment var')
         if args.report_date:
             self.report_date = args.report_date
         else:
             # Default to yesterday's date as the filter for consent authored date
             self.report_date = datetime.now() - timedelta(1)
-
         if args.csv_file:
             self.csv_filename = args.csv_file
         else:
             self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
 
-        # Decision by DRC/NIH stakeholders to use 125 years ago as the cutoff date for flagging invalid DOB
-        self.dob_date_cutoff = datetime(self.report_date.year-125,
-                                        self.report_date.month,
-                                        self.report_date.day).strftime("%Y-%m-%d")
+        self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + VIBRENT_SQL_FILTER
 
-        if args.report_type:
-            if not args.report_type in REPORT_TYPES.keys():
-                raise ValueError(f'invalid report type option: {args.report_type}')
-            else:
-                self.report_sql = REPORT_TYPES.get(args.report_type)
-
-        # Max dimensions for the daily sheet (max rows is a guesstimate?)
-        self.sheet_rows = 500
+        # Max columns for the daily sheet
         self.sheet_cols = max(DAILY_REPORT_COLUMN_MAP.values())
-
-        # Retry limit if a gspread/sheets API request fails
-        self.max_retries = 3
-
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
         self.max_daily_reports = 32 # A month's worth + an extra sheet to contain a legend / notes as needed
-
-        # Trackers updated as content is added to the daily report worksheet
-        self.row_pos = 1
-        self.write_requests = 0
+        self.consent_errors_found = False
 
         # Pre-populated details about the sections of the reports;  used when calling gspread methods
         self.row_layout = {
@@ -295,27 +367,6 @@ class ProgramTemplateClass(object):
             },
         }
 
-    def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
-        """
-        Use the rowcol_to_a1() gspread method to construct an A1 cell range notation string
-        A starting row position is required.  A starting col of 1 is the presumed default.  If no ending row/col is
-        provided, then assume the ending position is the same row and/or column
-
-        Returns:  a string such as 'A1:A1' (single cell), 'A5:N5' (multiple columns on the same row), etc.
-        """
-
-        # Assume single row / single col if no ending coordinate is provided
-        end_row = end_row or start_row
-        end_col = end_col or start_col
-
-        # Sanity check on row and column values vs. defined spreadsheet dimensions
-        if start_row > self.sheet_rows or end_row > self.sheet_rows:
-            raise ValueError(f'Row value exceeds maximum of {self.sheet_rows}')
-        if start_col > self.sheet_cols or end_col > self.sheet_cols:
-            raise ValueError(f'Column value exceeds maximum of {self.sheet_cols}')
-
-        return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
-
     def get_daily_consent_validation_results(self, db_conn=None):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
@@ -329,7 +380,6 @@ class ProgramTemplateClass(object):
         for consent_int in CONSENTS_LIST:
             sql = self.report_sql.format(authored_field=CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)],
                                          consent_type=consent_int,
-                                         dob_cutoff=self.dob_date_cutoff,
                                          report_date=self.report_date.strftime("%Y-%m-%d"))
 
             df = df.append(pandas.read_sql_query(sql, db_conn))
@@ -387,63 +437,6 @@ class ProgramTemplateClass(object):
         with open(self.csv_filename, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerows(output_rows)
-
-    def write_to_worksheet(self, cell_range, values, format_specs=None):
-        """
-        A helper routine that will perform the worksheet write operations, especially until this tool can be updated to
-        use gspread/gsheets batch update requests.
-
-        There's a rate limit of gsheets API requests per minute, so if there are an unusually large number of daily
-        validation records across many organizations, we can exceed the limit doing the unbatched writes.
-        """
-        formatting_complete = False
-        write_complete = False
-        i = 0
-        self.write_requests += 1
-        # Rate limits are 100 writes per user every 100 seconds;  inject a pause every 25 writes
-        if self.write_requests % 25 == 0:
-            sleep(25)
-
-        while not write_complete and i < self.max_retries:
-            try:
-                # Do the formatting first so if it triggers retry, we don't write the cell data again on next pass
-                if format_specs and not formatting_complete:
-                    self.worksheet.format(cell_range, format_specs)
-                    formatting_complete = True
-
-                if len(values):   # May have empty values list if this is to write formatting only
-                    self.worksheet.update(cell_range, [values])
-                write_complete = True
-
-            except APIError as e:
-                if 'RATE_LIMIT_EXCEEDED' in str(e):
-                    _logger.info('gsheets rate limit per 100 seconds exceeded, pausing...')
-                    sleep(60)
-                    _logger.info('Resuming....')
-                else:
-                    raise e
-            finally:
-                i += 1
-
-    def add_banner_text_row(self, banner_key, row_pos=None):
-        """
-          Add a row or rows with the requested banner text (e.g., Report Date line).  A banner section can contain
-          multiple lines of text (e.g., 'report-notes' banner key)
-
-          Gets the values and formatting information from the class row_layout dictionary
-        """
-        if not row_pos:
-            row_pos = self.row_pos
-
-        banner = self.row_layout.get(banner_key)
-        if banner:
-            banner_format = banner.get('format', None)
-            for banner_row in banner.get('values', []):
-                # Each row of banner text is a single-cell range with column position 1 (default)
-                self.write_to_worksheet(self.make_a1_notation(row_pos), [banner_row], format_specs=banner_format)
-                row_pos += 1
-
-        self.row_pos = row_pos
 
     def add_count_header_section(self, row_pos=None, hpo=None):
         """
@@ -671,12 +664,12 @@ def run():
                         help="Only generate the googlesheet report, skip generating the CSV file")
     parser.add_argument("--csv-only", default=False, action="store_true",
                         help="Only generate the CSV errors file, skip generating google sheet content")
-    parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES.keys())}}}.'
+    parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES)}}}.'
     args = parser.parse_args()
 
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = ProgramTemplateClass(args, gcp_env)
+        process = DailyConsentReport(args, gcp_env)
         exit_code = process.execute()
         return exit_code
 
