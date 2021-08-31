@@ -1,39 +1,18 @@
 import logging
 from rdr_service.services.system_utils import JSONObject
-
-from rdr_service.dao.genomics_dao import GenomicSetDao
-from rdr_service.genomic import (
-    genomic_biobank_manifest_handler,
-    genomic_set_file_handler,
-    validation,
-    genomic_center_manifest_handler
-)
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.genomic_enums import GenomicSetStatus, GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
 import rdr_service.config as config
 
 
-def process_genomic_water_line():
-    """
-  Entrypoint, executed as a cron job
-  """
-    genomic_set_id = genomic_set_file_handler.read_genomic_set_from_bucket()
-    if genomic_set_id is not None:
-        logging.info("Read input genomic set file successfully.")
-        dao = GenomicSetDao()
-        validation.validate_and_update_genomic_set_by_id(genomic_set_id, dao)
-        genomic_set = dao.get(genomic_set_id)
-        if genomic_set.genomicSetStatus == GenomicSetStatus.VALID:
-            genomic_biobank_manifest_handler.create_and_upload_genomic_biobank_manifest_file(genomic_set_id)
-            logging.info("Validation passed, generate biobank manifest file successfully.")
-        else:
-            logging.info("Validation failed.")
-        genomic_set_file_handler.create_genomic_set_status_result_file(genomic_set_id)
-    else:
-        logging.info("No file found or nothing read from genomic set file")
-
-    genomic_biobank_manifest_handler.process_genomic_manifest_result_file_from_bucket()
-    genomic_center_manifest_handler.process_genotyping_manifest_files()
+def run_genomic_cron_job(val):
+    def inner_decorator(f):
+        def wrapped(*args, **kwargs):
+            if not config.getSettingJson(config.GENOMIC_CRON_JOBS).get(val):
+                raise RuntimeError
+            return f(*args, **kwargs)
+        return wrapped
+    return inner_decorator
 
 
 def new_participant_workflow():
