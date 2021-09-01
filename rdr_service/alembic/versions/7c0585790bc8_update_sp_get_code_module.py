@@ -75,26 +75,16 @@ sp_get_questionnaire_answers = ReplaceableObject(
              SELECT DISTINCT CONCAT('GROUP_CONCAT(IF(code_id = ', code_id, ', answer, NULL) SEPARATOR ",") AS ',
                                     `value`) as output
              FROM (
-                    select code_id, value, display, code_type, parent_id, '0' AS sort_id
+                    select code_id, value
                     from code where code_id in
                     (
-                        select distinct s.code_id
-                        from survey s
-                        where s.code_id=@code_id
-                        UNION
                         select distinct sq.code_id
                         from survey s, survey_question sq
                         where s.id=sq.survey_id
                         and s.code_id=@code_id
-                        UNION
-                        select distinct sqo.code_id
-                        from survey s, survey_question sq, survey_question_option sqo
-                        where s.id=sq.survey_id and sq.id=sqo.question_id
-                        and s.code_id=@code_id
                     )
                     order by code_id
                   ) b
-             WHERE b.code_type = 3
          ) AS temp;
 
     SET @sql = CONCAT('
