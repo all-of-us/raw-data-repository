@@ -40,7 +40,7 @@ class GenomicSetMemberSchema(Schema):
     created = fields.DateTime()
     modified = fields.DateTime()
     genomic_set_id = fields.Int32()
-    participant_id = fields.Int32()
+    participant_id = fields.String(validate=validate.Length(max=10))
     ny_flag = fields.Int32()
     sex_at_birth = fields.String(validate=validate.Length(max=20))
     genome_type = fields.String(validate=validate.Length(max=80))

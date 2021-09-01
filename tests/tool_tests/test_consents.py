@@ -69,7 +69,16 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             if additional_args:
                 tool_args.update(additional_args)
 
-            self.run_tool(ConsentTool, tool_args, mock_session=True)
+            self.run_tool(
+                ConsentTool,
+                tool_args,
+                mock_session=True,
+                server_config={
+                    config.CONSENT_PDF_BUCKET: {
+                        'vibrent': 'test-bucket-name'
+                    }
+                }
+            )
 
     def test_report_to_send_to_ptsc(self, logger_mock):
         """Check the basic report format, the one that would be sent to Vibrent or CE for correcting"""
@@ -132,7 +141,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                 mock.call('sync_status:    NEEDS_CORRECTING => READY_FOR_SYNC')
             ])
 
-            updated_file = self.consent_dao_mock.batch_update_consent_files.call_args_list[0].args[1][0]
+            updated_file = self.consent_dao_mock.batch_update_consent_files.call_args_list[0].args[0][0]
             self.assertEqual(file_to_update.id, updated_file.id)
             self.assertEqual(ConsentType.CABOR, updated_file.type)
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
@@ -202,7 +211,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                     'file': 'data.csv',
                 }
             )
-            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[1]
+            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
             self.assertTrue(any([
                 (
                     record.participant_id == '4567'

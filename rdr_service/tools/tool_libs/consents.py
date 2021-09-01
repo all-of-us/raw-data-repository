@@ -3,11 +3,15 @@ import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 
+import requests
+
 from rdr_service import config
+from rdr_service.app_util import BatchManager
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
 from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy, StoreResultStrategy
@@ -26,9 +30,26 @@ class ConsentTool(ToolBase):
         super(ConsentTool, self).__init__(*args, **kwargs)
         self._consent_dao = ConsentDao()
         self._storage_provider = GoogleCloudStorageProvider()
+        self._sever_config = None
+
+    def run_process(self):
+        # start a gcp environment without the service account to retrieve the config without permission issues
+        with self.initialize_process_context(
+            self.tool_cmd,
+            self.args.project,
+            self.args.account,
+            service_account=''
+        ) as gcp_env:
+            self.gcp_env = gcp_env
+            self._sever_config = self.get_server_config()
+
+        super(ConsentTool, self).run_process()
 
     def run(self):
         super(ConsentTool, self).run()
+
+        # Overwrite the local config consent buckets with what is available from the target environment
+        config.override_setting(config.CONSENT_PDF_BUCKET, self._sever_config[config.CONSENT_PDF_BUCKET])
 
         if self.args.command == 'report-errors':
             self.report_files_for_correction()
@@ -40,6 +61,31 @@ class ConsentTool(ToolBase):
             self.upload_records()
         elif self.args.command == 'check-retro-sync':
             self.check_retro_sync()
+        elif self.args.command == 'retro-validation':
+            self.retro_validate()
+
+    def _call_server_for_retro_validation(self, participant_ids):
+        if len(participant_ids) > 0:
+            print(f'Processing batch that starts with {participant_ids[0]}')
+
+        response = requests.post(
+            'https://offline-dot-all-of-us-rdr-prod.appspot.com/offline/ManuallyValidateFiles',
+            headers=gcp_make_auth_header(),
+            json={
+                'ids': participant_ids
+            }
+        )
+
+        if response.status_code != 200:
+            exit(1)  # Exiting program to prevent further calls with a bad key
+
+    def retro_validate(self):
+        with self.get_session() as session:
+            participant_summaries = ConsentDao.get_participants_needing_validation(session=session)
+
+        with BatchManager(batch_size=10, callback=self._call_server_for_retro_validation) as batch_manager:
+            for summary in participant_summaries:
+                batch_manager.add(summary.participantId)
 
     def check_retro_sync(self):
         with self.get_session() as session:
@@ -101,7 +147,7 @@ class ConsentTool(ToolBase):
                     parser_func=ConsentSyncStatus,
                     callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
                 )
-                self._consent_dao.batch_update_consent_files(session, [file])
+                self._consent_dao.batch_update_consent_files([file], session)
 
     def validate_consents(self):
         sync_controller = ConsentSyncController(
@@ -139,7 +185,7 @@ class ConsentTool(ToolBase):
                 data_to_upload.append(ConsentFile(**validation_data))
 
         with self.get_session() as session:
-            self._consent_dao.batch_update_consent_files(session, data_to_upload)
+            self._consent_dao.batch_update_consent_files(data_to_upload, session)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
@@ -217,6 +263,7 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     )
 
     subparsers.add_parser('check-retro-sync')
+    subparsers.add_parser('retro-validation')
 
 
 def run():

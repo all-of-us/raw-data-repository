@@ -196,6 +196,10 @@ class GenomicSetMember(Base):
                                   Integer, ForeignKey("genomic_job_run.id"),
                                   nullable=True)
 
+    aw3ManifestFileId = Column('aw3_manifest_file_id',
+                               Integer, ForeignKey("genomic_manifest_file.id"),
+                               nullable=True)
+
     gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
                                             String(10), nullable=True)
 
@@ -399,6 +403,7 @@ class GenomicAW1Raw(Base):
     contact = Column("contact", String(255), nullable=True)
     email = Column("email", String(255), nullable=True)
     study_pi = Column("study_pi", String(255), nullable=True)
+    site_name = Column("site_name", String(255), nullable=True, index=True)
     test_name = Column("test_name", String(255), nullable=True)
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)

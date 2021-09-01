@@ -14,13 +14,27 @@ from rdr_service.resource.constants import SchemaID
 
 
 class WorkspaceRaceEthnicitySchema(Schema):
-    race_ethnicity = fields.EnumString(enum=WorkbenchWorkspaceAge, required=True)
-    race_ethnicity_id = fields.EnumInteger(enum=WorkbenchWorkspaceAge, required=True)
+    race_ethnicity = fields.EnumString(enum=WorkbenchResearcherEthnicity, required=True)
+    race_ethnicity_id = fields.EnumInteger(enum=WorkbenchResearcherEthnicity, required=True)
+
+    class Meta:
+        schema_id = SchemaID.workbench_workspace_ethnicity
+        resource_uri = 'WorkbenchWorkspace/{id}/Ethnicities'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class WorkspaceAgeSchema(Schema):
-    age = fields.EnumString(enum=WorkbenchResearcherEthnicity, required=True)
-    age_id = fields.EnumInteger(enum=WorkbenchResearcherEthnicity, required=True)
+    age = fields.EnumString(enum=WorkbenchWorkspaceAge, required=True)
+    age_id = fields.EnumInteger(enum=WorkbenchWorkspaceAge, required=True)
+
+    class Meta:
+        schema_id = SchemaID.workbench_workspace_age
+        resource_uri = 'WorkbenchWorkspace/{id}/Ages'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
 
 
 class WorkbenchWorkspaceSchema(Schema):
@@ -57,8 +71,8 @@ class WorkbenchWorkspaceSchema(Schema):
 
     focus_on_underrepresented_populations = fields.Boolean()
 
-    race_ethnicities = fields.Nested(WorkspaceRaceEthnicitySchema)
-    ages = fields.Nested(WorkbenchWorkspaceAge)
+    race_ethnicities = fields.Nested(WorkspaceRaceEthnicitySchema, many=True)
+    ages = fields.Nested(WorkspaceAgeSchema, many=True)
 
     sex_at_birth = fields.EnumString(enum=WorkbenchWorkspaceSexAtBirth, required=True)
     sex_at_birth_id = fields.EnumInteger(enum=WorkbenchWorkspaceSexAtBirth, required=True)

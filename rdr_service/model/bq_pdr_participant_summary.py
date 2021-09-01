@@ -229,7 +229,8 @@ class BQPDRParticipantSummaryView(BQView):
             'biospec',
             'patient_statuses',
             'biobank_orders',
-            'ehr_receipts'
+            'ehr_receipts',
+            'pairing_history'
         ])
     )
 
@@ -256,7 +257,8 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
             'biospec',
             'patient_statuses',
             'biobank_orders',
-            'ehr_receipts'
+            'ehr_receipts',
+            'pairing_history'
         ])
     )
 
@@ -393,7 +395,6 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_created,
              nt.bbo_status,
              nt.bbo_status_id,
-             nt.bbo_dv_order,
              nt.bbo_collected_site,
              nt.bbo_collected_site_id,
              nt.bbo_processed_site,
@@ -404,7 +405,9 @@ class BQPDRParticipantBiobankOrderView(BQView):
              nt.bbo_finalized_status,
              nt.bbo_finalized_status_id,
              nt.bbo_tests_ordered,
-             nt.bbo_tests_stored
+             nt.bbo_tests_stored,
+             nt.bbo_collection_method,
+             nt.bbo_collection_method_id
         FROM (
           SELECT *,
               ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
@@ -433,7 +436,8 @@ class BQPDRParticipantBiobankSampleView(BQView):
                nt.bbs_status_id,
                nt.bbs_disposed,
                nt.bbs_disposed_reason,
-               nt.bbs_disposed_reason_id
+               nt.bbs_disposed_reason_id,
+               nt.bbs_biobank_stored_sample_id
            FROM (
               SELECT *,
                   ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn

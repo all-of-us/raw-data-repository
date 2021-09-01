@@ -178,7 +178,7 @@ class ResourceSchemaTest(BaseTestCase):
                                      bq_participant_summary.BQRaceSchema())
 
     def test_pairing_history_resource_schema(self):
-        self._verify_resource_schema('ParingHistorySchema',
+        self._verify_resource_schema('PairingHistorySchema',
                                      rschemas.participant.PairingHistorySchema(),
                                      bq_participant_summary.BQPairingHistorySchema())
 

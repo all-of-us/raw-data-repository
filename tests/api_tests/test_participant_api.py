@@ -494,11 +494,6 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertEqual(ps_bqs_data.get('test_participant'), 0)
         self.assertEqual(ps_rsc.get('test_participant'), 0)
 
-        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
-        self.assertEqual(pdr_mod_responses[0].test_participant, 0)
-        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'TheBasics', latest=True)
-        self.assertEqual(pdr_mod_responses[0].test_participant, 0)
-
         # change login phone number to 444-222-2222
         self.submit_questionnaire_response(
             participant_id,
@@ -543,12 +538,6 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         ps_rsc = self.make_participant_resource(participant_id)
         self.assertEqual(ps_bqs_data.get('test_participant'), 1)
         self.assertEqual(ps_rsc.get('test_participant'), 1)
-
-        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'ConsentPII', latest=True)
-        self.assertEqual(pdr_mod_responses[0].test_participant, 1)
-        pdr_mod_responses = self.make_bq_questionnaire_response(participant_id, 'TheBasics', latest=True)
-        self.assertEqual(pdr_mod_responses[0].test_participant, 1)
-
 
     def test_street_address_two_clears_on_address_update(self):
         participant_id, questionnaire_id = self._setup_initial_participant_data()

@@ -328,7 +328,7 @@ class GenomicFileIngester:
             'gcManifestContact': 'contact',
             'gcManifestEmail': 'email',
             'gcManifestStudyPI': 'studypi',
-            'gcManifestTestName': 'testname',
+            'gcManifestTestName': 'genometype',
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
         }
@@ -362,7 +362,8 @@ class GenomicFileIngester:
             "contact": "contact",
             "email": "email",
             "study_pi": "studypi",
-            "test_name": "testname",
+            "site_name": "sitename",
+            "test_name": "genometype",
             "failure_mode": "failuremode",
             "failure_mode_desc": "failuremodedesc",
         }
@@ -404,22 +405,13 @@ class GenomicFileIngester:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row], row.values()))
             row_copy['site_id'] = _site
-
-            # TODO: Disabling this fix but leaving in
-            #  Until verified that this issue has been fixed in manifes
-            # Fix for invalid parent sample values
-            # try:
-            #     parent_sample_id = int(row_copy['parentsampleid'])
-            # except ValueError:
-            #     parent_sample_id = 0
-
             # Skip rows if biobank_id is an empty string (row is empty well)
             if row_copy['biobankid'] == "":
                 continue
 
             # Check if this sample has a control sample parent tube
             control_sample_parent = self.member_dao.get_control_sample_parent(
-                row_copy['testname'],
+                row_copy['genometype'],
                 int(row_copy['parentsampleid'])
             )
 
@@ -430,7 +422,7 @@ class GenomicFileIngester:
                 # Since the Biobank is reusing the sample and collection tube IDs (which are supposed to be unique)
                 cntrl_sample_member = self.member_dao.get_control_sample_for_gc_and_genome_type(
                     _site,
-                    row_copy['testname'],
+                    row_copy['genometype'],
                     row_copy['biobankid'],
                     row_copy['collectiontubeid'],
                     row_copy['sampleid']
@@ -452,21 +444,21 @@ class GenomicFileIngester:
             # Set the member based on collection tube ID
             # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
             member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
-                                                                     row_copy['testname'])
+                                                                     row_copy['genometype'])
 
             # Since member not found, and not a control sample,
             # check if collection tube id was swapped by Biobank
-            if member is None:
+            if not member:
                 bid = row_copy['biobankid']
 
                 # Strip biobank prefix if it's there
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
                     bid = bid[1:]
-
-                member = self.member_dao.get_member_from_biobank_id_in_state(bid,
-                                                                             row_copy['testname'],
-                                                                             _state)
-
+                member = self.member_dao.get_member_from_biobank_id_in_state(
+                    bid,
+                    row_copy['genometype'],
+                    _state
+                )
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
                     if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
@@ -474,13 +466,12 @@ class GenomicFileIngester:
                             self._record_sample_as_contaminated(session, member.collectionTubeId)
 
                         member.collectionTubeId = row_copy['collectiontubeid']
-
                 else:
                     # Couldn't find genomic set member based on either biobank ID or collection tube
                     _message = f"{self.job_id.name}: Cannot find genomic set member: " \
                                f"collection_tube_id: {row_copy['collectiontubeid']}, " \
                                f"biobank id: {bid}, " \
-                               f"genome type: {row_copy['testname']}"
+                               f"genome type: {row_copy['genometype']}"
 
                     self.controller.create_incident(source_job_run_id=self.job_run_id,
                                                     source_file_processed_id=self.file_obj.id,
@@ -490,16 +481,12 @@ class GenomicFileIngester:
                                                     collection_tube_id=row_copy['collectiontubeid'],
                                                     sample_id=row_copy['sampleid'],
                                                     )
-
                     # Skip rest of iteration and continue processing file
                     continue
-
             # Process the attribute data
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
-
             if member_changed:
                 self.member_dao.update(member)
-
                 # Update member for PDR
                 bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
                 genomic_set_member_update(member.id)
@@ -917,7 +904,6 @@ class GenomicFileIngester:
         # Check if the member needs updating
         if self._test_aw1_data_for_member_updates(aw1_data, member):
             member = self._set_member_attributes_from_aw1(aw1_data, member)
-
             member = self._set_rdr_member_attributes_for_aw1(aw1_data, member)
             return True, member
         return False, member
@@ -1184,7 +1170,7 @@ class GenomicFileIngester:
 
                 # Update the AW1C job run ID and genome_type
                 member.cvlAW1CManifestJobRunID = self.job_run_id
-                member.genomeType = row_copy['testname']
+                member.genomeType = row_copy['genometype']
 
                 # Handle genomic state
                 _signal = "aw1c-reconciled"
@@ -1268,7 +1254,7 @@ class GenomicFileIngester:
             biobankId=aw1_data['biobankid'],
             collectionTubeId=aw1_data['collectiontubeid'],
             validationStatus=GenomicSetMemberStatus.VALID,
-            genomeType=aw1_data['testname'],
+            genomeType=aw1_data['genometype'],
             genomicWorkflowState=GenomicWorkflowState.AW1
         )
 
@@ -1390,7 +1376,7 @@ class GenomicFileValidator:
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
-        self.GC_MANIFEST_SCHEMA = (
+        self.AW1_MANIFEST_SCHEMA = (
             "packageid",
             "biobankidsampleid",
             "boxstorageunitid",
@@ -1417,7 +1403,8 @@ class GenomicFileValidator:
             "contact",
             "email",
             "studypi",
-            "testname",
+            "sitename",
+            "genometype",
             "failuremode",
             "failuremodedesc"
         )
@@ -1758,11 +1745,11 @@ class GenomicFileValidator:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
                 return self.GC_METRICS_SCHEMAS[file_type]
             if self.job_id == GenomicJob.AW1_MANIFEST:
-                return self.GC_MANIFEST_SCHEMA
+                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
                 return self.GEM_A2_SCHEMA
             if self.job_id == GenomicJob.AW1F_MANIFEST:
-                return self.GC_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
+                return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
             if self.job_id == GenomicJob.W2_INGEST:
@@ -1772,7 +1759,7 @@ class GenomicFileValidator:
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
                 return self.AW4_WGS_SCHEMA
             if self.job_id in (GenomicJob.AW1C_INGEST, GenomicJob.AW1CF_INGEST):
-                return self.GC_MANIFEST_SCHEMA
+                return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.AW5_WGS_MANIFEST:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS['seq']
                 return self.AW5_WGS_SCHEMA
@@ -1874,10 +1861,9 @@ class GenomicReconciler:
 
             file_types_received = set([f.file_type for f in files])
             missing_data_files = required_files_set - file_types_received
-
             metric_touched = False
 
-            # WGS query results requre GenomicGCValidationMetrics model to be specified
+            # WGS query results require GenomicGCValidationMetrics model to be specified
             if isinstance(result, GenomicGCValidationMetrics):
                 _obj = result
             else:
@@ -1894,18 +1880,24 @@ class GenomicReconciler:
                         if not getattr(_obj, file_type_config['file_received_attribute']):
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
-
                             metric_touched = True
+                            self.controller.member_ids_for_update.append(_obj.genomicSetMemberId)
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
 
+            if self.controller.member_ids_for_update:
+                self.controller.execute_cloud_task({
+                    'member_ids': self.controller.member_ids_for_update,
+                    'field': 'reconcileMetricsSequencingJobRunId',
+                    'value': self.run_id,
+                    'is_job_run': True,
+                }, 'genomic_set_member_update_task')
+
         return GenomicSubProcessResult.SUCCESS
 
     def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
-        member = self.member_dao.get(_obj.genomicSetMemberId)
-
         # Only upsert the metric if changed
         inserted_metrics_obj = self.metrics_dao.upsert(_obj)
         logging.info(f'id {_obj.id} updated with attributes')
@@ -1916,17 +1908,13 @@ class GenomicReconciler:
                                                     project_id=self.controller.bq_project_id)
             genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
+        member = self.member_dao.get(_obj.genomicSetMemberId)
         next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=self.ready_signal)
-
-        self.member_dao.update_member_job_run_id(member, self.run_id, 'reconcileMetricsSequencingJobRunId',
-                                                 project_id=self.controller.bq_project_id)
 
         # Handle for missing data files
         if missing_data_files:
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-
             incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
-
             for file_type in missing_data_files:
                 missing_file_object = GenomicGcDataFileMissing(
                     gc_site_id=_gc_site_id,
@@ -1948,10 +1936,12 @@ class GenomicReconciler:
         member = self.member_dao.get(metric.genomicSetMemberId)
         description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
         description += f"\nGenomic Job Run ID: {self.run_id}"
-        description += self._compile_missing_data_alert(
-            file_name=file.fileName,
-            missing_files=missing_data_files
-        )
+
+        file_list = '\n'.join([mf for mf in missing_data_files])
+        description = f"\nManifest File: {file.fileName}"
+        description += "\nMissing Data File(s):"
+        description += f"\n{file_list}"
+
         self.controller.create_incident(
             source_job_run_id=self.run_id,
             source_file_processed_id=file.id,
@@ -1964,24 +1954,10 @@ class GenomicReconciler:
             slack=True
         )
 
-    @staticmethod
-    def _compile_missing_data_alert(file_name, missing_files):
-        """
-        Compiles the description to include in a GenomicAlert
-        :param file_name:
-        :param missing_data: list of files
-        :return: summary, description
-        """
-        file_list = '\n'.join([mf for mf in missing_files])
-        description = f"\nManifest File: {file_name}"
-        description += "\nMissing Data File(s):"
-        description += f"\n{file_list}"
-        return description
-
     def generate_cvl_reconciliation_report(self):
         """
         The main method for the CVL Reconciliation report,
-        ouptuts report file to the cvl subfolder and updates
+        outputs report file to the cvl subfolder and updates
         genomic_set_member
         :return: result code
         """
@@ -1991,16 +1967,14 @@ class GenomicReconciler:
             self.cvl_file_name = f"{cvl_subfolder}/cvl_report_{self.run_id}.csv"
             self._write_cvl_report_to_file(members)
 
-            results = []
-            for member in members:
-                results.append(self.member_dao.update_member_job_run_id(
-                    member, job_run_id=self.run_id,
-                    field='reconcileCvlJobRunId')
-                )
+            self.controller.execute_cloud_task({
+                'member_ids': [m.id for m in members],
+                'field': 'reconcileCvlJobRunId',
+                'value': self.run_id,
+                'is_job_run': True,
+            }, 'genomic_set_member_update_task')
 
-            return GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
+            return GenomicSubProcessResult.SUCCESS
 
         return GenomicSubProcessResult.NO_FILES
 
@@ -2036,90 +2010,6 @@ class GenomicReconciler:
             if new_state is not None or new_state != member.genomicWorkflowState:
                 self.member_dao.update_member_state(member, new_state)
                 self.member_dao.update_report_consent_removal_date(member, None)
-
-    @staticmethod
-    def _check_genotyping_file_exists(bucket_name, filename):
-        files = list_blobs('/' + bucket_name)
-        filenames = [f.name for f in files if f.name.endswith(filename)]
-        return 1 if len(filenames) > 0 else 0
-
-    def _get_full_filename(self, filename):
-        """ Searches file_list for names ending in filename
-        :param filename: file name to match
-        :return: first filename in list
-        """
-        filenames = [name for name in self.file_list if name.lower().endswith(filename.lower())]
-        return filenames[0] if len(filenames) > 0 else 0
-
-    def _get_full_filename_with_expression(self, expression):
-        """ Searches file_list for names that match the expression
-        :param expression: pattern to match
-        :return: file name with highest revision number
-        """
-        filenames = [name for name in self.file_list if re.search(expression, name)]
-
-        def sort_filenames(name):
-            version = name.split('.')[0].split('_')[-1]
-
-            if version[0].isalpha():
-                version = version[1:]
-
-            return int(version)
-
-        # Naturally sort the list in descending order of revisions
-        # ex: [name_11.ext, name_10.ext, name_9.ext, name_8.ext, etc.]
-        filenames.sort(reverse=True, key=sort_filenames)
-
-        return filenames[0] if len(filenames) > 0 else 0
-
-    def _get_sequence_files(self, bucket_name):
-        """
-        Checks the bucket for sequencing files based on naming convention
-        :param bucket_name:
-        :return: file list or result code
-        """
-        try:
-            files = list_blobs('/' + bucket_name)
-            # TODO: naming_convention is not yet finalized
-            naming_convention = r"^gc_sequencing_t\d*\.txt$"
-            files = [s.name for s in files
-                     if self.archive_folder not in s.name.lower()
-                     if re.search(naming_convention,
-                                  s.name.lower())]
-            if not files:
-                logging.info(
-                    f'No valid sequencing files in bucket {bucket_name}'
-                )
-                return GenomicSubProcessResult.NO_FILES
-            return files
-        except FileNotFoundError:
-            return GenomicSubProcessResult.ERROR
-
-    def _parse_seq_filename(self, filename):
-        """
-        Takes a sequencing filename and returns the biobank id.
-        :param filename:
-        :return: biobank_id
-        """
-        # TODO: naming_convention is not yet finalized
-        try:
-            # pull biobank ID from filename
-            return filename.lower().split('_')[-1].split('.')[0][1:]
-        except IndexError:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
-
-    def _update_genomic_set_member_seq_reconciliation(self, member, seq_file_name, job_run_id):
-        """
-        Uses member DAO to update GenomicSetMember object
-        with sequencing reconciliation data
-        :param member: the GenomicSetMember to update
-        :param seq_file_name:
-        :param job_run_id:
-        :return: query result
-        """
-        return self.member_dao.update_member_sequencing_file(member,
-                                                             job_run_id,
-                                                             seq_file_name)
 
     def _write_cvl_report_to_file(self, members):
         """
@@ -3027,13 +2917,21 @@ class ManifestCompiler:
     This component compiles Genomic manifests
     based on definitions provided by ManifestDefinitionProvider
     """
-    def __init__(self, run_id, bucket_name=None, max_num=None):
+    def __init__(
+        self,
+        run_id,
+        bucket_name=None,
+        max_num=None,
+        controller=None
+    ):
         self.run_id = run_id
         self.bucket_name = bucket_name
         self.max_num = max_num
+        self.controller = controller
         self.output_file_name = None
         self.manifest_def = None
         self.def_provider = None
+
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
@@ -3055,26 +2953,30 @@ class ManifestCompiler:
         self.manifest_def = self.def_provider.get_def(manifest_type)
         source_data = self._pull_source_data()
 
-        if source_data:
-            if self.max_num and len(source_data) > self.max_num:
-                current_list = []
-                count = 0
+        if not source_data:
+            logging.info(f'No records found for manifest type: {manifest_type}.')
+            return {
+                "code": GenomicSubProcessResult.NO_FILES,
+                "record_count": 0,
+            }
 
-                for obj in source_data:
-                    current_list.append(obj)
+        validation_failed, message = self._validate_source_data(source_data, manifest_type)
+        if validation_failed:
+            self.controller.create_incident(
+                source_job_run_id=self.run_id,
+                code=GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name,
+                slack=True,
+                message=message
+            )
+            raise RuntimeError
 
-                    if len(current_list) == self.max_num:
-                        count += 1
-                        self.output_file_name = self.manifest_def.output_filename
-                        self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
-                        logging.info(
-                            f'Preparing manifest of type {manifest_type}...'
-                            f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
-                        )
-                        self._write_and_upload_manifest(current_list)
-                        current_list.clear()
+        if self.max_num and len(source_data) > self.max_num:
+            current_list = []
+            count = 0
 
-                if current_list:
+            for obj in source_data:
+                current_list.append(obj)
+                if len(current_list) == self.max_num:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
@@ -3083,42 +2985,44 @@ class ManifestCompiler:
                         f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                     )
                     self._write_and_upload_manifest(current_list)
+                    current_list.clear()
 
-            else:
+            if current_list:
+                count += 1
                 self.output_file_name = self.manifest_def.output_filename
-                # If the new manifest is a feedback manifest,
-                # it will have an input manifest
-                if "input_manifest" in kwargs.keys():
-                    # AW2F manifest file name is based of of AW1
-                    if manifest_type == GenomicManifestTypes.AW2F:
-                        new_name = kwargs['input_manifest'].filePath.split('/')[-1]
-                        new_name = new_name.replace('.csv', '_contamination.csv')
-                        self.output_file_name = self.manifest_def.output_filename.replace(
-                            "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
-                            f"{new_name}"
-                        )
+                self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
                     f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
                 )
-                self._write_and_upload_manifest(source_data)
+                self._write_and_upload_manifest(current_list)
+        else:
+            self.output_file_name = self.manifest_def.output_filename
+            # If the new manifest is a feedback manifest,
+            # it will have an input manifest
+            if "input_manifest" in kwargs.keys():
+                # AW2F manifest file name is based of of AW1
+                if manifest_type == GenomicManifestTypes.AW2F:
+                    new_name = kwargs['input_manifest'].filePath.split('/')[-1]
+                    new_name = new_name.replace('.csv', '_contamination.csv')
+                    self.output_file_name = self.manifest_def.output_filename.replace(
+                        "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
+                        f"{new_name}"
+                    )
+            logging.info(
+                f'Preparing manifest of type {manifest_type}...'
+                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+            )
+            self._write_and_upload_manifest(source_data)
 
-            results = []
-            record_count = len(source_data)
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-
                 if member is None:
                     raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-                if self.manifest_def.job_run_field is not None:
-                    results.append(
-                        self.member_dao.update_member_job_run_id(
-                            member,
-                            job_run_id=self.run_id,
-                            field=self.manifest_def.job_run_field
-                        )
-                    )
+                if self.manifest_def.job_run_field:
+                    self.controller.member_ids_for_update.append(member.id)
+
                 # Handle Genomic States for manifests
                 if self.manifest_def.signal != "bypass":
                     new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
@@ -3127,16 +3031,18 @@ class ManifestCompiler:
                     if new_state is not None or new_state != member.genomicWorkflowState:
                         self.member_dao.update_member_state(member, new_state)
 
-            # Assemble result dict
-            result_code = GenomicSubProcessResult.SUCCESS \
-                if GenomicSubProcessResult.ERROR not in results \
-                else GenomicSubProcessResult.ERROR
+            if self.controller.member_ids_for_update:
+                self.controller.execute_cloud_task({
+                    'member_ids': self.controller.member_ids_for_update,
+                    'field': self.manifest_def.job_run_field,
+                    'value': self.run_id,
+                    'is_job_run': True
+                }, 'genomic_set_member_update_task')
 
-            result = {
-                "code": result_code,
-                "record_count": record_count,
+            return {
+                "code": GenomicSubProcessResult.SUCCESS,
+                "record_count": len(source_data),
             }
-            return result
 
         logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
@@ -3151,6 +3057,64 @@ class ManifestCompiler:
         """
         with self.member_dao.session() as session:
             return session.execute(self.manifest_def.source_data).fetchall()
+
+    def _validate_source_data(self, data, manifest_type):
+        invalid = False
+        message = None
+
+        if manifest_type in [
+            GenomicManifestTypes.AW3_ARRAY,
+            GenomicManifestTypes.AW3_WGS
+        ]:
+            prefix = get_biobank_id_prefix()
+            path_positions = []
+            biobank_ids, sample_ids, sex_at_birth = [], [], []
+
+            for i, col in enumerate(self.manifest_def.columns):
+                if 'sample_id' in col:
+                    sample_ids = [row[i] for row in data]
+                if 'biobank_id' in col:
+                    biobank_ids = [row[i] for row in data]
+                if 'sex_at_birth' in col:
+                    sex_at_birth = [row[i] for row in data]
+                if '_path' in col:
+                    path_positions.append(i)
+
+            needs_prefixes = any(bid for bid in biobank_ids if prefix not in bid)
+            if needs_prefixes:
+                message = 'Biobank IDs are missing correct prefix'
+                invalid = True
+                return invalid, message
+
+            biobank_ids.clear()
+
+            dup_sample_ids = {sample_id for sample_id in sample_ids if sample_ids.count(sample_id) > 1}
+            if dup_sample_ids:
+                message = f'Sample IDs {list(dup_sample_ids)} are not distinct'
+                invalid = True
+                return invalid, message
+
+            sample_ids.clear()
+
+            invalid_sex_values = any(val for val in sex_at_birth if val not in ['M', 'F', 'NA'])
+            if invalid_sex_values:
+                message = 'Invalid Sex at Birth values'
+                invalid = True
+                return invalid, message
+
+            sex_at_birth.clear()
+
+            for row in data:
+                for i, val in enumerate(row):
+                    if i in path_positions and val:
+                        if not val.startswith('gs://') \
+                            or (val.startswith('gs://')
+                                and len(val.split('gs://')[1].split('/')) < 3):
+                            message = f'Path {val} is invalid formatting'
+                            invalid = True
+                            return invalid, message
+
+        return invalid, message
 
     def _write_and_upload_manifest(self, source_data):
         """

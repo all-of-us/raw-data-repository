@@ -1,6 +1,9 @@
 import logging
+import datetime
 
 from dateutil.parser import parse
+from rdr_service.clock import CLOCK
+from rdr_service.app_util import nonprod
 from rdr_service.storage import GoogleCloudStorageCSVReader
 from rdr_service.dao.retention_eligible_metrics_dao import RetentionEligibleMetricsDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -72,6 +75,7 @@ _BATCH_SIZE = 1000
 #     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
 #     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
 
+
 def import_retention_eligible_metrics_file(task_data):
     """
     Import PTSC retention eligible metric file from bucket.
@@ -106,6 +110,153 @@ def import_retention_eligible_metrics_file(task_data):
     logging.info(f"Updating participant summary retention eligible flags for {upsert_count} participants...")
     ParticipantSummaryDao().bulk_update_retention_eligible_flags(upload_date)
     logging.info(f"Import and update completed for gs://{csv_file_cloud_path}")
+
+
+@nonprod
+def calculate_retention_eligible_metrics():
+    # Calculate retention eligible metrics
+    # This method is for lower env only, Prod env will import from file use above method
+    retention_window = datetime.timedelta(days=547)
+    eighteen_month_ago = CLOCK.now() - retention_window
+    eighteen_month_ago_str = eighteen_month_ago.strftime('%Y-%m-%d %H:%M:%S')
+    update_sql = """
+        UPDATE participant_summary
+        SET retention_eligible_status =
+        CASE WHEN
+            consent_for_study_enrollment = 1
+            AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+            AND questionnaire_on_the_basics = 1
+            AND questionnaire_on_overall_health = 1
+            AND questionnaire_on_lifestyle = 1
+            AND withdrawal_status = 1
+            AND suspension_status = 1
+            AND samples_to_isolate_dna = 1
+            THEN 2 ELSE 1
+        END,
+        retention_eligible_time =
+        CASE WHEN
+            consent_for_study_enrollment = 1
+            AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+            AND questionnaire_on_the_basics = 1
+            AND questionnaire_on_overall_health = 1
+            AND questionnaire_on_lifestyle = 1
+            AND withdrawal_status = 1
+            AND suspension_status = 1
+            AND samples_to_isolate_dna = 1
+            AND
+              COALESCE(sample_status_1ed10_time, sample_status_2ed10_time, sample_status_1ed04_time,
+                     sample_status_1sal_time, sample_status_1sal2_time, 0) != 0
+            THEN GREATEST(
+                GREATEST (consent_for_study_enrollment_authored,
+                 questionnaire_on_the_basics_authored,
+                 questionnaire_on_overall_health_authored,
+                 questionnaire_on_lifestyle_authored,
+                 COALESCE(consent_for_electronic_health_records_authored, consent_for_study_enrollment_authored),
+                 COALESCE(consent_for_dv_electronic_health_records_sharing_authored, consent_for_study_enrollment_authored)
+                ),
+                LEAST(COALESCE(sample_status_1ed10_time, '9999-01-01'),
+                    COALESCE(sample_status_2ed10_time, '9999-01-01'),
+                    COALESCE(sample_status_1ed04_time, '9999-01-01'),
+                    COALESCE(sample_status_1sal_time, '9999-01-01'),
+                    COALESCE(sample_status_1sal2_time, '9999-01-01')
+                )
+            )
+            ELSE NULL
+        END,
+        retention_type =
+        CASE WHEN
+            consent_for_study_enrollment = 1
+            AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+            AND questionnaire_on_the_basics = 1
+            AND questionnaire_on_overall_health = 1
+            AND questionnaire_on_lifestyle = 1
+            AND withdrawal_status = 1
+            AND suspension_status = 1
+            AND samples_to_isolate_dna = 1
+            AND (
+                    (questionnaire_on_healthcare_access_authored is not null and
+                     questionnaire_on_healthcare_access_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_family_health_authored is not null and
+                     questionnaire_on_family_health_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_medical_history_authored is not null and
+                     questionnaire_on_medical_history_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_nov_authored is not null
+                        and questionnaire_on_cope_nov_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_july_authored is not null
+                        and questionnaire_on_cope_july_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_june_authored is not null
+                        and questionnaire_on_cope_june_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_dec_authored is not null
+                        and questionnaire_on_cope_dec_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_may_authored is not null
+                        and questionnaire_on_cope_may_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_feb_authored is not null
+                        and questionnaire_on_cope_feb_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 1 and consent_for_study_enrollment_authored !=
+                                            participant_summary.consent_for_study_enrollment_first_yes_authored and
+                     consent_for_study_enrollment_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 1 and consent_for_genomics_ror_authored is not null and
+                     consent_for_genomics_ror_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 2 and consent_for_genomics_ror_authored is not null and
+                     consent_for_genomics_ror_authored > '{eighteen_month_ago}')
+                )
+            AND ehr_update_time is not null and ehr_update_time>'{eighteen_month_ago}'
+            THEN 3
+            WHEN
+            consent_for_study_enrollment = 1
+            AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+            AND questionnaire_on_the_basics = 1
+            AND questionnaire_on_overall_health = 1
+            AND questionnaire_on_lifestyle = 1
+            AND withdrawal_status = 1
+            AND suspension_status = 1
+            AND samples_to_isolate_dna = 1
+            AND (
+                    (questionnaire_on_healthcare_access_authored is not null and
+                     questionnaire_on_healthcare_access_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_family_health_authored is not null and
+                     questionnaire_on_family_health_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_medical_history_authored is not null and
+                     questionnaire_on_medical_history_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_nov_authored is not null
+                        and questionnaire_on_cope_nov_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_july_authored is not null
+                        and questionnaire_on_cope_july_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_june_authored is not null
+                        and questionnaire_on_cope_june_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_dec_authored is not null
+                        and questionnaire_on_cope_dec_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_may_authored is not null
+                        and questionnaire_on_cope_may_authored > '{eighteen_month_ago}') or
+                    (questionnaire_on_cope_feb_authored is not null
+                        and questionnaire_on_cope_feb_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 1 and consent_for_study_enrollment_authored !=
+                                            participant_summary.consent_for_study_enrollment_first_yes_authored and
+                     consent_for_study_enrollment_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 1 and consent_for_genomics_ror_authored is not null and
+                     consent_for_genomics_ror_authored > '{eighteen_month_ago}') or
+                    (consent_cohort = 2 and consent_for_genomics_ror_authored is not null and
+                     consent_for_genomics_ror_authored > '{eighteen_month_ago}')
+                )
+            THEN 1
+            WHEN
+            consent_for_study_enrollment = 1
+            AND (consent_for_electronic_health_records = 1 OR consent_for_dv_electronic_health_records_sharing = 1)
+            AND questionnaire_on_the_basics = 1
+            AND questionnaire_on_overall_health = 1
+            AND questionnaire_on_lifestyle = 1
+            AND withdrawal_status = 1
+            AND suspension_status = 1
+            AND samples_to_isolate_dna = 1
+            THEN 2
+            ELSE 0
+        END
+        WHERE 1=1
+    """.format(eighteen_month_ago=eighteen_month_ago_str)
+
+    dao = ParticipantSummaryDao()
+    with dao.session() as session:
+        session.execute(update_sql)
 
 
 def _parse_field(parser_func, field_str):

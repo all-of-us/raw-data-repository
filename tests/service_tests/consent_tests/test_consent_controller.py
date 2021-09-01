@@ -102,20 +102,24 @@ class ConsentControllerTest(BaseTestCase):
         self.consent_dao_mock.get_participants_with_consents_in_range.return_value = [
             ParticipantSummary(
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollmentAuthored=min_consent_date_checked,  # Needs to be set for PrimaryUpdate check
                 consentForStudyEnrollmentFirstYesAuthored=min_consent_date_checked + timedelta(days=5),
                 consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
                 consentForElectronicHealthRecordsAuthored=min_consent_date_checked + timedelta(days=10)
             ),
             ParticipantSummary(
                 consentForCABoR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollmentAuthored=min_consent_date_checked,  # Needs to be set for PrimaryUpdate check
                 consentForCABoRAuthored=min_consent_date_checked + timedelta(days=5)
             ),
             ParticipantSummary(
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollmentAuthored=min_consent_date_checked,  # Needs to be set for PrimaryUpdate check
                 consentForGenomicsRORAuthored=min_consent_date_checked - timedelta(days=5)
             ),
             ParticipantSummary(
                 consentForGenomicsROR=QuestionnaireStatus.SUBMITTED_NOT_SURE,
+                consentForStudyEnrollmentAuthored=min_consent_date_checked,  # Needs to be set for PrimaryUpdate check
                 consentForGenomicsRORAuthored=min_consent_date_checked + timedelta(days=20)
             )
         ]
@@ -141,19 +145,20 @@ class ConsentControllerTest(BaseTestCase):
         new validation records for consents that have already been checked
         """
         self.consent_dao_mock.get_validation_results_for_participants.return_value = [
-            ConsentFile(file_path='/previous_1'),
-            ConsentFile(file_path='/previous_2'),
+            ConsentFile(file_path='/previous_1', file_exists=True),
+            ConsentFile(file_path='/previous_2', file_exists=True),
         ]
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1')
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1', file_exists=True),
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2', file_exists=True),
+            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1', file_exists=True)
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
         self.consent_dao_mock.get_participants_with_consents_in_range.return_value = [
             ParticipantSummary(
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+                consentForStudyEnrollmentAuthored=datetime(2020, 5, 1),  # Needs to be set for PrimaryUpdate check
                 consentForStudyEnrollmentFirstYesAuthored=min_consent_date_checked + timedelta(days=5)
             )
         ]
@@ -170,10 +175,9 @@ class ConsentControllerTest(BaseTestCase):
             ]
         )
 
-
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""
-        actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[1]
+        actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
         self.assertEqual(len(expected_updates), len(actual_updates))
 
         for expected in expected_updates:

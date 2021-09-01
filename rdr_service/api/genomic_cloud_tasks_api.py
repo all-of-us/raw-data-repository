@@ -29,6 +29,7 @@ class BaseGenomicTaskApi(Resource):
     def __init__(self):
         self.data = None
         self.cloud_req_dao = GenomicCloudRequestsDao()
+        self.member_dao = GenomicSetMemberDao()
         self.file_paths = None
 
     @task_auth_required
@@ -334,10 +335,8 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculate contamination category
     """
-
     def __init__(self):
         super(CalculateContaminationCategoryApi, self).__init__()
-        self.dao = GenomicSetMemberDao()
 
     def post(self):
         super(CalculateContaminationCategoryApi, self).post()
@@ -360,7 +359,7 @@ class CalculateContaminationCategoryApi(BaseGenomicTaskApi):
         genomic_ingester = GenomicFileIngester(job_id=GenomicJob.RECALCULATE_CONTAMINATION_CATEGORY)
 
         # Get genomic_set_member and gc metric objects
-        with self.dao.session() as s:
+        with self.member_dao.session() as s:
             record = s.query(GenomicSetMember, GenomicGCValidationMetrics).filter(
                 GenomicSetMember.id == member_id,
                 GenomicSetMember.collectionTubeId != None,
@@ -416,9 +415,42 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
             bq_genomic_manifest_feedback_batch_update(batch)
             genomic_manifest_feedback_batch_update(batch)
 
-        logging.info(f'Rebuild complete.')
+        logging.info('Rebuild complete.')
 
         self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
+
+
+class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Update GenomicSetMember field with job run id
+    """
+    def post(self):
+        super(GenomicSetMemberUpdateApi, self).post()
+        member_ids = self.data.get('member_ids')
+        field = self.data.get('field')
+        value = self.data.get('value')
+        is_job_run = self.data.get('is_job_run')
+        project_id = self.data.get('project_id')
+
+        if not member_ids:
+            logging.warning('List of member ids are required.')
+            return {"success": False}
+
+        if not field or not value:
+            logging.warning('Combination of field/value is required.')
+            return {"success": False}
+
+        self.member_dao.batch_update_member_field(
+            member_ids,
+            field,
+            value,
+            is_job_run,
+            project_id
+        )
+
+        logging.info('Complete.')
+        return {"success": True}
+

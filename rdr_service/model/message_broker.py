@@ -30,7 +30,7 @@ class MessageBrokerRecord(Base):
     """http response code returned from the destination"""
     responseBody = Column("response_body", JSON, nullable=True)
     """Original resource value; whole payload response that was returned from the destination"""
-    responseError = Column("response_error", String(1024))
+    responseError = Column("response_error", String(2048))
     """The error message returned from the destination"""
     requestTime = Column("request_time", UTCDateTime6)
     """The time at which RDR received the request from requester"""

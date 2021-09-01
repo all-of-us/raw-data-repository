@@ -23,14 +23,31 @@ class JiraTicketHandler:
         self._jira_watchers = os.environ.get('JIRA_WATCHER_NAMES', None)
         self._jira_connection = None
         self.required_tags = {
-            'drc_analytics': ['alpha.parrott@vumc.org'],
-            'qa': ['rohini.chavan@vumc.org', 'ashton.e.rollings@vumc.org'],
-            'change_management_board': ['charissa.r.rotundo@vumc.org', 'neil.bible@vumc.org'],
-            'change_manager': ['asmita.gauchan@vumc.org', 'bhinnata.piya@vumc.org']
+            'drc_analytics': [
+                'alpha.parrott@vumc.org'
+            ],
+            'qa': [
+                'rohini.chavan@vumc.org',
+                'ashton.e.rollings@vumc.org'
+            ],
+            'change_management_board': [
+                'charissa.r.rotundo@vumc.org',
+                'neil.bible@vumc.org'
+            ],
+            'change_manager': [
+                'asmita.gauchan@vumc.org',
+                'keri.a.wolfe@vumc.org'
+            ]
         }
         self.developer_tags = {
-            'developers': ['yu.wang.3@vumc.org', 'robert.m.abram.1@vumc.org', 'kenneth.d.skaggs@vumc.org',
-                           'joshua.d.kanuch@vumc.org', 'margaret.m.bertsch@vumc.org']
+            'developers': [
+                'yu.wang.3@vumc.org',
+                'robert.m.abram.1@vumc.org',
+                'kenneth.d.skaggs@vumc.org',
+                'joshua.d.kanuch@vumc.org',
+                'margaret.m.bertsch@vumc.org',
+                'darryl.tharpe@vumc.org'
+            ]
         }
 
         self._connect_to_jira()
