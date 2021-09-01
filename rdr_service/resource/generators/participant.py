@@ -831,8 +831,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         results = query.all()
 
         for row in results:
-
-            if row.final == 1 and row.status != PhysicalMeasurementsStatus.CANCELLED:
+            # row.final is not a complete indicator of a finalized PM record, there are cases where row.final = 0,
+            # but there is a valid finalized timestamp.
+            if row.finalized is not None and row.status != PhysicalMeasurementsStatus.CANCELLED:
                 pm_status = PhysicalMeasurementsStatus.COMPLETED
             else:
                 pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET
