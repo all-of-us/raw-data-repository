@@ -203,6 +203,11 @@ class GenomicJobController:
         """
         return self.manifest_feedback_dao.get_feedback_records_past_date_cutoff(num_days=_num)
 
+    def get_aw2f_remainder_records(self):
+        # ids = self.manifest_feedback_dao.get_contamination_remainder_ids()
+        ids = self.manifest_feedback_dao.get_contamination_remainder_feedback_ids()
+        return self.manifest_feedback_dao.get_feedback_records_from_ids(ids)
+
     def ingest_awn_data_for_member(self, file_path, member):
         """
         Executed from genomic tools. Ingests data for a single GenomicSetMember
@@ -912,7 +917,7 @@ class GenomicJobController:
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
                     _genome_type,
-                    version=version_num,
+                    version=version_num + 1,
                     input_manifest=input_manifest
                 )
 

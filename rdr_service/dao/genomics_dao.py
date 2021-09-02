@@ -9,7 +9,7 @@ from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.expression import literal
+from sqlalchemy.sql.expression import literal, distinct
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
@@ -1761,6 +1761,55 @@ class GenomicManifestFeedbackDao(UpdatableDao):
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
         return results
+
+    def get_contamination_remainder_ids(self):
+        with self.session() as session:
+            results = session.query(
+                GenomicSetMember.id,
+                GenomicManifestFeedback.id
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+            ).join(
+                GenomicManifestFeedback,
+                GenomicManifestFeedback.inputManifestFileId == GenomicFileProcessed.genomicManifestFileId
+            ).filter(
+                GenomicSetMember.aw2fManifestJobRunID.is_(None),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
+            ).all()
+        return results
+
+    def get_contamination_remainder_feedback_ids(self):
+        with self.session() as session:
+            results = session.query(
+                distinct(GenomicManifestFeedback.id)
+            ).join(
+                GenomicFileProcessed,
+                GenomicManifestFeedback.inputManifestFileId == GenomicFileProcessed.genomicManifestFileId
+            ).join(
+                GenomicSetMember,
+                GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).filter(
+                GenomicSetMember.aw2fManifestJobRunID.is_(None),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
+            ).all()
+        return results
+
+    def get_feedback_records_from_ids(self, ids: list):
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.id.in_(ids)
+            ).all()
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:
