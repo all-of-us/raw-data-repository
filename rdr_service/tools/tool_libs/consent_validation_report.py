@@ -1,6 +1,6 @@
 #! /bin/env python
 #
-# Template for RDR tool python program.
+# Temporary tool for manually generating consent validation metrics (until it can be automated by dashboard team)
 #
 
 import argparse
@@ -80,6 +80,7 @@ CONSENT_AUTHORED_FIELDS = {
     ConsentType.CABOR: 'consent_for_cabor_authored',
     ConsentType.EHR: 'consent_for_electronic_health_records_authored',
     ConsentType.GROR: 'consent_for_genomics_ror_authored',
+    ConsentType.PRIMARY_UPDATE: 'consent_for_study_enrollment_authored'
 }
 
 # List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
@@ -138,9 +139,17 @@ DAILY_CONSENTS_SQL_FILTER = """
                   AND DATE(ps.{authored_field}) = "{report_date}"
                   AND cf.sync_status IN (1,2,4)
     """
+# -- Weekly report queries --
 
 # Filter to produce a report of all remaining NEEDS_CORRECTING consents, regardless of date
-ALL_UNRESOLVED_ERRORS_SQL_FILTER = 'WHERE cf.sync_status = 1 '
+ALL_UNRESOLVED_ERRORS_SQL_FILTER = ' WHERE cf.sync_status = 1 '
+
+# Filter for generating stats on resolved (OBSOLETE errors) by retransmission within a date range.  Assumption is that
+# the last modified timestamp for a record will reflect when it was moved into OBSOLETE status.  For the weekly report
+RESOLVED_ERRORS_BY_DATE_RANGE_SQL_FILTER = """
+           WHERE cf.sync_status = 3
+                 AND DATE(cf.modified) BETWEEN {start_date} AND {end_date}
+"""
 
 # TODO:  Remove this when we expand consent validation to include CE consents
 VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
@@ -148,7 +157,7 @@ VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
 # Define the allowable --report-type arguments
 REPORT_TYPES = ['daily_uploads', 'weekly_status']
 
-# Parent class for common/generic report attributes and methods
+# Parent class for generic report attributes and methods
 class ConsentReport(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
@@ -192,6 +201,10 @@ class ConsentReport(object):
         # Trackers updated as content is added to the daily report worksheet
         self.row_pos = 1
         self.write_requests = 0
+
+    def _has_needs_correcting(self, dframe):
+        """ Check the dataframe provided for records in a NEEDS_CORRECTING state """
+        return (dframe.loc[dframe.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0)
 
     def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
         """
@@ -270,6 +283,20 @@ class ConsentReport(object):
                 row_pos += 1
 
         self.row_pos = row_pos
+
+    def get_consent_validation_results(self, consent_query, db_conn=None):
+        """
+        Runs the provided consent_query and returns a pandas dataframe with the result
+        """
+        if not db_conn:
+            raise(EnvironmentError, 'No active DB connection object')
+
+        df = pandas.read_sql_query(consent_query, db_conn)
+        for error_type in TRACKED_CONSENT_ERRORS:
+            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
+
+        return df
+
 
 class DailyConsentReport(ConsentReport):
 
@@ -367,7 +394,7 @@ class DailyConsentReport(ConsentReport):
             },
         }
 
-    def get_daily_consent_validation_results(self, db_conn=None):
+    def get_daily_data(self, db_conn=None):
         """
         Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
         from the specified report date.   Sets self.consent_df to the dataframe.  The results will also be
@@ -377,27 +404,19 @@ class DailyConsentReport(ConsentReport):
             raise(EnvironmentError, 'No active DB connection object')
 
         df = pandas.DataFrame()
+
+        # The daily data merges together results of queries for each consent type filtered on the appropriate authored
+        # field from participant summary for that consent
         for consent_int in CONSENTS_LIST:
             sql = self.report_sql.format(authored_field=CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)],
                                          consent_type=consent_int,
                                          report_date=self.report_date.strftime("%Y-%m-%d"))
 
-            df = df.append(pandas.read_sql_query(sql, db_conn))
+            df = df.append(self.get_consent_validation_results(sql, db_conn))
 
-        # NOTE: For testing w/o hitting the prod DB:  can comment out the pandas.read_sql_query statement and use a
-        # saved off CSV results file instead, e.g.:
-        # df = self.consent_df = pandas.read_csv('20210722_consents.csv')
-
-        # Load daily validation results into a pandas dataframe.  Fill in any null/NaN error count columns with
-        # (uint8) 0s
-        for error_type in TRACKED_CONSENT_ERRORS:
-            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
-
-        # Pandas: Row count (shape[0]) of dataframe filtered on NEEDS_CORRECTING > 0 means errors exist
-        self.consent_errors_found = df.loc[df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0
 
         # Save resulting dataframe to instance variable
-        self.consent_df = df
+        return df
 
     def create_csv_errors_file(self):
         """
@@ -599,7 +618,7 @@ class DailyConsentReport(ConsentReport):
                                                        index=1)
             self.add_daily_summary()
 
-        if self.consent_errors_found:
+        if self._has_needs_correcting(self.consent_df):
             if not self.args.csv_only:
                 # Google sheets doesn't have flexible/multiple freezing options.  Freeze all rows above the current
                 # position.  Makes so HPO/Org-specific section(s) scrollable while still seeing column header names
@@ -626,11 +645,8 @@ class DailyConsentReport(ConsentReport):
         gs_creds = gspread.service_account(service_key_info['key_path'])
         gs_file = gs_creds.open_by_key(self.doc_id)
 
-        # Build the report
-        self.get_daily_consent_validation_results(db_conn=db_conn)
-
-        # TODO:  refactor so common content from the daily report can be leveraged into the weekly "all unresolved"
-        # report
+        # Retrieve the daily data and build the report
+        self.consent_df = self.get_daily_data(db_conn=db_conn)
         self.create_daily_report(gs_file)
 
 
