@@ -40,6 +40,7 @@ class EnrollmentStatusCalculator:
     status: PDREnrollmentStatusEnum = PDREnrollmentStatusEnum.Unset
     # events = None  # List of EnrollmentStatusEvent objects.
     activity = None  # List of activity created from Participant generator.
+    _ehr_event_found = False
 
     cohort = None
 
@@ -73,6 +74,8 @@ class EnrollmentStatusCalculator:
         :param activity: A list of activity dictionary objects created by the ParticipantSummaryGenerator.
         """
         self.activity = [JSONObject(r) for r in activity if r['timestamp']]
+        # Pre-check to see if there are any EHR consent answers found in the events.
+        self._ehr_event_found = len([e for e in self.activity if e.event == ParticipantEventEnum.EHRConsentPII]) > 0
         self.activity.sort(key=lambda i: i.timestamp)
         # Work through activity by slicing to determine current enrollment status.
         # This method allows us to iterate once through the data and still catch participants
@@ -211,6 +214,10 @@ class EnrollmentStatusCalculator:
         """
         info = EnrollmentStatusInfo()
         for ev in events:
+            # If EHR Consent answer found, ignore all DVEHR answers.
+            # See unittest: test_participant_enrollment.test_no_on_ehr_overrides_yes_on_dv()
+            if self._ehr_event_found is True and ev.event == ParticipantEventEnum.DVEHRSharing:
+                continue
             if ev.event in [ParticipantEventEnum.EHRConsentPII, ParticipantEventEnum.DVEHRSharing]:
                 # See if we need to reset the info object. Do not reset if 'DVEHRSHARING_CONSENT_CODE_NOT_SURE'.
                 if ev.answer in [CONSENT_PERMISSION_NO_CODE, DVEHRSHARING_CONSENT_CODE_NO, EHR_CONSENT_EXPIRED_YES]:
