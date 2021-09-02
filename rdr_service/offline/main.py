@@ -388,6 +388,12 @@ def genomic_scan_feedback_records():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
+def genomic_aw2f_remainder_workflow():
+    genomic_pipeline.send_remainder_contamination_manifests()
+    return '{"success": "true"}'
+
+@app_util.auth_required_cron
+@_alert_on_exceptions
 def genomic_gem_a1_workflow():
     genomic_pipeline.gem_a1_manifest_workflow()
     return '{"success": "true"}'
@@ -786,6 +792,11 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW2ManifestWorkflow",
         endpoint="genomic_scan_feedback_records",
         view_func=genomic_scan_feedback_records, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW2FRemainderWorkflow",
+        endpoint="genomic_aw2f_remainder_workflow",
+        view_func=genomic_aw2f_remainder_workflow, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA1Workflow",
