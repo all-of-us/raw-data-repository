@@ -366,7 +366,6 @@ class GenomicFileIngester:
             "test_name": "genometype",
             "failure_mode": "failuremode",
             "failure_mode_desc": "failuremodedesc",
-            "genome_type": "genometype"
         }
 
     @staticmethod
@@ -388,7 +387,6 @@ class GenomicFileIngester:
             "notes": "notes",
             "chipwellbarcode": "chipwellbarcode",
             "call_rate": "callrate",
-            "genome_type": "genometype"
         }
 
     def _ingest_aw1_manifest(self, data):
@@ -988,10 +986,20 @@ class GenomicFileIngester:
         :param mapping_function: function that returns column mappings
         :return: GenomicAW1Raw or GenomicAW2Raw
         """
-
         awn_row_obj.file_path = self.target_file
         awn_row_obj.created = clock.CLOCK.now()
         awn_row_obj.modified = clock.CLOCK.now()
+
+        genome_type = None
+        if awn_data.get('genometype'):
+            genome_type = awn_data.get('genometype')
+        elif awn_data.get('sampleid'):
+            member = self.member_dao.get_member_from_sample_id(
+                awn_data.get('sampleid')
+            )
+            genome_type = member.genomeType if member else None
+
+        awn_row_obj.genome_type = genome_type
 
         for key in columns.keys():
             awn_row_obj.__setattr__(key, awn_data.get(columns[key]))
