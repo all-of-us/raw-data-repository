@@ -79,6 +79,7 @@
     "aw1c_manifest_workflow": 0,
     "aw1cf_manifest_workflow": 0,
     "aw2f_manifest_workflow": 1,
+    "aw2f_remainder_workflow": 1,
     "aw3_array_manifest_workflow": 1,
     "aw3_wgs_manifest_workflow": 1,
     "array_reconciliation_workflow": 1,
