@@ -31,6 +31,7 @@ from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
 from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
+from rdr_service.offline.genomic_pipeline import run_genomic_cron_job
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
@@ -120,6 +121,7 @@ def run_biobank_samples_pipeline():
     biobank_samples_pipeline.write_reconciliation_report(timestamp)
     logging.info("Generated reconciliation report.")
     return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 def biobank_monthly_reconciliation_report():
@@ -302,211 +304,6 @@ def update_ehr_status_participant():
 
 @app_util.auth_required_cron
 @_alert_on_exceptions
-def genomic_new_participant_workflow():
-    genomic_pipeline.new_participant_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_c2_participant_workflow():
-    genomic_pipeline.c2_participant_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_c1_participant_workflow():
-    genomic_pipeline.c1_participant_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_gc_manifest_workflow():
-    genomic_pipeline.genomic_centers_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_aw1f_failures_workflow():
-    genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
-    genomic_pipeline.genomic_centers_accessioning_failures_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def aw1c_manifest_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_aw1c_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def aw1cf_failures_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_aw1cf_manifest_workflow()
-    genomic_pipeline.aw1cf_alerts_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_data_manifest_workflow():
-    genomic_pipeline.ingest_genomic_centers_metrics_files()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_array_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_array_data()
-    return '{"success": "true"}'
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_wgs_data_reconciliation_workflow():
-    genomic_pipeline.reconcile_metrics_vs_wgs_data()
-    return '{"success": "true"}'
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_scan_feedback_records():
-    genomic_pipeline.scan_and_complete_feedback_records()
-    return '{"success": "true"}'
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_gem_a1_workflow():
-    genomic_pipeline.gem_a1_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_gem_a2_workflow():
-    genomic_pipeline.gem_a2_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_gem_a3_workflow():
-    genomic_pipeline.gem_a3_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_cvl_w1_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w1_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_cvl_w2_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_cvl_w2_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_cvl_w3_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w3_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_aw3_array_workflow():
-    genomic_pipeline.aw3_array_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_aw3_wgs_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.aw3_wgs_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_aw4_workflow():
-    genomic_pipeline.aw4_array_manifest_workflow()
-    genomic_pipeline.aw4_wgs_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_feedback_record_reconciliation():
-    genomic_pipeline.feedback_record_reconciliation()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_missing_files_clean_up():
-    genomic_pipeline.genomic_missing_files_clean_up()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_missing_files_resolve():
-    genomic_pipeline.genomic_missing_files_resolve()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_data_quality_daily_ingestion_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
-def genomic_data_quality_daily_incident_summary():
-    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@_alert_on_exceptions
 def bigquery_rebuild_cron():
     """ this should always be a manually run job, but we have to schedule it at least once a year. """
     now = datetime.utcnow()
@@ -604,6 +401,202 @@ def migrate_requests_logs(target_db):
     migrator = RequestsLogMigrator(target_instance_name=target_db)
     migrator.migrate_latest_requests_logs()
     return '{ "success": "true" }'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw0_manifest_workflow')
+def genomic_new_participant_workflow():
+    genomic_pipeline.new_participant_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def genomic_c2_participant_workflow():
+    genomic_pipeline.c2_participant_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def genomic_c1_participant_workflow():
+    genomic_pipeline.c1_participant_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def genomic_gc_manifest_workflow():
+    genomic_pipeline.genomic_centers_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw1f_manifest_workflow')
+def genomic_aw1f_failures_workflow():
+    genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
+    genomic_pipeline.genomic_centers_accessioning_failures_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw1c_manifest_workflow')
+def aw1c_manifest_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.ingest_aw1c_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw1cf_manifest_workflow')
+def aw1cf_failures_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.ingest_aw1cf_manifest_workflow()
+    genomic_pipeline.aw1cf_alerts_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+def genomic_data_manifest_workflow():
+    genomic_pipeline.ingest_genomic_centers_metrics_files()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('array_reconciliation_workflow')
+def genomic_array_data_reconciliation_workflow():
+    genomic_pipeline.reconcile_metrics_vs_array_data()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('wgs_reconciliation_workflow')
+def genomic_wgs_data_reconciliation_workflow():
+    genomic_pipeline.reconcile_metrics_vs_wgs_data()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw2f_manifest_workflow')
+def genomic_scan_feedback_records():
+    genomic_pipeline.scan_and_complete_feedback_records()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('a1_manifest_workflow')
+def genomic_gem_a1_workflow():
+    genomic_pipeline.gem_a1_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('a2_manifest_workflow')
+def genomic_gem_a2_workflow():
+    genomic_pipeline.gem_a2_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('a3_manifest_workflow')
+def genomic_gem_a3_workflow():
+    genomic_pipeline.gem_a3_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('w1_manifest_workflow')
+def genomic_cvl_w1_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.create_cvl_w1_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('w2_manifest_workflow')
+def genomic_cvl_w2_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.ingest_cvl_w2_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('w3_manifest_workflow')
+def genomic_cvl_w3_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.create_cvl_w3_manifest()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw3_array_manifest_workflow')
+def genomic_aw3_array_workflow():
+    genomic_pipeline.aw3_array_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('aw3_wgs_manifest_workflow')
+def genomic_aw3_wgs_workflow():
+    """Temporarily running this manually for E2E Testing"""
+    now = datetime.utcnow()
+    if now.day == 0o1 and now.month == 0o1:
+        logging.info("skipping the scheduled run.")
+        return '{"success": "true"}'
+    genomic_pipeline.aw3_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('feedback_record_reconciliation_workflow')
+def genomic_feedback_record_reconciliation():
+    genomic_pipeline.feedback_record_reconciliation()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('missing_files_clean_up_workflow')
+def genomic_missing_files_clean_up():
+    genomic_pipeline.genomic_missing_files_clean_up()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('missing_files_resolve_workflow')
+def genomic_missing_files_resolve():
+    genomic_pipeline.genomic_missing_files_resolve()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('daily_ingestion_summary')
+def genomic_data_quality_daily_ingestion_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('daily_incident_summary')
+def genomic_data_quality_daily_incident_summary():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS)
+    return '{"success": "true"}'
 
 
 def _build_pipeline_app():
@@ -735,112 +728,134 @@ def _build_pipeline_app():
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicC3AW0Workflow",
         endpoint="genomic_new_participant_workflow",
-        view_func=genomic_new_participant_workflow, methods=["GET"]
+        view_func=genomic_new_participant_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicC2AW0Workflow",
         endpoint="genomic_c2_aw0_workflow",
-        view_func=genomic_c2_participant_workflow, methods=["GET"]
+        view_func=genomic_c2_participant_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicC1AW0Workflow",
         endpoint="genomic_c1_aw0_workflow",
-        view_func=genomic_c1_participant_workflow, methods=["GET"]
+        view_func=genomic_c1_participant_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGCManifestWorkflow",
         endpoint="genomic_gc_manifest_workflow",
-        view_func=genomic_gc_manifest_workflow, methods=["GET"]
+        view_func=genomic_gc_manifest_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicFailuresWorkflow",
         endpoint="genomic_aw1f_failures_workflow",
-        view_func=genomic_aw1f_failures_workflow, methods=["GET"]
+        view_func=genomic_aw1f_failures_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW1CManifestWorkflow",
         endpoint="aw1c_manifest_workflow",
-        view_func=aw1c_manifest_workflow, methods=["GET"]
+        view_func=aw1c_manifest_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicCVLFailuresWorkflow",
         endpoint="aw1cf_failures_workflow",
-        view_func=aw1cf_failures_workflow, methods=["GET"]
+        view_func=aw1cf_failures_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicDataManifestWorkflow",
         endpoint="genomic_data_manifest_workflow",
-        view_func=genomic_data_manifest_workflow, methods=["GET"]
+        view_func=genomic_data_manifest_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicArrayReconciliationWorkflow",
         endpoint="genomic_array_data_reconciliation_workflow",
-        view_func=genomic_array_data_reconciliation_workflow, methods=["GET"]
+        view_func=genomic_array_data_reconciliation_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicWGSReconciliationWorkflow",
         endpoint="genomic_wgs_data_reconciliation_workflow",
-        view_func=genomic_wgs_data_reconciliation_workflow, methods=["GET"]
+        view_func=genomic_wgs_data_reconciliation_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicAW2ManifestWorkflow",
+        OFFLINE_PREFIX + "GenomicAW2FManifestWorkflow",
         endpoint="genomic_scan_feedback_records",
-        view_func=genomic_scan_feedback_records, methods=["GET"]
+        view_func=genomic_scan_feedback_records,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA1Workflow",
         endpoint="genomic_gem_a1_workflow",
-        view_func=genomic_gem_a1_workflow, methods=["GET"]
+        view_func=genomic_gem_a1_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA2Workflow",
         endpoint="genomic_gem_a2_workflow",
-        view_func=genomic_gem_a2_workflow, methods=["GET"]
+        view_func=genomic_gem_a2_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicGemA3Workflow",
         endpoint="genomic_gem_a3_workflow",
-        view_func=genomic_gem_a3_workflow, methods=["GET"]
+        view_func=genomic_gem_a3_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicCvlW1Workflow",
         endpoint="genomic_cvl_w1_workflow",
-        view_func=genomic_cvl_w1_workflow, methods=["GET"]
+        view_func=genomic_cvl_w1_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicCvlW2Workflow",
         endpoint="genomic_cvl_w2_workflow",
-        view_func=genomic_cvl_w2_workflow, methods=["GET"]
+        view_func=genomic_cvl_w2_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicCvlW3Workflow",
         endpoint="genomic_cvl_w3_workflow",
-        view_func=genomic_cvl_w3_workflow, methods=["GET"]
+        view_func=genomic_cvl_w3_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW3ArrayWorkflow",
         endpoint="genomic_aw3_array_workflow",
-        view_func=genomic_aw3_array_workflow, methods=["GET"]
+        view_func=genomic_aw3_array_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
-        view_func=genomic_aw3_wgs_workflow, methods=["GET"]
+        view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicFeedbackRecordReconciliation",
         endpoint="genomic_feedback_record_reconciliation",
-        view_func=genomic_feedback_record_reconciliation, methods=["GET"]
+        view_func=genomic_feedback_record_reconciliation,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicMissingFilesCleanUp",
         endpoint="genomic_missing_files_clean_up",
-        view_func=genomic_missing_files_clean_up, methods=["GET"]
+        view_func=genomic_missing_files_clean_up,
+        methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicMissingFilesResolve",
         endpoint="genomic_missing_files_resolve",
-        view_func=genomic_missing_files_resolve, methods=["GET"]
+        view_func=genomic_missing_files_resolve,
+        methods=["GET"]
     )
 
     # END Genomic Pipeline Jobs
