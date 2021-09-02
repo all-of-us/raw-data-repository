@@ -366,6 +366,7 @@ class GenomicFileIngester:
             "test_name": "genometype",
             "failure_mode": "failuremode",
             "failure_mode_desc": "failuremodedesc",
+            "genome_type": "genometype"
         }
 
     @staticmethod
@@ -387,6 +388,7 @@ class GenomicFileIngester:
             "notes": "notes",
             "chipwellbarcode": "chipwellbarcode",
             "call_rate": "callrate",
+            "genome_type": "genometype"
         }
 
     def _ingest_aw1_manifest(self, data):

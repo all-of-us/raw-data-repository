@@ -4614,6 +4614,10 @@ class GenomicPipelineTest(BaseTestCase):
         aw1_raw_records = self.aw1_raw_dao.get_all()
         aw1_raw_records.sort(key=lambda x: x.id)
 
+        for record in aw1_raw_records:
+            self.assertIsNotNone(record.genome_type)
+            self.assertEqual(record.test_name, record.genome_type)
+
         # compare rows in DB to rows in manifest
         for i, aw1_file_row in enumerate(aw1_manifest_file.split("\n")):
             if i == 0 or aw1_file_row == "":
