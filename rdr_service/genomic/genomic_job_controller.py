@@ -204,7 +204,11 @@ class GenomicJobController:
         return self.manifest_feedback_dao.get_feedback_records_past_date_cutoff(num_days=_num)
 
     def get_aw2f_remainder_records(self):
-        # ids = self.manifest_feedback_dao.get_contamination_remainder_ids()
+        """
+        Retrieves genomic_manifest_feedback records that have already been sent
+        but have remaining data to send
+        :return: list of GenomicManifestFeedback records
+        """
         ids = self.manifest_feedback_dao.get_contamination_remainder_feedback_ids()
         return self.manifest_feedback_dao.get_feedback_records_from_ids(ids)
 

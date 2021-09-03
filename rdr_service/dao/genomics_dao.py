@@ -1762,27 +1762,6 @@ class GenomicManifestFeedbackDao(UpdatableDao):
             ).all()
         return results
 
-    def get_contamination_remainder_ids(self):
-        with self.session() as session:
-            results = session.query(
-                GenomicSetMember.id,
-                GenomicManifestFeedback.id
-            ).join(
-                GenomicGCValidationMetrics,
-                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
-            ).join(
-                GenomicFileProcessed,
-                GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
-            ).join(
-                GenomicManifestFeedback,
-                GenomicManifestFeedback.inputManifestFileId == GenomicFileProcessed.genomicManifestFileId
-            ).filter(
-                GenomicSetMember.aw2fManifestJobRunID.is_(None),
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
-            ).all()
-        return results
-
     def get_contamination_remainder_feedback_ids(self):
         with self.session() as session:
             results = session.query(

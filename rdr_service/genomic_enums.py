@@ -95,7 +95,7 @@ class GenomicJob(messages.Enum):
     FEEDBACK_RECORD_RECONCILE = 41
     RESOLVE_MISSING_FILES = 42
     MISSING_FILES_CLEANUP = 43
-    MONTHLY_AW2F_REMAINDER = 44
+    GENERATE_AW2F_REMAINDER = 44
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
