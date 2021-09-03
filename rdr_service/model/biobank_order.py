@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
@@ -417,6 +419,16 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     paramId = Column("param_id", String(80))
     displayValue = Column("display_value", String(80))
     displayUnits = Column("display_units", String(80))
+
+
+def before_item_delete(_, __, dataset_item: BiobankAliquotDatasetItem):
+    logging.info(
+        f'deleting dataset item with id "{dataset_item.id}", paramId "{dataset_item.paramId}" '
+        f'and dataset rlims id "{dataset_item.dataset_rlims_id}"'
+    )
+
+
+event.listen(BiobankAliquotDatasetItem, 'before_delete', before_item_delete)
 
 
 for model_class in [MayolinkCreateOrderHistory, BiobankSpecimen, BiobankSpecimenAttribute,
