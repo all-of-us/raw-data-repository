@@ -69,12 +69,6 @@ cron:
   timezone: America/New_York
   schedule: every sunday 3:00
   target: offline
-- description: Calculate retention metrics
-  url: /offline/UpdateRetentionEligibleMetrics
-  timezone: America/New_York
-  schedule: every day 1:15
-  target: offline
-
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
