@@ -5,6 +5,7 @@ Also updates ParticipantSummary data related to samples.
 
 import csv
 import datetime
+from dateutil.parser import parse
 import logging
 import math
 import os
@@ -13,6 +14,7 @@ from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func, or_
 from sqlalchemy.sql.functions import concat
+from typing import Dict
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
@@ -309,10 +311,12 @@ def _get_report_paths(report_datetime, report_type="daily"):
     if report_type == "monthly":
         report_name_suffix = ("received_monthly", "missing_monthly", "modified_monthly", "withdrawals_monthly")
 
-    return [
-        "%s/report_%s_%s.csv" % (_REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
-        for report_name in report_name_suffix
-    ]
+    return [_get_report_path(report_datetime, report_name) for report_name in report_name_suffix]
+
+
+def _get_report_path(report_datetime, report_name):
+    report_date_str = report_datetime.strftime(_FILENAME_DATE_FORMAT)
+    return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}'
 
 
 def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, now):
@@ -392,7 +396,7 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
     logging.info(f"Completed {report_path} report.")
 
 
-def _query_and_write_reports(exporter, now, report_type, path_received,
+def _query_and_write_reports(exporter, now: datetime, report_type, path_received,
                              path_missing, path_modified,
                              path_withdrawals, path_salivary_missing=None):
     """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
@@ -450,6 +454,21 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
 
     if config.getSetting('biobank_withdrawal_report_enabled', default=True):
         _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
+
+    # Check if cumulative received report should be generated
+    # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
+    # run, and dates that should be used for the first start date.
+    cumulative_received_schedule: Dict[str, str] = config.getSettingJson('biobank_cumulative_received_schedule', {})
+    for run_date, start_date in cumulative_received_schedule.items():
+        if parse(run_date).date() == now.date():
+            report_start_date = parse(start_date)
+            cumulative_received_params = _build_query_params(start_date=report_start_date)
+            _query_and_write_received_report(
+                exporter=exporter,
+                report_path=_get_report_path(report_datetime=now, report_name='cumulative_received'),
+                query_params=cumulative_received_params,
+                report_predicate=received_predicate
+            )
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
