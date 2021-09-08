@@ -316,7 +316,7 @@ def _get_report_paths(report_datetime, report_type="daily"):
 
 def _get_report_path(report_datetime, report_name):
     report_date_str = report_datetime.strftime(_FILENAME_DATE_FORMAT)
-    return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}'
+    return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}.csv'
 
 
 def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, now):
@@ -457,7 +457,7 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
 
     # Check if cumulative received report should be generated
     # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
-    # run, and dates that should be used for the first start date.
+    # run, and the values giving the dates that should be used for the first start date.
     cumulative_received_schedule: Dict[str, str] = config.getSettingJson('biobank_cumulative_received_schedule', {})
     for run_date, start_date in cumulative_received_schedule.items():
         if parse(run_date).date() == now.date():

@@ -799,12 +799,12 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
     def test_cumulative_received_report(self):
         self._init_report_codes()
         current_datetime = datetime.now()
-        cumulative_datetime = current_datetime + timedelta(days=5)
+        cumulative_report_datetime = current_datetime + timedelta(days=5)
         self.temporarily_override_config_setting(
             'biobank_cumulative_received_schedule',
             {
                 '2020-10-30': '2020-07-01',
-                cumulative_datetime.strftime('%Y-%m-%d'): '2021-08-01'
+                cumulative_report_datetime.strftime('%Y-%m-%d'): '2021-08-01'
             }
         )
 
@@ -827,7 +827,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         exporter_mock = mock.MagicMock()
         biobank_samples_pipeline._query_and_write_reports(
             exporter=exporter_mock,
-            now=cumulative_datetime,
+            now=cumulative_report_datetime,
             report_type='daily',
             path_received='received',
             path_missing='missing',
