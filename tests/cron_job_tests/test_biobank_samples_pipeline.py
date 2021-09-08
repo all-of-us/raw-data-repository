@@ -521,7 +521,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def test_demographic_flags_in_received_report(self):
         self._init_report_codes()
-        self.temporarily_override_config_setting('enable_biobank_manifest_received_flags', 1)
+        self.temporarily_override_config_setting(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, 1)
 
         # Generate data for a New York sample to be in the report
         participant = self.data_generator.create_database_participant()
@@ -801,7 +801,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
         current_datetime = datetime.now()
         cumulative_report_datetime = current_datetime + timedelta(days=5)
         self.temporarily_override_config_setting(
-            'biobank_cumulative_received_schedule',
+            config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
             {
                 '2020-10-30': '2020-07-01',
                 cumulative_report_datetime.strftime('%Y-%m-%d'): '2021-08-01'

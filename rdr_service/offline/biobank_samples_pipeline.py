@@ -379,7 +379,7 @@ def _build_query_params(start_date: datetime):
 
 def _query_and_write_received_report(exporter, report_path, query_params, report_predicate):
     received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
-    if config.getSettingJson('enable_biobank_manifest_received_flags', default=False):
+    if config.getSettingJson(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, default=False):
         received_report_select += """,
                 group_concat(ny_flag) ny_flag,
                 group_concat(sex_at_birth_flag) sex_at_birth_flag
@@ -458,7 +458,10 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
     # Check if cumulative received report should be generated
     # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
     # run, and the values giving the dates that should be used for the first start date.
-    cumulative_received_schedule: Dict[str, str] = config.getSettingJson('biobank_cumulative_received_schedule', {})
+    cumulative_received_schedule: Dict[str, str] = config.getSettingJson(
+        config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
+        default={}
+    )
     for run_date, start_date in cumulative_received_schedule.items():
         if parse(run_date).date() == now.date():
             report_start_date = parse(start_date)
