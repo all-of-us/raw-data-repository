@@ -1,5 +1,4 @@
 cron:
-- description: Calculate retention metrics
 - description: Validate the previous day's consent files
   url: /offline/ValidateConsentFiles
   schedule: every day 02:00
