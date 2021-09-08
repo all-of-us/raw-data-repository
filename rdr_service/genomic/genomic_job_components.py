@@ -2936,7 +2936,7 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type, genome_type, **kwargs):
+    def generate_and_transfer_manifest(self, manifest_type, genome_type, version=None, **kwargs):
         """
         Main execution method for ManifestCompiler
         :return: result dict:
@@ -3004,7 +3004,7 @@ class ManifestCompiler:
                 # AW2F manifest file name is based of of AW1
                 if manifest_type == GenomicManifestTypes.AW2F:
                     new_name = kwargs['input_manifest'].filePath.split('/')[-1]
-                    new_name = new_name.replace('.csv', '_contamination.csv')
+                    new_name = new_name.replace('.csv', f'_contamination_{version}.csv')
                     self.output_file_name = self.manifest_def.output_filename.replace(
                         "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
                         f"{new_name}"

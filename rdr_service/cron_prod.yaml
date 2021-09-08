@@ -54,6 +54,11 @@ cron:
   timezone: America/New_York
   schedule: every monday 00:00
   target: offline
+- description: Genomic AW2F Remainder Workflow
+  url: /offline/GenomicAW2FRemainderWorkflow
+  timezone: America/New_York
+  schedule: 1 of month 00:00
+  target: offline
 - description: Genomic Daily Ingestion Summary
   url: /offline/GenomicDataQualityDailyIngestionSummary
   timezone: America/New_York

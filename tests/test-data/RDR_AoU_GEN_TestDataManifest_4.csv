@@ -1,0 +1,3 @@
+Biobank ID,Sample ID,Biobankid Sampleid,LIMS ID,Chipwellbarcode,Call Rate,Sex Concordance,Contamination,Processing Status,Notes
+T3,1003,T3_1003,10003,10003_R01C03,0.3456789012,True,0.1345,Pass,This sample passed
+T4,1004,T4_1004,10004,10004_R01C04,0.3456789012,True,0.1345,Pass,This sample passed

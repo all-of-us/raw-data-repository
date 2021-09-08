@@ -4293,8 +4293,8 @@ class GenomicPipelineTest(BaseTestCase):
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw2f_manifest_generation_e2e(self, cloud_task):
         # Create test genomic members
-        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
-                                                array_participants=range(1, 4),
+        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
+                                                array_participants=range(1, 5),
                                                 genomic_workflow_state=GenomicWorkflowState.AW0)
 
         # Set Up AW1 File
@@ -4306,7 +4306,7 @@ class GenomicPipelineTest(BaseTestCase):
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-4.csv")
 
         gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
-        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        test_date = datetime.datetime(2020, 11, 20, 0, 0, 0, 0)
         pytz.timezone('US/Central').localize(test_date)
 
         with clock.FakeClock(test_date):
@@ -4323,7 +4323,7 @@ class GenomicPipelineTest(BaseTestCase):
             "bucket": bucket_name,
             "file_data": {
                 "create_feedback_record": True,
-                "upload_date": "2020-11-20 00:00:00",
+                "upload_date": test_date,
                 "manifest_type": GenomicManifestTypes.BIOBANK_GC,
                 "file_path": f"{bucket_name}/{sub_folder}/{gc_manifest_filename}"
             }
@@ -4333,17 +4333,20 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
         # Set up AW2 File
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        aw2_bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        aw2_subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
 
-        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+        self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_3.csv',
+                                         aw2_bucket_name,
+                                         folder=aw2_subfolder)
 
         self._update_test_sample_ids()
 
         self._create_stored_samples([
             (1, 1001),
-            (2, 1002)
+            (2, 1002),
+            (3, 1003),
+            (4, 1004),
         ])
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 3
@@ -4354,23 +4357,28 @@ class GenomicPipelineTest(BaseTestCase):
         new_record = deepcopy(metrics_record_2)
         metrics_record_2.ignoreFlag = 1
 
-        new_record.id = 4
+        new_record.id = 5
         new_record.contamination = '0.1346'
 
         with self.metrics_dao.session() as session:
             session.add(new_record)
             session.merge(metrics_record_2)
 
-        # Test feedback count
-        fb = self.manifest_feedback_dao.get(1)
-        self.assertEqual(2, fb.feedbackRecordCount)
+        # run AW2F workflow before 60 days
+        dt_40d = test_date + datetime.timedelta(days=40)
+        with clock.FakeClock(dt_40d):
+            genomic_pipeline.scan_and_complete_feedback_records()
+
+        # Should NOT call cloud task since no records
+        self.assertFalse(cloud_task.called)
 
         # run the AW2F manifest workflow
-        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        dt_60d = test_date + datetime.timedelta(days=60)
 
-        with clock.FakeClock(fake_dt):
+        with clock.FakeClock(dt_60d):
             genomic_pipeline.scan_and_complete_feedback_records()  # run_id = 4 & 5
 
+        # Should call cloud task since there are records
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
         req_keys = ['member_ids', 'is_job_run', 'field', 'value']
@@ -4424,7 +4432,7 @@ class GenomicPipelineTest(BaseTestCase):
         gc_manifest_filename = gc_manifest_filename.replace('.csv', '')
 
         with open_cloud_file(os.path.normpath(
-                f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination.csv')) as csv_file:
+                f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination_1.csv')) as csv_file:
             csv_reader = csv.DictReader(csv_file)
             missing_cols = len(set(expected_aw2f_columns)) - len(set(csv_reader.fieldnames))
             self.assertEqual(0, missing_cols)
@@ -4469,10 +4477,51 @@ class GenomicPipelineTest(BaseTestCase):
                 if r['BIOBANK_ID'] == '2':
                     self.assertEqual("extract both", r['CONTAMINATION_CATEGORY'])
                     self.assertEqual('0.1346', r['CONTAMINATION'])
-            # Test run record is success
-            run_obj = self.job_run_dao.get(5)
+        # Test run record is success
+        run_obj = self.job_run_dao.get(5)
 
-            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        for mid in range(1, 3):
+            member = self.member_dao.get(mid)
+            member.aw2fManifestJobRunID = 4
+            self.member_dao.update(member)
+
+        # Continue test for AW2F remainder
+        # AW2 data
+        new_aw2 = self._create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_4.csv',
+                                                   aw2_bucket_name,
+                                                   folder=aw2_subfolder)
+
+        # Ingest AW2 for samples 3 & 4
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": aw2_bucket_name,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": clock.CLOCK.now(),
+                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "file_path": f"{bucket_name}/{aw2_subfolder}/{new_aw2}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_run_id 5 & 6
+
+        # Generate remainder AW2F
+        genomic_pipeline.send_remainder_contamination_manifests()  # job_run_id 7
+
+        manifest_2_filepath = f'{bucket_name}/{sub_folder}/{gc_manifest_filename}_contamination_2.csv'
+        with open_cloud_file(os.path.normpath(manifest_2_filepath)) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            rows.sort(key=lambda x: x['BIOBANK_ID'])
+
+        # Test remainder AW2F contains correct records
+        self.assertEqual(2, len(rows))
+        self.assertEqual('3', rows[0]['BIOBANK_ID'])
+        self.assertEqual('4', rows[1]['BIOBANK_ID'])
 
     def test_contamination_calculation_with_another_sample_viable(self):
         file_ingester = GenomicFileIngester(job_id=GenomicJob.METRICS_INGESTION)
@@ -4542,8 +4591,8 @@ class GenomicPipelineTest(BaseTestCase):
             GenomicSampleContamination.sampleId == contaminated_sample.biobankStoredSampleId
         ).one()  # There should be a contamination record for the sample
 
-    def _create_stored_samples(self, stored_sample_date):
-        for biobank_id, stored_sample_id in stored_sample_date:
+    def _create_stored_samples(self, stored_sample_data):
+        for biobank_id, stored_sample_id in stored_sample_data:
             # Create the participant and summary if needed
             participant = self.session.query(Participant).filter(
                 Participant.biobankId == biobank_id
