@@ -2119,7 +2119,7 @@ class GenomicBiobankSamplesCoupler:
                 f'Saliva Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c2_genomic_participants(self, from_date, local=False):
+    def create_c2_genomic_participants(self, local=False):
         """
         Creates Cohort 2 Participants in the genomic system using reconsent.
         Validation is handled in the query that retrieves the newly consented
@@ -2131,11 +2131,14 @@ class GenomicBiobankSamplesCoupler:
         :param: from_date : the date from which to lookup new participants
         :return: result
         """
-
-        participants = self._get_new_c2_participants(from_date)
+        participants = self._get_remaining_c2_participants()
 
         if len(participants) > 0:
-            return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_2_ID, local=local)
+            return self.create_matrix_and_process_samples(
+                participants,
+                cohort=self.COHORT_2_ID,
+                local=local
+            )
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No participants to process.')
@@ -2482,32 +2485,6 @@ class GenomicBiobankSamplesCoupler:
 
         logging.error(f'Should have been able to select between '
                       f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
-
-    def _get_new_c2_participants(self, from_date):
-        """
-        Retrieves C2 participants and validation data.
-        Broken out so that DNA samples' business logic is handled separately
-        :param from_date:
-        :return:
-        """
-        _c2_participant_sql = self.query.new_c2_participants()
-
-        params = {
-            "sample_status_param": SampleStatus.RECEIVED.__int__(),
-            "dob_param": GENOMIC_VALID_AGE,
-            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
-            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
-            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
-            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
-        }
-
-        with self.ps_dao.session() as session:
-            result = session.execute(_c2_participant_sql, params).fetchall()
-
-        return list([list(r) for r in zip(*result)])
 
     def _get_remaining_c2_participants(self):
 
