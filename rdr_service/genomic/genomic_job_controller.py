@@ -89,7 +89,6 @@ class GenomicJobController:
         self.bypass_record_count = False
         self.skip_updates = False
         self.server_config = server_config
-        self.feedback_threshold = 2/3
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
