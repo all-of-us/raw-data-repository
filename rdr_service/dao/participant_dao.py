@@ -24,7 +24,6 @@ from rdr_service.api_util import (
 from rdr_service.app_util import get_oauth_id, lookup_user_info, get_account_origin_id, is_care_evo_and_not_prod
 from rdr_service.code_constants import UNSET, ORIGINATING_SOURCES
 from rdr_service.dao.base_dao import BaseDao, UpdatableDao
-from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
@@ -269,22 +268,7 @@ class ParticipantDao(UpdatableDao):
                     obj.organizationId = None
                     need_new_summary = True
 
-        if update_pairing:
-            if obj.organizationId != existing_obj.organizationId and existing_obj.participantSummary is not None:
-                # Get valid files ready for sync when a participant is paired to an organization
-                ConsentDao.set_previously_synced_files_as_ready(session, obj.participantId)
-
-                import rdr_service.services.consent.validation as validation
-                controller = validation.ConsentValidationController.build_controller()
-                with validation.ReplacementStoringStrategy(
-                    session=session,
-                    consent_dao=controller.consent_dao
-                ) as store_strategy:
-                    controller.validate_all_for_participant(
-                        participant_id=obj.participantId,
-                        output_strategy=store_strategy
-                    )
-        else:
+        if not update_pairing:
             # No pairing updates sent, keep existing values.
             obj.siteId = existing_obj.siteId
             obj.organizationId = existing_obj.organizationId
