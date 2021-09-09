@@ -2981,8 +2981,7 @@ class ManifestCompiler:
             raise RuntimeError
 
         if self.max_num and len(source_data) > self.max_num:
-            current_list = []
-            count = 0
+            current_list, count = [], 0
 
             for obj in source_data:
                 current_list.append(obj)
@@ -2990,22 +2989,37 @@ class ManifestCompiler:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                    file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
-                        f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                        f'{file_path}'
                     )
+
                     self._write_and_upload_manifest(current_list)
+                    self.controller.manifests_generated.append({
+                        'file_path': file_path,
+                        'record_count': len(current_list)
+                    })
                     current_list.clear()
 
             if current_list:
                 count += 1
                 self.output_file_name = self.manifest_def.output_filename
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
-                    f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                    f'{file_path}'
                 )
+
                 self._write_and_upload_manifest(current_list)
+                self.controller.manifests_generated.append({
+                    'file_path': file_path,
+                    'record_count': len(current_list)
+                })
+
         else:
             self.output_file_name = self.manifest_def.output_filename
             # If the new manifest is a feedback manifest,
@@ -3019,11 +3033,19 @@ class ManifestCompiler:
                         "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
                         f"{new_name}"
                     )
+
+            file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                f'{file_path}'
             )
+
             self._write_and_upload_manifest(source_data)
+            self.controller.manifests_generated.append({
+                'file_path': file_path,
+                'record_count': len(source_data)
+            })
 
             for row in source_data:
                 member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
@@ -3051,7 +3073,6 @@ class ManifestCompiler:
 
             return {
                 "code": GenomicSubProcessResult.SUCCESS,
-                "record_count": len(source_data),
             }
 
         logging.info(f'No records found for manifest type: {manifest_type}.')
