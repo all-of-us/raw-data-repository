@@ -20,7 +20,6 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import (
     OrganizationType,
-    QuestionnaireStatus,
     SuspensionStatus,
     TEST_HPO_ID,
     TEST_HPO_NAME,
@@ -809,68 +808,6 @@ class ParticipantApiTest(BaseTestCase, PDRGeneratorTestMixin):
         self.assertTrue(
             all([file.sync_status == ConsentSyncStatus.READY_FOR_SYNC for file in participant_consent_files])
         )
-
-    def test_org_change_retro_validates(self):
-        """
-        When a participant is paired to an organization for the first time, or changes organizations, any
-        consent files that have been synced will need to be synced again to the new organization
-        """
-        # Create an unpaired participant and some consent files that have been synced
-        summary = self.data_generator.create_database_participant_summary(
-            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
-            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED
-        )
-        self.data_generator.create_database_consent_file(
-            participant_id=summary.participantId,
-            type=ConsentType.EHR,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
-            file_path='bad_ehr'
-        )
-
-        # Pair the participant to an organization through the API
-        # configure the validation controller to generate new files for the participant
-        mock_validator = self.mock_build_validator.return_value
-        mock_validator.get_primary_validation_results.return_value = [
-            ConsentFile(
-                participant_id=summary.participantId,
-                type=ConsentType.PRIMARY,
-                file_path='valid_primary',
-                sync_status=ConsentSyncStatus.READY_FOR_SYNC
-            )
-        ]
-        mock_validator.get_ehr_validation_results.return_value = [
-            ConsentFile(
-                participant_id=summary.participantId,
-                type=ConsentType.EHR,
-                file_path='bad_ehr',
-                sync_status=ConsentSyncStatus.NEEDS_CORRECTING
-            ),
-            ConsentFile(
-                participant_id=summary.participantId,
-                type=ConsentType.EHR,
-                file_path='valid_ehr',
-                sync_status=ConsentSyncStatus.READY_FOR_SYNC
-            )
-        ]
-
-        test_org_external_id = 'test_org'
-        self.data_generator.create_database_organization(externalId=test_org_external_id)
-        self._send_pairing_request(participant_id=summary.participantId, org_name=test_org_external_id)
-
-        # Check on the participant's consent files
-        participant_consent_files: Collection[ConsentFile] = self.session.query(ConsentFile).filter(
-            ConsentFile.participant_id == summary.participantId
-        ).all()
-        self.assertEqual(3, len(participant_consent_files))  # making sure we got the consent files
-        for file in participant_consent_files:
-            if file.file_path == 'valid_ehr':
-                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, file.sync_status)
-            elif file.file_path == 'bad_ehr':
-                self.assertEqual(ConsentSyncStatus.OBSOLETE, file.sync_status)
-            elif file.file_path == 'valid_primary':
-                self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, file.sync_status)
-            else:
-                self.fail(f'Unexpected file: {file.file_path}')
 
 
 def _add_code_answer(code_answers, link_id, code):
