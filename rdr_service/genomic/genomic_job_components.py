@@ -3047,38 +3047,32 @@ class ManifestCompiler:
                 'record_count': len(source_data)
             })
 
-            for row in source_data:
-                member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-                if member is None:
-                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+        for row in source_data:
+            member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+            if member is None:
+                raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-                if self.manifest_def.job_run_field:
-                    self.controller.member_ids_for_update.append(member.id)
+            if self.manifest_def.job_run_field:
+                self.controller.member_ids_for_update.append(member.id)
 
-                # Handle Genomic States for manifests
-                if self.manifest_def.signal != "bypass":
-                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                                  signal=self.manifest_def.signal)
+            # Handle Genomic States for manifests
+            if self.manifest_def.signal != "bypass":
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal=self.manifest_def.signal)
 
-                    if new_state is not None or new_state != member.genomicWorkflowState:
-                        self.member_dao.update_member_state(member, new_state)
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
 
-            if self.controller.member_ids_for_update:
-                self.controller.execute_cloud_task({
-                    'member_ids': self.controller.member_ids_for_update,
-                    'field': self.manifest_def.job_run_field,
-                    'value': self.run_id,
-                    'is_job_run': True
-                }, 'genomic_set_member_update_task')
+        if self.controller.member_ids_for_update:
+            self.controller.execute_cloud_task({
+                'member_ids': self.controller.member_ids_for_update,
+                'field': self.manifest_def.job_run_field,
+                'value': self.run_id,
+                'is_job_run': True
+            }, 'genomic_set_member_update_task')
 
-            return {
-                "code": GenomicSubProcessResult.SUCCESS,
-            }
-
-        logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
-            "code": GenomicSubProcessResult.NO_FILES,
-            "record_count": 0,
+            "code": GenomicSubProcessResult.SUCCESS,
         }
 
     def _pull_source_data(self):
