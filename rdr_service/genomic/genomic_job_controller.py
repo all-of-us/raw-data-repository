@@ -89,7 +89,6 @@ class GenomicJobController:
         self.bypass_record_count = False
         self.skip_updates = False
         self.server_config = server_config
-        self.feedback_threshold = 2/3
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
@@ -196,13 +195,21 @@ class GenomicJobController:
 
         return feedback_file
 
-    def get_feedback_records_to_send(self):
+    def get_feedback_records_to_send(self, _num=60):
         """
-        Retrieves genomic_manifest_feedback records that are complete
-        and have not had a feedback_manifest_ID
-        :return: list of GenomicManifestFeedback
+        Retrieves genomic_manifest_feedback records that are past _num.
+        :return: list of GenomicManifestFeedback records
         """
-        return self.manifest_feedback_dao.get_feedback_count_within_threshold(self.feedback_threshold)
+        return self.manifest_feedback_dao.get_feedback_records_past_date_cutoff(num_days=_num)
+
+    def get_aw2f_remainder_records(self):
+        """
+        Retrieves genomic_manifest_feedback records that have already been sent
+        but have remaining data to send
+        :return: list of GenomicManifestFeedback records
+        """
+        ids = self.manifest_feedback_dao.get_contamination_remainder_feedback_ids()
+        return self.manifest_feedback_dao.get_feedback_records_from_ids(ids)
 
     def ingest_awn_data_for_member(self, file_path, member):
         """
@@ -909,9 +916,11 @@ class GenomicJobController:
             # Set the feedback manifest name based on the input manifest name
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
+                version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
                     _genome_type,
+                    version=version_num + 1,
                     input_manifest=input_manifest
                 )
 
@@ -953,6 +962,7 @@ class GenomicJobController:
 
                     r.feedbackManifestFileId = new_manifest_record.id
                     r.feedbackComplete = 1
+                    r.version += 1
                     r.feedbackCompleteDate = now_time
 
                     with self.manifest_feedback_dao.session() as session:

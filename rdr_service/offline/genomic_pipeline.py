@@ -296,6 +296,17 @@ def scan_and_complete_feedback_records():
             create_aw2f_manifest(f)
 
 
+def send_remainder_contamination_manifests():
+    """
+    Entrypoint for AW2F Manifest monthly remainder
+    """
+    with GenomicJobController(GenomicJob.GENERATE_AW2F_REMAINDER) as controller:
+        # Get feedback records that have been sent and have new data
+        feedback_records = controller.get_aw2f_remainder_records()
+        for feedback_record in feedback_records:
+            create_aw2f_manifest(feedback_record)
+
+
 def feedback_record_reconciliation():
     with GenomicJobController(GenomicJob.FEEDBACK_RECORD_RECONCILE) as controller:
         controller.reconcile_feedback_records()
