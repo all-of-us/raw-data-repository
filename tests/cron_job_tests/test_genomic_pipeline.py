@@ -2998,6 +2998,12 @@ class GenomicPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
 
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 1)
+        self.assertEqual(manifest_records[0].recordCount, 2)
+        self.assertIsNotNone(manifest_records[0].fileName)
+        self.assertIsNotNone(manifest_records[0].filePath)
+
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
         self.assertEqual(cloud_task_args['field'], 'aw3ManifestFileId')
@@ -3153,6 +3159,14 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_array_manifest_workflow(max_num=3)  # run_id = 4
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 3)
+        for i, manifest in enumerate(manifest_records):
+            self.assertTrue(f'_{i+1}.csv' in manifest.fileName)
+            self.assertIsNotNone(manifest.recordCount)
+            self.assertIsNotNone(manifest.fileName)
+            self.assertIsNotNone(manifest.filePath)
 
         member = self.member_dao.get(2)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
@@ -3476,6 +3490,12 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 1)
+        self.assertEqual(manifest_records[0].recordCount, 1)
+        self.assertIsNotNone(manifest_records[0].fileName)
+        self.assertIsNotNone(manifest_records[0].filePath)
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
@@ -3846,6 +3866,14 @@ class GenomicPipelineTest(BaseTestCase):
 
         with clock.FakeClock(fake_dt):
             genomic_pipeline.aw3_wgs_manifest_workflow(max_num=2)  # run_id = 4
+
+        manifest_records = self.manifest_file_dao.get_all()
+        self.assertEqual(len(manifest_records), 3)
+        for i, manifest in enumerate(manifest_records):
+            self.assertTrue(f'_{i + 1}.csv' in manifest.fileName)
+            self.assertIsNotNone(manifest.recordCount)
+            self.assertIsNotNone(manifest.fileName)
+            self.assertIsNotNone(manifest.filePath)
 
         # Test member was updated
         member = self.member_dao.get(2)

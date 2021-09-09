@@ -2981,8 +2981,7 @@ class ManifestCompiler:
             raise RuntimeError
 
         if self.max_num and len(source_data) > self.max_num:
-            current_list = []
-            count = 0
+            current_list, count = [], 0
 
             for obj in source_data:
                 current_list.append(obj)
@@ -2990,22 +2989,37 @@ class ManifestCompiler:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                    file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
-                        f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                        f'{file_path}'
                     )
+
                     self._write_and_upload_manifest(current_list)
+                    self.controller.manifests_generated.append({
+                        'file_path': file_path,
+                        'record_count': len(current_list)
+                    })
                     current_list.clear()
 
             if current_list:
                 count += 1
                 self.output_file_name = self.manifest_def.output_filename
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
-                    f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                    f'{file_path}'
                 )
+
                 self._write_and_upload_manifest(current_list)
+                self.controller.manifests_generated.append({
+                    'file_path': file_path,
+                    'record_count': len(current_list)
+                })
+
         else:
             self.output_file_name = self.manifest_def.output_filename
             # If the new manifest is a feedback manifest,
@@ -3019,45 +3033,46 @@ class ManifestCompiler:
                         "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
                         f"{new_name}"
                     )
+
+            file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                f'{file_path}'
             )
+
             self._write_and_upload_manifest(source_data)
+            self.controller.manifests_generated.append({
+                'file_path': file_path,
+                'record_count': len(source_data)
+            })
 
-            for row in source_data:
-                member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-                if member is None:
-                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+        for row in source_data:
+            member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+            if member is None:
+                raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-                if self.manifest_def.job_run_field:
-                    self.controller.member_ids_for_update.append(member.id)
+            if self.manifest_def.job_run_field:
+                self.controller.member_ids_for_update.append(member.id)
 
-                # Handle Genomic States for manifests
-                if self.manifest_def.signal != "bypass":
-                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                                  signal=self.manifest_def.signal)
+            # Handle Genomic States for manifests
+            if self.manifest_def.signal != "bypass":
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal=self.manifest_def.signal)
 
-                    if new_state is not None or new_state != member.genomicWorkflowState:
-                        self.member_dao.update_member_state(member, new_state)
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
 
-            if self.controller.member_ids_for_update:
-                self.controller.execute_cloud_task({
-                    'member_ids': self.controller.member_ids_for_update,
-                    'field': self.manifest_def.job_run_field,
-                    'value': self.run_id,
-                    'is_job_run': True
-                }, 'genomic_set_member_update_task')
+        if self.controller.member_ids_for_update:
+            self.controller.execute_cloud_task({
+                'member_ids': self.controller.member_ids_for_update,
+                'field': self.manifest_def.job_run_field,
+                'value': self.run_id,
+                'is_job_run': True
+            }, 'genomic_set_member_update_task')
 
-            return {
-                "code": GenomicSubProcessResult.SUCCESS,
-                "record_count": len(source_data),
-            }
-
-        logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
-            "code": GenomicSubProcessResult.NO_FILES,
-            "record_count": 0,
+            "code": GenomicSubProcessResult.SUCCESS,
         }
 
     def _pull_source_data(self):
