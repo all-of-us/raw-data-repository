@@ -4662,6 +4662,11 @@ class GenomicPipelineTest(BaseTestCase):
         aw1_raw_records = self.aw1_raw_dao.get_all()
         aw1_raw_records.sort(key=lambda x: x.id)
 
+        for record in aw1_raw_records:
+            if record.test_name:
+                self.assertIsNotNone(record.genome_type)
+                self.assertEqual(record.test_name, record.genome_type)
+
         # compare rows in DB to rows in manifest
         for i, aw1_file_row in enumerate(aw1_manifest_file.split("\n")):
             if i == 0 or aw1_file_row == "":
@@ -4671,6 +4676,64 @@ class GenomicPipelineTest(BaseTestCase):
             for j, aw1_file_column in enumerate(aw1_file_row.split(',')):
                 aw1_file_column = aw1_file_column.strip('"')
                 self.assertEqual(aw1_file_column, getattr(aw1_raw_records[i-1], expected_columns[j]))
+
+    def test_aw2_load_manifest_to_raw_table(self):
+        # Set up test AW2 manifest
+        test_manifest = 'RDR_AoU_SEQ_TestDataManifest.csv'
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for i in range(1, 6):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=gen_set.id,
+                biobankId=i,
+                sampleId=1001 + i,
+                genomeType="aou_array",
+            )
+
+        # Setup Test file
+        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                          folder=_FAKE_BUCKET_FOLDER)
+
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
+
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+
+        aw2_raw_records = self.aw2_raw_dao.get_all()
+
+        for i, record in enumerate(aw2_raw_records):
+            member = self.member_dao.get(i + 1)
+            self.assertIsNotNone(record.genome_type)
+            self.assertEqual(record.genome_type, member.genomeType)
+
+        index = 0
+        with open(data_path(test_manifest)) as f:
+            csv_reader = csv.DictReader(f)
+            for row in csv_reader:
+                self.assertEqual(row["Biobank ID"], aw2_raw_records[index].biobank_id)
+                self.assertEqual(row["Sample ID"], aw2_raw_records[index].sample_id)
+                self.assertEqual(row["BiobankidSampleid"], aw2_raw_records[index].biobankidsampleid)
+                self.assertEqual(row["LIMS ID"], aw2_raw_records[index].lims_id)
+                self.assertEqual(row["Mean Coverage"], aw2_raw_records[index].mean_coverage)
+                self.assertEqual(row["Genome Coverage"], aw2_raw_records[index].genome_coverage)
+                self.assertEqual(row["AoU HDR Coverage"], aw2_raw_records[index].aouhdr_coverage)
+                self.assertEqual(row["Sex Concordance"], aw2_raw_records[index].sex_concordance)
+                self.assertEqual(row["Contamination"], aw2_raw_records[index].contamination)
+                self.assertEqual(row["Sex Ploidy"], aw2_raw_records[index].sex_ploidy)
+                self.assertEqual(row["Aligned Q30 Bases"], aw2_raw_records[index].aligned_q30_bases)
+                self.assertEqual(row["Array Concordance"], aw2_raw_records[index].array_concordance)
+                self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
+                self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
+                index += 1
+
+        self.assertEqual(index, len(aw2_raw_records))
 
     def test_get_latest_raw_file(self):
         aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-5.csv")
@@ -4706,44 +4769,6 @@ class GenomicPipelineTest(BaseTestCase):
         )
         self.assertEqual(sorted_record.id, dao_record.id)
         self.assertEqual(sorted_record.file_path, dao_record.file_path)
-
-    def test_aw2_load_manifest_to_raw_table(self):
-        # Set up test AW2 manifest
-        test_manifest = 'RDR_AoU_SEQ_TestDataManifest.csv'
-
-        # Setup Test file
-        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
-
-        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
-
-        # Run load job
-        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
-
-        aw2_raw_records = self.aw2_raw_dao.get_all()
-
-        index = 0
-        with open(data_path(test_manifest)) as f:
-            csv_reader = csv.DictReader(f)
-            for row in csv_reader:
-                self.assertEqual(row["Biobank ID"], aw2_raw_records[index].biobank_id)
-                self.assertEqual(row["Sample ID"], aw2_raw_records[index].sample_id)
-                self.assertEqual(row["BiobankidSampleid"], aw2_raw_records[index].biobankidsampleid)
-                self.assertEqual(row["LIMS ID"], aw2_raw_records[index].lims_id)
-                self.assertEqual(row["Mean Coverage"], aw2_raw_records[index].mean_coverage)
-                self.assertEqual(row["Genome Coverage"], aw2_raw_records[index].genome_coverage)
-                self.assertEqual(row["AoU HDR Coverage"], aw2_raw_records[index].aouhdr_coverage)
-                self.assertEqual(row["Sex Concordance"], aw2_raw_records[index].sex_concordance)
-                self.assertEqual(row["Contamination"], aw2_raw_records[index].contamination)
-                self.assertEqual(row["Sex Ploidy"], aw2_raw_records[index].sex_ploidy)
-                self.assertEqual(row["Aligned Q30 Bases"], aw2_raw_records[index].aligned_q30_bases)
-                self.assertEqual(row["Array Concordance"], aw2_raw_records[index].array_concordance)
-                self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
-                self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
-                index += 1
-
-        self.assertEqual(index, len(aw2_raw_records))
 
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file
