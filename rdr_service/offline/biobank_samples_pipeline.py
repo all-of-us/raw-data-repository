@@ -5,6 +5,7 @@ Also updates ParticipantSummary data related to samples.
 
 import csv
 import datetime
+from dateutil.parser import parse
 import logging
 import math
 import os
@@ -13,6 +14,7 @@ from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func, or_
 from sqlalchemy.sql.functions import concat
+from typing import Dict
 
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
@@ -309,10 +311,12 @@ def _get_report_paths(report_datetime, report_type="daily"):
     if report_type == "monthly":
         report_name_suffix = ("received_monthly", "missing_monthly", "modified_monthly", "withdrawals_monthly")
 
-    return [
-        "%s/report_%s_%s.csv" % (_REPORT_SUBDIR, report_datetime.strftime(_FILENAME_DATE_FORMAT), report_name)
-        for report_name in report_name_suffix
-    ]
+    return [_get_report_path(report_datetime, report_name) for report_name in report_name_suffix]
+
+
+def _get_report_path(report_datetime, report_name):
+    report_date_str = report_datetime.strftime(_FILENAME_DATE_FORMAT)
+    return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}.csv'
 
 
 def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, now):
@@ -354,7 +358,45 @@ def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, 
     exporter.run_export(file_path, withdrawal_report_query, backup=True)
     logging.info(f"Completed {file_path} report.")
 
-def _query_and_write_reports(exporter, now, report_type, path_received,
+
+def _build_query_params(start_date: datetime):
+    code_dao = CodeDao()
+    race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
+    native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
+
+    return {
+        "race_question_code_id": race_question_code.codeId,
+        "native_american_race_code_id": native_american_race_code.codeId,
+        "biobank_id_prefix": get_biobank_id_prefix(),
+        "pmi_ops_system": _PMI_OPS_SYSTEM,
+        "ce_quest_system": _CE_QUEST_SYSTEM,
+        "kit_id_system": _KIT_ID_SYSTEM,
+        "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
+        "n_days_ago": start_date,
+        "dv_order_filter": 0
+    }
+
+
+def _query_and_write_received_report(exporter, report_path, query_params, report_predicate):
+    received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
+    if config.getSettingJson(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, default=False):
+        received_report_select += """,
+                group_concat(ny_flag) ny_flag,
+                group_concat(sex_at_birth_flag) sex_at_birth_flag
+            """
+    logging.info(f"Writing {report_path} report.")
+    received_sql = replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL)
+    exporter.run_export(
+        report_path,
+        received_sql,
+        query_params,
+        backup=True,
+        predicate=report_predicate
+    )
+    logging.info(f"Completed {report_path} report.")
+
+
+def _query_and_write_reports(exporter, now: datetime, report_type, path_received,
                              path_missing, path_modified,
                              path_withdrawals, path_salivary_missing=None):
     """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
@@ -389,42 +431,12 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
         result[_EDITED_CANCELLED_RESTORED_STATUS_FLAG_INDEX] and in_past_n_days(result, now, report_cover_range)
     )
 
-    code_dao = CodeDao()
-    race_question_code = code_dao.get_code(PPI_SYSTEM, RACE_QUESTION_CODE)
-    native_american_race_code = code_dao.get_code(PPI_SYSTEM, RACE_AIAN_CODE)
-
     # break into three steps to avoid OOM issue
     report_paths = [path_missing, path_modified]
     report_predicates = [missing_predicate, modified_predicate]
 
-    query_params = {
-        "race_question_code_id": race_question_code.codeId,
-        "native_american_race_code_id": native_american_race_code.codeId,
-        "biobank_id_prefix": get_biobank_id_prefix(),
-        "pmi_ops_system": _PMI_OPS_SYSTEM,
-        "ce_quest_system": _CE_QUEST_SYSTEM,
-        "kit_id_system": _KIT_ID_SYSTEM,
-        "tracking_number_system": _TRACKING_NUMBER_SYSTEM,
-        "n_days_ago": now - datetime.timedelta(days=(report_cover_range + 1)),
-        "dv_order_filter": 0
-    }
-
-    # Generate received report
-    received_report_select = _RECONCILIATION_REPORT_SELECTS_SQL
-    if config.getSettingJson('enable_biobank_manifest_received_flags', default=False):
-        received_report_select += """,
-            group_concat(ny_flag) ny_flag,
-            group_concat(sex_at_birth_flag) sex_at_birth_flag
-        """
-    logging.info(f"Writing {path_received} report.")
-    exporter.run_export(
-        path_received,
-        replace_isodate(received_report_select + _RECONCILIATION_REPORT_SOURCE_SQL),
-        query_params,
-        backup=True,
-        predicate=received_predicate
-    )
-    logging.info(f"Completed {path_received} report.")
+    query_params = _build_query_params(start_date=now - datetime.timedelta(days=(report_cover_range + 1)))
+    _query_and_write_received_report(exporter, path_received, query_params, received_predicate)
 
     for report_path, report_predicate in zip(report_paths, report_predicates):
         if report_path == path_missing:
@@ -442,6 +454,24 @@ def _query_and_write_reports(exporter, now, report_type, path_received,
 
     if config.getSetting('biobank_withdrawal_report_enabled', default=True):
         _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
+
+    # Check if cumulative received report should be generated
+    # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
+    # run, and the values giving the dates that should be used for the first start date.
+    cumulative_received_schedule: Dict[str, str] = config.getSettingJson(
+        config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
+        default={}
+    )
+    for run_date, start_date in cumulative_received_schedule.items():
+        if parse(run_date).date() == now.date():
+            report_start_date = parse(start_date)
+            cumulative_received_params = _build_query_params(start_date=report_start_date)
+            _query_and_write_received_report(
+                exporter=exporter,
+                report_path=_get_report_path(report_datetime=now, report_name='cumulative_received'),
+                query_params=cumulative_received_params,
+                report_predicate=received_predicate
+            )
 
     # Generate the missing salivary report, within last n days (10 1/20)
     if report_type != "monthly" and path_salivary_missing is not None:
