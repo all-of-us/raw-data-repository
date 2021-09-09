@@ -40,7 +40,7 @@ rsc_field_exclusions = {
     'GenomicGCValidationMetricsSchema': _default_exclusions,
     'WorkbenchResearcherSchema': list(rschemas.WorkbenchResearcherSchema.Meta.pii_fields),
     'ParticipantSchema': list(rschemas.ParticipantSchema.Meta.pii_fields) +
-                         ['addresses', 'enrl_status', 'enrl_status_id']
+                         ['addresses']
 }
 
 # For field name translations that have been vetted after verifying the differences between BQ schemas
