@@ -30,20 +30,6 @@ def upgrade_rdr():
     op.add_column('genomic_aw1_raw', sa.Column('genome_type', sa.String(length=80), nullable=True))
     op.add_column('genomic_aw2_raw', sa.Column('genome_type', sa.String(length=80), nullable=True))
 
-    op.execute(
-        "Update genomic_aw1_raw aw1r"
-        "Set aw1r.genome_type = aw1r.test_name"
-        "Where aw1r.genome_type is null"
-    )
-
-    op.execute(
-        "Update genomic_aw2_raw aw2r"
-        "Inner Join genomic_set_member gsm"
-        "On aw2r.sample_id = gsm.sample_id"
-        "Set aw2r.genome_type = gsm.genome_type"
-        "Where aw2r.genome_type is null"
-    )
-    
     # ### end Alembic commands ###
 
 
