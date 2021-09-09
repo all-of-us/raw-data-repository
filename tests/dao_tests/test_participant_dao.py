@@ -671,23 +671,32 @@ class ParticipantDaoTest(BaseTestCase):
             self.assertTrue(any(obj for obj in similar if obj[1] == 'r_id'))
             self.assertTrue(any(obj for obj in similar if obj[1] == 'vibrent_id'))
 
-    def test_loading_org_and_site_by_ids(self):
+    def test_loading_pairing_info_by_ids(self):
+        hpo = self.data_generator.create_database_hpo(name='pairing_test')
         first_org = self.data_generator.create_database_organization(externalId='ONE')
         second_org = self.data_generator.create_database_organization(externalId='TWO')
 
         test_site = self.data_generator.create_database_site(googleGroup='test-site-group')
 
         participant_one = self.data_generator.create_database_participant(
+            hpoId=hpo.hpoId,
             organizationId=first_org.organizationId,
             siteId=test_site.siteId
         )
         participant_two = self.data_generator.create_database_participant(
+            hpoId=hpo.hpoId,
             organizationId=second_org.organizationId
         )
+        participant_three = self.data_generator.create_database_participant(
+            hpoId=hpo.hpoId
+        )
 
-        results = self.dao.get_org_and_site_for_ids([participant_one.participantId, participant_two.participantId])
+        results = self.dao.get_pairing_data_for_ids(
+            [participant_one.participantId, participant_two.participantId, participant_three.participantId]
+        )
         self.assertEqual([
-            (participant_one.participantId, first_org.externalId, test_site.googleGroup),
-            (participant_two.participantId, second_org.externalId, None)
+            (participant_one.participantId, hpo.name, first_org.externalId, test_site.googleGroup),
+            (participant_two.participantId, hpo.name, second_org.externalId, None),
+            (participant_three.participantId, hpo.name, None, None)
         ], results)
 
