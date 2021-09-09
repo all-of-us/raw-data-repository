@@ -814,19 +814,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
                                  PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
                                  PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
-                                 PhysicalMeasurements.status). \
+                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
         # sql = self.dao.query_to_text(query)
         results = query.all()
 
         for row in results:
-            # row.final is not a complete indicator of a finalized PM record, there are cases where row.final = 0,
-            # but there is a valid finalized timestamp.
-            if row.finalized is not None and row.status != PhysicalMeasurementsStatus.CANCELLED:
-                pm_status = PhysicalMeasurementsStatus.COMPLETED
-            else:
-                pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET
+            # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
+            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
+            pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.COMPLETED
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
@@ -835,9 +832,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
+                'final': row.final,
                 'finalized': row.finalized,
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
+                'amended_measurements_id': row.amendedMeasurementsId,
+                # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
+                # only set to UNSET in this scenario.
+                'restored': 1 if row.status == 0 else 0
             })
             activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
                                 ParticipantEventEnum.PhysicalMeasurements,
