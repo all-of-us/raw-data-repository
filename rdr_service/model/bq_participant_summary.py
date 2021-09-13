@@ -129,6 +129,10 @@ class BQPhysicalMeasurements(BQSchema):
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
                                          BQFieldModeEnum.NULLABLE)
+    pm_amended_measurements_id = BQField('pm_amended_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
+    pm_final = BQField('pm_final', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_restored = BQField('pm_restored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQBiobankSampleSchema(BQSchema):
@@ -344,9 +348,6 @@ class BQParticipantSummarySchema(BQSchema):
     # end of field list if enabled later
     # date_of_death = BQField('date_of_death', BQFieldTypeEnum.DATE, BQFieldModeEnum.NULLABLE)
 
-    # Note: I am *not* adding the new 'enrl_status' or 'enrl_status_id' fields here to avoid confusion with
-    #       the existing 'enrollment_status' fields, until the new enrollment status calculator is verified
-    #       completely.
     enrl_registered_time = BQField('enrl_registered_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     enrl_participant_time = BQField('enrl_participant_time', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     enrl_participant_plus_ehr_time = BQField('enrl_participant_plus_ehr_time', BQFieldTypeEnum.DATETIME,
@@ -356,6 +357,8 @@ class BQParticipantSummarySchema(BQSchema):
     enrl_core_participant_time = BQField('enrl_core_participant_time', BQFieldTypeEnum.DATETIME,
                                          BQFieldModeEnum.NULLABLE)
     pairing_history = BQRecordField('pairing_history', schema=BQPairingHistorySchema)
+    enrl_status = BQField('enrl_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    enrl_status_id = BQField('enrl_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):

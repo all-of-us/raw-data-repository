@@ -9,10 +9,11 @@ from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.expression import literal
+from sqlalchemy.sql.expression import literal, distinct
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
+from rdr_service.clock import CLOCK
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
@@ -1748,29 +1749,7 @@ class GenomicManifestFeedbackDao(UpdatableDao):
         else:
             raise ValueError(f'No feedback record for manifest id {manifest_id}')
 
-    def get_feedback_equals_record_count(self):
-        """
-        Retrieves feedback records where feedback count = record_count
-        :return: list of feedback records
-        """
-        with self.session() as session:
-            results = session.query(GenomicManifestFeedback).join(
-                GenomicManifestFile,
-                GenomicManifestFile.id == GenomicManifestFeedback.inputManifestFileId
-            ).filter(
-                GenomicManifestFeedback.ignoreFlag == 0,
-                GenomicManifestFeedback.feedbackRecordCount == GenomicManifestFile.recordCount,
-                GenomicManifestFeedback.feedbackManifestFileId.is_(None),
-            ).all()
-
-        return results
-
-    def get_feedback_count_within_threshold(self, theta):
-        """
-        Retrieves feedback records where feedback count is >= a threshold of record_count
-        :param theta: threshold
-        :return: list of feedback records
-        """
+    def get_feedback_records_past_date_cutoff(self, num_days):
         with self.session() as session:
             results = session.query(GenomicManifestFeedback).join(
                 GenomicManifestFile,
@@ -1778,12 +1757,38 @@ class GenomicManifestFeedbackDao(UpdatableDao):
             ).filter(
                 GenomicManifestFeedback.ignoreFlag == 0,
                 GenomicManifestFeedback.feedbackComplete == 0,
-                GenomicManifestFeedback.feedbackRecordCount != 0,
-                GenomicManifestFeedback.feedbackRecordCount >= GenomicManifestFile.recordCount * theta,
+                GenomicManifestFile.uploadDate <= CLOCK.now() - timedelta(days=num_days),
                 GenomicManifestFeedback.feedbackManifestFileId.is_(None),
             ).all()
-
         return results
+
+    def get_contamination_remainder_feedback_ids(self):
+        with self.session() as session:
+            results = session.query(
+                distinct(GenomicManifestFeedback.id)
+            ).join(
+                GenomicFileProcessed,
+                GenomicManifestFeedback.inputManifestFileId == GenomicFileProcessed.genomicManifestFileId
+            ).join(
+                GenomicSetMember,
+                GenomicFileProcessed.id == GenomicSetMember.aw1FileProcessedId
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).filter(
+                GenomicSetMember.aw2fManifestJobRunID.is_(None),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicManifestFeedback.feedbackManifestFileId.isnot(None),
+            ).all()
+        return results
+
+    def get_feedback_records_from_ids(self, ids: list):
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.id.in_(ids)
+            ).all()
 
     def get_feedback_record_counts_from_filepath(self, filepath):
         with self.session() as session:

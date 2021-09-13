@@ -1,7 +1,10 @@
+import logging
+
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UnicodeText, event
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
+
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.biobank_mail_kit_order import BiobankMailKitOrder
@@ -417,6 +420,16 @@ class BiobankAliquotDatasetItem(Base, BiobankSpecimenBase):
     paramId = Column("param_id", String(80))
     displayValue = Column("display_value", String(80))
     displayUnits = Column("display_units", String(80))
+
+
+def before_item_delete(_, __, dataset_item: BiobankAliquotDatasetItem):
+    logging.info(
+        f'deleting dataset item with id "{dataset_item.id}", paramId "{dataset_item.paramId}" '
+        f'and dataset rlims id "{dataset_item.dataset_rlims_id}"'
+    )
+
+
+event.listen(BiobankAliquotDatasetItem, 'before_delete', before_item_delete)
 
 
 for model_class in [MayolinkCreateOrderHistory, BiobankSpecimen, BiobankSpecimenAttribute,

@@ -521,7 +521,7 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
 
     def test_demographic_flags_in_received_report(self):
         self._init_report_codes()
-        self.temporarily_override_config_setting('enable_biobank_manifest_received_flags', 1)
+        self.temporarily_override_config_setting(config.ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG, 1)
 
         # Generate data for a New York sample to be in the report
         participant = self.data_generator.create_database_participant()
@@ -795,3 +795,51 @@ class BiobankSamplesPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
             rows=rows_written,
             withdrawal_date_str=twenty_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
         )
+
+    def test_cumulative_received_report(self):
+        self._init_report_codes()
+        current_datetime = datetime.now()
+        cumulative_report_datetime = current_datetime + timedelta(days=5)
+        self.temporarily_override_config_setting(
+            config.BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE,
+            {
+                '2020-10-30': '2020-07-01',
+                cumulative_report_datetime.strftime('%Y-%m-%d'): '2021-08-01'
+            }
+        )
+
+        # Make sure the cumulative received report isn't generated when the date isn't in the config
+        exporter_mock = mock.MagicMock()
+        biobank_samples_pipeline._query_and_write_reports(
+            exporter=exporter_mock,
+            now=current_datetime,
+            report_type='daily',
+            path_received='received',
+            path_missing='missing',
+            path_modified='modified',
+            path_withdrawals='withdrawals'
+        )
+        for call in exporter_mock.run_export.call_args_list:
+            path_name, *_ = call.args
+            self.assertNotIn('cumulative_received', path_name)
+
+        # Make sure the cumulative report gets generated on the right day and with the right start date
+        exporter_mock = mock.MagicMock()
+        biobank_samples_pipeline._query_and_write_reports(
+            exporter=exporter_mock,
+            now=cumulative_report_datetime,
+            report_type='daily',
+            path_received='received',
+            path_missing='missing',
+            path_modified='modified',
+            path_withdrawals='withdrawals'
+        )
+        cumulative_report_params = None
+        for call in exporter_mock.run_export.call_args_list:
+            if len(call.args) > 2:
+                path_name = call.args[0]
+                if 'cumulative_received' in path_name:
+                    cumulative_report_params = call.args[2]
+
+        self.assertIsNotNone(cumulative_report_params)
+        self.assertEqual(datetime(2021, 8, 1), cumulative_report_params['n_days_ago'])
