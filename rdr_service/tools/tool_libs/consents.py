@@ -150,16 +150,6 @@ class ConsentTool(ToolBase):
                 self._consent_dao.batch_update_consent_files([file], session)
 
     def validate_consents(self):
-        sync_controller = ConsentSyncController(
-            consent_dao=ConsentDao(),
-            participant_dao=ParticipantDao(),
-            storage_provider=GoogleCloudStorageProvider()
-        )
-        sync_controller.sync_ready_files()
-
-        min_date = parse(self.args.min_date)
-        max_date = parse(self.args.max_date) if self.args.max_date else None
-
         controller = ConsentValidationController(
             consent_dao=ConsentDao(),
             participant_summary_dao=ParticipantSummaryDao(),
