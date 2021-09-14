@@ -1862,7 +1862,7 @@ class GenomicReconciler:
 
         required_files_set = set([f['file_type'] for f in file_types if f['required']])
 
-        logging.info("Found {len(metrics)} metrics records missing data...")
+        logging.info(f"Found {len(metrics)} metrics records missing data...")
 
         for result in metrics:
             # Lookup identifier in data files table
@@ -1891,19 +1891,10 @@ class GenomicReconciler:
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
                             metric_touched = True
-                            self.controller.member_ids_for_update.append(_obj.genomicSetMemberId)
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
-
-            if self.controller.member_ids_for_update:
-                self.controller.execute_cloud_task({
-                    'member_ids': self.controller.member_ids_for_update,
-                    'field': 'reconcileMetricsSequencingJobRunId',
-                    'value': self.run_id,
-                    'is_job_run': True,
-                }, 'genomic_set_member_update_task')
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -3065,7 +3056,7 @@ class ManifestCompiler:
 
         if self.controller.member_ids_for_update:
             self.controller.execute_cloud_task({
-                'member_ids': self.controller.member_ids_for_update,
+                'member_ids': list(set(self.controller.member_ids_for_update)),
                 'field': self.manifest_def.job_run_field,
                 'value': self.run_id,
                 'is_job_run': True
