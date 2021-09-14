@@ -147,8 +147,7 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
 
     def test_validation_time_range(self, _):
-        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock,\
-                mock.patch('rdr_service.tools.tool_libs.consents.ParticipantDao'):
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock:
             controller_mock = controller_class_mock.return_value
             self.temporarily_override_config_setting(
                 key=config.CONSENT_SYNC_BUCKETS,
