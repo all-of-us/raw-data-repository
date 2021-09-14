@@ -30,10 +30,12 @@ def upgrade_rdr():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('created', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('modified', rdr_service.model.utils.UTCDateTime(), nullable=True),
+    sa.Column('participant_id', sa.Integer(), nullable=True),
     sa.Column('consent_file_id', sa.Integer(), nullable=True),
     sa.Column('file_upload_time', rdr_service.model.utils.UTCDateTime(), nullable=True),
     sa.Column('file_path', sa.String(length=250), nullable=True),
     sa.ForeignKeyConstraint(['consent_file_id'], ['consent_file.id'], ),
+    sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

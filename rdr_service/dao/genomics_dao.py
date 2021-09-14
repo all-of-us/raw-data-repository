@@ -1140,20 +1140,20 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         :return: list of returned GenomicGCValidationMetrics objects
         """
         with self.session() as session:
-            return (
+            darryl = (
                 session.query(GenomicGCValidationMetrics,
                               GenomicSetMember.biobankId,
-                              GenomicSetMember.sampleId,)
-                .join(
+                              GenomicSetMember.sampleId, )
+                    .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
-                .outerjoin(
+                    .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
                          GenomicGcDataFileMissing.resolved == 0)
                 )
-                .filter(
+                    .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
@@ -1168,8 +1168,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
                     (GenomicGCValidationMetrics.craiReceived == 0)
                 )
-                .all()
+                    .all()
             )
+            return darryl
 
     def get_metrics_by_member_id(self, member_id):
         """

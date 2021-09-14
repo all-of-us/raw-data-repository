@@ -966,8 +966,12 @@ class ParticipantSummaryDao(UpdatableDao):
                     getattr(ParticipantSummary, attr).isnot(None))
             return record.all()
 
+    def get_hpro_consent(self, result):
+        pass
+
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 
         # Participants that withdrew more than 48 hours ago should have fields other than
@@ -1008,14 +1012,6 @@ class ParticipantSummaryDao(UpdatableDao):
             if model.race is None or model.race == Race.UNSET:
                 result['race'] = Race.PMI_Skip
 
-        # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-        # def format_patient_status_record(status_obj):
-        #   status_dict = self.patient_status_dao.to_client_json(status_obj)
-        #   return {
-        #     'organization': status_dict['organization'],
-        #     'status': status_dict['patient_status'],
-        #   }
-        # result['patientStatus'] = map(format_patient_status_record, model.patientStatus)
         result["patientStatus"] = model.patientStatus
 
         format_json_hpo(result, self.hpo_dao, "hpoId")
