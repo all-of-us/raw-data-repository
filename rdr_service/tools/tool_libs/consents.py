@@ -18,8 +18,6 @@ from rdr_service.services.consent.validation import ConsentValidationController,
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
-from rdr_service.offline.sync_consent_files import ConsentSyncController
-from rdr_service.dao.participant_dao import ParticipantDao
 
 tool_cmd = 'consents'
 tool_desc = 'Get reports of consent issues and modify validation records'
