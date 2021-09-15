@@ -24,6 +24,10 @@ class BQPDRPhysicalMeasurements(BQSchema):
     pm_finalized = BQField('pm_finalized', BQFieldTypeEnum.DATETIME, BQFieldModeEnum.NULLABLE)
     pm_physical_measurements_id = BQField('pm_physical_measurements_id', BQFieldTypeEnum.INTEGER,
                                          BQFieldModeEnum.NULLABLE)
+    pm_amended_measurements_id = BQField('pm_amended_measurements_id', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
+    pm_final = BQField('pm_final', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    pm_restored = BQField('pm_restored', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 # TODO:  Deprecate use of this class and add these fields to the BQBiobankOrderSchema
