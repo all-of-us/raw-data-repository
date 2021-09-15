@@ -369,6 +369,23 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_primary_update_validation_results()
         )
 
+    def test_long_signature_gets_truncated(self):
+        """Some signatures are abnormally long, and we shouldn't have the validation process fail because of that"""
+
+        # Create a mock of a file with a long signature
+        consent_file = mock.MagicMock()
+        consent_file.get_signature_on_file.return_value = "test" * 100
+
+        # Load the signature using the validator
+        parsing_result = ConsentFile()
+        ConsentValidator._store_signature(
+            result=parsing_result,
+            consent_file=consent_file
+        )
+
+        # Make sure the signature got truncated if it was too large
+        self.assertEqual(200, len(parsing_result.signature_str))
+
     def _mock_consent(self, consent_class: Type[files.ConsentFile], **kwargs):
         consent_args = {
             'get_signature_on_file': self._default_signature,
