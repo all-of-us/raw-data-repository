@@ -3,6 +3,7 @@ from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.resource import generators
+from rdr_service.participant_enums import RetentionType
 
 
 class RetentionEligibleMetricsDao(UpdatableDao):
@@ -18,8 +19,12 @@ class RetentionEligibleMetricsDao(UpdatableDao):
         if record:
             if (
                 record.retentionEligibleStatus == retention_eligible_metrics_obj.retentionEligibleStatus
-                and record.retentionType == retention_eligible_metrics_obj.retentionType
+                and (record.retentionType == retention_eligible_metrics_obj.retentionType
+                     or (record.retentionType is None
+                         and retention_eligible_metrics_obj.retentionType == RetentionType.UNSET))
                 and record.retentionEligibleTime == retention_eligible_metrics_obj.retentionEligibleTime
+                and record.lastActiveRetentionActivityTime ==
+                retention_eligible_metrics_obj.lastActiveRetentionActivityTime
             ):
                 return record.id, False
             else:

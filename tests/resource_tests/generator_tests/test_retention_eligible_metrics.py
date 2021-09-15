@@ -20,17 +20,18 @@ class RetentionMetricGeneratorTest(BaseTestCase):
         self.participant_id = int(self.create_participant()[1:])
 
         self.rem = RetentionEligibleMetrics(
-            id = 1,
-            created = None,
-            modified = None,
-            participantId = self.participant_id,
-            retentionEligible = True,
-            retentionEligibleTime = self.timestamp,
-            activelyRetained = True,
-            passivelyRetained = True,
-            fileUploadDate = self.timestamp,
-            retentionEligibleStatus = RetentionStatus.ELIGIBLE,
-            retentionType = RetentionType.ACTIVE_AND_PASSIVE
+            id=1,
+            created=None,
+            modified=None,
+            participantId=self.participant_id,
+            retentionEligible=True,
+            retentionEligibleTime=self.timestamp,
+            lastActiveRetentionActivityTime=self.timestamp,
+            activelyRetained=True,
+            passivelyRetained=True,
+            fileUploadDate=self.timestamp,
+            retentionEligibleStatus=RetentionStatus.ELIGIBLE,
+            retentionType=RetentionType.ACTIVE_AND_PASSIVE
         )
 
     def test_retention_metric_generator(self):
@@ -39,7 +40,7 @@ class RetentionMetricGeneratorTest(BaseTestCase):
         # Test that the number of fields in the DAO model has not changed.
         # This test is to make sure the resource model is updated when the SA model has been changed.
         column_count = len(RetentionEligibleMetrics.__table__.columns)
-        self.assertEqual(column_count, 11)
+        self.assertEqual(column_count, 12)
 
         self.session.add(self.rem)
         self.session.commit()
@@ -51,9 +52,10 @@ class RetentionMetricGeneratorTest(BaseTestCase):
         data = res.get_resource()
         self.assertIsInstance(data, dict)
         # Check the resource field count. note: enums fields count as 2 fields in a resource.
-        self.assertEqual(len(data.keys()), 13)
+        self.assertEqual(len(data.keys()), 14)
 
         self.assertEqual(data['id'], 1)
         self.assertEqual(parser.parse(data['retention_eligible_time']), self.timestamp)
+        self.assertEqual(parser.parse(data['last_active_retention_activity_time']), self.timestamp)
         self.assertEqual(parser.parse(data['file_upload_date']), self.timestamp)
         self.assertEqual(data['participant_id'], f'P{self.participant_id}')
