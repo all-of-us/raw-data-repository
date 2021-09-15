@@ -9,11 +9,12 @@ class HproConsentDaoTest(BaseTestCase):
         super().setUp()
         self.dao = HProConsentDao()
         self.consent_dao = ConsentDao()
+        self.num_consents = 10
 
     def test_get_consents_for_transfer(self):
-        num_consents, needed_count, needed_ids, limit = 10, 0, [], 2
+        needed_count, needed_ids, limit = 0, [], 2
 
-        for num in range(num_consents):
+        for num in range(self.num_consents):
             consent_file = self.data_generator.create_database_consent_file(
                 file_path=f'test_file_path/{num}'
             )
@@ -53,6 +54,21 @@ class HproConsentDaoTest(BaseTestCase):
         )
 
     def test_get_records_by_participant(self):
-        pass
+        num_pid_records, pids_inserted, no_path_num = 4, [], 2
 
+        for num in range(5):
+            consent_file = self.data_generator.create_database_consent_file(
+                file_path=f'test_file_path/{num}'
+            )
+            pids_inserted.append(consent_file.participant_id)
+
+            for pid_num in range(num_pid_records):
+                self.data_generator.create_database_hpro_consent(
+                    file_path=consent_file.file_path if pid_num > 1 else None,
+                    participant_id=consent_file.participant_id,
+                )
+
+        for pid in pids_inserted:
+            records = self.dao.get_by_participant(pid)
+            self.assertEqual(len(records), no_path_num)
 
