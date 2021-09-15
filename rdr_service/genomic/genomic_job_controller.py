@@ -547,6 +547,27 @@ class GenomicJobController:
         else:
             logging.info('No missing gc data files to resolve')
 
+    def update_member_aw2_missing_states_if_resolved(self):
+        # get array member_ids that are resolved but still in AW2_MISSING
+        logging.info("Updating Array AW2_MISSING members")
+        array_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_ARRAY)
+        self.member_dao.batch_update_member_field(member_ids=array_member_ids,
+                                                  field='genomicWorkflowState',
+                                                  value=GenomicWorkflowState.GEM_READY,
+                                                  project_id=self.bq_project_id)
+        logging.info(f"Updated {len(array_member_ids)} Array members.")
+
+        logging.info("Updating WGS AW2_MISSING members")
+        # get wgs member_ids that are resolved but still in AW2_MISSING
+        wgs_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_WGS)
+        self.member_dao.batch_update_member_field(member_ids=wgs_member_ids,
+                                                  field='genomicWorkflowState',
+                                                  value=GenomicWorkflowState.CVL_READY,
+                                                  project_id=self.bq_project_id)
+        logging.info(f"Updated {len(wgs_member_ids)} WGS members.")
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
         """

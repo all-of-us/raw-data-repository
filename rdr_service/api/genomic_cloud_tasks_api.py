@@ -253,7 +253,7 @@ class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
 class IngestDataFilesTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest data files from buckets and saves
-    records to GenomicGCValidationMetrics
+    records to GenomicGcDataFile
     """
     def post(self):
         super(IngestDataFilesTaskApi, self).post()
