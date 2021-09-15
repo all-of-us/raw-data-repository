@@ -18,8 +18,6 @@ from rdr_service.services.consent.validation import ConsentValidationController,
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
-from rdr_service.offline.sync_consent_files import ConsentSyncController
-from rdr_service.dao.participant_dao import ParticipantDao
 
 tool_cmd = 'consents'
 tool_desc = 'Get reports of consent issues and modify validation records'
@@ -150,13 +148,6 @@ class ConsentTool(ToolBase):
                 self._consent_dao.batch_update_consent_files([file], session)
 
     def validate_consents(self):
-        sync_controller = ConsentSyncController(
-            consent_dao=ConsentDao(),
-            participant_dao=ParticipantDao(),
-            storage_provider=GoogleCloudStorageProvider()
-        )
-        sync_controller.sync_ready_files()
-
         min_date = parse(self.args.min_date)
         max_date = parse(self.args.max_date) if self.args.max_date else None
 

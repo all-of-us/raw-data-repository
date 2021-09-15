@@ -35,12 +35,14 @@ SOURCE_BUCKET = {
     "vibrent": "ptc-uploads-all-of-us-rdr-prod",
     "careevolution": "ce-uploads-all-of-us-rdr-prod"
 }
+DEFAULT_ORG_NAME = 'no-org-assigned'
 DEFAULT_GOOGLE_GROUP = "no-site-assigned"
 TEMP_CONSENTS_PATH = os.path.join(tempfile.gettempdir(), "temp_consents")
 
 
 @dataclass
 class ParticipantPairingInfo:
+    hpo_name: str
     org_name: str
     site_name: str
 
@@ -167,24 +169,35 @@ class ConsentSyncController:
         """Syncs any validated consent files that are ready for syncing"""
 
         sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
-        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(org_names=sync_config.keys())
+        hpo_names = sync_config['hpos'].keys()
+        org_names = sync_config['orgs'].keys()
+        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
+            hpo_names=hpo_names,
+            org_names=org_names
+        )
         pairing_info_map = self._build_participant_pairing_map(file_list)
 
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)
+            if not pairing_info:
+                continue
 
-            # Ignore participants that aren't paired to a configured organization
-            if pairing_info and pairing_info.org_name in sync_config:
-                org_consent_config = sync_config[pairing_info.org_name]
+            sync_destination_config = None
+            if pairing_info.org_name in org_names:
+                sync_destination_config = sync_config['orgs'][pairing_info.org_name]
+            elif pairing_info.hpo_name in hpo_names:
+                sync_destination_config = sync_config['hpos'][pairing_info.hpo_name]
 
-                if org_consent_config['zip_consents']:
+            # Ignore participants that aren't paired to a configured hpo or organization
+            if sync_destination_config:
+                if sync_destination_config['zip_consents']:
                     file_sync_func = self._download_file_for_zip
                 else:
                     file_sync_func = self._copy_file_in_cloud
                 file_sync_func(
                     file=file,
-                    bucket_name=org_consent_config['bucket'],
-                    org_name=pairing_info.org_name,
+                    bucket_name=sync_destination_config['bucket'],
+                    org_name=pairing_info.org_name or DEFAULT_ORG_NAME,
                     site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
                 )
 
@@ -270,10 +283,10 @@ class ConsentSyncController:
         and the google group name for their site
         """
         participant_ids = {file.participant_id for file in files}
-        participant_pairing_data = self.participant_dao.get_org_and_site_for_ids(participant_ids)
+        participant_pairing_data = self.participant_dao.get_pairing_data_for_ids(participant_ids)
         return {
-            participant_id: ParticipantPairingInfo(org_name=org_name, site_name=site_name)
-            for participant_id, org_name, site_name in participant_pairing_data
+            participant_id: ParticipantPairingInfo(hpo_name=hpo_name, org_name=org_name, site_name=site_name)
+            for participant_id, hpo_name, org_name, site_name in participant_pairing_data
         }
 
 

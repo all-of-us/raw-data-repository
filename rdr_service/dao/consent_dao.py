@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
+from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -97,23 +98,32 @@ class ConsentDao(BaseDao):
         ).all()
 
     @classmethod
-    def _get_ready_to_sync_with_session(cls, session: Session, org_names=None):
+    def _get_ready_to_sync_with_session(cls, session: Session, org_names, hpo_names):
         query = (
             session.query(ConsentFile)
             .join(Participant)
-            .join(Organization)
-            .filter(ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC)
+            .outerjoin(Organization)
+            .join(HPO, Participant.hpoId == HPO.hpoId)
+            .filter(
+                ConsentFile.sync_status == ConsentSyncStatus.READY_FOR_SYNC,
+                or_(
+                    Organization.externalId.in_(org_names),
+                    HPO.name.in_(hpo_names)
+                )
+            )
         )
-        if org_names is not None:
-            query = query.filter(Organization.externalId.in_(org_names))
         return query.all()
 
-    def get_files_ready_to_sync(self, org_names=None, session: Session = None) -> Collection[ConsentFile]:
+    def get_files_ready_to_sync(self, org_names, hpo_names, session: Session = None) -> Collection[ConsentFile]:
         if session is None:
             with self.session() as dao_session:
-                return self._get_ready_to_sync_with_session(session=dao_session, org_names=org_names)
+                return self._get_ready_to_sync_with_session(
+                    session=dao_session,
+                    org_names=org_names,
+                    hpo_names=hpo_names
+                )
         else:
-            return self._get_ready_to_sync_with_session(session=session, org_names=org_names)
+            return self._get_ready_to_sync_with_session(session=session, org_names=org_names, hpo_names=hpo_names)
 
     @classmethod
     def set_previously_synced_files_as_ready(cls, session: Session, participant_id: int):
