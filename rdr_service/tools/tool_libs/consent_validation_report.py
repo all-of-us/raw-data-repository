@@ -1,6 +1,7 @@
 #! /bin/env python
 #
 # Temporary tool for manually generating consent validation metrics (until it can be automated by dashboard team)
+# Also creates CSV files for PTSC with information about consent errors.
 #
 
 import argparse
@@ -12,11 +13,11 @@ import sys
 import os
 import csv
 import gspread
+import gspread_formatting as gsfmt
 import pandas
-from time import sleep
 from datetime import datetime, timedelta
 from gspread.utils import rowcol_to_a1
-from gspread.exceptions import APIError
+
 
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.services.gcp_config import RdrEnvironment
@@ -32,8 +33,7 @@ tool_cmd = "consent-report"
 tool_desc = "Publish consent validation metrics to a google sheets doc and/or create a CSV with consent error details"
 
 # This list matches the names of the column names / calculated fields returned from the custom SQL query that pulls
-# data from the RDR consent_file table.  NOTE:  Errors added to this list should also have an entry in the
-# the DAILY_REPORT_COLUMN_MAP for enabling reporting in the google sheets doc
+# data from the RDR consent_file table.
 TRACKED_CONSENT_ERRORS = [
     'missing_file',
     'signature_missing',
@@ -48,29 +48,24 @@ TRACKED_CONSENT_ERRORS = [
 # The PTSC CSV file has some identifying information columns about consents with errors, plus the error status columns
 PTSC_CSV_COLUMN_HEADERS = ['participant_id', 'type', 'file_path', 'file_upload_time'] + TRACKED_CONSENT_ERRORS
 
-# 1-based Spreadsheet Column positions for the pieces of information to be added during generation
-DAILY_REPORT_COLUMN_MAP = {
+# Tuples with column header text and column number (1-based) for generating consent error count sections
+CONSENT_ERROR_COUNT_COLUMNS = [
+    ('Consent Type', 3),
+    ('Expected', 4),
+    ('Ready to Sync', 5),
+    ('Participants With Unresolved Issues', 6),
+    ('Consent Files With Errors', 7),
+    ('Total Errors', 8),
+    ('Missing File', 9),
+    ('Signature Missing', 10),
+    ('Signature Date Invalid', 11),
+    ('Invalid DOB', 12),
+    ('Age at Primary Consent < 18', 13),
+    ('Checkbox Unchecked', 14),
+    ('Non-VA Consent for VA Particip[ant', 15),
+    ('VA Consent for Non-VA Participant', 16)
 
-    # -- Keys for the summary information columns
-    'banner': 1,   # Banner text (e.g., Report Date text) always written to Column A
-    'hpo': 1,      # Also use column A for HPO or Organization name strings
-    'organization': 1,
-    # Column B intentionally left blank
-    'consent_type': 3, # Column C
-    'expected': 4,
-    'ready_to_sync': 5,
-    'consents_with_errors': 6,
-    'total_errors': 7,   # Column G
-    # -- Keys for each of the error conditions defined in the TRACKED_CONSENT_ERRORS list.  Column list may grow
-    'missing_file': 8,    # Column H
-    'signature_missing': 9,
-    'invalid_signing_date': 10,
-    'invalid_dob': 11,
-    'invalid_age_at_consent': 12,
-    'checkbox_unchecked': 13,
-    'non_va_consent_for_va': 14,
-    'va_consent_for_non_va': 15   # Column O
-}
+]
 
 # Maps the currently validated consent types to the authored date field that will be used in the report SQL query
 CONSENT_AUTHORED_FIELDS = {
@@ -80,22 +75,23 @@ CONSENT_AUTHORED_FIELDS = {
     ConsentType.CABOR: 'consent_for_cabor_authored',
     ConsentType.EHR: 'consent_for_electronic_health_records_authored',
     ConsentType.GROR: 'consent_for_genomics_ror_authored',
-    ConsentType.PRIMARY_UPDATE: 'consent_for_study_enrollment_authored'
+    # TODO:  Enable once the retrospective validations of the Cohort 1 consent update are vetted for false positives
+    # ConsentType.PRIMARY_UPDATE: 'consent_for_study_enrollment_authored'
 }
 
 # List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
 CONSENTS_LIST = [int(v) for v in CONSENT_AUTHORED_FIELDS.keys()]
 
-# TODO:  Convert to SQLAlchemy when refactoring for automation.  Raw SQL used initially for fast prototyping of reports
+# Raw SQL used initially for fast prototyping of reports.  These reports will be taken over by dashboard team
 CONSENT_REPORT_SQL_BODY =  """
             SELECT cf.participant_id,
                    ps.date_of_birth,
                    CASE
                       WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
-                      ELSE '(No HPO details)'
+                      ELSE '(Unpaired)'
                    END AS hpo,
                    CASE
-                      WHEN o.display_name IS NOT NULL THEN o.display_name ELSE '(No organization details)'
+                      WHEN o.display_name IS NOT NULL THEN o.display_name ELSE '(No organization pairing)'
                    END AS organization,
                    DATE(ps.{authored_field}) AS consent_authored_date,
                    cf.sync_status,
@@ -110,8 +106,9 @@ CONSENT_REPORT_SQL_BODY =  """
                    -- Invalid DOB conditions: DOB missing, DOB before defined cutoff, DOB in the future, or
                    -- DOB later than the consent authored date
                    (ps.date_of_birth is null or ps.date_of_birth > "{report_date}"
-                    or (ps.consent_for_study_enrollment_authored is not null
-                        and TIMESTAMPDIFF(YEAR, ps.consent_for_study_enrollment_authored, ps.date_of_birth) > 124))
+                    or (ps.consent_for_study_enrollment_first_yes_authored is not null
+                        and TIMESTAMPDIFF(YEAR, ps.consent_for_study_enrollment_first_yes_authored,
+                                          ps.date_of_birth) > 124))
                     AS invalid_dob,
                    TIMESTAMPDIFF(YEAR, COALESCE(ps.date_of_birth, CURRENT_DATE),
                                  ps.consent_for_study_enrollment_first_yes_authored) < 18
@@ -139,51 +136,79 @@ DAILY_CONSENTS_SQL_FILTER = """
                   AND DATE(ps.{authored_field}) = "{report_date}"
                   AND cf.sync_status IN (1,2,4)
     """
+
 # -- Weekly report queries --
 
-# Filter to produce a report of all remaining NEEDS_CORRECTING consents, regardless of date
-ALL_UNRESOLVED_ERRORS_SQL_FILTER = ' WHERE cf.sync_status = 1 '
+# Filter to produce a report of all remaining NEEDS_CORRECTING consents of a specified type, up to and including the
+# specified end date for this report
+ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
+            WHERE cf.type = {consent_type}
+                  AND DATE(ps.{authored_field}) <= "{end_date}"
+                  AND cf.sync_status = 1
+    """
 
-# Filter for generating stats on resolved (OBSOLETE errors) by retransmission within a date range.  Assumption is that
-# the last modified timestamp for a record will reflect when it was moved into OBSOLETE status.  For the weekly report
-RESOLVED_ERRORS_BY_DATE_RANGE_SQL_FILTER = """
-           WHERE cf.sync_status = 3
-                 AND DATE(cf.modified) BETWEEN {start_date} AND {end_date}
+# Filter for generating stats on file issues resolved by retransmission (OBSOLETE consent_file entries)
+# The last modified timestamp for an OBSOLETE record should reflect when it was moved into OBSOLETE status; include
+# resolutions up to the specified end date for this report
+ALL_RESOLVED_SQL = """
+           SELECT cf.participant_id,
+                  cf.type,
+                  DATE(cf.modified) AS resolved_date
+           FROM consent_file cf
+           WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{end_date}"
 """
 
 # TODO:  Remove this when we expand consent validation to include CE consents
-VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent"'
+VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent" '
+
+# Weekly report SQL for validation burndown counts
+CONSENTED_PARTICIPANTS_COUNT_SQL = """
+    SELECT COUNT(DISTINCT ps.participant_id)  consented_participants
+    FROM participant_summary ps
+    JOIN participant p ON p.participant_id = ps.participant_id
+         AND p.is_test_participant = 0 and (p.is_ghost_id is null or not p.is_ghost_id) and p.hpo_id != 21
+    WHERE DATE(ps.consent_for_study_enrollment_first_yes_authored) <= "{end_date}"
+"""
+
+VALIDATED_PARTICIPANTS_COUNT_SQL = """
+    SELECT COUNT(DISTINCT cf.participant_id) validated_participants
+    FROM consent_file cf
+    JOIN  participant ps ON ps.participant_id = cf.participant_id
+         AND ps.is_test_participant = 0 and (ps.is_ghost_id is null or not ps.is_ghost_id) and ps.hpo_id != 21
+    WHERE DATE(cf.created) <= "{end_date}"
+"""
 
 # Define the allowable --report-type arguments
 REPORT_TYPES = ['daily_uploads', 'weekly_status']
 
-# Parent class for generic report attributes and methods
-class ConsentReport(object):
 
+class SafeDict(dict):
+    """
+    See: https://stackoverflow.com/questions/17215400/format-string-unused-named-arguments
+    Used with str.format_map() to allow partial formatting/replacement of placeholder values in a string
+    without incurring KeyError. E.g.: '{lastname}, {firstname} {lastname}'.format_map(SafeDict(lastname='Bond'))
+    yields the partially formatted result: 'Bond, {firstname} Bond'
+
+     This helper class will be used when formatting SQL template strings that need to have some of their placeholders
+     filled in before the values for the others can be determined.
+    """
+    def __missing__(self, key):
+        return '{' + key + '}'
+
+
+class ConsentReport(object):
+    """"
+        The ConsentReport class will contain attributes common to both the daily consent validation report and the
+        weekly consent validation status report.   Methods common to both consent reports reside in this parent class
+    """
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
-
-        Other attributes:
-        doc_id:   Google UID for the doc (documentId in doc URL: https://docs.google.com/document/d/documentId/edit)
-                  Can be passed to the tool via --doc-id parameter, or read from CONSENT_DOC_ID environment variable
-                  Eventually, it will be defined in the app config items
-        worksheet:  Returned from gspread add_worksheet() when a sheet is added to the gsheets doc
-        consent_df:  A pandas dataframe of the results from the report SQL query
-        consent_errors_found:  True/False if the consent_df contains NEEDS_CORRECTING consent records
-        report_date:   Date of the consent validation run (created date for records in RDR consent_file table)
-        sheet_rows:  Max rows for the sheet being created (arbitrary, trying to accommodate expected "worst case")
-        sheet_cols:  Max cols, derived from the DAILY_REPORT_COLUMN_MAP values
-        max_retries:  How many times to retry a sheet write operation if the gspread/gsheets API call fails
-        max_daily_reports:  How many tabs/sheets to keep in the spreadsheet file before deleting the oldest
-        row_pos:  Keeps track of the current row position in the spreadsheet, as content is written
-        write_requests:  Tracks number of gsheets API requests, to throttle for rate limit restrictions
-        row_layout:  A dict with known values and formatting options of report sections, passed to gspread/gsheets API
-                     The keys are arbitrary names given to each of the known sections/content areas in the daily report
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.db_conn = None
         if not args.report_type in REPORT_TYPES:
             raise ValueError(f'invalid report type option: {args.report_type}')
         else:
@@ -192,21 +217,62 @@ class ConsentReport(object):
         # Defaults, overridden as needed by child classes
         self.worksheet = None
         self.sheet_rows = 500
-        self.sheet_cols = 30
-        self.row_layout = None
-        self.report_sql = CONSENT_REPORT_SQL_BODY
+        # The column indexes/numbers are the second element in the CONSENT_ERROR_COUNT_COLUMN tuples. Get the column
+        # count for the sheet by finding the max column number
+        self.sheet_cols = max([column_tuple[1] for column_tuple in CONSENT_ERROR_COUNT_COLUMNS])
+
+        # A pandas dataframe to be populated with results of the specific report (daily or weekly) SQL query
         self.consent_df = None
-        # Retry limit if a gspread/sheets API request fails
-        self.max_retries = 3
-        # Trackers updated as content is added to the daily report worksheet
+
+        # Position tracker updated as content is added to the daily report worksheet
         self.row_pos = 1
-        self.write_requests = 0
+
+        # Lists appended to as the report content is generated, containing the cell data and the cell formatting
+        # The resulting data will be written out in a gspread batch_update() call, and the formatting will be applied
+        # via a gspread-formatting format_cell_ranges() batch call
+        self.report_data = []
+        self.report_formatting = []
+
+        # Commonly used cell formats for the consent reports, applied via gspread-formatting module (imported as gsfmt)
+        # See https://libraries.io/pypi/gspread-formatting for information on its implementation of
+        # googlesheets v4 API CellFormat classes and how to nest its classes
+        self.format_specs = {
+            'bold_text': gsfmt.cellFormat(textFormat=gsfmt.textFormat(bold=True, fontSize=12)),
+            'bold_small_wrapped': gsfmt.cellFormat(textFormat=gsfmt.textFormat(bold=True, fontSize=9),
+                                                   wrapStrategy='WRAP'),
+            'italic_text': gsfmt.cellFormat(textFormat=gsfmt.textFormat(italic=True, fontSize=12)),
+            'legend_text': gsfmt.cellFormat(textFormat=gsfmt.textFormat(fontSize=10,italic=True,
+                                                                        foregroundColor=gsfmt.color(0, 0, 1))),
+            'column_header': gsfmt.cellFormat(textFormat=gsfmt.textFormat(bold=True),
+                                              wrapStrategy='WRAP',
+                                              verticalAlignment='MIDDLE'),
+            'count_section_header_row': gsfmt.cellFormat(textFormat=gsfmt.textFormat(bold=True),
+                                                         wrapStrategy='WRAP',
+                                                         backgroundColor=gsfmt.color(0.02, 0.8, 0.4),
+                                                         verticalAlignment='MIDDLE',
+                                                         borders=gsfmt.borders(top=gsfmt.border('SOLID_MEDIUM'),
+                                                                               bottom=gsfmt.border('SOLID_MEDIUM'))),
+            'solid_border': gsfmt.cellFormat(borders=gsfmt.borders(top=gsfmt.border('SOLID'))),
+            'solid_thick_border': gsfmt.cellFormat(borders=gsfmt.borders(bottom=gsfmt.border('SOLID_THICK')))
+        }
+
+    def _add_format_spec(self, fmt_name_key: str, fmt_spec : gsfmt.CellFormat):
+        """ Add a new format spec to the instance format_specs list """
+        if not len(fmt_name_key) or not isinstance(fmt_spec, gsfmt.CellFormat):
+            raise (ValueError, "Invalid format specification data")
+        else:
+            self.format_specs[fmt_name_key] = fmt_spec
+
+    def _connect_to_rdr_replica(self):
+        """ Establish a connection to the replica RDR database for reading consent validation data """
+        self.gcp_env.activate_sql_proxy(replica=True)
+        self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def _has_needs_correcting(self, dframe):
-        """ Check the dataframe provided for records in a NEEDS_CORRECTING state """
+        """ Check if the dataframe provided has any records in a NEEDS_CORRECTING state """
         return (dframe.loc[dframe.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0] > 0)
 
-    def make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
+    def _make_a1_notation(self, start_row, start_col=1, end_row=None, end_col=None):
         """
         Use the rowcol_to_a1() gspread method to construct an A1 cell range notation string
         A starting row position is required.  A starting col of 1 is the presumed default.  If no ending row/col is
@@ -227,79 +293,219 @@ class ConsentReport(object):
 
         return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
 
-    def write_to_worksheet(self, cell_range, values, format_specs=None):
+    def _add_report_rows(self, cell_range, value_list=[]):
         """
-        A helper routine that will perform the worksheet write operations, especially until this tool can be updated to
-        use gspread/gsheets batch update requests.
+        Adds to the list of report_data elements that will be passed to gspread batch_update().
+        Example of a data element dict:
+            { 'range': 'A1:N5',
+               'values': [[<cell values for row 1 A1:N1 columns], ..., [<cell values for row 5 A5:N5 columns]]
+            }
 
-        There's a rate limit of gsheets API requests per minute, so if there are an unusually large number of daily
-        validation records across many organizations, we can exceed the limit doing the unbatched writes.
         """
-        formatting_complete = False
-        write_complete = False
-        i = 0
-        self.write_requests += 1
-        # Rate limits are 100 writes per user every 100 seconds;  inject a pause every 25 writes
-        if self.write_requests % 25 == 0:
-            sleep(25)
+        if not cell_range or not len(value_list):
+            raise(ValueError, "Invalid data object for spreadsheet")
 
-        while not write_complete and i < self.max_retries:
-            try:
-                # Do the formatting first so if it triggers retry, we don't write the cell data again on next pass
-                if format_specs and not formatting_complete:
-                    self.worksheet.format(cell_range, format_specs)
-                    formatting_complete = True
+        self.report_data.append({
+            'range': cell_range,
+            'values': value_list
+        })
 
-                if len(values):   # May have empty values list if this is to write formatting only
-                    self.worksheet.update(cell_range, [values])
-                write_complete = True
-
-            except APIError as e:
-                if 'RATE_LIMIT_EXCEEDED' in str(e):
-                    _logger.info('gsheets rate limit per 100 seconds exceeded, pausing...')
-                    sleep(60)
-                    _logger.info('Resuming....')
-                else:
-                    raise e
-            finally:
-                i += 1
-
-    def add_banner_text_row(self, banner_key, row_pos=None):
+    def _add_report_formatting(self, cell_range: str, fmt_spec: gsfmt.CellFormat):
         """
-          Add a row or rows with the requested banner text (e.g., Report Date line).  A banner section can contain
-          multiple lines of text (e.g., 'report-notes' banner key)
+        Adds an element to a list of formatting spec elements that will be passed to gspread-formatting
+        format_cell_ranges()
 
-          Gets the values and formatting information from the class row_layout dictionary
+        See: https://libraries.io/pypi/gspread-formatting
+
+        """
+        self.report_formatting.append((cell_range, fmt_spec))
+
+    def _add_text_rows(self, text_rows=[], format_spec=None, row_pos=None):
+        """
+          Add a row or rows with the requested text (e.g., Report Date line, Notes, etc.) to the report content
         """
         if not row_pos:
             row_pos = self.row_pos
 
-        banner = self.row_layout.get(banner_key)
-        if banner:
-            banner_format = banner.get('format', None)
-            for banner_row in banner.get('values', []):
-                # Each row of banner text is a single-cell range with column position 1 (default)
-                self.write_to_worksheet(self.make_a1_notation(row_pos), [banner_row], format_specs=banner_format)
-                row_pos += 1
+        end_of_text_pos = row_pos + len(text_rows)
+        cell_range = self._make_a1_notation(row_pos, end_row=end_of_text_pos)
+        self._add_report_rows(cell_range, text_rows)
+        if format_spec:
+            self._add_report_formatting(cell_range, format_spec)
+
+        self.row_pos = end_of_text_pos
+
+    def _add_consent_issue_count_header_section(self, row_pos=None, hpo=''):
+        """
+        Builds a counts section shaded header row with the all the column headers.  This section header is used
+        for both the aggregate (all entities) counts, as well as for each section when the error counts are broken down
+        by HPO/Org
+        """
+        if not row_pos:
+            row_pos = self.row_pos
+
+        # The column header string is the first element of each tuple in the CONSENT_ERROR_COUNT_COLUMNS tuple list
+        count_headers = [column_tuple[0] for column_tuple in CONSENT_ERROR_COUNT_COLUMNS]
+
+        # Kludge:  minor customization of otherwise shared data between daily and weekly reports.
+        if self.report_type == 'weekly_status':
+            # Drop the Expected and Ready to Sync columns; aren't helpful to show in weekly report, which is tracking
+            # consents with errors only
+            count_headers = [h for h in count_headers if h not in ['Expected', 'Ready to Sync']]
+
+        # Column A has HPO name, Column B intentionally blank, then add the rest of the error count columns
+        hpo_header_row = [hpo, ''] + count_headers
+
+        cell_range = self._make_a1_notation(row_pos, end_col=self.sheet_cols)
+        # Add this single header row and its formatting to the report content
+        self._add_report_rows(cell_range, [hpo_header_row])
+        self._add_report_formatting(cell_range, self.format_specs.get('count_section_header_row'))
+        self.row_pos = row_pos + 1
+
+    def _add_consent_issue_counts(self, df, row_pos=None, org=None, show_all_counts=False):
+        """
+          Builds and populates a subsection of rows, with one row per consent type, indicating its status/error counts
+          :param df:  The dataframe to operate on. This could be data for all entities to generate overall counts, or
+                      it could be a dataframe filtered by organization for the organization-specific counts
+          :param show_all_counts:  Set to True by caller if lines for consents with 0 error counts should be shown
+        """
+        if not row_pos:
+            row_pos = self.row_pos
+
+        # Track if we've already generated a row containing the organization name.  It's only included with the first
+        # line / first consent that has associated errors
+        org_string_written = False
+        for consent in CONSENTS_LIST:
+            expected_count = df.loc[df.type == consent].shape[0]
+            # Won't generate report rows for consents that had no entries in the daily validation results
+            if not expected_count:
+                continue
+
+            ready_count = df.loc[(df.type == consent)\
+                           & (df.sync_status != int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
+
+            # Create a filtered dataframe of records for this consent in NEEDS_CORRECTING status, for further analysis
+            consents_with_errors = df.loc[(df.type == consent)\
+                            & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))].reset_index()
+
+            consent_error_count = consents_with_errors.shape[0]
+            # Count of distinct (pandas nunique() = number of unique) participant_id values having NEEDS_CORRECTING:
+            participant_count = consents_with_errors['participant_id'].nunique()
+
+            if not consent_error_count and not show_all_counts:
+                # No errors/nothing to report for this consent type
+                continue
+
+            # The organization name (bolded) only appears in Column A for the first row generated.
+            # Column B is intentionally blank
+            if org and not org_string_written:
+                row_values = [org, '']
+                self._add_report_formatting(self._make_a1_notation(row_pos),
+                                            self.format_specs.get('bold_small_wrapped'))
+                org_string_written = True
+            else:
+                row_values = ['', '']
+
+            # Kludge:  Some minor customization of otherwise mostly shared data between daily and weekly reports
+            if self.report_type == 'weekly_status':
+                # Weekly outstanding issues report does not have Expected / Ready to Sync columns
+                row_values.extend([str(ConsentType(consent)), int(participant_count), consent_error_count])
+            else:
+                row_values.extend([ str(ConsentType(consent)), expected_count, ready_count,
+                                    int(participant_count), consent_error_count])
+
+            tracked_error_values = []
+            total_errors = 0
+            if consent_error_count:
+                for error in TRACKED_CONSENT_ERRORS:
+                    if error in ['invalid_dob', 'invalid_age_at_consent'] and consent != int(ConsentType.PRIMARY):
+                        # DOB issues only apply for PRIMARY consent
+                        error_count = 0
+                    else:
+                        # Pandas: sum all the values in error type column (will be 0 or 1). Cast result from float
+                        error_count = int(consents_with_errors[error].sum())
+
+                    if error_count:
+                        tracked_error_values.append(error_count)
+                        total_errors += error_count
+                    else:
+                        # Suppress writing 0s to the spreadsheet individual error columns, for better readability.
+                        # Only columns with an error count to report will have values in them.
+                        tracked_error_values.append(None)
+
+            row_values.append(total_errors)
+            row_values.extend(tracked_error_values)
+            self._add_report_rows(self._make_a1_notation(row_pos, end_col=len(row_values)), [row_values])
+            row_pos += 1
 
         self.row_pos = row_pos
 
-    def get_consent_validation_results(self, consent_query, db_conn=None):
-        """
-        Runs the provided consent_query and returns a pandas dataframe with the result
-        """
-        if not db_conn:
-            raise(EnvironmentError, 'No active DB connection object')
+    def _add_errors_by_org(self, df=None):
+        """"
+        Generate HPO/Organization-specific breakdowns of the consent error metrics.
+        Only organizations for which there were associated errors will be included in the report output.
 
-        df = pandas.read_sql_query(consent_query, db_conn)
-        for error_type in TRACKED_CONSENT_ERRORS:
-            df = df.fillna({error_type: 0}).astype({error_type: 'uint8'})
+        """
+        if df is None:
+            df = self.consent_df
+
+        # Iterate over list of distinct (pandas: unique() ) HPO names in the dataframe
+        hpos = df['hpo'].unique()
+        for hpo in sorted(hpos):
+            hpo_df = df[df.hpo == hpo]   # Yields an HPO-filtered dataframe
+            if self._has_needs_correcting(hpo_df):
+                self._add_consent_issue_count_header_section(hpo=hpo, row_pos=self.row_pos + 1)
+                # Iterate over distinct organizations in the HPO dataframe and build error report for any org having
+                # records in NEEDS_CORRECTING status
+                orgs = hpo_df['organization'].unique()
+                for org in sorted(orgs):
+                    org_df = hpo_df[hpo_df.organization == org]   # Yields an Org-filtered dataframe from the HPO frame
+                    if self._has_needs_correcting(org_df):
+                        # Visual border to separate from the previous organization subsection
+                        self._add_report_formatting(self._make_a1_notation(self.row_pos, end_col=self.sheet_cols),
+                                                    self.format_specs.get('solid_border'))
+
+                        self._add_consent_issue_counts(org_df, org=org, row_pos=self.row_pos)
+
+        # Draw final border for the entire HPO section after all the organization subsections are generated
+        self._add_report_formatting(self._make_a1_notation(self.row_pos - 1, end_col=self.sheet_cols),
+                                    self.format_specs.get('solid_thick_border'))
+
+    def _get_consent_validation_dataframe(self, sql_template):
+        """
+        Queries the RDR participant summary/consent_file tables for entries of each consent type for which validation
+        has been implemented, and merges the results into a single pandas dataframe
+
+        :param sql_template  A SQL string with {authored_field} and {consent_type} placeholders that will be filled in
+                             as data for each consent type is queried
+        """
+        if not self.db_conn:
+            raise (EnvironmentError, 'No active DB connection object')
+
+        df = pandas.DataFrame()
+        for consent_int in CONSENTS_LIST:
+            sql = sql_template
+            consent_authored_field = CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)]
+            sql = sql.format_map(SafeDict(consent_type=consent_int, authored_field=consent_authored_field))
+            consent_df = pandas.read_sql_query(sql, self.db_conn)
+            # Replace any null values in the calculated error flag columns  with (uint8 vs. pandas default float) zeroes
+            for error_type in TRACKED_CONSENT_ERRORS:
+                consent_df = consent_df.fillna({error_type: 0}).astype({error_type: 'uint8'})
+
+            df = df.append(consent_df)
 
         return df
 
+    def _write_report_content(self):
+        """ Make the batch calls to add all the cell data and apply the formatting to the spreadsheet """
+        self.worksheet.batch_update(self.report_data)
+        gsfmt.format_cell_ranges(self.worksheet, self.report_formatting)
 
 class DailyConsentReport(ConsentReport):
-
+    """
+    Class to implement the generation of the daily consent validation report for newly authored consents, and a
+    CSV file with error details if errors were detected
+    """
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
 
         super().__init__(args, gcp_env)
@@ -322,101 +528,11 @@ class DailyConsentReport(ConsentReport):
 
         self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + VIBRENT_SQL_FILTER
 
-        # Max columns for the daily sheet
-        self.sheet_cols = max(DAILY_REPORT_COLUMN_MAP.values())
+        # Max columns for the daily sheet (max column index value from the CONSENT_ERROR_COUNT_COLUMNS tuples)
+        self.sheet_cols = max([column[1] for column in CONSENT_ERROR_COUNT_COLUMNS])
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
         self.max_daily_reports = 32 # A month's worth + an extra sheet to contain a legend / notes as needed
         self.consent_errors_found = False
-
-        # Pre-populated details about the sections of the reports;  used when calling gspread methods
-        self.row_layout = {
-            # The banner at the top of each report, e.g.: Report Date: Jul 22, 2021 (generated
-            'report_date': {
-                'values': ['Report for consents authored on: ' + self.report_date.strftime("%b %-d, %Y") + \
-                           f' 12:00AM-11:59PM UTC (generated on {datetime.now().strftime("%x %X")} Central)'],
-                'format': {'textFormat': {'fontSize': 12, 'bold': True}}
-            },
-            # Display any additional details of note, such as current limitations of validation tools
-            'report-notes': {
-                'values': [
-                    'Notes:',
-                    'Validation is currently only done for PTSC consent files (does not include CareEvolution)',
-                    'Checkbox validation currently only performed on GROR consents',
-                    'Total Errors can exceed Consents with Errors if any consents had multiple validation errors'
-                ],
-                'format': {'textFormat':
-                               {'fontSize': 10,
-                                'italic': True,
-                                'foregroundColor': {"red": 0.0, "green": 0.0, "blue": 1.0}
-                                }
-                           }
-            },
-            # This text only appears if there were no validation errors that day
-            'no_errors': {
-                'values': ['No consent validation errors detected'],
-                'format': {'textFormat': {'fontSize': 12, 'italic': True}}
-            },
-            # The banner text that precedes the summarized counts (across all hpos/orgs) for the day
-            'total_consent_counts': {
-                'values': ['Total Consent Validation Counts'],
-                'format': {'textFormat': {'bold': True}}
-            },
-            # The banner text that precedes the start of the HPO-specific counts sections (only if errors exist)
-            'counts_by_org': {
-                'values': ['Consent Errors by HPO/Organization'],
-                'format': {'textFormat': {'bold': True}}
-            },
-            # The shaded header row that we insert with all the column headers.  Precedes the total counts summary
-            # section, and then appears once for every HPO for which there were associated consent errors
-            # The first item in the values list will be dynamically updated with the appropriate string/HPO name
-            'count_section': {
-                'values': ['','',
-                           'Consent Type',
-                           'Expected',
-                           'Ready to Sync',
-                           'Consents with Errors',
-                           'Total Errors',
-                           'Missing File',
-                           'Signature Missing',
-                           'Signature Date Invalid',
-                           'Invalid DOB',
-                           'Age at Primary Consent <18',
-                           'Checkbox Unchecked',
-                           'Non-VA Consent for VA Participant',
-                           'VA Consent for Non-VA Participant'],
-                'format': {'textFormat': {'bold': True},
-                           'wrapStrategy': 'WRAP',
-                           'borders': {'top': {'style': 'SOLID'},'bottom': {'style': 'SOLID'}},
-                           'backgroundColor': {"red": 0.02, "green": 0.8, "blue": 0.4},
-                           'verticalAlignment': 'MIDDLE'
-                           }
-
-            },
-        }
-
-    def get_daily_data(self, db_conn=None):
-        """
-        Queries the RDR consent_file table and populates the pandas DataFrame with the validation results
-        from the specified report date.   Sets self.consent_df to the dataframe.  The results will also be
-        used to populate a CSV file with details on newly flagged errors, sent to PTSC
-        """
-        if not db_conn:
-            raise(EnvironmentError, 'No active DB connection object')
-
-        df = pandas.DataFrame()
-
-        # The daily data merges together results of queries for each consent type filtered on the appropriate authored
-        # field from participant summary for that consent
-        for consent_int in CONSENTS_LIST:
-            sql = self.report_sql.format(authored_field=CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)],
-                                         consent_type=consent_int,
-                                         report_date=self.report_date.strftime("%Y-%m-%d"))
-
-            df = df.append(self.get_consent_validation_results(sql, db_conn))
-
-
-        # Save resulting dataframe to instance variable
-        return df
 
     def create_csv_errors_file(self):
         """
@@ -457,147 +573,33 @@ class DailyConsentReport(ConsentReport):
             writer = csv.writer(f)
             writer.writerows(output_rows)
 
-    def add_count_header_section(self, row_pos=None, hpo=None):
-        """
-        Builds a counts section shaded header row  with the report column headers (Expected, Ready to Sync, etc.)
-        """
-        if not row_pos:
-            row_pos = self.row_pos
-
-        section = self.row_layout.get('count_section')
-        # Replace the first (empty) col in the the pre-populated values list with an HPO name, if provided
-        if hpo:
-            section['values'][0] = hpo
-        # A header section covers all cells in the row
-        self.write_to_worksheet(self.make_a1_notation(row_pos, end_col=self.sheet_cols),
-                                section.get('values'), format_specs=section.get('format'))
-        self.row_pos = row_pos + 1
-
-    def add_consent_counts(self, df, row_pos=None, org=None, show_all_counts=False):
-        """
-          Builds and populates a subsection of rows, with one row per consent type, indicating its status/error counts
-          This method can be called on either the full daily data unfiltered dataframe for the daily total summary
-          counts, or an Organization-specific dataframe for its error counts
-
-          :param show_all_counts:  Set to True by caller if lines for consents with 0 error counts should be shown
-        """
-        if not row_pos:
-            row_pos = self.row_pos
-
-        # Using integer ConsentType enum values to compare against consent_file.type (df.type) values
-        for consent in CONSENTS_LIST:
-            # Organization name string (if present) gets written once to column A in the first pass through this loop
-            if org and consent == CONSENTS_LIST[0]:
-                self.write_to_worksheet(self.make_a1_notation(row_pos),
-                                        [org],
-                                        format_specs={'textFormat': {'fontSize': 9, 'bold': True},
-                                                      'wrapStrategy': 'wrap' })
-
-            expected_count = df.loc[df.type == consent].shape[0]
-            # Won't generate spreadsheet rows for consents that had no entries in the daily validation results
-            if not expected_count:
-                continue
-
-            ready_count = df.loc[(df.type == consent)\
-                           & (df.sync_status != int(ConsentSyncStatus.NEEDS_CORRECTING))].shape[0]
-
-            # Filtered dataframe of records for this consent type in NEEDS_CORRECTING status, for further analysis
-            consents_with_errors = df.loc[(df.type == consent)\
-                            & (df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING))]
-            consent_error_count = consents_with_errors.shape[0]
-
-            if not consent_error_count and not show_all_counts:
-                # No errors/nothing to report for this consent type
-                continue
-
-            # Starting column position of values to be written out at conclusion of this pass
-            first_val_column = DAILY_REPORT_COLUMN_MAP.get('consent_type')
-            consent_summary_values = [str(ConsentType(consent)), expected_count, ready_count, consent_error_count]
-            tracked_error_values = [0]  # The first index will be total error count for all errors for this consent
-            if consent_error_count:
-                #  Build a list of counts for each tracked error type.  Ending column position for the row write will
-                # be the last of the tracked errors columns
-                total_errors = 0
-                last_val_column = DAILY_REPORT_COLUMN_MAP.get(TRACKED_CONSENT_ERRORS[-1])
-                for error in TRACKED_CONSENT_ERRORS:
-                    # Pandas: sum all the 1s in this error type df column. Cast result from int64 to int for gsheets
-                    error_count = int(consents_with_errors[error].sum())
-                    if error_count:
-                        tracked_error_values.append(error_count)
-                        total_errors += error_count
-                    else:
-                        # Suppress writing 0s to the spreadsheet individual error columns, for better readability.
-                        # Only columns with an error count to report will have values in them.
-                        tracked_error_values.append(None)
-
-                # Update the final tally of total count of all errors for this consent
-                tracked_error_values[0] = total_errors
-
-            else:
-                # No errors exist for this consent, just writing out the summary values
-                last_val_column = DAILY_REPORT_COLUMN_MAP.get('total_errors')
-
-            cell_range = self.make_a1_notation(row_pos,
-                                               start_col=first_val_column,
-                                               end_col=last_val_column)
-
-            # Combine the summary values and the error count values into one list containing all the row's values
-            self.write_to_worksheet(cell_range, consent_summary_values + tracked_error_values)
-            row_pos += 1
-
-        self.row_pos = row_pos + 1
-
-    def add_daily_errors(self):
-        """"
-        This method is called when there is a daily error count.   It will generate HPO/Organization-specific
-        breakdowns of the consent error metrics.  Only organizations for which there were associated errors will
-        be included in the report output.
-        """
-        self.add_banner_text_row('counts_by_org', row_pos=self.row_pos + 1)
-
-        # Iterate through list of distinct HPOs found in the full daily results dataframe.
-        # Includes UNSET HPO (Mapped to '(No HPO Details)' in the daily report SQL query
-        hpos = self.consent_df['hpo'].unique()
-        for hpo in sorted(hpos):
-            hpo_df = self.consent_df[self.consent_df.hpo == hpo]   # Yields an HPO-filtered dataframe
-
-            # If any rec associated with this HPO has consents with errors,  create HPO block section header
-            if hpo_df.loc[hpo_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
-                self.add_count_header_section(hpo=hpo)
-            else:
-                continue
-
-            # Iterate over distinct organizations in the HPO dataframe and build error report for each
-            # May include null/UNSET organization (mapped to '(No Organization Details)' by daily report SQL query
-            orgs = hpo_df['organization'].unique()
-            for org in sorted(orgs):
-                org_df = hpo_df[hpo_df.organization == org]   # Yields an Org-filtered dataframe from the HPO frame
-                # If this org had consent errors, add the error counts
-                if org_df.loc[org_df.sync_status == int(ConsentSyncStatus.NEEDS_CORRECTING)].shape[0]:
-                    self.add_consent_counts(org_df, row_pos=self.row_pos + 1, org=org)
-                    # Add a bottom border after the org counts
-                    self.write_to_worksheet(self.make_a1_notation(self.row_pos - 1, end_col=self.sheet_cols),
-                                            [],  # No cell data, just formatting
-                                            format_specs={'borders': {'bottom': {'style': 'SOLID'}}})
-                else:
-                    continue
-
     def add_daily_summary(self):
         """ Add content that appears on every daily consent validation report regardless of errors """
 
-        self.add_banner_text_row('report_date')
+        report_title = 'Report for consents authored on: {} 12:00AM-11:59PM UTC (generated on {} Central)'.\
+            format(self.report_date.strftime("%b %-d, %Y"), datetime.now().strftime(("%x %X")))
+
+        report_notes = [
+            ['Notes:'],
+            ['Validation is currently only done for PTSC consent files (does not include CareEvolution)'],
+            ['Checkbox validation currently only performed on GROR consents'],
+            ['Total Errors can exceed Consents with Errors if any consents had multiple validation errors']
+        ]
+
+        self._add_text_rows(text_rows=[[report_title]], format_spec=self.format_specs.get('bold_text'))
         # Add any explanatory text / details about the report that have been included in the layout
-        self.add_banner_text_row('report-notes', row_pos=self.row_pos+1)
-        if not self.consent_errors_found:
-            self.add_banner_text_row('no_errors', row_pos=self.row_pos + 1)
-        self.add_banner_text_row('total_consent_counts', row_pos=self.row_pos + 1)
-        # Daily summary counts for all the consents that were processed.  Show all counts regardless of errors
-        self.add_count_header_section(hpo='All Entities')
-        self.add_consent_counts(self.consent_df, show_all_counts=True)
-        # Add a bottom border after the summary counts
-        self.write_to_worksheet(self.make_a1_notation(self.row_pos-1, end_col=self.sheet_cols),
-                                [], # No cell data, just formatting
-                                format_specs={'borders': {'bottom': { 'style': 'SOLID_THICK'}}} )
+        self._add_text_rows(text_rows=report_notes, format_spec=self.format_specs.get('legend_text'),
+                            row_pos=self.row_pos + 1)
+
+        if not self._has_needs_correcting(self.consent_df):
+            self._add_text_rows(text_rows=[['No consent validation errors detected']],
+                                format_spec=self.format_specs.get('italic_text'), row_pos=self.row_pos+1)
+
+        # Daily summary counts for all the recently authored consents that were processed (regardless of errors)
+        self._add_text_rows([['Total Consent Validation Counts']],
+                            format_spec=self.format_specs.get('bold_text'), row_pos=self.row_pos+1)
+        self._add_consent_issue_count_header_section(hpo='All Entities')
+        self._add_consent_issue_counts(self.consent_df, show_all_counts=True)
 
     def create_daily_report(self, spreadsheet):
         """
@@ -623,33 +625,318 @@ class DailyConsentReport(ConsentReport):
                 # Google sheets doesn't have flexible/multiple freezing options.  Freeze all rows above the current
                 # position.  Makes so HPO/Org-specific section(s) scrollable while still seeing column header names
                 self.worksheet.freeze(rows=self.row_pos - 1)
-                self.add_daily_errors()
+                self._add_text_rows(text_rows=[['Consent errors by HPO/Organization']],
+                                    format_spec=self.format_specs.get('bold_text'))
+                self._add_errors_by_org()
             if not self.args.sheet_only:
                 self.create_csv_errors_file()
         else:
             _logger.info('No errors to report')
+
+        self._write_report_content()
 
         _logger.info('Report complete')
 
 
     def execute(self):
         """
-        Execute the consent report builder.  Currently only handles the daily consent validation report, but could
-        be extended so the same tool can handle multiple report types based on a user-provided argument
+        Execute the DailyConsentReport builder
         """
 
         # Set up DB and googlesheets doc access
-        self.gcp_env.activate_sql_proxy()
-        db_conn = self.gcp_env.make_mysqldb_connection()
+        self._connect_to_rdr_replica()
         service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
         gs_creds = gspread.service_account(service_key_info['key_path'])
         gs_file = gs_creds.open_by_key(self.doc_id)
 
-        # Retrieve the daily data and build the report
-        self.consent_df = self.get_daily_data(db_conn=db_conn)
+        # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
+        # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
+        self.consent_df = self._get_consent_validation_dataframe(
+            self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
+        )
         self.create_daily_report(gs_file)
 
 
+class WeeklyConsentReport(ConsentReport):
+    """
+    Class to implement the weekly consent validation status report, which includes details of all retrospective
+    validation errors that are still pending resolution
+    """
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+
+        super().__init__(args, gcp_env)
+
+        if args.doc_id:
+            self.doc_id = args.doc_id
+        else:
+            self.doc_id = os.environ['WEEKLY_CONSENT_DOC_ID']
+        if not self.doc_id:
+            raise ValueError('Please use the --doc-id arg or export WEEKLY_CONSENT_DOC_ID environment var')
+
+        # Default to yesterday's date as the end of the weekly report range, and a week prior to that as start date
+        self.end_date = args.end_date or (datetime.now() - timedelta(1))
+        self.start_date = args.start_date or (self.end_date - timedelta(7))
+        self.report_date = datetime.now()
+        self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
+        self.sheet_rows = 800
+        # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
+        self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
+        self.consent_errors_found = False
+        # Format specs only used in weekly report
+        self._add_format_spec('burndown_header_row',
+                              gsfmt.cellFormat(backgroundColor=gsfmt.color(0.87, 0.46, 0),
+                                               textFormat=gsfmt.textFormat(bold=True,fontSize=10))
+        )
+        self._add_format_spec('burndown_column_headers',
+                              gsfmt.cellFormat(textFormat=gsfmt.textFormat(bold=True, fontSize=9),
+                                               backgroundColor=gsfmt.color(1, .84, 0),
+                                               wrapStrategy='WRAP',
+                                               verticalAlignment='MIDDLE')
+        )
+
+    def get_weekly_resolved_consent_issues_dataframe(self):
+        """
+        Returns a dataframe of all issues marked OBSOLETE, which means a previously flagged issue has been resolved
+        (usually by a subsequent new file upload/retransmission).
+        """
+        sql = ALL_RESOLVED_SQL.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
+        resolved_df = pandas.read_sql_query(sql, self.db_conn)
+        return resolved_df
+
+    def add_weekly_validation_burndown_section(self):
+        """
+        Creates a summary section tracking progress of retrospective consent validations
+        Displays counts of the individual participants whose consents were validated with with no issues detected,
+        participants with unresolved consent file issues, and participants whose consents are yet to be validated
+        """
+        cursor = self.db_conn.cursor()
+
+        # Gets a count of non-test/ghost participants with a participant_summary (e.g, RDR got a primary consent),
+        # if the primary consent authored date was on/before the end date for this report
+        sql = CONSENTED_PARTICIPANTS_COUNT_SQL + VIBRENT_SQL_FILTER
+        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"))))
+        consented_count = cursor.fetchone()[0]
+
+        # Gets a count of non-test/ghost participants whose consents have been validated
+        # (participant has entries in consent_file table), if the consent_file entry was created on/before the
+        # end date for this report
+        sql = VALIDATED_PARTICIPANTS_COUNT_SQL + VIBRENT_SQL_FILTER
+        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"))))
+        validated_count = cursor.fetchone()[0]
+
+        # Pandas: Gets the number of unique participant_id values from the main (unresolved errors) dataframe
+        # that was created at the start of the weekly report generation
+        participants_with_errors = self.consent_df['participant_id'].nunique()
+
+        participants_no_issues = validated_count - participants_with_errors
+        participants_need_validation = consented_count - validated_count
+
+        burndown_data = [
+            ['DRC CONSENT VALIDATION BURNDOWN'],
+            ['',
+             'Total Consented Participants',
+             'Participants With No Consent Issues Detected',
+             'Participants With Unresolved Issues (for 1 or more consent types)',
+             'Participants Not Yet Validated'],
+            ['Participant Counts',
+             consented_count,
+             participants_no_issues,
+             participants_with_errors,
+             participants_need_validation]
+        ]
+
+        start_burndown_row = self.row_pos
+        end_burndown_row= start_burndown_row + len(burndown_data)
+        burndown_cell_range = self._make_a1_notation(start_burndown_row, end_col=5, end_row=end_burndown_row)
+        self._add_report_rows(burndown_cell_range, burndown_data)
+
+        # Format the burndown sub-table header and column headers
+        self._add_report_formatting(self._make_a1_notation(start_burndown_row, end_col=5),
+                                    self.format_specs.get('burndown_header_row'))
+        self._add_report_formatting(self._make_a1_notation(start_burndown_row + 1, end_col=5),
+                                    self.format_specs.get('burndown_column_headers'))
+        # Format the burndown sub-table content row (first column is bolded)
+        self._add_report_formatting(self._make_a1_notation(end_burndown_row - 1),
+                                    self.format_specs.get('bold_small_wrapped'))
+
+        # Inject whitespace after the validation burndown details
+        self.row_pos = end_burndown_row + 3
+
+    def add_weekly_file_issue_burndown_section(self):
+        """
+        Add a section/sub-table that tracks how many consent issues have been resolved, overall and during the
+        date range covered by the report.   "Resolved" means consent_file entries that have been marked
+        OBSOLETE as their sync_status, indicating a newer file was received that has passed validation.   The modified
+        date of an OBSOLETE entry should also indicate when the resolution occurred.  Do not expect consent_file
+        records to be modified any more after being marked OBSOLETE.
+        """
+
+        # Count of all resolved (OBSOLETE) consent files, and all of the oustanding issues (main report data in the
+        # self.consent_df dataframe).  These dataframes were populated at the start of the report execution
+        total_resolved = self.resolved_df.shape[0]
+        still_unresolved = self.consent_df.shape[0]
+
+        # Count of OBSOLETE consent files last modified in the report date range.  DATE(modified)  = resolved_date
+        resolved_in_report_date_range = self.resolved_df.loc[(self.resolved_df.resolved_date >= self.start_date.date())\
+                                                 & (self.resolved_df.resolved_date <= self.end_date.date())].shape[0]
+        report_range_start = self.start_date.strftime("%Y-%m-%d")
+        report_range_end = self.end_date.strftime("%Y-%m-%d")
+
+        # Add stats on how many consent file issues have been resolved, all time and during report date range
+        resolution_counts_data = [
+            ['CONSENT FILE ISSUE RESOLUTION BURNDOWN'],
+            ['', 'Cumulative file resolutions',
+             f'Resolved from {report_range_start} to {report_range_end}',
+             'Files pending resolution'
+            ],
+            ['File counts', total_resolved, resolved_in_report_date_range, still_unresolved]
+        ]
+        end_resolution_counts_row = self.row_pos + len(resolution_counts_data)
+        # Extend the resolution header row by an extra column to align with validation burndown sub-section/table
+        resolution_header_row = self._make_a1_notation(self.row_pos, end_col=5)
+        resolution_counts_header_row = self._make_a1_notation(self.row_pos+1, end_col=5)
+        resolution_counts_data_row = self._make_a1_notation(self.row_pos+2)
+
+        self._add_report_rows(self._make_a1_notation(self.row_pos, end_col=5, end_row=end_resolution_counts_row),
+                              resolution_counts_data)
+        self._add_report_formatting(resolution_header_row, self.format_specs.get('burndown_header_row'))
+        self._add_report_formatting(resolution_counts_header_row,
+                                    self.format_specs.get('burndown_column_headers'))
+        # Format the burndown sub-table content row (first column is bolded)
+        self._add_report_formatting(resolution_counts_data_row,
+                                    self.format_specs.get('bold_small_wrapped'))
+        self.row_pos = end_resolution_counts_row + 2
+
+    def add_weekly_aggregate_outstanding_counts_section(self):
+        """
+        Generates a summary of all outstanding issues, by consent type / participants impacted
+        """
+        outstanding_counts_text_cell = self._make_a1_notation(self.row_pos)
+        self._add_report_rows(outstanding_counts_text_cell, [
+                    ['Summary of all outstanding consent issues, by consent type / participants impacted']
+        ])
+        self._add_report_formatting(outstanding_counts_text_cell, self.format_specs.get('bold_text'))
+        # Generate the "All outstanding consent issues" summary counts
+        self._add_consent_issue_count_header_section(hpo='All Entities', row_pos=self.row_pos + 1)
+        self._add_consent_issue_counts(self.consent_df, show_all_counts=True)
+        self._add_report_formatting(self._make_a1_notation(self.row_pos - 1, end_col=self.sheet_cols),
+                                    self.format_specs.get('solid_thick_border'))
+        self.row_pos += 1
+
+    def add_weekly_recent_errors_section(self):
+        """
+        Provide a breakdown of unresolved issues detected in the report date range, from recently authored consents
+        """
+        start_date = self.start_date.date()
+        end_date = self.end_date.date()
+        # Created a filtered dataframe from the main unresolved errors dataframe, where the authored dates for the
+        # consents with unresolved issues is within the report date range
+        weekly_errors = self.consent_df.loc[(self.consent_df.consent_authored_date >= start_date) &\
+                                            (self.consent_df.consent_authored_date <= end_date)]
+
+        # Add the weekly consent summary details if errors exist for newly authored consents
+        if self._has_needs_correcting(weekly_errors):
+            # Add section description text
+            self.row_pos += 1
+            section_text_cell = self._make_a1_notation(self.row_pos)
+            self._add_report_rows(section_text_cell,
+                                [['Outstanding issues for consents authored between {} and {} (by HPO/Organization)'\
+                                  .format(start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))]]
+            )
+            self._add_report_formatting(section_text_cell, self.format_specs.get('bold_text'))
+            self._add_errors_by_org(df=weekly_errors)
+        else:
+            text_cell = self._make_a1_notation(self.row_pos)
+            text_str = 'No outstanding issues for recent consents authored between {} and {}'.format(
+                start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+            )
+            self._add_report_rows(text_cell, [[text_str]])
+            self._add_report_formatting(text_cell, self.format_specs.get('italic_text'))
+            self.row_pos += 1
+
+        self.row_pos += 1
+
+
+    def create_weekly_report(self, spreadsheet):
+        existing_sheets = spreadsheet.worksheets()
+        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of daily reports
+        # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
+        # leftmost tab (index 0).   This deletes sheets from the existing_sheets list, starting at the rightmost tab
+        for ws_index in range(len(existing_sheets), self.max_weekly_reports - 1, -1):
+            spreadsheet.del_worksheet(existing_sheets[ws_index - 1])
+
+        # Add the new worksheet (to leftmost tab position / index 0)
+        tab_title = f'{self.start_date.strftime("%Y-%m-%d")} to {self.end_date.strftime("%Y-%m-%d")}'
+        self.worksheet = spreadsheet.add_worksheet(tab_title,
+                                                   rows=self.sheet_rows,
+                                                   cols=self.sheet_cols,
+                                                   index=1)
+
+        # Add Report title text indicating date range covered
+        report_title_str = 'Consent Validation Status Report for {} to {}'.format(
+            self.start_date.strftime("%b %-d %Y"),
+            self.end_date.strftime("%b %-d %Y")
+        )
+        title_cell = self._make_a1_notation(self.row_pos)
+        self._add_report_rows(title_cell, [[report_title_str]])
+        self._add_report_formatting(title_cell, self.format_specs.get('bold_text'))
+        self._add_text_rows(
+            text_rows=[['Notes:'],
+                       ['Participant and consent counts currently limited to Vibrent participants only'],
+                       ['Participants Not Yet Validated count may fluctuate due to newly consented participants ' +\
+                        'whose consent files are pending validation'],
+                       ['File resolutions include retransmission of files which are successfully validated, ' +\
+                        'or correction of any false positive issue notifications from automated validation tools']],
+            format_spec=self.format_specs.get('legend_text'),
+            row_pos=self.row_pos+1)
+
+        self.row_pos += 2
+
+        #-- Generate main content of report  --
+        # Validation burndown: show how many participants have had their consent files validated, # with issues, etc.
+        # File issue burndown:  show how many outstanding file issues have been resolved (cumulative and in past week)
+        # Aggregate outstanding counts:  Breakdown of outstanding issues by consent type and participants impacted
+        # Recent errors:  Newly detected validation errors from recently authored consents (authored in past week)
+        self.add_weekly_validation_burndown_section()
+        self.add_weekly_file_issue_burndown_section()
+        self.add_weekly_aggregate_outstanding_counts_section()
+        self.add_weekly_recent_errors_section()
+        # Inject whitespace
+        self.row_pos += 2
+
+        # Breakdown of all outstanding issues by HPO/Organization (if any issues still exist)
+        if self._has_needs_correcting(self.consent_df):
+            self._add_text_rows(
+                text_rows=[['All Outstanding Issues including Retrospective Validations (by HPO/Organization)']],
+                format_spec=self.format_specs.get('bold_text'))
+            # Add the HPO/Organization breakdown of outstanding issues
+            self._add_errors_by_org()
+
+        self._write_report_content()
+
+    def execute(self):
+        """
+        Execute the WeeklyConsentReport builder
+        """
+
+        _logger.info('Setting up database connection and google doc access...')
+        self._connect_to_rdr_replica()
+        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+        gs_creds = gspread.service_account(service_key_info['key_path'])
+        gs_file = gs_creds.open_by_key(self.doc_id)
+
+        _logger.info('Retrieving consent validation records...')
+        # Partial string format substitutions for the report SQL; the rest of the values are populated in
+        # the _get_consent_validation_dataframe() method
+        self.consent_df = self._get_consent_validation_dataframe(
+            self.report_sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
+                                                start_date=self.start_date.strftime("%Y-%m-%d"),
+                                                report_date=self.report_date.strftime("%Y-%m-%d"))))
+        self.resolved_df = self.get_weekly_resolved_consent_issues_dataframe()
+        _logger.info('Generating report data...')
+        self.create_weekly_report(gs_file)
+
+        _logger.info('Report complete')
 
 def run():
     # Set global debug value and setup application logging.
@@ -666,13 +953,16 @@ def run():
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account",
                         default=f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com') #noqa
-    # TODO:  Replace CONSENT_DOC_ID environment variable with reading the doc ID value from the config settings
     parser.add_argument("--doc-id", type=str,
-                        help="A google sheet ID which can override a CONSENT_DOC_ID env var")
+                        help="A google doc ID which can override a [DAILY|WEEKLY]_CONSENT_DOC_ID env var")
     parser.add_argument("--report-type", type=str, default="daily_uploads", metavar='REPORT',
                         help="Report to generate.  Default is daily_uploads")
     parser.add_argument("--report-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
                         help="Date of the consents (authored) in YYYY-MM-DD format.  Default is yesterday's date")
+    parser.add_argument("--start-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
+                        help="Start date of range for consents (authored) in YYYY-MM-DD format.  Default is 8 days ago")
+    parser.add_argument("--end-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
+                        help="End date of range for consents (authored) in YYYY-MM-DD format.  Default is 1 day ago")
     parser.add_argument("--csv-file", type=str,
                         help="output filename for the CSV error list. " +\
                                            " Default is YYYYMMDD_consent_errors.csv where YYYYMMDD is the report date")
@@ -685,7 +975,13 @@ def run():
 
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = DailyConsentReport(args, gcp_env)
+        if args.report_type == 'daily_uploads':
+            process = DailyConsentReport(args, gcp_env)
+        elif args.report_type == 'weekly_status':
+            process = WeeklyConsentReport(args, gcp_env)
+        else:
+            raise("Invalid report type specified")
+
         exit_code = process.execute()
         return exit_code
 
