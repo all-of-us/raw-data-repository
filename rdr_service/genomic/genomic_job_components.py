@@ -986,10 +986,20 @@ class GenomicFileIngester:
         :param mapping_function: function that returns column mappings
         :return: GenomicAW1Raw or GenomicAW2Raw
         """
-
         awn_row_obj.file_path = self.target_file
         awn_row_obj.created = clock.CLOCK.now()
         awn_row_obj.modified = clock.CLOCK.now()
+
+        genome_type = None
+        if awn_data.get('genometype'):
+            genome_type = awn_data.get('genometype')
+        elif awn_data.get('sampleid'):
+            member = self.member_dao.get_member_from_sample_id(
+                awn_data.get('sampleid')
+            )
+            genome_type = member.genomeType if member else None
+
+        awn_row_obj.genome_type = genome_type
 
         for key in columns.keys():
             awn_row_obj.__setattr__(key, awn_data.get(columns[key]))
@@ -1852,7 +1862,7 @@ class GenomicReconciler:
 
         required_files_set = set([f['file_type'] for f in file_types if f['required']])
 
-        logging.info("Found {len(metrics)} metrics records missing data...")
+        logging.info(f"Found {len(metrics)} metrics records missing data...")
 
         for result in metrics:
             # Lookup identifier in data files table
@@ -1881,19 +1891,10 @@ class GenomicReconciler:
                             setattr(_obj, file_type_config['file_received_attribute'], 1)  # received
                             setattr(_obj, file_type_config['file_path_attribute'], f'gs://{file.file_path}')
                             metric_touched = True
-                            self.controller.member_ids_for_update.append(_obj.genomicSetMemberId)
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
                 self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
-
-            if self.controller.member_ids_for_update:
-                self.controller.execute_cloud_task({
-                    'member_ids': self.controller.member_ids_for_update,
-                    'field': 'reconcileMetricsSequencingJobRunId',
-                    'value': self.run_id,
-                    'is_job_run': True,
-                }, 'genomic_set_member_update_task')
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -2936,7 +2937,7 @@ class ManifestCompiler:
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
 
-    def generate_and_transfer_manifest(self, manifest_type, genome_type, **kwargs):
+    def generate_and_transfer_manifest(self, manifest_type, genome_type, version=None, **kwargs):
         """
         Main execution method for ManifestCompiler
         :return: result dict:
@@ -2971,8 +2972,7 @@ class ManifestCompiler:
             raise RuntimeError
 
         if self.max_num and len(source_data) > self.max_num:
-            current_list = []
-            count = 0
+            current_list, count = [], 0
 
             for obj in source_data:
                 current_list.append(obj)
@@ -2980,22 +2980,37 @@ class ManifestCompiler:
                     count += 1
                     self.output_file_name = self.manifest_def.output_filename
                     self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                    file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                     logging.info(
                         f'Preparing manifest of type {manifest_type}...'
-                        f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                        f'{file_path}'
                     )
+
                     self._write_and_upload_manifest(current_list)
+                    self.controller.manifests_generated.append({
+                        'file_path': file_path,
+                        'record_count': len(current_list)
+                    })
                     current_list.clear()
 
             if current_list:
                 count += 1
                 self.output_file_name = self.manifest_def.output_filename
                 self.output_file_name = f'{self.output_file_name.split(".csv")[0]}_{count}.csv'
+                file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
                 logging.info(
                     f'Preparing manifest of type {manifest_type}...'
-                    f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                    f'{file_path}'
                 )
+
                 self._write_and_upload_manifest(current_list)
+                self.controller.manifests_generated.append({
+                    'file_path': file_path,
+                    'record_count': len(current_list)
+                })
+
         else:
             self.output_file_name = self.manifest_def.output_filename
             # If the new manifest is a feedback manifest,
@@ -3004,50 +3019,51 @@ class ManifestCompiler:
                 # AW2F manifest file name is based of of AW1
                 if manifest_type == GenomicManifestTypes.AW2F:
                     new_name = kwargs['input_manifest'].filePath.split('/')[-1]
-                    new_name = new_name.replace('.csv', '_contamination.csv')
+                    new_name = new_name.replace('.csv', f'_contamination_{version}.csv')
                     self.output_file_name = self.manifest_def.output_filename.replace(
                         "GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv",
                         f"{new_name}"
                     )
+
+            file_path = f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+
             logging.info(
                 f'Preparing manifest of type {manifest_type}...'
-                f'{self.manifest_def.destination_bucket}/{self.output_file_name}'
+                f'{file_path}'
             )
+
             self._write_and_upload_manifest(source_data)
+            self.controller.manifests_generated.append({
+                'file_path': file_path,
+                'record_count': len(source_data)
+            })
 
-            for row in source_data:
-                member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-                if member is None:
-                    raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+        for row in source_data:
+            member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
+            if member is None:
+                raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
 
-                if self.manifest_def.job_run_field:
-                    self.controller.member_ids_for_update.append(member.id)
+            if self.manifest_def.job_run_field:
+                self.controller.member_ids_for_update.append(member.id)
 
-                # Handle Genomic States for manifests
-                if self.manifest_def.signal != "bypass":
-                    new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                                  signal=self.manifest_def.signal)
+            # Handle Genomic States for manifests
+            if self.manifest_def.signal != "bypass":
+                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
+                                                              signal=self.manifest_def.signal)
 
-                    if new_state is not None or new_state != member.genomicWorkflowState:
-                        self.member_dao.update_member_state(member, new_state)
+                if new_state is not None or new_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_state(member, new_state)
 
-            if self.controller.member_ids_for_update:
-                self.controller.execute_cloud_task({
-                    'member_ids': self.controller.member_ids_for_update,
-                    'field': self.manifest_def.job_run_field,
-                    'value': self.run_id,
-                    'is_job_run': True
-                }, 'genomic_set_member_update_task')
+        if self.controller.member_ids_for_update:
+            self.controller.execute_cloud_task({
+                'member_ids': list(set(self.controller.member_ids_for_update)),
+                'field': self.manifest_def.job_run_field,
+                'value': self.run_id,
+                'is_job_run': True
+            }, 'genomic_set_member_update_task')
 
-            return {
-                "code": GenomicSubProcessResult.SUCCESS,
-                "record_count": len(source_data),
-            }
-
-        logging.info(f'No records found for manifest type: {manifest_type}.')
         return {
-            "code": GenomicSubProcessResult.NO_FILES,
-            "record_count": 0,
+            "code": GenomicSubProcessResult.SUCCESS,
         }
 
     def _pull_source_data(self):
@@ -3068,12 +3084,15 @@ class ManifestCompiler:
         ]:
             prefix = get_biobank_id_prefix()
             path_positions = []
+            biobank_ids, sample_ids, sex_at_birth = [], [], []
 
             for i, col in enumerate(self.manifest_def.columns):
                 if 'sample_id' in col:
                     sample_ids = [row[i] for row in data]
                 if 'biobank_id' in col:
                     biobank_ids = [row[i] for row in data]
+                if 'sex_at_birth' in col:
+                    sex_at_birth = [row[i] for row in data]
                 if '_path' in col:
                     path_positions.append(i)
 
@@ -3092,6 +3111,14 @@ class ManifestCompiler:
                 return invalid, message
 
             sample_ids.clear()
+
+            invalid_sex_values = any(val for val in sex_at_birth if val not in ['M', 'F', 'NA'])
+            if invalid_sex_values:
+                message = 'Invalid Sex at Birth values'
+                invalid = True
+                return invalid, message
+
+            sex_at_birth.clear()
 
             for row in data:
                 for i, val in enumerate(row):

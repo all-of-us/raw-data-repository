@@ -11,16 +11,6 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service import config
 from rdr_service.code_constants import (
-    CONSENT_GROR_YES_CODE,
-    CONSENT_GROR_NO_CODE,
-    CONSENT_GROR_NOT_SURE,
-    CONSENT_PERMISSION_YES_CODE,
-    CONSENT_PERMISSION_NO_CODE,
-    DVEHR_SHARING_QUESTION_CODE,
-    EHR_CONSENT_QUESTION_CODE,
-    DVEHRSHARING_CONSENT_CODE_YES,
-    GROR_CONSENT_QUESTION_CODE,
-    EHR_CONSENT_EXPIRED_YES,
     CONSENT_COPE_YES_CODE,
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
@@ -50,13 +40,13 @@ from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireH
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
-    DeceasedReportStatus, QuestionnaireResponseStatus, EnrollmentStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
+    DeceasedReportStatus, QuestionnaireResponseStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
     TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX, SampleCollectionMethod
 from rdr_service.resource import generators, schemas
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
-from rdr_service.resource.helpers import DateCollection, RURAL_ZIPCODES
+from rdr_service.resource.helpers import RURAL_ZIPCODES
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
 
@@ -196,7 +186,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # prep patient status history
             summary = self._merge_schema_dicts(summary, self._prep_patient_status_info(p_id, ro_session))
             # calculate enrollment status for participant
-            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id, ro_session))
+            summary = self._merge_schema_dicts(summary, self._calculate_enrollment_status(summary, p_id))
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate UBR flags
@@ -824,18 +814,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         query = ro_session.query(PhysicalMeasurements.physicalMeasurementsId, PhysicalMeasurements.created,
                                  PhysicalMeasurements.createdSiteId, PhysicalMeasurements.final,
                                  PhysicalMeasurements.finalized, PhysicalMeasurements.finalizedSiteId,
-                                 PhysicalMeasurements.status). \
+                                 PhysicalMeasurements.status, PhysicalMeasurements.amendedMeasurementsId). \
             filter(PhysicalMeasurements.participantId == p_id). \
             order_by(desc(PhysicalMeasurements.created))
         # sql = self.dao.query_to_text(query)
         results = query.all()
 
         for row in results:
-
-            if row.final == 1 and row.status != PhysicalMeasurementsStatus.CANCELLED:
-                pm_status = PhysicalMeasurementsStatus.COMPLETED
-            else:
-                pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.UNSET
+            # Imitate some of the RDR 'participant_summary' table logic, the PM status value defaults to COMPLETED
+            # unless PM status is CANCELLED.  So we set all NULL values to COMPLETED status here.
+            pm_status = PhysicalMeasurementsStatus(row.status) if row.status else PhysicalMeasurementsStatus.COMPLETED
 
             pm_list.append({
                 'physical_measurements_id': row.physicalMeasurementsId,
@@ -844,9 +832,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
+                'final': row.final,
                 'finalized': row.finalized,
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
+                'amended_measurements_id': row.amendedMeasurementsId,
+                # If status == UNSET in data, then the record has been cancelled and then restored. PM status is
+                # only set to UNSET in this scenario.
+                'restored': 1 if row.status == 0 else 0
             })
             activity.append(_act(row.finalized or row.created, ActivityGroupEnum.Profile,
                                 ParticipantEventEnum.PhysicalMeasurements,
@@ -1160,12 +1153,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return data
 
-    def _calculate_enrollment_status(self, summary, p_id, ro_session):
+    def _calculate_enrollment_status(self, summary, p_id):
         """
         Calculate the participant's enrollment status
         :param summary: summary data
         :param p_id:  (int) participant ID
-        :param ro_session: Readonly DAO session object
         :return: dict
         """
         # Verify activity timestamps are correct.
@@ -1174,8 +1166,17 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         esc = EnrollmentStatusCalculator()
         esc.run(activity)
 
-        # TODO: Replace data values from results after old calculation code has been removed.
+        # Support depreciated enrollment status field values.
         status = EnrollmentStatusV2.REGISTERED
+        if esc.status == PDREnrollmentStatusEnum.Participant:
+            status = EnrollmentStatusV2.PARTICIPANT
+        elif esc.status == PDREnrollmentStatusEnum.ParticipantPlusEHR:
+            status = EnrollmentStatusV2.FULLY_CONSENTED
+        elif esc.status == PDREnrollmentStatusEnum.CoreParticipantMinusPM:
+            status = EnrollmentStatusV2.CORE_MINUS_PM
+        elif esc.status == PDREnrollmentStatusEnum.CoreParticipant:
+            status = EnrollmentStatusV2.CORE_PARTICIPANT
+
         data = {
             # Fields from EnrollmentStatusCalculator results.
             'enrl_status': esc.status.name,
@@ -1185,212 +1186,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'enrl_participant_plus_ehr_time': esc.participant_plus_ehr_time,
             'enrl_core_participant_minus_pm_time': esc.core_participant_minus_pm_time,
             'enrl_core_participant_time': esc.core_participant_time,
-            # Old fields
+            # -- Depreciated fields --
             'enrollment_status': str(status),
             'enrollment_status_id': int(status),
+            'enrollment_member': esc.participant_time,
+            'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
+            # -- End depreciated fields --
         }
 
-        # TODO: -- Depreciate all code below this line, replaced by EnrollmentStatusCalculator. --
-        if 'consents' not in summary:
-            return data
-
-        consents = {}
-        study_consent = ehr_consent = pm_complete = had_gror_response = had_ehr_consent = \
-            ehr_consent_expired = False
-        study_consent_date = datetime.date.max
-        enrollment_member_time = datetime.datetime.max
-        # iterate over consents, sorted by 'consent_module_authored' descending.
-        for consent in summary['consents']:
-            response_value = consent['consent_value']
-            response_date = consent['consent_date'] or datetime.date.max
-            if consent['consent'] == 'ConsentPII':
-                study_consent = True
-                study_consent_date = min(study_consent_date, response_date)
-            elif consent['consent'] == EHR_CONSENT_QUESTION_CODE:
-                if not 'EHRConsent' in consents:  # We only want the most recent consent answer.
-                    consents['EHRConsent'] = (response_value, response_date)
-                had_ehr_consent = had_ehr_consent or response_value == CONSENT_PERMISSION_YES_CODE
-                consents['EHRConsentExpired'] = (consent.get('consent_expired'), response_date)
-                ehr_consent_expired = consent.get('consent_expired') == EHR_CONSENT_EXPIRED_YES
-                enrollment_member_time = min(enrollment_member_time,
-                                             consent['consent_module_created'] or datetime.datetime.max)
-            elif consent['consent'] == DVEHR_SHARING_QUESTION_CODE:
-                if not 'DVEHRConsent' in consents:  # We only want the most recent consent answer.
-                    consents['DVEHRConsent'] = (response_value, response_date)
-                had_ehr_consent = had_ehr_consent or response_value == DVEHRSHARING_CONSENT_CODE_YES
-                enrollment_member_time = min(enrollment_member_time,
-                                             consent['consent_module_created'] or datetime.datetime.max)
-            elif consent['consent'] == GROR_CONSENT_QUESTION_CODE:
-                if not 'GRORConsent' in consents:  # We only want the most recent consent answer.
-                    consents['GRORConsent'] = (response_value, response_date)
-                # For enrollment status, we only need the presence of a valid GROR response (any valid answer)
-                had_gror_response = had_gror_response or response_value in [CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE,
-                                                                            CONSENT_GROR_NOT_SURE]
-
-        if 'EHRConsent' in consents and 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES \
-                    and consents['EHRConsent'][0] != CONSENT_PERMISSION_NO_CODE:
-                ehr_consent = True
-            if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
-                ehr_consent = True
-        elif 'EHRConsent' in consents:
-            if consents['EHRConsent'][0] == CONSENT_PERMISSION_YES_CODE:
-                ehr_consent = True
-        elif 'DVEHRConsent' in consents:
-            if consents['DVEHRConsent'][0] == DVEHRSHARING_CONSENT_CODE_YES:
-                ehr_consent = True
-
-        # check physical measurements
-        physical_measurements_date = datetime.datetime.max
-        if 'pm' in summary:
-            for pm in summary['pm']:
-                if pm['status_id'] == int(PhysicalMeasurementsStatus.COMPLETED) or \
-                        (pm['finalized'] and pm['status_id'] != int(PhysicalMeasurementsStatus.CANCELLED)):
-                    pm_complete = True
-                    physical_measurements_date = \
-                        min(physical_measurements_date, pm['finalized'] or datetime.datetime.max)
-
-        baseline_module_count = 0
-        latest_baseline_module_completion = datetime.datetime.min
-        completed_all_baseline_modules = False
-        if 'modules' in summary:
-            for module in summary['modules']:
-                if module['baseline_module'] == 1:
-                    baseline_module_count += 1
-                    latest_baseline_module_completion = \
-                        max(latest_baseline_module_completion, module['module_created'] or datetime.datetime.min)
-            completed_all_baseline_modules = baseline_module_count >= len(self._baseline_modules)
-
-        dna_sample_count = 0
-        first_dna_sample_date = datetime.datetime.max
-        bb_orders = summary.get('biobank_orders', list())
-        for order in bb_orders:
-            for sample in order.get('samples', list()):
-                if sample['dna_test'] and sample['confirmed']:
-                    dna_sample_count += 1
-                    first_dna_sample_date = min(first_dna_sample_date, sample['created'] or datetime.datetime.max)
-
-        if study_consent is True:
-            status = EnrollmentStatusV2.PARTICIPANT
-        if status == EnrollmentStatusV2.PARTICIPANT and ehr_consent is True:
-            status = EnrollmentStatusV2.FULLY_CONSENTED
-        if (status == EnrollmentStatusV2.FULLY_CONSENTED or (ehr_consent_expired and not ehr_consent)) and \
-            pm_complete and \
-            (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_response) and \
-            'modules' in summary and \
-            completed_all_baseline_modules and \
-            dna_sample_count > 0:
-            status = EnrollmentStatusV2.CORE_PARTICIPANT
-
-        if status == EnrollmentStatusV2.PARTICIPANT or status == EnrollmentStatusV2.FULLY_CONSENTED:
-            # Check to see if the participant might have had all the right ingredients to be Core at some point
-            # This assumes consent for study, completion of baseline modules, stored dna sample,
-            # and physical measurements can't be reversed
-            if study_consent and completed_all_baseline_modules and dna_sample_count > 0 and pm_complete and \
-                    had_ehr_consent and \
-                    (summary['consent_cohort'] != ConsentCohortEnum.COHORT_3.name or had_gror_response):
-                # If they've had everything right at some point, go through and see if there was any time that they
-                # had them all at once
-                study_consent_date_range = DateCollection()
-                study_consent_date_range.add_start(study_consent_date)
-
-                pm_date_range = DateCollection()
-                pm_date_range.add_start(physical_measurements_date)
-
-                baseline_modules_date_range = DateCollection()
-                baseline_modules_date_range.add_start(latest_baseline_module_completion)
-
-                dna_date_range = DateCollection()
-                dna_date_range.add_start(first_dna_sample_date)
-
-                ehr_date_range = DateCollection()
-                gror_date_range = DateCollection()
-
-                current_ehr_response = current_dv_ehr_response = None
-                # These consent responses are expected to be in order by their authored date ascending.
-                # Fall back to created if there are None values in authored
-                try:
-                    _consents = sorted(summary['consents'], key=lambda k: k['consent_module_authored'])
-                except TypeError:
-                    _consents = sorted(summary['consents'], key=lambda k: k['consent_module_created'])
-                for consent in _consents:
-                    consent_question = consent['consent']
-                    consent_response = consent['consent_value']
-                    response_date = consent['consent_module_authored']
-                    if consent_question == EHR_CONSENT_QUESTION_CODE:
-                        current_ehr_response = consent_response
-                        if current_ehr_response == CONSENT_PERMISSION_YES_CODE:
-                            ehr_date_range.add_start(response_date)
-                        elif current_ehr_response == CONSENT_PERMISSION_NO_CODE or \
-                                current_dv_ehr_response != CONSENT_PERMISSION_YES_CODE:
-                            # dv_ehr should be honored if ehr value is UNSURE
-                            ehr_date_range.add_stop(response_date)
-                    elif consent_question == DVEHR_SHARING_QUESTION_CODE:
-                        current_dv_ehr_response = consent_response
-                        if current_dv_ehr_response == DVEHRSHARING_CONSENT_CODE_YES and \
-                                current_ehr_response != CONSENT_PERMISSION_NO_CODE:
-                            ehr_date_range.add_start(response_date)
-                        elif current_dv_ehr_response != DVEHRSHARING_CONSENT_CODE_YES and \
-                                current_ehr_response != CONSENT_PERMISSION_YES_CODE:
-                            ehr_date_range.add_stop(response_date)
-                    elif consent_question == GROR_CONSENT_QUESTION_CODE:
-                        if consent_response in [CONSENT_GROR_YES_CODE, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE]:
-                            gror_date_range.add_start(response_date)
-                        else:
-                            gror_date_range.add_stop(response_date)
-
-                try:
-                    date_overlap = study_consent_date_range\
-                        .get_intersection(pm_date_range)\
-                        .get_intersection(baseline_modules_date_range) \
-                        .get_intersection(dna_date_range)\
-                        .get_intersection(ehr_date_range)
-
-                    if summary['consent_cohort'] == ConsentCohortEnum.COHORT_3.name:
-                        date_overlap = date_overlap.get_intersection(gror_date_range)
-
-                    # If there's any time that they had everything at once, then they should be a Core participant
-                    if date_overlap.any():
-                        status = EnrollmentStatusV2.CORE_PARTICIPANT
-                except TypeError:
-                    pid = summary["participant_id"]
-                    logging.warning(
-                        f'Enrollment Status Re-Calc: P{pid} is missing a date value, please investigate.')
-
-        if status > EnrollmentStatusV2.REGISTERED:
-            data['enrollment_member'] = \
-                enrollment_member_time if enrollment_member_time != datetime.datetime.max else None
-
-        # PDR-236 WORKAROUND.   CORE_MINUS_PM was introduced after all the logic for this method was written.  We want
-        # to deprecate this overly complex method in favor of the redesigned EnrollmentStatusCalculator().  To avoid
-        # significant rework here to include CORE_MINUS_PM calculations, use the RDR to look for CORE_MINUS_PM until
-        # this method is retired.
-        ps = ro_session.query(ParticipantSummary.enrollmentStatus,
-                              ParticipantSummary.enrollmentStatusCoreMinusPMTime,
-                              ParticipantSummary.enrollmentStatusMemberTime) \
-            .filter(ParticipantSummary.participantId == p_id).first()
-
-        if ps:
-            # Always use RDR's enrollmentCoreMinusPMTime timestamp, regardless of current
-            # enrollment status (status could have since been upgraded if PM was later completed)
-            data['enrollment_core_minus_pm'] = ps.enrollmentStatusCoreMinusPMTime
-            if ps.enrollmentStatus == EnrollmentStatus.CORE_MINUS_PM:
-                status = EnrollmentStatusV2.CORE_MINUS_PM
-            # Logging to flag mismatches between RDR and PDR
-            elif int(ps.enrollmentStatus) != int(status):
-                logging.warning("RDR/PDR enrollment status mismatch for participant {} ({}/{})".format(
-                    p_id, str(ps.enrollmentStatus), str(status)))
-
-            # Logging for debugging cases where RDR/PDR ended up with different timestamps.
-            if data['enrollment_member'] != ps.enrollmentStatusMemberTime:
-                logging.debug(f'enrollment_member PDR/RDR mismatch for participant {p_id}')
-
-        data['enrollment_status'] = str(status)
-        data['enrollment_status_id'] = int(status)
-        # Logging to flag inconsistent results from redesigned EnrollmentStatusCalculator
-        if _enrollment_status_map.get(status) != esc.status:
-            logging.warning("Participant {}: EnrollmentStatusCalculator {}, PDR generator: {}".format(
-                            p_id, str(esc.status), str(status)))
         return data
 
     def _calculate_distinct_visits(self, summary):  # pylint: disable=unused-argument
