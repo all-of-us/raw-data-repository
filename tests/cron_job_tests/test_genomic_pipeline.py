@@ -5190,3 +5190,77 @@ class GenomicPipelineTest(BaseTestCase):
         for file in will_be_deleted:
             self.assertIsNone(self.missing_file_dao.get(file.id))
 
+    def test_update_members_state_resolved_data_files(self):
+        # create test genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        # Create test members
+        for i in range(1, 4):
+            for genome_type in ("aou_array", "aou_wgs"):
+                self.data_generator.create_database_genomic_set_member(
+                    participantId=i,
+                    genomicSetId=1,
+                    biobankId=i,
+                    collectionTubeId=10 + i,
+                    sampleId=100 + i,
+                    gcManifestParentSampleId=1000 + i,
+                    genomeType=genome_type,
+                    genomicWorkflowState=GenomicWorkflowState.AW2_MISSING
+                )
+        members = [(i.id, i.genomeType) for i in self.member_dao.get_all()]
+
+        # Create test metrics for members with data files
+        for member in members:
+            if member[1] == "aou_array":
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=member[0],
+                    idatRedReceived=1,
+                    idatRedPath="test/path",
+                    idatGreenReceived=1,
+                    idatGreenPath="test/path",
+                    idatRedMd5Received=1,
+                    idatRedMd5Path="test/path",
+                    idatGreenMd5Received=0 if member[0] == 5 else 1,  # one still missing a file
+                    idatGreenMd5Path="test/path",
+                    vcfReceived=1,
+                    vcfPath="test/path",
+                    vcfMd5Received=1,
+                    vcfMd5Path="test/path",
+                    vcfTbiReceived=1,
+                    vcfTbiPath="test/path",
+                )
+
+            if member[1] == "aou_wgs":
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=member[0],
+                    hfVcfReceived=1,
+                    hfVcfPath="test/path",
+                    hfVcfTbiReceived=1,
+                    hfVcfTbiPath="test/path",
+                    hfVcfMd5Received=0 if member[0] == 6 else 1,  # one still missing a file,
+                    hfVcfMd5Path="test/path",
+                    cramReceived=1,
+                    cramPath="test/path",
+                    cramMd5Received=1,
+                    cramMd5Path="test/path",
+                    craiReceived=1,
+                    craiPath="test/path",
+                )
+
+        # run update_members_state_resolved_data_files pipeline
+        genomic_pipeline.update_members_state_resolved_data_files()
+
+        # Test all members are in correct state
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.id in (5, 6):
+                self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+            elif member.genomeType == "aou_array":
+                self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+            else:
+                self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+
