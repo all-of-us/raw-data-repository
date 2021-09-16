@@ -32,11 +32,13 @@ class HProConsentDao(UpdatableDao):
     def get_by_participant(self, participant_id):
         with self.session() as session:
             return session.query(
-                HProConsentFile
+                HProConsentFile.file_path.label('file_path'),
+                HProConsentFile.participant_id.label('participant_id'),
+                ConsentFile.type.label('consent_type')
+            ).join(
+                ConsentFile,
+                ConsentFile.id == HProConsentFile.consent_file_id
             ).filter(
                 HProConsentFile.participant_id == participant_id,
                 HProConsentFile.file_path.isnot(None)
             ).all()
-
-
-

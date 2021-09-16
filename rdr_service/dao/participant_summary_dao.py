@@ -5,6 +5,7 @@ import threading
 
 import sqlalchemy
 import sqlalchemy.orm
+
 from sqlalchemy import or_, and_
 from sqlalchemy.sql import expression
 from typing import Collection
@@ -28,7 +29,7 @@ from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_S
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
-
+from rdr_service.dao.hpro_consent_dao import HProConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -36,6 +37,7 @@ from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
 
 from rdr_service.model.config_utils import from_client_biobank_id, to_client_biobank_id
+from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.participant_summary import (
     ParticipantGenderAnswers,
@@ -445,6 +447,9 @@ class ParticipantSummaryDao(UpdatableDao):
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
+        self.hpro_consent_dao = HProConsentDao()
+
+        self.user_roles = None
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
@@ -816,7 +821,8 @@ class ParticipantSummaryDao(UpdatableDao):
                 return EnrollmentStatus.MEMBER
         return EnrollmentStatus.INTERESTED
 
-    def calculate_member_time(self, consent, participant_summary):
+    @staticmethod
+    def calculate_member_time(consent, participant_summary):
         if consent and participant_summary.enrollmentStatusMemberTime is not None:
             return participant_summary.enrollmentStatusMemberTime
         elif consent:
@@ -966,11 +972,29 @@ class ParticipantSummaryDao(UpdatableDao):
                     getattr(ParticipantSummary, attr).isnot(None))
             return record.all()
 
-    def get_hpro_consent(self, result):
-        pass
+    def get_hpro_consent_paths(self, result):
+        consents_map = {
+            ConsentType.PRIMARY: 'consentForStudyEnrollment',
+            ConsentType.CABOR: 'consentForCABoR',
+            ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.GROR: 'consentForGenomicsROR'
+        }
+        participant = result['participantId']
+        records = self.hpro_consent_dao.get_by_participant(participant)
+
+        for key, value in consents_map.items():
+            value_path_key = f'{value}FilePath'
+            has_consent_path = [obj for obj in records if key == obj.consent_type]
+
+            if has_consent_path:
+                result[value_path_key] = has_consent_path[0].file_path
+
+        return result
 
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+        if self.user_roles == ['healthpro']:
+            result = self.get_hpro_consent_paths(result)
 
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 

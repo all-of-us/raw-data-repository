@@ -56,7 +56,7 @@ class HproConsentDaoTest(BaseTestCase):
     def test_get_records_by_participant(self):
         num_pid_records, pids_inserted, no_path_num = 4, [], 2
 
-        for num in range(5):
+        for num in range(4):
             consent_file = self.data_generator.create_database_consent_file(
                 file_path=f'test_file_path/{num}'
             )
@@ -64,8 +64,9 @@ class HproConsentDaoTest(BaseTestCase):
 
             for pid_num in range(num_pid_records):
                 self.data_generator.create_database_hpro_consent(
-                    file_path=consent_file.file_path if pid_num > 1 else None,
+                    file_path=f'test_two_file_path/{num}' if pid_num > 1 else None,
                     participant_id=consent_file.participant_id,
+                    consent_file_id=consent_file.id
                 )
 
         for pid in pids_inserted:

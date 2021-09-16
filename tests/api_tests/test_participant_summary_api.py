@@ -23,10 +23,11 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
+from rdr_service.model.consent_file import ConsentType
 from rdr_service.model.hpo import HPO
-from rdr_service.participant_enums import (ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType, TEST_HPO_ID,
-                                           TEST_HPO_NAME, WithdrawalStatus, SuspensionStatus,
-                                           SampleStatus, DeceasedStatus, QuestionnaireStatus, EhrStatus)
+from rdr_service.participant_enums import (
+    ANSWER_CODE_TO_GENDER, ANSWER_CODE_TO_RACE, OrganizationType,
+    TEST_HPO_ID, TEST_HPO_NAME, QuestionnaireStatus, EhrStatus)
 from tests.test_data import load_biobank_order_json, load_measurement_json, to_client_participant_id
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -620,6 +621,90 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(len(response_only_last_name['entry']), 1)
         resource = response_only_last_name['entry'][0]['resource']
         self.assertEqual(resource['lastName'], last_name)
+
+    def test_hpro_consents(self):
+        num_summary, first_pid, first_path = 2, None, None
+
+        consents_map = {
+            ConsentType.PRIMARY: 'consentForStudyEnrollment',
+            ConsentType.CABOR: 'consentForCABoR',
+            ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.GROR: 'consentForGenomicsROR'
+        }
+
+        for num in range(num_summary):
+            ps = self.data_generator.create_database_participant_summary(
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=datetime.date(1978, 10, 9),
+            )
+            if num == 1:
+                first_pid = ps.participantId
+
+            for key, value in consents_map.items():
+                consent_file = self.data_generator.create_database_consent_file(
+                    file_path=f'test_file_path/{num}',
+                    participant_id=ps.participantId,
+                    file_exists=1,
+                    type=key
+                )
+
+                if num == 1:
+                    first_path = f'test_two_file_path/{num}'
+
+                self.data_generator.create_database_hpro_consent(
+                    consent_file_id=consent_file.id,
+                    file_path=f'test_two_file_path/{num}',
+                    participant_id=consent_file.participant_id
+                )
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+
+        first_count = 0
+        for key, value in consents_map.items():
+            first_count += 1
+            file_path = f'{value}FilePath'
+            self.assertTrue(file_path in first_summary.keys())
+            self.assertIsNotNone(first_summary.get(file_path))
+            self.assertEqual(first_summary[file_path], first_path)
+
+        self.assertEqual(first_count, len(consents_map.keys()))
+
+        self.overwrite_test_user_roles([PTC])
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+
+        for key, value in consents_map.items():
+            file_path = f'{value}FilePath'
+            self.assertFalse(file_path in first_summary.keys())
+            self.assertIsNone(first_summary.get(file_path))
+            self.assertNotEqual(first_summary.get(file_path), first_path)
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+
+        self.assertEqual(len(response['entry']), num_summary)
+
+        for entry in response['entry']:
+            for key, value in consents_map.items():
+                file_path = f'{value}FilePath'
+                self.assertTrue(file_path in entry['resource'].keys())
+                self.assertIsNotNone(entry['resource'].get(file_path))
+
+        self.overwrite_test_user_roles([PTC])
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+
+        self.assertEqual(len(response['entry']), num_summary)
+
+        for entry in response['entry']:
+            for key, value in consents_map.items():
+                file_path = f'{value}FilePath'
+                self.assertFalse(file_path in entry['resource'].keys())
+                self.assertIsNone(entry['resource'].get(file_path))
 
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
@@ -3602,32 +3687,3 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(bad_message, response.json['message'])
         self.assertEqual(response.status_code, 400)
-
-    def _remove_participant_retention_eligible(self, participant_id):
-        summary = self.ps_dao.get(participant_id)
-        summary.samplesToIsolateDNA = SampleStatus.UNSET
-        self.ps_dao.update(summary)
-
-    def _make_participant_retention_eligible(self, participant_id, **attrs):
-        summary = self.ps_dao.get(participant_id)
-        summary.withdrawalStatus = WithdrawalStatus.NOT_WITHDRAWN
-        summary.suspensionStatus = SuspensionStatus.NOT_SUSPENDED
-        summary.consentForStudyEnrollment = 1
-        summary.consentForStudyEnrollmentFirstYesAuthored = TIME_1
-        summary.consentForElectronicHealthRecordsFirstYesAuthored = TIME_2
-        summary.questionnaireOnTheBasics = QuestionnaireStatus.SUBMITTED
-        summary.questionnaireOnOverallHealth = QuestionnaireStatus.SUBMITTED
-        summary.questionnaireOnLifestyle = QuestionnaireStatus.SUBMITTED
-        summary.sampleOrderStatus1ED04Time = TIME_4
-        summary.sampleOrderStatus1SALTime = TIME_4
-        summary.sampleStatus1ED04Time = TIME_4
-        summary.sampleStatus1SALTime = TIME_4
-        summary.baselineQuestionnairesFirstCompleteAuthored = TIME_3
-        summary.samplesToIsolateDNA = SampleStatus.RECEIVED
-        summary.deceasedStatus = DeceasedStatus.UNSET
-
-        for key in attrs.keys():
-            setattr(summary, key, attrs.get(key))
-        self.ps_dao.update(summary)
-        return summary
-
