@@ -993,7 +993,7 @@ class WeeklyConsentReport(ConsentReport):
                                                 report_date=self.report_date.strftime("%Y-%m-%d"))))
         # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files where it
         # couldn't find signature/signing date, even though the files looked okay on visual inspection
-        self.consent_df = self.remove_potential_false_positives_for_needs_correcting(self.consent_df)
+        self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
 
         # Get all the resolved/OBSOLETE issues for generating resolution stats
         self.resolved_df = self.get_resolved_consent_issues_dataframe()
