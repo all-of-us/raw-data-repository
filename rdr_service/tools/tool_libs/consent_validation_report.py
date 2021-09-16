@@ -15,7 +15,7 @@ import csv
 import gspread
 import gspread_formatting as gsfmt
 import pandas
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from gspread.utils import rowcol_to_a1
 
 
@@ -98,6 +98,9 @@ CONSENT_REPORT_SQL_BODY =  """
                    cf.type,
                    cf.file_path,
                    cf.file_upload_time,
+                   -- Adding signing date details to data pull to support new filtering logic on the results
+                   cf.signing_date,
+                   cf.expected_sign_date,
                    -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
                    -- (1 if error found)
                    NOT cf.file_exists AS missing_file,
@@ -682,6 +685,8 @@ class WeeklyConsentReport(ConsentReport):
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
         self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
         self.consent_errors_found = False
+        # Additional dataframe (after self.consent_df) that will hold results from querying resolved/OBSOLETE issues
+        self.resolved_df = None
         # Format specs only used in weekly report
         self._add_format_spec('burndown_header_row',
                               gsfmt.cellFormat(backgroundColor=gsfmt.color(0.87, 0.46, 0),
@@ -694,13 +699,41 @@ class WeeklyConsentReport(ConsentReport):
                                                verticalAlignment='MIDDLE')
         )
 
-    def get_weekly_resolved_consent_issues_dataframe(self):
+    def remove_potential_false_positives_from_needs_correcting(self, df):
         """
-        Returns a dataframe of all issues marked OBSOLETE, which means a previously flagged issue has been resolved
-        (usually by a subsequent new file upload/retransmission).
+        A temporary method to ignore NEEDS_CORRECTING consents if they fit a profile observed during retrospective
+        validation, where we know the PDF validation tool is failing to find valid signing date/signature details.
+        NEEDS_CORRECTING records should be ignored for now if:
+        - missing_file field is 0 (file exists)
+          AND
+        - expected_sign_date < 2018-07-13
+          AND
+        - signing_date is null
+          AND
+        - Has no other tracked error fields set to 1/True (except either signature_missing or invalid_signing_date)
+
+        Returns a dataframe with all the records except those that match the above criteria
+        """
+
+        filter_date = date(year=2018,month=7,day=13)
+        # Pandas:  find all the records we want to keep and make a new dataframe out of the result.  Inverts the
+        # "and" conditions above for the known false positives in order to find everything but those records
+        filtered_df = df.loc[(df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
+                             (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1) |\
+                             (df.expected_sign_date >= filter_date) | (df.signing_date.isnull() == False)].reset_index()
+
+        return filtered_df
+
+    def get_resolved_consent_issues_dataframe(self):
+        """
+        Returns a dataframe of all issues marked OBSOLETE up to and including on the report end date.  OBSOLETE implies
+        the file which did not pass validation has been superceded by a new/retransmitted consent file which was
+        successfully validated.  In some cases, a consent_file entry may be marked OBSOLETE after a manual inspection/
+        issue resolution.
         """
         sql = ALL_RESOLVED_SQL.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
         resolved_df = pandas.read_sql_query(sql, self.db_conn)
+
         return resolved_df
 
     def add_weekly_validation_burndown_section(self):
@@ -926,13 +959,17 @@ class WeeklyConsentReport(ConsentReport):
         gs_file = gs_creds.open_by_key(self.doc_id)
 
         _logger.info('Retrieving consent validation records...')
-        # Partial string format substitutions for the report SQL; the rest of the values are populated in
-        # the _get_consent_validation_dataframe() method
+        # consent_df will contain all the outstanding NEEDS_CORRECTING issues that still need resolution
         self.consent_df = self._get_consent_validation_dataframe(
             self.report_sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
                                                 start_date=self.start_date.strftime("%Y-%m-%d"),
                                                 report_date=self.report_date.strftime("%Y-%m-%d"))))
-        self.resolved_df = self.get_weekly_resolved_consent_issues_dataframe()
+        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files where it
+        # couldn't find signature/signing date, even though the files looked okay on visual inspection
+        self.consent_df = self.remove_potential_false_positives_for_needs_correcting(self.consent_df)
+
+        # Get all the resolved/OBSOLETE issues for generating resolution stats
+        self.resolved_df = self.get_resolved_consent_issues_dataframe()
         _logger.info('Generating report data...')
         self.create_weekly_report(gs_file)
 
