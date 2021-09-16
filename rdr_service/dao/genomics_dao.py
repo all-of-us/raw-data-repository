@@ -556,7 +556,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicGCValidationMetrics,
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
-                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2_MISSING,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             )
             if genome_type == config.GENOME_TYPE_ARRAY:
