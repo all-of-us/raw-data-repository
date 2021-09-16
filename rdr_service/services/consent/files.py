@@ -361,10 +361,18 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
 class VibrentCaborConsentFile(CaborConsentFile):
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=110, top=115))
+        elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=110, top=115))
+        if not elements:  # old style cabor have signature higher up on the page
+            elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=165, top=170))
+
+        return elements
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
+        elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
+        if not elements:  # old style cabor have signature higher up on the page
+            elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=165, top=170))
+
+        return elements
 
 
 class VibrentEhrConsentFile(EhrConsentFile):

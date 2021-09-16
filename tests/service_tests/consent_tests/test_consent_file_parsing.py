@@ -263,7 +263,19 @@ class ConsentFileParsingTest(BaseTestCase):
             expected_sign_date=date(2020, 4, 27)
         )
 
-        return [basic_cabor_case]
+        older_cabor_pdf = self._build_pdf(pages=[
+            [
+                self._build_form_element(text='2017 Cabor', bbox=(150, 150, 350, 188)),
+                self._build_form_element(text='Sep 8, 2017', bbox=(434, 153, 527, 182))
+            ]
+        ])
+        older_cabor_case = ConsentTestData(
+            file=files.VibrentCaborConsentFile(pdf=older_cabor_pdf, blob=mock.MagicMock()),
+            expected_signature='2017 Cabor',
+            expected_sign_date=date(2017, 9, 8)
+        )
+
+        return [basic_cabor_case, older_cabor_case]
 
     def _get_vibrent_ehr_test_data(self) -> List['EhrConsentTestData']:
         six_empty_pages = [[], [], [], [], [], []]  # The EHR signature is expected to be on the 7th page
