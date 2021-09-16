@@ -478,6 +478,23 @@ class ConsentReport(object):
         self._add_report_formatting(self._make_a1_notation(self.row_pos - 1, end_col=self.sheet_cols),
                                     self.format_specs.get('solid_thick_border'))
 
+    def _remove_potential_false_positives_for_consent_version(self, df):
+        """
+        Found some cases where the validation on the consent files may have run before the participant pairing was
+        completed.  This was resulting in some potential false positives for va_consent_for_non_va errors.  For now,
+        ignore any NEEDS_CORRECTING records where participant is currently paired to VA HPO, and the only error flagged
+        was va_consent_for_non_va
+        """
+
+        # Pandas:  find all the records we want to keep and make a new dataframe out of the result.  Inverts the
+        # "and" conditions above for the known false positives in order to find everything but those records
+        filtered_df = df.loc[(df.sync_status != int(ConsentSyncStatus.NEEDS_CORRECTING)) |\
+                              (df.hpo != 'VA') | (df.va_consent_for_non_va == 0) |\
+                              (df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
+                              (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)].reset_index()
+
+        return filtered_df
+
     def _get_consent_validation_dataframe(self, sql_template):
         """
         Queries the RDR participant summary/consent_file tables for entries of each consent type for which validation
@@ -505,6 +522,10 @@ class ConsentReport(object):
                 consent_df = consent_df.fillna({error_type: 0}).astype({error_type: 'uint8'})
 
             df = df.append(consent_df)
+
+        # Temporary?  Attempt to filter false positives for va_consent_for_non_va consent version errors out of the
+        # generated dataframe
+        df = self._remove_potential_false_positives_for_consent_version(df)
 
         return df
 
@@ -708,17 +729,14 @@ class WeeklyConsentReport(ConsentReport):
                                                verticalAlignment='MIDDLE')
         )
 
-    def remove_potential_false_positives_from_needs_correcting(self, df):
+    def remove_potential_false_positives_for_missing_signature(self, df):
         """
         A temporary method to ignore NEEDS_CORRECTING consents if they fit a profile observed during retrospective
         validation, where we know the PDF validation tool is failing to find valid signing date/signature details.
         NEEDS_CORRECTING records should be ignored for now if:
-        - missing_file field is 0 (file exists)
-          AND
-        - expected_sign_date < 2018-07-13
-          AND
-        - signing_date is null
-          AND
+        - missing_file field is 0 (file exists) AND
+        - expected_sign_date < 2018-07-13 AND
+        - signing_date is null AND
         - Has no other tracked error fields set to 1/True (except either signature_missing or invalid_signing_date)
 
         Returns a dataframe with all the records except those that match the above criteria
