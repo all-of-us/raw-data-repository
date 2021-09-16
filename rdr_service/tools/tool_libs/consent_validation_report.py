@@ -67,20 +67,21 @@ CONSENT_ERROR_COUNT_COLUMNS = [
 
 ]
 
-# Maps the currently validated consent types to the authored date field that will be used in the report SQL query
-CONSENT_AUTHORED_FIELDS = {
+# Maps the currently validated consent types to the related status/authored fields to query from participant_summary
+CONSENT_PARTICIPANT_SUMMARY_FIELDS = {
     # For PRIMARY:  use earliest consent authored (to distinguish from PrimaryConsentUpdate authored, which are not
     # yet included in the validation)
-    ConsentType.PRIMARY : 'consent_for_study_enrollment_first_yes_authored',
-    ConsentType.CABOR: 'consent_for_cabor_authored',
-    ConsentType.EHR: 'consent_for_electronic_health_records_authored',
-    ConsentType.GROR: 'consent_for_genomics_ror_authored',
+    ConsentType.PRIMARY : ('consent_for_study_enrollment', 'consent_for_study_enrollment_first_yes_authored'),
+    ConsentType.CABOR: ('consent_for_cabor', 'consent_for_cabor_authored'),
+    ConsentType.EHR: ('consent_for_electronic_health_records',
+                      'consent_for_electronic_health_records_first_yes_authored'),
+    ConsentType.GROR: ('consent_for_genomics_ror', 'consent_for_genomics_ror_authored')
     # TODO:  Enable once the retrospective validations of the Cohort 1 consent update are vetted for false positives
-    # ConsentType.PRIMARY_UPDATE: 'consent_for_study_enrollment_authored'
+    # ConsentType.PRIMARY_UPDATE: ('consent_for_study_enrollment', 'consent_for_study_enrollment_authored')
 }
 
 # List of currently validated consent type values as ints, for pandas filtering of consent_file.type values
-CONSENTS_LIST = [int(v) for v in CONSENT_AUTHORED_FIELDS.keys()]
+CONSENTS_LIST = [int(v) for v in CONSENT_PARTICIPANT_SUMMARY_FIELDS.keys()]
 
 # Raw SQL used initially for fast prototyping of reports.  These reports will be taken over by dashboard team
 CONSENT_REPORT_SQL_BODY =  """
@@ -133,9 +134,12 @@ CONSENT_REPORT_SQL_BODY =  """
 
 # Daily report filter for validation results on all newly received and validated consents:
 # - For each consent type, filter on participants whose consent authored date for that consent matches the report date
+#   and where the consent status in participant_summary is SUBMITTED (1) -- the validation process is only interested
+#   in newly authored "yes"/SUBMITTED consents
 # - Find corresponding consent_file entries for the consent type, in NEEDS_CORRECTING/READY_TO_SYNC/SYNC_COMPLETE
 DAILY_CONSENTS_SQL_FILTER = """
             WHERE cf.type = {consent_type}
+                  AND ps.{status_field} = 1
                   AND DATE(ps.{authored_field}) = "{report_date}"
                   AND cf.sync_status IN (1,2,4)
     """
@@ -479,8 +483,8 @@ class ConsentReport(object):
         Queries the RDR participant summary/consent_file tables for entries of each consent type for which validation
         has been implemented, and merges the results into a single pandas dataframe
 
-        :param sql_template  A SQL string with {authored_field} and {consent_type} placeholders that will be filled in
-                             as data for each consent type is queried
+        :param sql_template  A SQL string with {authored_field}, {status_field}, and {consent_type} placeholders
+                             that will be filled in as data for each consent type is queried
         """
         if not self.db_conn:
             raise (EnvironmentError, 'No active DB connection object')
@@ -488,8 +492,13 @@ class ConsentReport(object):
         df = pandas.DataFrame()
         for consent_int in CONSENTS_LIST:
             sql = sql_template
-            consent_authored_field = CONSENT_AUTHORED_FIELDS[ConsentType(consent_int)]
-            sql = sql.format_map(SafeDict(consent_type=consent_int, authored_field=consent_authored_field))
+            # The tuple retrieved from the CONSENT_PARTICIPANT_SUMMARY_FIELDS dict has two elements like:
+            # ('consent_for_study_enrollment', 'consent_for_study_enrollment_first_yes_authored')
+            consent_status_field = CONSENT_PARTICIPANT_SUMMARY_FIELDS[ConsentType(consent_int)][0]
+            consent_authored_field = CONSENT_PARTICIPANT_SUMMARY_FIELDS[ConsentType(consent_int)][1]
+            sql = sql.format_map(SafeDict(consent_type=consent_int,
+                                          status_field=consent_status_field,
+                                          authored_field=consent_authored_field))
             consent_df = pandas.read_sql_query(sql, self.db_conn)
             # Replace any null values in the calculated error flag columns  with (uint8 vs. pandas default float) zeroes
             for error_type in TRACKED_CONSENT_ERRORS:
