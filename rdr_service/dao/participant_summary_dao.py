@@ -29,7 +29,7 @@ from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_S
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
-from rdr_service.dao.hpro_consent_dao import HProConsentDao
+from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -447,8 +447,7 @@ class ParticipantSummaryDao(UpdatableDao):
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
-        self.hpro_consent_dao = HProConsentDao()
-
+        self.hpro_consent_dao = HealthProConsentDao()
         self.user_roles = None
 
     # pylint: disable=unused-argument

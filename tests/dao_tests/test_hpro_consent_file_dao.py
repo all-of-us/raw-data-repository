@@ -1,13 +1,13 @@
 
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.dao.hpro_consent_dao import HProConsentDao
+from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from tests.helpers.unittest_base import BaseTestCase
 
 
-class HproConsentDaoTest(BaseTestCase):
+class HealthProConsentDaoTest(BaseTestCase):
     def setUp(self):
         super().setUp()
-        self.dao = HProConsentDao()
+        self.dao = HealthProConsentDao()
         self.consent_dao = ConsentDao()
         self.num_consents = 10
 
