@@ -300,6 +300,11 @@ class ConsentReport(object):
 
         return ''.join([rowcol_to_a1(start_row, start_col), ':', rowcol_to_a1(end_row, end_col)])
 
+    @staticmethod
+    def format_number(number):
+        """ Return a number value formatted with commas """
+        return '{:7,}'.format(number)
+
     def _add_report_rows(self, cell_range, value_list=[]):
         """
         Adds to the list of report_data elements that will be passed to gspread batch_update().
@@ -416,10 +421,15 @@ class ConsentReport(object):
             # Kludge:  Some minor customization of otherwise mostly shared data between daily and weekly reports
             if self.report_type == 'weekly_status':
                 # Weekly outstanding issues report does not have Expected / Ready to Sync columns
-                row_values.extend([str(ConsentType(consent)), int(participant_count), consent_error_count])
+                row_values.extend([str(ConsentType(consent)),
+                                   self.format_number(int(participant_count)),
+                                   self.format_number(consent_error_count)])
             else:
-                row_values.extend([ str(ConsentType(consent)), expected_count, ready_count,
-                                    int(participant_count), consent_error_count])
+                row_values.extend([ str(ConsentType(consent)),
+                                    self.format_number(expected_count),
+                                    self.format_number(ready_count),
+                                    self.format_number(int(participant_count)),
+                                    self.format_number(consent_error_count)])
 
             tracked_error_values = []
             total_errors = 0
@@ -433,14 +443,14 @@ class ConsentReport(object):
                         error_count = int(consents_with_errors[error].sum())
 
                     if error_count:
-                        tracked_error_values.append(error_count)
+                        tracked_error_values.append(self.format_number(error_count))
                         total_errors += error_count
                     else:
                         # Suppress writing 0s to the spreadsheet individual error columns, for better readability.
                         # Only columns with an error count to report will have values in them.
                         tracked_error_values.append(None)
 
-            row_values.append(total_errors)
+            row_values.append(self.format_number(total_errors))
             row_values.extend(tracked_error_values)
             self._add_report_rows(self._make_a1_notation(row_pos, end_col=len(row_values)), [row_values])
             row_pos += 1
@@ -799,10 +809,11 @@ class WeeklyConsentReport(ConsentReport):
              'Participants With Unresolved Issues (for 1 or more consent types)',
              'Participants Not Yet Validated'],
             ['Participant Counts',
-             consented_count,
-             participants_no_issues,
-             participants_with_errors,
-             participants_need_validation]
+             self.format_number(consented_count),
+             self.format_number(participants_no_issues),
+             self.format_number(participants_with_errors),
+             self.format_number(participants_need_validation)
+            ]
         ]
 
         start_burndown_row = self.row_pos
@@ -849,7 +860,11 @@ class WeeklyConsentReport(ConsentReport):
              f'Resolved from {report_range_start} to {report_range_end}',
              'Files pending resolution'
             ],
-            ['File counts', total_resolved, resolved_in_report_date_range, still_unresolved]
+            ['File counts',
+             self.format_number(total_resolved),
+             self.format_number(resolved_in_report_date_range),
+             self.format_number(still_unresolved)
+            ]
         ]
         end_resolution_counts_row = self.row_pos + len(resolution_counts_data)
         # Extend the resolution header row by an extra column to align with validation burndown sub-section/table
