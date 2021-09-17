@@ -44,7 +44,7 @@ from rdr_service.offline.table_exporter import TableExporter
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     StoreResultStrategy
 from rdr_service.services.data_quality import DataQualityChecker
-from rdr_service.services.hpro_consent import HProConsentFile
+from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
@@ -406,7 +406,7 @@ def migrate_requests_logs(target_db):
 
 @app_util.auth_required_cron
 def transfer_hpro_consents():
-    hpro_consents = HProConsentFile()
+    hpro_consents = HealthProConsentFile()
     hpro_consents.transfer_limit = 1000
     hpro_consents.initialize_consent_transfer()
     return '{ "success": "true" }'
