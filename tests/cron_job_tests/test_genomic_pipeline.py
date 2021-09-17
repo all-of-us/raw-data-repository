@@ -5120,6 +5120,17 @@ class GenomicPipelineTest(BaseTestCase):
             if file.resolved == 1 and file.resolved_date is not None
         ))
 
+        # Test file not in GC Data File not returned by get_files_to_resolve()
+        self.data_generator.create_database_gc_data_missing_file(
+            gc_validation_metric_id=1,
+            run_id=gen_job_run.id,
+            gc_site_id='rdr',
+            file_type='vcf.gz.tbi',
+        )
+        need_resolve_files = self.missing_file_dao.get_files_to_resolve()
+
+        self.assertEqual(len(need_resolve_files), 0)
+
     def test_missing_files_resolved_clean_up(self):
 
         gen_set = self.data_generator.create_database_genomic_set(
