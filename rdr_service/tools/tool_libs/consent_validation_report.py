@@ -491,7 +491,7 @@ class ConsentReport(object):
         filtered_df = df.loc[(df.sync_status != int(ConsentSyncStatus.NEEDS_CORRECTING)) |\
                               (df.hpo != 'VA') | (df.va_consent_for_non_va == 0) |\
                               (df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
-                              (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)].reset_index()
+                              (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)]
 
         return filtered_df
 
