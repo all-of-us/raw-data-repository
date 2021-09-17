@@ -539,7 +539,7 @@ class ConsentValidator:
         if signature is True:  # True returned for when images are found
             result.is_signature_image = True
         elif signature is not None:
-            result.signature_str = signature
+            result.signature_str = signature[:ParsingResult.signature_str.type.length]
 
     @classmethod
     def _is_signing_date_valid(cls, signing_date, expected_date: date):
