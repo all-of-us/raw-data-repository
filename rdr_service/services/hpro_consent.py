@@ -32,19 +32,27 @@ class HealthProConsentFile:
         self.consents_for_transfer = self.dao.get_needed_consents_for_transfer(self.transfer_limit)
 
     def cp_consent_files(self):
-        logging.info(f'Ready to transfer {len(self.consents_for_transfer)} consent(s) to {self.hpro_bucket}')
+        logging.info(f'Ready to transfer {len(self.consents_for_transfer)} consent(s) to {self.hpro_bucket} bucket')
 
         for consent in self.consents_for_transfer:
             src = f'gs://{consent.file_path}'
             dest = self.create_path_destination(consent.file_path)
             obj = self.make_object(consent, dest)
 
-            transfer = gcp_cp(src, dest)
-            if transfer:
+            try:
+                transfer = gcp_cp(src, dest)
+                if not transfer:
+                    logging.warning(f'Healthpro consent {src} failed to transfer to {dest}')
+                    continue
+
                 self.transfer_count += 1
                 self.dao.insert(obj)
 
-        logging.info(f'{self.transfer_count} consent(s) transferred to {self.hpro_bucket}')
+            # pylint: disable=broad-except
+            except Exception as e:
+                logging.warning(f'Healthpro consent transfer process error occurred: {e}')
+
+        logging.info(f'Healthpro consent(s) {self.transfer_count} transferred to {self.hpro_bucket} bucket')
 
     def create_path_destination(self, file_path):
         dest_base = "/".join(file_path.strip("/").split('/')[1:])
