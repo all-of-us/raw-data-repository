@@ -205,8 +205,8 @@ class SafeDict(dict):
 
 class ConsentReport(object):
     """"
-        The ConsentReport class will contain attributes common to both the daily consent validation report and the
-        weekly consent validation status report.   Methods common to both consent reports reside in this parent class
+        The ConsentReport class will contain attributes and methods common to both the daily consent validation report
+        and the weekly consent validation status report.
     """
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         """
@@ -231,7 +231,7 @@ class ConsentReport(object):
         # A pandas dataframe to be populated with results of the specific report (daily or weekly) SQL query
         self.consent_df = None
 
-        # Position tracker updated as content is added to the daily report worksheet
+        # Position tracker updated as content is added to the report worksheet
         self.row_pos = 1
 
         # Lists appended to as the report content is generated, containing the cell data and the cell formatting
@@ -389,7 +389,7 @@ class ConsentReport(object):
         org_string_written = False
         for consent in CONSENTS_LIST:
             expected_count = df.loc[df.type == consent].shape[0]
-            # Won't generate report rows for consents that had no entries in the daily validation results
+            # Won't generate report rows for consents that had no entries in the validation results
             if not expected_count:
                 continue
 
@@ -461,7 +461,6 @@ class ConsentReport(object):
         """"
         Generate HPO/Organization-specific breakdowns of the consent error metrics.
         Only organizations for which there were associated errors will be included in the report output.
-
         """
         if df is None:
             df = self.consent_df
@@ -722,7 +721,7 @@ class WeeklyConsentReport(ConsentReport):
         self.report_date = datetime.now()
         self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
         self.sheet_rows = 800
-        # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
+        # Number of worksheets to archive in the file (will do rolling deletion of oldest weekly worksheets/tabs)
         self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
         self.consent_errors_found = False
         # Additional dataframe (after self.consent_df) that will hold results from querying resolved/OBSOLETE issues
@@ -934,7 +933,7 @@ class WeeklyConsentReport(ConsentReport):
 
     def create_weekly_report(self, spreadsheet):
         existing_sheets = spreadsheet.worksheets()
-        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of daily reports
+        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly eports
         # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
         # leftmost tab (index 0).   This deletes sheets from the existing_sheets list, starting at the rightmost tab
         for ws_index in range(len(existing_sheets), self.max_weekly_reports - 1, -1):
