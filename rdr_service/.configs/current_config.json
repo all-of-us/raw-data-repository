@@ -234,5 +234,8 @@
     "w1_manifest_workflow": 0,
     "w2_manifest_workflow": 0,
     "w3_manifest_workflow": 0
-  }
+  },
+  "hpro_consent_bucket": [
+    "healthpro-consents-sandbox"
+  ]
 }

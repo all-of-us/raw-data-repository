@@ -4,11 +4,11 @@ from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.hpro_consent_files import HProConsentFile
 
 
-class HProConsentDao(UpdatableDao):
+class HealthProConsentDao(UpdatableDao):
     validate_version_match = False
 
     def __init__(self):
-        super(HProConsentDao, self).__init__(
+        super(HealthProConsentDao, self).__init__(
             HProConsentFile, order_by_ending=['id'])
 
     def get_needed_consents_for_transfer(self, limit=None):
