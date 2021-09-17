@@ -52,12 +52,13 @@ class HealthProConsentFile:
         return dest
 
     def make_object(self, obj, dest):
-        return self.dao.model_type(
+        obj = self.dao.model_type(
             participant_id=obj.participant_id,
             consent_file_id=obj.id,
-            file_path=dest.split('gs://')[0] if 'gs://' in dest else dest,
+            file_path=dest.split('gs://')[1] if 'gs://' in dest else dest,
             file_upload_time=datetime.utcnow()
         )
+        return obj
 
 
 
