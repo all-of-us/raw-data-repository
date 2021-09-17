@@ -2123,7 +2123,7 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
 
     def get_files_to_resolve(self, limit=None):
         with self.session() as session:
-            results = session.query(
+            subquery = session.query(
                 GenomicGcDataFileMissing.id,
                 GenomicGcDataFileMissing.gc_validation_metric_id,
                 GenomicGcDataFileMissing.file_type,
@@ -2147,6 +2147,15 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
             ).filter(
                 GenomicGcDataFileMissing.resolved == 0,
                 GenomicGcDataFileMissing.resolved_date.is_(None)
+            ).subquery()
+
+            results = session.query(
+                GenomicGcDataFile
+            ).join(
+                subquery,
+                and_(GenomicGcDataFile.identifier_type == subquery.c.identifier_type,
+                     GenomicGcDataFile.identifier_value == subquery.c.identifier_value,
+                     GenomicGcDataFile.file_type == subquery.c.file_type,)
             )
 
             if limit:
