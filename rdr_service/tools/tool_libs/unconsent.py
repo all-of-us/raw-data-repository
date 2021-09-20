@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from rdr_service.model.code import Code
 from rdr_service.model.utils import from_client_participant_id
+from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
@@ -99,6 +100,11 @@ class UnconsentTool(ToolBase):
             ).delete()
             session.query(QuestionnaireResponse).filter(
                 QuestionnaireResponse.questionnaireResponseId.in_(questionnaire_response_ids)
+            ).delete()
+
+            # Remove any consent file expectations
+            session.query(ConsentFile).filter(
+                ConsentFile.participant_id == participant_id
             ).delete()
 
         # Commit to finalize the changes for this participant and release the locks
