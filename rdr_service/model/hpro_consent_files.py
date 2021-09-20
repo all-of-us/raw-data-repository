@@ -6,7 +6,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.utils import UTCDateTime
 
 
-class HProConsentFile(Base):
+class HealthProConsentFile(Base):
     __tablename__ = 'hpro_consent_files'
 
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -18,5 +18,5 @@ class HProConsentFile(Base):
     file_path = Column(String(250), nullable=True)
 
 
-event.listen(HProConsentFile, "before_insert", model_insert_listener)
-event.listen(HProConsentFile, "before_update", model_update_listener)
+event.listen(HealthProConsentFile, "before_insert", model_insert_listener)
+event.listen(HealthProConsentFile, "before_update", model_update_listener)

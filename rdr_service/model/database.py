@@ -24,7 +24,7 @@ from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.deceased_report_import_record import DeceasedReportImportRecord
 from rdr_service.model.ehr import EhrReceipt, ParticipantEhrReceipt
 from rdr_service.model.hpo import HPO
-from rdr_service.model.hpro_consent_files import HProConsentFile
+from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.measurements import PhysicalMeasurements, Measurement
 from rdr_service.model.metric_set import AggregateMetrics, MetricSet

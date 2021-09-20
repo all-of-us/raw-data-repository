@@ -25,7 +25,7 @@ from rdr_service.model.genomics import (
     GenomicGcDataFileMissing
 )
 from rdr_service.model.log_position import LogPosition
-from rdr_service.model.hpro_consent_files import HProConsentFile
+from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
 from rdr_service.model.organization import Organization
@@ -726,7 +726,7 @@ class DataGenerator:
 
     @staticmethod
     def _hpro_consent_file(**kwargs):
-        return HProConsentFile(**kwargs)
+        return HealthProConsentFile(**kwargs)
 
     def create_database_hpro_consent(self, **kwargs):
         consent = self._hpro_consent_file(**kwargs)
