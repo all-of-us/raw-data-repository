@@ -303,7 +303,7 @@ class ConsentReport(object):
     @staticmethod
     def format_number(number):
         """ Return a number value formatted with commas """
-        return '{:7,}'.format(number)
+        return '{:8,}'.format(number)
 
     def _add_report_rows(self, cell_range, value_list=[]):
         """
