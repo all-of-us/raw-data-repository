@@ -832,7 +832,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
-                'final': row.final,
+                'final': 1 if row.final else 0,
                 'finalized': row.finalized,
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
