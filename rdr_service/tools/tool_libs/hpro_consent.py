@@ -20,7 +20,7 @@ _logger = logging.getLogger("rdr_logger")
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "hpro-consents"
-tool_desc = "Tool for initial and subsequent large backfills of consent files to healthpro consent bucket"
+tool_desc = "Tool for initial and subsequent large backfills of consent files to healthpro-consent bucket"
 
 
 class HealthProConsentTool(ToolBase):
