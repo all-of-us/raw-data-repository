@@ -4,12 +4,12 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from rdr_service.model.code import Code
-from rdr_service.model.utils import from_client_participant_id
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
+from rdr_service.model.utils import from_client_participant_id
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 
@@ -24,10 +24,24 @@ class UnconsentTool(ToolBase):
 
         with self.get_session() as session:
             for participant_id in self._load_participant_ids():
-                if not self._participant_has_signed_consent(session, participant_id):
-                    self._delete_participant_consent(session, participant_id)
+                # Retrieve the participant summary
+                summary_query = session.query(ParticipantSummary).filter(
+                    ParticipantSummary.participantId == participant_id
+                )
+                if not self.args.dry_run:
+                    # Obtain a lock on the participant summary to prevent possible
+                    # race conditions with incoming responses
+                    summary_query = summary_query.with_for_update()
+                if summary_query.one_or_none() is None:
+                    logger.info(f'No participant summary found for P{participant_id}')
                 else:
-                    logger.info(f'P{participant_id} has signed consent')
+                    if not self._participant_has_signed_consent(session, participant_id):
+                        self._delete_participant_consent(session, participant_id)
+                    else:
+                        logger.info(f'P{participant_id} has signed consent')
+
+                # Commit to finalize the changes for this participant and release the locks
+                session.commit()
 
     def _load_participant_ids(self) -> set:
         participant_ids = set()
@@ -68,19 +82,7 @@ class UnconsentTool(ToolBase):
 
     def _delete_participant_consent(self, session: Session, participant_id: int):
         """Remove the participant's consent status and responses from the RDR"""
-
-        # Retrieve the participant summary
-        summary_query = session.query(ParticipantSummary.participantId).filter(
-            ParticipantSummary.participantId == participant_id
-        )
-        if not self.args.dry_run:
-            # Obtain a lock on the participant summary to prevent possible race conditions with incoming responses
-            summary_query = summary_query.with_for_update()
-        participant_summary = summary_query.one_or_none()
-
-        if participant_summary is None:
-            logger.info(f'No participant summary found for P{participant_id}')
-        elif self.args.dry_run:
+        if self.args.dry_run:
             logger.info(f'would remove consent for P{participant_id}')
         else:
             # Delete the participant summary
@@ -106,9 +108,6 @@ class UnconsentTool(ToolBase):
             session.query(ConsentFile).filter(
                 ConsentFile.participant_id == participant_id
             ).delete()
-
-        # Commit to finalize the changes for this participant and release the locks
-        session.commit()
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
