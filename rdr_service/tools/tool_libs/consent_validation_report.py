@@ -200,7 +200,8 @@ class SafeDict(dict):
      filled in before the values for the others can be determined.
     """
     def __missing__(self, key):
-        return '{' + key + '}'
+        # Return a string with the key string value enclosed in {}
+        return f'{{{key}}}'
 
 
 class ConsentReport(object):
@@ -303,7 +304,7 @@ class ConsentReport(object):
     @staticmethod
     def format_number(number):
         """ Return a number value formatted with commas """
-        return '{:8,}'.format(number)
+        return f'{number:8,}'
 
     def _add_report_rows(self, cell_range, value_list=[]):
         """
@@ -617,9 +618,9 @@ class DailyConsentReport(ConsentReport):
 
     def add_daily_summary(self):
         """ Add content that appears on every daily consent validation report regardless of errors """
-
-        report_title = 'Report for consents authored on: {} 12:00AM-11:59PM UTC (generated on {} Central)'.\
-            format(self.report_date.strftime("%b %-d, %Y"), datetime.now().strftime(("%x %X")))
+        auth_date = self.report_date.strftime("%b %-d, %Y")
+        now = datetime.now().strftime("%x %X")
+        report_title = f'Report for consents authored on: {auth_date} 12:00AM-11:59PM UTC (generated on {now} Central)'
 
         report_notes = [
             ['Notes:'],
@@ -909,21 +910,20 @@ class WeeklyConsentReport(ConsentReport):
                                             (self.consent_df.consent_authored_date <= end_date)]
 
         # Add the weekly consent summary details if errors exist for newly authored consents
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
         if self._has_needs_correcting(weekly_errors):
             # Add section description text
             self.row_pos += 1
             section_text_cell = self._make_a1_notation(self.row_pos)
-            self._add_report_rows(section_text_cell,
-                                [['Outstanding issues for consents authored between {} and {} (by HPO/Organization)'\
-                                  .format(start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))]]
-            )
+            text_str = f'Outstanding issues for consents authored between {start_date_str} and {end_date_str}' + \
+                       f' (by HPO/Organization)'
+            self._add_report_rows(section_text_cell, [text_str])
             self._add_report_formatting(section_text_cell, self.format_specs.get('bold_text'))
             self._add_errors_by_org(df=weekly_errors)
         else:
             text_cell = self._make_a1_notation(self.row_pos)
-            text_str = 'No outstanding issues for recent consents authored between {} and {}'.format(
-                start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
-            )
+            text_str = f'No outstanding issues for recent consents authored between {start_date_str} and {end_date_str}'
             self._add_report_rows(text_cell, [[text_str]])
             self._add_report_formatting(text_cell, self.format_specs.get('italic_text'))
             self.row_pos += 1
@@ -947,10 +947,9 @@ class WeeklyConsentReport(ConsentReport):
                                                    index=1)
 
         # Add Report title text indicating date range covered
-        report_title_str = 'Consent Validation Status Report for {} to {}'.format(
-            self.start_date.strftime("%b %-d %Y"),
-            self.end_date.strftime("%b %-d %Y")
-        )
+        start_str = self.start_date.strftime("%b %-d %Y")
+        end_str = self.end_date.strftime("%b %-d %Y")
+        report_title_str = f'Consent Validation Status Report for {start_str} to {end_str}'
         title_cell = self._make_a1_notation(self.row_pos)
         self._add_report_rows(title_cell, [[report_title_str]])
         self._add_report_formatting(title_cell, self.format_specs.get('bold_text'))
