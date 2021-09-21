@@ -101,3 +101,42 @@ class HealthProConsentFileTest(BaseTestCase):
             self.assertIn('gs://', dest)
             self.assertIn(self.hpro_consent_bucket[0], dest)
 
+    @mock.patch('rdr_service.services.hpro_consent.gcp_cp')
+    def test_copying_consent_files_calls_transfer(self, gcp_cp_mock):
+        self.hpro_consents.get_consents_for_transfer()
+
+        self.assertEmpty(self.hpro_consents.consents_for_transfer)
+
+        self.hpro_consents.cp_consent_files()
+
+        self.assertFalse(gcp_cp_mock.called)
+        self.assertEqual(gcp_cp_mock.call_count, 0)
+
+        paths = []
+
+        for num in range(self.num_consents):
+            consent = self.data_generator.create_database_consent_file(
+                file_path=f'test_file_path/{num}',
+                file_exists=1,
+            )
+            paths.append({
+                'src': f'gs://test_file_path/{num}',
+                'dest': self.hpro_consents.create_path_destination(consent.file_path)
+            })
+
+        self.hpro_consents.get_consents_for_transfer()
+
+        self.assertNotEmpty(self.hpro_consents.consents_for_transfer)
+
+        self.hpro_consents.cp_consent_files()
+
+        self.assertTrue(gcp_cp_mock.called)
+        self.assertEqual(gcp_cp_mock.call_count, self.num_consents)
+
+        call_args = gcp_cp_mock.call_args_list
+
+        for i, val in enumerate(call_args):
+            self.assertIsNotNone(paths[i]['src'])
+            self.assertIsNotNone(paths[i]['dest'])
+            self.assertEqual(paths[i]['src'], val[0][0])
+            self.assertEqual(paths[i]['dest'], val[0][1])
