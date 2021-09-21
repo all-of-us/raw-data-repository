@@ -309,13 +309,16 @@ class GenomicJobController:
         metrics = []  # for PDR inserts
 
         for member in members:
-            # add prefix to biobank_id
-            try:
-                pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
-            except KeyError:
-                # Set default for unit tests
-                pre = "A"
-            bid = f"{pre}{member.biobankId}"
+            if not member.biobankId.startswith("HG"):
+                # add prefix to biobank_id
+                try:
+                    pre = self.server_config[config.BIOBANK_ID_PREFIX][0]
+                except KeyError:
+                    # Set default for unit tests
+                    pre = "A"
+                bid = f"{pre}{member.biobankId}"
+            else:
+                bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
                 raw_rec = raw_dao.get_raw_record_from_bid_genome_type(
