@@ -19,6 +19,8 @@ class RetentionEligibleMetrics(Base):
                            index=True)
     retentionEligible = Column("retention_eligible", Boolean)
     retentionEligibleTime = Column("retention_eligible_time", UTCDateTime6)
+    lastActiveRetentionActivityTime = Column("last_active_retention_activity_time", UTCDateTime6)
+
     activelyRetained = Column("actively_retained", Boolean)
     passivelyRetained = Column("passively_retained", Boolean)
     fileUploadDate = Column("file_upload_date", UTCDateTime6)

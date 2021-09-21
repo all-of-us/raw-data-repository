@@ -22,6 +22,7 @@ class RetentionMetricSchema(Schema):
     retention_eligible_status_id = fields.EnumInteger(enum=RetentionStatusEnum)
     retention_type = fields.EnumString(enum=RetentionTypeEnum)
     retention_type_id = fields.EnumInteger(enum=RetentionTypeEnum)
+    last_active_retention_activity_time = fields.DateTime()
 
     class Meta:
         schema_id = SchemaID.retention_metrics
