@@ -352,6 +352,7 @@ class GenomicManifestFeedback(Base):
     ignore = Column('ignore', SmallInteger, nullable=False, default=0)
     # Replaces `ignore` DA-1865
     ignoreFlag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    version = Column(Integer, nullable=False, default=0)
 
 
 event.listen(GenomicManifestFeedback, 'before_insert', model_insert_listener)
@@ -407,6 +408,7 @@ class GenomicAW1Raw(Base):
     test_name = Column("test_name", String(255), nullable=True)
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True)
 
 
 event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
@@ -447,6 +449,7 @@ class GenomicAW2Raw(Base):
     notes = Column(String(255), nullable=True)
     chipwellbarcode = Column(String(255), nullable=True)
     call_rate = Column(String(255), nullable=True)
+    genome_type = Column(String(80), nullable=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)

@@ -89,12 +89,12 @@ class GenomicJobController:
         self.bypass_record_count = False
         self.skip_updates = False
         self.server_config = server_config
-        self.feedback_threshold = 2/3
         self.subprocess_results = set()
         self.job_result = GenomicSubProcessResult.UNSET
         self.last_run_time = datetime(2019, 11, 5, 0, 0, 0)
         self.max_num = max_num
         self.member_ids_for_update = []
+        self.manifests_generated = []
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
@@ -196,13 +196,21 @@ class GenomicJobController:
 
         return feedback_file
 
-    def get_feedback_records_to_send(self):
+    def get_feedback_records_to_send(self, _num=60):
         """
-        Retrieves genomic_manifest_feedback records that are complete
-        and have not had a feedback_manifest_ID
-        :return: list of GenomicManifestFeedback
+        Retrieves genomic_manifest_feedback records that are past _num.
+        :return: list of GenomicManifestFeedback records
         """
-        return self.manifest_feedback_dao.get_feedback_count_within_threshold(self.feedback_threshold)
+        return self.manifest_feedback_dao.get_feedback_records_past_date_cutoff(num_days=_num)
+
+    def get_aw2f_remainder_records(self):
+        """
+        Retrieves genomic_manifest_feedback records that have already been sent
+        but have remaining data to send
+        :return: list of GenomicManifestFeedback records
+        """
+        ids = self.manifest_feedback_dao.get_contamination_remainder_feedback_ids()
+        return self.manifest_feedback_dao.get_feedback_records_from_ids(ids)
 
     def ingest_awn_data_for_member(self, file_path, member):
         """
@@ -909,9 +917,11 @@ class GenomicJobController:
             # Set the feedback manifest name based on the input manifest name
             if "feedback_record" in kwargs.keys():
                 input_manifest = self.manifest_file_dao.get(kwargs['feedback_record'].inputManifestFileId)
+                version_num = kwargs['feedback_record'].version
                 result = self.manifest_compiler.generate_and_transfer_manifest(
                     manifest_type,
                     _genome_type,
+                    version=version_num + 1,
                     input_manifest=input_manifest
                 )
 
@@ -921,69 +931,71 @@ class GenomicJobController:
                     _genome_type
                 )
 
-            if result['code'] == GenomicSubProcessResult.SUCCESS:
+            if result['code'] == GenomicSubProcessResult.SUCCESS \
+                    and self.manifests_generated:
 
-                logging.info(f'Manifest created: {self.manifest_compiler.output_file_name}')
-
-                new_file_path = f'{self.bucket_name}/{self.manifest_compiler.output_file_name}'
                 now_time = datetime.utcnow()
 
-                new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(new_file_path)
+                for manifest in self.manifests_generated:
+                    compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]
+                    logging.info(f'Manifest created: {compiled_file_name}')
+                    new_manifest_record = self.manifest_file_dao.get_manifest_file_from_filepath(manifest['file_path'])
 
-                if not new_manifest_record:
-                    # Insert manifest_file record
-                    new_manifest_obj = GenomicManifestFile(
-                        uploadDate=now_time,
-                        manifestTypeId=manifest_type,
-                        filePath=new_file_path,
-                        bucketName=self.bucket_name,
-                        recordCount=result['record_count'],
-                        rdrProcessingComplete=1,
-                        rdrProcessingCompleteDate=now_time,
-                        fileName=new_file_path.split('/')[-1]
+                    if not new_manifest_record:
+                        # Insert manifest_file record
+                        new_manifest_obj = GenomicManifestFile(
+                            uploadDate=now_time,
+                            manifestTypeId=manifest_type,
+                            filePath=manifest['file_path'],
+                            bucketName=self.bucket_name,
+                            recordCount=manifest['record_count'],
+                            rdrProcessingComplete=1,
+                            rdrProcessingCompleteDate=now_time,
+                            fileName=manifest['file_path'].split('/')[-1]
+                        )
+                        new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
+
+                        bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
+                        genomic_manifest_file_update(new_manifest_obj.id)
+
+                    # update feedback records if manifest is a feedback manifest
+                    if "feedback_record" in kwargs.keys():
+                        r = kwargs['feedback_record']
+                        r.feedbackManifestFileId = new_manifest_record.id
+                        r.feedbackComplete = 1
+                        r.version += 1
+                        r.feedbackCompleteDate = now_time
+
+                        with self.manifest_feedback_dao.session() as session:
+                            session.merge(r)
+
+                    # Insert the file_processed record
+                    new_file_record = self.file_processed_dao.insert_file_record(
+                        self.job_run.id,
+                        f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
+                        self.bucket_name,
+                        self.manifest_compiler.output_file_name,
+                        end_time=now_time,
+                        file_result=result['code'],
+                        upload_date=now_time,
+                        manifest_file_id=new_manifest_record.id
                     )
-                    new_manifest_record = self.manifest_file_dao.insert(new_manifest_obj)
 
-                    bq_genomic_manifest_file_update(new_manifest_obj.id, self.bq_project_id)
-                    genomic_manifest_file_update(new_manifest_obj.id)
+                    file_record_attr = self.update_member_file_record(manifest_type)
+                    if self.member_ids_for_update and file_record_attr:
+                        self.execute_cloud_task({
+                            'member_ids': self.member_ids_for_update,
+                            'field': file_record_attr,
+                            'value': new_manifest_record.id,
+                        }, 'genomic_set_member_update_task')
 
-                # update feedback records if manifest is a feedback manifest
-                if "feedback_record" in kwargs.keys():
-                    r = kwargs['feedback_record']
+                    # For BQ/PDR
+                    bq_genomic_file_processed_update(new_file_record.id, self.bq_project_id)
+                    genomic_file_processed_update(new_file_record.id)
 
-                    r.feedbackManifestFileId = new_manifest_record.id
-                    r.feedbackComplete = 1
-                    r.feedbackCompleteDate = now_time
-
-                    with self.manifest_feedback_dao.session() as session:
-                        session.merge(r)
-
-                # Insert the file_processed record
-                new_file_record = self.file_processed_dao.insert_file_record(
-                    self.job_run.id,
-                    f'{self.bucket_name}/{self.manifest_compiler.output_file_name}',
-                    self.bucket_name,
-                    self.manifest_compiler.output_file_name,
-                    end_time=now_time,
-                    file_result=result['code'],
-                    upload_date=now_time,
-                    manifest_file_id=new_manifest_record.id
-                )
-
-                file_record_attr = self.update_member_file_record(manifest_type)
-                if self.member_ids_for_update and file_record_attr:
-                    self.execute_cloud_task({
-                        'member_ids': self.member_ids_for_update,
-                        'field': file_record_attr,
-                        'value': new_manifest_record.id,
-                    }, 'genomic_set_member_update_task')
-
-                # For BQ/PDR
-                bq_genomic_file_processed_update(new_file_record.id, self.bq_project_id)
-                genomic_file_processed_update(new_file_record.id)
-
-                self.subprocess_results.add(result["code"])
+                    self.subprocess_results.add(result["code"])
             self.job_result = self._aggregate_run_results()
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

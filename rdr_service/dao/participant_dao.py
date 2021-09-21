@@ -29,6 +29,7 @@ from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -273,17 +274,6 @@ class ParticipantDao(UpdatableDao):
             if obj.organizationId != existing_obj.organizationId and existing_obj.participantSummary is not None:
                 # Get valid files ready for sync when a participant is paired to an organization
                 ConsentDao.set_previously_synced_files_as_ready(session, obj.participantId)
-
-                import rdr_service.services.consent.validation as validation
-                controller = validation.ConsentValidationController.build_controller()
-                with validation.ReplacementStoringStrategy(
-                    session=session,
-                    consent_dao=controller.consent_dao
-                ) as store_strategy:
-                    controller.validate_all_for_participant(
-                        participant_id=obj.participantId,
-                        output_strategy=store_strategy
-                    )
         else:
             # No pairing updates sent, keep existing values.
             obj.siteId = existing_obj.siteId
@@ -581,17 +571,18 @@ class ParticipantDao(UpdatableDao):
 
             return participant_map.all()
 
-    def get_org_and_site_for_ids(self, participant_ids: Collection[int]):
+    def get_pairing_data_for_ids(self, participant_ids: Collection[int]):
         """
-        Returns tuples of the format (participant id, org external id, site google group)
-        If a participant is unpaired to an org they will be left out, if they're unpaired to
-        a site then their third item will be null
+        Returns tuples of the format (participant id, hpo name, org external id, site google group)
+        If a participant is unpaired to an HPO they will be left out. If they're unpaired to
+        a site or an org then the corresponding element in the tuple will be None.
         """
         with self.session() as session:
             return (
-                session.query(Participant.participantId, Organization.externalId, Site.googleGroup)
+                session.query(Participant.participantId, HPO.name, Organization.externalId, Site.googleGroup)
                 .select_from(Participant)
-                .join(Organization)
+                .join(HPO, Participant.hpoId == HPO.hpoId)
+                .outerjoin(Organization, Participant.organizationId == Organization.organizationId)
                 .outerjoin(Site, Site.siteId == Participant.siteId)
                 .filter(Participant.participantId.in_(participant_ids))
                 .all()

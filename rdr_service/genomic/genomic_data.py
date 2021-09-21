@@ -318,6 +318,7 @@ class GenomicQueryClass:
                     )
                 ).where(
                     (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                    (GenomicSetMember.aw2fManifestJobRunID.is_(None)) &
                     (GenomicGCValidationMetrics.ignoreFlag == 0) &
                     (GenomicGCValidationMetrics.contamination.isnot(None)) &
                     (GenomicGCValidationMetrics.contamination != '') &

@@ -130,9 +130,12 @@ class PhysicalMeasurementsSchema(Schema):
     created = fields.DateTime()
     created_site = fields.String(validate=validate.Length(max=255))
     created_site_id = fields.Int32()
+    final = fields.Boolean()
     finalized_site = fields.String(validate=validate.Length(max=255))
     finalized_site_id = fields.Int32()
     finalized = fields.DateTime()
+    amended_measurements_id = fields.Int32()
+    restored = fields.Boolean()
 
     class Meta:
         schema_id = SchemaID.participant_physical_measurements

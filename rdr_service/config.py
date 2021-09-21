@@ -82,6 +82,8 @@ GENOME_TYPE_CVL = "aou_cvl"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
 GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
+GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
+GENOMIC_CRON_JOBS = "genomic_cron_jobs"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
 BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
@@ -108,6 +110,8 @@ HPO_REPORT_CONFIG_MIXIN_PATH = "hpo_report_config_mixin_path"
 LOCALHOST_DEFAULT_BUCKET_NAME = 'local_bucket'
 BIOBANK_SAMPLES_DAILY_INVENTORY_FILE_PATTERN = 'biobank_samples_daily_inventory_file_pattern'
 BIOBANK_SAMPLES_MONTHLY_INVENTORY_FILE_PATTERN = 'biobank_samples_monthly_inventory_file_pattern'
+BIOBANK_CUMULATIVE_RECEIVED_SCHEDULE = 'biobank_cumulative_received_schedule'
+ENABLE_BIOBANK_MANIFEST_RECEIVED_FLAG = 'enable_biobank_manifest_received_flags'
 COPE_FORM_ID_MAP = 'cope_form_id_map'
 HPO_LITE_AWARDEE = 'hpo_lite_awardee'
 HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
@@ -158,8 +162,6 @@ DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
-
-GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
