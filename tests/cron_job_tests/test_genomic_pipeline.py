@@ -98,6 +98,20 @@ _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
 
 
+class ExpectedCsvColumns(object):
+    BIOBANK_ID = "biobank_id"
+    COLLECTION_TUBE_ID = "collection_tube_id"
+    SEX_AT_BIRTH = "sex_at_birth"
+    GENOME_TYPE = "genome_type"
+    NY_FLAG = "ny_flag"
+    REQUEST_ID = "request_id"
+    PACKAGE_ID = "package_id"
+    VALIDATION_PASSED = 'validation_passed'
+    AI_AN = 'ai_an'
+
+    ALL = (SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG, VALIDATION_PASSED, AI_AN)
+
+
 # noinspection DuplicatedCode
 class GenomicPipelineTest(BaseTestCase):
     def setUp(self):
@@ -1419,27 +1433,12 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
 
-        for bbid in member_genome_types.keys():
-            self.assertIn('aou_array', member_genome_types[bbid])
-            self.assertIn('aou_wgs', member_genome_types[bbid])
+        for bid in member_genome_types.keys():
+            self.assertIn('aou_array', member_genome_types[bid])
+            self.assertIn('aou_wgs', member_genome_types[bid])
 
         # Test manifest file was created correctly
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
-
-        class ExpectedCsvColumns(object):
-            VALUE = "value"
-            BIOBANK_ID = "biobank_id"
-            SAMPLE_ID = "sample_id"
-            SEX_AT_BIRTH = "sex_at_birth"
-            GENOME_TYPE = "genome_type"
-            NY_FLAG = "ny_flag"
-            REQUEST_ID = "request_id"
-            PACKAGE_ID = "package_id"
-            VALIDATION_PASSED = 'validation_passed'
-            AI_AN = 'ai_an'
-
-            ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG,
-                   REQUEST_ID, PACKAGE_ID, VALIDATION_PASSED, AI_AN)
 
         blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
         with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
@@ -1451,7 +1450,7 @@ class GenomicPipelineTest(BaseTestCase):
             rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
 
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1459,7 +1458,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100002", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100002, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100002, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("Y", rows[1][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1467,7 +1466,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[2][ExpectedCsvColumns.SAMPLE_ID])
+            self.assertEqual('003_1ED10', rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID])
             self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[2][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1475,7 +1474,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100003", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual('003_1ED10', rows[3][ExpectedCsvColumns.SAMPLE_ID])
+            self.assertEqual('003_1ED10', rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID])
             self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[3][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1483,7 +1482,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[3][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100004", rows[4][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100004, int(rows[4][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("NA", rows[4][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[4][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[4][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1491,7 +1490,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[4][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100004", rows[5][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100004, int(rows[5][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("NA", rows[5][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[5][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("Y", rows[5][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1499,7 +1498,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[5][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100006", rows[6][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100006, int(rows[6][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100006, int(rows[6][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[6][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("N", rows[6][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1507,7 +1506,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[6][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100006", rows[7][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100006, int(rows[7][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100006, int(rows[7][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[7][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("N", rows[7][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1515,7 +1514,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_wgs", rows[7][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100007", rows[8][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[8][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[8][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("N", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1523,7 +1522,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual("aou_array", rows[8][ExpectedCsvColumns.GENOME_TYPE])
 
             self.assertEqual("T100007", rows[9][ExpectedCsvColumns.BIOBANK_ID])
-            self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.SAMPLE_ID]))
+            self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[9][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[9][ExpectedCsvColumns.NY_FLAG])
             self.assertEqual("N", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1588,21 +1587,6 @@ class GenomicPipelineTest(BaseTestCase):
             # Test manifest file was created correctly
             bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
 
-            class ExpectedCsvColumns(object):
-                VALUE = "value"
-                BIOBANK_ID = "biobank_id"
-                SAMPLE_ID = "sample_id"
-                SEX_AT_BIRTH = "sex_at_birth"
-                GENOME_TYPE = "genome_type"
-                NY_FLAG = "ny_flag"
-                REQUEST_ID = "request_id"
-                PACKAGE_ID = "package_id"
-                VALIDATION_PASSED = 'validation_passed'
-                AI_AN = 'ai_an'
-
-                ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG,
-                       REQUEST_ID, PACKAGE_ID, VALIDATION_PASSED, AI_AN)
-
             blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
             with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
                 csv_reader = csv.DictReader(csv_file, delimiter=",")
@@ -1611,7 +1595,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1619,7 +1603,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1627,7 +1611,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100002", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000201, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000201, int(rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("Y", rows[2][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1635,7 +1619,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100002", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000201, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000201, int(rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("Y", rows[3][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1697,21 +1681,6 @@ class GenomicPipelineTest(BaseTestCase):
             # Test manifest file was created correctly
             bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
 
-            class ExpectedCsvColumns(object):
-                VALUE = "value"
-                BIOBANK_ID = "biobank_id"
-                SAMPLE_ID = "sample_id"
-                SEX_AT_BIRTH = "sex_at_birth"
-                GENOME_TYPE = "genome_type"
-                NY_FLAG = "ny_flag"
-                REQUEST_ID = "request_id"
-                PACKAGE_ID = "package_id"
-                VALIDATION_PASSED = 'validation_passed'
-                AI_AN = 'ai_an'
-
-                ALL = (VALUE, SEX_AT_BIRTH, GENOME_TYPE, NY_FLAG,
-                       REQUEST_ID, PACKAGE_ID, VALIDATION_PASSED, AI_AN)
-
             blob_name = self._find_latest_genomic_set_csv(bucket_name, _FAKE_BUCKET_FOLDER)
             with open_cloud_file(os.path.normpath(bucket_name + '/' + blob_name)) as csv_file:
                 csv_reader = csv.DictReader(csv_file, delimiter=",")
@@ -1720,7 +1689,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1728,7 +1697,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1736,7 +1705,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_wgs", rows[1][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100002", rows[2][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000201, int(rows[2][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000201, int(rows[2][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[2][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("Y", rows[2][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[2][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1744,7 +1713,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[2][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100002", rows[3][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000201, int(rows[3][ExpectedCsvColumns.SAMPLE_ID]))
+                self.assertEqual(10000201, int(rows[3][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[3][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("Y", rows[3][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[3][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -4684,6 +4653,41 @@ class GenomicPipelineTest(BaseTestCase):
             for j, aw1_file_column in enumerate(aw1_file_row.split(',')):
                 aw1_file_column = aw1_file_column.strip('"')
                 self.assertEqual(aw1_file_column, getattr(aw1_raw_records[i-1], expected_columns[j]))
+
+    def test_get_latest_raw_file(self):
+        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-5.csv")
+        for num in range(3):
+            if num == 2:
+                g_type = 'SEQ'
+            else:
+                g_type = 'GEN'
+            aw1_manifest_filename = f"RDR_AoU_{g_type}_PKG-1908-218051_v{num}.csv"
+            self._write_cloud_csv(
+                aw1_manifest_filename,
+                aw1_manifest_file,
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
+            test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
+            genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+            time.sleep(5)
+
+        biobank_id = '2'
+        genome_file_type = 'GEN'
+
+        all_raw_records = self.aw1_raw_dao.get_all()
+        filtered_records = [rec for rec in all_raw_records
+                            if rec.biobank_id == biobank_id
+                            and genome_file_type in rec.file_path]
+        sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
+        sorted_record = sorted_records[0]
+
+        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
+            biobank_id=int(biobank_id),
+            genome_type='aou_array'
+        )
+        self.assertEqual(sorted_record.id, dao_record.id)
+        self.assertEqual(sorted_record.file_path, dao_record.file_path)
 
     def test_aw2_load_manifest_to_raw_table(self):
         # Set up test AW2 manifest

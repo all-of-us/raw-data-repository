@@ -765,6 +765,43 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE
             ).one_or_none()
 
+    def get_new_participants(
+        self,
+        genomic_workflow_state,
+        biobank_prefix=None,
+        genomic_set_id=None,
+        is_sql=False
+    ):
+        with self.session() as session:
+            participants = session.query(
+                GenomicSetMember.collectionTubeId,
+                functions.concat(biobank_prefix, GenomicSetMember.biobankId).label('biobank_id'),
+                GenomicSetMember.sexAtBirth,
+                GenomicSetMember.genomeType,
+                sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
+                                   sqlalchemy.sql.expression.literal("Y"),
+                                   sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                sqlalchemy.func.IF(GenomicSetMember.validationStatus == 1,
+                                   sqlalchemy.sql.expression.literal("Y"),
+                                   sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                GenomicSetMember.ai_an
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == genomic_workflow_state
+            )
+
+            if genomic_set_id:
+                participants = participants.filter(
+                    GenomicSetMember.genomicSetId == genomic_set_id
+                )
+
+            participants = participants.order_by(GenomicSetMember.id)
+
+            if is_sql:
+                sql = self.literal_sql_from_query(participants)
+                return sql
+
+            return participants.all()
+
     def update(self, obj):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
