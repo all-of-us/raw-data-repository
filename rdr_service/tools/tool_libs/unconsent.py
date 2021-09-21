@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
@@ -24,15 +25,16 @@ class UnconsentTool(ToolBase):
 
         with self.get_session() as session:
             for participant_id in self._load_participant_ids():
-                # Retrieve the participant summary
-                summary_query = session.query(ParticipantSummary).filter(
-                    ParticipantSummary.participantId == participant_id
+                # Retrieve the participant record
+                participant_query = session.query(Participant).filter(
+                    Participant.participantId == participant_id
                 )
                 if not self.args.dry_run:
-                    # Obtain a lock on the participant summary to prevent possible
-                    # race conditions with incoming responses
+                    # Obtain a lock on the participant to prevent possible
+                    # race conditions with incoming questionnaire responses
                     summary_query = summary_query.with_for_update()
-                if summary_query.one_or_none() is None:
+                participant = participant_query.one_or_none()
+                if participant is None or participant.participantSummary is None:
                     logger.info(f'No participant summary found for P{participant_id}')
                 else:
                     if not self._participant_has_signed_consent(session, participant_id):
