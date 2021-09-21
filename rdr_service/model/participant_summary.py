@@ -1289,6 +1289,11 @@ class ParticipantSummary(Base):
     Present the retention eligible time
     """
 
+    lastActiveRetentionActivityTime = Column("last_active_retention_activity_time", UTCDateTime)
+    """
+    Present the last active retention activity time
+    """
+
     retentionType = Column("retention_type", Enum(RetentionType), default=RetentionType.UNSET)
     """
     Present the retention type: ACTIVE, PASSIVE or ACTIVE_AND_PASSIVE

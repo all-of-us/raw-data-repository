@@ -266,6 +266,8 @@ def _parse_field(parser_func, field_str):
 def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
     retention_eligible = _parse_field(int, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE])
     eligible_time = _parse_field(parse, row[RetentionEligibleMetricCsvColumns.RETENTION_ELIGIBLE_TIME])
+    last_active_eligible_activity_time = _parse_field(parse, row[RetentionEligibleMetricCsvColumns
+                                                      .LAST_ACTIVE_RETENTION_ACTIVITY_TIME])
     actively_retained = _parse_field(int, row[RetentionEligibleMetricCsvColumns.ACTIVELY_RETAINED])
     passively_retained = _parse_field(int, row[RetentionEligibleMetricCsvColumns.PASSIVELY_RETAINED])
 
@@ -281,6 +283,7 @@ def _create_retention_eligible_metrics_obj_from_row(row, upload_date):
         participantId=row[RetentionEligibleMetricCsvColumns.PARTICIPANT_ID],
         retentionEligible=retention_eligible,
         retentionEligibleTime=eligible_time,
+        lastActiveRetentionActivityTime=last_active_eligible_activity_time,
         activelyRetained=actively_retained,
         passivelyRetained=passively_retained,
         fileUploadDate=upload_date,
@@ -293,10 +296,12 @@ class RetentionEligibleMetricCsvColumns(object):
     PARTICIPANT_ID = "participant_id"
     RETENTION_ELIGIBLE = "retention_eligible"
     RETENTION_ELIGIBLE_TIME = "retention_eligible_date"
+    LAST_ACTIVE_RETENTION_ACTIVITY_TIME = "last_active_retention_activity_date"
     ACTIVELY_RETAINED = "actively_retained"
     PASSIVELY_RETAINED = "passively_retained"
 
-    ALL = (PARTICIPANT_ID, RETENTION_ELIGIBLE, RETENTION_ELIGIBLE_TIME, ACTIVELY_RETAINED, PASSIVELY_RETAINED)
+    ALL = (PARTICIPANT_ID, RETENTION_ELIGIBLE, RETENTION_ELIGIBLE_TIME, LAST_ACTIVE_RETENTION_ACTIVITY_TIME,
+           ACTIVELY_RETAINED, PASSIVELY_RETAINED)
 
 
 class DataError(RuntimeError):

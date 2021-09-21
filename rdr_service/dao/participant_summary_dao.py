@@ -1132,7 +1132,9 @@ class ParticipantSummaryDao(UpdatableDao):
                 {
                     ParticipantSummary.retentionEligibleStatus: RetentionEligibleMetrics.retentionEligibleStatus,
                     ParticipantSummary.retentionEligibleTime: RetentionEligibleMetrics.retentionEligibleTime,
-                    ParticipantSummary.retentionType: RetentionEligibleMetrics.retentionType
+                    ParticipantSummary.retentionType: RetentionEligibleMetrics.retentionType,
+                    ParticipantSummary.lastActiveRetentionActivityTime:
+                        RetentionEligibleMetrics.lastActiveRetentionActivityTime
                 }
             )
             session.execute(query, {'file_upload_date': upload_date})
