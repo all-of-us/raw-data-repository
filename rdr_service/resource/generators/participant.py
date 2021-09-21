@@ -608,12 +608,16 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         modules = list()
         consents = list()
         data = dict()
+        min_valid_authored = datetime.datetime(2017, 1, 1, 0, 0, 0)
 
         if results:
             # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
             last_mod_processed = {}
             last_consent_processed = {}
             for row in results:
+                # ROC-692 Exclude CE replayed ConsentPII responses that contain an invalid minimum authored date.
+                if row.authored and row.authored < min_valid_authored:
+                    continue
                 consent_added = False
                 module_name = self._lookup_code_value(row.codeId, ro_session)
                 # Start with a default submittal status.  May be updated if this is a consent module with a specific
@@ -832,7 +836,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 'created': row.created,
                 'created_site': self._lookup_site_name(row.createdSiteId, ro_session),
                 'created_site_id': row.createdSiteId,
-                'final': row.final,
+                'final': 1 if row.final else 0,
                 'finalized': row.finalized,
                 'finalized_site': self._lookup_site_name(row.finalizedSiteId, ro_session),
                 'finalized_site_id': row.finalizedSiteId,
