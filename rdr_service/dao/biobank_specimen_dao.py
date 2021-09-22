@@ -217,7 +217,8 @@ class BiobankSpecimenDao(BiobankDaoBase):
         return result
 
     #pylint: disable=unused-argument
-    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None):
+    def from_client_json(self, resource, id_=None, expected_version=None, participant_id=None, client_id=None,
+                         session=None):
         order = BiobankSpecimen(rlimsId=resource['rlimsID'], orderId=resource['orderID'], testCode=resource['testcode'],
                                 biobankId=from_client_biobank_id(resource['participantID']))
 
@@ -235,19 +236,25 @@ class BiobankSpecimenDao(BiobankDaoBase):
         if 'disposalStatus' in resource:
             self.read_client_disposal(resource['disposalStatus'], order)
 
-        with self.session() as session:
-            if 'attributes' in resource:
-                attribute_dao = BiobankSpecimenAttributeDao(preloader=self.preloader)
-                order.attributes = attribute_dao.collection_from_json(resource['attributes'],
-                                                                      specimen_rlims_id=order.rlimsId, session=session)
+        if session is None:
+            with self.session() as session:
+                self._read_data_with_session(resource, order, session)
+        else:
+            self._read_data_with_session(resource, order, session)
+        return order
 
-            if 'aliquots' in resource:
-                aliquot_dao = BiobankAliquotDao(preloader=self.preloader)
-                order.aliquots = aliquot_dao.collection_from_json(resource['aliquots'],
+    def _read_data_with_session(self, resource, order, session):
+        if 'attributes' in resource:
+            attribute_dao = BiobankSpecimenAttributeDao(preloader=self.preloader)
+            order.attributes = attribute_dao.collection_from_json(resource['attributes'],
                                                                   specimen_rlims_id=order.rlimsId, session=session)
 
-            order.id = self.get_id_with_session(order, session)
-        return order
+        if 'aliquots' in resource:
+            aliquot_dao = BiobankAliquotDao(preloader=self.preloader)
+            order.aliquots = aliquot_dao.collection_from_json(resource['aliquots'],
+                                                              specimen_rlims_id=order.rlimsId, session=session)
+
+        order.id = self.get_id_with_session(order, session)
 
     def ready_preloader(self, specimen_json):
         specimen_rlims_id = specimen_json['rlimsID']
