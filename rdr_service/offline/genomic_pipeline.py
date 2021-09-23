@@ -322,6 +322,11 @@ def genomic_missing_files_resolve():
         controller.resolve_missing_gc_files()
 
 
+def update_members_state_resolved_data_files():
+    with GenomicJobController(GenomicJob.UPDATE_MEMBERS_STATE_RESOLVED_DATA_FILES) as controller:
+        controller.update_member_aw2_missing_states_if_resolved()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
