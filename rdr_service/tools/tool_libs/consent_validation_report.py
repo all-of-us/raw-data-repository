@@ -150,7 +150,7 @@ DAILY_CONSENTS_SQL_FILTER = """
 # specified end date for this report
 ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
             WHERE cf.type = {consent_type}
-                  AND DATE(ps.{authored_field}) <= "{end_date}"
+                  AND DATE(cf.created) <= "{end_date}"
                   AND cf.sync_status = 1
     """
 
@@ -918,7 +918,7 @@ class WeeklyConsentReport(ConsentReport):
             section_text_cell = self._make_a1_notation(self.row_pos)
             text_str = f'Outstanding issues for consents authored between {start_date_str} and {end_date_str}' + \
                        f' (by HPO/Organization)'
-            self._add_report_rows(section_text_cell, [text_str])
+            self._add_report_rows(section_text_cell, [[text_str]])
             self._add_report_formatting(section_text_cell, self.format_specs.get('bold_text'))
             self._add_errors_by_org(df=weekly_errors)
         else:
