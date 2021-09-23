@@ -274,6 +274,10 @@ class MailKitOrderDao(UpdatableDao):
                     if barcode and not barcode.isalnum():
                         barcode = re.sub(r'\W+', '', barcode)
 
+                    if len(barcode) > 20:
+                        # MayoLINK system expects barcodes to be 20 characters or less
+                        raise BadRequest('Given barcode exceeds maximum character length')
+
                     order.barcode = barcode
 
             with self.session() as session:
