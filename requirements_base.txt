@@ -20,7 +20,7 @@ configargparse==1.2.3     # via locust
 coverage==6.0b1             # via -r requirements.in
 cryptography==3.3.2       # via oauthlib, pyopenssl, requests
 defusedxml==0.6.0         # via jira
-dictalchemy==0.1.2.7      # via -r requirements.in
+dictalchemy3==1.0.0       # via -r requirements.in
 dnspython==1.16.0         # via -r requirements.in
 docutils==0.16            # via sphinx
 faker==4.1.0              # via -r requirements.in
