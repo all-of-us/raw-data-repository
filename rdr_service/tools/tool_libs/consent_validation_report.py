@@ -62,7 +62,7 @@ CONSENT_ERROR_COUNT_COLUMNS = [
     ('Invalid DOB', 12),
     ('Age at Primary Consent < 18', 13),
     ('Checkbox Unchecked', 14),
-    ('Non-VA Consent for VA Particip[ant', 15),
+    ('Non-VA Consent for VA Participant', 15),
     ('VA Consent for Non-VA Participant', 16)
 
 ]
