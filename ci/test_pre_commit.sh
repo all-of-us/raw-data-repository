@@ -1,5 +1,9 @@
 #!/bin/bash
-# Run tests which are fast enough to be run before very push.
+if [ "$RDR_VENV" ]; then
+  source "$RDR_VENV"/bin/activate
+fi
+
+# Run tests which are fast enough to be run before every push.
 set -e
 
 echo "Grepping for checked-in credentials..."
