@@ -548,6 +548,53 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicManifestFile.filePath == filepath
             ).one_or_none()
 
+    def get_aw2_missing_with_all_files(self, genome_type):
+        with self.session() as session:
+            members_query = session.query(
+                GenomicSetMember.id
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).filter(
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2_MISSING,
+                GenomicGCValidationMetrics.ignoreFlag != 1
+            )
+            if genome_type == config.GENOME_TYPE_ARRAY:
+                members_query = members_query.filter(
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
+                    GenomicGCValidationMetrics.idatRedReceived == 1,
+                    GenomicGCValidationMetrics.idatGreenReceived == 1,
+                    GenomicGCValidationMetrics.idatRedMd5Received == 1,
+                    GenomicGCValidationMetrics.idatGreenMd5Received == 1,
+                    GenomicGCValidationMetrics.vcfReceived == 1,
+                    GenomicGCValidationMetrics.vcfTbiReceived == 1,
+                    GenomicGCValidationMetrics.vcfMd5Received == 1,
+                    GenomicGCValidationMetrics.idatRedPath.isnot(None),
+                    GenomicGCValidationMetrics.idatGreenPath.isnot(None),
+                    GenomicGCValidationMetrics.idatRedMd5Path.isnot(None),
+                    GenomicGCValidationMetrics.idatGreenMd5Path.isnot(None),
+                    GenomicGCValidationMetrics.vcfPath.isnot(None),
+                    GenomicGCValidationMetrics.vcfTbiPath.isnot(None),
+                    GenomicGCValidationMetrics.vcfMd5Path.isnot(None),
+                )
+            if genome_type == config.GENOME_TYPE_WGS:
+                members_query = members_query.filter(
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    GenomicGCValidationMetrics.hfVcfReceived == 1,
+                    GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
+                    GenomicGCValidationMetrics.hfVcfMd5Received == 1,
+                    GenomicGCValidationMetrics.cramReceived == 1,
+                    GenomicGCValidationMetrics.cramMd5Received == 1,
+                    GenomicGCValidationMetrics.craiReceived == 1,
+                    GenomicGCValidationMetrics.hfVcfPath.isnot(None),
+                    GenomicGCValidationMetrics.hfVcfTbiPath.isnot(None),
+                    GenomicGCValidationMetrics.hfVcfMd5Path.isnot(None),
+                    GenomicGCValidationMetrics.cramPath.isnot(None),
+                    GenomicGCValidationMetrics.cramMd5Path.isnot(None),
+                    GenomicGCValidationMetrics.craiPath.isnot(None),
+                )
+            return members_query.all()
+
     def update_report_consent_removal_date(self, member, date):
         """
         Updates the reportConsentRemovalDate on the genomic set member
@@ -1147,7 +1194,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
-                         GenomicGcDataFileMissing.resolved == 0)
+                         GenomicGcDataFileMissing.resolved == 0,
+                         GenomicGcDataFileMissing.ignore_flag == 0)
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -1156,8 +1204,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGcDataFileMissing.id.is_(None),
-                    ((GenomicGCValidationMetrics.ignoreFlag != 1) |
-                     (GenomicGCValidationMetrics.ignoreFlag is not None)),
+                    GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
                     (GenomicGCValidationMetrics.idatGreenReceived == 0) |
                     (GenomicGCValidationMetrics.idatRedMd5Received == 0) |
@@ -1169,7 +1216,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .all()
             )
 
-    def get_with_missing_wsg_files(self, _gc_site_id):
+    def get_with_missing_wgs_files(self, _gc_site_id):
         """
         Retrieves all gc metrics with missing sequencing files
         :param: _date: last run time
@@ -1188,7 +1235,8 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                 .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
-                         GenomicGcDataFileMissing.resolved == 0)
+                         GenomicGcDataFileMissing.resolved == 0,
+                         GenomicGcDataFileMissing.ignore_flag == 0)
                 )
                 .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
@@ -2154,6 +2202,7 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 GenomicGcDataFileMissing
             ).filter(
                 GenomicGcDataFileMissing.resolved == 1,
+                GenomicGcDataFileMissing.ignore_flag == 0,
                 GenomicGcDataFileMissing.resolved_date.isnot(None),
                 GenomicGcDataFileMissing.resolved_date < delete_date
             ).delete()
@@ -2183,6 +2232,7 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
                 GenomicGcDataFileMissing.resolved == 0,
+                GenomicGcDataFileMissing.ignore_flag == 0,
                 GenomicGcDataFileMissing.resolved_date.is_(None)
             ).subquery()
 

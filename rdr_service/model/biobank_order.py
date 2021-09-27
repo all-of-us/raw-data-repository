@@ -335,10 +335,10 @@ class SpecimenAliquotBase(object):
 class BiobankSpecimen(Base, BiobankSpecimenBase, SpecimenAliquotBase):
     __tablename__ = "biobank_specimen"
 
-    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+    aliquots = relationship("BiobankAliquot", cascade="all",
                               foreign_keys="BiobankAliquot.specimen_id",
                               order_by="BiobankAliquot.rlimsId")
-    attributes = relationship("BiobankSpecimenAttribute", cascade="all, delete-orphan",
+    attributes = relationship("BiobankSpecimenAttribute", cascade="all",
                               foreign_keys="BiobankSpecimenAttribute.specimen_id",
                               order_by="BiobankSpecimenAttribute.name")
     rlimsId = Column("rlims_id", String(80), unique=True)
@@ -384,10 +384,10 @@ class BiobankAliquot(Base, BiobankSpecimenBase, BiobbankSpecimenAliquotBase, Spe
     initialTreatment = Column("initial_treatment", String(100))
     containerTypeId = Column("container_type_id", String(100))
 
-    datasets = relationship("BiobankAliquotDataset", cascade="all, delete-orphan",
+    datasets = relationship("BiobankAliquotDataset", cascade="all",
                             foreign_keys="BiobankAliquotDataset.aliquot_id",
                             order_by="BiobankAliquotDataset.rlimsId")
-    aliquots = relationship("BiobankAliquot", cascade="all, delete-orphan",
+    aliquots = relationship("BiobankAliquot", cascade="all",
                             foreign_keys="BiobankAliquot.parent_aliquot_id",
                             order_by="BiobankAliquot.rlimsId")
 

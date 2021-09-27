@@ -159,4 +159,9 @@ cron:
   timezone: America/New_York
   schedule: every 6 hours
   target: offline
+- description: Genomic Update Members With Missing Files Resolved
+  url: /offline/GenomicUpdateMembersStateResolved
+  timezone: America/New_York
+  schedule: every 12 hours
+  target: offline
 
