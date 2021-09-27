@@ -80,10 +80,16 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         self.consent_dao = consent_dao
         self.participant_ids = set()
         self.results = self._build_consent_list_structure()
+        self._max_batch_count = 500
 
     def add_result(self, result: ParsingResult):
         self.results[result.participant_id][result.type].append(result)
         self.participant_ids.add(result.participant_id)
+
+        if len(self.participant_ids) > self._max_batch_count:
+            self.process_results()
+            self.results = self._build_consent_list_structure()
+            self.participant_ids = set()
 
     def process_results(self):
         organized_previous_results = self._build_consent_list_structure()
@@ -97,20 +103,22 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         results_to_update = []
         for participant_id, consent_type_dict in self.results.items():
             for consent_type, result_list in consent_type_dict.items():
-                ready_for_sync = self._find_file_ready_for_sync(result_list)
                 previous_type_list: Collection[ParsingResult] = organized_previous_results[participant_id][consent_type]
-                if ready_for_sync:
-                    for result in previous_type_list:
-                        if result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
-                            result.sync_status = ConsentSyncStatus.OBSOLETE
-                            results_to_update.append(result)
-                    results_to_update.append(ready_for_sync)
-                else:
-                    new_results = _ValidationOutputHelper.get_new_validation_results(
-                        existing_results=previous_type_list,
-                        results_to_filter=result_list
-                    )
-                    results_to_update.extend(new_results)
+                new_results = _ValidationOutputHelper.get_new_validation_results(
+                    existing_results=previous_type_list,
+                    results_to_filter=result_list
+                )
+
+                if new_results:
+                    ready_for_sync = self._find_file_ready_for_sync(result_list)
+                    if ready_for_sync:
+                        for result in previous_type_list:
+                            if result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
+                                result.sync_status = ConsentSyncStatus.OBSOLETE
+                                results_to_update.append(result)
+                        results_to_update.append(ready_for_sync)
+                    else:
+                        results_to_update.extend(new_results)
 
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
 
@@ -202,6 +210,12 @@ class _ValidationOutputHelper:
         if file.file_exists:
             return any(
                 [file.file_path == possible_matching_file.file_path for possible_matching_file in file_collection]
+            ) or any(
+                [file.type == possible_matching_file.type
+                 and possible_matching_file.sync_status in
+                 (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE)
+                 and file.participant_id == possible_matching_file.participant_id
+                 for possible_matching_file in file_collection]
             )
         else:
             return any([
