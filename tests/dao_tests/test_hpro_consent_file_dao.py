@@ -1,6 +1,8 @@
+from itertools import cycle
 
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
+from rdr_service.model.consent_file import ConsentSyncStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -10,13 +12,15 @@ class HealthProConsentDaoTest(BaseTestCase):
         self.dao = HealthProConsentDao()
         self.consent_dao = ConsentDao()
         self.num_consents = 10
+        self.sync_statuses = [ConsentSyncStatus.SYNC_COMPLETE, ConsentSyncStatus.READY_FOR_SYNC]
 
     def test_get_consents_for_transfer(self):
         needed_count, needed_ids, limit = 0, [], 2
 
         for num in range(self.num_consents):
             consent_file = self.data_generator.create_database_consent_file(
-                file_path=f'test_file_path/{num}'
+                file_path=f'test_file_path/{num}',
+                sync_status=self.sync_statuses[0] if num % 2 == 0 else self.sync_statuses[1]
             )
             needed_ids.append(consent_file.id)
 
@@ -52,6 +56,22 @@ class HealthProConsentDaoTest(BaseTestCase):
         self.assertTrue(
             all(obj for obj in needed_transfer_consents if obj.file_path)
         )
+
+    def test_get_consents_for_transfer_bad_sync_status(self):
+        bad_sync_statuses = [status for status in ConsentSyncStatus if status not in self.sync_statuses]
+        bad_iterate = cycle(bad_sync_statuses)
+
+        for num in range(self.num_consents):
+            consent_file = self.data_generator.create_database_consent_file(
+                file_path=f'test_file_path/{num}',
+                sync_status=next(bad_iterate)
+            )
+            self.data_generator.create_database_hpro_consent(
+                consent_file_id=consent_file.id
+            )
+
+        needed_transfer_consents = self.dao.get_needed_consents_for_transfer()
+        self.assertEmpty(needed_transfer_consents)
 
     def test_get_records_by_participant(self):
         num_pid_records, pids_inserted, no_path_num = 4, [], 2

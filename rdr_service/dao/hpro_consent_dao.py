@@ -1,6 +1,6 @@
 
 from rdr_service.dao.base_dao import UpdatableDao
-from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 
 
@@ -21,6 +21,10 @@ class HealthProConsentDao(UpdatableDao):
             ).filter(
                 ConsentFile.file_exists == 1,
                 ConsentFile.file_path.isnot(None),
+                ConsentFile.sync_status.in_([
+                    ConsentSyncStatus.READY_FOR_SYNC,
+                    ConsentSyncStatus.SYNC_COMPLETE
+                ]),
                 HealthProConsentFile.id.is_(None)
             )
 
