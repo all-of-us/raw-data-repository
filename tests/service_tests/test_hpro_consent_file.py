@@ -4,6 +4,7 @@ from unittest import mock
 from rdr_service import config
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
+from rdr_service.model.consent_file import ConsentSyncStatus
 from rdr_service.services.hpro_consent import HealthProConsentFile
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -18,6 +19,7 @@ class HealthProConsentFileTest(BaseTestCase):
         config.override_setting(config.HEALTHPRO_CONSENT_BUCKET, self.hpro_consent_bucket)
         self.hpro_consents = HealthProConsentFile()
         self.num_consents = 4
+        self.sync_statuses = [ConsentSyncStatus.SYNC_COMPLETE, ConsentSyncStatus.READY_FOR_SYNC]
 
     @mock.patch('rdr_service.services.hpro_consent.HealthProConsentFile.cp_consent_files')
     def test_initialize_transfers(self, cp_mock):
@@ -33,6 +35,7 @@ class HealthProConsentFileTest(BaseTestCase):
             consent = self.data_generator.create_database_consent_file(
                 file_path=f'test_file_path/{num}',
                 file_exists=1,
+                sync_status=self.sync_statuses[0]
             )
             consent_ids.append(consent.id)
 
@@ -54,6 +57,7 @@ class HealthProConsentFileTest(BaseTestCase):
             consent = self.data_generator.create_database_consent_file(
                 file_path=f'test_file_path/{num}',
                 file_exists=1,
+                sync_status=self.sync_statuses[0]
             )
             consent_ids.append(consent.id)
 
@@ -118,6 +122,7 @@ class HealthProConsentFileTest(BaseTestCase):
             consent = self.data_generator.create_database_consent_file(
                 file_path=f'test_file_path/{num}',
                 file_exists=1,
+                sync_status=self.sync_statuses[0]
             )
             paths.append({
                 'src': f'gs://test_file_path/{num}',
