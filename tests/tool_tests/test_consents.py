@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 import mock
 from typing import List
 
@@ -146,42 +146,48 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
             self.assertEqual(ConsentType.CABOR, updated_file.type)
             self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, updated_file.sync_status)
 
-    def test_validation_time_range(self, _):
-        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock:
+    def test_validating_participants_from_file(self, _):
+        self.temporarily_override_config_setting(
+            key=config.CONSENT_SYNC_BUCKETS,
+            value={}
+        )
+
+        with mock.patch('rdr_service.tools.tool_libs.consents.ConsentValidationController') as controller_class_mock,\
+                mock.patch('rdr_service.tools.tool_libs.consents.open') as open_mock,\
+                mock.patch('rdr_service.tools.tool_libs.consents.ParticipantSummaryDao') as summary_dao_class_mock:
+            participant_id_list = [1, 45, 289, 3020]
             controller_mock = controller_class_mock.return_value
-            self.temporarily_override_config_setting(
-                key=config.CONSENT_SYNC_BUCKETS,
-                value={}
-            )
 
-            # Check without max_date
+            # Set up file to list participant ids
+            pid_file_handle = open_mock.return_value.__enter__.return_value
+            pid_file_handle.__iter__.return_value = iter(participant_id_list)
+
+            test_summaries = ['one', 'forty-five', 'two hundred eighty-nine', 'three thousand twenty']
+            summary_dao_class_mock.get_by_ids_with_session.return_value = test_summaries
+
+            # Verify that the script uses the participant ids from the file for validation
+            # and specifies the consent type
             self._run_consents_tool(
                 command='validate',
                 additional_args={
-                    'min_date': 'Apr 1st, 2021',
-                    'max_date': None
+                    'pid_file': 'pids.txt',
+                    'type': 'EHR'
                 }
-            )
-            controller_mock.validate_recent_uploads.assert_called_with(
-                mock.ANY,
-                mock.ANY,
-                min_consent_date=datetime(2021, 4, 1),
-                max_consent_date=None
             )
 
-            # Check with max_date
-            self._run_consents_tool(
-                command='validate',
-                additional_args={
-                    'min_date': '2021-05-01',
-                    'max_date': '2021-06-17'
-                }
+            # Make sure the id file was loaded
+            summary_dao_class_mock.get_by_ids_with_session.assert_called_with(
+                session=mock.ANY,
+                obj_ids=participant_id_list
             )
-            controller_mock.validate_recent_uploads.assert_called_with(
-                mock.ANY,
-                mock.ANY,
-                min_consent_date=datetime(2021, 5, 1),
-                max_consent_date=datetime(2021, 6, 17)
+
+            # Make sure the validation was done for the loaded summaries and for the specific consent type
+            controller_mock.validate_participant_consents.assert_has_calls(
+                calls=[
+                    mock.call(summary=summary, output_strategy=mock.ANY, types_to_validate=[ConsentType.EHR])
+                    for summary in test_summaries
+                ],
+                any_order=True
             )
 
     def test_record_upload(self, _):

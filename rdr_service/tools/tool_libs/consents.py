@@ -149,7 +149,6 @@ class ConsentTool(ToolBase):
                 self._consent_dao.batch_update_consent_files([file], session)
 
     def validate_consents(self):
-        summary_dao = ParticipantSummaryDao()
         consent_type = None
         if self.args.type:
             consent_type = ConsentType(self.args.type)
@@ -162,21 +161,20 @@ class ConsentTool(ToolBase):
         )
         with open(self.args.pid_file) as pid_file,\
                 self.get_session() as session,\
-                ReplacementStoringStrategy(
-                    session=session,
-                    consent_dao=controller.consent_dao
-                ) as store_strategy:
+                ReplacementStoringStrategy(session=session, consent_dao=controller.consent_dao) as store_strategy:
             # Get participant ids from the file in batches
             # (retrieving all their summaries at once, processing them before the next batch)
             participant_lookup_batch_size = 500
-            for participant_ids in islice(pid_file, __stop=participant_lookup_batch_size):
-                summaries = summary_dao.get_by_ids_with_session(session=session, obj_ids=participant_ids)
+            participant_ids = list(islice(pid_file, participant_lookup_batch_size))
+            while participant_ids:
+                summaries = ParticipantSummaryDao.get_by_ids_with_session(session=session, obj_ids=participant_ids)
                 for participant_summary in summaries:
                     controller.validate_participant_consents(
                         summary=participant_summary,
                         output_strategy=store_strategy,
-                        types_to_validate=consent_type
+                        types_to_validate=[consent_type]
                     )
+                participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
     def upload_records(self):
         data_to_upload = []
