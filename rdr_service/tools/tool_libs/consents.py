@@ -15,7 +15,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
-from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy
+from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
+    LogResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
