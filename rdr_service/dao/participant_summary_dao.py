@@ -29,7 +29,6 @@ from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_S
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace_null_safe_equals
-from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -447,8 +446,8 @@ class ParticipantSummaryDao(UpdatableDao):
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
-        self.hpro_consent_dao = HealthProConsentDao()
         self.user_roles = None
+        self.hpro_consents = []
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
@@ -978,8 +977,8 @@ class ParticipantSummaryDao(UpdatableDao):
             ConsentType.EHR: 'consentForElectronicHealthRecords',
             ConsentType.GROR: 'consentForGenomicsROR'
         }
-        participant = result['participantId']
-        records = self.hpro_consent_dao.get_by_participant(participant)
+        participant_id = result['participantId']
+        records = list(filter(lambda obj: obj.participant_id == participant_id, self.hpro_consents))
 
         for consent_type, consent_name in consents_map.items():
             value_path_key = f'{consent_name}FilePath'
@@ -992,7 +991,7 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
-        if self.user_roles == ['healthpro']:
+        if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
 
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED

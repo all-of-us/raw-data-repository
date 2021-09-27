@@ -1,3 +1,5 @@
+import logging
+
 from flask import request
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -7,6 +9,7 @@ from rdr_service.app_util import auth_required, get_validated_user_info, restric
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
@@ -26,6 +29,7 @@ class ParticipantSummaryApi(BaseApi):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
         self.participant_dao = ParticipantDao()
+        self.hpro_consent_dao = HealthProConsentDao()
 
     @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
@@ -53,6 +57,7 @@ class ParticipantSummaryApi(BaseApi):
         if p_id is not None:
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
+            self._fetch_hpro_consents(pids=p_id)
             return super(ParticipantSummaryApi, self).get(p_id)
         else:
             if auth_awardee:
@@ -64,7 +69,7 @@ class ParticipantSummaryApi(BaseApi):
                     pass
                 elif requested_awardee != auth_awardee:
                     raise Forbidden
-            return super(ParticipantSummaryApi, self)._query("participantId")
+            return self._query("participantId")
 
     @auth_required(RDR_AND_PTC)
     @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
@@ -126,6 +131,26 @@ class ParticipantSummaryApi(BaseApi):
                     break
 
         return invalid, message
+
+    def _query(self, id_field, participant_id=None):
+        logging.info(f"Preparing query for {self.dao.model_type}.")
+        query = self._make_query()
+        results = self.dao.query(query)
+        participant_ids = [obj.participantId for obj in results.items if hasattr(obj, 'participantId')]
+        self._fetch_hpro_consents(participant_ids)
+        logging.info("Query complete, bundling results.")
+        response = self._make_bundle(results, id_field, participant_id)
+        logging.info("Returning response.")
+        return response
+
+    def _fetch_hpro_consents(self, pids=None):
+        if not self.user_info.get('roles') == ['healthpro'] or not pids:
+            return
+
+        if type(pids) is not list:
+            self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
+        else:
+            self.dao.hpro_consents = self.hpro_consent_dao.batch_get_by_participant(pids)
 
 
 class ParticipantSummaryModifiedApi(BaseApi):
