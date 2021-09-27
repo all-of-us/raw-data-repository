@@ -446,7 +446,6 @@ class ParticipantSummaryDao(UpdatableDao):
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
-        self.user_roles = None
         self.hpro_consents = []
 
     # pylint: disable=unused-argument
