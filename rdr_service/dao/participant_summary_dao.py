@@ -981,9 +981,9 @@ class ParticipantSummaryDao(UpdatableDao):
         participant = result['participantId']
         records = self.hpro_consent_dao.get_by_participant(participant)
 
-        for key, value in consents_map.items():
-            value_path_key = f'{value}FilePath'
-            has_consent_path = [obj for obj in records if key == obj.consent_type]
+        for consent_type, consent_name in consents_map.items():
+            value_path_key = f'{consent_name}FilePath'
+            has_consent_path = [obj for obj in records if consent_type == obj.consent_type]
 
             if has_consent_path:
                 result[value_path_key] = has_consent_path[0].file_path

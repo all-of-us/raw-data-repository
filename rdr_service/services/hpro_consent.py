@@ -12,18 +12,25 @@ class HealthProConsentFile:
     Service used for transferring Consent records
     from RDR to HealthPro consent bucket
     """
-    def __init__(self):
+    def __init__(
+        self,
+        logger=None,
+        store_failures=False
+    ):
         self.dao = HealthProConsentDao()
         self.consents_for_transfer = None
         self.hpro_bucket = config.getSetting(config.HEALTHPRO_CONSENT_BUCKET)
         self.transfer_limit = None
         self.transfer_count = 0
+        self.transfer_failures = []
+        self.logger = logger or logging
+        self.store_failures = store_failures
 
     def initialize_consent_transfer(self):
         self.get_consents_for_transfer()
 
         if not self.consents_for_transfer:
-            logging.info('No consents ready for transfer')
+            self.logger.info('No consents ready for transfer')
             return
 
         self.cp_consent_files()
@@ -32,7 +39,7 @@ class HealthProConsentFile:
         self.consents_for_transfer = self.dao.get_needed_consents_for_transfer(self.transfer_limit)
 
     def cp_consent_files(self):
-        logging.info(f'Ready to transfer {len(self.consents_for_transfer)} consent(s) to {self.hpro_bucket} bucket')
+        self.logger.info(f'Ready to transfer {len(self.consents_for_transfer)} consent(s) to {self.hpro_bucket} bucket')
 
         for consent in self.consents_for_transfer:
             src = f'gs://{consent.file_path}'
@@ -42,7 +49,12 @@ class HealthProConsentFile:
             try:
                 transfer = gcp_cp(src, dest)
                 if not transfer:
-                    logging.warning(f'Healthpro consent {src} failed to transfer to {dest}')
+                    if self.store_failures:
+                        self.transfer_failures.append({
+                            'original': consent.file_path,
+                            'destination': dest.split('gs://')[1],
+                        })
+                    self.logger.warning(f'Healthpro consent {src} failed to transfer to {dest}')
                     continue
 
                 self.transfer_count += 1
@@ -50,9 +62,9 @@ class HealthProConsentFile:
 
             # pylint: disable=broad-except
             except Exception as e:
-                logging.warning(f'Healthpro consent transfer process error occurred: {e}')
+                self.logger.warning(f'Healthpro consent transfer process error occurred: {e}')
 
-        logging.info(f'Healthpro consent(s) {self.transfer_count} transferred to {self.hpro_bucket} bucket')
+        self.logger.info(f'Healthpro consent(s) {self.transfer_count} transferred to {self.hpro_bucket} bucket')
 
     def create_path_destination(self, file_path):
         dest_base = "/".join(file_path.strip("/").split('/')[1:])
