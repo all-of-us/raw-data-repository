@@ -31,11 +31,7 @@ class CodebookImporter:
         query = self.session.query(Survey).filter(Survey.redcapProjectId == self.project_id).options(
             joinedload(Survey.code)
         ).options(
-            joinedload(Survey.questions)
-        ).options(
             joinedload(Survey.questions).joinedload(SurveyQuestion.code)
-        ).options(
-            joinedload(Survey.questions).joinedload(SurveyQuestion.options)
         ).options(
             joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
         )
@@ -59,9 +55,9 @@ class CodebookImporter:
     def _code_allowed_for_reuse(self, value: str, code_type: CodeType):
         # Answer codes should automatically be allowed to be reused (checking for the type it will be used as
         #  rather than the type we have it as, in case there's a difference)
-        return code_type == CodeType.ANSWER \
-               or value in self.codes_allowed_for_reuse \
-               or value in self.previously_used_survey_codes
+        is_identified_as_reusable = value in self.codes_allowed_for_reuse
+        is_in_same_survey = value in self.previously_used_survey_codes
+        return code_type == CodeType.ANSWER or is_identified_as_reusable or is_in_same_survey
 
     def initialize_code(self, value, display, code_type):
         new_code = Code(
