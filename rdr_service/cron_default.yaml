@@ -72,7 +72,7 @@ cron:
 - description: Transfer Health Pro consents
   url: /offline/TransferHealthProConsents
   timezone: America/New_York
-  schedule: 1 of jan 12:00 # placeholder schedule until initial backfill is run
+  schedule: every day 22:00
   target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
