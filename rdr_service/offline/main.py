@@ -588,6 +588,12 @@ def genomic_missing_files_clean_up():
 @run_genomic_cron_job('missing_files_resolve_workflow')
 def genomic_missing_files_resolve():
     genomic_pipeline.genomic_missing_files_resolve()
+    return '{"success": "true"}'\
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_gc_data_file_to_table_workflow')
+def reconcile_gc_data_file_to_table():
+    genomic_pipeline.reconcile_gc_data_file_to_table()
     return '{"success": "true"}'
 
 
@@ -873,6 +879,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicMissingFilesResolve",
         endpoint="genomic_missing_files_resolve",
         view_func=genomic_missing_files_resolve,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileGCDataFileToTable",
+        endpoint="reconcile_gc_data_file_to_table",
+        view_func=reconcile_gc_data_file_to_table,
         methods=["GET"]
     )
     offline_app.add_url_rule(

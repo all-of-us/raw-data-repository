@@ -51,8 +51,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao
-)
+    GenomicGcDataFileMissingDao,
+    GcDataFileStagingDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -113,6 +113,7 @@ class GenomicJobController:
         self.reconciler = None
         self.biobank_coupler = None
         self.manifest_compiler = None
+        self.staging_dao = None
         self.storage_provider = storage_provider
         self.genomic_alert_slack = SlackMessageHandler(
             webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_alerts')
@@ -570,6 +571,44 @@ class GenomicJobController:
         logging.info(f"Updated {len(wgs_member_ids)} WGS members.")
 
         self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def reconcile_gc_data_file_to_table(self):
+        # truncate staging table
+        self.staging_dao = GcDataFileStagingDao()
+        self.staging_dao.truncate()
+
+        self.load_gc_data_file_staging()
+
+        # compare genomic_gc_data_file to temp table
+        missing_records = self.staging_dao.get_missing_gc_data_file_records()
+
+        # create genomic_gc_data_file records for missing files
+        for missing_file in missing_records:
+            self.accession_data_files(missing_file.file_path, missing_file.bucket_name)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def load_gc_data_file_staging(self):
+        # Determine bucket mappings to use
+        buckets = config.getSettingJson(config.DATA_BUCKET_SUBFOLDERS_PROD)
+
+        # get files in each bucket and load temp table
+        for bucket in buckets:
+            for folder in buckets[bucket]:
+                blobs = list_blobs(bucket, prefix=folder)
+
+                files = []
+                for blob in blobs:
+                    files.append({
+                        'bucket_name': bucket,
+                        'file_path': f'{bucket}/{blob.name}'
+                    })
+
+                    if len(files) % 10000 == 0:
+                        self.staging_dao.insert_filenames_bulk(files)
+                        files = []
+
+                self.staging_dao.insert_filenames_bulk(files)
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
