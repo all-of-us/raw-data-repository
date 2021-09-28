@@ -143,7 +143,8 @@ class ParticipantSummaryApi(BaseApi):
         return response
 
     def _fetch_hpro_consents(self, pids=None):
-        if not self.user_info.get('roles') == ['healthpro'] or not pids:
+        valid_roles = ['healthpro']
+        if not any(role in valid_roles for role in self.user_info.get('roles')) or not pids:
             return
 
         if type(pids) is not list:
