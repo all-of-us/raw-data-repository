@@ -38,15 +38,15 @@ class CodebookImporter:
         existing_surveys = query.all()
         for survey in existing_surveys:
             # Add the module code
-            self.previously_used_survey_codes.add(survey.code.value)
+            self.previously_used_survey_codes.add(survey.code.value.lower())
 
             # Add the question codes
             for question in survey.questions:
-                self.previously_used_survey_codes.add(question.code.value)
+                self.previously_used_survey_codes.add(question.code.value.lower())
 
                 # Add any option codes
                 for option in question.options:
-                    self.previously_used_survey_codes.add(option.code.value)
+                    self.previously_used_survey_codes.add(option.code.value.lower())
 
     def _save_database_object(self, obj):
         if not self.dry_run:
@@ -55,8 +55,8 @@ class CodebookImporter:
     def _code_allowed_for_reuse(self, value: str, code_type: CodeType):
         # Answer codes should automatically be allowed to be reused (checking for the type it will be used as
         #  rather than the type we have it as, in case there's a difference)
-        is_identified_as_reusable = value in self.codes_allowed_for_reuse
-        is_in_same_survey = value in self.previously_used_survey_codes
+        is_identified_as_reusable = value.lower() in self.codes_allowed_for_reuse
+        is_in_same_survey = value.lower() in self.previously_used_survey_codes
         return code_type == CodeType.ANSWER or is_identified_as_reusable or is_in_same_survey
 
     def initialize_code(self, value, display, code_type):
