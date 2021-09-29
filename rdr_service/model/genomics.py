@@ -583,6 +583,8 @@ class GenomicGCValidationMetrics(Base):
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
 
+    alignmentPctHg38 = Column('alignment_pct_hg38', BigInteger, nullable=True)
+
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
