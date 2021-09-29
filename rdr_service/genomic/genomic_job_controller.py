@@ -573,6 +573,10 @@ class GenomicJobController:
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     def reconcile_gc_data_file_to_table(self):
+        """
+        Entrypoint for reconciliation of GC data buckets to
+        genomic_gc_data_file table.
+        """
         # truncate staging table
         self.staging_dao = GcDataFileStagingDao()
         self.staging_dao.truncate()
