@@ -601,6 +601,7 @@ class GenomicJobController:
         extensions = [file_def['file_type'] for file_def in wgs_file_types_attributes if file_def['required']] + \
                      [file_def['file_type'] for file_def in array_file_types_attributes if file_def['required']]
 
+        extensions.extend(['hard-filtered.gvcf.gz.md5sum', 'hard-filtered.gvcf.gz'])  # need to add gvcf but not req.
         # get files in each bucket and load temp table
         for bucket in buckets:
             for folder in buckets[bucket]:
