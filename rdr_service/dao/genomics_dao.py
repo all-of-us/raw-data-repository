@@ -1227,7 +1227,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             return (
                 session.query(GenomicGCValidationMetrics,
                               GenomicSetMember.biobankId,
-                              GenomicSetMember.sampleId,)
+                              GenomicSetMember.sampleId, )
                 .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
