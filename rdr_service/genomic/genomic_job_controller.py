@@ -26,7 +26,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_gc_validation_metrics_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
-    raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array
+    raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
+    wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
@@ -596,21 +597,30 @@ class GenomicJobController:
         # Determine bucket mappings to use
         buckets = config.getSettingJson(config.DATA_BUCKET_SUBFOLDERS_PROD)
 
+        # get file extensions
+        extensions = [file_def['file_type'] for file_def in wgs_file_types_attributes if file_def['required']] + \
+                     [file_def['file_type'] for file_def in array_file_types_attributes if file_def['required']]
+
         # get files in each bucket and load temp table
         for bucket in buckets:
             for folder in buckets[bucket]:
-                blobs = list_blobs(bucket, prefix=folder)
+                if self.storage_provider:
+                    blobs = self.storage_provider.list(bucket, prefix=folder)
+                else:
+                    blobs = list_blobs(bucket, prefix=folder)
 
                 files = []
                 for blob in blobs:
-                    files.append({
-                        'bucket_name': bucket,
-                        'file_path': f'{bucket}/{blob.name}'
-                    })
+                    # Only write the required files
+                    if any(extension in blob.name for extension in extensions):
+                        files.append({
+                            'bucket_name': bucket,
+                            'file_path': f'{bucket}/{blob.name}'
+                        })
 
-                    if len(files) % 10000 == 0:
-                        self.staging_dao.insert_filenames_bulk(files)
-                        files = []
+                        if len(files) % 10000 == 0:
+                            self.staging_dao.insert_filenames_bulk(files)
+                            files = []
 
                 self.staging_dao.insert_filenames_bulk(files)
 

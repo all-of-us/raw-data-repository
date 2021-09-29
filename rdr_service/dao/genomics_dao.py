@@ -2171,7 +2171,7 @@ class GcDataFileStagingDao(BaseDao):
 
     def truncate(self):
         with self.session() as session:
-            session.execute("TRUNCATE TABLE gc_data_file_staging")
+            session.execute("DELETE FROM gc_data_file_staging WHERE TRUE")
 
     def get_missing_gc_data_file_records(self):
         with self.session() as session:

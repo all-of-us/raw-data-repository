@@ -1982,7 +1982,8 @@ class ReconcileGcDataFileBucket(GenomicManifestBase):
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
 
-        with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
+        with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE,
+                                  storage_provider=self.gscp) as controller:
             controller.reconcile_gc_data_file_to_table()
 
         return 0
