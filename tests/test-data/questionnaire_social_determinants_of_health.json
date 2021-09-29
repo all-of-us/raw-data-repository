@@ -3,7 +3,7 @@
   "group": {
     "concept": [
       {
-        "code": "sdoh_intro",
+        "code": "sdoh",
         "system": "http://terminology.pmi-ops.org/CodeSystem/ppi"
       }
     ],
