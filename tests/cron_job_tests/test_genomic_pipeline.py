@@ -1031,7 +1031,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].alignedQ30Bases, 1000000000004)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
-        self.assertEqual(gc_metrics[0].alignmentPctHg38, 100)
+        self.assertEqual(gc_metrics[0].alignmentPctHg38, '98.709876784')
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
@@ -4748,7 +4748,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Array Concordance"], aw2_raw_records[index].array_concordance)
                 self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
                 self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
-                self.assertEqual(row["Alignment Pct hg38"], str(aw2_raw_records[index].alignment_pct_hg38))
+                self.assertEqual(row["Alignment Pct hg38"], aw2_raw_records[index].alignment_pct_hg38)
                 index += 1
 
         self.assertEqual(index, len(aw2_raw_records))

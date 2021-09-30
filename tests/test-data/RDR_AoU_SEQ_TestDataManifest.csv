@@ -1,6 +1,6 @@
 Biobank ID,Sample ID,BiobankidSampleid,LIMS ID,Mean Coverage,Genome Coverage,AoU HDR Coverage,Sex Concordance,Contamination,Sex Ploidy,Aligned Q30 Bases,Array Concordance,Processing Status,Notes,Sample Source,Alignment Pct hg38
-T2,1002,2_1992,10002,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,100
-T3,1003,3_1993,10003,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,100
-T4,1004,4_1994,10004,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,100
-T5,1005,5_1995,10005,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,100
-T6,1006,6_1996,10006,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,100
+T2,1002,2_1992,10002,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,98.709876784
+T3,1003,3_1993,10003,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,98.709876784
+T4,1004,4_1994,10004,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,98.709876784
+T5,1005,5_1995,10005,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,98.709876784
+T6,1006,6_1996,10006,2,2,2,True,3,XY,1000000000004,True,Pass,This sample passed,Blood,98.709876784

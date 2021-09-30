@@ -450,7 +450,7 @@ class GenomicAW2Raw(Base):
     chipwellbarcode = Column(String(255), nullable=True)
     call_rate = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True)
-    alignment_pct_hg38 = Column(BigInteger, nullable=True)
+    alignment_pct_hg38 = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
@@ -584,7 +584,7 @@ class GenomicGCValidationMetrics(Base):
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
 
-    alignmentPctHg38 = Column('alignment_pct_hg38', BigInteger, nullable=True)
+    alignmentPctHg38 = Column('alignment_pct_hg38', String(255), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
