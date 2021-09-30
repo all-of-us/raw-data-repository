@@ -988,9 +988,11 @@ class GenomicPipelineTest(BaseTestCase):
         pytz.timezone('US/Central').localize(test_date)
 
         with clock.FakeClock(test_date):
-            test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                              bucket_name,
-                                                              folder=subfolder)
+            test_file_name = self._create_ingestion_test_file(
+                'RDR_AoU_SEQ_TestDataManifest.csv',
+                bucket_name,
+                folder=subfolder
+            )
 
         self._update_test_sample_ids()
 
@@ -1029,6 +1031,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].alignedQ30Bases, 1000000000004)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
+        self.assertEqual(gc_metrics[0].alignmentPctHg38, 100)
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
@@ -4709,9 +4712,11 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         # Setup Test file
-        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+        test_file_name = self._create_ingestion_test_file(
+            test_manifest,
+            _FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_BUCKET_FOLDER
+        )
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
