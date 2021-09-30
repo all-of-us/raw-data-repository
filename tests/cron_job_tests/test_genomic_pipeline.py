@@ -371,6 +371,7 @@ class GenomicPipelineTest(BaseTestCase):
         genome_center=None,
         aw3_job_id=None,
         gc_manifest_parent_sample_id=None,
+        sample_source=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -395,6 +396,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.gcSiteId = genome_center
         genomic_set_member.aw3ManifestJobRunID = aw3_job_id
         genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
+        genomic_set_member.gcManifestSampleSource = sample_source
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -484,6 +486,7 @@ class GenomicPipelineTest(BaseTestCase):
                 genome_center=kwargs.get('genome_center'),
                 aw3_job_id=kwargs.get('aw3_job_id'),
                 gc_manifest_parent_sample_id=1000+p,
+                sample_source=kwargs.get('sample_source'),
             )
 
     def _update_site_states(self):
@@ -2880,7 +2883,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source='Whole Blood')
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
@@ -2979,6 +2983,7 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_path",
             "vcf_index_path",
             "vcf_md5_path",
+            "sample_source",
             "callrate",
             "sex_concordance",
             "contamination",
@@ -3045,7 +3050,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, len(stored_samples)+1),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood"
                                                 )
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
@@ -3130,6 +3136,7 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_path",
             "vcf_index_path",
             "vcf_md5_path",
+            "sample_source",
             "callrate",
             "sex_concordance",
             "contamination",

@@ -2755,6 +2755,7 @@ class ManifestDefinitionProvider:
                 "vcf_path",
                 "vcf_index_path",
                 "vcf_md5_path",
+                "sample_source",
                 "callrate",
                 "sex_concordance",
                 "contamination",
