@@ -102,6 +102,7 @@ CONSENT_REPORT_SQL_BODY =  """
                    -- Adding signing date details to data pull to support new filtering logic on the results
                    cf.signing_date,
                    cf.expected_sign_date,
+                   CASE WHEN cf.sync_status = 3 then DATE(cf.modified) ELSE NULL END AS resolved_date,
                    -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
                    -- (1 if error found)
                    NOT cf.file_exists AS missing_file,
@@ -145,6 +146,12 @@ DAILY_CONSENTS_SQL_FILTER = """
     """
 
 # -- Weekly report queries --
+
+# For dashboard, pull all consent validation records in NEEDS_CORRECTING or OBSOLETE status, without any date filtering
+PDR_CONSENT_VALIDATION_EXTRACT_FILTER = """
+            WHERE ps.{status_field} = 1
+            AND cf.sync_status IN (1, 3)
+"""
 
 # Filter to produce a report of all remaining NEEDS_CORRECTING consents of a specified type, up to and including the
 # specified end date for this report
@@ -503,6 +510,8 @@ class ConsentReport(object):
                               (df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
                               (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)]
 
+        print(f'Unfiltered for consent version false positives: {df.shape[0]}, filtered: {filtered_df.shape[0]}')
+
         return filtered_df
 
     def _get_consent_validation_dataframe(self, sql_template):
@@ -720,7 +729,10 @@ class WeeklyConsentReport(ConsentReport):
         self.end_date = args.end_date or (datetime.now() - timedelta(1))
         self.start_date = args.start_date or (self.end_date - timedelta(7))
         self.report_date = datetime.now()
-        self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
+        if self.args.pdr_extract:
+            self.report_sql = CONSENT_REPORT_SQL_BODY + PDR_CONSENT_VALIDATION_EXTRACT_FILTER + VIBRENT_SQL_FILTER
+        else:
+            self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
         self.sheet_rows = 800
         # Number of worksheets to archive in the file (will do rolling deletion of oldest weekly worksheets/tabs)
         self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
@@ -930,6 +942,21 @@ class WeeklyConsentReport(ConsentReport):
 
         self.row_pos += 1
 
+    def create_pdr_data_extract(self):
+        """
+        Dump the consent validation extract data to a table for NiFi to transfer to PDR
+        """
+
+        # TODO:  For now, dumping to csv until table structure is in place in RDR and PDR
+        self.consent_df.to_csv('pdr_consent_validation_extract.csv',
+                               index=False,
+                               chunksize=10000,
+                               columns=['participant_id', 'hpo', 'organization', 'type', 'consent_authored_date',
+                                        'sync_status','missing_file', 'signature_missing', 'invalid_signing_date',
+                                        'invalid_dob','invalid_age_at_consent', 'checkbox_unchecked',
+                                        'non_va_consent_for_va', 'va_consent_for_non_va', 'resolved_date'],
+                               date_format='%Y-%m-%d %H:%M:%S')
+
 
     def create_weekly_report(self, spreadsheet):
         existing_sheets = spreadsheet.worksheets()
@@ -1008,10 +1035,13 @@ class WeeklyConsentReport(ConsentReport):
         # couldn't find signature/signing date, even though the files looked okay on visual inspection
         self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
 
-        # Get all the resolved/OBSOLETE issues for generating resolution stats
-        self.resolved_df = self.get_resolved_consent_issues_dataframe()
-        _logger.info('Generating report data...')
-        self.create_weekly_report(gs_file)
+        if self.args.pdr_extract:
+            self.create_pdr_data_extract()
+        else:
+            # Get all the resolved/OBSOLETE issues for generating resolution stats
+            self.resolved_df = self.get_resolved_consent_issues_dataframe()
+            _logger.info('Generating report data...')
+            self.create_weekly_report(gs_file)
 
         _logger.info('Report complete')
 
@@ -1047,6 +1077,8 @@ def run():
                         help="Only generate the googlesheet report, skip generating the CSV file")
     parser.add_argument("--csv-only", default=False, action="store_true",
                         help="Only generate the CSV errors file, skip generating google sheet content")
+    parser.add_argument("--pdr-extract", default=False, action="store_true",
+                        help="Populate validation data table that will be pushed to PDR")
     parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES)}}}.'
     args = parser.parse_args()
 
