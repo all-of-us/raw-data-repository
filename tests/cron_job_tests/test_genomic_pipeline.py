@@ -4748,44 +4748,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Array Concordance"], aw2_raw_records[index].array_concordance)
                 self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
                 self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
+                self.assertEqual(row["Alignment Pct hg38"], str(aw2_raw_records[index].alignment_pct_hg38))
                 index += 1
 
         self.assertEqual(index, len(aw2_raw_records))
-
-    def test_get_latest_raw_file(self):
-        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-5.csv")
-        for num in range(3):
-            if num == 2:
-                g_type = 'SEQ'
-            else:
-                g_type = 'GEN'
-            aw1_manifest_filename = f"RDR_AoU_{g_type}_PKG-1908-218051_v{num}.csv"
-            self._write_cloud_csv(
-                aw1_manifest_filename,
-                aw1_manifest_file,
-                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-                folder=_FAKE_GENOTYPING_FOLDER,
-            )
-            test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-            genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
-            time.sleep(10)
-
-        biobank_id = '2'
-        genome_file_type = 'GEN'
-
-        all_raw_records = self.aw1_raw_dao.get_all()
-        filtered_records = [rec for rec in all_raw_records
-                            if rec.biobank_id == biobank_id
-                            and genome_file_type in rec.file_path]
-        sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
-        sorted_record = sorted_records[0]
-
-        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
-            biobank_id=int(biobank_id),
-            genome_type='aou_array'
-        )
-        self.assertEqual(sorted_record.id, dao_record.id)
-        self.assertEqual(sorted_record.file_path, dao_record.file_path)
 
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file

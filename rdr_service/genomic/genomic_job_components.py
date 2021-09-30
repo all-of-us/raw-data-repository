@@ -387,6 +387,7 @@ class GenomicFileIngester:
             "notes": "notes",
             "chipwellbarcode": "chipwellbarcode",
             "call_rate": "callrate",
+            "alignment_pct_hg38": "alignmentpcthg38",
         }
 
     def _ingest_aw1_manifest(self, data):
