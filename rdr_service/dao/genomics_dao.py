@@ -32,7 +32,7 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -2162,6 +2162,31 @@ class GenomicGcDataFileDao(BaseDao):
                 GenomicGcDataFile.file_path == file_path,
                 GenomicGcDataFile.ignore_flag == 0
             ).all()
+
+
+class GcDataFileStagingDao(BaseDao):
+    def __init__(self):
+        super(GcDataFileStagingDao, self).__init__(
+            GcDataFileStaging, order_by_ending=['id'])
+
+    def truncate(self):
+        with self.session() as session:
+            session.execute("DELETE FROM gc_data_file_staging WHERE TRUE")
+
+    def get_missing_gc_data_file_records(self):
+        with self.session() as session:
+            return session.query(
+                GcDataFileStaging
+            ).outerjoin(
+                GenomicGcDataFile,
+                GcDataFileStaging.file_path == GenomicGcDataFile.file_path
+            ).filter(
+                GenomicGcDataFile.id.is_(None)
+            ).all()
+
+    def insert_filenames_bulk(self, files):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, files)
 
 
 class GenomicGcDataFileMissingDao(UpdatableDao):

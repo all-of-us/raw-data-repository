@@ -757,3 +757,16 @@ class GenomicGcDataFileMissing(Base):
 
 event.listen(GenomicGcDataFileMissing, 'before_insert', model_insert_listener)
 event.listen(GenomicGcDataFileMissing, 'before_update', model_update_listener)
+
+
+class GcDataFileStaging(Base):
+    """
+    Staging table for "GC data file reconciliation to table" job
+    Cleared and reloaded every job run
+    """
+
+    __tablename__ = 'gc_data_file_staging'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    bucket_name = Column(String(128), nullable=False, index=True)
+    file_path = Column(String(255), nullable=False, index=True)

@@ -1969,6 +1969,26 @@ class LoadRawManifest(GenomicManifestBase):
         return 0
 
 
+class ReconcileGcDataFileBucket(GenomicManifestBase):
+    """
+    Loads a manifest in GCS to the raw manifest table
+    currently only supports AW1/AW2 manifests
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ReconcileGcDataFileBucket, self).__init__(args, gcp_env)
+
+    def run(self):
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+
+        with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE,
+                                  storage_provider=self.gscp) as controller:
+            controller.reconcile_gc_data_file_to_table()
+
+        return 0
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2021,6 +2041,9 @@ def get_process_for_run(args, gcp_env):
         },
         'load-raw-manifest': {
             'process': LoadRawManifest(args, gcp_env)
+        },
+        'reconcile-gc-data-file': {
+            'process': ReconcileGcDataFileBucket(args, gcp_env)
         },
     }
 
@@ -2169,6 +2192,7 @@ def run():
 
     # Backfill GenomicFileProcessed UploadDate
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
+    recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
