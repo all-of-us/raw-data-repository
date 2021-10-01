@@ -80,10 +80,16 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         self.consent_dao = consent_dao
         self.participant_ids = set()
         self.results = self._build_consent_list_structure()
+        self._max_batch_count = 500
 
     def add_result(self, result: ParsingResult):
         self.results[result.participant_id][result.type].append(result)
         self.participant_ids.add(result.participant_id)
+
+        if len(self.participant_ids) > self._max_batch_count:
+            self.process_results()
+            self.results = self._build_consent_list_structure()
+            self.participant_ids = set()
 
     def process_results(self):
         organized_previous_results = self._build_consent_list_structure()
@@ -97,20 +103,22 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         results_to_update = []
         for participant_id, consent_type_dict in self.results.items():
             for consent_type, result_list in consent_type_dict.items():
-                ready_for_sync = self._find_file_ready_for_sync(result_list)
                 previous_type_list: Collection[ParsingResult] = organized_previous_results[participant_id][consent_type]
-                if ready_for_sync:
-                    for result in previous_type_list:
-                        if result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
-                            result.sync_status = ConsentSyncStatus.OBSOLETE
-                            results_to_update.append(result)
-                    results_to_update.append(ready_for_sync)
-                else:
-                    new_results = _ValidationOutputHelper.get_new_validation_results(
-                        existing_results=previous_type_list,
-                        results_to_filter=result_list
-                    )
-                    results_to_update.extend(new_results)
+                new_results = _ValidationOutputHelper.get_new_validation_results(
+                    existing_results=previous_type_list,
+                    results_to_filter=result_list
+                )
+
+                if new_results:
+                    ready_for_sync = self._find_file_ready_for_sync(result_list)
+                    if ready_for_sync:
+                        for result in previous_type_list:
+                            if result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
+                                result.sync_status = ConsentSyncStatus.OBSOLETE
+                                results_to_update.append(result)
+                        results_to_update.append(ready_for_sync)
+                    else:
+                        results_to_update.extend(new_results)
 
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
 
@@ -202,6 +210,12 @@ class _ValidationOutputHelper:
         if file.file_exists:
             return any(
                 [file.file_path == possible_matching_file.file_path for possible_matching_file in file_collection]
+            ) or any(
+                [file.type == possible_matching_file.type
+                 and possible_matching_file.sync_status in
+                 (ConsentSyncStatus.READY_FOR_SYNC, ConsentSyncStatus.SYNC_COMPLETE)
+                 and file.participant_id == possible_matching_file.participant_id
+                 for possible_matching_file in file_collection]
             )
         else:
             return any([
@@ -276,6 +290,41 @@ class ConsentValidationController:
 
         self.consent_dao.batch_update_consent_files(validation_updates, session)
 
+    def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
+                                      min_authored_date: date = None,
+                                      types_to_validate: Collection[ConsentType] = None):
+        validator = self._build_validator(summary)
+
+        if self._check_consent_type(ConsentType.PRIMARY, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForStudyEnrollment,
+            authored=summary.consentForStudyEnrollmentFirstYesAuthored,
+            min_authored=min_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_primary_validation_results()))
+        if self._check_consent_type(ConsentType.CABOR, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForCABoR,
+            authored=summary.consentForCABoRAuthored,
+            min_authored=min_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_cabor_validation_results()))
+        if self._check_consent_type(ConsentType.EHR, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForElectronicHealthRecords,
+            authored=summary.consentForElectronicHealthRecordsAuthored,
+            min_authored=min_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_ehr_validation_results()))
+        if self._check_consent_type(ConsentType.GROR, types_to_validate) and self._has_consent(
+            consent_status=summary.consentForGenomicsROR,
+            authored=summary.consentForGenomicsRORAuthored,
+            min_authored=min_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
+        if self._check_consent_type(ConsentType.PRIMARY_UPDATE, types_to_validate) and self._has_primary_update_consent(
+            summary=summary,
+            min_authored=min_authored_date
+        ):
+            output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
+
     def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
                                 max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
@@ -284,39 +333,11 @@ class ConsentValidationController:
             start_date=min_consent_date,
             end_date=max_consent_date
         ):
-            validator = self._build_validator(summary)
-
-            if self._has_consent(
-                consent_status=summary.consentForStudyEnrollment,
-                authored=summary.consentForStudyEnrollmentFirstYesAuthored,
-                min_authored=min_consent_date
-            ):
-                output_strategy.add_all(self._process_validation_results(validator.get_primary_validation_results()))
-            if self._has_consent(
-                consent_status=summary.consentForCABoR,
-                authored=summary.consentForCABoRAuthored,
-                min_authored=min_consent_date
-            ):
-                output_strategy.add_all(self._process_validation_results(validator.get_cabor_validation_results()))
-            if self._has_consent(
-                consent_status=summary.consentForElectronicHealthRecords,
-                authored=summary.consentForElectronicHealthRecordsAuthored,
-                min_authored=min_consent_date
-            ):
-                output_strategy.add_all(self._process_validation_results(validator.get_ehr_validation_results()))
-            if self._has_consent(
-                consent_status=summary.consentForGenomicsROR,
-                authored=summary.consentForGenomicsRORAuthored,
-                min_authored=min_consent_date
-            ):
-                output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
-            if self._has_primary_update_consent(
+            self.validate_participant_consents(
                 summary=summary,
-                min_authored=min_consent_date
-            ):
-                output_strategy.add_all(
-                    self._process_validation_results(validator.get_primary_update_validation_results())
-                )
+                output_strategy=output_strategy,
+                min_authored_date=min_consent_date
+            )
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
@@ -332,6 +353,13 @@ class ConsentValidationController:
             output_strategy.add_all(validator.get_gror_validation_results())
         if self._has_primary_update_consent(summary):
             output_strategy.add_all(validator.get_primary_update_validation_results())
+
+    @classmethod
+    def _check_consent_type(cls, consent_type: ConsentType, to_check_list: Collection[ConsentType]):
+        if to_check_list is None:
+            return True
+        else:
+            return consent_type in to_check_list
 
     @classmethod
     def _process_validation_results(cls, results: List[ParsingResult]):
