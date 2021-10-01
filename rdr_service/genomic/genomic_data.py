@@ -37,6 +37,7 @@ class GenomicQueryClass:
                     distinct(GenomicGCValidationMetrics.chipwellbarcode),
                     sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                     GenomicSetMember.sampleId,
+                    sqlalchemy.func.concat(GenomicSetMember.biobankId, GenomicSetMember.sampleId),
                     GenomicSetMember.sexAtBirth,
                     GenomicSetMember.gcSiteId,
                     GenomicGCValidationMetrics.idatRedPath,
