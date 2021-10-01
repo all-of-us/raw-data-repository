@@ -2745,6 +2745,7 @@ class ManifestDefinitionProvider:
                 "chipwellbarcode",
                 "biobank_id",
                 "sample_id",
+                "biobankidsampleid",
                 "sex_at_birth",
                 "site_id",
                 "red_idat_path",
