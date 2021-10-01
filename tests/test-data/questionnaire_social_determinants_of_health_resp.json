@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "id": "107251069",
+  "authored": "2018-07-23T21:21:12Z",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "group": {
+    "linkId": "root_group",
+    "title": "Social Determinants of Health",
+    "question": [
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "SDOH_2",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Agree"
+            }
+          }
+        ],
+        "linkId": "6252",
+        "text": "People around here are willing to help their neighbors. "
+      }
+    ],
+    "text": "Social Determinants of Health"
+  }
+}
