@@ -50,7 +50,7 @@ sqlalchemy
 alembic
 fhirclient
 protorpc
-dictalchemy
+dictalchemy3
 sqlparse
 
 # JSON schema management

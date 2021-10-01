@@ -1838,7 +1838,7 @@ class GenomicReconciler:
     def reconcile_metrics_to_data_files(self, genome_type, _gc_site_id):
         if genome_type == "wgs":
             logging.info("Running WGS reconciliation to Data Files...")
-            metrics = self.metrics_dao.get_with_missing_wsg_files(_gc_site_id)
+            metrics = self.metrics_dao.get_with_missing_wgs_files(_gc_site_id)
             identifier = 'sampleId'
             lookup_method = self.data_file_dao.get_with_sample_id
             file_types = genomic_mappings.wgs_file_types_attributes

@@ -184,6 +184,24 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]['order']['tests'][0]['test']
         self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], cleaned_barcode)
 
+    def test_barcode_length_exceeded(self):
+        bad_barcode = '1' * 24
+        self.put_request['extension'][0]['valueString'] = bad_barcode
+
+        payload = self.send_post(
+            "SupplyRequest",
+            request_data=self.post_request,
+            expected_status=http.client.CREATED
+        )
+        location = payload.location.rsplit("/", 1)[-1]
+
+        response = self.send_put(
+            f"SupplyRequest/{location}",
+            request_data=self.put_request,
+            expected_status=400
+        )
+        self.assertEqual('Given barcode exceeds maximum character length', response.json['message'])
+
     def test_biobank_order_finalized_and_identifier_created(self):
         self.send_post(
             "SupplyRequest",

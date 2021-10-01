@@ -31,8 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao
-)
+    GenomicGcDataFileMissingDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -85,7 +84,7 @@ _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
-_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'baylor_fake_genomic_center_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'fake_genomic_center_bucket-baylor'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
 _FAKE_GENOTYPING_FOLDER = 'AW1_genotyping_sample_manifests'
 _FAKE_SEQUENCING_FOLDER = 'AW1_wgs_sample_manifests'
@@ -5205,3 +5204,135 @@ class GenomicPipelineTest(BaseTestCase):
         for file in will_be_deleted:
             self.assertIsNone(self.missing_file_dao.get(file.id))
 
+    def test_update_members_state_resolved_data_files(self):
+        # create test genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        # Create test members
+        for i in range(1, 4):
+            for genome_type in ("aou_array", "aou_wgs"):
+                self.data_generator.create_database_genomic_set_member(
+                    participantId=i,
+                    genomicSetId=1,
+                    biobankId=i,
+                    collectionTubeId=10 + i,
+                    sampleId=100 + i,
+                    gcManifestParentSampleId=1000 + i,
+                    genomeType=genome_type,
+                    genomicWorkflowState=GenomicWorkflowState.AW2_MISSING
+                )
+        members = [(i.id, i.genomeType) for i in self.member_dao.get_all()]
+
+        # Create test metrics for members with data files
+        for member in members:
+            if member[1] == "aou_array":
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=member[0],
+                    idatRedReceived=1,
+                    idatRedPath="test/path",
+                    idatGreenReceived=1,
+                    idatGreenPath="test/path",
+                    idatRedMd5Received=1,
+                    idatRedMd5Path="test/path",
+                    idatGreenMd5Received=0 if member[0] == 5 else 1,  # one still missing a file
+                    idatGreenMd5Path="test/path",
+                    vcfReceived=1,
+                    vcfPath="test/path",
+                    vcfMd5Received=1,
+                    vcfMd5Path="test/path",
+                    vcfTbiReceived=1,
+                    vcfTbiPath="test/path",
+                )
+
+            if member[1] == "aou_wgs":
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=member[0],
+                    hfVcfReceived=1,
+                    hfVcfPath="test/path",
+                    hfVcfTbiReceived=1,
+                    hfVcfTbiPath="test/path",
+                    hfVcfMd5Received=0 if member[0] == 6 else 1,  # one still missing a file,
+                    hfVcfMd5Path="test/path",
+                    cramReceived=1,
+                    cramPath="test/path",
+                    cramMd5Received=1,
+                    cramMd5Path="test/path",
+                    craiReceived=1,
+                    craiPath="test/path",
+                )
+
+        # run update_members_state_resolved_data_files pipeline
+        genomic_pipeline.update_members_state_resolved_data_files()
+
+        # Test all members are in correct state
+        members = self.member_dao.get_all()
+        for member in members:
+            if member.id in (5, 6):
+                self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+            elif member.genomeType == "aou_array":
+                self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+            else:
+                self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
+
+    def test_reconcile_gc_data_file_to_table(self):
+        # Create files in bucket
+        array_prefix = "Genotyping_sample_raw_data"
+
+        array_test_files_jh = (
+            f'{array_prefix}/10001_R01C01.vcf.gz',
+            f'{array_prefix}/10001_R01C01.vcf.gz.tbi',
+            f'{array_prefix}/10001_R01C01.vcf.gz.md5sum',
+            f'{array_prefix}/10001_R01C01_Red.idat',
+            f'{array_prefix}/10001_R01C01_Grn.idat',
+            f'{array_prefix}/10001_R01C01_Red.idat.md5sum',
+            f'{array_prefix}/10002_R01C02.vcf.gz',
+            f'{array_prefix}/10002_R01C02.vcf.gz.tbi',
+            f'{array_prefix}/10002_R01C02.vcf.gz.md5sum',
+            f'{array_prefix}/10002_R01C02_Red.idat',
+            f'{array_prefix}/10002_R01C02_Grn.idat',
+            f'{array_prefix}/10002_R01C02_Red.idat.md5sum',
+            f'{array_prefix}/10002_R01C02_Grn.idat.md5sum',
+        )
+        for file in array_test_files_jh:
+            self._write_cloud_csv(
+                file,
+                "atgcatgc",
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+            )
+
+        #files = list_blobs(_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR, array_prefix)
+
+        # insert file record into the the gc_data_file_table
+        self.data_generator.create_database_gc_data_file_record(
+            file_path=f"{_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR}/{array_test_files_jh[0]}",
+            gc_site_id="jh",
+            bucket_name=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+            file_prefix=array_prefix,
+            file_name=array_test_files_jh[0],
+            file_type="vcf.gz",
+            identifier_type="chipwellbarcode",
+            identifier_value="10001_R01C01",
+        )
+
+        nonprod_dict = {
+            "fake_genomic_center_bucket-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
+        }
+
+        config.override_setting(config.DATA_BUCKET_SUBFOLDERS_PROD, nonprod_dict)
+
+        genomic_pipeline.reconcile_gc_data_file_to_table()
+
+        # Test files inserted into genomic_gc_data_file
+        gc_data_files = self.data_file_dao.get_all()
+
+        self.assertEqual(13, len(gc_data_files))
+        for file in gc_data_files:
+            self.assertEqual('jh', file.gc_site_id)
+            self.assertEqual(array_prefix, file.file_prefix)
+
+        runs = self.job_run_dao.get_all()
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, runs[0].runResult)

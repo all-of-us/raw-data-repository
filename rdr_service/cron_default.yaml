@@ -69,6 +69,11 @@ cron:
   timezone: America/New_York
   schedule: every sunday 3:00
   target: offline
+- description: Transfer Health Pro consents
+  url: /offline/TransferHealthProConsents
+  timezone: America/New_York
+  schedule: every day 22:00
+  target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
@@ -153,5 +158,15 @@ cron:
   url: /offline/GenomicMissingFilesResolve
   timezone: America/New_York
   schedule: every 6 hours
+  target: offline
+- description: Reconcile GC Data File to Table
+  url: /offline/ReconcileGCDataFileToTable
+  timezone: America/New_York
+  schedule: every tuesday 02:00
+  target: offline
+- description: Genomic Update Members With Missing Files Resolved
+  url: /offline/GenomicUpdateMembersStateResolved
+  timezone: America/New_York
+  schedule: every 12 hours
   target: offline
 

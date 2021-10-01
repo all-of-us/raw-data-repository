@@ -116,6 +116,8 @@ COPE_FORM_ID_MAP = 'cope_form_id_map'
 HPO_LITE_AWARDEE = 'hpo_lite_awardee'
 HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
 HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
+DATA_BUCKET_SUBFOLDERS_PROD = 'data_bucket_subfolders_prod'
+HEALTHPRO_CONSENT_BUCKET = 'hpro_consent_bucket'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
@@ -139,7 +141,7 @@ DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
 LOCAL_AUTH_USER = "example@example.com"
 
 # Allow requests which are never permitted in production. These include fake
-# timestamps for reuqests, unauthenticated requests to create fake data, etc.
+# timestamps for requests, unauthenticated requests to create fake data, etc.
 ALLOW_NONPROD_REQUESTS = "allow_nonprod_requests"
 
 # Settings for e-mail alerts for failed jobs.

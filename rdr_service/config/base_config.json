@@ -88,9 +88,16 @@
     "feedback_record_reconciliation_workflow": 1,
     "missing_files_clean_up_workflow": 1,
     "missing_files_resolve_workflow": 1,
+    "reconcile_gc_data_file_to_table_workflow": 1,
+    "members_state_resolved_workflow": 1,
     "wgs_reconciliation_workflow": 1,
     "w1_manifest_workflow": 0,
     "w2_manifest_workflow": 0,
     "w3_manifest_workflow": 0
+  },
+  "data_bucket_subfolders_prod": {
+    "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
+    "prod-genomics-data-broad": ["Genotyping_sample_raw_data", "wgs_sample_raw_data"],
+    "prod-genomics-data-northwest": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"]
   }
 }

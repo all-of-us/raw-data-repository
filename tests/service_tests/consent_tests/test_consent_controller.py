@@ -175,6 +175,32 @@ class ConsentControllerTest(BaseTestCase):
             ]
         )
 
+    def test_validating_specific_consents(self):
+        """Make sure only the provided consent types are validated when specified"""
+        # Create a participant that has consented to the primary, ehr, and gror consents
+        summary = ParticipantSummary(
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+            consentForElectronicHealthRecords=QuestionnaireStatus.SUBMITTED,
+            consentForGenomicsROR=QuestionnaireStatus.SUBMITTED
+        )
+
+        # Mock out the consent files for the participant
+        primary_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/primary', file_exists=True)
+        self.consent_validator_mock.get_primary_validation_results.return_value = [primary_file]
+        ehr_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/ehr', file_exists=True)
+        self.consent_validator_mock.get_ehr_validation_results.return_value = [ehr_file]
+        gror_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror', file_exists=True)
+        self.consent_validator_mock.get_gror_validation_results.return_value = [gror_file]
+
+        # Make sure that only specific consent types are validated
+        self.consent_controller.validate_participant_consents(
+            summary=summary,
+            output_strategy=self.store_strategy,
+            types_to_validate=[ConsentType.GROR, ConsentType.EHR]
+        )
+        self.store_strategy.process_results()
+        self.assertConsentValidationResultsUpdated(expected_updates=[ehr_file, gror_file])
+
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""
         actual_updates: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]

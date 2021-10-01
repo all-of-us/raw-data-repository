@@ -57,7 +57,7 @@ class BiobankSpecimenApi(BiobankApiBase):
                     try:
                         self._check_required_specimen_fields(specimen_json)
 
-                        m = self.dao.from_client_json(specimen_json)
+                        m = self.dao.from_client_json(specimen_json, session=session)
                         if m.id is not None:
                             self.dao.update_with_session(session, m)
                         else:
