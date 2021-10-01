@@ -371,6 +371,7 @@ class GenomicPipelineTest(BaseTestCase):
         genome_center=None,
         aw3_job_id=None,
         gc_manifest_parent_sample_id=None,
+        sample_source=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -395,6 +396,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.gcSiteId = genome_center
         genomic_set_member.aw3ManifestJobRunID = aw3_job_id
         genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
+        genomic_set_member.gcManifestSampleSource = sample_source
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -484,6 +486,7 @@ class GenomicPipelineTest(BaseTestCase):
                 genome_center=kwargs.get('genome_center'),
                 aw3_job_id=kwargs.get('aw3_job_id'),
                 gc_manifest_parent_sample_id=1000+p,
+                sample_source=kwargs.get('sample_source'),
             )
 
     def _update_site_states(self):
@@ -987,9 +990,11 @@ class GenomicPipelineTest(BaseTestCase):
         pytz.timezone('US/Central').localize(test_date)
 
         with clock.FakeClock(test_date):
-            test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                              bucket_name,
-                                                              folder=subfolder)
+            test_file_name = self._create_ingestion_test_file(
+                'RDR_AoU_SEQ_TestDataManifest.csv',
+                bucket_name,
+                folder=subfolder
+            )
 
         self._update_test_sample_ids()
 
@@ -1028,6 +1033,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].alignedQ30Bases, 1000000000004)
         self.assertEqual(gc_metrics[0].processingStatus, 'Pass')
         self.assertEqual(gc_metrics[0].notes, 'This sample passed')
+        self.assertEqual(gc_metrics[0].alignmentPctHg38, '98.709876784')
 
         # Test file processing queue
         files_processed = self.file_processed_dao.get_all()
@@ -2880,7 +2886,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source='Whole Blood')
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
@@ -2979,6 +2986,7 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_path",
             "vcf_index_path",
             "vcf_md5_path",
+            "sample_source",
             "callrate",
             "sex_concordance",
             "contamination",
@@ -3045,7 +3053,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, len(stored_samples)+1),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood"
                                                 )
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
@@ -3130,6 +3139,7 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_path",
             "vcf_index_path",
             "vcf_md5_path",
+            "sample_source",
             "callrate",
             "sex_concordance",
             "contamination",
@@ -4708,9 +4718,11 @@ class GenomicPipelineTest(BaseTestCase):
             )
 
         # Setup Test file
-        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
-                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
-                                                          folder=_FAKE_BUCKET_FOLDER)
+        test_file_name = self._create_ingestion_test_file(
+            test_manifest,
+            _FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_BUCKET_FOLDER
+        )
 
         test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
 
@@ -4742,44 +4754,10 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Array Concordance"], aw2_raw_records[index].array_concordance)
                 self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
                 self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
+                self.assertEqual(row["Alignment Pct hg38"], aw2_raw_records[index].alignment_pct_hg38)
                 index += 1
 
         self.assertEqual(index, len(aw2_raw_records))
-
-    def test_get_latest_raw_file(self):
-        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-5.csv")
-        for num in range(3):
-            if num == 2:
-                g_type = 'SEQ'
-            else:
-                g_type = 'GEN'
-            aw1_manifest_filename = f"RDR_AoU_{g_type}_PKG-1908-218051_v{num}.csv"
-            self._write_cloud_csv(
-                aw1_manifest_filename,
-                aw1_manifest_file,
-                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-                folder=_FAKE_GENOTYPING_FOLDER,
-            )
-            test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-            genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
-            time.sleep(10)
-
-        biobank_id = '2'
-        genome_file_type = 'GEN'
-
-        all_raw_records = self.aw1_raw_dao.get_all()
-        filtered_records = [rec for rec in all_raw_records
-                            if rec.biobank_id == biobank_id
-                            and genome_file_type in rec.file_path]
-        sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
-        sorted_record = sorted_records[0]
-
-        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
-            biobank_id=int(biobank_id),
-            genome_type='aou_array'
-        )
-        self.assertEqual(sorted_record.id, dao_record.id)
-        self.assertEqual(sorted_record.file_path, dao_record.file_path)
 
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file

@@ -46,6 +46,7 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.vcfPath,
                     GenomicGCValidationMetrics.vcfTbiPath,
                     GenomicGCValidationMetrics.vcfMd5Path,
+                    GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.callRate,
                     GenomicGCValidationMetrics.sexConcordance,
                     GenomicGCValidationMetrics.contamination,

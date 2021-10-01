@@ -387,6 +387,7 @@ class GenomicFileIngester:
             "notes": "notes",
             "chipwellbarcode": "chipwellbarcode",
             "call_rate": "callrate",
+            "alignment_pct_hg38": "alignmentpcthg38",
         }
 
     def _ingest_aw1_manifest(self, data):
@@ -688,11 +689,9 @@ class GenomicFileIngester:
         # Validate and clean contamination data
         try:
             row['contamination'] = float(row['contamination'])
-
             # Percentages shouldn't be less than 0
             if row['contamination'] < 0:
                 row['contamination'] = 0
-
         except ValueError:
             if row['processingstatus'].lower() != 'pass':
                 return row
@@ -1025,7 +1024,7 @@ class GenomicFileIngester:
                 genome_type
             )
 
-            if member is not None:
+            if member:
                 row_copy = self.prep_aw2_row_attributes(row_copy, member)
 
                 if row_copy == GenomicSubProcessResult.ERROR:
@@ -1035,11 +1034,9 @@ class GenomicFileIngester:
                 existing_metrics_obj = self.metrics_dao.get_metrics_by_member_id(member.id)
 
                 if existing_metrics_obj is not None:
-
                     if self.controller.skip_updates:
                         # when running tool, updates can be skipped
                         continue
-
                     else:
                         metric_id = existing_metrics_obj.id
                 else:
@@ -1369,6 +1366,8 @@ class GenomicFileValidator:
                 "arrayconcordance",
                 "processingstatus",
                 "notes",
+                "samplesource",
+                "alignmentpcthg38",
             ),
             'gen': (
                 "biobankid",
@@ -2755,6 +2754,7 @@ class ManifestDefinitionProvider:
                 "vcf_path",
                 "vcf_index_path",
                 "vcf_md5_path",
+                "sample_source",
                 "callrate",
                 "sex_concordance",
                 "contamination",
