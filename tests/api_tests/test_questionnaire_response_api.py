@@ -735,6 +735,20 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         summary = self.send_get("Participant/%s/Summary" % participant_id)
         self.assertEqual(expected["primaryLanguage"], summary["primaryLanguage"])
 
+    def test_social_determinants_of_health_questionnaire(self):
+        with FakeClock(TIME_1):
+            participant_id = self.create_participant()
+            self.send_consent(participant_id, language="es")
+
+        questionnaire_id = self.create_questionnaire("questionnaire_social_determinants_of_health.json")
+        resource = self._load_response_json("questionnaire_social_determinants_of_health_resp.json", questionnaire_id, participant_id)
+        self._save_codes(resource)
+        self.send_post(_questionnaire_response_url(participant_id), resource)
+
+        summary = self.send_get("Participant/%s/Summary" % participant_id)
+        self.assertEqual(summary['questionnaireOnSocialDeterminantsOfHealth'], 'SUBMITTED')
+        self.assertEqual(summary['questionnaireOnSocialDeterminantsOfHealthAuthored'], '2018-07-23T21:21:12')
+
     def test_invalid_questionnaire(self):
         participant_id = self.create_participant()
         questionnaire_id = self.create_questionnaire("questionnaire1.json")

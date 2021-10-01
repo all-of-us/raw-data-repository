@@ -69,6 +69,7 @@ participant_summary_default_values = {
     "questionnaireOnMedicalHistory": "UNSET",
     "questionnaireOnMedications": "UNSET",
     "questionnaireOnOverallHealth": "UNSET",
+    "questionnaireOnSocialDeterminantsOfHealth": "UNSET",
     "questionnaireOnLifestyle": "UNSET",
     "questionnaireOnTheBasics": "SUBMITTED",
     "questionnaireOnCopeMay": "UNSET",
