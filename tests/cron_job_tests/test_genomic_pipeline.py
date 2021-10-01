@@ -3473,14 +3473,14 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_hf_path",
             "vcf_hf_index_path",
             "vcf_hf_md5_path",
-            "vcf_raw_path",
-            "vcf_raw_index_path",
-            "vcf_raw_md5_path",
-            "cram_path",
             "cram_md5_path",
             "crai_path",
             "gvcf_path",
             "gvcf_md5_path",
+            "sample_source",
+            "sex_ploidy",
+            "alignment_pct_hg38",
+            "cram_path",
             "contamination",
             "sex_concordance",
             "processing_status",
@@ -3519,6 +3519,11 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.cramPath, row["cram_path"])
             self.assertEqual(metric.cramMd5Path, row["cram_md5_path"])
             self.assertEqual(metric.craiPath, row["crai_path"])
+
+            self.assertEqual(metric.gvcfPath, row["gvcf_path"])
+            self.assertEqual(metric.gvcfMd5Path, row["gvcf_md5_path"])
+            self.assertEqual(metric.sexPloidy, row["sex_ploidy"])
+            self.assertEqual(metric.alignmentPctHg38, row["alignment_pct_hg38"])
 
             # Test GC metrics columns
             self.assertEqual(metric.contamination, row['contamination'])
@@ -3657,10 +3662,10 @@ class GenomicPipelineTest(BaseTestCase):
             if (i + 1) == len(current_metrics):
                 metric = self.metrics_dao.get(current_metrics[i].id)
                 last_id = i + 1
-                edited_path = metric.rawVcfMd5Path.split('gs://')
+                edited_path = metric.hfVcfMd5Path.split('gs://')
                 edited_path = edited_path[1]
                 bad_data_path = edited_path
-                metric.rawVcfMd5Path = edited_path
+                metric.hfVcfMd5Path = edited_path
                 self.metrics_dao.upsert(metric)
 
         with clock.FakeClock(fake_dt):
@@ -3682,7 +3687,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         no_bucket_path = 'gs://test_data_folder/RDR_6_1006_10006_1.vcf.gz.md5sum'
         update_metric = self.metrics_dao.get(last_id)
-        update_metric.rawVcfMd5Path = no_bucket_path
+        update_metric.hfVcfMd5Path = no_bucket_path
         self.metrics_dao.upsert(update_metric)
 
         with clock.FakeClock(fake_dt):
@@ -3845,14 +3850,14 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_hf_path",
             "vcf_hf_index_path",
             "vcf_hf_md5_path",
-            "vcf_raw_path",
-            "vcf_raw_index_path",
-            "vcf_raw_md5_path",
             "cram_path",
             "cram_md5_path",
             "crai_path",
             "gvcf_path",
             "gvcf_md5_path",
+            "sample_source",
+            "sex_ploidy",
+            "alignment_pct_hg38",
             "contamination",
             "sex_concordance",
             "processing_status",
