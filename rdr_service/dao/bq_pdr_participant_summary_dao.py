@@ -143,15 +143,18 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
         # ubr_sexual_orientation
         if hasattr(ps_bqr, 'sexual_orientation') and ps_bqr.sexual_orientation:
-            if ps_bqr.sexual_orientation not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
+            if ps_bqr.sexual_orientation not in \
+                    ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip', None]:
                 data['ubr_sexual_orientation'] = 1
 
         # ubr_gender_identity
         if hasattr(ps_bqr, 'genders') and isinstance(ps_bqr.genders, list):
             data['ubr_gender_identity'] = 1  # easier to default to 1.
             if len(ps_bqr.genders) == 1 and (
-                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Man' and birth_sex == 'SexAtBirth_Male') or
-                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Woman' and birth_sex == 'SexAtBirth_Female') or
+                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Man' and
+                        birth_sex in ['SexAtBirth_Male', 'PMI_Skip', None]) or
+                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Woman' and
+                        birth_sex in ['SexAtBirth_Female', 'PMI_Skip', None]) or
                 ps_bqr.genders[0]['gender'] in ('PMI_Skip', 'PMI_PreferNotToAnswer')):
                 data['ubr_gender_identity'] = 0
 
@@ -159,7 +162,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
         if hasattr(ps_bqr, 'races') and ps_bqr.races:
             data['ubr_ethnicity'] = 1  # easier to default to 1.
             if len(ps_bqr.races) == 1 and \
-                ps_bqr.races[0]['race'] in ('WhatRaceEthnicity_White', 'PMI_Skip', 'PMI_PreferNotToAnswer'):
+                ps_bqr.races[0]['race'] in ('WhatRaceEthnicity_White', 'PMI_Skip', 'PMI_PreferNotToAnswer', None):
                 data['ubr_ethnicity'] = 0
 
         # ubr_geography
@@ -193,7 +196,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                 data['ubr_income'] = 1
 
         # ubr_sexual_gender_minority
-        if data['ubr_sex'] == 1 or data['ubr_gender_identity'] == 1:
+        if data['ubr_sexual_orientation'] == 1 or data['ubr_gender_identity'] == 1:
             data['ubr_sexual_gender_minority'] = 1
 
         # ubr_disability
@@ -230,10 +233,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                 if not 18.0 <= age <= 65.0:
                     data['ubr_age_at_consent'] = 1
 
-        # pylint: disable=unused-variable
-        for key, value in data.items():
-            if value == 1:
-                data['ubr_overall'] = 1
-                break
+        # If any UBR value has been set to 1, set 'ubr_overall' to 1.
+        data['ubr_overall'] = max(data.values())
 
         return data
