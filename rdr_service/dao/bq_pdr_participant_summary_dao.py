@@ -234,6 +234,6 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     data['ubr_age_at_consent'] = 1
 
         # If any UBR value has been set to 1, set 'ubr_overall' to 1.
-        data['ubr_overall'] = max(data.values())
+        data['ubr_overall'] = max(v for k, v in data.items() if k.startswith('ubr_'))
 
         return data
