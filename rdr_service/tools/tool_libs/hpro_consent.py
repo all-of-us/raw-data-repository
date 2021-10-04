@@ -32,6 +32,8 @@ class HealthProConsentTool(ToolBase):
             store_failures=True
         )
 
+        hpro_consents.transfer_limit = int(self.args.limit) or 100000
+
         hpro_consents.initialize_consent_transfer()
 
         if hpro_consents.transfer_failures:
@@ -64,6 +66,7 @@ def run():
     parser.add_argument("--project", help="gcp project name", default="localhost")  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
+    parser.add_argument("--limit", help="limit for transfers", default=0)  # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

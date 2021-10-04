@@ -41,7 +41,7 @@ class HealthProConsentFile:
     def cp_consent_files(self):
         self.logger.info(f'Ready to transfer {len(self.consents_for_transfer)} consent(s) to {self.hpro_bucket} bucket')
 
-        for consent in self.consents_for_transfer:
+        for i, consent in enumerate(self.consents_for_transfer):
             src = f'gs://{consent.file_path}'
             dest = self.create_path_destination(consent.file_path)
             obj = self.make_object(consent, dest)
@@ -59,6 +59,7 @@ class HealthProConsentFile:
 
                 self.transfer_count += 1
                 self.dao.insert(obj)
+                print(f'Healthpro consent num {i} transferred of {len(self.consents_for_transfer)}')
 
             # pylint: disable=broad-except
             except Exception as e:
