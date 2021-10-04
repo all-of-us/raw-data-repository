@@ -14,7 +14,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         super(DataDictionaryUpdaterTest, self).setUp(**kwargs)
 
         self.mock_rdr_version = '1.97.1'
-        self.updater = DataDictionaryUpdater('', '', self.mock_rdr_version, self.session)
+        self.updater = DataDictionaryUpdater('', self.mock_rdr_version, self.session)
 
     @classmethod
     def _default_tab_names(cls):

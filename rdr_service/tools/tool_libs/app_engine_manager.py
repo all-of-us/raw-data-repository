@@ -14,9 +14,7 @@ import difflib
 import yaml
 from yaml import Loader as yaml_loader
 
-from rdr_service.dao import database_factory
-from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater, dictionary_tab_id,\
-    internal_tables_tab_id
+from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
     git_checkout_branch, is_git_branch_clean, make_api_request
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -334,47 +332,8 @@ class DeployAppClass(ToolBase):
             _logger.error(f'Failed to trigger readthedocs documentation build for version {self.docs_version}.  {e}')
 
     def update_data_dictionary(self, server_config, rdr_version):
-        configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
-        with self.initialize_process_context(service_account=configurator_account) as gcp_env:
-            updater = DataDictionaryUpdater(
-                gcp_env.service_key_id,
-                server_config[DATA_DICTIONARY_DOCUMENT_ID],
-                rdr_version
-            )
-            updater.download_dictionary_values()
-
-        with self.initialize_process_context() as gcp_env:
-            self.gcp_env = gcp_env
-            self.gcp_env.activate_sql_proxy()
-            with database_factory.make_server_cursor_database(alembic=True).session() as session:
-                updater.session = session
-                changelog = updater.find_data_dictionary_diff()
-                if any(changelog.values()):
-                    for tab_id, tab_changelog in changelog.items():
-                        if tab_changelog:
-                            if tab_id in [dictionary_tab_id, internal_tables_tab_id]:
-                                # The schema tabs are the only ones that list out detailed changes
-                                _logger.info(f'The following changes were found on the "{tab_id}" tab')
-                                for (table_name, column_name), changes in tab_changelog.items():
-                                    if isinstance(changes, str):  # Adding or removing a column will give a string
-                                        _logger.info(f'{changes} {table_name}.{column_name}')
-                                    else:
-                                        _logger.info('')
-                                        _logger.info(f'changes for {table_name}.{column_name}:')
-                                        for change_description in changes:
-                                            _logger.info(change_description)
-                                        _logger.info('')
-                            else:
-                                _logger.info(f'The "{tab_id}" tab has been updated')
-
-        if any(changelog.values()):
-            with self.initialize_process_context(service_account=configurator_account) as gcp_env:
-                update_message = input('What is a summary of the above changes?: ')
-                _logger.info('uploading data-dictionary updates')
-                updater.gcp_service_key_id = gcp_env.service_key_id
-                updater.upload_changes(update_message, self.gcp_env.account)
-        else:
-            _logger.info('No data-dictionary changes needed')
+        updater = DataDictionaryUpdater(server_config[DATA_DICTIONARY_DOCUMENT_ID], rdr_version)
+        updater.run_update_in_tool(self, _logger)
 
     def deploy_app(self):
         """

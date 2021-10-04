@@ -11,7 +11,9 @@ from rdr_service.model.organization import Organization
 from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse
 from rdr_service.model.site import Site
+from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.services.google_sheets_client import GoogleSheetsClient
+from rdr_service.tools.tool_libs.tool_base import ToolBase
 
 changelog_tab_id = 'Change Log'
 dictionary_tab_id = 'RDR Data Dictionary'
@@ -83,8 +85,8 @@ class KeyTabUpdateHelper:
 
 
 class DataDictionaryUpdater:
-    def __init__(self, gcp_service_key_id, dictionary_sheet_id, rdr_version, session=None):
-        self.gcp_service_key_id = gcp_service_key_id
+    def __init__(self, dictionary_sheet_id, rdr_version, session=None):
+        self.gcp_service_key_id = None
         self.dictionary_sheet_id = dictionary_sheet_id
         self.session = session
         self.schema_tab_row_trackers = {
@@ -477,6 +479,49 @@ class DataDictionaryUpdater:
         with self._build_sheet() as sheet:
             self._sheet = sheet
             self._modify_sheet()
+
+    def run_update_in_tool(self, tool: ToolBase, _logger):
+        """
+        This will run the full update in the context of a tool
+        (displaying changes to the CLI and asking for a description of the changes)
+        """
+        configurator_account = f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com'
+        with tool.initialize_process_context(service_account=configurator_account) as gcp_env:
+            self.gcp_service_key_id = gcp_env.service_key_id
+            self.download_dictionary_values()
+
+        with tool.initialize_process_context() as gcp_env:
+            tool.gcp_env = gcp_env
+            tool.gcp_env.activate_sql_proxy()
+            with tool.get_session(alembic=True) as session:
+                self.session = session
+                changelog = self.find_data_dictionary_diff()
+                if any(changelog.values()):
+                    for tab_id, tab_changelog in changelog.items():
+                        if tab_changelog:
+                            if tab_id in [dictionary_tab_id, internal_tables_tab_id]:
+                                # The schema tabs are the only ones that list out detailed changes
+                                _logger.info(f'The following changes were found on the "{tab_id}" tab')
+                                for (table_name, column_name), changes in tab_changelog.items():
+                                    if isinstance(changes, str):  # Adding or removing a column will give a string
+                                        _logger.info(f'{changes} {table_name}.{column_name}')
+                                    else:
+                                        _logger.info('')
+                                        _logger.info(f'changes for {table_name}.{column_name}:')
+                                        for change_description in changes:
+                                            _logger.info(change_description)
+                                        _logger.info('')
+                            else:
+                                _logger.info(f'The "{tab_id}" tab has been updated')
+
+        if any(changelog.values()):
+            with tool.initialize_process_context(service_account=configurator_account) as gcp_env:
+                update_message = input('What is a summary of the above changes?: ')
+                _logger.info('uploading data-dictionary updates')
+                self.gcp_service_key_id = gcp_env.service_key_id
+                self.upload_changes(update_message, tool.gcp_env.account)
+        else:
+            _logger.info('No data-dictionary changes needed')
 
     def download_dictionary_values(self):
         self._sheet = self._build_sheet()
