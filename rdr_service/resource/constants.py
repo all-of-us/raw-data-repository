@@ -61,6 +61,9 @@ class SchemaID(IntEnum):
     # Metrics
     retention_metrics = 2120
 
+    # Consent Validation Metrics
+    consent_metrics = 6000
+
 
 # Used to calculate participant enrollment cohort.
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
@@ -155,3 +158,21 @@ class RetentionTypeEnum(IntEnum):
     ACTIVE = 1
     PASSIVE = 2
     ACTIVE_AND_PASSIVE = 3
+
+class ConsentTypeEnum(IntEnum):
+    PRIMARY = 1
+    CABOR = 2
+    EHR = 3
+    GROR = 4
+    UNKNOWN = 5
+    PRIMARY_UPDATE = 6
+
+class ConsentSyncStatusEnum(IntEnum):
+    NEEDS_CORRECTING = 1
+    READY_FOR_SYNC = 2
+    OBSOLETE = 3
+    SYNC_COMPLETE = 4
+
+    LEGACY = 5
+    DELAYING_SYNC = 6
+    UNKNOWN = 7
