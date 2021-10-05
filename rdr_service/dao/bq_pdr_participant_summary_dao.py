@@ -230,7 +230,7 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
             if consent_date:
                 rd = relativedelta(consent_date, ps_bqr.date_of_birth)
-                if not 18.0 <= rd.years <= 65.0:
+                if not 18 <= rd.years < 65:
                     data['ubr_age_at_consent'] = 1
 
         # If any UBR value has been set to 1, set 'ubr_overall' to 1.
