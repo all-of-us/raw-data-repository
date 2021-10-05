@@ -1,5 +1,7 @@
 import os
 
+from dateutil.relativedelta import relativedelta
+
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
@@ -227,10 +229,8 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                         break
 
             if consent_date:
-                # PDR-261:  Should not use years (integer) alone;  anyone older than 65 by even a day should be
-                # flagged as UBR, so use float
-                age = (consent_date - ps_bqr.date_of_birth).days / 365
-                if not 18.0 <= age <= 65.0:
+                rd = relativedelta(consent_date, ps_bqr.date_of_birth)
+                if not 18.0 <= rd.years <= 65.0:
                     data['ubr_age_at_consent'] = 1
 
         # If any UBR value has been set to 1, set 'ubr_overall' to 1.
