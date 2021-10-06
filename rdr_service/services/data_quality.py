@@ -6,6 +6,7 @@ from typing import List, Type
 
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -118,16 +119,21 @@ class ResponseQualityChecker(_ModelQualityChecker):
                 QuestionnaireResponse.created,
                 QuestionnaireResponse.authored,
                 Participant.signUpTime,
+                ParticipantSummary.suspensionTime,
+                ParticipantSummary.withdrawalAuthored,
                 func.count(QuestionnaireResponseAnswer.questionnaireResponseAnswerId)
             )
+            .select_from(QuestionnaireResponse)
             .join(Participant)
+            .outerjoin(ParticipantSummary)
             .outerjoin(QuestionnaireResponseAnswer)
             .group_by(QuestionnaireResponse.questionnaireResponseId)
         )
         if for_data_since is not None:
             query = query.filter(QuestionnaireResponse.created >= for_data_since)
 
-        for response_id, created_time, authored_time, participant_signup_time, answer_count in query.all():
+        for response_id, created_time, authored_time, participant_signup_time, suspension_datetime,\
+                withdrawal_datetime, answer_count in query.all():
             if authored_time is not None:
                 if not self._date_less_than_or_equal(
                     earlier_date=authored_time,
@@ -143,6 +149,10 @@ class ResponseQualityChecker(_ModelQualityChecker):
                         f'Response {response_id} authored at {authored_time} '
                         f'but participant signed up at {participant_signup_time}'
                     )
+                if suspension_datetime and authored_time > suspension_datetime:
+                    logging.error(f'Response {response_id} authored for suspended participant')
+                if withdrawal_datetime and authored_time > withdrawal_datetime:
+                    logging.error(f'Response {response_id} authored for withdrawn participant')
             if answer_count == 0:
                 logging.warning(f'Response {response_id} has no answers')
 

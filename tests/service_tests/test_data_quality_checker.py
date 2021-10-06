@@ -69,6 +69,44 @@ class DataQualityCheckerTest(BaseTestCase):
             f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
         )
 
+    def test_response_after_suspension(self, mock_logging):
+        suspended_participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        self.data_generator.create_database_participant_summary(
+            participant=suspended_participant,
+            suspensionTime=datetime(2020, 8, 4)
+        )
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_after_suspension = self.data_generator.create_database_questionnaire_response(
+            participantId=suspended_participant.participantId,
+            authored=now,
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_called_once_with(
+            f'Response {response_authored_after_suspension.questionnaireResponseId} authored for suspended participant'
+        )
+
+    def test_response_after_withdrawal(self, mock_logging):
+        withdrawn_participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        self.data_generator.create_database_participant_summary(
+            participant=withdrawn_participant,
+            withdrawalAuthored=datetime(2020, 8, 4)
+        )
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_after_withdraw = self.data_generator.create_database_questionnaire_response(
+            participantId=withdrawn_participant.participantId,
+            authored=now,
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_called_once_with(
+            f'Response {response_authored_after_withdraw.questionnaireResponseId} authored for withdrawn participant'
+        )
+
     def test_only_recent_responses_checked(self, mock_logging):
         """Make sure that the checks only apply to responses after the date given"""
 
