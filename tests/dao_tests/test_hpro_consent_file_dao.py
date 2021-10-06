@@ -129,6 +129,7 @@ class HealthProConsentDaoTest(BaseTestCase):
 
         needed_transfer_consents = self.dao.get_needed_consents_for_transfer()
 
-        self.assertTrue(all(obj for obj in needed_transfer_consents if exclude not in obj.file_path))
-        self.assertTrue(all(obj for obj in needed_transfer_consents if include in obj.file_path))
+        self.assertTrue(all(exclude not in obj.file_path for obj in needed_transfer_consents))
+        self.assertTrue(all(include in obj.file_path for obj in needed_transfer_consents))
+
 
