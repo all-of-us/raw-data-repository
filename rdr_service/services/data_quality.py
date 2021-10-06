@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from sqlalchemy import func, or_
 from typing import List, Type
@@ -20,6 +20,13 @@ class _ModelQualityChecker(ABC):
     @abstractmethod
     def run_data_quality_checks(self, for_data_since: datetime = None):
         ...
+
+    @classmethod
+    def _date_less_than_or_equal(cls, earlier_date: datetime, later_date: datetime, tolerance : timedelta = None):
+        if tolerance is None:
+            tolerance = timedelta(seconds=0)
+
+        return earlier_date <= (later_date + tolerance)
 
 
 class DeceasedReportQualityChecker(_ModelQualityChecker):
@@ -121,16 +128,22 @@ class ResponseQualityChecker(_ModelQualityChecker):
             query = query.filter(QuestionnaireResponse.created >= for_data_since)
 
         for response_id, created_time, authored_time, participant_signup_time, answer_count in query.all():
-            if authored_time is not None and authored_time > created_time:
-                logging.warning(
-                    f'Response {response_id} authored with future date of {authored_time} (received at {created_time})'
-                )
-            elif authored_time is not None and authored_time < participant_signup_time:
-                logging.warning(
-                    f'Response {response_id} authored at {authored_time} '
-                    f'but participant signed up at {participant_signup_time}'
-                )
-            elif answer_count == 0:
+            if authored_time is not None:
+                if not self._date_less_than_or_equal(
+                    earlier_date=authored_time,
+                    later_date=created_time,
+                    tolerance=timedelta(seconds=3600)  # Allowing the source server's time to be off by up to an hour
+                ):
+                    logging.error(
+                        f'Response {response_id} authored with future date '
+                        f'of {authored_time} (received at {created_time})'
+                    )
+                if authored_time < participant_signup_time:
+                    logging.error(
+                        f'Response {response_id} authored at {authored_time} '
+                        f'but participant signed up at {participant_signup_time}'
+                    )
+            if answer_count == 0:
                 logging.warning(f'Response {response_id} has no answers')
 
 

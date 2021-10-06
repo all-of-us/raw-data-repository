@@ -33,18 +33,41 @@ class DataQualityCheckerTest(BaseTestCase):
 
         self.checker.run_data_quality_checks()
 
-        mock_logging.warning.assert_has_calls([
+        mock_logging.error.assert_has_calls([
             mock.call(
                 f'Response {response_authored_before_signup.questionnaireResponseId} authored at '
-                f'{response_authored_before_signup.authored} but participant signed up at {participant.signUpTime}'),
+                f'{response_authored_before_signup.authored} but participant signed up at {participant.signUpTime}'
+            ),
             mock.call(
                 f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
                 f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
-            ),
-            mock.call(
-                f'Response {response_without_answers.questionnaireResponseId} has no answers'
             )
         ])
+        mock_logging.warning.assert_called_with(
+            f'Response {response_without_answers.questionnaireResponseId} has no answers'
+        )
+
+    def test_response_fuzzy_future_check(self, mock_logging):
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_in_the_future = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=now + timedelta(weeks=1),
+            created=now
+        )
+        # Create another questionnaire response that shouldn't get logged
+        self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=now + timedelta(seconds=40),
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_called_once_with(
+            f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
+            f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
+        )
 
     def test_only_recent_responses_checked(self, mock_logging):
         """Make sure that the checks only apply to responses after the date given"""
