@@ -282,9 +282,9 @@ class CurationExportClass(ToolBase):
             SrcClean.external_id: Participant.externalId,
             SrcClean.survey_name: module_code.value,
             SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
-            SrcClean.question_ppi_code: question_code.shortValue,
+            SrcClean.question_ppi_code: question_code.value,
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
-            SrcClean.value_ppi_code: answer_code.shortValue,
+            SrcClean.value_ppi_code: answer_code.value,
             SrcClean.topic_value: answer_code.topic,
             SrcClean.value_code_id: QuestionnaireResponseAnswer.valueCodeId,
             SrcClean.value_number: case([(

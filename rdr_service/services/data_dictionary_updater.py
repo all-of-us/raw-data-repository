@@ -336,7 +336,6 @@ class DataDictionaryUpdater:
             QuestionnaireConcept.questionnaireId,
             Code.display,
             Code.value,
-            Code.shortValue,
             QuestionnaireResponse.questionnaireResponseId.isnot(None)
         ).join(
             Code,
@@ -350,14 +349,14 @@ class DataDictionaryUpdater:
         ).order_by(QuestionnaireConcept.questionnaireId).distinct().all()
         self._sheet.set_current_tab(questionnaire_key_tab_id)
         for row_number, (questionnaire_id, code_display, code_value,
-                         code_short_value, has_responses) in enumerate(questionnaire_data_list):
+                         has_responses) in enumerate(questionnaire_data_list):
             has_responses_yn_indicator = 'Y' if has_responses else 'N'
 
             is_ppi_survey = 'Scheduling' not in code_value and 'SNAP' not in code_value
             is_ppi_survey_yn_indicator = 'Y' if is_ppi_survey else 'N'
 
             update_helper.update_with_values(row_number, [
-                questionnaire_id, code_display, code_short_value, has_responses_yn_indicator, is_ppi_survey_yn_indicator
+                questionnaire_id, code_display, code_value, has_responses_yn_indicator, is_ppi_survey_yn_indicator
             ])
 
         self._sheet.truncate_tab_at_row(len(questionnaire_data_list))
