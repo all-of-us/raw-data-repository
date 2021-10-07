@@ -24,6 +24,8 @@ from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
+from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.resource.generators import consent_metrics
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -124,11 +126,11 @@ CONSENT_REPORT_SQL_BODY =  """
                       AS non_va_consent_for_va,
                    (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
                       AS va_consent_for_non_va
-            FROM participant_summary ps
-            -- Eliminate test/ghost pids from the result
+            FROM consent_file cf
+            JOIN participant_summary ps on cf.participant_id = ps.participant_id
             JOIN participant p on p.participant_id = ps.participant_id
                  AND p.is_test_participant = 0 and (p.is_ghost_id is null or not p.is_ghost_id) and p.hpo_id != 21
-            JOIN consent_file cf ON ps.participant_id = cf.participant_id
+            -- JOIN consent_file cf ON ps.participant_id = cf.participant_id
             LEFT OUTER JOIN hpo h ON p.hpo_id = h.hpo_id
             LEFT OUTER JOIN organization o on ps.organization_id = o.organization_id
         """
@@ -271,6 +273,16 @@ class ConsentReport(object):
             'solid_thick_border': gsfmt.cellFormat(borders=gsfmt.borders(bottom=gsfmt.border('SOLID_THICK')))
         }
 
+    def create_pdr_data_extract(self):
+        ro_dao = ResourceDataDao()
+        gen = consent_metrics.ConsentMetricsGenerator()
+        results = gen.get_consent_validation_records(ro_dao, date_filter='2021-08-10')
+        # results  = gen.get_consent_validation_recs(ro_dao)
+        for row in results:
+            resource_data = gen.make_resource(row.id, consent_file_rec=row)
+            resource_data.save(w_dao=ResourceDataDao(backup=False))
+
+
     def _add_format_spec(self, fmt_name_key: str, fmt_spec : gsfmt.CellFormat):
         """ Add a new format spec to the instance format_specs list """
         if not len(fmt_name_key) or not isinstance(fmt_spec, gsfmt.CellFormat):
@@ -280,7 +292,7 @@ class ConsentReport(object):
 
     def _connect_to_rdr_replica(self):
         """ Establish a connection to the replica RDR database for reading consent validation data """
-        self.gcp_env.activate_sql_proxy(replica=True)
+        self.gcp_env.activate_sql_proxy()
         self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def _has_needs_correcting(self, dframe):
@@ -694,19 +706,21 @@ class DailyConsentReport(ConsentReport):
         """
         Execute the DailyConsentReport builder
         """
-
-        # Set up DB and googlesheets doc access
         self._connect_to_rdr_replica()
-        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
-        gs_creds = gspread.service_account(service_key_info['key_path'])
-        gs_file = gs_creds.open_by_key(self.doc_id)
+        if self.args.pdr_extract:
+            self.create_pdr_data_extract()
+        else:
+            # Set up DB and googlesheets doc access
+            service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+            gs_creds = gspread.service_account(service_key_info['key_path'])
+            gs_file = gs_creds.open_by_key(self.doc_id)
 
-        # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
-        # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
-        self.consent_df = self._get_consent_validation_dataframe(
-            self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
-        )
-        self.create_daily_report(gs_file)
+            # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
+            # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
+            self.consent_df = self._get_consent_validation_dataframe(
+                self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
+            )
+            self.create_daily_report(gs_file)
 
 
 class WeeklyConsentReport(ConsentReport):
@@ -942,22 +956,6 @@ class WeeklyConsentReport(ConsentReport):
 
         self.row_pos += 1
 
-    def create_pdr_data_extract(self):
-        """
-        Dump the consent validation extract data to a table for NiFi to transfer to PDR
-        """
-
-        # TODO:  For now, dumping to csv until table structure is in place in RDR and PDR
-        self.consent_df.to_csv('pdr_consent_validation_extract.csv',
-                               index=False,
-                               chunksize=10000,
-                               columns=['participant_id', 'hpo', 'organization', 'type', 'consent_authored_date',
-                                        'sync_status','missing_file', 'signature_missing', 'invalid_signing_date',
-                                        'invalid_dob','invalid_age_at_consent', 'checkbox_unchecked',
-                                        'non_va_consent_for_va', 'va_consent_for_non_va', 'resolved_date'],
-                               date_format='%Y-%m-%d %H:%M:%S')
-
-
     def create_weekly_report(self, spreadsheet):
         existing_sheets = spreadsheet.worksheets()
         # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly eports
@@ -1031,17 +1029,14 @@ class WeeklyConsentReport(ConsentReport):
             self.report_sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
                                                 start_date=self.start_date.strftime("%Y-%m-%d"),
                                                 report_date=self.report_date.strftime("%Y-%m-%d"))))
-        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files where it
-        # couldn't find signature/signing date, even though the files looked okay on visual inspection
+        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files
+        # where it couldn't find signature/signing date, even though the files looked okay on visual inspection
         self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
 
-        if self.args.pdr_extract:
-            self.create_pdr_data_extract()
-        else:
-            # Get all the resolved/OBSOLETE issues for generating resolution stats
-            self.resolved_df = self.get_resolved_consent_issues_dataframe()
-            _logger.info('Generating report data...')
-            self.create_weekly_report(gs_file)
+        # Get all the resolved/OBSOLETE issues for generating resolution stats
+        self.resolved_df = self.get_resolved_consent_issues_dataframe()
+        _logger.info('Generating report data...')
+        self.create_weekly_report(gs_file)
 
         _logger.info('Report complete')
 
@@ -1059,7 +1054,7 @@ def run():
     parser.add_argument("--project", help="gcp project name", default=RdrEnvironment.PROD.value)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account",
-                        default=f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com') #noqa
+                        default=f'configurator@{RdrEnvironment.STABLE.value}.iam.gserviceaccount.com') #noqa
     parser.add_argument("--doc-id", type=str,
                         help="A google doc ID which can override a [DAILY|WEEKLY]_CONSENT_DOC_ID env var")
     parser.add_argument("--report-type", type=str, default="daily_uploads", metavar='REPORT',
@@ -1084,7 +1079,7 @@ def run():
 
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        if args.report_type == 'daily_uploads':
+        if args.report_type == 'daily_uploads' or args.pdr_extract:
             process = DailyConsentReport(args, gcp_env)
         elif args.report_type == 'weekly_status':
             process = WeeklyConsentReport(args, gcp_env)
