@@ -7,8 +7,8 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQFieldModeEnum, BQFieldTypeEnum
 from rdr_service.code_constants import PPI_SYSTEM
 
-#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, TO ENSURE THEY ARE PROPAGATED TO BIGQUERY, INCLUDING
-#   DURING PDR DATA REBUILDS, THE MODULE LISTS IN THE FOLLOWING FILES MUST ALSO BE UPDATED:
+#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, ADD THE NEW TABLE CLASS TO "PDR_MODULE_LIST"
+#          AT THE BOTTOM OF THIS FILE. BELOW IS A LIST FILE THAT USE THESE CLASSES.
 #   rdr_service/resource/tasks.py
 #   rdr_service/tools/tool_libs/resource_tool.py
 #   rdr_service/model/__init__.py
@@ -886,3 +886,52 @@ class BQPDRWithdrawalView(BQModuleView):
         WHERE sp.rn = 1
     """
     _show_created = True
+
+
+class BQPDRSDOHSchema(_BQModuleSchema):
+    """ Social Determinants of Health Module """
+    _module   = 'sdoh'
+    _excluded_fields = ('sdoh_intro',)  # Not a topic or question code.
+    _force_boolean_fields = ('sdoh_eds_follow_up_1_xx', 'urs_8c')
+
+
+class BQPDRSDOH(BQTable):
+    """ Social Determinants of Health BigQuery Table """
+    __tablename__ = 'pdr_mod_sdoh'
+    __schema__ = BQPDRSDOHSchema
+
+
+class BQPDRSDOHView(BQModuleView):
+    """ Social Determinants of Health BiqQuery View """
+    __viewname__ = 'v_pdr_mod_sdoh'
+    __viewdescr__ = 'PDR Social Determinants of Health Module View'
+    __table__ = BQPDRSDOH
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+# List of modules classes that are sent to PDR.
+# TODO: Include any new modules added PDR to this list.
+PDR_MODULE_LIST = (
+    BQPDRConsentPII,
+    BQPDRTheBasics,
+    BQPDRLifestyle,
+    BQPDROverallHealth,
+    BQPDREHRConsentPII,
+    BQPDRDVEHRSharing,
+    BQPDRCOPEMay,
+    BQPDRCOPENov,
+    BQPDRCOPEDec,
+    BQPDRCOPEFeb,
+    BQPDRCOPEVaccine1,
+    BQPDRCOPEVaccine2,
+    BQPDRFamilyHistory,
+    BQPDRPersonalMedicalHistory,
+    BQPDRHealthcareAccess,
+    BQPDRStopParticipating,
+    BQPDRWithdrawalIntro,
+    BQPDRSDOH
+)
+
+# Create a dictionnary of module codes and table object references.
+PDR_CODE_TO_MODULE_LIST = dict(zip([m.__schema__._module for m in PDR_MODULE_LIST], PDR_MODULE_LIST))
