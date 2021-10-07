@@ -164,6 +164,11 @@ cron:
   timezone: America/New_York
   schedule: every tuesday 02:00
   target: offline
+- description: Reconcile Raw AW1 to Genomic Set Member Table
+  url: /offline/ReconcileRawToAw1Ingested
+  timezone: America/New_York
+  schedule: every friday 02:00
+  target: offline
 - description: Genomic Update Members With Missing Files Resolved
   url: /offline/GenomicUpdateMembersStateResolved
   timezone: America/New_York

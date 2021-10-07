@@ -106,8 +106,6 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
-        self.aw1_raw_dao = GenomicAW1RawDao()
-        self.aw2_raw_dao = GenomicAW2RawDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.ingester = None
         self.file_mover = None
@@ -300,7 +298,11 @@ class GenomicJobController:
         if self.job_id not in [GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION]:
             raise AttributeError(f"{self.job_id.name} is invalid for this workflow")
 
-        raw_dao = self.aw1_raw_dao if self.job_id == GenomicJob.AW1_MANIFEST else self.aw2_raw_dao
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            raw_dao = GenomicAW1RawDao()
+
+        else:
+            raw_dao = GenomicAW2RawDao()
 
         # Get member records
         members = self.member_dao.get_members_from_member_ids(member_ids)
@@ -624,6 +626,29 @@ class GenomicJobController:
                             files = []
 
                 self.staging_dao.insert_filenames_bulk(files)
+
+    def reconcile_raw_to_aw1_ingested(self):
+        # Compare AW1 Raw to Genomic Set Member
+        raw_dao = GenomicAW1RawDao()
+        deltas = raw_dao.get_set_member_deltas()
+
+        # Update Genomic Set Member records for deltas
+        for record in deltas:
+            member = self.member_dao.get_member_from_raw_aw1_record(record)
+            if member:
+                member = self.set_aw1_attributes_from_raw((member, record))
+
+                # Set additional attributes
+                member.gcSiteId = record.site_name
+                member.aw1FileProcessedId = (
+                    self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
+                )
+                member.genomicWorkflowState = GenomicWorkflowState.AW1
+
+                with self.member_dao.session() as session:
+                    session.merge(member)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
