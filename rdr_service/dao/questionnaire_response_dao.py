@@ -913,6 +913,11 @@ class QuestionnaireResponseDao(BaseDao):
         authored = None
         if fhir_qr.authored and fhir_qr.authored.date:
             authored = fhir_qr.authored.date
+        else:
+            logging.error(
+                f'Response by P{participant_id} to questionnaire {questionnaire.questionnaireId} '
+                f'has missing or invalid authored date'
+            )
 
         language = None
         non_participant_author = None
