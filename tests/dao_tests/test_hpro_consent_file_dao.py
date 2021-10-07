@@ -112,3 +112,24 @@ class HealthProConsentDaoTest(BaseTestCase):
         records = self.dao.batch_get_by_participant(pids_inserted)
         self.assertEqual(len(records), num_pid_records * no_path_num)
 
+    def test_get_needed_consents_only_vibrent(self):
+        exclude = 'ce-uploads-all-of-us-rdr-prod/'
+        include = 'test-file-path/'
+
+        for num in range(self.num_consents):
+            if num % 2 == 0:
+                file_path = include
+            else:
+                file_path = exclude
+
+            self.data_generator.create_database_consent_file(
+                file_path=f'{file_path}{num}',
+                sync_status=self.sync_statuses[0]
+            )
+
+        needed_transfer_consents = self.dao.get_needed_consents_for_transfer()
+
+        self.assertTrue(all(exclude not in obj.file_path for obj in needed_transfer_consents))
+        self.assertTrue(all(include in obj.file_path for obj in needed_transfer_consents))
+
+

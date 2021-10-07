@@ -145,3 +145,27 @@ class HealthProConsentFileTest(BaseTestCase):
             self.assertIsNotNone(paths[i]['dest'])
             self.assertEqual(paths[i]['src'], val[0][0])
             self.assertEqual(paths[i]['dest'], val[0][1])
+
+    def test_hpro_transfer_limit_from_config(self):
+        limit = [2]
+
+        for num in range(self.num_consents):
+            self.data_generator.create_database_consent_file(
+                file_path=f'test_file_path/{num}',
+                file_exists=1,
+                sync_status=self.sync_statuses[0]
+            )
+
+        self.hpro_consents.get_consents_for_transfer()
+        self.assertEqual(len(self.hpro_consents.consents_for_transfer), self.num_consents)
+
+        self.hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, default=1)
+        self.hpro_consents.get_consents_for_transfer()
+        self.assertEqual(len(self.hpro_consents.consents_for_transfer), 1)
+
+        config.override_setting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, limit)
+        self.hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT)
+        self.hpro_consents.get_consents_for_transfer()
+        self.assertEqual(len(self.hpro_consents.consents_for_transfer), limit[0])
+
+
