@@ -70,9 +70,8 @@ class DataQualityCheckerTest(BaseTestCase):
         )
 
     def test_response_after_suspension(self, mock_logging):
-        suspended_participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
-        self.data_generator.create_database_participant_summary(
-            participant=suspended_participant,
+        suspended_participant = self.data_generator.create_database_participant(
+            signUpTime=datetime(2020, 4, 10),
             suspensionTime=datetime(2020, 8, 4)
         )
         now = datetime.now().replace(microsecond=0)
@@ -89,9 +88,8 @@ class DataQualityCheckerTest(BaseTestCase):
         )
 
     def test_response_after_withdrawal(self, mock_logging):
-        withdrawn_participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
-        self.data_generator.create_database_participant_summary(
-            participant=withdrawn_participant,
+        withdrawn_participant = self.data_generator.create_database_participant(
+            signUpTime=datetime(2020, 4, 10),
             withdrawalAuthored=datetime(2020, 8, 4)
         )
         now = datetime.now().replace(microsecond=0)

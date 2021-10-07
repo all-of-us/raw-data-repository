@@ -6,7 +6,6 @@ from typing import List, Type
 
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
@@ -119,13 +118,12 @@ class ResponseQualityChecker(_ModelQualityChecker):
                 QuestionnaireResponse.created,
                 QuestionnaireResponse.authored,
                 Participant.signUpTime,
-                ParticipantSummary.suspensionTime,
-                ParticipantSummary.withdrawalAuthored,
+                Participant.suspensionTime,
+                Participant.withdrawalAuthored,
                 func.count(QuestionnaireResponseAnswer.questionnaireResponseAnswerId)
             )
             .select_from(QuestionnaireResponse)
             .join(Participant)
-            .outerjoin(ParticipantSummary)
             .outerjoin(QuestionnaireResponseAnswer)
             .group_by(QuestionnaireResponse.questionnaireResponseId)
         )
