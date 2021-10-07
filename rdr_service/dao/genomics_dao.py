@@ -2363,7 +2363,7 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
 
         for record in records:
             data_records = get_method(record.identifier_value)
-            has_file_type_record = any([obj for obj in data_records if obj.file_type == record.file_type])
+            has_file_type_record = any([obj.file_type == record.file_type for obj in data_records])
             if has_file_type_record:
                 update_record = self.get(record.id)
                 update_record.resolved = 1
