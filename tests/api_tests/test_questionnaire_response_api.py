@@ -273,6 +273,21 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
         resource = self.make_questionnaire_response_json(participant_id, questionnaire_id, string_answers=string_answers)
         self.send_post(url, resource, expected_status=http.client.BAD_REQUEST)
 
+    def test_invalid_authored_date_logs_error(self):
+        participant_id = self.create_participant()
+        questionnaire_id = self.create_questionnaire("questionnaire1.json")
+        url = _questionnaire_response_url(participant_id)
+        self.send_consent(participant_id)
+
+        # Send a response that has an invalid authored date and check that the issue is logged
+        resource = self.make_questionnaire_response_json(participant_id, questionnaire_id)
+        resource['authored'] = '2021-13-05T15:00'
+        with mock.patch('rdr_service.dao.questionnaire_response_dao.logging') as logging_mock:
+            self.send_post(url, resource)
+            logging_mock.error.assert_any_call(
+                f'Response by {participant_id} to questionnaire {questionnaire_id} has missing or invalid authored date'
+            )
+
     def test_insert(self):
         participant_id = self.create_participant()
         questionnaire_id = self.create_questionnaire("questionnaire1.json")
