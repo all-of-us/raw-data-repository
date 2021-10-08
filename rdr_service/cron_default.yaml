@@ -82,7 +82,7 @@ cron:
 - description: Genomic AW1 Failures Workflow
   url: /offline/GenomicFailuresWorkflow
   timezone: America/New_York
-  schedule: every day 06:00
+  schedule: 1 of jan 12:00
   target: offline
 - description: Genomic AW1C (CVL) Workflow (Manual)
   url: /offline/GenomicAW1CManifestWorkflow
