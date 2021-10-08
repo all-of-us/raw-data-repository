@@ -72,6 +72,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode
+from rdr_service.services.email import Email
 
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
@@ -3904,7 +3905,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController._send_email_with_sendgrid')
+    @mock.patch('rdr_service.services.email.EmailService.send_email')
     def test_aw1cf_alerting_emails(self, send_email_mock):
         aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
 
@@ -3919,30 +3920,18 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.aw1cf_alerts_workflow()
 
-        # Set up expected SendGrid request
-        email_message = "New AW1CF CVL Failure manifests have been found:\n"
-        email_message += f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
-        email_message += f"\t\t{subfolder}/{aw1cf_manifest_filename}\n"
-
-        expected_email_req = {
-            "personalizations": [
-                {
-                    "to": [{"email": "test-genomic@vumc.org"}],
-                    "subject": "All of Us GC Manifest Failure Alert"
-                }
-            ],
-            "from": {
-                "email": "no-reply@pmi-ops.org"
-            },
-            "content": [
-                {
-                    "type": "text/plain",
-                    "value": email_message
-                }
-            ]
-        }
-
-        send_email_mock.assert_called_with(expected_email_req)
+        # Check email information sent
+        sent_email: Email = send_email_mock.call_args.args[0]
+        self.assertEqual(["test-genomic@vumc.org"], sent_email.recipients)
+        self.assertEqual("All of Us GC Manifest Failure Alert", sent_email.subject)
+        self.assertEqual(
+            (
+                "New AW1CF CVL Failure manifests have been found:\n"
+                f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
+                f"\t\t{subfolder}/{aw1cf_manifest_filename}\n"
+            ),
+            sent_email.plain_text_content
+        )
 
         # Test the end-to-end result code
         job_run = self.job_run_dao.get(1)
