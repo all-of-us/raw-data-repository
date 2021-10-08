@@ -38,7 +38,7 @@ class EmailService:
         return {
             'personalizations': [
                 {
-                    'to': [{'email': r} for r in email.recipients],
+                    'to': [{'email': recipient} for recipient in email.recipients],
                     'subject': email.subject
                 }
             ],
