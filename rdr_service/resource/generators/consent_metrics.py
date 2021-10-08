@@ -53,6 +53,7 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
                 'modified': row.modified,
                 'hpo_id': row.hpoId,
                 'organization_id': row.organizationId,
+                # TODO:  Confirm if we need the 'P' prefix here?
                 'participant_id': f'P{row.participant_id}',
                 'consent_type': str(consent_type),
                 'consent_type_id': int(consent_type),
@@ -82,7 +83,7 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         gror_authored = row.consentForGenomicsRORAuthored
         primary_consent_update_authored = row.consentForStudyEnrollmentAuthored
 
-        # Convert timestamp into YYYY-mm-dd value
+        # Convert timestamp into date value (YYYY-MM-DD)
         if consent_type == ConsentType.PRIMARY and primary_consent_authored:
             data['consent_authored_date'] = primary_consent_authored.date()
         elif consent_type == ConsentType.CABOR and cabor_authored:
@@ -98,9 +99,9 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         if consent_status == ConsentSyncStatus.OBSOLETE and row.modified:
             data['resolved_date'] = row.modified.date()
 
-        data['missing_file'] = True if not row.file_exists else False
-        data['signature_missing'] = True if (row.file_exists and not row.is_signature_valid) else False
-        data['invalid_signing_date'] = True if (row.is_signature_valid and not row.is_signing_date_valid) else False
+        data['missing_file'] = not row.file_exists
+        data['signature_missing'] = (row.file_exists and not row.is_signature_valid)
+        data['invalid_signing_date'] = (row.is_signature_valid and not row.is_signing_date_valid)
 
         # Errors based on parsing strings in the other_errors field:
         if row.other_errors:
@@ -126,44 +127,52 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
 
         return data
 
-    def get_consent_validation_records(self, ro_dao=None, date_filter='2021-06-01'):
+    def get_consent_validation_records(self, dao=None, id_list=None, date_filter='2021-06-01'):
         """
         Retrieve a block of consent_file validation records based on a "modified since" date filter
         Default date pre-dates the instantiation of consent_file in all environments (will pull all records)
-        :param ro_dao:  Read-only DAO object if one was already instantiated by the caller
-        :param date_filter:  A date string in YYYY-MM-DD format to use for filtering consent_file records
+        :param dao:  Read-only DAO object if one was already instantiated by the caller
+        :param id_list: List of specific consent_file record IDs to retrieve.  Takes precedence over date_filter
+        :param date_filter:  A date string in YYYY-MM-DD format to use for filtering consent_file records. The
+                             default retrieves all records since consent validation started (in all environments)
         :return:  A result set from the query of consent validation data
         """
-        if not ro_dao:
-            ro_dao = self.ro_dao or ResourceDataDao()
+        if not dao:
+            dao = self.ro_dao or ResourceDataDao()
 
-        with ro_dao.session() as session:
-            results = session.query(ConsentFile.id,
-                                    ConsentFile.created,
-                                    ConsentFile.modified,
-                                    ConsentFile.participant_id,
-                                    ConsentFile.type,
-                                    ConsentFile.sync_status,
-                                    ConsentFile.file_exists,
-                                    ConsentFile.is_signature_valid,
-                                    ConsentFile.is_signing_date_valid,
-                                    ConsentFile.other_errors,
-                                    ParticipantSummary.dateOfBirth,
-                                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
-                                    ParticipantSummary.consentForStudyEnrollmentAuthored,
-                                    ParticipantSummary.consentForCABoRAuthored,
-                                    ParticipantSummary.consentForElectronicHealthRecordsFirstYesAuthored,
-                                    ParticipantSummary.consentForElectronicHealthRecordsAuthored,
-                                    ParticipantSummary.consentForGenomicsRORAuthored,
-                                    HPO.hpoId,
-                                    HPO.displayName.label('hpo_name'),
-                                    Organization.organizationId,
-                                    Organization.displayName.label('organization_name'))\
-                .join(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
-                .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)\
-                .outerjoin(Organization, ParticipantSummary.organizationId == Organization.organizationId)\
-                .filter(ConsentFile.modified >= date_filter)\
-                .all()
+
+        with dao.session() as session:
+            query = session.query(ConsentFile.id,
+                                  ConsentFile.created,
+                                  ConsentFile.modified,
+                                  ConsentFile.participant_id,
+                                  ConsentFile.type,
+                                  ConsentFile.sync_status,
+                                  ConsentFile.file_exists,
+                                  ConsentFile.is_signature_valid,
+                                  ConsentFile.is_signing_date_valid,
+                                  ConsentFile.other_errors,
+                                  ParticipantSummary.dateOfBirth,
+                                  ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored,
+                                  ParticipantSummary.consentForStudyEnrollmentAuthored,
+                                  ParticipantSummary.consentForCABoRAuthored,
+                                  ParticipantSummary.consentForElectronicHealthRecordsFirstYesAuthored,
+                                  ParticipantSummary.consentForElectronicHealthRecordsAuthored,
+                                  ParticipantSummary.consentForGenomicsRORAuthored,
+                                  HPO.hpoId,
+                                  HPO.displayName.label('hpo_name'),
+                                  Organization.organizationId,
+                                  Organization.displayName.label('organization_name'))\
+                  .join(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
+                  .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)\
+                  .outerjoin(Organization, ParticipantSummary.organizationId == Organization.organizationId)
+
+            if id_list and len(id_list):
+                query = query.filter(ConsentFile.id.in_(id_list))
+            else:
+                query = query.filter(ConsentFile.modified >= date_filter)
+
+            results = query.all()
 
             return results
 

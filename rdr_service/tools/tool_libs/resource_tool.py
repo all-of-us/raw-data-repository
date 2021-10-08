@@ -917,6 +917,42 @@ class RetentionEligibleMetricClass:
 
         return 1
 
+class ConsentMetricsClass(object):
+    """ Build consent validation metrics records for PDR extract """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param id_list: list of integer ids from retention eligible metrics table,
+                            if --table and --from-file were specified.
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+        self.id_list = id_list
+        self.res_gen = generators.ConsentMetricsGenerator()
+
+    def run(self):
+
+        self.gcp_env.activate_sql_proxy()
+        clr = self.gcp_env.terminal_colors
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild Consent Validation Metrics Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+
+        if self.args.all_ids:
+            dao = ResourceDataDao(backup=True)
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+
+            results = self.res_gen.get_consent_validation_records(dao=dao)
+
+            for row in results:
+                resource_data = self.res_gen.make_resource(row.id, consent_file_rec=row)
+                resource_data.save(w_dao=ResourceDataDao(backup=False))
+
 
 
 def get_id_list(fname):
@@ -1067,10 +1103,22 @@ def run():
     update_argument(site_parser, 'table', help='db table name to rebuild from.  All ids will be rebuilt')
     site_parser.epilog = f'Possible TABLE values: {{{",".join(SITE_TABLES)}}}.'
 
+    # Rebuild Retention Eligibility resources
     retention_parser = subparser.add_parser(
         'retention', parents=[batch_parser, from_file_parser, pid_parser, all_pids_parser])
     update_argument(retention_parser, dest='from_file',
                     help="rebuild retention eligibility records for specific pids read from a file.")
+
+    # Rebuild Consent Validation Metrics resources
+    consent_metrics_parser = subparser.add_parser('consent-metrics', parents=[batch_parser,
+                                                                              from_file_parser,
+                                                                              all_ids_parser,
+                                                                              id_parser])
+    update_argument(consent_metrics_parser, dest='from_file',
+                    help="rebuild consent metrics data for specific consent_file ids read from a file")
+    update_argument(consent_metrics_parser, dest='all_ids',
+                    help="rebuild metrics records for all consent_file ids")
+    update_argument(consent_metrics_parser, dest='id', help="rebuild metrics for a specific consent_file id record")
 
     args = parser.parse_args()
 
@@ -1116,6 +1164,10 @@ def run():
 
         elif args.resource == 'retention':
             process = RetentionEligibleMetricClass(args, gcp_env, ids)
+            exit_code = process.run()
+
+        elif args.resource == 'consent-metrics':
+            process = ConsentMetricsClass(args, gcp_env, ids)
             exit_code = process.run()
 
         else:
