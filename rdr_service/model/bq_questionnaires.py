@@ -7,8 +7,8 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bq_base import BQTable, BQSchema, BQView, BQFieldModeEnum, BQFieldTypeEnum
 from rdr_service.code_constants import PPI_SYSTEM
 
-#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, TO ENSURE THEY ARE PROPAGATED TO BIGQUERY, INCLUDING
-#   DURING PDR DATA REBUILDS, THE MODULE LISTS IN THE FOLLOWING FILES MUST ALSO BE UPDATED:
+#   NOTE:  IF NEW MODULE CLASSES ARE ADDED TO THIS FILE, ADD THE NEW TABLE CLASS TO "PDR_MODULE_LIST"
+#          AT THE BOTTOM OF THIS FILE. BELOW IS A LIST FILE THAT USE THESE CLASSES.
 #   rdr_service/resource/tasks.py
 #   rdr_service/tools/tool_libs/resource_tool.py
 #   rdr_service/model/__init__.py
@@ -886,3 +886,127 @@ class BQPDRWithdrawalView(BQModuleView):
         WHERE sp.rn = 1
     """
     _show_created = True
+
+
+class BQPDRSDOHSchema(_BQModuleSchema):
+    """ Social Determinants of Health Module """
+    _module   = 'sdoh'
+    _excluded_fields = ('sdoh_intro',)  # Not a topic or question code.
+    _force_boolean_fields = ('sdoh_eds_follow_up_1_xx', 'urs_8c')
+
+
+class BQPDRSDOH(BQTable):
+    """ Social Determinants of Health BigQuery Table """
+    __tablename__ = 'pdr_mod_sdoh'
+    __schema__ = BQPDRSDOHSchema
+
+
+class BQPDRSDOHView(BQModuleView):
+    """ Social Determinants of Health BiqQuery View """
+    __viewname__ = 'v_pdr_mod_sdoh'
+    __viewdescr__ = 'PDR Social Determinants of Health Module View'
+    __table__ = BQPDRSDOH
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+class BQPDRCOPEVaccine3Schema(_BQModuleSchema):
+    """ COPE Vaccine Survey 3 (Winter 2021) """
+    _module = 'cope_vaccine3'
+    _force_boolean_fields = (
+        'cdc_covid_xx_b_firstdose_other',
+        'cdc_covid_xx_symptom_cope_350',
+        'cdc_covid_xx_b_seconddose_other',
+        'cdc_covid_xx_symptom_seconddose_cope_350',
+        'dmfs_29a',
+        'dmfs_29_seconddose_other',
+        'cdc_covid_xx_b_dose3_other',
+        'cdc_covid_xx_symptom_cope_350_dose3',
+        'cdc_covid_xx_type_dose3_other',
+        'dmfs_29_additionaldose_other',
+        'cdc_covid_xx_b_dose4_other',
+        'cdc_covid_xx_symptom_cope_350_dose4',
+        'cdc_covid_xx_type_dose4_other',
+        'cdc_covid_xx_b_dose5_other',
+        'cdc_covid_xx_symptom_cope_350_dose5',
+        'cdc_covid_xx_type_dose5_other',
+        'cdc_covid_xx_b_dose6_other',
+        'cdc_covid_xx_symptom_cope_350_dose6',
+        'cdc_covid_xx_type_dose6_other',
+        'cdc_covid_xx_b_dose7_other',
+        'cdc_covid_xx_symptom_cope_350_dose7',
+        'cdc_covid_xx_type_dose7_other',
+        'cdc_covid_xx_b_dose8_other',
+        'cdc_covid_xx_symptom_cope_350_dose8',
+        'cdc_covid_xx_type_dose8_other',
+        'cdc_covid_xx_b_dose9_other',
+        'cdc_covid_xx_symptom_cope_350_dose9',
+        'cdc_covid_xx_type_dose9_other',
+        'cdc_covid_xx_b_dose10_other',
+        'cdc_covid_xx_symptom_cope_350_dose10',
+        'cdc_covid_xx_type_dose10_other',
+        'cdc_covid_xx_b_dose11_other',
+        'cdc_covid_xx_symptom_cope_350_dose11',
+        'cdc_covid_xx_type_dose11_other',
+        'cdc_covid_xx_b_dose12_other',
+        'cdc_covid_xx_symptom_cope_350_dose12',
+        'cdc_covid_xx_type_dose12_other',
+        'cdc_covid_xx_b_dose13_other',
+        'cdc_covid_xx_symptom_cope_350_dose13',
+        'cdc_covid_xx_type_dose13_other',
+        'cdc_covid_xx_b_dose14_other',
+        'cdc_covid_xx_symptom_cope_350_dose14',
+        'cdc_covid_xx_type_dose14_other',
+        'cdc_covid_xx_b_dose15_other',
+        'cdc_covid_xx_symptom_cope_350_dose15',
+        'cdc_covid_xx_type_dose15_other',
+        'cdc_covid_xx_b_dose16_other',
+        'cdc_covid_xx_symptom_cope_350_dose16',
+        'cdc_covid_xx_type_dose16_other',
+        'cdc_covid_xx_b_dose17_other',
+        'cdc_covid_xx_symptom_cope_350_dose17',
+        'cdc_covid_xx_type_dose17_other'
+    )
+
+
+class BQPDRCOPEVaccine3(BQTable):
+    """ COPE Vaccine 3 BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_vaccine3'
+    __schema__ = BQPDRCOPEVaccine3Schema
+
+
+class BQPDRCOPEVaccine3View(BQModuleView):
+    """ PDR COPE Vaccine3 BigQuery View """
+    __viewname__ = 'v_pdr_mod_cope_vaccine3'
+    __viewdescr__ = 'PDR COPE Vaccine3 Module View'
+    __table__ = BQPDRCOPEVaccine3
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+# List of modules classes that are sent to PDR.
+# TODO: Include any new modules added PDR to this list.
+PDR_MODULE_LIST = (
+    BQPDRConsentPII,
+    BQPDRTheBasics,
+    BQPDRLifestyle,
+    BQPDROverallHealth,
+    BQPDREHRConsentPII,
+    BQPDRDVEHRSharing,
+    BQPDRCOPEMay,
+    BQPDRCOPENov,
+    BQPDRCOPEDec,
+    BQPDRCOPEFeb,
+    BQPDRCOPEVaccine1,
+    BQPDRCOPEVaccine2,
+    BQPDRFamilyHistory,
+    BQPDRPersonalMedicalHistory,
+    BQPDRHealthcareAccess,
+    BQPDRStopParticipating,
+    BQPDRWithdrawalIntro,
+    BQPDRSDOH,
+    BQPDRCOPEVaccine3
+)
+
+# Create a dictionnary of module codes and table object references.
+PDR_CODE_TO_MODULE_LIST = dict(zip([m.__schema__._module for m in PDR_MODULE_LIST], PDR_MODULE_LIST))

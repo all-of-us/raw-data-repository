@@ -26,7 +26,8 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_gc_validation_metrics_update
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
-    raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array
+    raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
+    wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
@@ -51,8 +52,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicGCValidationMetricsDao,
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao
-)
+    GenomicGcDataFileMissingDao,
+    GcDataFileStagingDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -105,14 +106,13 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
-        self.aw1_raw_dao = GenomicAW1RawDao()
-        self.aw2_raw_dao = GenomicAW2RawDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
         self.biobank_coupler = None
         self.manifest_compiler = None
+        self.staging_dao = None
         self.storage_provider = storage_provider
         self.genomic_alert_slack = SlackMessageHandler(
             webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_alerts')
@@ -298,7 +298,11 @@ class GenomicJobController:
         if self.job_id not in [GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION]:
             raise AttributeError(f"{self.job_id.name} is invalid for this workflow")
 
-        raw_dao = self.aw1_raw_dao if self.job_id == GenomicJob.AW1_MANIFEST else self.aw2_raw_dao
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            raw_dao = GenomicAW1RawDao()
+
+        else:
+            raw_dao = GenomicAW2RawDao()
 
         # Get member records
         members = self.member_dao.get_members_from_member_ids(member_ids)
@@ -568,6 +572,81 @@ class GenomicJobController:
                                                   value=GenomicWorkflowState.CVL_READY,
                                                   project_id=self.bq_project_id)
         logging.info(f"Updated {len(wgs_member_ids)} WGS members.")
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def reconcile_gc_data_file_to_table(self):
+        """
+        Entrypoint for reconciliation of GC data buckets to
+        genomic_gc_data_file table.
+        """
+        # truncate staging table
+        self.staging_dao = GcDataFileStagingDao()
+        self.staging_dao.truncate()
+
+        self.load_gc_data_file_staging()
+
+        # compare genomic_gc_data_file to temp table
+        missing_records = self.staging_dao.get_missing_gc_data_file_records()
+
+        # create genomic_gc_data_file records for missing files
+        for missing_file in missing_records:
+            self.accession_data_files(missing_file.file_path, missing_file.bucket_name)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def load_gc_data_file_staging(self):
+        # Determine bucket mappings to use
+        buckets = config.getSettingJson(config.DATA_BUCKET_SUBFOLDERS_PROD)
+
+        # get file extensions
+        extensions = [file_def['file_type'] for file_def in wgs_file_types_attributes if file_def['required']] + \
+                     [file_def['file_type'] for file_def in array_file_types_attributes if file_def['required']]
+
+        extensions.extend(['hard-filtered.gvcf.gz.md5sum', 'hard-filtered.gvcf.gz'])  # need to add gvcf but not req.
+        # get files in each bucket and load temp table
+        for bucket in buckets:
+            for folder in buckets[bucket]:
+                if self.storage_provider:
+                    blobs = self.storage_provider.list(bucket, prefix=folder)
+                else:
+                    blobs = list_blobs(bucket, prefix=folder)
+
+                files = []
+                for blob in blobs:
+                    # Only write the required files
+                    if any(extension in blob.name for extension in extensions):
+                        files.append({
+                            'bucket_name': bucket,
+                            'file_path': f'{bucket}/{blob.name}'
+                        })
+
+                        if len(files) % 10000 == 0:
+                            self.staging_dao.insert_filenames_bulk(files)
+                            files = []
+
+                self.staging_dao.insert_filenames_bulk(files)
+
+    def reconcile_raw_to_aw1_ingested(self):
+        # Compare AW1 Raw to Genomic Set Member
+        raw_dao = GenomicAW1RawDao()
+        deltas = raw_dao.get_set_member_deltas()
+
+        # Update Genomic Set Member records for deltas
+        for record in deltas:
+            member = self.member_dao.get_member_from_raw_aw1_record(record)
+            if member:
+                member = self.set_aw1_attributes_from_raw((member, record))
+
+                # Set additional attributes
+                member.gcSiteId = record.site_name
+                member.aw1FileProcessedId = (
+                    self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
+                )
+                member.genomicWorkflowState = GenomicWorkflowState.AW1
+
+                with self.member_dao.session() as session:
+                    session.merge(member)
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

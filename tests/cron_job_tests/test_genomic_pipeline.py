@@ -31,8 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao
-)
+    GenomicGcDataFileMissingDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -85,7 +84,7 @@ _FAKE_BUCKET_FOLDER = "rdr_fake_sub_folder"
 _FAKE_BUCKET_RESULT_FOLDER = "rdr_fake_sub_result_folder"
 _FAKE_GENOMIC_CENTER_BUCKET_A = 'rdr_fake_genomic_center_a_bucket'
 _FAKE_GENOMIC_CENTER_BUCKET_B = 'rdr_fake_genomic_center_b_bucket'
-_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'baylor_fake_genomic_center_bucket'
+_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR = 'fake_genomic_center_bucket-baylor'
 _FAKE_GENOMIC_CENTER_DATA_BUCKET_A = 'rdr_fake_genomic_center_a_data_bucket'
 _FAKE_GENOTYPING_FOLDER = 'AW1_genotyping_sample_manifests'
 _FAKE_SEQUENCING_FOLDER = 'AW1_wgs_sample_manifests'
@@ -5279,3 +5278,129 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertEqual(GenomicWorkflowState.CVL_READY, member.genomicWorkflowState)
 
+    def test_reconcile_gc_data_file_to_table(self):
+        # Create files in bucket
+        array_prefix = "Genotyping_sample_raw_data"
+
+        array_test_files_jh = (
+            f'{array_prefix}/10001_R01C01.vcf.gz',
+            f'{array_prefix}/10001_R01C01.vcf.gz.tbi',
+            f'{array_prefix}/10001_R01C01.vcf.gz.md5sum',
+            f'{array_prefix}/10001_R01C01_Red.idat',
+            f'{array_prefix}/10001_R01C01_Grn.idat',
+            f'{array_prefix}/10001_R01C01_Red.idat.md5sum',
+            f'{array_prefix}/10002_R01C02.vcf.gz',
+            f'{array_prefix}/10002_R01C02.vcf.gz.tbi',
+            f'{array_prefix}/10002_R01C02.vcf.gz.md5sum',
+            f'{array_prefix}/10002_R01C02_Red.idat',
+            f'{array_prefix}/10002_R01C02_Grn.idat',
+            f'{array_prefix}/10002_R01C02_Red.idat.md5sum',
+            f'{array_prefix}/10002_R01C02_Grn.idat.md5sum',
+        )
+        for file in array_test_files_jh:
+            self._write_cloud_csv(
+                file,
+                "atgcatgc",
+                bucket=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+            )
+
+        # insert file record into the the gc_data_file_table
+        self.data_generator.create_database_gc_data_file_record(
+            file_path=f"{_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR}/{array_test_files_jh[0]}",
+            gc_site_id="jh",
+            bucket_name=_FAKE_GENOMIC_CENTER_BUCKET_BAYLOR,
+            file_prefix=array_prefix,
+            file_name=array_test_files_jh[0],
+            file_type="vcf.gz",
+            identifier_type="chipwellbarcode",
+            identifier_value="10001_R01C01",
+        )
+
+        nonprod_dict = {
+            "fake_genomic_center_bucket-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
+        }
+
+        config.override_setting(config.DATA_BUCKET_SUBFOLDERS_PROD, nonprod_dict)
+
+        genomic_pipeline.reconcile_gc_data_file_to_table()
+
+        # Test files inserted into genomic_gc_data_file
+        gc_data_files = self.data_file_dao.get_all()
+
+        self.assertEqual(13, len(gc_data_files))
+        for file in gc_data_files:
+            self.assertEqual('jh', file.gc_site_id)
+            self.assertEqual(array_prefix, file.file_prefix)
+
+        runs = self.job_run_dao.get_all()
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, runs[0].runResult)
+
+    def test_reconcile_raw_to_aw1_ingested(self):
+        # Raw table needs resetting for this test when running full suite
+        self.aw1_raw_dao.truncate()
+
+        # create genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        # create genomic set members
+        for i in range(1, 5):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                collectionTubeId=100,
+                genomeType="aou_array",
+            )
+
+        # create control parent sample
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=1,
+            biobankId='HG-1005',
+            collectionTubeId=100,
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE
+        )
+
+        # Set up test AW1
+        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-4.csv")
+        aw1_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            aw1_manifest_filename,
+            aw1_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now()
+        )
+        self.data_generator.create_database_genomic_file_processed(
+            runId=1,
+            startTime=clock.CLOCK.now(),
+            filePath=test_file_path,
+            bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            fileName=aw1_manifest_filename,
+        )
+
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
+
+        genomic_pipeline.reconcile_raw_to_aw1_ingested()
+
+        member1 = self.member_dao.get(1)
+        self.assertEqual('1', member1.biobankId)
+        self.assertEqual('1001', member1.sampleId)
+        self.assertEqual('1', member1.collectionTubeId)
+        self.assertEqual('jh', member1.gcSiteId)
+        self.assertEqual(GenomicWorkflowState.AW1, member1.genomicWorkflowState)
+        self.assertEqual(1, member1.aw1FileProcessedId)
+
+        member_cntrl = self.member_dao.get(6)
+        self.assertEqual('HG-1005', member_cntrl.biobankId)
+        self.assertEqual('1005', member_cntrl.sampleId)

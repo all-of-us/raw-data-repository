@@ -382,12 +382,12 @@ class GenomicAW1Raw(Base):
     box_storageunit_id = Column("box_storageunit_id", String(255), nullable=True)
     box_id_plate_id = Column("box_id_plate_id", String(255), nullable=True)
     well_position = Column("well_position", String(255), nullable=True)
-    sample_id = Column("sample_id", String(255), nullable=True)
-    parent_sample_id = Column("parent_sample_id", String(255), nullable=True)
-    collection_tube_id = Column("collection_tube_id", String(255), nullable=True)
+    sample_id = Column("sample_id", String(255), nullable=True, index=True)
+    parent_sample_id = Column("parent_sample_id", String(255), nullable=True, index=True)
+    collection_tube_id = Column("collection_tube_id", String(255), nullable=True, index=True)
     matrix_id = Column("matrix_id", String(255), nullable=True)
     collection_date = Column("collection_date", String(255), nullable=True)
-    biobank_id = Column("biobank_id", String(255), nullable=True)
+    biobank_id = Column("biobank_id", String(255), nullable=True, index=True)
     sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
     """Assigned sex at birth"""
     age = Column("age", String(255), nullable=True)
@@ -405,10 +405,10 @@ class GenomicAW1Raw(Base):
     email = Column("email", String(255), nullable=True)
     study_pi = Column("study_pi", String(255), nullable=True)
     site_name = Column("site_name", String(255), nullable=True, index=True)
-    test_name = Column("test_name", String(255), nullable=True)
+    test_name = Column("test_name", String(255), nullable=True, index=True)
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
-    genome_type = Column(String(80), nullable=True)
+    genome_type = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
@@ -757,3 +757,16 @@ class GenomicGcDataFileMissing(Base):
 
 event.listen(GenomicGcDataFileMissing, 'before_insert', model_insert_listener)
 event.listen(GenomicGcDataFileMissing, 'before_update', model_update_listener)
+
+
+class GcDataFileStaging(Base):
+    """
+    Staging table for "GC data file reconciliation to table" job
+    Cleared and reloaded every job run
+    """
+
+    __tablename__ = 'gc_data_file_staging'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    bucket_name = Column(String(128), nullable=False, index=True)
+    file_path = Column(String(255), nullable=False, index=True)

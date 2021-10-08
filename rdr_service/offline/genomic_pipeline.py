@@ -327,6 +327,16 @@ def update_members_state_resolved_data_files():
         controller.update_member_aw2_missing_states_if_resolved()
 
 
+def reconcile_gc_data_file_to_table():
+    with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
+        controller.reconcile_gc_data_file_to_table()
+
+
+def reconcile_raw_to_aw1_ingested():
+    with GenomicJobController(GenomicJob.RECONCILE_RAW_AW1_INGESTED) as controller:
+        controller.reconcile_raw_to_aw1_ingested()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,

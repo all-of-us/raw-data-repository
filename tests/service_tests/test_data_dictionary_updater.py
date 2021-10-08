@@ -14,7 +14,7 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         super(DataDictionaryUpdaterTest, self).setUp(**kwargs)
 
         self.mock_rdr_version = '1.97.1'
-        self.updater = DataDictionaryUpdater('', '', self.mock_rdr_version, self.session)
+        self.updater = DataDictionaryUpdater('', self.mock_rdr_version, self.session)
 
     @classmethod
     def _default_tab_names(cls):
@@ -180,11 +180,10 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
     def test_questionnaire_key_tab(self):
         # Create two questionnaires for the test, one without any responses and another that has one
         # Also make one a scheduling survey to check the PPI survey indicator
-        code = self.data_generator.create_database_code(display='Test Questionnaire', shortValue='test_questionnaire')
+        code = self.data_generator.create_database_code(display='Test Questionnaire', value='test_questionnaire')
         scheduling_code = self.data_generator.create_database_code(
             display='Scheduling Survey',
-            value='Scheduling',
-            shortValue='Scheduling'
+            value='Scheduling'
         )
         no_response_questionnaire = self.data_generator.create_database_questionnaire_history()
         self.data_generator.create_database_questionnaire_concept(
@@ -209,12 +208,12 @@ class DataDictionaryUpdaterTest(GoogleSheetsTestBase):
         self.updater.run_update()
         questionnaire_values = self._get_tab_rows(questionnaire_key_tab_id)
         self.assertIn(
-            [str(no_response_questionnaire.questionnaireId), code.display, code.shortValue, 'N', 'Y'],
+            [str(no_response_questionnaire.questionnaireId), code.display, code.value, 'N', 'Y'],
             questionnaire_values
         )
         self.assertIn(
             [str(response_questionnaire.questionnaireId),
-             scheduling_code.display, scheduling_code.shortValue, 'Y', 'N'],
+             scheduling_code.display, scheduling_code.value, 'Y', 'N'],
             questionnaire_values
         )
 

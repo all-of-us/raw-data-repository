@@ -407,7 +407,7 @@ def migrate_requests_logs(target_db):
 @app_util.auth_required_cron
 def transfer_hpro_consents():
     hpro_consents = HealthProConsentFile()
-    hpro_consents.transfer_limit = 1000
+    hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, default=1000)
     hpro_consents.initialize_consent_transfer()
     return '{ "success": "true" }'
 
@@ -597,6 +597,20 @@ def genomic_missing_files_clean_up():
 @run_genomic_cron_job('missing_files_resolve_workflow')
 def genomic_missing_files_resolve():
     genomic_pipeline.genomic_missing_files_resolve()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_gc_data_file_to_table_workflow')
+def reconcile_gc_data_file_to_table():
+    genomic_pipeline.reconcile_gc_data_file_to_table()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
+def reconcile_raw_to_aw1_ingested():
+    genomic_pipeline.reconcile_raw_to_aw1_ingested()
     return '{"success": "true"}'
 
 
@@ -888,6 +902,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicMissingFilesResolve",
         endpoint="genomic_missing_files_resolve",
         view_func=genomic_missing_files_resolve,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileGCDataFileToTable",
+        endpoint="reconcile_gc_data_file_to_table",
+        view_func=reconcile_gc_data_file_to_table,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
+        endpoint="reconcile_raw_to_aw1_ingested",
+        view_func=reconcile_raw_to_aw1_ingested,
         methods=["GET"]
     )
     offline_app.add_url_rule(
