@@ -37,6 +37,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         self.task_mappings = {
             "aw1": "IngestAW1ManifestTaskApi",
+            "aw1f": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
             "aw4": "IngestAW4ManifestTaskApi",
             "aw5": "IngestAW5ManifestTaskApi"
@@ -53,7 +54,6 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         _logger.info(f"File found: {self.event.attributes.objectId}")
 
         object_id = self.event.attributes.objectId.lower()
-        task_key = None
 
         # AW1 files have "_sample_manifests" in file name
         if '_sample_manifests' in object_id:

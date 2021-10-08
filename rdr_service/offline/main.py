@@ -438,14 +438,6 @@ def genomic_gc_manifest_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw1f_manifest_workflow')
-def genomic_aw1f_failures_workflow():
-    genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
-    genomic_pipeline.genomic_centers_accessioning_failures_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 @run_genomic_cron_job('aw1c_manifest_workflow')
 def aw1c_manifest_workflow():
     """Temporarily running this manually for E2E Testing"""
@@ -789,12 +781,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicGCManifestWorkflow",
         endpoint="genomic_gc_manifest_workflow",
         view_func=genomic_gc_manifest_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFailuresWorkflow",
-        endpoint="genomic_aw1f_failures_workflow",
-        view_func=genomic_aw1f_failures_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(

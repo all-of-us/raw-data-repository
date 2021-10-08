@@ -66,7 +66,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
 
 class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest AW1 Manifest.
+    Cloud Task endpoint: Ingest AW1/AW1F Manifest.
     """
     def post(self):
         super(IngestAW1ManifestTaskApi, self).post()
@@ -97,7 +97,9 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
                 }
             }
 
-            logging.info(f'AW1 task data: {task_data}')
+            _type = 'AW1F' if job == GenomicJob.AW1F_MANIFEST else 'AW1'
+
+            logging.info(f'{_type} task data: {task_data}')
 
             # Call pipeline function
             genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)

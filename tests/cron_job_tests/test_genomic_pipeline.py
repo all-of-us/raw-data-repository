@@ -2231,52 +2231,6 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController._send_email_with_sendgrid')
-    def test_aw1f_alerting_emails(self, send_email_mock):
-        gc_manifest_filename = "RDR_AoU_SEQ_PKG-1908-218051_FAILURE.csv"
-
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            ".",
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_FAILURE_FOLDER,
-        )
-
-        genomic_pipeline.genomic_centers_accessioning_failures_workflow()
-
-        # Todo: change to expected response code
-        # send_email_mock.return_value = "SUCCESS"
-
-        # Set up expected SendGrid request
-        email_message = "New AW1 Failure manifests have been found:\n"
-        email_message += f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
-        email_message += f"\t\t{_FAKE_FAILURE_FOLDER}/{gc_manifest_filename}\n"
-
-        expected_email_req = {
-            "personalizations": [
-                {
-                    "to": [{"email": "test-genomic@vumc.org"}],
-                    "subject": "All of Us GC Manifest Failure Alert"
-                }
-            ],
-            "from": {
-                "email": "no-reply@pmi-ops.org"
-            },
-            "content": [
-                {
-                    "type": "text/plain",
-                    "value": email_message
-                }
-            ]
-        }
-
-        send_email_mock.assert_called_with(expected_email_req)
-
-        # Test the end-to-end result code
-        job_run = self.job_run_dao.get(1)
-        self.assertEqual(GenomicJob.AW1F_ALERTS, job_run.jobId)
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
-
     def test_gem_a1_manifest_end_to_end(self):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,

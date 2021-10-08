@@ -280,6 +280,7 @@ class GenomicJobController:
                                                 _controller=self)
 
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -895,27 +896,6 @@ class GenomicJobController:
                                                 _controller=self)
 
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
-    def run_aw1f_manifest_workflow(self):
-        """
-        Ingests the BB to GC failure manifest (AW1F)
-        from post-accessioning subfolder.
-        """
-        try:
-            for gc_bucket_name in self.bucket_name_list:
-                for folder in self.sub_folder_tuple:
-                    self.sub_folder_name = config.getSetting(folder)
-                    self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                                        job_run_id=self.job_run.id,
-                                                        bucket=gc_bucket_name,
-                                                        sub_folder=self.sub_folder_name,
-                                                        _controller=self)
-                    self.subprocess_results.add(
-                        self.ingester.generate_file_queue_and_do_ingestion()
-                    )
-            self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

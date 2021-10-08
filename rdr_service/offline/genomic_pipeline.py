@@ -57,19 +57,6 @@ def genomic_centers_manifest_workflow():
         controller.run_genomic_centers_manifest_workflow()
 
 
-def genomic_centers_aw1f_manifest_workflow():
-    """
-        Entrypoint for Ingestion:
-            Failure Manifest (AW1F)
-        """
-    with GenomicJobController(GenomicJob.AW1F_MANIFEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
-                              ) as controller:
-        controller.run_aw1f_manifest_workflow()
-
-
 def ingest_aw1c_manifest():
     """
     Entrypoint for CVL AW1C Manifest Ingestion workflow
@@ -102,19 +89,6 @@ def aw1cf_alerts_workflow():
                               bucket_name=None,
                               bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
                               sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
-                              ) as controller:
-        controller.process_failure_manifests_for_alerts()
-
-
-def genomic_centers_accessioning_failures_workflow():
-    """
-        Entrypoint for Accessioning Alerts:
-            Failure Manifest (AW1F)
-        """
-    with GenomicJobController(GenomicJob.AW1F_ALERTS,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_AW1F_SUBFOLDERS
                               ) as controller:
         controller.process_failure_manifests_for_alerts()
 
@@ -368,8 +342,10 @@ def execute_genomic_manifest_file_pipeline(_task_data: dict, project_id=None):
                               task_data=task_data,
                               bq_project_id=project_id) as controller:
         manifest_file = controller.insert_genomic_manifest_file_record()
+
         if task_data.file_data.create_feedback_record:
             controller.insert_genomic_manifest_feedback_record(manifest_file)
+
         controller.job_result = GenomicSubProcessResult.SUCCESS
 
     if task_data.job:
@@ -396,7 +372,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST
     ):
-
         # Ingestion Job
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data,
