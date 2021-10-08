@@ -274,10 +274,9 @@ class ConsentReport(object):
         }
 
     def create_pdr_data_extract(self):
-        ro_dao = ResourceDataDao()
+        ro_dao = ResourceDataDao(backup=True)
         gen = consent_metrics.ConsentMetricsGenerator()
-        results = gen.get_consent_validation_records(ro_dao, date_filter='2021-08-10')
-        # results  = gen.get_consent_validation_recs(ro_dao)
+        results = gen.get_consent_validation_records(ro_dao)
         for row in results:
             resource_data = gen.make_resource(row.id, consent_file_rec=row)
             resource_data.save(w_dao=ResourceDataDao(backup=False))
@@ -1054,7 +1053,7 @@ def run():
     parser.add_argument("--project", help="gcp project name", default=RdrEnvironment.PROD.value)  # noqa
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account",
-                        default=f'configurator@{RdrEnvironment.STABLE.value}.iam.gserviceaccount.com') #noqa
+                        default=f'configurator@{RdrEnvironment.PROD.value}.iam.gserviceaccount.com') #noqa
     parser.add_argument("--doc-id", type=str,
                         help="A google doc ID which can override a [DAILY|WEEKLY]_CONSENT_DOC_ID env var")
     parser.add_argument("--report-type", type=str, default="daily_uploads", metavar='REPORT',
