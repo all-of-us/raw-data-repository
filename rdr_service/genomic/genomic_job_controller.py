@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 
 import pytz
-from sendgrid import sendgrid
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
@@ -57,6 +56,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
+from rdr_service.services.email import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -970,7 +970,7 @@ class GenomicJobController:
             # send email
             try:
                 logging.info('Sending Email to SendGrid...')
-                self._send_email_with_sendgrid(email_req)
+                EmailService.send_email(email_req)
 
                 logging.info('Email Sent.')
                 self.job_result = GenomicSubProcessResult.SUCCESS
@@ -1288,12 +1288,12 @@ class GenomicJobController:
 
         return new_run
 
-    def _compile_accesioning_failure_alert_email(self, alert_files):
+    def _compile_accesioning_failure_alert_email(self, alert_files) -> Email:
         """
         Takes a dict of all new failure files from
         GC buckets' accessioning folders
         :param alert_files: dict
-        :return: email dict ready for SendGrid API
+        :return: email object ready to send
         """
 
         # Set email data here
@@ -1302,11 +1302,7 @@ class GenomicJobController:
         except MissingConfigException:
             recipients = ["test-genomic@vumc.org"]
 
-        subject = "All of Us GC Manifest Failure Alert"
-        from_email = config.SENDGRID_FROM_EMAIL
-
         email_message = "New AW1 Failure manifests have been found:\n"
-
         if self.job_id == GenomicJob.AW1CF_ALERTS:
             email_message = "New AW1CF CVL Failure manifests have been found:\n"
 
@@ -1315,36 +1311,11 @@ class GenomicJobController:
             for file in alert_files[bucket]:
                 email_message += f"\t\t{file}\n"
 
-        data = {
-            "personalizations": [
-                {
-                    "to": [{"email": r} for r in recipients],
-                    "subject": subject
-                }
-            ],
-            "from": {
-                "email": from_email
-            },
-            "content": [
-                {
-                    "type": "text/plain",
-                    "value": email_message
-                }
-            ]
-        }
-
-        return data
-
-    @staticmethod
-    def _send_email_with_sendgrid(_email):
-        """
-        Calls SendGrid API with email request
-        :param _email:
-        :return: sendgrid response
-        """
-        sg = sendgrid.SendGridAPIClient(api_key=config.getSetting(config.SENDGRID_KEY))
-        response = sg.client.mail.send.post(request_body=_email)
-        return response
+        return Email(
+            recipients=recipients,
+            subject="All of Us GC Manifest Failure Alert",
+            plain_text_content=email_message
+        )
 
 
 class DataQualityJobController:
