@@ -6,6 +6,7 @@
 import argparse
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
+import datetime
 import logging
 import math
 import os
@@ -29,6 +30,7 @@ from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organ
 from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
+from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant import Participant
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
@@ -36,6 +38,7 @@ from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
+from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -54,6 +57,11 @@ RESEARCH_WORKBENCH_TABLES = ('workspace', 'workspace_user', 'researcher', 'insti
 
 SITE_TABLES = ('hpo', 'site', 'organization')
 
+# Convenience function used by multiple resource tool classes
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
@@ -310,8 +318,6 @@ class CodeResourceClass(object):
         return self.update_code_table()
 
 
-
-
 class GenomicResourceClass(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
@@ -353,11 +359,6 @@ class GenomicResourceClass(object):
         return 0
 
     def update_batch(self, table, _ids):
-
-        def chunks(lst, n):
-            """Yield successive n-sized chunks from lst."""
-            for i in range(0, len(lst), n):
-                yield lst[i:i + n]
 
         count = 0
         task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
@@ -414,9 +415,8 @@ class GenomicResourceClass(object):
 
         return 0
 
-
-
     def run(self):
+
         clr = self.gcp_env.terminal_colors
 
         if not self.args.id and not self.args.all_ids and not self.args.all_tables and not self.id_list:
@@ -616,11 +616,6 @@ class ResearchWorkbenchResourceClass(object):
 
     def update_batch(self, table, _ids):
 
-        def chunks(lst, n):
-            """Yield successive n-sized chunks from lst."""
-            for i in range(0, len(lst), n):
-                yield lst[i:i + n]
-
         count = 0
         task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
 
@@ -819,11 +814,6 @@ class RetentionEligibleMetricClass:
 
     def update_batch(self, pids):
 
-        def chunks(lst, n):
-            """Yield successive n-sized chunks from lst."""
-            for i in range(0, len(lst), n):
-                yield lst[i:i + n]
-
         count = 0
         task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
 
@@ -924,13 +914,37 @@ class ConsentMetricsClass(object):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
-        :param id_list: list of integer ids from retention eligible metrics table,
-                            if --table and --from-file were specified.
+        :param id_list: list of integer ids from consent_file table, if from_file or modified_since were specified.
         """
         self.args = args
         self.gcp_env = gcp_env
         self.id_list = id_list
         self.res_gen = generators.ConsentMetricsGenerator()
+
+    def update_batch(self, _ids):
+        """ Batch update of ConsentMetrics resource records """
+
+        count = 0
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+            )
+
+        for batch in chunks(_ids, 250):
+            payload = {'batch': [id for id in batch]}
+            if self.gcp_env.project == 'localhost':
+                batch_rebuild_consent_metrics_task(payload)
+            else:
+                task.execute('rebuild_consent_metrics_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            count += len(batch)
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
+                )
 
     def run(self):
 
@@ -943,15 +957,40 @@ class ConsentMetricsClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
+        dao = ResourceDataDao(backup=True)
         if self.args.all_ids:
-            dao = ResourceDataDao(backup=True)
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+            with dao.session() as session:
+                self.id_list = [r.id for r in session.query(ConsentFile.id).all()]
+        elif self.args.modified_since:
+            with dao.session() as session:
+                results = session.query(ConsentFile.id).filter(ConsentFile.modified >= self.args.modified_since).all()
+                self.id_list = [r.id for r in results]
+        elif hasattr(self.args, 'from_file') and self.args.from_file:
+            self.id_list = get_id_list(self.args.from_file)
+        elif hasattr(self.args, 'id') and self.args.id:
+            self.id_list = [self.args.id, ]
 
-            results = self.res_gen.get_consent_validation_records(dao=dao)
+        if not (self.id_list and len(self.id_list)):
+            _logger.error('Nothing to do')
+            return 1
 
-            for row in results:
-                resource_data = self.res_gen.make_resource(row.id, consent_file_rec=row)
-                resource_data.save(w_dao=ResourceDataDao(backup=False))
+        if self.args.batch:
+            self.update_batch(self.id_list)
+        elif len(self.id_list) > 2500:
+            # Issue a warning if a local rebuild will exceed 2500 records
+            response = input(f'\n{len(self.id_list)} records will be rebuilt.  Do you wish to continue? [y/N]')
+            if response.upper() != 'Y':
+                _logger.error('Aborted by user')
+                return 1
+
+        w_dao = ResourceDataDao()
+        results = self.res_gen.get_consent_validation_records(dao=w_dao, id_list=self.id_list)
+        for row in results:
+            resource_data = self.res_gen.make_resource(row.id, consent_file_rec=row)
+            resource_data.save(w_dao=ResourceDataDao(backup=False))
+
+        return 0
 
 
 
@@ -1114,6 +1153,11 @@ def run():
                                                                               from_file_parser,
                                                                               all_ids_parser,
                                                                               id_parser])
+    consent_metrics_parser.add_argument("--modified-since",
+                                        dest='modified_since',
+                                        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
+                                        help="Modified date in in YYYY-MM-DD format"
+                                        )
     update_argument(consent_metrics_parser, dest='from_file',
                     help="rebuild consent metrics data for specific consent_file ids read from a file")
     update_argument(consent_metrics_parser, dest='all_ids',
