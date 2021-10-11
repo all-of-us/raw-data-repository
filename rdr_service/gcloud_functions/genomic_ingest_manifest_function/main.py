@@ -37,7 +37,6 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         self.task_mappings = {
             "aw1": "IngestAW1ManifestTaskApi",
-            "aw1f": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
             "aw4": "IngestAW4ManifestTaskApi",
             "aw5": "IngestAW5ManifestTaskApi"
