@@ -81,7 +81,7 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
             message = 'AW1'
 
             # Write a different manifest type and JOB ID if an AW1F
-            if "FAILURE" in file_path:
+            if "failure" in file_path.lower():
                 job = GenomicJob.AW1F_MANIFEST
                 manifest_type = GenomicManifestTypes.AW1F
                 create_fb = False
