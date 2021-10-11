@@ -445,6 +445,17 @@
       "event_types": [
         "OBJECT_FINALIZE"
       ],
+      "id": "42",
+      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
       "id": "49",
       "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
       "payload_format": "JSON_API_V1",
@@ -456,18 +467,7 @@
       "event_types": [
         "OBJECT_FINALIZE"
       ],
-      "id": "61",
-      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
-      "payload_format": "JSON_API_V1",
-      "topic_name": "genomic_manifest_upload",
-      "topic_project": "all-of-us-rdr-prod"
-    },
-    {
-      "bucket": "prod-genomics-northwest",
-      "event_types": [
-        "OBJECT_FINALIZE"
-      ],
-      "id": "62",
+      "id": "50",
       "object_name_prefix": "AW1F_genotyping_accessioning_results/AW1F_pre_results/",
       "payload_format": "JSON_API_V1",
       "topic_name": "genomic_manifest_upload",
