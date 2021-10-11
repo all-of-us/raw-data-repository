@@ -555,8 +555,8 @@ class GenomicJobController:
             logging.info('No missing gc data files to resolve')
 
     def update_member_aw2_missing_states_if_resolved(self):
-        # get array member_ids that are resolved but still in AW2_MISSING
-        logging.info("Updating Array AW2_MISSING members")
+        # get array member_ids that are resolved but still in GC_DATA_FILES_MISSING
+        logging.info("Updating Array GC_DATA_FILES_MISSING members")
         array_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_ARRAY)
         self.member_dao.batch_update_member_field(member_ids=array_member_ids,
                                                   field='genomicWorkflowState',
@@ -564,8 +564,8 @@ class GenomicJobController:
                                                   project_id=self.bq_project_id)
         logging.info(f"Updated {len(array_member_ids)} Array members.")
 
-        logging.info("Updating WGS AW2_MISSING members")
-        # get wgs member_ids that are resolved but still in AW2_MISSING
+        logging.info("Updating WGS GC_DATA_FILES_MISSING members")
+        # get wgs member_ids that are resolved but still in GC_DATA_FILES_MISSING
         wgs_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_WGS)
         self.member_dao.batch_update_member_field(member_ids=wgs_member_ids,
                                                   field='genomicWorkflowState',
@@ -647,6 +647,30 @@ class GenomicJobController:
 
                 with self.member_dao.session() as session:
                     session.merge(member)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def reconcile_raw_to_aw2_ingested(self):
+        # Compare AW2 Raw to genomic_gc_validation_metrics
+        raw_dao = GenomicAW2RawDao()
+        deltas = raw_dao.get_aw2_ingestion_deltas()
+        inserted_metric_ids = []
+
+        # resolve deltas
+        for record in deltas:
+            member = self.member_dao.get_member_from_sample_id(record.sample_id)
+
+            if member:
+                # Get file_processed record
+                file_proc_map = self.map_file_paths_to_fp_id([record.file_path])
+
+                # Insert record into genomic_gc_validation_metrics
+                with self.metrics_dao.session() as session:
+                    self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
+                    metrics_obj = self.set_validation_metrics_from_raw((member, record))
+                    metrics_obj = session.merge(metrics_obj)
+                    session.commit()
+                    inserted_metric_ids.append(metrics_obj.id)
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

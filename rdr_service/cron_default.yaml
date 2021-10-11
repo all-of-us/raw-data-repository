@@ -169,6 +169,11 @@ cron:
   timezone: America/New_York
   schedule: every friday 02:00
   target: offline
+- description: Reconcile Raw AW2 to Validation Metrics
+  url: /offline/ReconcileRawToAw2Ingested
+  timezone: America/New_York
+  schedule: every saturday 02:00
+  target: offline
 - description: Genomic Update Members With Missing Files Resolved
   url: /offline/GenomicUpdateMembersStateResolved
   timezone: America/New_York

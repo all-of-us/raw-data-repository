@@ -615,6 +615,13 @@ def reconcile_raw_to_aw1_ingested():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')
+def reconcile_raw_to_aw2_ingested():
+    genomic_pipeline.reconcile_raw_to_aw2_ingested()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('members_state_resolved_workflow')
 def genomic_members_state_resolved():
     genomic_pipeline.update_members_state_resolved_data_files()
@@ -914,6 +921,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
         endpoint="reconcile_raw_to_aw1_ingested",
         view_func=reconcile_raw_to_aw1_ingested,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileRawToAw2Ingested",
+        endpoint="reconcile_raw_to_aw2_ingested",
+        view_func=reconcile_raw_to_aw2_ingested,
         methods=["GET"]
     )
     offline_app.add_url_rule(

@@ -558,7 +558,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicGCValidationMetrics,
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
-                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2_MISSING,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             )
             if genome_type == config.GENOME_TYPE_ARRAY:
@@ -2087,6 +2087,22 @@ class GenomicAW2RawDao(BaseDao):
             ).first()
             return record
 
+    def get_aw2_ingestion_deltas(self):
+        with self.session() as session:
+            return session.query(
+                GenomicAW2Raw
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.sampleId == GenomicAW2Raw.sample_id
+            ).outerjoin(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.id.is_(None),
+                GenomicAW2Raw.ignore_flag == 0,
+                GenomicAW2Raw.biobank_id != "",
+                GenomicAW2Raw.sample_id != "",
+            ).order_by(GenomicAW2Raw.id).all()
 
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
