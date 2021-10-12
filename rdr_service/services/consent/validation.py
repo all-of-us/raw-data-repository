@@ -8,7 +8,7 @@ from typing import Collection, List
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType, ConsentErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
 from rdr_service.services.consent import files
@@ -465,7 +465,7 @@ class ConsentValidator:
 
         def check_for_checkmark(consent: files.GrorConsentFile, result):
             if not consent.is_confirmation_selected():
-                result.other_errors = 'missing consent check mark'
+                result.other_errors = ConsentErrors.MISSING_CONSENT_CHECK_MARK
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
         return self._generate_validation_results(
@@ -480,7 +480,7 @@ class ConsentValidator:
             errors_detected = []
 
             if not consent.is_agreement_selected():
-                errors_detected.append('missing consent check mark')
+                errors_detected.append(ConsentErrors.MISSING_CONSENT_CHECK_MARK)
 
             va_version_error_str = self._check_for_va_version_mismatch(consent)
             if va_version_error_str:
@@ -500,9 +500,9 @@ class ConsentValidator:
     def _check_for_va_version_mismatch(self, consent):
         is_va_consent = consent.get_is_va_consent()
         if self.participant_summary.hpoId == self.va_hpo_id and not is_va_consent:
-            return 'non-veteran consent for veteran participant'
+            return ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN
         elif self.participant_summary.hpoId != self.va_hpo_id and is_va_consent:
-            return 'veteran consent for non-veteran participant'
+            return ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN
 
         return None
 

@@ -23,7 +23,7 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
-from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentErrors
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource.generators import consent_metrics
 
@@ -121,10 +121,10 @@ CONSENT_REPORT_SQL_BODY =  """
                                  ps.consent_for_study_enrollment_first_yes_authored) < 18
                     AS invalid_age_at_consent,
                    -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
-                   (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
-                   (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
+                   (cf.file_exists AND cf.other_errors LIKE "%{missing_check_mark}%") AS checkbox_unchecked,
+                   (cf.file_exists AND cf.other_errors LIKE "%{non_va_for_va}")
                       AS non_va_consent_for_va,
-                   (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
+                   (cf.file_exists AND cf.other_errors LIKE "%{va_for_non_va}%")
                       AS va_consent_for_non_va
             FROM consent_file cf
             JOIN participant_summary ps on cf.participant_id = ps.participant_id
@@ -545,7 +545,11 @@ class ConsentReport(object):
             consent_authored_field = CONSENT_PARTICIPANT_SUMMARY_FIELDS[ConsentType(consent_int)][1]
             sql = sql.format_map(SafeDict(consent_type=consent_int,
                                           status_field=consent_status_field,
-                                          authored_field=consent_authored_field))
+                                          authored_field=consent_authored_field,
+                                          missing_check_mark=ConsentErrors.MISSING_CONSENT_CHECK_MARK,
+                                          non_va_for_va=ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                                          va_for_non_va=ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+                                          ))
             consent_df = pandas.read_sql_query(sql, self.db_conn)
             # Replace any null values in the calculated error flag columns  with (uint8 vs. pandas default float) zeroes
             for error_type in TRACKED_CONSENT_ERRORS:

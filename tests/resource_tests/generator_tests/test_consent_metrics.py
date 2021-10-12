@@ -6,8 +6,9 @@ from datetime import datetime
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentErrors
 import rdr_service.resource.generators
+
 
 
 class ConsentMetricGeneratorTest(BaseTestCase):
@@ -231,7 +232,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1,
-            other_errors='missing consent check mark'
+            other_errors=ConsentErrors.MISSING_CONSENT_CHECK_MARK
         )
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
@@ -266,7 +267,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             file_exists=1,
             is_signature_valid=0,
             is_signing_date_valid=1,
-            other_errors='missing consent check mark'
+            other_errors=ConsentErrors.MISSING_CONSENT_CHECK_MARK
         )
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()

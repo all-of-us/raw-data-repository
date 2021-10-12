@@ -8,11 +8,15 @@ from dateutil.relativedelta import relativedelta
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import generators, schemas
-from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile, ConsentErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 
+# Note:  Determination was made to treat a calculated age > 124 years at time of consent as an invalid DOB
+# Currently must be 18 to consent to the AoU study.   These values could change in the future
+INVALID_DOB_MAX_AGE_VALUE = 124
+VALID_AGE_AT_CONSENT = 18
 
 class ConsentMetricsGenerator(generators.BaseGenerator):
     """
@@ -22,13 +26,13 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
 
     def make_resource(self, _pk, consent_file_rec=None):
         """
-        Build a Resource object from the given consent_file record
-        :param _pk: Primary key value from consent_file table
-        :param rec:  A consent_file table row, if one was already retrieved
+        Build a Resource object for the requested consent_file record
+        :param _pk: Primary key id value from consent_file table
+        :param consent_file_rec:  A consent_file table row, if one was already retrieved
         :return: ResourceDataObject object
         """
         if not self.ro_dao:
-            self.ro_dao = ResourceDataDao()
+            self.ro_dao = ResourceDataDao(backup=True)
 
         if not consent_file_rec:
             # Retrieve a single validation record for the provided id/primary key value
@@ -45,14 +49,16 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
     @staticmethod
     def _make_consent_validation_dict(row):
         """
-        Transforms a consent_file record into a consent validation resource dictionary.  Reproduces the
-        consent report SQL from the consent-report tool with its calculated columns
+        Transforms a consent_file record into a consent metrics resource object dictionary.  Reproduces the
+        CONSENT_REPORT_SQL logic from the consent-report tool, for calculating the error columns and dates
         """
-        if not row:
-            raise (ValueError, 'Missing consent_file record')
+        if not isinstance(row, ConsentFile):
+            raise (ValueError, 'Missing or invalid consent_file record')
 
         consent_type = row.type
         consent_status = row.sync_status
+
+        # Set up defaults values
         data = {'id': row.id,
                 'created': row.created,
                 'modified': row.modified,
@@ -66,8 +72,7 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
                 'sync_status_id': int(consent_status),
                 'hpo': row.hpo_name,
                 'organization': row.organization_name,
-                'consent_authored_date': None, # will be overwritten below assuming production quality data
-                # Initialize other calculated fields to default values
+                'consent_authored_date': None,
                 'resolved_date': None,
                 'missing_file': False,
                 'invalid_signature': False,
@@ -79,7 +84,8 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
                 'invalid_age_at_consent': False
         }
 
-        # Lower environments have some dirty data/missing authored fields.  Make best attempt to assign authored dates
+        # Lower environments have some dirty data/missing authored fields (e.g. "FirstYesAuthored" fields were never
+        # populated).  Make best attempt to find appropriate authored dates
         primary_consent_authored = row.consentForStudyEnrollmentFirstYesAuthored\
                                    or row.consentForStudyEnrollmentAuthored
         ehr_consent_authored = row.consentForElectronicHealthRecordsFirstYesAuthored\
@@ -100,34 +106,34 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         elif consent_type == ConsentType.PRIMARY_UPDATE and primary_consent_update_authored:
             data['consent_authored_date'] = primary_consent_update_authored.date()
 
-        # Populate other calculated fields, including error flag fields
+        # Resolved/OBSOLETE records use the consent_file modified date as the resolved date
         if consent_status == ConsentSyncStatus.OBSOLETE and row.modified:
             data['resolved_date'] = row.modified.date()
 
+        # For file-related errors, there is an implied hierarchy of errors for metrics.  If file is missing, then
+        # missing signature is irrelevant, and if signature is missing, invalid signing date is irrelevant
         data['missing_file'] = not row.file_exists
         data['signature_missing'] = (row.file_exists and not row.is_signature_valid)
         data['invalid_signing_date'] = (row.is_signature_valid and not row.is_signing_date_valid)
 
-        # Errors based on parsing strings in the other_errors field:
+        # Errors based on parsing the consent_file.other_errors string field:
+        # TODO:  Make the known error strings constants
         if row.other_errors:
-            data['checkbox_unchecked'] = row.other_errors.find('missing consent check mark') != -1
-            data['non_va_consent_for_va'] = row.other_errors.find('non-veteran consent for veteran') != -1
-            data['va_consent_for_non_va'] = row.other_errors.find('veteran consent for non-veteran') != -1
+            data['checkbox_unchecked'] = row.other_errors.find(ConsentErrors.MISSING_CONSENT_CHECK_MARK) != -1
+            data['non_va_consent_for_va'] = row.other_errors.find(ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN) != -1
+            data['va_consent_for_non_va'] = row.other_errors.find(ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN) != -1
 
         # Populate DOB-related errors.  These are not tracked in the RDR consent_file table.  They are derived from
         # fields stored in the participant_summary record and only apply to the primary consent.
-        # Note:  Determination was made to treat a calculated age > 124 years at time of consent as an invalid DOB
         if consent_type == ConsentType.PRIMARY:
             dob = row.dateOfBirth
             age_delta = relativedelta(primary_consent_authored, dob)
-            data['invalid_dob'] = (dob is None or age_delta.years <= 0 or age_delta.years > 124)
-            data['invalid_age_at_consent'] = age_delta.years < 18 if dob else False
-        else:
-            data['invalid_dob'] = data['invalid_age_at_consent'] = False
+            data['invalid_dob'] = (dob is None or age_delta.years <= 0 or age_delta.years > INVALID_DOB_MAX_AGE_VALUE)
+            data['invalid_age_at_consent'] = age_delta.years < VALID_AGE_AT_CONSENT if dob else False
 
         return data
 
-    def get_consent_validation_records(self, dao=None, id_list=None, date_filter=None):
+    def get_consent_validation_records(self, dao=None, id_list=None, date_filter='2021-06-01'):
         """
         Retrieve a block of consent_file validation records based on an id list or  "modified since" date filter
         If an id list is provided, the date_filter will be ignored
@@ -138,7 +144,7 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         :return:  A result set from the query of consent validation data
         """
         if not dao:
-            dao = self.ro_dao or ResourceDataDao()
+            dao = self.ro_dao or ResourceDataDao(backup=True)
 
         with dao.session() as session:
             query = session.query(ConsentFile.id,
