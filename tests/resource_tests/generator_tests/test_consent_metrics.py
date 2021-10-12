@@ -2,14 +2,12 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
-from datetime import datetime
+from datetime import datetime, date
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentErrors
 import rdr_service.resource.generators
-
-
 
 class ConsentMetricGeneratorTest(BaseTestCase):
 
@@ -18,6 +16,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.resource_data_dao = ResourceDataDao()
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
+
         participant = self.data_generator.create_database_participant_summary(
             participantOrigin='vibrent',
             consentForStudyEnrollmentAuthored=datetime.strptime('2020-01-01 01:00:00', "%Y-%m-%d %H:%M:%S"),
@@ -27,6 +26,15 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             consentForElectronicHealthRecordsFirstYesAuthored=\
                 datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
             consentForGenomicsRORAuthored=datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
+            **kwargs
+        )
+        return participant
+
+    def _create_participant_with_custom_primary_consent_authored(self, authored, **kwargs):
+        participant = self.data_generator.create_database_participant_summary(
+            participantOrigin='vibrent',
+            consentForStudyEnrollmentAuthored=authored,
+            consentForStudyEnrollmentFirstYesAuthored=authored,
             **kwargs
         )
         return participant
@@ -46,7 +54,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                                 'sync_status': str(consent_status),
                                 'sync_status_id': int(consent_status),
                                 'missing_file': ('missing_file' in expected_errors),
-                                'invalid_signature': ('invalid_signature' in expected_errors),
+                                'signature_missing': ('signature_missing' in expected_errors),
                                 'invalid_signing_date': ('invalid_signing_date' in expected_errors),
                                 'checkbox_unchecked': ('checkbox_unchecked' in expected_errors),
                                 'non_va_consent_for_va': ('non_va_consent_for_va' in expected_errors),
@@ -69,6 +77,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1
@@ -89,8 +99,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def test_consent_metrics_generator_dob_invalid(self):
         """
-        This error is calculated from participant_summary data,
-        but the consent_file table record can still be READY_TO_SYNC if there were no other issues
+        invalid_dob error calculated from participant_summary data, sync_status can still be READY_TO_SYNC
         """
 
         # Create participant summary data with DOB missing and with DOB > 124 years from primary consent authored
@@ -103,6 +112,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             participant_id=participant_1.participantId,
+            signing_date=participant_1.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1
@@ -111,6 +122,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             participant_id=participant_2.participantId,
+            signing_date=participant_2.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1
@@ -133,8 +146,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def test_consent_metrics_generator_invalid_age_at_consent(self):
         """
-         Consent metrics invalid_age_at_consent error is calculated from participant_summary data,
-         but the consent_file table record can still be READY_TO_SYNC if there were no other issues
+         invalid_age_at_consent errors come from participant_summary data, sync_status can still be READY_TO_SYNC
          """
         # Create participant summary data with a DOB less than 18 years from primary consent authored date
         participant = self._create_participant_with_all_consents_authored(
@@ -145,6 +157,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
             participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1
@@ -171,6 +185,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
             participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=0,
             # Because file_exists is 0, these should not be flagged as additional errors
             is_signature_valid=0,
@@ -189,7 +205,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def test_consent_metrics_generator_dob_and_file_errors(self):
         """
-         Consent metrics invalid_signature error + invalid_age_at_consent error from primary consent
+         Consent metrics signature_missing error + invalid_age_at_consent error from primary consent
          """
         # Create participant summary data (DOB < 18 years from primary consent authored date)
         participant = self._create_participant_with_all_consents_authored(
@@ -200,6 +216,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
             participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=0,
             # Because there wasn't a signature detected, this downstream signing date error is ignored in metrics code
@@ -229,6 +247,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.GROR,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
             participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
             is_signing_date_valid=1,
@@ -237,7 +257,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
 
-        # Expected: invalid_age_at_consent and signature_missing errors
+        # Expected: checkbox_unchecked error
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.GROR,
@@ -264,15 +284,16 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             type=ConsentType.EHR,
             sync_status=ConsentSyncStatus.OBSOLETE,
             participant_id=participant.participantId,
+            expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
-            is_signature_valid=0,
+            is_signature_valid=1,
             is_signing_date_valid=1,
             other_errors=ConsentErrors.MISSING_CONSENT_CHECK_MARK
         )
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
 
-        # Expected: invalid_age_at_consent and signature_missing errors
+        # Expected: checkbox_unchecked error
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.EHR,
@@ -288,3 +309,85 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
         self.assertEqual(resource_data.get('resolved_date', None),
                          datetime.date(consent_file_rec.modified))
+
+    def test_consent_metrics_generator_signature_missing_error_filtered(self):
+        """
+        Ignore known potential false positives for missing signatures, for consents authored before 2018-07-13
+        """
+        # Create participant summary data with a primary consent authored date before the false positive cutoff
+        participant = self._create_participant_with_custom_primary_consent_authored(
+            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+        )
+        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=0,
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+
+        # Confirm this record's ignore flag was set due to filtering the signature_missing error
+        self.assertEqual(resource_data['ignore'], True)
+
+    def test_consent_metrics_generator_special_sync_status_filtered(self):
+        """
+        Ignore consent records whose current sync_status is a special case status such as UNKNOWN or DELAYING_SYNC
+        """
+        # Create participant summary data with a primar consent authored date before the false positive cutoff
+        participant = self._create_participant_with_custom_primary_consent_authored(
+            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+        )
+        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.DELAYING_SYNC,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+
+        # Confirm this record's ignore flag was set due to filtering on the special sync_status
+        self.assertEqual(resource_data['ignore'], True)
+
+    def test_consent_metrics_generator_va_consent_for_non_va_filtered(self):
+        """
+        Ignore va_consent_for_non_va errors if that's the only error and participant's current pairing is to the VA HPO
+        """
+        va_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='VA')
+        # Create participant summary data with a primary consent authored date before the false positive cutoff
+        participant = self._create_participant_with_custom_primary_consent_authored(
+            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+            hpoId=va_hpo.hpoId
+        )
+        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1,
+            other_errors=ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+
+        # Confirm this record's ignore flag was set due to filtering the va_consent_for_non_va error
+        self.assertEqual(resource_data['ignore'], True)
+
+

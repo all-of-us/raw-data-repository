@@ -793,7 +793,7 @@ class WeeklyConsentReport(ConsentReport):
     def get_resolved_consent_issues_dataframe(self):
         """
         Returns a dataframe of all issues marked OBSOLETE up to and including on the report end date.  OBSOLETE implies
-        the file which did not pass validation has been superceded by a new/retransmitted consent file which was
+        the file which did not pass validation has been superseded by a new/retransmitted consent file which was
         successfully validated.  In some cases, a consent_file entry may be marked OBSOLETE after a manual inspection/
         issue resolution.
         """

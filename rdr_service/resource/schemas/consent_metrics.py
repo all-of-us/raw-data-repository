@@ -38,6 +38,9 @@ class ConsentMetricSchema(Schema):
     va_consent_for_non_va = fields.Boolean(
         description='True if consent for participant not paired to VA is a VA consent form'
     )
+    ignore = fields.Boolean(
+        description='True if record should be filtered out of metrics reporting'
+    )
 
     class Meta:
         schema_id = SchemaID.consent_metrics
