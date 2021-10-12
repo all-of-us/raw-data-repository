@@ -2057,7 +2057,6 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
                          GenomicValidationFlag.INVALID_CONSENT,
                          GenomicValidationFlag.INVALID_AGE,
-                         GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
     _ARRAY_GENOME_TYPE = "aou_array"
@@ -2269,7 +2268,6 @@ class GenomicBiobankSamplesCoupler:
                     samples_meta.valid_suspension_status[i],
                     samples_meta.gen_consents[i],
                     samples_meta.valid_ages[i],
-                    samples_meta.valid_ai_ans[i],
                     samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
@@ -2298,7 +2296,7 @@ class GenomicBiobankSamplesCoupler:
                     nyFlag=_ny_flag,
                     sexAtBirth=samples_meta.sabs[i],
                     collectionTubeId=samples_meta.sample_ids[i],
-                    validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
+                    validationStatus=(GenomicSetMemberStatus.INVALID if valid_flags
                                       else GenomicSetMemberStatus.VALID),
                     validationFlags=valid_flags,
                     ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',

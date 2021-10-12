@@ -1447,7 +1447,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(0, len(missing_cols))
             rows = list(csv_reader)
 
-            rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE ))
+            rows.sort(key=operator.itemgetter(ExpectedCsvColumns.BIOBANK_ID, ExpectedCsvColumns.GENOME_TYPE))
 
             self.assertEqual("T100002", rows[0][ExpectedCsvColumns.BIOBANK_ID])
             self.assertEqual(100002, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
@@ -1517,7 +1517,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[8][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[8][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("Y", rows[8][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[8][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -1525,7 +1525,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[9][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[9][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("Y", rows[9][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[9][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -1546,7 +1546,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(6, len(new_genomic_members))
+        self.assertEqual(8, len(new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -1640,7 +1640,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(6, len(new_genomic_members))
+        self.assertEqual(8, len(new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -1665,6 +1665,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
+
+            if member.biobankId == '100004':
+                # 100004 : Included, Valid and is ai_an
+                self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual('Y', member.ai_an)
 
             if member.biobankId == '100005':
                 # 100005 : Included, Valid

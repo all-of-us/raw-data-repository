@@ -1674,7 +1674,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         ParticipantSummary.consentForGenomicsROR == 1,
                         GenomicGCValidationMetrics.processingStatus == 'Pass',
-                        GenomicSetMember.ai_an == 'N',
                         GenomicSetMember.genomeType == 'aou_wgs',
                         GenomicSetMember.aw3ManifestJobRunID.isnot(None)
                     )
