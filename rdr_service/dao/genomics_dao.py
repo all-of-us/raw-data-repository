@@ -1642,11 +1642,11 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value,
                         literal('informingLoop')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicInformingLoop.participant_id
                     )
-                        .join(
+                    .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
                     ).filter(
@@ -1661,20 +1661,19 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.participantId.label('participant_id'),
                         literal('informingLoop')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicSetMember.participantId
                     )
-                        .join(
+                    .join(
                         GenomicGCValidationMetrics,
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
-                        .filter(
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         ParticipantSummary.consentForGenomicsROR == 1,
                         GenomicGCValidationMetrics.processingStatus == 'Pass',
-                        GenomicSetMember.ai_an == 'N',
                         GenomicSetMember.genomeType == 'aou_wgs',
                         GenomicSetMember.aw3ManifestJobRunID.isnot(None)
                     )

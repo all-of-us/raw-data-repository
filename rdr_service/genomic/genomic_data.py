@@ -358,8 +358,8 @@ class GenomicQueryClass:
                     WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
                     END AS gror_consent,
                     CASE
-                        WHEN native.participant_id IS NULL THEN 1 ELSE 0
-                    END AS valid_ai_an
+                        WHEN native.participant_id IS NULL THEN 0 ELSE 1
+                    END AS is_ai_an
                 FROM
                     participant_summary ps
                     JOIN code c ON c.code_id = ps.sex_id
@@ -384,7 +384,6 @@ class GenomicQueryClass:
                     AND ps.participant_origin = "vibrent"
                 HAVING TRUE
                     # Validations for Cohort 2
-                    AND valid_ai_an = 1
                     AND valid_age = 1
                     AND general_consent_given = 1
                     AND valid_suspension_status = 1
@@ -453,9 +452,8 @@ class GenomicQueryClass:
             WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
             END AS gror_consent,
             CASE
-                WHEN native.participant_id IS NULL THEN 1 ELSE 0
-            END AS valid_ai_an
-
+            WHEN native.participant_id IS NULL THEN 0 ELSE 1
+            END AS is_ai_an
         FROM
             participant_summary ps
             JOIN code c ON c.code_id = ps.sex_id
@@ -471,7 +469,6 @@ class GenomicQueryClass:
             {is_ror}
             {is_clinic_id_null}
         HAVING TRUE
-            AND valid_ai_an = 1
             AND valid_age = 1
             AND general_consent_given = 1
             AND valid_suspension_status = 1
@@ -514,8 +511,8 @@ class GenomicQueryClass:
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
               END AS gror_consent,
               CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
+                WHEN native.participant_id IS NULL THEN 0 ELSE 1
+              END AS is_ai_an
             FROM
                 participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
@@ -544,7 +541,6 @@ class GenomicQueryClass:
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 1
-                AND valid_ai_an = 1
                 AND valid_age = 1
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
@@ -583,8 +579,8 @@ class GenomicQueryClass:
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
               END AS gror_consent,
               CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
+                WHEN native.participant_id IS NULL THEN 0 ELSE 1
+              END AS is_ai_an
             FROM
                 participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
@@ -608,7 +604,6 @@ class GenomicQueryClass:
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 2
-                AND valid_ai_an = 1
                 AND valid_age = 1
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
@@ -694,8 +689,8 @@ class GenomicQueryClass:
             WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
           END AS gror_consent,
           CASE
-              WHEN native.participant_id IS NULL THEN 1 ELSE 0
-          END AS valid_ai_an,
+              WHEN native.participant_id IS NULL THEN 0 ELSE 1
+          END AS is_ai_an,
           ss.status,
           ss.test
         FROM
