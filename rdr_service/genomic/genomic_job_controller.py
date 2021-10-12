@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 
 import pytz
-from sendgrid import sendgrid
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from rdr_service import clock, config
@@ -57,6 +56,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
+from rdr_service.services.email import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -106,8 +106,6 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
-        self.aw1_raw_dao = GenomicAW1RawDao()
-        self.aw2_raw_dao = GenomicAW2RawDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.ingester = None
         self.file_mover = None
@@ -300,7 +298,11 @@ class GenomicJobController:
         if self.job_id not in [GenomicJob.AW1_MANIFEST, GenomicJob.METRICS_INGESTION]:
             raise AttributeError(f"{self.job_id.name} is invalid for this workflow")
 
-        raw_dao = self.aw1_raw_dao if self.job_id == GenomicJob.AW1_MANIFEST else self.aw2_raw_dao
+        if self.job_id == GenomicJob.AW1_MANIFEST:
+            raw_dao = GenomicAW1RawDao()
+
+        else:
+            raw_dao = GenomicAW2RawDao()
 
         # Get member records
         members = self.member_dao.get_members_from_member_ids(member_ids)
@@ -553,8 +555,8 @@ class GenomicJobController:
             logging.info('No missing gc data files to resolve')
 
     def update_member_aw2_missing_states_if_resolved(self):
-        # get array member_ids that are resolved but still in AW2_MISSING
-        logging.info("Updating Array AW2_MISSING members")
+        # get array member_ids that are resolved but still in GC_DATA_FILES_MISSING
+        logging.info("Updating Array GC_DATA_FILES_MISSING members")
         array_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_ARRAY)
         self.member_dao.batch_update_member_field(member_ids=array_member_ids,
                                                   field='genomicWorkflowState',
@@ -562,8 +564,8 @@ class GenomicJobController:
                                                   project_id=self.bq_project_id)
         logging.info(f"Updated {len(array_member_ids)} Array members.")
 
-        logging.info("Updating WGS AW2_MISSING members")
-        # get wgs member_ids that are resolved but still in AW2_MISSING
+        logging.info("Updating WGS GC_DATA_FILES_MISSING members")
+        # get wgs member_ids that are resolved but still in GC_DATA_FILES_MISSING
         wgs_member_ids = self.member_dao.get_aw2_missing_with_all_files(config.GENOME_TYPE_WGS)
         self.member_dao.batch_update_member_field(member_ids=wgs_member_ids,
                                                   field='genomicWorkflowState',
@@ -624,6 +626,57 @@ class GenomicJobController:
                             files = []
 
                 self.staging_dao.insert_filenames_bulk(files)
+
+    def reconcile_raw_to_aw1_ingested(self):
+        # Compare AW1 Raw to Genomic Set Member
+        raw_dao = GenomicAW1RawDao()
+        deltas = raw_dao.get_set_member_deltas()
+
+        # Update Genomic Set Member records for deltas
+        for record in deltas:
+            member = self.member_dao.get_member_from_raw_aw1_record(record)
+            if member:
+                member = self.set_aw1_attributes_from_raw((member, record))
+
+                # Set additional attributes
+                member.gcSiteId = record.site_name
+                member.aw1FileProcessedId = (
+                    self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
+                )
+                member.genomicWorkflowState = GenomicWorkflowState.AW1
+
+                with self.member_dao.session() as session:
+                    session.merge(member)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def reconcile_raw_to_aw2_ingested(self):
+        # Compare AW2 Raw to genomic_gc_validation_metrics
+        raw_dao = GenomicAW2RawDao()
+        deltas = raw_dao.get_aw2_ingestion_deltas()
+        inserted_metric_ids = []
+
+        # resolve deltas
+        for record in deltas:
+            member = self.member_dao.get_member_from_sample_id(record.sample_id)
+
+            if member:
+                # Get file_processed record
+                file_proc_map = self.map_file_paths_to_fp_id([record.file_path])
+
+                # Insert record into genomic_gc_validation_metrics
+                with self.metrics_dao.session() as session:
+                    self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
+                    metrics_obj = self.set_validation_metrics_from_raw((member, record))
+                    metrics_obj = session.merge(metrics_obj)
+                    session.commit()
+                    inserted_metric_ids.append(metrics_obj.id)
+
+        # Metrics
+        bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
+        genomic_gc_validation_metrics_batch_update(inserted_metric_ids)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
@@ -945,7 +998,7 @@ class GenomicJobController:
             # send email
             try:
                 logging.info('Sending Email to SendGrid...')
-                self._send_email_with_sendgrid(email_req)
+                EmailService.send_email(email_req)
 
                 logging.info('Email Sent.')
                 self.job_result = GenomicSubProcessResult.SUCCESS
@@ -1263,12 +1316,12 @@ class GenomicJobController:
 
         return new_run
 
-    def _compile_accesioning_failure_alert_email(self, alert_files):
+    def _compile_accesioning_failure_alert_email(self, alert_files) -> Email:
         """
         Takes a dict of all new failure files from
         GC buckets' accessioning folders
         :param alert_files: dict
-        :return: email dict ready for SendGrid API
+        :return: email object ready to send
         """
 
         # Set email data here
@@ -1277,11 +1330,7 @@ class GenomicJobController:
         except MissingConfigException:
             recipients = ["test-genomic@vumc.org"]
 
-        subject = "All of Us GC Manifest Failure Alert"
-        from_email = config.SENDGRID_FROM_EMAIL
-
         email_message = "New AW1 Failure manifests have been found:\n"
-
         if self.job_id == GenomicJob.AW1CF_ALERTS:
             email_message = "New AW1CF CVL Failure manifests have been found:\n"
 
@@ -1290,36 +1339,11 @@ class GenomicJobController:
             for file in alert_files[bucket]:
                 email_message += f"\t\t{file}\n"
 
-        data = {
-            "personalizations": [
-                {
-                    "to": [{"email": r} for r in recipients],
-                    "subject": subject
-                }
-            ],
-            "from": {
-                "email": from_email
-            },
-            "content": [
-                {
-                    "type": "text/plain",
-                    "value": email_message
-                }
-            ]
-        }
-
-        return data
-
-    @staticmethod
-    def _send_email_with_sendgrid(_email):
-        """
-        Calls SendGrid API with email request
-        :param _email:
-        :return: sendgrid response
-        """
-        sg = sendgrid.SendGridAPIClient(api_key=config.getSetting(config.SENDGRID_KEY))
-        response = sg.client.mail.send.post(request_body=_email)
-        return response
+        return Email(
+            recipients=recipients,
+            subject="All of Us GC Manifest Failure Alert",
+            plain_text_content=email_message
+        )
 
 
 class DataQualityJobController:

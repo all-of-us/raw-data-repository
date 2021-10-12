@@ -97,7 +97,10 @@ class GenomicJob(messages.Enum):
     MISSING_FILES_CLEANUP = 43
     GENERATE_AW2F_REMAINDER = 44
     UPDATE_MEMBERS_STATE_RESOLVED_DATA_FILES = 45
+
+    # Ingestion Reconciliatino Jobs
     RECONCILE_GC_DATA_FILE_TO_TABLE = 46
+    RECONCILE_RAW_AW1_INGESTED = 47
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -117,7 +120,7 @@ class GenomicWorkflowState(messages.Enum):
     AW1F_PRE = 4
     AW1F_POST = 5
     AW2 = 6
-    AW2_MISSING = 7
+    GC_DATA_FILES_MISSING = 7
     AW2_FAIL = 8
 
     # CVL Workflow only

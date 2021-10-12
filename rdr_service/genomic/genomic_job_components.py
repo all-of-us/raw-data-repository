@@ -1534,7 +1534,7 @@ class GenomicFileValidator:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         # if not data_to_validate
-        struct_valid_result, missing_fields, expected = self._check_file_structure_valid(
+        struct_valid_result, missing_fields, extra_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
 
         if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
@@ -1543,6 +1543,8 @@ class GenomicFileValidator:
         if not struct_valid_result:
             slack = True
             invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
+            if extra_fields:
+                invalid_message += f' Extra fields: {extra_fields}'
             if missing_fields:
                 invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
@@ -1724,7 +1726,8 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
-        missing_fields = None
+        missing_fields, extra_fields = None, None
+
         if not self.valid_schema:
             self.valid_schema = self._set_schema(self.filename)
 
@@ -1737,10 +1740,17 @@ class GenomicFileValidator:
         all_file_columns_valid = all([c in self.valid_schema for c in cases])
         all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
 
+        if not all_file_columns_valid:
+            extra_fields = list(set(cases) - set(self.valid_schema))
+
         if not all_expected_columns_in_file:
             missing_fields = list(set(self.valid_schema) - set(cases))
 
-        return all([all_file_columns_valid, all_expected_columns_in_file]), missing_fields, self.valid_schema
+        return \
+            all([all_file_columns_valid, all_expected_columns_in_file]), \
+            missing_fields, \
+            extra_fields, \
+            self.valid_schema
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,

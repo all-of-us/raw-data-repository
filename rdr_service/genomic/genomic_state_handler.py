@@ -70,7 +70,7 @@ class AW2State(GenomicStateBase):
     """State representing the AW2 manifest state"""
     def transition_function(self, signal):
         if signal == 'missing':
-            return GenomicWorkflowState.AW2_MISSING
+            return GenomicWorkflowState.GC_DATA_FILES_MISSING
 
         elif signal == 'fail':
             return GenomicWorkflowState.AW2_FAIL
@@ -89,7 +89,7 @@ class AW2MissingState(GenomicStateBase):
 
     def transition_function(self, signal):
         if signal == 'missing':
-            return GenomicWorkflowState.AW2_MISSING
+            return GenomicWorkflowState.GC_DATA_FILES_MISSING
 
         elif signal == 'cvl-ready':
             return GenomicWorkflowState.CVL_READY
@@ -97,7 +97,7 @@ class AW2MissingState(GenomicStateBase):
         elif signal == 'gem-ready':
             return GenomicWorkflowState.GEM_READY
 
-        return GenomicWorkflowState.AW2_MISSING
+        return GenomicWorkflowState.GC_DATA_FILES_MISSING
 
 
 class GEMReadyState(GenomicStateBase):
@@ -241,7 +241,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.AW0: AW0State(),
         GenomicWorkflowState.AW1: AW1State(),
         GenomicWorkflowState.AW2: AW2State(),
-        GenomicWorkflowState.AW2_MISSING: AW2MissingState(),
+        GenomicWorkflowState.GC_DATA_FILES_MISSING: AW2MissingState(),
         GenomicWorkflowState.CVL_READY: CVLReadyState(),
         GenomicWorkflowState.W1: W1State(),
         GenomicWorkflowState.W2: W2State(),
