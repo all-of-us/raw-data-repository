@@ -924,27 +924,30 @@ class ConsentMetricsClass(object):
     def update_batch(self, _ids):
         """ Batch update of ConsentMetrics resource records """
 
+        batch_size = 250
         count = 0
         task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
 
-        if not self.args.debug:
-            print_progress_bar(
-                count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
-            )
+        batches = len(_ids) // batch_size
+        if len(_ids) % batch_size:
+            batches += 1
 
-        for batch in chunks(_ids, 250):
+        _logger.info('  Records     : {0}'.format(self.gcp_env.terminal_colors.fmt(len(_ids))))
+        _logger.info('  Batch size  : {0}'.format(self.gcp_env.terminal_colors.fmt(batch_size)))
+        _logger.info('  Tasks       : {0}'.format(self.gcp_env.terminal_colors.fmt(batches)))
+
+        for batch in chunks(_ids, batch_size):
             payload = {'batch': [id for id in batch]}
             if self.gcp_env.project == 'localhost':
                 batch_rebuild_consent_metrics_task(payload)
             else:
-                task.execute('rebuild_consent_metrics_task', payload=payload, in_seconds=15,
+                task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=15,
                              queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
 
-            count += len(batch)
+            count += 1
             if not self.args.debug:
                 print_progress_bar(
-                    count, len(_ids), prefix="{0}/{1}:".format(count, len(_ids)), suffix="complete"
-                )
+                    count, batches, prefix="{0}/{1} tasks queued:".format(count, batches, suffix="complete"))
 
     def run(self):
 
@@ -956,20 +959,23 @@ class ConsentMetricsClass(object):
         _logger.info('')
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        _logger.info('  Batch mode enabled    : {0}'.format(clr.fmt('Yes' if self.args.batch else 'No')))
 
         dao = ResourceDataDao(backup=True)
         if self.args.all_ids:
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
             with dao.session() as session:
                 self.id_list = [r.id for r in session.query(ConsentFile.id).all()]
+        elif hasattr(self.args, 'from_file') and self.args.from_file:
+            self.id_list = get_id_list(self.args.from_file)
+        elif hasattr(self.args, 'id') and self.args.id:
+            # Use a one-element id list for rebuilding single ids
+            self.id_list = [self.args.id, ]
+        # The --modified-since option is applied last; will be ignored if another option provided the id list
         elif self.args.modified_since:
             with dao.session() as session:
                 results = session.query(ConsentFile.id).filter(ConsentFile.modified >= self.args.modified_since).all()
                 self.id_list = [r.id for r in results]
-        elif hasattr(self.args, 'from_file') and self.args.from_file:
-            self.id_list = get_id_list(self.args.from_file)
-        elif hasattr(self.args, 'id') and self.args.id:
-            self.id_list = [self.args.id, ]
 
         if not (self.id_list and len(self.id_list)):
             _logger.error('Nothing to do')
@@ -977,21 +983,26 @@ class ConsentMetricsClass(object):
 
         if self.args.batch:
             self.update_batch(self.id_list)
+            return 0
         elif len(self.id_list) > 2500:
-            # Issue a warning if a local rebuild will exceed 2500 records
-            response = input(f'\n{len(self.id_list)} records will be rebuilt.  Do you wish to continue? [y/N]')
-            if response.upper() != 'Y':
+            # Issue a warning if a local rebuild will exceed 2500 records; default to aborting
+            response = input(f'\n{len(self.id_list)} records will be rebuilt.  Continue without --batch mode? [y/N]')
+            if response.upper() == 'N':
                 _logger.error('Aborted by user')
                 return 1
 
-        w_dao = ResourceDataDao()
-        results = self.res_gen.get_consent_validation_records(dao=w_dao, id_list=self.id_list)
+        results = self.res_gen.get_consent_validation_records(dao=dao, id_list=self.id_list)
+        count = 0
         for row in results:
             resource_data = self.res_gen.make_resource(row.id, consent_file_rec=row)
             resource_data.save(w_dao=ResourceDataDao(backup=False))
+            count += 1
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(results), prefix="{0}/{1}:".format(count, len(results)), suffix="complete"
+                )
 
         return 0
-
 
 
 def get_id_list(fname):

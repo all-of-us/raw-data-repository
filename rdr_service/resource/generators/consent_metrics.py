@@ -5,7 +5,6 @@
 import logging
 
 from dateutil.relativedelta import relativedelta
-from pprint import pprint
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import generators, schemas
@@ -32,16 +31,22 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
             self.ro_dao = ResourceDataDao()
 
         if not consent_file_rec:
-            consent_file_rec = self.get_single_validation_record(_pk)
+            # Retrieve a single validation record for the provided id/primary key value
+            result = self.get_consent_validation_records(id_list=[_pk])
+            if not len(result):
+                logging.warning(f'Consent metrics record retrieval failed for consent_file id {_pk}')
+                return None
+            else:
+                consent_file_rec = result[0]
 
-        data = self.make_consent_validation_dict(consent_file_rec)
+        data = self._make_consent_validation_dict(consent_file_rec)
         return generators.ResourceRecordSet(schemas.ConsentMetricSchema, data)
 
     @staticmethod
-    def make_consent_validation_dict(row):
+    def _make_consent_validation_dict(row):
         """
         Transforms a consent_file record into a consent validation resource dictionary.  Reproduces the
-        consent report SQL from the consent-report tool with its calculated columns as a Python generator
+        consent report SQL from the consent-report tool with its calculated columns
         """
         if not row:
             raise (ValueError, 'Missing consent_file record')
@@ -116,21 +121,16 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
             dob = row.dateOfBirth
             age_delta = relativedelta(primary_consent_authored, dob)
             data['invalid_dob'] = (dob is None or age_delta.years <= 0 or age_delta.years > 124)
-            data['invalid_age_at_consent'] = (dob and age_delta.years < 18)
+            data['invalid_age_at_consent'] = age_delta.years < 18 if dob else False
         else:
             data['invalid_dob'] = data['invalid_age_at_consent'] = False
 
-        # !DEBUG!
-        if data['invalid_dob'] or data['invalid_age_at_consent']:
-            pprint(data)
-            print('\n')
-
         return data
 
-    def get_consent_validation_records(self, dao=None, id_list=None, date_filter='2021-06-01'):
+    def get_consent_validation_records(self, dao=None, id_list=None, date_filter=None):
         """
-        Retrieve a block of consent_file validation records based on a "modified since" date filter
-        Default date pre-dates the instantiation of consent_file in all environments (will pull all records)
+        Retrieve a block of consent_file validation records based on an id list or  "modified since" date filter
+        If an id list is provided, the date_filter will be ignored
         :param dao:  Read-only DAO object if one was already instantiated by the caller
         :param id_list: List of specific consent_file record IDs to retrieve.  Takes precedence over date_filter
         :param date_filter:  A date string in YYYY-MM-DD format to use for filtering consent_file records. The
@@ -139,7 +139,6 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         """
         if not dao:
             dao = self.ro_dao or ResourceDataDao()
-
 
         with dao.session() as session:
             query = session.query(ConsentFile.id,
@@ -172,21 +171,9 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
             else:
                 query = query.filter(ConsentFile.modified >= date_filter)
 
-            results = query.all()
+            # TODO:  Remove this vibrent filter once we're validating CE consents
+            results = query.filter(ParticipantSummary.participantOrigin == 'vibrent').all()
+            if not len(results):
+                logging.warning('No consent metrics results found.  Please check the query filters')
 
             return results
-
-
-def rebuild_consent_validation_resources_task(ro_dao=None, date_filter='2021-06-01'):
-    """
-    Cloud Tasks: Refresh the consent file metrics
-    """
-    gen = ConsentMetricsGenerator()
-    if not ro_dao:
-        gen.ro_dao = ro_dao = ResourceDataDao()
-
-    results = gen.get_consent_validation_records(ro_dao=ro_dao, date_filter=date_filter)
-    logging.info('Consent metrics: rebuilding {0} resource records...'.format(len(results)))
-    for row in results:
-        resource = gen.make_resource(row.id, consent_file_rec=row)
-        resource.save()
