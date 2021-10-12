@@ -164,7 +164,10 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         return (
             basename(blob_wrapper.blob.name).startswith('PrimaryConsentUpdate')
             and blob_wrapper.get_parsed_pdf().get_page_number_of_text([
-                'Do you agree to this updated consent?'
+                (
+                    'Do you agree to this updated consent?',
+                    '¿Está de acuerdo con este consentimiento actualizado?'
+                )
             ]) is not None
         )
 

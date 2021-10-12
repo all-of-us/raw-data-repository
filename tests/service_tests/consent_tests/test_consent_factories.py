@@ -44,6 +44,10 @@ class ConsentFactoryTest(BaseTestCase):
             name='PrimaryConsentUpdate_7890.pdf',
             text_in_file='Do you agree to this updated consent?'
         )
+        self.spanish_primary_update_file = self._mock_pdf(
+            name='PrimaryConsentUpdate_es21.pdf',
+            text_in_file='¿Está de acuerdo con este consentimiento actualizado?'
+        )
 
         self.storage_provider_mock.list.return_value = [
             self.primary_file,
@@ -54,7 +58,8 @@ class ConsentFactoryTest(BaseTestCase):
             self.another_ehr,
             self.signature_image,
             self.gror_file,
-            self.primary_update_file
+            self.primary_update_file,
+            self.spanish_primary_update_file
         ]
 
         self.vibrent_factory = files.ConsentFileAbstractFactory.get_file_factory(
@@ -111,7 +116,7 @@ class ConsentFactoryTest(BaseTestCase):
     def test_vibrent_primary_update_consent(self):
         self.assertConsentListEquals(
             expected_class=files.VibrentPrimaryConsentUpdateFile,
-            expected_files=[self.primary_update_file],
+            expected_files=[self.primary_update_file, self.spanish_primary_update_file],
             actual_files=self.vibrent_factory.get_primary_update_consents()
         )
 
