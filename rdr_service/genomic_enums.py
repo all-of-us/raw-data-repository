@@ -120,7 +120,7 @@ class GenomicWorkflowState(messages.Enum):
     AW1F_PRE = 4
     AW1F_POST = 5
     AW2 = 6
-    AW2_MISSING = 7
+    GC_DATA_FILES_MISSING = 7
     AW2_FAIL = 8
 
     # CVL Workflow only

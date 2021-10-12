@@ -1141,7 +1141,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member updated with job ID
         member = self.member_dao.get(1)
-        self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
 
         # Test member updated with job ID
         member = self.member_dao.get(2)
@@ -1238,7 +1238,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
-        self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+        self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
 
         missing_file = self.missing_file_dao.get(1)
         self.assertEqual("rdr", missing_file.gc_site_id)
@@ -5200,7 +5200,7 @@ class GenomicPipelineTest(BaseTestCase):
                     sampleId=100 + i,
                     gcManifestParentSampleId=1000 + i,
                     genomeType=genome_type,
-                    genomicWorkflowState=GenomicWorkflowState.AW2_MISSING
+                    genomicWorkflowState=GenomicWorkflowState.GC_DATA_FILES_MISSING
                 )
         members = [(i.id, i.genomeType) for i in self.member_dao.get_all()]
 
@@ -5249,7 +5249,7 @@ class GenomicPipelineTest(BaseTestCase):
         members = self.member_dao.get_all()
         for member in members:
             if member.id in (5, 6):
-                self.assertEqual(GenomicWorkflowState.AW2_MISSING, member.genomicWorkflowState)
+                self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
             elif member.genomeType == "aou_array":
                 self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
             else:
@@ -5381,3 +5381,64 @@ class GenomicPipelineTest(BaseTestCase):
         member_cntrl = self.member_dao.get(6)
         self.assertEqual('HG-1005', member_cntrl.biobankId)
         self.assertEqual('1005', member_cntrl.sampleId)
+
+    def test_reconcile_raw_to_aw2_ingested(self):
+        # Basic Setup
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now()
+        )
+        # create genomic set
+        self.data_generator.create_database_genomic_set(
+            genomicSetName='test',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+        # insert set members
+        stored_samples = []
+        for i in range(1, 7):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                collectionTubeId=100+i,
+                sampleId=1000+i,
+                genomeType="aou_array",
+            )
+            ss = (i, 100+i)
+            stored_samples.append(ss)
+
+        self._create_stored_samples(stored_samples)
+
+        # Setup Test file
+        test_file_name = self._create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest.csv',
+                                                          _FAKE_GENOMIC_CENTER_BUCKET_A,
+                                                          folder=_FAKE_BUCKET_FOLDER)
+
+        test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_BUCKET_FOLDER}/{test_file_name}"
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=1,
+            startTime=clock.CLOCK.now(),
+            filePath=test_file_path,
+            bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            fileName=test_file_name,
+        )
+
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+
+        self.data_generator.create_database_genomic_file_processed(
+            runId=1,
+            startTime=clock.CLOCK.now(),
+            filePath=test_file_path,
+            bucketName=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            fileName=test_file_name,
+        )
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw2")
+
+        genomic_pipeline.reconcile_raw_to_aw2_ingested()
+
+        metrics = self.metrics_dao.get_all()
+        self.assertEqual(5, len(metrics))
