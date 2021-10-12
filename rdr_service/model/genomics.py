@@ -441,6 +441,7 @@ class GenomicAW2Raw(Base):
     genome_coverage = Column(String(255), nullable=True)
     aouhdr_coverage = Column(String(255), nullable=True)
     contamination = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
     sex_concordance = Column(String(255), nullable=True)
     sex_ploidy = Column(String(255), nullable=True)
     aligned_q30_bases = Column(String(255), nullable=True)
