@@ -4723,41 +4723,6 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(index, len(aw2_raw_records))
 
-    def test_get_latest_raw_file(self):
-        aw1_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-5.csv")
-        for num in range(3):
-            if num == 2:
-                g_type = 'SEQ'
-            else:
-                g_type = 'GEN'
-            aw1_manifest_filename = f"RDR_AoU_{g_type}_PKG-1908-218051_v{num}.csv"
-            self._write_cloud_csv(
-                aw1_manifest_filename,
-                aw1_manifest_file,
-                bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-                folder=_FAKE_GENOTYPING_FOLDER,
-            )
-            test_file_path = f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{_FAKE_GENOTYPING_FOLDER}/{aw1_manifest_filename}"
-            genomic_pipeline.load_awn_manifest_into_raw_table(test_file_path, "aw1")
-            time.sleep(10)
-
-        biobank_id = '2'
-        genome_file_type = 'GEN'
-
-        all_raw_records = self.aw1_raw_dao.get_all()
-        filtered_records = [rec for rec in all_raw_records
-                            if rec.biobank_id == biobank_id
-                            and genome_file_type in rec.file_path]
-        sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
-        sorted_record = sorted_records[0]
-
-        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
-            biobank_id=int(biobank_id),
-            genome_type='aou_array'
-        )
-        self.assertEqual(sorted_record.id, dao_record.id)
-        self.assertEqual(sorted_record.file_path, dao_record.file_path)
-
     def test_aw1_genomic_incident_inserted(self):
         # Setup Test file
         gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
@@ -4806,6 +4771,41 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(2, incidents[1].source_job_run_id)
         self.assertEqual(1, incidents[1].source_file_processed_id)
         self.assertEqual("UNABLE_TO_FIND_MEMBER", incidents[1].code)
+
+    def test_ingest_genomic_incident_extra_fields(self):
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-Extra-Field.csv")
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        incident_dao = GenomicIncidentDao()
+        incidents = incident_dao.get_all()
+
+        self.assertTrue(any(obj.code == 'FILE_VALIDATION_FAILED_STRUCTURE' for obj in incidents))
+        self.assertTrue(any('Extra fields: [\'extrafield\']' in obj.message for obj in incidents))
 
     def test_aw2_genomic_incident_inserted(self):
         # set up test file
