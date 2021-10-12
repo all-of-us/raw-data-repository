@@ -672,6 +672,10 @@ class GenomicJobController:
                     session.commit()
                     inserted_metric_ids.append(metrics_obj.id)
 
+        # Metrics
+        bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
+        genomic_gc_validation_metrics_batch_update(inserted_metric_ids)
+
         self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
