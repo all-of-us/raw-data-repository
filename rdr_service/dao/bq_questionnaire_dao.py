@@ -5,12 +5,7 @@ from sqlalchemy import text
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord, BQFieldTypeEnum
-from rdr_service.model.bq_questionnaires import (
-    BQPDRTheBasics, BQPDRConsentPII, BQPDRLifestyle,
-    BQPDROverallHealth, BQPDRDVEHRSharing, BQPDREHRConsentPII, BQPDRFamilyHistory,
-    BQPDRHealthcareAccess, BQPDRPersonalMedicalHistory, BQPDRCOPEMay, BQPDRCOPENov, BQPDRCOPEDec, BQPDRCOPEFeb,
-    BQPDRStopParticipating, BQPDRWithdrawalIntro, BQPDRCOPEVaccine1, BQPDRCOPEVaccine2
-)
+from rdr_service.model.bq_questionnaires import PDR_CODE_TO_MODULE_LIST
 from rdr_service.code_constants import PPI_SYSTEM, PMI_SKIP_CODE
 from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
 
@@ -98,27 +93,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         if not self.ro_dao:
             self.ro_dao = BigQuerySyncDao(backup=True)
 
-        table_map = {
-            'TheBasics': BQPDRTheBasics,
-            'ConsentPII': BQPDRConsentPII,
-            'Lifestyle': BQPDRLifestyle,
-            'OverallHealth': BQPDROverallHealth,
-            'DVEHRSharing': BQPDRDVEHRSharing,
-            'EHRConsentPII': BQPDREHRConsentPII,
-            'FamilyHistory': BQPDRFamilyHistory,
-            'HealthcareAccess': BQPDRHealthcareAccess,
-            'PersonalMedicalHistory': BQPDRPersonalMedicalHistory,
-            'COPE': BQPDRCOPEMay,
-            'cope_nov': BQPDRCOPENov,
-            'cope_dec': BQPDRCOPEDec,
-            'cope_feb': BQPDRCOPEFeb,
-            'cope_vaccine1': BQPDRCOPEVaccine1,
-            'cope_vaccine2': BQPDRCOPEVaccine2,
-            # There are two different module id codes in use for the withdrawal survey
-            'withdrawal_intro': BQPDRWithdrawalIntro,
-            'StopParticipating': BQPDRStopParticipating
-        }
-        table = table_map.get(module_id, None)
+        table = PDR_CODE_TO_MODULE_LIST.get(module_id, None)
         if table is None:
             logging.info('Generator: ignoring questionnaire module id [{0}].'.format(module_id))
             return None, list()

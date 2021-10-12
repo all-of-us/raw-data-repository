@@ -407,7 +407,7 @@ def migrate_requests_logs(target_db):
 @app_util.auth_required_cron
 def transfer_hpro_consents():
     hpro_consents = HealthProConsentFile()
-    hpro_consents.transfer_limit = 1000
+    hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, default=1000)
     hpro_consents.initialize_consent_transfer()
     return '{ "success": "true" }'
 

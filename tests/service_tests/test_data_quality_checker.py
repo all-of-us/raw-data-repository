@@ -33,18 +33,97 @@ class DataQualityCheckerTest(BaseTestCase):
 
         self.checker.run_data_quality_checks()
 
-        mock_logging.warning.assert_has_calls([
-            mock.call(
-                f'Response {response_authored_before_signup.questionnaireResponseId} authored at '
-                f'{response_authored_before_signup.authored} but participant signed up at {participant.signUpTime}'),
-            mock.call(
-                f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
-                f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
-            ),
-            mock.call(
-                f'Response {response_without_answers.questionnaireResponseId} has no answers'
-            )
-        ])
+        mock_logging.error.assert_any_call(
+            f'Response {response_authored_before_signup.questionnaireResponseId} authored at '
+            f'{response_authored_before_signup.authored} but participant signed up at {participant.signUpTime}'
+        )
+        mock_logging.error.assert_any_call(
+            f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
+            f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
+        )
+        mock_logging.warning.assert_called_with(
+            f'Response {response_without_answers.questionnaireResponseId} has no answers'
+        )
+
+    def test_response_fuzzy_future_check(self, mock_logging):
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_in_the_future = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=now + timedelta(weeks=1),
+            created=now
+        )
+        # Create another questionnaire response that shouldn't get logged
+        self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=now + timedelta(seconds=40),
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_called_once_with(
+            f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
+            f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
+        )
+
+    def test_response_after_suspension(self, mock_logging):
+        suspended_participant = self.data_generator.create_database_participant(
+            signUpTime=datetime(2020, 4, 10),
+            suspensionTime=datetime(2020, 8, 4)
+        )
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_after_suspension = self.data_generator.create_database_questionnaire_response(
+            participantId=suspended_participant.participantId,
+            authored=now,
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_any_call(
+            f'Response {response_authored_after_suspension.questionnaireResponseId} authored for suspended participant'
+        )
+
+    def test_response_after_withdrawal(self, mock_logging):
+        withdrawn_participant = self.data_generator.create_database_participant(
+            signUpTime=datetime(2020, 4, 10),
+            withdrawalAuthored=datetime(2020, 8, 4)
+        )
+        now = datetime.now().replace(microsecond=0)
+
+        response_authored_after_withdraw = self.data_generator.create_database_questionnaire_response(
+            participantId=withdrawn_participant.participantId,
+            authored=now,
+            created=now
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_any_call(
+            f'Response {response_authored_after_withdraw.questionnaireResponseId} authored for withdrawn participant'
+        )
+
+    def test_response_before_questionnaire(self, mock_logging):
+        """We should get alerted if a response was authored before the questionnaire was released"""
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
+        now = datetime.now().replace(microsecond=0)
+
+        questionnaire = self.data_generator.create_database_questionnaire_history(
+            created=now
+        )
+        response_authored_before_release = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            authored=now - timedelta(weeks=4),
+            created=now + timedelta(weeks=1)
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.error.assert_called_once_with(
+            f'Response {response_authored_before_release.questionnaireResponseId} '
+            f'authored before questionnaire released'
+        )
 
     def test_only_recent_responses_checked(self, mock_logging):
         """Make sure that the checks only apply to responses after the date given"""

@@ -25,8 +25,10 @@ class BaseMessageBroker:
             raise BadRequest(f'can not find auth info for dest: {self.message.messageDest}')
 
         now = clock.CLOCK.now()
-        five_mins_later = now + timedelta(minutes=5)
-        if auth_info.accessToken and auth_info.expiredAt > five_mins_later:
+        # the token will be expired in 300 secs, compare with the timestamp of 20 secs later
+        # to make sure we use a valid token
+        secs_later = now + timedelta(seconds=20)
+        if auth_info.accessToken and auth_info.expiredAt > secs_later:
             return auth_info.accessToken
         else:
             token_endpoint = auth_info.tokenEndpoint

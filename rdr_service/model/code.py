@@ -49,9 +49,12 @@ class _CodeBase(object):
     @rdr_dictionary_show_unique_values
     """
     value = Column("value", String(80), nullable=False)
-    # OMOP codes are supposed to be at most 50 characters long; for legacy codes that exceeded this
-    # limit, we populate a shortened version for use in OMOP here. Otherwise, shortValue is identical
-    # to value.
+    # OMOP codes can be any length according to OHDSI:
+    # https://ohdsi.github.io/CommonDataModel/dataModelConventions.html#general
+    # "Precision is provided only for VARCHAR. It reflects the minimal required string length
+    # and can be expanded within a CDM instantiation."
+    #
+    # Leaving shortValue field and functionality in for any downstream users, but no longer using it in curation ETL.
     shortValue = Column("short_value", String(50))
     display = Column("display", UnicodeText)
     topic = Column("topic", UnicodeText)
