@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 import mock
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBoxHorizontal, LTTextLineHorizontal
 from typing import List
@@ -48,15 +48,8 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.has_yes_selected, consent_file.is_agreement_selected())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
-    def _get_vibrent_primary_test_data(self) -> List['PrimaryConsentTestData']:
-        """
-        Builds a list of PDFs that represent the different layouts of Vibrent's primary consent
-        that have been encountered. Add to this if the code incorrectly parses any Vibrent primary pdf
-        """
-        test_data = []
-
-        # elements that usually appear on the signature page
-        description_elements = [
+    def _get_primary_consent_elements(self):
+        return [
             self._build_pdf_element(
                 cls=LTTextBoxHorizontal,
                 children=[
@@ -81,6 +74,16 @@ class ConsentFileParsingTest(BaseTestCase):
                 ]
             )
         ]
+
+    def _get_vibrent_primary_test_data(self) -> List['PrimaryConsentTestData']:
+        """
+        Builds a list of PDFs that represent the different layouts of Vibrent's primary consent
+        that have been encountered. Add to this if the code incorrectly parses any Vibrent primary pdf
+        """
+        test_data = []
+
+        # elements that usually appear on the signature page
+        description_elements = self._get_primary_consent_elements()
 
         # Build basic file with signature of Test Name and signing date of August 17, 2019
         pdf = self._build_pdf(pages=[
@@ -396,7 +399,11 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         basic_update_case = PrimaryUpdateConsentTestData(
-            file=files.VibrentPrimaryConsentUpdateFile(pdf=basic_update_pdf, blob=mock.MagicMock()),
+            file=files.VibrentPrimaryConsentUpdateFile(
+                pdf=basic_update_pdf,
+                blob=mock.MagicMock(),
+                consent_date=datetime.now()
+            ),
             expected_signature='Test update',
             expected_sign_date=date(2021, 1, 1),
             has_yes_selected=True,
@@ -423,14 +430,37 @@ class ConsentFileParsingTest(BaseTestCase):
             ]
         ])
         va_update_case = PrimaryUpdateConsentTestData(
-            file=files.VibrentPrimaryConsentUpdateFile(pdf=va_update_pdf, blob=mock.MagicMock()),
+            file=files.VibrentPrimaryConsentUpdateFile(
+                pdf=va_update_pdf,
+                blob=mock.MagicMock(),
+                consent_date=datetime.now()
+            ),
             expected_signature='Test update',
             expected_sign_date=date(2021, 1, 1),
             has_yes_selected=False,
             expected_to_be_va_file=True
         )
 
-        return [basic_update_case, va_update_case]
+        # Build basic primary file for older version of PrimaryUpdate
+        pdf = self._build_pdf(pages=[
+            [
+                *self._get_primary_consent_elements(),
+                self._build_form_element(text='Test Name', bbox=(116, 147, 517, 169)),
+                self._build_form_element(text='Aug 9, 2020', bbox=(116, 97, 266, 119))
+            ]
+        ])
+        older_update_case = PrimaryUpdateConsentTestData(
+            file=files.VibrentPrimaryConsentUpdateFile(
+                pdf=pdf,
+                blob=mock.MagicMock(),
+                consent_date=datetime(2020, 8, 9)
+            ),
+            expected_signature='Test Name',
+            expected_sign_date=date(2020, 8, 9),
+            has_yes_selected=True
+        )
+
+        return [basic_update_case, va_update_case, older_update_case]
 
     @classmethod
     def _build_pdf(cls, pages) -> files.Pdf:

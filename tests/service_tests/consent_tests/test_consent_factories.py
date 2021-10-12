@@ -48,6 +48,7 @@ class ConsentFactoryTest(BaseTestCase):
             name='PrimaryConsentUpdate_es21.pdf',
             text_in_file='¿Está de acuerdo con este consentimiento actualizado?'
         )
+        self.older_update_file = self._mock_pdf(name='PrimaryConsentUpdate_v1.pdf')
 
         self.storage_provider_mock.list.return_value = [
             self.primary_file,
