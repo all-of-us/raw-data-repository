@@ -1,3 +1,4 @@
+from datetime import datetime
 import mock
 
 from rdr_service import config
@@ -118,7 +119,7 @@ class ConsentFactoryTest(BaseTestCase):
         self.assertConsentListEquals(
             expected_class=files.VibrentPrimaryConsentUpdateFile,
             expected_files=[self.primary_update_file, self.spanish_primary_update_file],
-            actual_files=self.vibrent_factory.get_primary_update_consents()
+            actual_files=self.vibrent_factory.get_primary_update_consents(consent_date=datetime.now())
         )
 
     def assertConsentListEquals(self, expected_class, expected_files, actual_files):
