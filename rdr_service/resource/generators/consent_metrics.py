@@ -52,8 +52,8 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
         Transforms a consent_file record into a consent metrics resource object dictionary.  Reproduces the
         CONSENT_REPORT_SQL logic from the consent-report tool, for calculating the error columns and dates
         """
-        if not isinstance(row, ConsentFile):
-            raise (ValueError, 'Missing or invalid consent_file record')
+        if not row or not len(row):
+            raise (ValueError, 'Missing consent_file record')
 
         consent_type = row.type
         consent_status = row.sync_status
