@@ -422,7 +422,6 @@ class VibrentGrorConsentFile(GrorConsentFile):
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
     FIRST_VERSION_END_DATE = datetime(2020, 11, 1)
-    _SIGNATURE_PAGE = 13
 
     def __init__(self, *args, consent_date: datetime, **kwargs):
         super(VibrentPrimaryConsentUpdateFile, self).__init__(*args, **kwargs)
@@ -434,13 +433,18 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
         if consent_date < self.FIRST_VERSION_END_DATE and not PrimaryConsentUpdateFile.pdf_has_update_text(self.pdf):
             self.wrapped_consent_file = VibrentPrimaryConsentFile(*args, **kwargs)
 
+    def _get_signature_page(self):
+        return self.pdf.get_page_number_of_text([
+            ('Do you agree to this updated consent?', '¿Está de acuerdo con este consentimiento actualizado?')
+        ])
+
     def _get_signature_elements(self):
         if self.wrapped_consent_file:
             return self.wrapped_consent_file._get_signature_elements()
         else:
             return self.pdf.get_elements_intersecting_box(
                 Rect.from_edges(left=150, right=400, bottom=155, top=160),
-                page=self._SIGNATURE_PAGE
+                page=self._get_signature_page()
             )
 
     def _get_date_elements(self):
@@ -449,7 +453,7 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
         else:
             return self.pdf.get_elements_intersecting_box(
                 Rect.from_edges(left=130, right=400, bottom=110, top=115),
-                page=self._SIGNATURE_PAGE
+                page=self._get_signature_page()
             )
 
     def is_agreement_selected(self):
@@ -458,7 +462,7 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
         else:
             agreement_elements = self.pdf.get_elements_intersecting_box(
                 Rect.from_edges(left=38, right=40, bottom=676, top=678),
-                page=self._SIGNATURE_PAGE
+                page=self._get_signature_page()
             )
 
             for element in agreement_elements:

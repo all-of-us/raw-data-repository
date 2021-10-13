@@ -377,12 +377,7 @@ class ConsentFileParsingTest(BaseTestCase):
         return [basic_gror_case, no_confirmation_case, spanish_gror_case]
 
     def _get_vibrent_primary_update_test_data(self) -> List['PrimaryUpdateConsentTestData']:
-        # The GROR signature is expected to be on the 10th page
-        thirteen_empty_pages = [
-            [], [], [], [], [], [], [], [], [], [], [], [], []
-        ]
         basic_update_pdf = self._build_pdf(pages=[
-            *thirteen_empty_pages,
             [
                 self._build_pdf_element(
                     cls=LTTextBoxHorizontal,
@@ -411,7 +406,6 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         va_update_pdf = self._build_pdf(pages=[
-            *thirteen_empty_pages,
             [
                 self._build_pdf_element(
                     cls=LTTextBoxHorizontal,
