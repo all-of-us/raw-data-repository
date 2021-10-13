@@ -1023,6 +1023,7 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].genomeCoverage, '2')
         self.assertEqual(gc_metrics[0].aouHdrCoverage, '2')
         self.assertEqual(gc_metrics[0].contamination, '3')
+        self.assertEqual(gc_metrics[0].mappedReadsPct, '88.8888888')
         self.assertEqual(gc_metrics[0].sexConcordance, 'True')
         self.assertEqual(gc_metrics[0].arrayConcordance, 'True')
         self.assertEqual(gc_metrics[0].sexPloidy, 'XY')

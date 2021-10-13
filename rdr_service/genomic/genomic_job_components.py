@@ -380,6 +380,7 @@ class GenomicFileIngester:
             "aouhdr_coverage": "aouhdrcoverage",
             "contamination": "contamination",
             "sample_source": "samplesource",
+            "mapped_reads_pct": "mappedreadspct",
             "sex_concordance": "sexconcordance",
             "sex_ploidy": "sexploidy",
             "aligned_q30_bases": "alignedq30bases",
@@ -715,6 +716,11 @@ class GenomicFileIngester:
         category = self.calculate_contamination_category(member.collectionTubeId,
                                                          contamination_value, member)
         row['contamination_category'] = category
+
+        # handle mapped reads in case they are longer than field length
+        if 'mappedreadspct' in row.keys():
+            if len(row['mappedreadspct']) > 10:
+                row['mappedreadspct'] = row['mappedreadspct'][0:10]
 
         return row
 
@@ -1364,6 +1370,8 @@ class GenomicFileValidator:
                 "genomecoverage",
                 "aouhdrcoverage",
                 "contamination",
+                'samplesource',
+                'mappedreadspct',
                 "sexconcordance",
                 "sexploidy",
                 "alignedq30bases",
