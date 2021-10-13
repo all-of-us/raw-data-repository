@@ -1,16 +1,16 @@
 """add sample_source to aw2 raw
 
-Revision ID: 0ebc74ae2154
-Revises: 6bb8b6d92f8c, a2daa4fb5658
-Create Date: 2021-10-12 12:36:21.876998
+Revision ID: 93a39640573a
+Revises: 73bce42825fa
+Create Date: 2021-10-13 09:20:40.758459
 
 """
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '0ebc74ae2154'
-down_revision = ('6bb8b6d92f8c', 'a2daa4fb5658')
+revision = '93a39640573a'
+down_revision = '73bce42825fa'
 branch_labels = None
 depends_on = None
 
