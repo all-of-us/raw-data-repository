@@ -2235,40 +2235,6 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    @mock.patch('rdr_service.services.email.EmailService.send_email')
-    def test_aw1f_alerting_emails(self, send_email_mock):
-        gc_manifest_filename = "RDR_AoU_SEQ_PKG-1908-218051_FAILURE.csv"
-
-        self._write_cloud_csv(
-            gc_manifest_filename,
-            ".",
-            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
-            folder=_FAKE_FAILURE_FOLDER,
-        )
-
-        genomic_pipeline.genomic_centers_accessioning_failures_workflow()
-
-        # Todo: change to expected response code
-        # send_email_mock.return_value = "SUCCESS"
-
-        # Check email information sent
-        sent_email: Email = send_email_mock.call_args.args[0]
-        self.assertEqual(["test-genomic@vumc.org"], sent_email.recipients)
-        self.assertEqual("All of Us GC Manifest Failure Alert", sent_email.subject)
-        self.assertEqual(
-            (
-                "New AW1 Failure manifests have been found:\n"
-                f"\t{_FAKE_GENOMIC_CENTER_BUCKET_A}:\n"
-                f"\t\t{_FAKE_FAILURE_FOLDER}/{gc_manifest_filename}\n"
-            ),
-            sent_email.plain_text_content
-        )
-
-        # Test the end-to-end result code
-        job_run = self.job_run_dao.get(1)
-        self.assertEqual(GenomicJob.AW1F_ALERTS, job_run.jobId)
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, job_run.runResult)
-
     def test_gem_a1_manifest_end_to_end(self):
         # Need GC Manifest for source query : run_id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,

@@ -61,6 +61,50 @@
       "event_types": [
         "OBJECT_FINALIZE"
       ]
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "86",
+      "object_name_prefix": "Genotyping_sample_raw_data/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-sandbox"
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "87",
+      "object_name_prefix": "Wgs_sample_raw_data/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-sandbox"
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "88",
+      "object_name_prefix": "AW4_wgs_manifest/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox"
+    },
+    {
+      "bucket": "aou-rdr-sandbox-mock-data",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "89",
+      "object_name_prefix": "AW1F_genotyping_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-sandbox"
     }
   ]
 }
