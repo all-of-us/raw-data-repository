@@ -66,7 +66,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
 
 class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest AW1 Manifest.
+    Cloud Task endpoint: Ingest AW1/AW1F Manifest.
     """
     def post(self):
         super(IngestAW1ManifestTaskApi, self).post()
@@ -78,12 +78,14 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
             job = GenomicJob.AW1_MANIFEST
             manifest_type = GenomicManifestTypes.BIOBANK_GC
             create_fb = True
+            message = 'AW1'
 
             # Write a different manifest type and JOB ID if an AW1F
-            if "FAILURE" in file_path:
+            if "failure" in file_path.lower():
                 job = GenomicJob.AW1F_MANIFEST
                 manifest_type = GenomicManifestTypes.AW1F
                 create_fb = False
+                message = 'AW1F'
 
             # Set up file/JSON
             task_data = {
@@ -97,7 +99,7 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
                 }
             }
 
-            logging.info(f'AW1 task data: {task_data}')
+            logging.info(f'{message} task data: {task_data}')
 
             # Call pipeline function
             genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
