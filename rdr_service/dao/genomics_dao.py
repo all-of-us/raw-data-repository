@@ -1153,6 +1153,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'genomeCoverage': 'genomecoverage',
             'aouHdrCoverage': 'aouhdrcoverage',
             'contamination': 'contamination',
+            'mappedReadsPct': 'mappedreadspct',
             'contaminationCategory': 'contamination_category',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
