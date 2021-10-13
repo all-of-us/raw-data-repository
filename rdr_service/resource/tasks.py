@@ -106,7 +106,7 @@ def batch_rebuild_consent_metrics_task(payload):
     # Retrieve the consent_file table records by id
     results = res_gen.get_consent_validation_records(id_list=batch)
     for row in results:
-        res = res_gen.make_resource(row.id, consent_file_rec=row)
+        res = res_gen.make_resource(row.id, consent_validation_rec=row)
         res.save()
         count += 1
 

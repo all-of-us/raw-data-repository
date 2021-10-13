@@ -5,18 +5,18 @@
 import logging
 
 from dateutil.relativedelta import relativedelta
-from datetime import date
+from datetime import datetime, date
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import generators, schemas
-from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile, ConsentErrors
+from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile, ConsentOtherErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 
 # Note:  Determination was made to treat a calculated age > 124 years at time of consent as an invalid DOB
 # Currently must be 18 to consent to the AoU study.   These values could change in the future
-INVALID_DOB_MAX_AGE_VALUE = 124
+INVALID_DOB_AGE_VALUE = 124
 VALID_AGE_AT_CONSENT = 18
 MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE = date(year=2018, month=7, day=13)
 METRICS_ERROR_LIST = [
@@ -31,92 +31,97 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
     ro_dao = None
 
     @classmethod
-    def _get_authored_dates_from_rec(cls, rec):
-        """ Find authored dates in the record (from participant_summary joined fields) based on consent type"""
-        # Lower environments havs some dirty/incomplete data (e.g., "FirstYesAuthored" fields were not backfilled)
+    def _get_authored_timestamps_from_rec(cls, rec):
+        """
+        Find authored dates in the record (from participant_summary joined fields) based on consent type
+        :param rec: A result row from ConsentMetricsGenerator.get_consent_validation_records()
+        :returns:  A dictionary of consent type keys and their authored date values from the result row
+        """
+
+        # Lower environments have some dirty/incomplete data (e.g., "FirstYesAuthored" fields were not backfilled)
         # Make a best effort to assign the appropriate authored date for a consent
         return {
-            ConsentType.PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored \
+            ConsentType.PRIMARY: rec.consentForStudyEnrollmentFirstYesAuthored\
                                  or rec.consentForStudyEnrollmentAuthored,
-            ConsentType.EHR: rec.consentForElectronicHealthRecordsFirstYesAuthored \
+            ConsentType.EHR: rec.consentForElectronicHealthRecordsFirstYesAuthored\
                              or rec.consentForElectronicHealthRecordsAuthored,
             ConsentType.CABOR: rec.consentForCABoRAuthored,
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
             ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
         }
 
-    def make_resource(self, _pk, consent_file_rec=None):
+    def make_resource(self, _pk, consent_validation_rec=None):
         """
         Build a Resource object for the requested consent_file record
         :param _pk: Primary key id value from consent_file table
-        :param consent_file_rec:  A consent_file table row, if one was already retrieved
+        :param consent_validation_rec:  A result row from get_consent_validation_records(), if one was already retrieved
         :return: ResourceDataObject object
         """
         if not self.ro_dao:
             self.ro_dao = ResourceDataDao(backup=True)
 
-        if not consent_file_rec:
+        if not consent_validation_rec:
             # Retrieve a single validation record for the provided id/primary key value
             result = self.get_consent_validation_records(id_list=[_pk])
             if not len(result):
                 logging.warning(f'Consent metrics record retrieval failed for consent_file id {_pk}')
                 return None
             else:
-                consent_file_rec = result[0]
+                consent_validation_rec = result[0]
 
-        data = self._make_consent_validation_dict(consent_file_rec)
+        data = self._make_consent_validation_dict(consent_validation_rec)
         return generators.ResourceRecordSet(schemas.ConsentMetricSchema, data)
+
+    @classmethod
+    def has_errors(cls, resource_data, exclude=[]):
+        """ Confirms if the provided data dictionary as any error flags (other than the exclusions) set """
+        error_list = [e for e in METRICS_ERROR_LIST if e not in exclude]
+        for error in error_list:
+            if resource_data[error]:
+                return True
+
+        return False
 
     @staticmethod
     def _make_consent_validation_dict(row):
         """
-        Transforms a consent_file record into a consent metrics resource object dictionary.  Reproduces the
-        CONSENT_REPORT_SQL logic from the consent-report tool, for calculating the error columns and dates
+        Transforms a result record from ConsentMetricsGenerator.get_consent_validation_records() into a
+        consent metrics resource object dictionary.  The content mirrors that of the pandas dataframe(s)
+        generated by the tools/tool_libs/consent_validation_report.py manual spreadsheet report generator
         """
 
         def _is_potential_false_positive_for_consent_version(resource, hpo):
             """
             In isolated cases, consent validation could run before a participant pairing to VA was complete, and could
-            result in a potential false positive for va_consent_for_non_va errors.  Ignore NEEDS_CORRECTING records
-            where the current HPO pairing is VA, and the only error was va_consent_for_non_va
+            result in a potential false positive for va_consent_for_non_va errors.  This check returns True if:
+                Status is NEEDS_CORRECTING
+                Current pairing is to VA
+                resource data dict has no other errors set besides va_consent_for_non_va
             """
-            # This filter only applies to participants whose current pairing is VA
-            if hpo != 'VA':
+            if (resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
+                    or hpo != 'VA'
+                    or ConsentMetricsGenerator.has_errors(resource, exclude=['va_consent_for_non_va'])):
                 return False
-
-            # Confirm no other errors except va_consent_for_non_va were detected
-            for error in METRICS_ERROR_LIST:
-                if error == 'va_consent_for_non_va':
-                    continue
-                if resource[error]:
-                    return False
 
             return True
 
-        # TODO:  This may be deprecated
         def _is_potential_false_positive_for_missing_signature(resource, expected_sign_date, signing_date):
             """
-            Returns True if the following conditions in the consent_metrics_fields data dict are met:
-            missing_file == 0 AND
-            expected_sign_date < 2018-07-13 AND
-            signing_date is null AND
-            resource data dict has no other errors set
-            Consents fitting these descriptions are known to cause false positive missing signature errors
+            This identifies NEEDS_CORRECTING results that are known to be associated with false positives for
+            missing signatures.  Returns True if all the following conditions exist:
+                expected_sign_date < 2018-07-13 AND
+                signing_date is null AND
+                resource data dict has no other errors set besides signature_missing
             """
-            # Confirm signing_date is null and expected_sign_date is in the known false positive range
-            if signing_date or expected_sign_date >= MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE:
+            if (resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
+                    or signing_date
+                    or expected_sign_date >= MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE
+                    or ConsentMetricsGenerator.has_errors(resource, exclude=['signature_missing'])):
                 return False
-
-            # Confirm no other errors except for signature_missing were detected for this consent validation
-            for error in METRICS_ERROR_LIST:
-                if error == 'signature_missing':
-                    continue
-                if resource[error]:
-                    return False
 
             return True
 
-        # -- MAIN BODY OF GENERATOR --
+        # -- MAIN BODY OF GENERATOR -- #
         if not row or not len(row):
             raise (ValueError, 'Missing consent_file record')
 
@@ -150,37 +155,42 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
                 'ignore': False
         }
 
-        authored_date_map = ConsentMetricsGenerator._get_authored_dates_from_rec(row)
-        if authored_date_map[consent_type]:
-            data['consent_authored_date'] = authored_date_map[consent_type].date()
+        authored_from_row = ConsentMetricsGenerator._get_authored_timestamps_from_rec(row).get(consent_type, None)
+        if authored_from_row:
+            data['consent_authored_date'] = authored_from_row.date()
 
         # Resolved/OBSOLETE records use the consent_file modified date as the resolved date
         if consent_status == ConsentSyncStatus.OBSOLETE and row.modified:
             data['resolved_date'] = row.modified.date()
 
-        # For file-related errors, there is an implied hierarchy of errors for metrics.  If file is missing, then
-        # missing signature is irrelevant, and if signature is missing, invalid signing date is irrelevant
+        # There is an implied hierarchy of some errors for metrics reporting.  Missing signature errors are not flagged
+        # unless the file exists, and invalid signing date is not flagged unless there is a signature
         data['missing_file'] = not row.file_exists
         data['signature_missing'] = (row.file_exists and not row.is_signature_valid)
         data['invalid_signing_date'] = (row.is_signature_valid and not row.is_signing_date_valid)
 
         # Errors based on parsing the consent_file.other_errors string field:
         if row.other_errors:
-            data['checkbox_unchecked'] = row.other_errors.find(ConsentErrors.MISSING_CONSENT_CHECK_MARK) != -1
-            data['non_va_consent_for_va'] = row.other_errors.find(ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN) != -1
-            data['va_consent_for_non_va'] = row.other_errors.find(ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN) != -1
+            data['checkbox_unchecked'] =\
+                row.other_errors.find(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK) != -1
+            data['non_va_consent_for_va'] =\
+                row.other_errors.find(ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN) != -1
+            data['va_consent_for_non_va'] =\
+                row.other_errors.find(ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN) != -1
 
-        # Populate DOB-related errors.  These are not tracked in the RDR consent_file table.  They are derived from
-        # fields stored in the participant_summary record and only apply to the primary consent.
-        dob = row.dateOfBirth
+        # DOB-related errors are not tracked in the RDR consent_file table.  They are derived from
+        # participant_summary data and only apply to the primary consent.
+        dob = datetime(row.dateOfBirth.year, row.dateOfBirth.month, row.dateOfBirth.day) if row.dateOfBirth else None
         if consent_type == ConsentType.PRIMARY:
-            age_delta = relativedelta(authored_date_map[ConsentType.PRIMARY], dob) if dob else None
-            data['invalid_dob'] = (dob is None or age_delta.years <= 0 or age_delta.years > INVALID_DOB_MAX_AGE_VALUE)
+            age_delta = relativedelta(authored_from_row, dob) if dob else None
+            data['invalid_dob'] = (dob is None
+                                   or age_delta.years <= 0
+                                   or age_delta.years >= INVALID_DOB_AGE_VALUE
+                                   )
             data['invalid_age_at_consent'] = age_delta.years < VALID_AGE_AT_CONSENT if dob else False
 
-        # Special conditions where these records may be ignored.  Some known "false positive" conditions or
-        # cases where the record has a non-standard sync_status value (anything "above" SYNC_COMPLETE, such as
-        # UNKNOWN or DELAYING_SYNC values)
+        # Special conditions where these records may be ignored for reporting.  Some known "false positive" conditions
+        # or the record has a non-standard sync_status (LEGACY, UNKNOWN, DELAYING_SYNC)
         data['ignore'] = (_is_potential_false_positive_for_missing_signature(data,
                                                                              row.expected_sign_date,
                                                                              row.signing_date)

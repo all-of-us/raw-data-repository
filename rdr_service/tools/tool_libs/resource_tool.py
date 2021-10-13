@@ -994,7 +994,7 @@ class ConsentMetricsClass(object):
         results = self.res_gen.get_consent_validation_records(dao=dao, id_list=self.id_list)
         count = 0
         for row in results:
-            resource_data = self.res_gen.make_resource(row.id, consent_file_rec=row)
+            resource_data = self.res_gen.make_resource(row.id, consent_validation_rec=row)
             resource_data.save(w_dao=ResourceDataDao(backup=False))
             count += 1
             if not self.args.debug:

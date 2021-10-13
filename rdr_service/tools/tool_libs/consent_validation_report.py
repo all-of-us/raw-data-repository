@@ -23,9 +23,7 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
-from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentErrors
-from rdr_service.dao.resource_dao import ResourceDataDao
-from rdr_service.resource.generators import consent_metrics
+from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -149,12 +147,6 @@ DAILY_CONSENTS_SQL_FILTER = """
 
 # -- Weekly report queries --
 
-# For dashboard, pull all consent validation records in NEEDS_CORRECTING or OBSOLETE status, without any date filtering
-PDR_CONSENT_VALIDATION_EXTRACT_FILTER = """
-            WHERE ps.{status_field} = 1
-            AND cf.sync_status IN (1, 3)
-"""
-
 # Filter to produce a report of all remaining NEEDS_CORRECTING consents of a specified type, up to and including the
 # specified end date for this report
 ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
@@ -272,15 +264,6 @@ class ConsentReport(object):
             'solid_border': gsfmt.cellFormat(borders=gsfmt.borders(top=gsfmt.border('SOLID'))),
             'solid_thick_border': gsfmt.cellFormat(borders=gsfmt.borders(bottom=gsfmt.border('SOLID_THICK')))
         }
-
-    def create_pdr_data_extract(self):
-        ro_dao = ResourceDataDao(backup=True)
-        gen = consent_metrics.ConsentMetricsGenerator()
-        results = gen.get_consent_validation_records(ro_dao)
-        for row in results:
-            resource_data = gen.make_resource(row.id, consent_file_rec=row)
-            resource_data.save(w_dao=ResourceDataDao(backup=False))
-
 
     def _add_format_spec(self, fmt_name_key: str, fmt_spec : gsfmt.CellFormat):
         """ Add a new format spec to the instance format_specs list """
@@ -521,7 +504,7 @@ class ConsentReport(object):
                               (df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
                               (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)]
 
-        print(f'Unfiltered for consent version false positives: {df.shape[0]}, filtered: {filtered_df.shape[0]}')
+        print(f'Filtered count for consent version false positives: {df.shape[0] - filtered_df.shape[0]}')
 
         return filtered_df
 
@@ -546,9 +529,9 @@ class ConsentReport(object):
             sql = sql.format_map(SafeDict(consent_type=consent_int,
                                           status_field=consent_status_field,
                                           authored_field=consent_authored_field,
-                                          missing_check_mark=ConsentErrors.MISSING_CONSENT_CHECK_MARK,
-                                          non_va_for_va=ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
-                                          va_for_non_va=ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+                                          missing_check_mark=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
+                                          non_va_for_va=ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                                          va_for_non_va=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
                                           ))
             consent_df = pandas.read_sql_query(sql, self.db_conn)
             # Replace any null values in the calculated error flag columns  with (uint8 vs. pandas default float) zeroes
@@ -709,21 +692,18 @@ class DailyConsentReport(ConsentReport):
         """
         Execute the DailyConsentReport builder
         """
+        # Set up DB and googlesheets doc access
         self._connect_to_rdr_replica()
-        if self.args.pdr_extract:
-            self.create_pdr_data_extract()
-        else:
-            # Set up DB and googlesheets doc access
-            service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
-            gs_creds = gspread.service_account(service_key_info['key_path'])
-            gs_file = gs_creds.open_by_key(self.doc_id)
+        service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
+        gs_creds = gspread.service_account(service_key_info['key_path'])
+        gs_file = gs_creds.open_by_key(self.doc_id)
 
-            # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
-            # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
-            self.consent_df = self._get_consent_validation_dataframe(
-                self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
-            )
-            self.create_daily_report(gs_file)
+        # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
+        # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
+        self.consent_df = self._get_consent_validation_dataframe(
+            self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
+        )
+        self.create_daily_report(gs_file)
 
 
 class WeeklyConsentReport(ConsentReport):
@@ -746,10 +726,7 @@ class WeeklyConsentReport(ConsentReport):
         self.end_date = args.end_date or (datetime.now() - timedelta(1))
         self.start_date = args.start_date or (self.end_date - timedelta(7))
         self.report_date = datetime.now()
-        if self.args.pdr_extract:
-            self.report_sql = CONSENT_REPORT_SQL_BODY + PDR_CONSENT_VALIDATION_EXTRACT_FILTER + VIBRENT_SQL_FILTER
-        else:
-            self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
+        self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
         self.sheet_rows = 800
         # Number of worksheets to archive in the file (will do rolling deletion of oldest weekly worksheets/tabs)
         self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
@@ -788,6 +765,7 @@ class WeeklyConsentReport(ConsentReport):
                              (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1) |\
                              (df.expected_sign_date >= filter_date) | (df.signing_date.isnull() == False)].reset_index()
 
+        print(f'Filtered count for signature_missing false positives: {df.shape[0] - filtered_df.shape[0]}')
         return filtered_df
 
     def get_resolved_consent_issues_dataframe(self):
@@ -1075,19 +1053,17 @@ def run():
                         help="Only generate the googlesheet report, skip generating the CSV file")
     parser.add_argument("--csv-only", default=False, action="store_true",
                         help="Only generate the CSV errors file, skip generating google sheet content")
-    parser.add_argument("--pdr-extract", default=False, action="store_true",
-                        help="Populate validation data table that will be pushed to PDR")
     parser.epilog = f'Possible REPORT types: {{{",".join(REPORT_TYPES)}}}.'
     args = parser.parse_args()
 
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        if args.report_type == 'daily_uploads' or args.pdr_extract:
+        if args.report_type == 'daily_uploads':
             process = DailyConsentReport(args, gcp_env)
         elif args.report_type == 'weekly_status':
             process = WeeklyConsentReport(args, gcp_env)
         else:
-            raise("Invalid report type specified")
+            raise(ValueError, "Invalid report type specified")
 
         exit_code = process.execute()
         return exit_code

@@ -3,7 +3,7 @@ import json
 import mock
 from typing import List, Type
 
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentErrors
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType, ConsentOtherErrors
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.consent import files
@@ -143,7 +143,7 @@ class ConsentValidationTesting(BaseTestCase):
             [
                 {
                     'type': ConsentType.PRIMARY,
-                    'other_errors': ConsentErrors.VETERAN_CONSENT_FOR_NON_VETERAN,
+                    'other_errors': ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN,
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
@@ -162,7 +162,7 @@ class ConsentValidationTesting(BaseTestCase):
             [
                 {
                     'type': ConsentType.PRIMARY,
-                    'other_errors': ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                    'other_errors': ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
@@ -251,7 +251,7 @@ class ConsentValidationTesting(BaseTestCase):
                 {
                     'participant_id': self.participant_summary.participantId,
                     'type': ConsentType.GROR,
-                    'other_errors': ConsentErrors.MISSING_CONSENT_CHECK_MARK,
+                    'other_errors': ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
@@ -337,7 +337,7 @@ class ConsentValidationTesting(BaseTestCase):
                 {
                     'participant_id': self.participant_summary.participantId,
                     'type': ConsentType.PRIMARY_UPDATE,
-                    'other_errors': ConsentErrors.MISSING_CONSENT_CHECK_MARK,
+                    'other_errors': ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
@@ -362,8 +362,8 @@ class ConsentValidationTesting(BaseTestCase):
                 {
                     'participant_id': self.participant_summary.participantId,
                     'type': ConsentType.PRIMARY_UPDATE,
-                    'other_errors': ", ".join([ConsentErrors.MISSING_CONSENT_CHECK_MARK,
-                                              ConsentErrors.NON_VETERAN_CONSENT_FOR_VETERAN]),
+                    'other_errors': ", ".join([ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
+                                               ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN]),
                     'sync_status': ConsentSyncStatus.NEEDS_CORRECTING
                 }
             ],
