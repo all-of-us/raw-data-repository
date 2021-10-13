@@ -37,6 +37,9 @@ class GenomicQueryClass:
                     distinct(GenomicGCValidationMetrics.chipwellbarcode),
                     sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                     GenomicSetMember.sampleId,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                           GenomicSetMember.biobankId, '_',
+                                           GenomicSetMember.sampleId),
                     GenomicSetMember.sexAtBirth,
                     GenomicSetMember.gcSiteId,
                     GenomicGCValidationMetrics.idatRedPath,
@@ -51,6 +54,7 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
+                    GenomicSetMember.gcManifestSampleSource
                 ]
             ).select_from(
                 sqlalchemy.join(

@@ -2756,6 +2756,7 @@ class ManifestDefinitionProvider:
                 "chipwellbarcode",
                 "biobank_id",
                 "sample_id",
+                "biobankidsampleid",
                 "sex_at_birth",
                 "site_id",
                 "red_idat_path",
@@ -2770,6 +2771,7 @@ class ManifestDefinitionProvider:
                 "contamination",
                 "processing_status",
                 "research_id",
+                "sample_source"
             ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
