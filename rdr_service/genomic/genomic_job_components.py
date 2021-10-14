@@ -481,7 +481,7 @@ class GenomicFileIngester:
                                                     message=_message,
                                                     biobank_id=bid,
                                                     collection_tube_id=row_copy['collectiontubeid'],
-                                                    sample_id=row_copy['sampleid'],
+                                                    sample_id=row_copy['sampleid']
                                                     )
                     # Skip rest of iteration and continue processing file
                     continue
@@ -1084,7 +1084,7 @@ class GenomicFileIngester:
                                                 code=GenomicIncidentCode.UNABLE_TO_FIND_MEMBER.name,
                                                 message=_message,
                                                 biobank_id=bid,
-                                                sample_id=row_copy['sampleid'],
+                                                sample_id=row_copy['sampleid']
                                                 )
 
         return GenomicSubProcessResult.SUCCESS
@@ -1563,7 +1563,8 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
-                slack=slack
+                slack=slack,
+                job_id=self.job_id
             )
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 
@@ -1725,6 +1726,7 @@ class GenomicFileValidator:
                 save_incident=False,
                 slack=True,
                 message=invalid_message,
+                job_id=self.job_id
             )
 
         return is_valid_filename
@@ -1972,7 +1974,8 @@ class GenomicReconciler:
             biobank_id=member.biobankId,
             sample_id=member.sampleId if member.sampleId else "",
             collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
-            slack=True
+            slack=True,
+            job_id=self.job_id
         )
 
     def generate_cvl_reconciliation_report(self):

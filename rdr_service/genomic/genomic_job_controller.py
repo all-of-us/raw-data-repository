@@ -404,7 +404,6 @@ class GenomicJobController:
                     bq_genomic_gc_validation_metrics_update(metrics_obj.id)
             else:
                 message = f'{self.job_id.name}: Cannot find genomics metric record for sample id: {sample_id}'
-                logging.warning(message)
                 self.create_incident(
                     source_job_run_id=self.job_run.id,
                     code=GenomicIncidentCode.UNABLE_TO_FIND_METRIC.name,
@@ -1193,6 +1192,7 @@ class GenomicJobController:
         self,
         save_incident=True,
         slack=False,
+        email=False,
         **kwargs
     ):
         """
@@ -1201,6 +1201,7 @@ class GenomicJobController:
         if save_incident arg is True.
         :param save_incident: bool
         :param slack: bool
+        :param email: bool
         :return:
         """
         num_days = 7
@@ -1217,6 +1218,9 @@ class GenomicJobController:
                              if key in GenomicIncident.__table__.columns.keys()}
             incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
 
+        if email:
+            self.send_validation_emails()
+
         if slack:
             message_data = {'text': message}
             slack_alert = self.genomic_alert_slack.send_message_to_webhook(
@@ -1229,6 +1233,9 @@ class GenomicJobController:
                 self.incident_dao.update(incident)
 
         logging.warning(message)
+
+    def send_validation_emails(self):
+        pass
 
     @staticmethod
     def update_member_file_record(manifest_type):
