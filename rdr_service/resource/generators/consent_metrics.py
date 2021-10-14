@@ -123,7 +123,7 @@ class ConsentMetricsGenerator(generators.BaseGenerator):
             """
             if (resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
                     or signing_date
-                    or expected_sign_date >= MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE
+                    or (expected_sign_date and expected_sign_date >= MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE)
                     or ConsentMetricsGenerator.has_errors(resource, exclude=['signature_missing'])):
                 return False
 
