@@ -273,7 +273,7 @@ class ConsentReport(object):
 
     def _connect_to_rdr_replica(self):
         """ Establish a connection to the replica RDR database for reading consent validation data """
-        self.gcp_env.activate_sql_proxy()
+        self.gcp_env.activate_sql_proxy(replica=True)
         self.db_conn = self.gcp_env.make_mysqldb_connection()
 
     def _has_needs_correcting(self, dframe):
