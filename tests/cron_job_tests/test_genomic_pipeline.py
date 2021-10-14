@@ -372,6 +372,7 @@ class GenomicPipelineTest(BaseTestCase):
         genome_center=None,
         aw3_job_id=None,
         gc_manifest_parent_sample_id=None,
+        sample_source=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -396,6 +397,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.gcSiteId = genome_center
         genomic_set_member.aw3ManifestJobRunID = aw3_job_id
         genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
+        genomic_set_member.gcManifestSampleSource = sample_source
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -485,6 +487,7 @@ class GenomicPipelineTest(BaseTestCase):
                 genome_center=kwargs.get('genome_center'),
                 aw3_job_id=kwargs.get('aw3_job_id'),
                 gc_manifest_parent_sample_id=1000+p,
+                sample_source=kwargs.get('sample_source'),
             )
 
     def _update_site_states(self):
@@ -2836,7 +2839,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 array_participants=range(1, 4),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood")
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
@@ -2926,6 +2930,7 @@ class GenomicPipelineTest(BaseTestCase):
             "chipwellbarcode",
             "biobank_id",
             "sample_id",
+            "biobankidsampleid",
             "sex_at_birth",
             "site_id",
             "red_idat_path",
@@ -2940,6 +2945,7 @@ class GenomicPipelineTest(BaseTestCase):
             "contamination",
             "processing_status",
             "research_id",
+            "sample_source"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -2953,11 +2959,14 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
 
             self.assertEqual(2, len(rows))
-            self.assertEqual(f"{get_biobank_id_prefix()}{member.biobankId}", rows[1]['biobank_id'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}', rows[1]['biobank_id'])
             self.assertEqual(member.sampleId, rows[1]['sample_id'])
+            self.assertEqual(f'{get_biobank_id_prefix()}{member.biobankId}_{member.sampleId}',
+                             rows[1]['biobankidsampleid'])
             self.assertEqual(member.sexAtBirth, rows[1]['sex_at_birth'])
             self.assertEqual(member.gcSiteId, rows[1]['site_id'])
             self.assertEqual(1000002, int(rows[1]['research_id']))
+            self.assertEqual('Whole Blood', rows[1]['sample_source'])
 
             # Test File Paths
             metric = self.metrics_dao.get(2)
@@ -3077,6 +3086,7 @@ class GenomicPipelineTest(BaseTestCase):
             "chipwellbarcode",
             "biobank_id",
             "sample_id",
+            "biobankidsampleid",
             "sex_at_birth",
             "site_id",
             "red_idat_path",
@@ -3091,6 +3101,7 @@ class GenomicPipelineTest(BaseTestCase):
             "contamination",
             "processing_status",
             "research_id",
+            "sample_source"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3319,7 +3330,8 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_fake_datasets_for_gc_tests(3, arr_override=False,
                                                 recon_gc_man_id=1,
                                                 genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood")
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
@@ -3417,9 +3429,6 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_hf_path",
             "vcf_hf_index_path",
             "vcf_hf_md5_path",
-            "vcf_raw_path",
-            "vcf_raw_index_path",
-            "vcf_raw_md5_path",
             "cram_path",
             "cram_md5_path",
             "crai_path",
@@ -3430,6 +3439,9 @@ class GenomicPipelineTest(BaseTestCase):
             "processing_status",
             "mean_coverage",
             "research_id",
+            "sample_source",
+            "mapped_reads_pct",
+            "sex_ploidy"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3457,6 +3469,10 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(member.sexAtBirth, row['sex_at_birth'])
             self.assertEqual(member.gcSiteId, row['site_id'])
             self.assertEqual(1000002, int(row['research_id']))
+
+            self.assertEqual('Whole Blood', row['sample_source'])
+            self.assertEqual('88.8888888', row['mapped_reads_pct'])
+            self.assertEqual('XY', row['sex_ploidy'])
 
             self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
             self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
@@ -3601,10 +3617,10 @@ class GenomicPipelineTest(BaseTestCase):
             if (i + 1) == len(current_metrics):
                 metric = self.metrics_dao.get(current_metrics[i].id)
                 last_id = i + 1
-                edited_path = metric.rawVcfMd5Path.split('gs://')
+                edited_path = metric.hfVcfTbiPath.split('gs://')
                 edited_path = edited_path[1]
                 bad_data_path = edited_path
-                metric.rawVcfMd5Path = edited_path
+                metric.hfVcfTbiPath = edited_path
                 self.metrics_dao.upsert(metric)
 
         with clock.FakeClock(fake_dt):
@@ -3626,7 +3642,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         no_bucket_path = 'gs://test_data_folder/RDR_6_1006_10006_1.vcf.gz.md5sum'
         update_metric = self.metrics_dao.get(last_id)
-        update_metric.rawVcfMd5Path = no_bucket_path
+        update_metric.hfVcfTbiPath = no_bucket_path
         self.metrics_dao.upsert(update_metric)
 
         with clock.FakeClock(fake_dt):
@@ -3789,9 +3805,6 @@ class GenomicPipelineTest(BaseTestCase):
             "vcf_hf_path",
             "vcf_hf_index_path",
             "vcf_hf_md5_path",
-            "vcf_raw_path",
-            "vcf_raw_index_path",
-            "vcf_raw_md5_path",
             "cram_path",
             "cram_md5_path",
             "crai_path",
@@ -3802,6 +3815,9 @@ class GenomicPipelineTest(BaseTestCase):
             "processing_status",
             "mean_coverage",
             "research_id",
+            "sample_source",
+            "mapped_reads_pct",
+            "sex_ploidy"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
