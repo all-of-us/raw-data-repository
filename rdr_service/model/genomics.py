@@ -610,7 +610,7 @@ event.listen(GenomicSampleContamination, 'before_update', model_update_listener)
 
 class GenomicIncident(Base):
     """
-    An incident occuring during processing of genomic records
+    An incident that occurs during processing of genomic records
     """
     __tablename__ = 'genomic_incident'
 
@@ -636,6 +636,8 @@ class GenomicIncident(Base):
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
     data_file_path = Column(String(512))
+    email_sent = Column(SmallInteger, nullable=False, default=0)
+    email_recipients = Column(String(512), nullable=True)
 
 
 event.listen(GenomicIncident, 'before_insert', model_insert_listener)
