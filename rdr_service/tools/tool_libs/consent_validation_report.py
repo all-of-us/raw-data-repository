@@ -128,7 +128,6 @@ CONSENT_REPORT_SQL_BODY =  """
             JOIN participant_summary ps on cf.participant_id = ps.participant_id
             JOIN participant p on p.participant_id = ps.participant_id
                  AND p.is_test_participant = 0 and (p.is_ghost_id is null or not p.is_ghost_id) and p.hpo_id != 21
-            -- JOIN consent_file cf ON ps.participant_id = cf.participant_id
             LEFT OUTER JOIN hpo h ON p.hpo_id = h.hpo_id
             LEFT OUTER JOIN organization o on ps.organization_id = o.organization_id
         """

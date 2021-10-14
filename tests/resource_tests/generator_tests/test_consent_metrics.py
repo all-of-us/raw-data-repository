@@ -16,23 +16,29 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.resource_data_dao = ResourceDataDao()
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
-
-        participant = self.data_generator.create_database_participant_summary(
-            participantOrigin='vibrent',
-            consentForStudyEnrollmentAuthored=datetime.strptime('2020-01-01 01:00:00', "%Y-%m-%d %H:%M:%S"),
-            consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2020-01-01 01:00:00', "%Y-%m-%d %H:%M:%S"),
-            consentForCABoRAuthored=datetime.strptime('2020-01-01 02:00:00', "%Y-%m-%d %H:%M:%S"),
-            consentForElectronicHealthRecordsAuthored=datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
-            consentForElectronicHealthRecordsFirstYesAuthored=\
+        """ Populate a participant_summary record with provided data """
+        defaults = {
+            'consentForStudyEnrollmentAuthored': datetime.strptime('2020-01-01 01:00:00', "%Y-%m-%d %H:%M:%S"),
+            'consentForStudyEnrollmentFirstYesAuthored': datetime.strptime('2020-01-01 01:00:00', "%Y-%m-%d %H:%M:%S"),
+            'consentForCABoRAuthored': datetime.strptime('2020-01-01 02:00:00', "%Y-%m-%d %H:%M:%S"),
+            'consentForElectronicHealthRecordsAuthored': datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
+            'consentForElectronicHealthRecordsFirstYesAuthored': \
                 datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
-            consentForGenomicsRORAuthored=datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
-            **kwargs
-        )
+            'consentForGenomicsRORAuthored': datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
+            'participantOrigin': 'vibrent'
+        }
+
+        # Merge the kwargs and defaults dicts; kwargs values take precedence over default values
+        for key in defaults.keys():
+            if key not in kwargs.keys():
+                kwargs = dict(**{key: defaults[key]}, **kwargs)
+
+        participant = self.data_generator.create_database_participant_summary(**kwargs)
         return participant
 
     def _create_participant_with_custom_primary_consent_authored(self, authored, **kwargs):
+
         participant = self.data_generator.create_database_participant_summary(
-            participantOrigin='vibrent',
             consentForStudyEnrollmentAuthored=authored,
             consentForStudyEnrollmentFirstYesAuthored=authored,
             **kwargs
@@ -105,6 +111,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         # Create participant summary data with (1) DOB missing,  and (2) DOB > 124 years from primary consent authored
         participant_1 = self._create_participant_with_all_consents_authored(dateOfBirth=None)
         participant_2 = self._create_participant_with_all_consents_authored(
+            participantOrigin='example',
             dateOfBirth=datetime.date(datetime.strptime('1895-12-31', '%Y-%m-%d'))
         )
         # Create consent_file records for each participant's primary consent with no other error conditions
@@ -399,9 +406,10 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         Ignore consent records whose current sync_status is a special case status such as UNKNOWN or DELAYING_SYNC
         """
         # Create participant summary data with a primar consent authored date before the false positive cutoff
-        participant = self._create_participant_with_custom_primary_consent_authored(
-            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
-            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+        participant = self._create_participant_with_all_consents_authored(
+            consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d'))
         )
         # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
         consent_file_rec = self.data_generator.create_database_consent_file(
@@ -425,9 +433,9 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         Ignore va_consent_for_non_va errors if that's the only error and participant's current pairing is to the VA HPO
         """
         va_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='VA')
-        # Create participant summary data with a primary consent authored date before the false positive cutoff
-        participant = self._create_participant_with_custom_primary_consent_authored(
-            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+        participant = self._create_participant_with_all_consents_authored(
+            consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
             hpoId=va_hpo.hpoId
         )
@@ -448,5 +456,29 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
         # Confirm this record's ignore flag was set due to filtering the va_consent_for_non_va error
         self.assertEqual(resource_data['ignore'], True)
+
+    def test_consent_metrics_generator_test_participant(self):
+        """ Confirm test_participant flag is set by generator if participant is paired to TEST hpo """
+        test_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='TEST')
+        participant = self._create_participant_with_all_consents_authored(
+            consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+            hpoId=test_hpo.hpoId
+        )
+        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        self.assertTrue(resource_data.get('test_participant'))
 
 
