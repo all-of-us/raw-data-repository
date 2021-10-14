@@ -157,28 +157,6 @@ def aw3_wgs_manifest_workflow(max_num=4000):
         )
 
 
-def aw4_array_manifest_workflow():
-    """
-    Entrypoint for AW4 Array Workflow
-    """
-    with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[0]
-                              ) as controller:
-        controller.run_general_ingestion_workflow()
-
-
-def aw4_wgs_manifest_workflow():
-    """
-    Entrypoint for AW4 WGS Workflow
-    """
-    with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[1],
-                              ) as controller:
-        controller.run_general_ingestion_workflow()
-
-
 def gem_a1_manifest_workflow():
     """
     Entrypoint for GEM A1 Workflow
@@ -378,8 +356,10 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW5_WGS_MANIFEST
     ):
         # Ingestion Job
+        sub_folder = _task_data.subfolder if hasattr(_task_data, 'subfolder') else None
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data,
+                                  sub_folder_name=sub_folder,
                                   bq_project_id=project_id) as controller:
 
             controller.bucket_name = _task_data.bucket

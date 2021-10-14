@@ -3976,7 +3976,7 @@ class GenomicPipelineTest(BaseTestCase):
             record.genomicSetMemberId = member.id
             self.metrics_dao.upsert(record)
 
-        # Set up test Aw4 manifest
+        # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
         file_name = 'AoU_DRCB_GEN_2020-07-11-00-00-00.csv'
@@ -3987,8 +3987,21 @@ class GenomicPipelineTest(BaseTestCase):
                                          include_timestamp=False
                                          )
 
-        # Run Workflow
-        genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW4_ARRAY_WORKFLOW,
+            "bucket": bucket_name,
+            "subfolder": sub_folder,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": "2020-11-20 00:00:00",
+                "manifest_type": GenomicManifestTypes.AW4_ARRAY,
+                "file_path": f"{bucket_name}/{sub_folder}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4002,7 +4015,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertIsNone(metrics.drcFpConcordance)
 
             if member.id in (1, 2):
-                self.assertEqual(2, member.aw4ManifestJobRunID)
+                self.assertEqual(3, member.aw4ManifestJobRunID)
                 self.assertEqual('0.99689185', metrics.drcCallRate)
             if member.id == 1:
                 self.assertEqual('TRUE', metrics.drcSexConcordance)
@@ -4013,7 +4026,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
-        self.assertEqual(2, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
@@ -4052,8 +4065,22 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder=sub_folder,
                                          include_timestamp=False
                                          )
-        # Run Workflow
-        genomic_pipeline.aw4_wgs_manifest_workflow()  # run_id 2
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW4_WGS_WORKFLOW,
+            "bucket": bucket_name,
+            "subfolder": sub_folder,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": "2020-11-20 00:00:00",
+                "manifest_type": GenomicManifestTypes.AW4_WGS,
+                "file_path": f"{bucket_name}/{sub_folder}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test AW4 manifest updated fields
         for member in self.member_dao.get_all():
@@ -4067,7 +4094,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertIsNotNone(metrics.drcFpConcordance)
 
             if member.id in (1, 2):
-                self.assertEqual(2, member.aw4ManifestJobRunID)
+                self.assertEqual(3, member.aw4ManifestJobRunID)
                 self.assertEqual('0', metrics.drcContamination)
                 self.assertEqual('63.2800', metrics.drcMeanCoverage)
             if member.id == 1:
@@ -4079,7 +4106,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
-        self.assertEqual(2, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
@@ -4115,12 +4142,26 @@ class GenomicPipelineTest(BaseTestCase):
                                          folder='AW5_array_manifest',
                                          include_timestamp=False
                                          )
-        # Run Workflow
-        genomic_pipeline.aw4_array_manifest_workflow()  # run_id 2
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW4_ARRAY_WORKFLOW,
+            "bucket": bucket_name,
+            "subfolder": sub_folder,
+            "file_data": {
+                "create_feedback_record": False,
+                "upload_date": "2020-11-20 00:00:00",
+                "manifest_type": GenomicManifestTypes.AW4_ARRAY,
+                "file_path": f"{bucket_name}/{sub_folder}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
-        self.assertEqual(2, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
