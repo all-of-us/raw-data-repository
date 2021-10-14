@@ -46,7 +46,7 @@ class ConsentMetricSchema(Schema):
 
     class Meta:
         schema_id = SchemaID.consent_metrics
-        resource_uri = 'ConsentMetrics'
+        resource_uri = 'ConsentMetric'
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
