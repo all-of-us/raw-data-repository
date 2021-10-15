@@ -1564,6 +1564,7 @@ class GenomicFileValidator:
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
                 slack=slack,
+                email=True,
                 job_id=self.job_id
             )
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
@@ -1725,6 +1726,7 @@ class GenomicFileValidator:
             self.controller.create_incident(
                 save_incident=False,
                 slack=True,
+                email=True,
                 message=invalid_message,
                 job_id=self.job_id
             )

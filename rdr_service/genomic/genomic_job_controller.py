@@ -1218,7 +1218,7 @@ class GenomicJobController:
                              if key in GenomicIncident.__table__.columns.keys()}
             incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
 
-        if email:
+        if email and kwargs.get('job_id'):
             self.send_validation_emails()
 
         if slack:

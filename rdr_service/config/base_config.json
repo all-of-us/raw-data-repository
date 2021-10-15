@@ -106,10 +106,23 @@
     "send_active": 1,
     "recipients": {
       "gc": {
-        "northwest": [],
-        "broad": [],
-        "baylor": [],
-        "hopkins": []
+        "northwest": [
+          "cfrazar@uw.edu",
+          "jmw54@uw.edu",
+          "kolart@uw.edu"
+        ],
+        "broad": [
+          "namrata@broadinstitute.org",
+          "katiel@broadinstitute.org"
+        ],
+        "baylor": [
+          "kimberly.walker@bcm.edu",
+          "sdugan@bcm.edu"
+        ],
+        "hopkins": [
+          "kdoheny@jhmi.edu",
+          "mzilka1@jhmi.edu"
+        ]
       }
     }
   }
