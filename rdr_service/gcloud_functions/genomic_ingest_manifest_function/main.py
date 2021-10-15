@@ -53,10 +53,13 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         _logger.info(f"File found: {self.event.attributes.objectId}")
 
         object_id = self.event.attributes.objectId.lower()
-        task_key = None
 
         # AW1 files have "_sample_manifests" in file name
         if '_sample_manifests' in object_id:
+            task_key = "aw1"
+
+        # AW1F files have "aw1f_pre_results" in file name
+        elif 'aw1f_pre_results' in object_id:
             task_key = "aw1"
 
         # AW2 files have "_data_manifests" in their file name

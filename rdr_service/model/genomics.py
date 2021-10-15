@@ -441,6 +441,8 @@ class GenomicAW2Raw(Base):
     genome_coverage = Column(String(255), nullable=True)
     aouhdr_coverage = Column(String(255), nullable=True)
     contamination = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
     sex_concordance = Column(String(255), nullable=True)
     sex_ploidy = Column(String(255), nullable=True)
     aligned_q30_bases = Column(String(255), nullable=True)
@@ -481,8 +483,8 @@ class GenomicGCValidationMetrics(Base):
     meanCoverage = Column('mean_coverage', String(10), nullable=True)
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
     aouHdrCoverage = Column('aou_hdr_coverage', String(10), nullable=True)
-    # TODO: change datatype of contamintion to float in RDR and PDR
     contamination = Column('contamination', String(10), nullable=True)
+    mappedReadsPct = Column('mapped_reads_pct', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
     alignedQ30Bases = Column('aligned_q30_bases', BigInteger, nullable=True)

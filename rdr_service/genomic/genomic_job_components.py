@@ -259,6 +259,15 @@ class GenomicFileIngester:
             )
 
             if validation_result != GenomicSubProcessResult.SUCCESS:
+                # delete raw records
+                if self.job_id == GenomicJob.AW1_MANIFEST:
+                    raw_dao = GenomicAW1RawDao()
+                    raw_dao.delete_from_filepath(file_obj.filePath)
+
+                if self.job_id == GenomicJob.METRICS_INGESTION:
+                    raw_dao = GenomicAW2RawDao()
+                    raw_dao.delete_from_filepath(file_obj.filePath)
+
                 return validation_result
 
             ingestion_config = {
@@ -379,6 +388,8 @@ class GenomicFileIngester:
             "genome_coverage": "genomecoverage",
             "aouhdr_coverage": "aouhdrcoverage",
             "contamination": "contamination",
+            "sample_source": "samplesource",
+            "mapped_reads_pct": "mappedreadspct",
             "sex_concordance": "sexconcordance",
             "sex_ploidy": "sexploidy",
             "aligned_q30_bases": "alignedq30bases",
@@ -714,6 +725,11 @@ class GenomicFileIngester:
         category = self.calculate_contamination_category(member.collectionTubeId,
                                                          contamination_value, member)
         row['contamination_category'] = category
+
+        # handle mapped reads in case they are longer than field length
+        if 'mappedreadspct' in row.keys():
+            if len(row['mappedreadspct']) > 10:
+                row['mappedreadspct'] = row['mappedreadspct'][0:10]
 
         return row
 
@@ -1363,6 +1379,8 @@ class GenomicFileValidator:
                 "genomecoverage",
                 "aouhdrcoverage",
                 "contamination",
+                'samplesource',
+                'mappedreadspct',
                 "sexconcordance",
                 "sexploidy",
                 "alignedq30bases",
@@ -1379,6 +1397,7 @@ class GenomicFileValidator:
                 "callrate",
                 "sexconcordance",
                 "contamination",
+                'samplesource',
                 "processingstatus",
                 "notes",
             ),
@@ -1533,7 +1552,7 @@ class GenomicFileValidator:
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
         # if not data_to_validate
-        struct_valid_result, missing_fields, expected = self._check_file_structure_valid(
+        struct_valid_result, missing_fields, extra_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
 
         if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
@@ -1542,6 +1561,8 @@ class GenomicFileValidator:
         if not struct_valid_result:
             slack = True
             invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
+            if extra_fields:
+                invalid_message += f' Extra fields: {extra_fields}'
             if missing_fields:
                 invalid_message += f' Missing fields: {missing_fields}'
                 if len(missing_fields) == len(expected):
@@ -1723,7 +1744,8 @@ class GenomicFileValidator:
         :param fields: the data from the CSV file; dictionary per row.
         :return: boolean; True if valid structure, False if not.
         """
-        missing_fields = None
+        missing_fields, extra_fields = None, None
+
         if not self.valid_schema:
             self.valid_schema = self._set_schema(self.filename)
 
@@ -1736,10 +1758,17 @@ class GenomicFileValidator:
         all_file_columns_valid = all([c in self.valid_schema for c in cases])
         all_expected_columns_in_file = all([c in cases for c in self.valid_schema])
 
+        if not all_file_columns_valid:
+            extra_fields = list(set(cases) - set(self.valid_schema))
+
         if not all_expected_columns_in_file:
             missing_fields = list(set(self.valid_schema) - set(cases))
 
-        return all([all_file_columns_valid, all_expected_columns_in_file]), missing_fields, self.valid_schema
+        return \
+            all([all_file_columns_valid, all_expected_columns_in_file]), \
+            missing_fields, \
+            extra_fields, \
+            self.valid_schema
 
     def _set_schema(self, filename):
         """Since the schemas are different for WGS and Array metrics files,
@@ -2746,6 +2775,7 @@ class ManifestDefinitionProvider:
                 "chipwellbarcode",
                 "biobank_id",
                 "sample_id",
+                "biobankidsampleid",
                 "sex_at_birth",
                 "site_id",
                 "red_idat_path",
@@ -2760,6 +2790,7 @@ class ManifestDefinitionProvider:
                 "contamination",
                 "processing_status",
                 "research_id",
+                "sample_source"
             ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
@@ -2797,9 +2828,6 @@ class ManifestDefinitionProvider:
                 "vcf_hf_path",
                 "vcf_hf_index_path",
                 "vcf_hf_md5_path",
-                "vcf_raw_path",
-                "vcf_raw_index_path",
-                "vcf_raw_md5_path",
                 "cram_path",
                 "cram_md5_path",
                 "crai_path",
@@ -2810,6 +2838,9 @@ class ManifestDefinitionProvider:
                 "processing_status",
                 "mean_coverage",
                 "research_id",
+                "sample_source",
+                "mapped_reads_pct",
+                "sex_ploidy"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",

@@ -558,7 +558,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicGCValidationMetrics,
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
             ).filter(
-                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW2_MISSING,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GC_DATA_FILES_MISSING,
                 GenomicGCValidationMetrics.ignoreFlag != 1
             )
             if genome_type == config.GENOME_TYPE_ARRAY:
@@ -1153,6 +1153,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'genomeCoverage': 'genomecoverage',
             'aouHdrCoverage': 'aouhdrcoverage',
             'contamination': 'contamination',
+            'mappedReadsPct': 'mappedreadspct',
             'contaminationCategory': 'contamination_category',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
@@ -2047,6 +2048,12 @@ class GenomicAW1RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW1Raw).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).delete()
+
 
 class GenomicAW2RawDao(BaseDao):
     def __init__(self):
@@ -2087,6 +2094,33 @@ class GenomicAW2RawDao(BaseDao):
             ).first()
             return record
 
+    def get_aw2_ingestion_deltas(self):
+        with self.session() as session:
+            return session.query(
+                GenomicAW2Raw
+            ).join(
+                GenomicSetMember,
+                GenomicSetMember.sampleId == GenomicAW2Raw.sample_id
+            ).outerjoin(
+                GenomicGCValidationMetrics,
+                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.id.is_(None),
+                GenomicAW2Raw.ignore_flag == 0,
+                GenomicAW2Raw.biobank_id != "",
+                GenomicAW2Raw.sample_id != "",
+            ).order_by(GenomicAW2Raw.id).all()
+
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW2Raw).filter(
+                GenomicAW2Raw.file_path == filepath
+            ).delete()
+
+    def truncate(self):
+        if GAE_PROJECT == 'localhost':
+            with self.session() as session:
+                session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False

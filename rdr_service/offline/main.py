@@ -438,14 +438,6 @@ def genomic_gc_manifest_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('aw1f_manifest_workflow')
-def genomic_aw1f_failures_workflow():
-    genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
-    genomic_pipeline.genomic_centers_accessioning_failures_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 @run_genomic_cron_job('aw1c_manifest_workflow')
 def aw1c_manifest_workflow():
     """Temporarily running this manually for E2E Testing"""
@@ -611,6 +603,13 @@ def reconcile_gc_data_file_to_table():
 @run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
 def reconcile_raw_to_aw1_ingested():
     genomic_pipeline.reconcile_raw_to_aw1_ingested()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')
+def reconcile_raw_to_aw2_ingested():
+    genomic_pipeline.reconcile_raw_to_aw2_ingested()
     return '{"success": "true"}'
 
 
@@ -792,12 +791,6 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFailuresWorkflow",
-        endpoint="genomic_aw1f_failures_workflow",
-        view_func=genomic_aw1f_failures_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW1CManifestWorkflow",
         endpoint="aw1c_manifest_workflow",
         view_func=aw1c_manifest_workflow,
@@ -914,6 +907,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
         endpoint="reconcile_raw_to_aw1_ingested",
         view_func=reconcile_raw_to_aw1_ingested,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileRawToAw2Ingested",
+        endpoint="reconcile_raw_to_aw2_ingested",
+        view_func=reconcile_raw_to_aw2_ingested,
         methods=["GET"]
     )
     offline_app.add_url_rule(
