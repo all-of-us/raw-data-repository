@@ -5425,3 +5425,77 @@ class GenomicPipelineTest(BaseTestCase):
 
         metrics = self.metrics_dao.get_all()
         self.assertEqual(5, len(metrics))
+
+    def test_raw_aw1_delete_from_filepath(self):
+        # Raw table needs resetting for this test when running full suite
+        self.aw1_raw_dao.truncate()
+
+        # Setup Test file
+        gc_manifest_file = test_data.open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-Extra-Field.csv")
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._write_cloud_csv(
+            gc_manifest_filename,
+            gc_manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
+            }
+        }
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw1")
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        records = self.aw1_raw_dao.get_all()
+        self.assertEqual(0, len(records))
+
+    def test_raw_aw2_delete_from_filepath(self):
+        # Raw table needs resetting for this test when running full suite
+        self.aw2_raw_dao.truncate()
+
+        # Setup Test file
+        manifest_filename = "RDR_AoU_SEQ_TestBadStructureDataManifest.csv"
+        manifest_file = test_data.open_genomic_set_file(manifest_filename)
+
+        self._write_cloud_csv(
+            manifest_filename,
+            manifest_file,
+            bucket=_FAKE_GENOMIC_CENTER_BUCKET_A,
+            folder=_FAKE_GENOTYPING_FOLDER,
+        )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.METRICS_INGESTION,
+            "bucket": _FAKE_GENOMIC_CENTER_BUCKET_A,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
+            }
+        }
+        # Run load job
+        genomic_pipeline.load_awn_manifest_into_raw_table(f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}", "aw2")
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        records = self.aw2_raw_dao.get_all()
+        self.assertEqual(0, len(records))

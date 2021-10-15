@@ -2048,6 +2048,12 @@ class GenomicAW1RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW1Raw).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).delete()
+
 
 class GenomicAW2RawDao(BaseDao):
     def __init__(self):
@@ -2104,6 +2110,17 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.biobank_id != "",
                 GenomicAW2Raw.sample_id != "",
             ).order_by(GenomicAW2Raw.id).all()
+
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW2Raw).filter(
+                GenomicAW2Raw.file_path == filepath
+            ).delete()
+
+    def truncate(self):
+        if GAE_PROJECT == 'localhost':
+            with self.session() as session:
+                session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
