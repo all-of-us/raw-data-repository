@@ -62,8 +62,8 @@ def _build_resource_app():
                       endpoint="store_message_broker_event_data_task", methods=["POST"])
 
     # Consent Validation Metrics Cloud Task API endpoint
-    _api.add_resource(cloud_tasks_api.RebuildConsentMetricsApi,
-                      TASK_PREFIX + "RebuildConsentMetricsApi",
+    _api.add_resource(cloud_tasks_api.RebuildConsentMetricApi,
+                      TASK_PREFIX + "RebuildConsentMetricApi",
                       endpoint="batch_rebuild_consent_metrics_task", methods=["POST"])
 
     #

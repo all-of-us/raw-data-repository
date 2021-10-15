@@ -49,7 +49,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
     def _create_expected_metrics_dict(participant, consent_type=ConsentType.PRIMARY,
                                       consent_status=ConsentSyncStatus.READY_FOR_SYNC, expected_errors=[]):
         """
-        Set up a dictionary of values to compare against resource data dictionary from ConsentMetricsGenerator;
+        Set up a dictionary of values to compare against resource data dictionary from ConsentMetricGenerator;
         does not include created, modified, or id (auto-generated values)
         """
         expected_values_dict = {'hpo_id': participant.hpoId,
@@ -91,7 +91,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         )
         self.assertIsNotNone(consent_file_rec.id)
 
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
         # No expected_errors provided, all error conditions default to False
@@ -137,7 +137,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         )
         self.assertIsNotNone(consent_file_rec_1.id)
         self.assertIsNotNone(consent_file_rec_2.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: Invalid DOB because DOB is missing
         resource_data = res_gen.make_resource(consent_file_rec_1.id).get_data()
@@ -171,7 +171,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: invalid_age_at_consent (less than 18 years of age)
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
@@ -199,7 +199,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: invalid_age_at_consent (less than 18 years of age)
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
@@ -231,7 +231,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: invalid_age_at_consent and signature_missing errors
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
@@ -290,7 +290,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                                    ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK])
         )
 
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: checkbox_unchecked error for consent_file_rec_1
         resource_data = res_gen.make_resource(consent_file_rec_1.id).get_data()
@@ -357,7 +357,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             other_errors=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: checkbox_unchecked error
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
@@ -395,7 +395,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signature_valid=0,
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
         # Confirm this record's ignore flag was set due to filtering the signature_missing error
@@ -422,7 +422,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
         # Confirm this record's ignore flag was set due to filtering on the special sync_status
@@ -451,7 +451,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
         # Confirm this record's ignore flag was set due to filtering the va_consent_for_non_va error
@@ -477,7 +477,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricsGenerator()
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
         self.assertTrue(resource_data.get('test_participant'))
 

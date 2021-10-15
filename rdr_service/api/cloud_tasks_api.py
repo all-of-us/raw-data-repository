@@ -214,7 +214,7 @@ class RebuildRetentionEligibleMetricsApi(Resource):
         batch_rebuild_retention_metrics_task(data)
         return '{"success": "true"}'
 
-class RebuildConsentMetricsApi(Resource):
+class RebuildConsentMetricApi(Resource):
     """
     Cloud Task endpoint: Rebuild Consent Validation metrics resource records
     """

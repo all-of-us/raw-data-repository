@@ -907,7 +907,7 @@ class RetentionEligibleMetricClass:
 
         return 1
 
-class ConsentMetricsClass(object):
+class ConsentMetricClass(object):
     """ Build consent validation metrics records for PDR extract """
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
@@ -919,10 +919,10 @@ class ConsentMetricsClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.id_list = id_list
-        self.res_gen = generators.ConsentMetricsGenerator()
+        self.res_gen = generators.ConsentMetricGenerator()
 
     def update_batch(self, _ids):
-        """ Batch update of ConsentMetrics resource records """
+        """ Batch update of ConsentMetric resource records """
 
         batch_size = 250
         count = 0
@@ -1222,7 +1222,7 @@ def run():
             exit_code = process.run()
 
         elif args.resource == 'consent-metrics':
-            process = ConsentMetricsClass(args, gcp_env, ids)
+            process = ConsentMetricClass(args, gcp_env, ids)
             exit_code = process.run()
 
         else:
