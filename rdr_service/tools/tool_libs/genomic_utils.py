@@ -1047,6 +1047,11 @@ class GenomicProcessRunner(GenomicManifestBase):
                                   manifest_type=GenomicManifestTypes.AW3_ARRAY,
                                   genome_type=config.GENOME_TYPE_ARRAY)
 
+        if self.gen_job_name == 'RESOLVE_MISSING_FILES':
+            self.resolve_missing_files(
+                job=GenomicJob.RESOLVE_MISSING_FILES,
+            )
+
         if self.gen_job_name in (
             'METRICS_INGESTION',
             'AW4_ARRAY_WORKFLOW',
@@ -1275,6 +1280,11 @@ class GenomicProcessRunner(GenomicManifestBase):
                 manifest_type=manifest_type,
                 _genome_type=genome_type,
             )
+
+    def resolve_missing_files(self, job):
+        # Run the resolve_missing_files job
+        with GenomicJobController(job_id=job) as controller:
+            controller.resolve_missing_gc_files()
 
     def run_calculate_record_counts_aw1(self, manifest_id):
         _logger.info(f"Calculating record count for manifest_id: {manifest_id}")
@@ -2167,7 +2177,8 @@ def run():
                                            'AW2F_MANIFEST',
                                            'CALCULATE_RECORD_COUNT_AW1',
                                            'AW3_WGS_WORKFLOW',
-                                           'AW3_ARRAY_WORKFLOW'
+                                           'AW3_ARRAY_WORKFLOW',
+                                           'RESOLVE_MISSING_FILES'
                                        ],
                                        type=str
                                        )
