@@ -259,6 +259,15 @@ class GenomicFileIngester:
             )
 
             if validation_result != GenomicSubProcessResult.SUCCESS:
+                # delete raw records
+                if self.job_id == GenomicJob.AW1_MANIFEST:
+                    raw_dao = GenomicAW1RawDao()
+                    raw_dao.delete_from_filepath(file_obj.filePath)
+
+                if self.job_id == GenomicJob.METRICS_INGESTION:
+                    raw_dao = GenomicAW2RawDao()
+                    raw_dao.delete_from_filepath(file_obj.filePath)
+
                 return validation_result
 
             ingestion_config = {
