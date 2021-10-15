@@ -537,10 +537,10 @@ class GenomicJobController:
             num_days=num_days
         )
 
-    def resolve_missing_gc_files(self):
+    def resolve_missing_gc_files(self, limit=800):
         logging.info('Resolving missing gc data files')
 
-        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit=200)
+        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit)
         if files_to_resolve:
 
             resolve_arrays = [obj for obj in files_to_resolve if obj.identifier_type == 'chipwellbarcode']

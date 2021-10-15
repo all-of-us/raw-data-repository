@@ -2374,9 +2374,9 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
             ).subquery()
 
             results = session.query(
-                GenomicGcDataFile
-            ).join(
                 subquery,
+            ).join(
+                GenomicGcDataFile,
                 and_(GenomicGcDataFile.identifier_type == subquery.c.identifier_type,
                      GenomicGcDataFile.identifier_value == subquery.c.identifier_value,
                      GenomicGcDataFile.file_type == subquery.c.file_type, )
@@ -2387,19 +2387,19 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
 
             return results.all()
 
-    def batch_update_resolved_file(self, records):
+    def batch_update_resolved_file(self, unresolved_files):
         file_dao = GenomicGcDataFileDao()
         method_map = {
             'chipwellbarcode': file_dao.get_with_chipwellbarcode,
             'sample_id': file_dao.get_with_sample_id
         }
-        get_method = method_map[records[0].identifier_type]
+        get_method = method_map[unresolved_files[0].identifier_type]
 
-        for record in records:
-            data_records = get_method(record.identifier_value)
-            has_file_type_record = any([obj.file_type == record.file_type for obj in data_records])
+        for unresolved_file in unresolved_files:
+            existing_data_files = get_method(unresolved_file.identifier_value)
+            has_file_type_record = any([obj.file_type == unresolved_file.file_type for obj in existing_data_files])
             if has_file_type_record:
-                update_record = self.get(record.id)
+                update_record = self.get(unresolved_file.id)
                 update_record.resolved = 1
                 update_record.resolved_date = datetime.utcnow()
                 self.update(update_record)
