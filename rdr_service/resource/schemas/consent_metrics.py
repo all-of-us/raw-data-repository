@@ -39,7 +39,7 @@ class ConsentMetricSchema(Schema):
         description='True if consent for participant not paired to VA is a VA consent form'
     )
     participant_origin = fields.String(validate=validate.Length(max=80))
-    test_participant = fields.Boolean()
+    test_participant = fields.Boolean(description='True if participant id is flagged as a test or ghost participant')
     ignore = fields.Boolean(
         description='True if record should be filtered out of metrics reporting'
     )

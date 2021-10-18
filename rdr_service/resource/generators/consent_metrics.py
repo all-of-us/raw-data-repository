@@ -29,6 +29,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
     """
     Generate a ConsentMetric resource object
     """
+
     ro_dao = None
 
     @classmethod
@@ -144,6 +145,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 'organization_id': row.organizationId,
                 # TODO:  Confirm if we need the 'P' prefix here?
                 'participant_id': f'P{row.participant_id}',
+                'participant_origin': row.participantOrigin,
                 'test_participant': False,
                 'consent_type': str(consent_type),
                 'consent_type_id': int(consent_type),
@@ -199,7 +201,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             data['invalid_age_at_consent'] = age_delta.years < VALID_AGE_AT_CONSENT if dob else False
 
         # PDR convention: map ghost and test participants to test_participant = True
-        data['test_participant'] = (row.hpo_name == 'TEST' or row.isTestParticipant or row.isGhostId)
+        data['test_participant'] = (row.hpo_name == 'TEST' or row.isTestParticipant == 1 or row.isGhostId == 1)
 
         # Special conditions where these records may be ignored for reporting.  Some known "false positive" conditions
         # or the record has a non-standard sync_status (LEGACY, UNKNOWN, DELAYING_SYNC),
