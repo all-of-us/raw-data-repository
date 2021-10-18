@@ -962,6 +962,7 @@ class ConsentMetricClass(object):
         _logger.info('  Batch mode enabled    : {0}'.format(clr.fmt('Yes' if self.args.batch else 'No')))
 
         dao = ResourceDataDao(backup=True)
+        csv_lines = []
         if self.args.all_ids:
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
             with dao.session() as session:
@@ -987,21 +988,54 @@ class ConsentMetricClass(object):
         elif len(self.id_list) > 2500:
             # Issue a warning if a local rebuild will exceed 2500 records; default to aborting
             response = input(f'\n{len(self.id_list)} records will be rebuilt.  Continue without --batch mode? [y/N]')
-            if response.upper() == 'N':
+            if not response or response.upper() == 'N':
                 _logger.error('Aborted by user')
                 return 1
 
         results = self.res_gen.get_consent_validation_records(dao=dao, id_list=self.id_list)
+        csv_lines = []
+        column_headers = []
         count = 0
-        for row in results:
-            resource_data = self.res_gen.make_resource(row.id, consent_validation_rec=row)
-            resource_data.save(w_dao=ResourceDataDao(backup=False))
-            count += 1
-            if not self.args.debug:
-                print_progress_bar(
-                    count, len(results), prefix="{0}/{1}:".format(count, len(results)), suffix="complete"
-                )
+        if results:
+            if self.args.to_file:
+                line = "\t".join(column_headers)
+                csv_lines.append(f'{line}\n')
+            for row in results:
+                resource_data = self.res_gen.make_resource(row.id, consent_validation_rec=row)
+                if self.args.to_file:
+                    # First line should be the column headers
+                    if not len(column_headers):
+                        column_headers = sorted(resource_data.get_data().keys())
+                        line = "\t".join(column_headers)
+                        csv_lines.append(f'{line}\n')
 
+                    csv_values = []
+                    for key, value in sorted(resource_data.get_data().items()):
+                        if key in ['created', 'modified']:
+                            csv_values.append(value.strftime("%Y-%m-%d %H:%M:%S") if value else "")
+                        elif key in ['consent_authored_date', 'resolved_date']:
+                            csv_values.append(value.strftime("%Y-%m-%d") if value else "")
+                        elif isinstance(value, bool):
+                            csv_values.append("1" if value else "0")
+                        elif key == 'participant_id':
+                            csv_values.append(value[1:])
+                        else:
+                            csv_values.append(str(value) if value else "")
+
+                    line = "\t".join(csv_values)
+                    csv_lines.append(f'{line}\n')
+                else:
+                    resource_data.save(w_dao=ResourceDataDao(backup=False))
+
+                count += 1
+                if not self.args.debug:
+                    print_progress_bar(
+                        count, len(results), prefix="{0}/{1}:".format(count, len(results)), suffix="complete"
+                    )
+
+                if self.args.to_file:
+                    with open(self.args.to_file, "w") as f:
+                        f.writelines(csv_lines)
         return 0
 
 
@@ -1168,6 +1202,9 @@ def run():
                                         dest='modified_since',
                                         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
                                         help="Modified date in in YYYY-MM-DD format"
+                                        )
+    consent_metrics_parser.add_argument("--to-file", dest="to_file", type=str, default=None,
+                                        help="TSV file to save generated records to instead of saving to database"
                                         )
     update_argument(consent_metrics_parser, dest='from_file',
                     help="rebuild consent metrics data for specific consent_file ids read from a file")

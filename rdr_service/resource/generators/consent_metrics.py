@@ -132,27 +132,25 @@ class ConsentMetricGenerator(generators.BaseGenerator):
 
         # -- MAIN BODY OF GENERATOR -- #
         if not row:
-            raise (ValueError, 'Missing consent_file record')
+            raise (ValueError, 'Missing consent_file validation record')
 
         consent_type = row.type
         consent_status = row.sync_status
 
-        # Set up defaults values
+        # Set up default values
         data = {'id': row.id,
                 'created': row.created,
                 'modified': row.modified,
-                'hpo_id': row.hpoId,
-                'organization_id': row.organizationId,
-                # TODO:  Confirm if we need the 'P' prefix here?
                 'participant_id': f'P{row.participant_id}',
                 'participant_origin': row.participantOrigin,
-                'test_participant': False,
+                'hpo': row.hpo_name,
+                'hpo_id': row.hpoId,
+                'organization': row.organization_name,
+                'organization_id': row.organizationId,
                 'consent_type': str(consent_type),
                 'consent_type_id': int(consent_type),
                 'sync_status': str(consent_status),
                 'sync_status_id': int(consent_status),
-                'hpo': row.hpo_name,
-                'organization': row.organization_name,
                 'consent_authored_date': None,
                 'resolved_date': None,
                 'missing_file': False,
@@ -163,12 +161,14 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                 'va_consent_for_non_va': False,
                 'invalid_dob': False,
                 'invalid_age_at_consent': False,
+                'test_participant': False,
                 'ignore': False
         }
 
-        authored_from_row = ConsentMetricGenerator._get_authored_timestamps_from_rec(row).get(consent_type, None)
-        if authored_from_row:
-            data['consent_authored_date'] = authored_from_row.date()
+        # Look up the specific authored timestamp associated with this consent
+        authored_ts_from_row = ConsentMetricGenerator._get_authored_timestamps_from_rec(row).get(consent_type, None)
+        if authored_ts_from_row:
+            data['consent_authored_date'] = authored_ts_from_row.date()
 
         # Resolved/OBSOLETE records use the consent_file modified date as the resolved date
         if consent_status == ConsentSyncStatus.OBSOLETE and row.modified:
@@ -191,16 +191,18 @@ class ConsentMetricGenerator(generators.BaseGenerator):
 
         # DOB-related errors are not tracked in the RDR consent_file table.  They are derived from
         # participant_summary data and only apply to the primary consent.
-        dob = datetime(row.dateOfBirth.year, row.dateOfBirth.month, row.dateOfBirth.day) if row.dateOfBirth else None
         if consent_type == ConsentType.PRIMARY:
-            age_delta = relativedelta(authored_from_row, dob) if dob else None
+            dob = datetime(row.dateOfBirth.year,
+                           row.dateOfBirth.month,
+                           row.dateOfBirth.day) if row.dateOfBirth else None
+            age_delta = relativedelta(authored_ts_from_row, dob) if dob else None
             data['invalid_dob'] = (dob is None
                                    or age_delta.years <= 0
                                    or age_delta.years >= INVALID_DOB_AGE_CUTOFF
                                    )
             data['invalid_age_at_consent'] = age_delta.years < VALID_AGE_AT_CONSENT if dob else False
 
-        # PDR convention: map ghost and test participants to test_participant = True
+        # PDR convention: map RDR ghost and test participants to test_participant = True
         data['test_participant'] = (row.hpo_name == 'TEST' or row.isTestParticipant == 1 or row.isGhostId == 1)
 
         # Special conditions where these records may be ignored for reporting.  Some known "false positive" conditions
@@ -237,8 +239,6 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   ConsentFile.is_signature_valid,
                                   ConsentFile.is_signing_date_valid,
                                   ConsentFile.other_errors,
-                                  # These ConsentFile fields are used to apply 'ignore' designation for some
-                                  # false positive
                                   ConsentFile.expected_sign_date,
                                   ConsentFile.signing_date,
                                   ParticipantSummary.dateOfBirth,

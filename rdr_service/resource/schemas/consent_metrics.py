@@ -13,6 +13,8 @@ class ConsentMetricSchema(Schema):
     created = fields.DateTime(description='Timestamp for when the consent_file record was created')
     modified = fields.DateTime(description='Timestamp for when the consent_file record was last modified')
     participant_id = fields.String(validate=validate.Length(max=10), required=True)
+    participant_origin = fields.String(validate=validate.Length(max=80),
+                                       description='Origin/creator of participant (e.g., "vibrent" or "careevolution")')
     hpo = fields.String(validate=validate.Length(max=20), description='HPO participant is paired to')
     hpo_id = fields.Int32()
     organization = fields.String(validate=validate.Length(max=255), description='Organization participant is paired to')
@@ -38,7 +40,6 @@ class ConsentMetricSchema(Schema):
     va_consent_for_non_va = fields.Boolean(
         description='True if consent for participant not paired to VA is a VA consent form'
     )
-    participant_origin = fields.String(validate=validate.Length(max=80))
     test_participant = fields.Boolean(description='True if participant id is flagged as a test or ghost participant')
     ignore = fields.Boolean(
         description='True if record should be filtered out of metrics reporting'
