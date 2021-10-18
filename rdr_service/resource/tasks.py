@@ -93,3 +93,19 @@ def batch_rebuild_retention_metrics_task(payload):
         count += 1
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt {count} Retention Metrics records.')
+
+def batch_rebuild_consent_metrics_task(payload):
+    """
+     Rebuild a batch of consent metrics records based on ids from the consent_file table
+     :param payload: Dict object with list of ids to work on.
+     """
+    res_gen = generators.ConsentMetricGenerator()
+    batch = payload.get('batch')
+
+    # Retrieve the consent_file table records by id
+    results = res_gen.get_consent_validation_records(id_list=batch)
+    for row in results:
+        res = res_gen.make_resource(row.id, consent_validation_rec=row)
+        res.save()
+
+    logging.info(f'End time: {datetime.utcnow()}, rebuilt {len(results)} ConsentMetric records.')

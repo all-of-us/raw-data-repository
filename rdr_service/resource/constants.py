@@ -61,6 +61,9 @@ class SchemaID(IntEnum):
     # Metrics
     retention_metrics = 2120
 
+    # Consent Validation Metrics
+    consent_metrics = 6000
+
 
 # Used to calculate participant enrollment cohort.
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
