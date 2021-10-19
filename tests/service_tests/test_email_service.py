@@ -19,7 +19,7 @@ class EmailServiceTest(BaseTestCase):
         email = Email()
         self.assertEqual(config.SENDGRID_FROM_EMAIL, email.from_email)
 
-    @mock.patch('rdr_service.services.email.sendgrid')
+    @mock.patch('rdr_service.services.email_service.sendgrid')
     def test_sendgrid_email_data_structure(self, sendgrid_mock):
         """Make sure the email data structure is formed correctly when sending an email to SendGrid"""
         email = Email(

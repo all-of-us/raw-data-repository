@@ -3922,7 +3922,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    @mock.patch('rdr_service.services.email.EmailService.send_email')
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_aw1cf_alerting_emails(self, send_email_mock):
         aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
 
