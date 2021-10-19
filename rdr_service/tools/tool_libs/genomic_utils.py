@@ -1283,7 +1283,7 @@ class GenomicProcessRunner(GenomicManifestBase):
 
     def resolve_missing_files(self, job):
         # Run the resolve_missing_files job
-        with GenomicJobController(job_id=job) as controller:
+        with GenomicJobController(job_id=job, bq_project_id=self.gcp_env.project) as controller:
             controller.resolve_missing_gc_files()
 
     def run_calculate_record_counts_aw1(self, manifest_id):
@@ -1993,7 +1993,8 @@ class ReconcileGcDataFileBucket(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
 
         with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE,
-                                  storage_provider=self.gscp) as controller:
+                                  storage_provider=self.gscp,
+                                  bq_project_id=self.gcp_env.project) as controller:
             controller.reconcile_gc_data_file_to_table()
 
         return 0
