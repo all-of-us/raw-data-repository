@@ -72,7 +72,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode
-from rdr_service.services.email import Email
+from rdr_service.services.email_service import Email
 
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase

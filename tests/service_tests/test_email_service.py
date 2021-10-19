@@ -1,7 +1,7 @@
 import mock
 
 from rdr_service import config
-from rdr_service.services.email import Email, EmailService
+from rdr_service.services.email_service import Email, EmailService
 from tests.helpers.unittest_base import BaseTestCase
 
 
