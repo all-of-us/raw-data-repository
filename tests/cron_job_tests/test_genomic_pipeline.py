@@ -72,7 +72,7 @@ from rdr_service.participant_enums import (
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
     GenomicQcStatus, GenomicIncidentCode
-from rdr_service.services.email import Email
+from rdr_service.services.email_service import Email
 
 from tests import test_data
 from tests.helpers.unittest_base import BaseTestCase
@@ -3922,7 +3922,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    @mock.patch('rdr_service.services.email.EmailService.send_email')
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_aw1cf_alerting_emails(self, send_email_mock):
         aw1cf_manifest_filename = "RDR_AoU_CVL_PKG-1908-218051_FAILURE.csv"
 
