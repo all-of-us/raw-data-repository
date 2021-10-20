@@ -83,7 +83,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
             b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
-            b'<birth_date>3/3/1933</birth_date><gender>U</gender>'
+            b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
             b'<phone>442-123-4567</phone>'
@@ -128,7 +128,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
             b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
-            b'<birth_date>3/3/1933</birth_date><gender>U</gender>'
+            b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
             b'<phone>442-123-4567</phone>'
@@ -148,28 +148,17 @@ class MayolinkClientTest(BaseTestCase):
     @mock.patch('rdr_service.api.mayolink_api.httplib2')
     def test_passthrough_fields(self, http_mock):
         """Test the data structure with passthrough fields added in"""
-        order = MayoLinkOrder(
-            collected='2021-05-01',
-            number='12345',
-            medical_record_number='Z6789',
-            last_name='Smith',
-            sex='U',
-            address1='1234 Main',
-            address2='Apt C',
-            city='Test',
-            state='TN',
-            postal_code='11223',
-            phone='442-123-4567',
-            race='NA',
-            tests=[MayoLinkTest(
+        order = self._get_default_order()
+        order.tests = [
+            MayoLinkTest(
                 code='1SAL',
                 name='Unittest',
                 comments='Test object for testing',
                 passthrough_fields=MayolinkTestPassthroughFields(
                     field3='testing third pass-through field'
                 )
-            )]
-        )
+            )
+        ]
 
         client = MayoLinkApi()
         request_mock = http_mock.Http.return_value.request
@@ -185,14 +174,14 @@ class MayolinkClientTest(BaseTestCase):
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
             b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
-            b'<birth_date>3/3/1933</birth_date><gender>U</gender>'
+            b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
             b'<phone>442-123-4567</phone>'
             b'<account_number /><race>NA</race><ethnic_group />'
             b'</patient>'
             b'<physician><name>None</name><phone /><npi /></physician>'
-            b'<report_notes />'
+            b'<report_notes>testing notes</report_notes>'
             b'<tests><test>'
             b'<code>1SAL</code><name>Unittest</name><comments>Test object for testing</comments>'
             b'<client_passthrough_fields>'
@@ -235,7 +224,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
             b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
-            b'<birth_date>3/3/1933</birth_date><gender>U</gender>'
+            b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
             b'<phone>442-123-4567</phone>'

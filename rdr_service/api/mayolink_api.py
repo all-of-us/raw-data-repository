@@ -123,7 +123,7 @@ class MayoLinkApi:
                     'last_name': order.last_name,
                     'middle_name': '',
                     'birth_date': '3/3/1933',
-                    'gender': order.sex,
+                    'sex': order.sex,
                     'address1': order.address1,
                     'address2': order.address2,
                     'city': order.city,
