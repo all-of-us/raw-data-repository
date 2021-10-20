@@ -13,6 +13,13 @@ from rdr_service.app_util import check_auth
 
 
 @dataclass
+class MayolinkQuestion:
+    code: str
+    prompt: str
+    answer: str
+
+
+@dataclass
 class MayolinkTestPassthroughFields:
     field1: str = ''
     field2: str = ''
@@ -26,6 +33,7 @@ class MayoLinkTest:
     name: str
     comments: str = None
     passthrough_fields: MayolinkTestPassthroughFields = None
+    questions: List[MayolinkQuestion] = None
 
 
 @dataclass
@@ -145,6 +153,17 @@ class MayoLinkApi:
             'comments': test.comments
         }
 
+        if test.questions:
+            test_data['questions'] = [
+                {
+                    'question': {
+                        'code': question.code,
+                        'prompt': question.prompt,
+                        'answer': question.answer
+                    }
+                }
+                for question in test.questions
+            ]
         if test.passthrough_fields:
             test_data['client_passthrough_fields'] = {
                 'field1': test.passthrough_fields.field1,
