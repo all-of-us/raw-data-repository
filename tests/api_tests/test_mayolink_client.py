@@ -231,7 +231,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<account_number /><race>NA</race><ethnic_group />'
             b'</patient>'
             b'<physician><name>None</name><phone /><npi /></physician>'
-            b'<report_notes />'
+            b'<report_notes>testing notes</report_notes>'
             b'<tests><test>'
             b'<code>1SAL</code><name>Unittest</name><comments>Test object for testing</comments>'
             b'<questions>'
