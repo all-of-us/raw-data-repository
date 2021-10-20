@@ -1,13 +1,49 @@
+from dataclasses import dataclass
 import json
 import httplib2
 import logging
+from werkzeug.exceptions import ServiceUnavailable
 import xml.etree.ElementTree as ET
 import xmltodict
-from werkzeug.exceptions import ServiceUnavailable
 
 from rdr_service import config
 from rdr_service.api_util import RDR_AND_PTC, open_cloud_file
-from rdr_service.app_util import auth_required
+from rdr_service.app_util import check_auth
+
+
+@dataclass
+class MayolinkTestPassthroughFields:
+    field1: str = ''
+    field2: str = ''
+    field3: str = ''
+    field4: str = ''
+
+
+@dataclass
+class MayoLinkTest:
+    code: str
+    name: str
+    comments: str = None
+    passthrough_fields: MayolinkTestPassthroughFields = None
+
+
+@dataclass
+class MayoLinkOrder:
+    collected: str
+    number: str
+    medical_record_number: str
+    last_name: str
+    sex: str
+    address1: str
+    address2: str
+    city: str
+    state: str
+    postal_code: str
+    phone: str
+    race: str
+    report_notes: str = ''
+    test: MayoLinkTest = None
+    comments: str = ''
 
 
 class MayoLinkApi:
@@ -32,9 +68,9 @@ class MayoLinkApi:
 
         return credentials.get('username'), credentials.get('password'), credentials.get('account')
 
-    @auth_required(RDR_AND_PTC)
-    def post(self, order):
-        xml = self.__dict_to_mayo_xml__(order)
+    def post(self, order: MayoLinkOrder):
+        check_auth(RDR_AND_PTC)
+        xml = self.__order_to_mayo_xml__(order)
         return self.__post__(xml)
 
     def __post__(self, xml):
@@ -58,19 +94,73 @@ class MayoLinkApi:
 
         raise ServiceUnavailable("Mayolink service unavailable, please re-try later")
 
-    def __dict_to_mayo_xml__(self, order):
-        order['order']['account'] = self.account
+    def __order_to_mayo_xml__(self, order: MayoLinkOrder):
+        order_dict = self._dict_from_order(order)
         orders_element = ET.Element("orders")
         orders_element.set('xmlns', self.namespace)
-        tree_root = self.create_xml_tree_from_dict(orders_element, order)
+        tree_root = self.create_xml_tree_from_dict(orders_element, order_dict)
         request = ET.tostring(tree_root, encoding='UTF-8', method='xml')
         return request
+
+    def _dict_from_order(self, order: MayoLinkOrder):
+        order_dict = {
+            'order': {
+                'collected': order.collected,
+                'account': self.account,
+                'number': order.number,
+                'patient': {
+                    'medical_record_number': order.medical_record_number,
+                    'first_name': '*',
+                    'last_name': order.last_name,
+                    'middle_name': '',
+                    'birth_date': '3/3/1933',
+                    'gender': order.sex,
+                    'address1': order.address1,
+                    'address2': order.address2,
+                    'city': order.city,
+                    'state': order.state,
+                    'postal_code': order.postal_code,
+                    'phone': order.phone,
+                    'account_number': None,
+                    'race': order.race,
+                    'ethnic_group': None,
+                },
+                'physician': {'name': 'None', 'phone': None, 'npi': None},  # must be a string value, not None.
+                'report_notes': order.report_notes,
+                'tests': [],
+                'comments': ''
+            }
+        }
+
+        if order.test:
+            test_dict = {
+                'code': order.test.code,
+                'name': order.test.name,
+                'comments': order.test.comments
+            }
+
+            if order.test.passthrough_fields:
+                test_dict['client_passthrough_fields'] = {
+                    'field1': order.test.passthrough_fields.field1,
+                    'field2': order.test.passthrough_fields.field2,
+                    'field3': order.test.passthrough_fields.field3,
+                    'field4': order.test.passthrough_fields.field4
+                }
+
+            order_dict['order']['tests'] = [
+                {
+                    'test': test_dict
+                }
+            ]
+
+        return order_dict
+
 
     def _xml_to_dict(self, content):
         result = xmltodict.parse(content)
         return result
 
-    def create_xml_tree_from_dict(self, root, dict_tree):
+    def create_xml_tree_from_dict(self, root, dict_tree: dict):
         if type(dict_tree) == dict:
             for k, v in dict_tree.items():
                 if type(v) != list:
