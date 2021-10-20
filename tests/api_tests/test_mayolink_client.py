@@ -100,6 +100,7 @@ class MayolinkClientTest(BaseTestCase):
     def test_order_test_collection_data(self, http_mock):
         """Test the data structure with a test object provided (following the process used for mailkit orders)"""
         order = self._get_default_order()
+        order.report_notes = ''
         order.tests = [
             MayoLinkTest(
                 code='1SAL',
@@ -110,7 +111,7 @@ class MayolinkClientTest(BaseTestCase):
                 code='1ED04',
                 name='blood test',
                 comments='Another object for testing'
-            ),
+            )
         ]
 
         client = MayoLinkApi()
