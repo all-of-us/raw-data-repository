@@ -25,13 +25,16 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
     GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
+from rdr_service.model.code import Code
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
@@ -1999,6 +2002,45 @@ class ReconcileGcDataFileBucket(GenomicManifestBase):
         return 0
 
 
+class GemToGpMigrationClass(GenomicManifestBase):
+    """
+    Creates a GEM to GP Migration file for Color to Import
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GemToGpMigrationClass, self).__init__(args, gcp_env)
+
+    def run(self):
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+
+        qr_dao = QuestionnaireResponseDao()
+
+        with qr_dao.session() as session:
+            results = session.query(
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.authored,
+                Code.value
+            ).join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            ).filter(
+                Code.value.in_(["ConsentAncestryTraits_Yes",
+                                "ConsentAncestryTraits_No",
+                                "ConsentAncestryTraits_NotSure"])
+            ).limit(1000).all()
+
+        for row in results:
+            # write to csv
+            print(row.participantId)
+            pass
+
+        return 0
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2055,6 +2097,9 @@ def get_process_for_run(args, gcp_env):
         'reconcile-gc-data-file': {
             'process': ReconcileGcDataFileBucket(args, gcp_env)
         },
+        'gem-to-gp': {
+            'process': GemToGpMigrationClass(args, gcp_env)
+        }
     }
 
     return process_config[util]['process']
@@ -2204,6 +2249,9 @@ def run():
     # Backfill GenomicFileProcessed UploadDate
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
+
+    gem_to_gp = subparser.add_parser("gem-to-gp")  # pylint: disable=unused-variable
+
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
