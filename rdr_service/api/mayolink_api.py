@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import json
 import httplib2
 import logging
+from typing import List
 from werkzeug.exceptions import ServiceUnavailable
 import xml.etree.ElementTree as ET
 import xmltodict
@@ -42,7 +43,7 @@ class MayoLinkOrder:
     phone: str
     race: str
     report_notes: str = ''
-    test: MayoLinkTest = None
+    tests: List[MayoLinkTest] = None
     comments: str = ''
 
 
@@ -132,29 +133,27 @@ class MayoLinkApi:
             }
         }
 
-        if order.test:
-            test_dict = {
-                'code': order.test.code,
-                'name': order.test.name,
-                'comments': order.test.comments
-            }
-
-            if order.test.passthrough_fields:
-                test_dict['client_passthrough_fields'] = {
-                    'field1': order.test.passthrough_fields.field1,
-                    'field2': order.test.passthrough_fields.field2,
-                    'field3': order.test.passthrough_fields.field3,
-                    'field4': order.test.passthrough_fields.field4
-                }
-
-            order_dict['order']['tests'] = [
-                {
-                    'test': test_dict
-                }
-            ]
+        if order.tests:
+            order_dict['order']['tests'] = [self.dict_from_test(test) for test in order.tests]
 
         return order_dict
 
+    def dict_from_test(self, test: MayoLinkTest):
+        test_data = {
+            'code': test.code,
+            'name': test.name,
+            'comments': test.comments
+        }
+
+        if test.passthrough_fields:
+            test_data['client_passthrough_fields'] = {
+                'field1': test.passthrough_fields.field1,
+                'field2': test.passthrough_fields.field2,
+                'field3': test.passthrough_fields.field3,
+                'field4': test.passthrough_fields.field4
+            }
+
+        return {'test': test_data}
 
     def _xml_to_dict(self, content):
         result = xmltodict.parse(content)

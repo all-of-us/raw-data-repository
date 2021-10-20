@@ -111,7 +111,7 @@ class MayolinkClientTest(BaseTestCase):
         )
 
     @mock.patch('rdr_service.api.mayolink_api.httplib2')
-    def test_order_test_data(self, http_mock):
+    def test_order_test_collection_data(self, http_mock):
         """Test the data structure with a test object provided (following the process used for mailkit orders)"""
         order = MayoLinkOrder(
             collected='2021-05-01',
@@ -126,11 +126,18 @@ class MayolinkClientTest(BaseTestCase):
             postal_code='11223',
             phone='442-123-4567',
             race='NA',
-            test=MayoLinkTest(
-                code='1SAL',
-                name='Unittest',
-                comments='Test object for testing'
-            )
+            tests=[
+                MayoLinkTest(
+                    code='1SAL',
+                    name='Unittest',
+                    comments='Test object for testing'
+                ),
+                MayoLinkTest(
+                    code='1ED04',
+                    name='blood test',
+                    comments='Another object for testing'
+                ),
+            ]
         )
 
         client = MayoLinkApi()
@@ -138,6 +145,17 @@ class MayolinkClientTest(BaseTestCase):
         request_mock.return_value = ({'status': '201'}, b'<result></result>')
         with mock.patch('rdr_service.api.mayolink_api.check_auth'):
             client.post(order)
+
+        b'<orders xmlns="http://orders.mayomedicallaboratories.com"><order><collected>2021-05-01</collected><account>1122</account>' \
+        b'<number>12345</number><patient><medical_record_number>Z6789</medical_record_number>' \
+        b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />' \
+        b'<birth_date>3/3/1933</birth_date><gender>U</gender>' \
+        b'<address1>1234 Main</address1><address2>Apt C</address2>' \
+        b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>' \
+        b'<phone>442-123-4567</phone><account_number /><race>NA</race><ethnic_group />' \
+        b'</patient>' \
+        b'<physician><name>None</name><phone /><npi /></physician>' \
+        b'<report_notes /><tests><code>1SAL</code><name>Unittest</name><comments>Test object for testing</comments><code>1ED04</code><name>blood test</name><comments>Another object for testing</comments></tests><comments /></order></orders>'
 
         sent_xml = request_mock.call_args.kwargs['body']
         self.assertEqual(
@@ -155,9 +173,10 @@ class MayolinkClientTest(BaseTestCase):
             b'</patient>'
             b'<physician><name>None</name><phone /><npi /></physician>'
             b'<report_notes />'
-            b'<tests><test>'
-            b'<code>1SAL</code><name>Unittest</name><comments>Test object for testing</comments>'
-            b'</test></tests>'
+            b'<tests>'
+            b'<test><code>1SAL</code><name>Unittest</name><comments>Test object for testing</comments></test>'
+            b'<test><code>1ED04</code><name>blood test</name><comments>Another object for testing</comments></test>'
+            b'</tests>'
             b'<comments />'
             b'</order></orders>',
             sent_xml
