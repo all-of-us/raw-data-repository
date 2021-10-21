@@ -26,11 +26,6 @@ class DataQualityCheckerTest(BaseTestCase):
             created=now
         )
 
-        response_without_answers = self.data_generator.create_database_questionnaire_response(
-            participantId=participant.participantId
-        )
-        # None of the responses created have answers, but I'm relying on this one not getting flagged for anything else
-
         self.checker.run_data_quality_checks()
 
         mock_logging.error.assert_any_call(
@@ -40,9 +35,6 @@ class DataQualityCheckerTest(BaseTestCase):
         mock_logging.error.assert_any_call(
             f'Response {response_authored_in_the_future.questionnaireResponseId} authored with future date '
             f'of {response_authored_in_the_future.authored} (received at {response_authored_in_the_future.created})'
-        )
-        mock_logging.warning.assert_called_with(
-            f'Response {response_without_answers.questionnaireResponseId} has no answers'
         )
 
     def test_response_fuzzy_future_check(self, mock_logging):

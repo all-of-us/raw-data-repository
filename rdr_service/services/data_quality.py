@@ -11,7 +11,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory, \
     QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
 
 
 class _ModelQualityChecker(ABC):
@@ -127,7 +127,6 @@ class ResponseQualityChecker(_ModelQualityChecker):
                 Participant.signUpTime,
                 Participant.suspensionTime,
                 Participant.withdrawalAuthored,
-                func.count(QuestionnaireResponseAnswer.questionnaireResponseAnswerId),
                 func.min(all_matching_questionnaire.created),
                 func.group_concat(Code.value.distinct())
             )
@@ -154,17 +153,13 @@ class ResponseQualityChecker(_ModelQualityChecker):
                     all_matching_questionnaire.version == all_matching_concepts.questionnaireVersion
                 )
             )
-            .outerjoin(
-                QuestionnaireResponseAnswer,
-                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
-            )
             .group_by(QuestionnaireResponse.questionnaireResponseId)
         )
         if for_data_since is not None:
             query = query.filter(QuestionnaireResponse.created >= for_data_since)
 
         for response_id, created_time, authored_time, participant_signup_time, suspension_datetime,\
-                withdrawal_datetime, answer_count, min_questionnaire_created_time, module_code in query.all():
+                withdrawal_datetime, min_questionnaire_created_time, module_code in query.all():
             if authored_time is not None:
                 if not self._date_less_than_or_equal(
                     earlier_date=authored_time,
@@ -186,8 +181,6 @@ class ResponseQualityChecker(_ModelQualityChecker):
                     logging.error(f'Response {response_id} authored for withdrawn participant')
                 if min_questionnaire_created_time and min_questionnaire_created_time > authored_time:
                     logging.error(f'Response {response_id} to {module_code} authored before survey released')
-            if answer_count == 0:
-                logging.warning(f'Response {response_id} has no answers')
 
 
 class DataQualityChecker(_ModelQualityChecker):
