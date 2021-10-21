@@ -103,26 +103,50 @@ class DataQualityCheckerTest(BaseTestCase):
             f'Response {response_authored_after_withdraw.questionnaireResponseId} authored for withdrawn participant'
         )
 
-    def test_response_before_questionnaire(self, mock_logging):
-        """We should get alerted if a response was authored before the questionnaire was released"""
+    def test_response_before_release(self, mock_logging):
+        """
+        We should get alerted if a response was authored before the first questionnaire for that survey was released
+        """
         participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 4, 10))
         now = datetime.now().replace(microsecond=0)
 
-        questionnaire = self.data_generator.create_database_questionnaire_history(
-            created=now
+        # Generate a pair of questionnaires and a pair of responses. Both responses should be for the latest
+        # questionnaire, but one should be authored before the first questionnaire was created.
+        module_code_value = 'TEST_CODE'
+        module_code = self.data_generator.create_database_code(value=module_code_value)
+        first_questionnaire = self.data_generator.create_database_questionnaire_history(
+            created=now - timedelta(weeks=10)
+        )
+        updated_questionnaire = self.data_generator.create_database_questionnaire_history(
+            created=now - timedelta(weeks=2)
+        )
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=first_questionnaire.questionnaireId,
+            questionnaireVersion=first_questionnaire.version,
+            codeId=module_code.codeId
+        )
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=updated_questionnaire.questionnaireId,
+            questionnaireVersion=updated_questionnaire.version,
+            codeId=module_code.codeId
         )
         response_authored_before_release = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
-            questionnaireId=questionnaire.questionnaireId,
-            questionnaireVersion=questionnaire.version,
-            authored=now - timedelta(weeks=4),
-            created=now + timedelta(weeks=1)
+            questionnaireId=updated_questionnaire.questionnaireId,
+            questionnaireVersion=updated_questionnaire.version,
+            authored=now - timedelta(weeks=12)
+        )
+        self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            questionnaireId=updated_questionnaire.questionnaireId,
+            questionnaireVersion=updated_questionnaire.version,
+            authored=now - timedelta(weeks=8)
         )
 
         self.checker.run_data_quality_checks()
         mock_logging.error.assert_called_once_with(
-            f'Response {response_authored_before_release.questionnaireResponseId} '
-            f'authored before questionnaire released'
+            f'Response {response_authored_before_release.questionnaireResponseId} to {module_code_value} '
+            f'authored before survey released'
         )
 
     def test_only_recent_responses_checked(self, mock_logging):
