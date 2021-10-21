@@ -325,6 +325,9 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
 
     @classmethod
     def pdf_has_update_text(cls, pdf: 'Pdf'):
+        # Text being checked is based on the F1.20a.C1U.0915.Eng/Esp and later versions of the Cohort 1 Update consent
+        # file. Found at https://joinallofus.atlassian.net/wiki/spaces/PROT/pages/2678587466/
+        # Primary+Consent#Primary-Consent-Form-(Appendix-F1)
         update_agreement_page_number = pdf.get_page_number_of_text([
             (
                 'Do you agree to this updated consent?',
