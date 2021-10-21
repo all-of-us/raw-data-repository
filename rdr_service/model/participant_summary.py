@@ -786,6 +786,24 @@ class ParticipantSummary(Base):
         Column("questionnaire_on_social_determinants_of_health_authored", UTCDateTime)
     "Indicates the time at which the participant completed the social determinants of health questionnaire."
 
+    questionnaireOnPersonalAndFamilyHealthHistory = Column(
+        "questionnaire_on_personal_and_family_health_history", Enum(QuestionnaireStatus),
+        default=QuestionnaireStatus.UNSET
+    )
+    """
+    Indicates the status of a questionnaire on FamilyAndPersonalHealthHistory that a participant can fill out.
+
+    :ref:`Enumerated values <questionnaire_status>`
+    """
+
+    questionnaireOnPersonalAndFamilyHealthHistoryTime = \
+        Column("questionnaire_on_personal_and_family_health_history_time", UTCDateTime)
+    "Indicates the time at which the RDR received notice of family and personal health history questionnaire."
+
+    questionnaireOnPersonalAndFamilyHealthHistoryAuthored = \
+        Column("questionnaire_on_personal_and_family_health_history_authored", UTCDateTime)
+    "Indicates the time at which the participant completed the family and personal health history questionnaire."
+
     questionnaireOnCopeMay = Column(
         "questionnaire_on_cope_may", Enum(QuestionnaireStatus), default=QuestionnaireStatus.UNSET
     )
