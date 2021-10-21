@@ -20,7 +20,9 @@
     "questionnaireOnCopeFeb",
     "questionnaireOnCopeVaccineMinute1",
     "questionnaireOnCopeVaccineMinute2",
-    "questionnaireOnCopeVaccineMinute3"
+    "questionnaireOnCopeVaccineMinute3",
+    "questionnaireOnSocialDeterminantsOfHealth",
+    "questionnaireOnPersonalAndFamilyHealthHistory"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
