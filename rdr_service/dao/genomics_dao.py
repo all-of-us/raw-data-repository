@@ -1162,6 +1162,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
+            'pipelineId': 'pipelineid'
         }
         # The mapping between the columns in the DB and the data to ingest
 
