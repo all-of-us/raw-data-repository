@@ -788,6 +788,7 @@ class GemToGpMigration(Base):
     ignore_flag = Column(SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
     dev_note = Column(String(255), nullable=True)
     file_path = Column(String(255), nullable=True, index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
 
     # Fields sent to GP
     participant_id = Column(Integer, nullable=True, index=True)
