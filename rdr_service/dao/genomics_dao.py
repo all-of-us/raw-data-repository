@@ -19,6 +19,7 @@ from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -35,6 +36,7 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration)
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -2420,6 +2422,32 @@ class GemToGpMigrationDao(BaseDao):
             informing_loop_authored=row.authored,
             ancestry_traits_response=row.value,
         )
+
+    def get_data_for_export(self, run_id, limit=None):
+        with self.session() as session:
+            results = session.query(
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.authored,
+                Code.value
+            ).join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            ).outerjoin(
+                GemToGpMigration,
+                and_(GemToGpMigration.participant_id == QuestionnaireResponse.participantId,
+                     GemToGpMigration.run_id == run_id)
+            ).filter(
+                Code.value.in_(["ConsentAncestryTraits_Yes",
+                                "ConsentAncestryTraits_No",
+                                "ConsentAncestryTraits_NotSure"])
+            )
+            if limit:
+                results = results.limit(limit)
+
+            return results.all()
 
     def insert_bulk(self, batch):
         with self.session() as session:

@@ -13,7 +13,7 @@ import sys
 import os
 import csv
 import pytz
-from sqlalchemy import text, and_
+from sqlalchemy import text
 from sqlalchemy.sql import functions
 
 from rdr_service import clock, config
@@ -25,16 +25,13 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
     GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao
-from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
     create_and_upload_genomic_biobank_manifest_file)
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.code import Code
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
-    GenomicManifestFeedback, GemToGpMigration
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+    GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
@@ -2011,7 +2008,6 @@ class GemToGpMigrationClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GemToGpMigrationClass, self).__init__(args, gcp_env)
 
-        self.qr_dao = QuestionnaireResponseDao()
         self.gem_gp_dao = GemToGpMigrationDao()
 
     def run(self):
@@ -2022,39 +2018,13 @@ class GemToGpMigrationClass(GenomicManifestBase):
         with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
                                   bq_project_id=self.gcp_env.project) as controller:
 
-            results = self.get_data_for_export(controller)
+            results = self.gem_gp_dao.get_data_for_export(controller.job_run, limit=self.args.limit )
 
-            self.export_to_gem_gp_table(controller, results)
+            self.export_to_gem_gp_table(controller.job_run, results)
 
         return 0
 
-    def get_data_for_export(self, controller):
-        with self.qr_dao.session() as session:
-            results = session.query(
-                QuestionnaireResponse.participantId,
-                QuestionnaireResponse.authored,
-                Code.value
-            ).join(
-                QuestionnaireResponseAnswer,
-                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
-            ).join(
-                Code,
-                Code.codeId == QuestionnaireResponseAnswer.valueCodeId
-            ).outerjoin(
-                GemToGpMigration,
-                and_(GemToGpMigration.participant_id == QuestionnaireResponse.participantId,
-                     GemToGpMigration.run_id == controller.job_run)
-            ).filter(
-                Code.value.in_(["ConsentAncestryTraits_Yes",
-                                "ConsentAncestryTraits_No",
-                                "ConsentAncestryTraits_NotSure"])
-            )
-            if self.args.limit:
-                results = results.limit(self.args.limit)
-
-            return results.all()
-
-    def export_to_gem_gp_table(self, controller, results):
+    def export_to_gem_gp_table(self, run_id, results):
         batch = []
         batch_size = 1000
 
@@ -2062,17 +2032,17 @@ class GemToGpMigrationClass(GenomicManifestBase):
         file_path = f"gem_gp_export_{now_str}.csv"
 
         for row in results:
-            obj = self.gem_gp_dao.prepare_obj(row, controller.job_run, file_path)
-
+            obj = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
             batch.append(obj)
 
             # write to table in batches
             if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
-                    print(f'Inserting batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
                     self.gem_gp_dao.insert_bulk(batch)
+
                 else:
-                    print(f'Would insert batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Would insert batch starting with: {batch[0].participantId}')
                 batch = []
 
         # Insert remainder
