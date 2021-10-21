@@ -5,7 +5,6 @@
 from datetime import datetime
 from enum import IntEnum
 
-
 class SchemaID(IntEnum):
     """
     Unique identifiers for each resource schema.  Schema id values should be grouped by schema types.

@@ -75,6 +75,7 @@ class StoreResultStrategy(ValidationOutputStrategy):
         self._session.commit()
 
 
+
 class ReplacementStoringStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao):
         self.session = session
@@ -120,6 +121,7 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                         results_to_update.append(ready_for_sync)
                     else:
                         results_to_update.extend(new_results)
+
 
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
 
