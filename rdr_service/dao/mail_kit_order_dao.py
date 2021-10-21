@@ -8,7 +8,7 @@ from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 from rdr_service.code_constants import UNMAPPED, UNSET
 from rdr_service import clock, app_util
-from rdr_service.api.mayolink_api import MayoLinkApi
+from rdr_service.api.mayolink_api import MayoLinkApi, MayoLinkOrder, MayoLinkTest, MayolinkTestPassthroughFields
 from rdr_service.api_util import (
     DV_BARCODE_URL,
     DV_FHIR_URL,
@@ -87,50 +87,36 @@ class MailKitOrderDao(UpdatableDao):
         collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
         collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
 
-        # MayoLink api has strong opinions on what should be sent and the order of elements. Dont touch.
-        order = {
-            "order": {
-                "collected": str(collected_time_central),
-                "account": "",
-                "number": barcode,
-                "patient": {
-                    "medical_record_number": str(to_client_biobank_id(summary.biobankId)),
-                    "first_name": "*",
-                    "last_name": str(to_client_biobank_id(summary.biobankId)),
-                    "middle_name": "",
-                    "birth_date": "3/3/1933",
-                    "gender": gender_val,
-                    "address1": summary.streetAddress,
-                    "address2": summary.streetAddress2,
-                    "city": summary.city,
-                    "state": code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
-                    "postal_code": str(summary.zipCode),
-                    "phone": str(summary.phoneNumber),
-                    "account_number": None,
-                    "race": str(summary.race),
-                    "ethnic_group": None,
-                },
-                "physician": {"name": "None", "phone": None, "npi": None},  # must be a string value, not None.
-                "report_notes": fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
-                "tests": [{"test": {"code": "1SAL2", "name": "PMI Saliva, FDA Kit", "comments": None}}],
-            }
-        }
+        order_test = MayoLinkTest(
+            code='1SAL2',
+            name='PMI Saliva, FDA Kit'
+        )
+        order = MayoLinkOrder(
+            collected=str(collected_time_central),
+            number=barcode,
+            medical_record_number=str(to_client_biobank_id(summary.biobankId)),
+            last_name=str(to_client_biobank_id(summary.biobankId)),
+            sex=gender_val,
+            address1=summary.streetAddress,
+            address2=summary.streetAddress2,
+            city=summary.city,
+            state=code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
+            postal_code=str(summary.zipCode),
+            phone=str(summary.phoneNumber),
+            race=str(summary.race),
+            report_notes=fhir_resource.extension.get(url=DV_ORDER_URL).valueString,
+            tests=[order_test],
+            comments='Salivary Kit Order, direct from participant'
+        )
 
         is_version_two = barcode and len(barcode) > 14
         if is_version_two:
-            client_fields = {"client_passthrough_fields": {
-                "field1": barcode,
-                "field2": None,
-                "field3": None,
-                "field4": None
-            }}
-            order['order']['tests'][0]['test'].update(client_fields)
+            order_test.passthrough_fields = MayolinkTestPassthroughFields(field1=barcode)
 
             # The system that the biobank uses to process orders can't take race strings greater than 20 characters
-            # and the race data isn't needed here
-            order['order']['patient']['race'] = None
+            # and the race data isn't needed for V2 orders
+            order.race = None
 
-        order['order']['comments'] = "Salivary Kit Order, direct from participant"
         return order, is_version_two
 
     def to_client_json(self, model, for_update=False):
