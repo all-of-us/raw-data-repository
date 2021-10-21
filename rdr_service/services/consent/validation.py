@@ -492,7 +492,9 @@ class ConsentValidator:
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_primary_update_consents(),
+            consent_files=self.factory.get_primary_update_consents(
+                self.participant_summary.consentForStudyEnrollmentAuthored
+            ),
             consent_type=ConsentType.PRIMARY_UPDATE,
             additional_validation=extra_primary_update_checks,
             expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored
