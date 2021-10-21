@@ -34,7 +34,7 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration)
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -2403,3 +2403,25 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 update_record.resolved = 1
                 update_record.resolved_date = datetime.utcnow()
                 self.update(update_record)
+
+
+class GemToGpMigrationDao(BaseDao):
+    def __init__(self):
+        super(GemToGpMigrationDao, self).__init__(
+            GemToGpMigration, order_by_ending=['id'])
+
+    @staticmethod
+    def prepare_obj(row, job_run, file_path):
+        return GemToGpMigration(
+            file_path=file_path,
+            run_id=job_run,
+            participant_id=row.participantId,
+            informing_loop_status='success',
+            informing_loop_authored=row.authored,
+            ancestry_traits_response=row.value,
+        )
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+

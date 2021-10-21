@@ -110,6 +110,9 @@ class GenomicJob(messages.Enum):
     WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
     DAILY_SUMMARY_REPORT_INCIDENTS = 105
 
+    # Gem to GP Migration Job
+    GEM_GP_MIGRATION_EXPORT = 1001
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """

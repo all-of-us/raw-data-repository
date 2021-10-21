@@ -13,7 +13,7 @@ import sys
 import os
 import csv
 import pytz
-from sqlalchemy import text
+from sqlalchemy import text, and_
 from sqlalchemy.sql import functions
 
 from rdr_service import clock, config
@@ -24,7 +24,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
-    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao
+    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
@@ -33,7 +33,7 @@ from rdr_service.genomic.genomic_biobank_manifest_handler import (
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.code import Code
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
-    GenomicManifestFeedback
+    GenomicManifestFeedback, GemToGpMigration
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
@@ -2005,19 +2005,31 @@ class ReconcileGcDataFileBucket(GenomicManifestBase):
 
 class GemToGpMigrationClass(GenomicManifestBase):
     """
-    Creates a GEM to GP Migration file for Color to Import
+    Load a GEM to GP Migration batch
     """
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GemToGpMigrationClass, self).__init__(args, gcp_env)
 
+        self.qr_dao = QuestionnaireResponseDao()
+        self.gem_gp_dao = GemToGpMigrationDao()
+
     def run(self):
+
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
 
-        qr_dao = QuestionnaireResponseDao()
+        with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
+                                  bq_project_id=self.gcp_env.project) as controller:
 
-        with qr_dao.session() as session:
+            results = self.get_data_for_export(controller)
+
+            self.export_to_gem_gp_table(controller, results)
+
+        return 0
+
+    def get_data_for_export(self, controller):
+        with self.qr_dao.session() as session:
             results = session.query(
                 QuestionnaireResponse.participantId,
                 QuestionnaireResponse.authored,
@@ -2028,18 +2040,47 @@ class GemToGpMigrationClass(GenomicManifestBase):
             ).join(
                 Code,
                 Code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            ).outerjoin(
+                GemToGpMigration,
+                and_(GemToGpMigration.participant_id == QuestionnaireResponse.participantId,
+                     GemToGpMigration.run_id == controller.job_run)
             ).filter(
                 Code.value.in_(["ConsentAncestryTraits_Yes",
                                 "ConsentAncestryTraits_No",
                                 "ConsentAncestryTraits_NotSure"])
-            ).limit(1000).all()
+            )
+            if self.args.limit:
+                results = results.limit(self.args.limit)
+
+            return results.all()
+
+    def export_to_gem_gp_table(self, controller, results):
+        batch = []
+        batch_size = 1000
+
+        now_str = clock.CLOCK.now().strftime('%Y%m%d%H%M%S')
+        file_path = f"gem_gp_export_{now_str}.csv"
 
         for row in results:
-            # write to csv
-            print(row.participantId)
-            pass
+            obj = self.gem_gp_dao.prepare_obj(row, controller.job_run, file_path)
 
-        return 0
+            batch.append(obj)
+
+            # write to table in batches
+            if len(batch) % batch_size == 0:
+                if not self.args.dryrun:
+                    print(f'Inserting batch starting with: {batch[0].participantId}')
+                    self.gem_gp_dao.insert_bulk(batch)
+                else:
+                    print(f'Would insert batch starting with: {batch[0].participantId}')
+                batch = []
+
+        # Insert remainder
+        if not self.args.dryrun:
+            print(f'Inserting batch starting with: {batch[0].participantId}')
+            self.gem_gp_dao.insert_bulk(batch)
+        else:
+            print(f'Would insert batch starting with: {batch[0].participantId}')
 
 
 def get_process_for_run(args, gcp_env):
@@ -2251,9 +2292,6 @@ def run():
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
 
-    gem_to_gp = subparser.add_parser("gem-to-gp")  # pylint: disable=unused-variable
-
-
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
     collection_tube_parser.add_argument("--file", help="A CSV file with collection-tube, biobank_id",
@@ -2298,6 +2336,10 @@ def run():
                                          default=False, required=False, action="store_true")  # noqa
     sample_ingestion_parser.add_argument("--cloud-task", help="Denotes whether to run workflow in cloud task",
                                          default=False, required=False)  # noqa
+
+    gem_to_gp_parser = subparser.add_parser("gem-to-gp")
+    gem_to_gp_parser.add_argument("--limit", help="limit for migration query", type=int,
+                                  default=None, required=False)  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")
