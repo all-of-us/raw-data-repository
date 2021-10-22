@@ -984,7 +984,7 @@ class BQPDRCOPEVaccine3View(BQModuleView):
     _show_created = True
 
 
-class BQPDRPersonalFamilyHealthSchema(_BQModuleSchema):
+class BQPDRPersonalFamilyHistorySchema(_BQModuleSchema):
     """  Personal and Family History Module """
     _module   = 'personalfamilyhistory'
     _force_boolean_fields = (
@@ -1093,7 +1093,7 @@ class BQPDRPersonalFamilyHealthSchema(_BQModuleSchema):
 class BQPDRPersonalFamilyHistory(BQTable):
     """ Personal and Family History BigQuery Table """
     __tablename__ = 'pdr_mod_personalfamilyhistory'
-    __schema__ = BQPDRPersonalFamilyHealthSchema
+    __schema__ = BQPDRPersonalFamilyHistorySchema
 
 
 class BQPDRPersonalFamilyHistoryView(BQModuleView):
