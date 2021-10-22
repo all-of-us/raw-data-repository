@@ -1453,8 +1453,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         data = dict()
 
-        results = ro_session.execute(sql, {"p_id": p_id})
-        if not results or results.rowcount == 0:
+        results = ro_session.execute(sql, {"p_id": p_id}).first()
+        if not results:
             return data
 
         qr_id = next(results).questionnaire_response_id
