@@ -1090,17 +1090,17 @@ class BQPDRPersonalFamilyHealthSchema(_BQModuleSchema):
     )
 
 
-class BQPDRPersonalFamilyHealth(BQTable):
+class BQPDRPersonalFamilyHistory(BQTable):
     """ Personal and Family History BigQuery Table """
     __tablename__ = 'pdr_mod_personalfamilyhistory'
     __schema__ = BQPDRPersonalFamilyHealthSchema
 
 
-class BQPDRPersonalFamilyHealthView(BQModuleView):
+class BQPDRPersonalFamilyHistoryView(BQModuleView):
     """ Personal and Family History BiqQuery View """
     __viewname__ = 'v_pdr_mod_personalfamilyhistory'
     __viewdescr__ = 'PDR Personal and Family History Module View'
-    __table__ = BQPDRPersonalFamilyHealth
+    __table__ = BQPDRPersonalFamilyHistory
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
@@ -1131,7 +1131,7 @@ PDR_MODULE_LIST = (
     BQPDRWithdrawalIntro,
     BQPDRSDOH,
     BQPDRCOPEVaccine3,
-    BQPDRPersonalFamilyHealth
+    BQPDRPersonalFamilyHistory
 )
 
 # Create a dictionnary of module codes and table object references.
