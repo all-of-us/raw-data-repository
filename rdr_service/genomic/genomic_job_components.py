@@ -1363,7 +1363,7 @@ class GenomicFileValidator:
         self.controller = controller
 
         self.GC_METRICS_SCHEMAS = {
-            'seq': (
+            GENOME_TYPE_WGS: (
                 "biobankid",
                 "sampleid",
                 "biobankidsampleid",
@@ -1381,7 +1381,7 @@ class GenomicFileValidator:
                 "processingstatus",
                 "notes",
             ),
-            'gen': (
+            GENOME_TYPE_ARRAY: (
                 "biobankid",
                 "sampleid",
                 "biobankidsampleid",
@@ -1531,6 +1531,19 @@ class GenomicFileValidator:
             "vcfmd5",
         }
 
+        self.values_for_validation = {
+            GenomicJob.METRICS_INGESTION: {
+                GENOME_TYPE_ARRAY: {
+                    'pipelineid': ['cidr_egt_1', 'original_egt']
+                },
+            },
+        }
+
+    def set_genome_type(self, filename):
+        if self.job_id in [GenomicJob.METRICS_INGESTION]:
+            file_type = filename.lower().split("_")[2]
+            self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
+
     def validate_ingestion_file(self, *, filename, data_to_validate):
         """
         Procedure to validate an ingestion file
@@ -1539,6 +1552,8 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
+        self.set_genome_type(filename)
+
         file_processed = self.controller. \
             file_processed_dao.get_record_from_filename(filename)
 
@@ -1611,7 +1626,7 @@ class GenomicFileValidator:
             return (
                 filename_components[0] in self.VALID_GENOME_CENTERS and
                 filename_components[1] == 'aou' and
-                filename_components[2] in self.GC_METRICS_SCHEMAS.keys() and
+                filename_components[2] in ('seq', 'gen') and
                 filename.lower().endswith('csv')
             )
 
@@ -1747,9 +1762,13 @@ class GenomicFileValidator:
         is_invalid, message = False, None
         cleaned_fieldnames = [self._clean_field_name(fieldname) for fieldname in data['fieldnames']]
 
-        values_to_check = {
-            'pipelineid': ['cidr_egt_1', 'original_egt']
-        }
+        try:
+            if self.genome_type:
+                values_to_check = self.values_for_validation[self.job_id][self.genome_type]
+            else:
+                values_to_check = self.values_for_validation[self.job_id]
+        except KeyError:
+            return is_invalid, message
 
         for field_name, field_values in values_to_check.items():
             if field_name not in cleaned_fieldnames:
@@ -1800,7 +1819,7 @@ class GenomicFileValidator:
             extra_fields, \
             self.valid_schema
 
-    def _set_schema(self, filename):
+    def _set_schema(self):
         """Since the schemas are different for WGS and Array metrics files,
         this parses the filename to return which schema
         to use for validation of the CSV columns
@@ -1810,9 +1829,7 @@ class GenomicFileValidator:
         """
         try:
             if self.job_id == GenomicJob.METRICS_INGESTION:
-                file_type = filename.lower().split("_")[2]
-                self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
-                return self.GC_METRICS_SCHEMAS[file_type]
+                return self.GC_METRICS_SCHEMAS[self.genome_type]
             if self.job_id == GenomicJob.AW1_MANIFEST:
                 return self.AW1_MANIFEST_SCHEMA
             if self.job_id == GenomicJob.GEM_A2_MANIFEST:
