@@ -47,6 +47,7 @@ raw_aw2_to_genomic_set_member_fields = {
     "array_concordance": "arrayConcordance",
     "processing_status": "processingStatus",
     "notes": "notes",
+    "pipeline_id": "pipelineId"
 }
 
 genomic_data_file_mappings = {
