@@ -133,7 +133,7 @@ def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, b
         task = GCPCloudTask()
         for batch in list_chunks(id_list, batch_size):
             payload = {'batch': batch}
-            task.execute('batch_rebuild_participants_task', payload=payload, in_seconds=in_seconds,
+            task.execute('batch_rebuild_consent_metrics_task', payload=payload, in_seconds=in_seconds,
                          queue='resource-rebuild', quiet=quiet, project_id=project_id)
             completed_batches += 1
 
