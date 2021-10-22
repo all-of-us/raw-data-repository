@@ -116,7 +116,8 @@ def _import_rural_zipcodes():
     """
     Load the file app_data/rural_zipcodes.txt and return a list of rural zipcodes.
     """
-    paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data')
+    paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data', '../../rdr_service/app_data',
+             '../rdr_service/app_data')
     codes = list()
 
     for path in paths:

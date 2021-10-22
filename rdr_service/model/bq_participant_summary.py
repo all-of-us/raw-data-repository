@@ -360,6 +360,18 @@ class BQParticipantSummarySchema(BQSchema):
     enrl_status = BQField('enrl_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     enrl_status_id = BQField('enrl_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
+    ubr_sex = BQField('ubr_sex', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_sexual_orientation = BQField('ubr_sexual_orientation', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_gender_identity = BQField('ubr_gender_identity', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_ethnicity = BQField('ubr_ethnicity', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_geography = BQField('ubr_geography', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_education = BQField('ubr_education', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_income = BQField('ubr_income', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_sexual_gender_minority = BQField('ubr_sexual_gender_minority', BQFieldTypeEnum.INTEGER,
+                                         BQFieldModeEnum.NULLABLE)
+    ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    ubr_overall = BQField('ubr_overall', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
 
 class BQParticipantSummary(BQTable):
     """ Participant Summary BigQuery Table """
