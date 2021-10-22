@@ -87,6 +87,7 @@ CONSENTS_LIST = [int(v) for v in CONSENT_PARTICIPANT_SUMMARY_FIELDS.keys()]
 CONSENT_REPORT_SQL_BODY =  """
             SELECT cf.participant_id,
                    ps.date_of_birth,
+                   ps.participant_origin,
                    CASE
                       WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
                       ELSE '(Unpaired)'
@@ -156,12 +157,14 @@ ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
 
 # Filter for generating stats on file issues resolved by retransmission (OBSOLETE consent_file entries)
 # The last modified timestamp for an OBSOLETE record should reflect when it was moved into OBSOLETE status; include
-# resolutions up to the specified end date for this report
+# resolutions up to the specified end date for this report.
 ALL_RESOLVED_SQL = """
            SELECT cf.participant_id,
                   cf.type,
                   DATE(cf.modified) AS resolved_date
            FROM consent_file cf
+           -- Alias to ps to be consistent with other queries that use common filters
+           JOIN participant ps on ps.participant_id = cf.participant_id
            WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{end_date}"
 """
 
@@ -774,10 +777,15 @@ class WeeklyConsentReport(ConsentReport):
         successfully validated.  In some cases, a consent_file entry may be marked OBSOLETE after a manual inspection/
         issue resolution.
         """
-        sql = ALL_RESOLVED_SQL.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
+        sql = ALL_RESOLVED_SQL + VIBRENT_SQL_FILTER
+        sql = sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
         resolved_df = pandas.read_sql_query(sql, self.db_conn)
 
-        return resolved_df
+        # Make sure we only pick up resolved counts for the consent types currently enabled in the CONSENTS_LIST
+        # See https://www.geeksforgeeks.org/python-pandas-dataframe-isin/ for more details on this pandas construct
+        filter_mask = resolved_df.type.isin(CONSENTS_LIST)
+        return resolved_df[filter_mask]
+
 
     def add_weekly_validation_burndown_section(self):
         """
