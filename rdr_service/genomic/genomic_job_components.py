@@ -1820,10 +1820,8 @@ class GenomicFileValidator:
             self.valid_schema
 
     def _set_schema(self):
-        """Since the schemas are different for WGS and Array metrics files,
-        this parses the filename to return which schema
-        to use for validation of the CSV columns
-        :param filename: filename of the csv to validate in string format.
+        """
+        Sets schema via the job id
         :return: schema_to_validate,
             (tuple from the CSV_SCHEMA or result code of INVALID_FILE_NAME).
         """
