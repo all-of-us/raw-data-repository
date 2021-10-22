@@ -984,7 +984,132 @@ class BQPDRCOPEVaccine3View(BQModuleView):
     _show_created = True
 
 
+class BQPDRPersonalFamilyHistorySchema(_BQModuleSchema):
+    """  Personal and Family History Module """
+    _module   = 'personalfamilyhistory'
+    _force_boolean_fields = (
+        'OtherCancer_FreeTextBox',
+        'OtherCancer_MotherFreeTextBox',
+        'OtherCancer_FatherFreeTextBox',
+        'OtherCancer_SiblingFreeTextBox',
+        'OtherCancer_DaughterFreeTextBox',
+        'OtherCancer_SonFreeTextBox',
+        'OtherCancer_GrandparentFreeTextBox',
+        'OtherHeartorBloodCondition_FreeTextBox',
+        'otherheartorbloodcondition_motherfreetextbox',
+        'otherheartorbloodcondition_fatherfreetextbox',
+        'otherheartorbloodcondition_siblingfreetextbox',
+        'otherheartorbloodcondition_daughterfreetextbox',
+        'otherheartorbloodcondition_sonfreetextbox',
+        'otherheartorbloodcondition_grandparentfreetextbox',
+        'OtherDigestiveCondition_FreeTextBox',
+        'otherdigestivecondition_motherfreetextbox',
+        'otherdigestivecondition_fatherfreetextbox',
+        'otherdigestivecondition_siblingfreetextbox',
+        'otherdigestivecondition_daughterfreetextbox',
+        'otherdigestivecondition_sonfreetextbox',
+        'otherdigestivecondition_grandparentfreetextbox',
+        'OtherDiabetes_FreeTextBox',
+        'otherdiabetes_motherfreetextbox',
+        'otherdiabetes_fatherfreetextbox',
+        'otherdiabetes_siblingfreetextbox',
+        'otherdiabetes_daughterfreetextbox',
+        'otherdiabetes_sonfreetextbox',
+        'otherdiabetes_grandparentfreetextbox',
+        'OtherThyroid_FreeTextBox',
+        'otherthyroid_motherfreetextbox',
+        'otherthyroid_fatherfreetextbox',
+        'otherthyroid_siblingfreetextbox',
+        'otherthyroid_daughterfreetextbox',
+        'otherthyroid_sonfreetextbox',
+        'otherthyroid_grandparentfreetextbox',
+        'OtherHormoneEndocrine_FreeTextBox',
+        'otherhormoneendocrine_motherfreetextbox',
+        'otherhormoneendocrine_fatherfreetextbox',
+        'otherhormoneendocrine_siblingfreetextbox',
+        'otherhormoneendocrine_daughterfreetextbox',
+        'otherhormoneendocrine_sonfreetextbox',
+        'otherhormoneendocrine_grandparentfreetextbox',
+        'OtherKidneyCondition_FreeTextBox',
+        'otherkidneycondition_motherfreetextbox',
+        'otherkidneycondition_fatherfreetextbox',
+        'otherkidneycondition_siblingfreetextbox',
+        'otherkidneycondition_daughterfreetextbox',
+        'otherkidneycondition_sonfreetextbox',
+        'otherkidneycondition_grandparentfreetextbox',
+        'OtherRespiratory_FreeTextBox',
+        'otherrespiratory_motherfreetextbox',
+        'otherrespiratory_fatherfreetextbox',
+        'otherrespiratory_siblingfreetextbox',
+        'otherrespiratory_daughterfreetextbox',
+        'otherrespiratory_sonfreetextbox',
+        'otherrespiratory_grandparentfreetextbox',
+        'OtherBrainNervousSystem_FreeTextBox',
+        'otherbrainnervoussystem_motherfreetextbox',
+        'otherbrainnervoussystem_fatherfreetextbox',
+        'otherbrainnervoussystem_siblingfreetextbox',
+        'otherbrainnervoussystem_daughterfreetextbox',
+        'otherbrainnervoussystem_sonfreetextbox',
+        'otherbrainnervoussystem_grandparentfreetextbox',
+        'OtherMentalHealthSubstanceUse_FreeTextBox',
+        'othermentalhealthsubstanceuse_motherfreetextbox',
+        'othermentalhealthsubstanceuse_fatherfreetextbox',
+        'othermentalhealthsubstanceuse_siblingfreetextbox',
+        'othermentalhealthsubstanceuse_daughterfreetextbox',
+        'othermentalhealthsubstanceuse_sonfreetextbox',
+        'othermentalhealthsubstanceuse_grandparentfreetextb',
+        'OtherArthritis_FreeTextBox',
+        'otherarthritis_motherfreetextbox',
+        'otherarthritis_fatherfreetextbox',
+        'otherarthritis_siblingfreetextbox',
+        'otherarthritis_daughterfreetextbox',
+        'otherarthritis_sonfreetextbox',
+        'otherarthritis_grandparentfreetextbox',
+        'OtherBoneJointMuscle_FreeTextBox',
+        'otherbonejointmuscle_motherfreetextbox',
+        'otherbonejointmuscle_fatherfreetextbox',
+        'otherbonejointmuscle_siblingfreetextbox',
+        'otherbonejointmuscle_daughterfreetextbox',
+        'otherbonejointmuscle_sonfreetextbox',
+        'otherbonejointmuscle_grandparentfreetextbox',
+        'OtherHearingEye_FreeTextBox',
+        'otherhearingeye_motherfreetextbox',
+        'otherhearingeye_fatherfreetextbox',
+        'otherhearingeye_siblingfreetextbox',
+        'otherhearingeye_daughterfreetextbox',
+        'otherhearingeye_sonfreetextbox',
+        'otherhearingeye_grandparentfreetextbox',
+        'OtherDiagnosis_FreeTextBox',
+        'otherdiagnosis_motherfreetextbox',
+        'otherdiagnosis_fatherfreetextbox',
+        'otherdiagnosis_siblingfreetextbox',
+        'otherdiagnosis_daughterfreetextbox',
+        'otherdiagnosis_sonfreetextbox',
+        'otherdiagnosis_grandparentfreetextbox',
+        'OtherInfectiousDisease_FreeTextBox'
+    )
+
+
+class BQPDRPersonalFamilyHistory(BQTable):
+    """ Personal and Family History BigQuery Table """
+    __tablename__ = 'pdr_mod_personalfamilyhistory'
+    __schema__ = BQPDRPersonalFamilyHistorySchema
+
+
+class BQPDRPersonalFamilyHistoryView(BQModuleView):
+    """ Personal and Family History BiqQuery View """
+    __viewname__ = 'v_pdr_mod_personalfamilyhistory'
+    __viewdescr__ = 'PDR Personal and Family History Module View'
+    __table__ = BQPDRPersonalFamilyHistory
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+#
+#
+#
 # List of modules classes that are sent to PDR.
+#
 # TODO: Include any new modules added PDR to this list.
 PDR_MODULE_LIST = (
     BQPDRConsentPII,
@@ -1005,7 +1130,8 @@ PDR_MODULE_LIST = (
     BQPDRStopParticipating,
     BQPDRWithdrawalIntro,
     BQPDRSDOH,
-    BQPDRCOPEVaccine3
+    BQPDRCOPEVaccine3,
+    BQPDRPersonalFamilyHistory
 )
 
 # Create a dictionnary of module codes and table object references.
