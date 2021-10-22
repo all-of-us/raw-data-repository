@@ -1452,13 +1452,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
 
         data = dict()
-
-        results = ro_session.execute(sql, {"p_id": p_id}).first()
-        if not results:
+        row = ro_session.execute(sql, {"p_id": p_id}).first()
+        if not row:
             return data
 
-        qr_id = next(results).questionnaire_response_id
-        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=qr_id)
+        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=row.questionnaire_response_id)
 
         # ubr_sex
         data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
@@ -1488,7 +1486,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_disability'] = ubr.ubr_disability(qnan)
         # ubr_age_at_consent
         data['ubr_age_at_consent'] = \
-            ubr.ubr_age_at_consent(summary.get('consents', []), summary.get('date_of_birth', None))
+            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
         # ubr_overall
         data['ubr_overall'] = max([v for v in data.values()])
 

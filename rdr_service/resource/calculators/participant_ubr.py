@@ -7,7 +7,6 @@
 #
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse
-from typing import List
 
 from rdr_service.resource.helpers import RURAL_ZIPCODES
 
@@ -167,32 +166,20 @@ class ParticipantUBRCalculator:
         return 0
 
     @staticmethod
-    def ubr_age_at_consent(consents: List[dict], answer):
+    def ubr_age_at_consent(consent_time, answer):
         """
         Calculate the "age at consent" UBR value.
-        :param consents: List of dicts containing received consent survey answer codes.
+        :param consent_time: Timestamp of primary consent.
         :param answer: Answer to the PIIBirthInformation_BirthDate question in the ConsentPII survey.
         :return: 1 if UBR else 0
         """
-        if not consents or not answer:
+        if not consent_time or not answer:
             return 0
-
         # Convert date string to date object if needed.
         if isinstance(answer, str):
             answer = parse(answer)
 
-        consent_date = None
-        for consent_type in ['ConsentPII', 'EHRConsentPII_ConsentPermission', 'DVEHRSharing_AreYouInterested']:
-            if consent_date:
-                break
-            for consent in consents:
-                if consent['consent'] == consent_type and \
-                    consent['consent_value'] in ['ConsentPermission_Yes', 'DVEHRSharing_Yes']:
-                    consent_date = consent['consent_date']
-                    break
-
-        if consent_date:
-            rd = relativedelta(consent_date, answer)
-            if not 18 <= rd.years < 65:
-                return 1
+        rd = relativedelta(consent_time, answer)
+        if not 18 <= rd.years < 65:
+            return 1
         return 0
