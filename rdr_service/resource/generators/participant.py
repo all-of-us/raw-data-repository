@@ -1451,13 +1451,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             order by qr.authored, qr.created, qr.external_id limit 1;
         """
 
+        data = dict()
+
         results = ro_session.execute(sql, {"p_id": p_id})
-        if not results:
-            return None
+        if not results or results.rowcount == 0:
+            return data
+
         qr_id = next(results).questionnaire_response_id
         qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=qr_id)
 
-        data = dict()
         # ubr_sex
         data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
         # ubr_sexual_orientation
