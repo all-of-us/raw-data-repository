@@ -1797,7 +1797,7 @@ class GenomicFileValidator:
         missing_fields, extra_fields = None, None
 
         if not self.valid_schema:
-            self.valid_schema = self._set_schema(self.filename)
+            self.valid_schema = self._set_schema()
 
         if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
             return GenomicSubProcessResult.INVALID_FILE_NAME
