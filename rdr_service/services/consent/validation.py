@@ -122,7 +122,6 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                     else:
                         results_to_update.extend(new_results)
 
-
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
 
     @classmethod
