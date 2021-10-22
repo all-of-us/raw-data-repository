@@ -75,7 +75,6 @@ class StoreResultStrategy(ValidationOutputStrategy):
         self._session.commit()
 
 
-
 class ReplacementStoringStrategy(ValidationOutputStrategy):
     def __init__(self, session, consent_dao: ConsentDao):
         self.session = session
