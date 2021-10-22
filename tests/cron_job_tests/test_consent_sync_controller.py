@@ -193,7 +193,6 @@ class ConsentSyncControllerTest(BaseTestCase):
         # All files still had their sync_status updated
         mock_dispatch_rebuild.assert_called_once_with([self.bob_file.id, self.foo_file.id, self.bar_file.id])
 
-
     @classmethod
     def _build_expected_dest_path(cls, bucket_name, org_id, site_group, participant_id, file_name):
         return f'{bucket_name}/Participant/{org_id}/{site_group}/P{participant_id}/{file_name}'
