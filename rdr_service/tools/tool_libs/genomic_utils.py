@@ -2008,12 +2008,13 @@ class GemToGpMigrationClass(GenomicManifestBase):
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
         super(GemToGpMigrationClass, self).__init__(args, gcp_env)
 
-        self.gem_gp_dao = GemToGpMigrationDao()
+        self.gem_gp_dao = None
 
     def run(self):
 
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
+        self.gem_gp_dao = GemToGpMigrationDao()
 
         with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
                                   bq_project_id=self.gcp_env.project) as controller:
