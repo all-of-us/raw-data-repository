@@ -2022,7 +2022,7 @@ class GemToGpMigrationClass(GenomicManifestBase):
             results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
 
             if results:
-                self.export_to_gem_gp_table(controller.job_run, results)
+                self.export_to_gem_gp_table(controller.job_run.id, results)
             else:
                 _logger.info('No data to export.')
 
