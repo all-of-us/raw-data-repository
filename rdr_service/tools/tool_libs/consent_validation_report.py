@@ -151,7 +151,7 @@ DAILY_CONSENTS_SQL_FILTER = """
 # specified end date for this report
 ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
             WHERE cf.type = {consent_type}
-                  AND DATE(cf.created) <= "{end_date}"
+                  AND DATE(cf.created) <= "{validation_end_date}"
                   AND cf.sync_status = 1
     """
 
@@ -165,7 +165,7 @@ ALL_RESOLVED_SQL = """
            FROM consent_file cf
            -- Alias to ps to be consistent with other queries that use common filters
            JOIN participant ps on ps.participant_id = cf.participant_id
-           WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{end_date}"
+           WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{validation_end_date}"
 """
 
 # TODO:  Remove this when we expand consent validation to include CE consents
@@ -725,8 +725,11 @@ class WeeklyConsentReport(ConsentReport):
             raise ValueError('Please use the --doc-id arg or export WEEKLY_CONSENT_DOC_ID environment var')
 
         # Default to yesterday's date as the end of the weekly report range, and a week prior to that as start date
-        self.end_date = args.end_date or (datetime.now() - timedelta(1))
+        self.end_date = args.end_date or (datetime.now() - timedelta(days=1))
         self.start_date = args.start_date or (self.end_date - timedelta(7))
+        # When looking for unresolved records for the weekly report, the consent_file.created date could be a day
+        # later than the end_date range for the authored dates.
+        self.validation_end_date = self.end_date + timedelta(days=1)
         self.report_date = datetime.now()
         self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
         self.sheet_rows = 800
@@ -946,7 +949,7 @@ class WeeklyConsentReport(ConsentReport):
 
     def create_weekly_report(self, spreadsheet):
         existing_sheets = spreadsheet.worksheets()
-        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly eports
+        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly reports
         # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
         # leftmost tab (index 0).   This deletes sheets from the existing_sheets list, starting at the rightmost tab
         for ws_index in range(len(existing_sheets), self.max_weekly_reports - 1, -1):
@@ -1013,9 +1016,12 @@ class WeeklyConsentReport(ConsentReport):
 
         _logger.info('Retrieving consent validation records...')
         # consent_df will contain all the outstanding NEEDS_CORRECTING issues that still need resolution
+        # start_date/end_date refer to the consent authored date range; the validation end date (when the
+        # consent_file records were created) is up to a day later than the consent authored end date
         self.consent_df = self._get_consent_validation_dataframe(
-            self.report_sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
-                                                start_date=self.start_date.strftime("%Y-%m-%d"),
+            self.report_sql.format_map(SafeDict(start_date=self.start_date.strftime("%Y-%m-%d"),
+                                                end_date=self.end_date.strftime("%Y-%m-%d"),
+                                                validation_end_date=self.validation_end_date.strftime("%Y-%m-%d"),
                                                 report_date=self.report_date.strftime("%Y-%m-%d"))))
         # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files
         # where it couldn't find signature/signing date, even though the files looked okay on visual inspection
