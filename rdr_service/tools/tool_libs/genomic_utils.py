@@ -2040,7 +2040,7 @@ class GemToGpMigrationClass(GenomicManifestBase):
             batch.append(obj)
 
             # write to table in batches
-            if len(batch) % batch_size == 0 and batch:
+            if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
                     _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
                     self.gem_gp_dao.insert_bulk(batch)
