@@ -2019,7 +2019,7 @@ class GemToGpMigrationClass(GenomicManifestBase):
         with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
                                   bq_project_id=self.gcp_env.project) as controller:
 
-            results = self.gem_gp_dao.get_data_for_export(controller.job_run, limit=self.args.limit )
+            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
 
             self.export_to_gem_gp_table(controller.job_run, results)
 
