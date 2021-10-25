@@ -572,7 +572,7 @@ class DailyConsentReport(ConsentReport):
             self.report_date = args.report_date
         else:
             # Default to yesterday's date as the filter for consent authored date
-            self.report_date = datetime.now() - timedelta(1)
+            self.report_date = datetime.now() - timedelta(days=1)
         if args.csv_file:
             self.csv_filename = args.csv_file
         else:
@@ -726,7 +726,7 @@ class WeeklyConsentReport(ConsentReport):
 
         # Default to yesterday's date as the end of the weekly report range, and a week prior to that as start date
         self.end_date = args.end_date or (datetime.now() - timedelta(days=1))
-        self.start_date = args.start_date or (self.end_date - timedelta(7))
+        self.start_date = args.start_date or (self.end_date - timedelta(days=7))
         # When looking for unresolved records for the weekly report, the consent_file.created date could be a day
         # later than the end_date range for the authored dates.
         self.validation_end_date = self.end_date + timedelta(days=1)
