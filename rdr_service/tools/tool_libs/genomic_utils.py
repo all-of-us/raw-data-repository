@@ -2021,7 +2021,10 @@ class GemToGpMigrationClass(GenomicManifestBase):
 
             results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
 
-            self.export_to_gem_gp_table(controller.job_run, results)
+            if results:
+                self.export_to_gem_gp_table(controller.job_run, results)
+            else:
+                _logger.info('No data to export.')
 
         return 0
 
@@ -2037,7 +2040,7 @@ class GemToGpMigrationClass(GenomicManifestBase):
             batch.append(obj)
 
             # write to table in batches
-            if len(batch) % batch_size == 0:
+            if len(batch) % batch_size == 0 and batch:
                 if not self.args.dryrun:
                     _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
                     self.gem_gp_dao.insert_bulk(batch)
@@ -2047,11 +2050,12 @@ class GemToGpMigrationClass(GenomicManifestBase):
                 batch = []
 
         # Insert remainder
-        if not self.args.dryrun:
-            print(f'Inserting batch starting with: {batch[0].participantId}')
-            self.gem_gp_dao.insert_bulk(batch)
-        else:
-            print(f'Would insert batch starting with: {batch[0].participantId}')
+        if batch:
+            if not self.args.dryrun:
+                print(f'Inserting batch starting with: {batch[0].participantId}')
+                self.gem_gp_dao.insert_bulk(batch)
+            else:
+                print(f'Would insert batch starting with: {batch[0].participantId}')
 
 
 def get_process_for_run(args, gcp_env):
