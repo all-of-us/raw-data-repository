@@ -131,26 +131,26 @@ def reconcile_metrics_vs_wgs_data(provider=None):
         )
 
 
-def aw3_array_manifest_workflow(max_num=4000):
+def aw3_array_manifest_workflow():
     """
     Entrypoint for AW3 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=max_num) as controller:
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             _genome_type=config.GENOME_TYPE_ARRAY,
         )
 
 
-def aw3_wgs_manifest_workflow(max_num=4000):
+def aw3_wgs_manifest_workflow():
     """
     Entrypoint for AW3 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=max_num) as controller:
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             _genome_type=config.GENOME_TYPE_WGS,

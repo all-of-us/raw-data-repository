@@ -3071,8 +3071,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
 
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [3])
+
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_array_manifest_workflow(max_num=3)  # run_id = 4
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
@@ -3785,8 +3787,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
 
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [2])
+
         with clock.FakeClock(fake_dt):
-            genomic_pipeline.aw3_wgs_manifest_workflow(max_num=2)  # run_id = 4
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
 
         manifest_records = self.manifest_file_dao.get_all()
         self.assertEqual(len(manifest_records), 3)
