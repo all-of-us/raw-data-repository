@@ -346,7 +346,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     :param _task_data: dictionary of metadata needed by the controller
     """
 
-    if _task_data.job in (
+    ingestion_workflows = (
         GenomicJob.AW1_MANIFEST,
         GenomicJob.AW1F_MANIFEST,
         GenomicJob.METRICS_INGESTION,
@@ -354,13 +354,17 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW4_WGS_WORKFLOW,
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST
-    ):
+    )
+
+    if _task_data.job in ingestion_workflows:
         # Ingestion Job
         sub_folder = _task_data.subfolder if hasattr(_task_data, 'subfolder') else None
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data,
                                   sub_folder_name=sub_folder,
-                                  bq_project_id=project_id) as controller:
+                                  bq_project_id=project_id,
+                                  max_num=config.getSetting(config.GENOMIC_MAX_NUM_INGEST, default=1000)
+                                  ) as controller:
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
