@@ -657,49 +657,6 @@ class GenomicPipelineTest(BaseTestCase):
                 # Test negative contamination is 0
                 self.assertEqual('0', gc_metrics[1].contamination)
 
-    def test_aw2_ingest_array_max_num(self):
-        # Create the fake Google Cloud CSV files to ingest
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
-        # add to subfolder
-        test_file = 'RDR_AoU_GEN_TestDataManifest.csv'
-
-        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
-
-        pytz.timezone('US/Central').localize(test_date)
-
-        with clock.FakeClock(test_date):
-            test_file_name = create_ingestion_test_file(test_file, bucket_name,
-                                                              folder=subfolder,
-                                                              include_sub_num=True)
-
-        self._create_fake_datasets_for_gc_tests(2, arr_override=True,
-                                                array_participants=(1, 2),
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
-
-        self._update_test_sample_ids()
-
-        # run the GC Metrics Ingestion workflow via cloud task
-        # Set up file/JSON
-        task_data = {
-            "job": GenomicJob.METRICS_INGESTION,
-            "bucket": bucket_name,
-            "file_data": {
-                "create_feedback_record": False,
-                "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.GC_DRC,
-                "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
-            }
-        }
-
-        self._create_stored_samples([
-            (1, 1001),
-            (2, 1002)
-        ])
-
-        # Execute from cloud task
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
-
     def test_ingest_specific_aw2_file(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
                                                 array_participants=(1, 3),
