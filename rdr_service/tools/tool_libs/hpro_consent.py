@@ -26,7 +26,6 @@ tool_desc = "Tool for initial and subsequent large backfills of consent files to
 class HealthProConsentTool(ToolBase):
 
     def run(self):
-        transfer_failures = []
         self.gcp_env.activate_sql_proxy()
         server_config = self.get_server_config()
 
@@ -41,7 +40,7 @@ class HealthProConsentTool(ToolBase):
         if hpro_consents.transfer_failures:
             output_local_csv(
                 filename='transfer_delta.csv',
-                data=transfer_failures
+                data=hpro_consents.transfer_failures
             )
 
 
