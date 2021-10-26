@@ -308,8 +308,7 @@ class GenomicFileIngester:
             for row in data_rows:
                 current_rows.append(row)
                 if len(current_rows) == self.controller.max_num:
-                    _copy = current_rows.copy()
-                    all_ingestions.append(_copy)
+                    all_ingestions.append(current_rows.copy())
                     current_rows.clear()
 
             if current_rows:
