@@ -213,6 +213,7 @@ class ConsentSyncController:
         with self.consent_dao.session() as session:
             self.consent_dao.batch_update_consent_files(file_list, session)
 
+        # Queue tasks to rebuild consent metrics resource data records (for PDR)
         if len(updated_rec_ids):
             dispatch_rebuild_consent_metrics_tasks(updated_rec_ids)
 

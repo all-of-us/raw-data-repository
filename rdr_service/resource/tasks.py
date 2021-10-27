@@ -127,7 +127,6 @@ def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, b
 
     if build_locally or project_id == 'localhost':
         batch_rebuild_consent_metrics_task({'batch': id_list})
-
     else:
         completed_batches = 0
         task = GCPCloudTask()

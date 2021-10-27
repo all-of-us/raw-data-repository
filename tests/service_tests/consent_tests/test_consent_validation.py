@@ -276,7 +276,10 @@ class ConsentValidationTesting(BaseTestCase):
             self.validator.get_gror_validation_results()
         )
 
-    def test_missing_file_validation_storage(self):
+    @mock.patch(
+        'rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks'
+    )
+    def test_missing_file_validation_storage(self, mock_consent_metrics_rebuild):
         """
         A bug was found with the validation storage strategies. This ensures that any records that indicate
         missing files don't interfere with each other and all the needed records get stored.
@@ -290,22 +293,25 @@ class ConsentValidationTesting(BaseTestCase):
         new_gror_participant_id = 1234
         new_primary_participant_id = 5678
         consent_dao_mock.get_validation_results_for_participants.return_value = [
-            ConsentFile(participant_id=new_gror_participant_id, type=ConsentType.PRIMARY, file_exists=False),
-            ConsentFile(participant_id=new_primary_participant_id, type=ConsentType.EHR, file_exists=False)
+            ConsentFile(id=1, participant_id=new_gror_participant_id, type=ConsentType.PRIMARY, file_exists=False),
+            ConsentFile(id=2, participant_id=new_primary_participant_id, type=ConsentType.EHR, file_exists=False)
         ]
 
         # Create some results to provide to the output strategy for each participant
         new_primary_result = ConsentFile(
+            id=3,
             participant_id=new_primary_participant_id,
             type=ConsentType.PRIMARY,
             file_exists=False
         )
         previous_ehr_result = ConsentFile(
+            id=2,
             participant_id=new_primary_participant_id,
             type=ConsentType.EHR,
             file_exists=False
         )
         new_gror_result = ConsentFile(
+            id=4,
             participant_id=new_gror_participant_id,
             type=ConsentType.GROR,
             file_exists=False
@@ -320,6 +326,7 @@ class ConsentValidationTesting(BaseTestCase):
 
         # Verify that both records that provide new validation information were stored
         consent_dao_mock.batch_update_consent_files.assert_called_with([new_primary_result, new_gror_result], mock.ANY)
+        mock_consent_metrics_rebuild.assert_called_once_with([new_primary_result.id, new_gror_result.id])
 
     def test_primary_update_agreement_check(self):
         self.participant_summary.consentForStudyEnrollmentAuthored = datetime.combine(
