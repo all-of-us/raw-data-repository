@@ -251,6 +251,21 @@ class GenomicFileIngester:
             logging.info(f'Ingesting data from {self.file_obj.fileName}')
             logging.info("Validating file.")
 
+            ingestion_map = {
+                GenomicJob.AW1_MANIFEST: self._ingest_aw1_manifest,
+                GenomicJob.AW1F_MANIFEST: self._ingest_aw1_manifest,
+                GenomicJob.METRICS_INGESTION: self._process_gc_metrics_data_for_insert,
+                GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
+                GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
+                GenomicJob.W2_INGEST: self._ingest_cvl_w2_manifest,
+                GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
+                GenomicJob.AW4_WGS_WORKFLOW: self._ingest_aw4_manifest,
+                GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
+                GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
+            }
+
             self.file_validator.valid_schema = None
 
             validation_result = self.file_validator.validate_ingestion_file(
@@ -270,50 +285,39 @@ class GenomicFileIngester:
 
                 return validation_result
 
-            ingestion_config = {
-                GenomicJob.AW1_MANIFEST: {
-                    'method': self._ingest_aw1_manifest
-                },
-                GenomicJob.AW1F_MANIFEST: {
-                    'method': self._ingest_aw1_manifest
-                },
-                GenomicJob.METRICS_INGESTION: {
-                    'method': self._process_gc_metrics_data_for_insert
-                },
-                GenomicJob.GEM_A2_MANIFEST: {
-                    'method': self._ingest_gem_a2_manifest
-                },
-                GenomicJob.GEM_METRICS_INGEST: {
-                    'method': self._ingest_gem_metrics_manifest
-                },
-                GenomicJob.W2_INGEST: {
-                    'method': self._ingest_cvl_w2_manifest
-                },
-                GenomicJob.AW4_ARRAY_WORKFLOW: {
-                    'method': self._ingest_aw4_manifest
-                },
-                GenomicJob.AW4_WGS_WORKFLOW: {
-                    'method': self._ingest_aw4_manifest
-                },
-                GenomicJob.AW1C_INGEST: {
-                    'method': self._ingest_aw1c_manifest
-                },
-                GenomicJob.AW1CF_INGEST: {
-                    'method': self._ingest_aw1c_manifest
-                },
-                GenomicJob.AW5_ARRAY_MANIFEST: {
-                    'method': self._ingest_aw5_manifest
-                },
-                GenomicJob.AW5_WGS_MANIFEST: {
-                    'method': self._ingest_aw5_manifest
-                },
-            }
+            try:
+                ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
+                ingestion_type = ingestion_map[self.job_id]
 
-            ingestion_type = ingestion_config[self.job_id]['method']
-            return ingestion_type(data_to_ingest)
+                for row in ingestions:
+                    ingestion_type(row)
+
+                return GenomicSubProcessResult.SUCCESS
+
+            except RuntimeError:
+                return GenomicSubProcessResult.ERROR
+
         else:
             logging.info("No data to ingest.")
             return GenomicSubProcessResult.NO_FILES
+
+    def _set_data_ingest_iterations(self, data_rows):
+        all_ingestions = []
+        if self.controller.max_num and len(data_rows) > self.controller.max_num:
+            current_rows = []
+            for row in data_rows:
+                current_rows.append(row)
+                if len(current_rows) == self.controller.max_num:
+                    all_ingestions.append(current_rows.copy())
+                    current_rows.clear()
+
+            if current_rows:
+                all_ingestions.append(current_rows)
+
+        else:
+            all_ingestions.append(data_rows)
+
+        return all_ingestions
 
     @staticmethod
     def get_aw1_manifest_column_mappings():
@@ -401,19 +405,17 @@ class GenomicFileIngester:
             "pipeline_id": "pipelineid",
         }
 
-    def _ingest_aw1_manifest(self, data):
+    def _ingest_aw1_manifest(self, rows):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
         If the row is determined to be a control sample,
         insert a new GenomicSetMember with AW1 data
-        :param data:
-        :param _site: gc_site ID
+        :param rows:
         :return: result code
         """
         _state = GenomicWorkflowState.AW0
         _site = self._get_site_from_aw1()
-
-        for row in data['rows']:
+        for row in rows:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row], row.values()))
             row_copy['site_id'] = _site
@@ -719,7 +721,8 @@ class GenomicFileIngester:
         contamination_value = float(row['contamination'])
         category = self.calculate_contamination_category(
             member.collectionTubeId,
-            contamination_value, member
+            contamination_value,
+            member
         )
         row['contamination_category'] = category
 
@@ -746,14 +749,15 @@ class GenomicFileIngester:
 
         self.member_dao.update(member)
 
-    def _ingest_gem_a2_manifest(self, file_data):
+    def _ingest_gem_a2_manifest(self, rows):
         """
         Processes the GEM A2 manifest file data
         Updates GenomicSetMember object with gem_pass field.
+        :param rows:
         :return: Result Code
         """
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 sample_id = row['sample_id']
                 member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
                                                                               GENOME_TYPE_ARRAY,
@@ -786,15 +790,15 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_gem_metrics_manifest(self, file_data):
+    def _ingest_gem_metrics_manifest(self, rows):
         """
         Processes the GEM Metrics manifest file data
         Updates GenomicSetMember object with metrics fields.
+        :param rows:
         :return: Result Code
         """
-
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 sample_id = row['sample_id']
                 member = self.member_dao.get_member_from_sample_id_with_state(sample_id,
                                                                               GENOME_TYPE_ARRAY,
@@ -819,14 +823,14 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_aw4_manifest(self, file_data):
+    def _ingest_aw4_manifest(self, rows):
         """
         Processes the AW4 manifest file data
-        :param file_data:
+        :param rows:
         :return:
         """
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['sampleid']
@@ -1019,14 +1023,14 @@ class GenomicFileIngester:
 
         return awn_row_obj
 
-    def _process_gc_metrics_data_for_insert(self, data_to_ingest):
+    def _process_gc_metrics_data_for_insert(self, rows):
         """ Since input files vary in column names,
         this standardizes the field-names before passing to the bulk inserter
-        :param data_to_ingest: stream of data in dict format
+        :param rows:
         :return result code
         """
         # iterate over each row from CSV and insert into gc metrics table
-        for row in data_to_ingest['rows']:
+        for row in rows:
             # change all key names to lower
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row],
@@ -1091,13 +1095,14 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def _ingest_cvl_w2_manifest(self, file_data):
+    def _ingest_cvl_w2_manifest(self, rows):
         """
         Processes the CVL W2 manifest file data
+        :param rows:
         :return: Result Code
         """
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 # change all key names to lower
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row],
@@ -1133,9 +1138,9 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_aw5_manifest(self, file_data):
+    def _ingest_aw5_manifest(self, rows):
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 biobank_id = row_copy['biobankid']
@@ -1170,13 +1175,14 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
-    def _ingest_aw1c_manifest(self, file_data):
+    def _ingest_aw1c_manifest(self, rows):
         """
         Processes the CVL AW1C manifest file data
+        :param rows:
         :return: Result Code
         """
         try:
-            for row in file_data['rows']:
+            for row in rows:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 collection_tube_id = row_copy['collectiontubeid']
