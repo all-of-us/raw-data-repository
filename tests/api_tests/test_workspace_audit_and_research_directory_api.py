@@ -1467,6 +1467,13 @@ class ResearchProjectsDirectoryApiTest(BaseTestCase):
                        'cdrVersion': 'irving'
                        }, result)
 
+        result = self.send_get('workbench/audit/workspace/snapshots?last_snapshot_id=1')
+        self.assertEqual(len(result), 1)
+
+        result = self.send_get('workbench/audit/workspace/snapshots?snapshot_id=2')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['status'], 'INACTIVE')
+
     def test_hide_workspace_without_verified_institution_from_RH(self):
         # create researchers
         researchers_json = [

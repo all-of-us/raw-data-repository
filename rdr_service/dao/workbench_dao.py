@@ -350,12 +350,12 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
             if workspace_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id)\
-                    .order_by(desc(WorkbenchWorkspaceSnapshot.id)).limit(1)
+                    .order_by(desc(subquery.c.id)).limit(1)
             elif snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id == snapshot_id)
+                query = query.filter(subquery.c.id == snapshot_id)
             elif last_snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)\
-                    .order_by(WorkbenchWorkspaceSnapshot.id)
+                query = query.filter(subquery.c.id > last_snapshot_id)\
+                    .order_by(subquery.c.id)
             items = query.all()
 
             for workspace, researcher, current_id, current_status in items:
