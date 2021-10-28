@@ -7,9 +7,9 @@ from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
 from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
 from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
+from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
@@ -56,6 +56,7 @@ class ParticipantSummaryApi(BaseApi):
         if p_id is not None:
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
+            self._filter_by_user_site(participant_id=p_id)
             self._fetch_hpro_consents(pids=p_id)
             return super(ParticipantSummaryApi, self).get(p_id)
         else:
@@ -91,8 +92,10 @@ class ParticipantSummaryApi(BaseApi):
         query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
         query.always_return_token = self._get_request_arg_bool("_sync")
         query.backfill_sync = self._get_request_arg_bool("_backfill", True)
-        # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-        # query.options = self.dao.get_eager_child_loading_query_options()
+        site_filter = self._filter_by_user_site()
+        if site_filter:
+            query.field_filters.append(site_filter)
+
         return query
 
     def _make_bundle(self, results, id_field, participant_id):
@@ -143,14 +146,26 @@ class ParticipantSummaryApi(BaseApi):
         return response
 
     def _fetch_hpro_consents(self, pids=None):
-        valid_roles = ['healthpro']
-        if not any(role in valid_roles for role in self.user_info.get('roles')) or not pids:
+        if not any(role in ['healthpro'] for role in self.user_info.get('roles')) or not pids:
             return
-
         if type(pids) is not list:
             self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
         else:
             self.dao.hpro_consents = self.hpro_consent_dao.batch_get_by_participant(pids)
+
+    def _filter_by_user_site(self, participant_id=None):
+        if not self.user_info.get('site'):
+            return
+
+        site = self.user_info.get('site')
+        if type(self.user_info.get('site')) is list:
+            site = self.user_info.get('site')[0]
+
+        if not participant_id:
+            site_filter = self.dao.make_query_filter('site', site)
+            return site_filter
+
+        return True
 
 
 class ParticipantSummaryModifiedApi(BaseApi):
