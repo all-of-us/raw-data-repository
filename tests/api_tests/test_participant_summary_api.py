@@ -3773,7 +3773,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.overwrite_test_user_site(google_group)
 
-        bad_message = f"No site found with google group {google_group}"
+        bad_message = f"No site found with google group {google_group}, that is attached to request user"
 
         response = self.send_get(f"ParticipantSummary?firstName={first_name}",
                                  expected_status=http.client.BAD_REQUEST)
@@ -3781,6 +3781,24 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(bad_message, response.json['message'])
         self.assertEqual(response.status_code, 400)
 
+    def test_single_participant_with_conflicting_sites_throws_exception(self):
+        google_group = 'hpo-site-monroeville'
 
+        ps = self.data_generator \
+            .create_database_participant_summary(
+                firstName="Testy",
+                lastName="Tester",
+                siteId=3
+        )
+
+        self.overwrite_test_user_site(google_group)
+
+        bad_message = f"Site attached to the request user, {google_group} is forbidden from accessing this participant"
+
+        response = self.send_get(f"Participant/P{ps.participantId}/Summary",
+                                 expected_status=403)
+
+        self.assertEqual(bad_message, response.json['message'])
+        self.assertEqual(response.status_code, 403)
 
 

@@ -10,6 +10,7 @@ from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
@@ -30,6 +31,7 @@ class ParticipantSummaryApi(BaseApi):
         self.user_info = None
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
+        self.site_dao = None
 
     @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
@@ -156,16 +158,28 @@ class ParticipantSummaryApi(BaseApi):
     def _filter_by_user_site(self, participant_id=None):
         if not self.user_info.get('site'):
             return
-
         site = self.user_info.get('site')
         if type(self.user_info.get('site')) is list:
             site = self.user_info.get('site')[0]
+
+        self.site_dao = SiteDao()
+        site_obj = self.site_dao.get_by_google_group(site)
+        if not site_obj:
+            raise BadRequest(f"No site found with google group {site}, that is attached to request user")
 
         if not participant_id:
             site_filter = self.dao.make_query_filter('site', site)
             return site_filter
 
-        return True
+        participant_summary = self.dao.get_by_participant_id(participant_id)
+        if not participant_summary:
+            return
+
+        if participant_summary.siteId and \
+                participant_summary.siteId != site_obj.siteId:
+            raise Forbidden(f"Site attached to the request user, {site} is forbidden from accessing this participant")
+
+        return
 
 
 class ParticipantSummaryModifiedApi(BaseApi):
