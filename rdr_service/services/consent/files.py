@@ -698,7 +698,12 @@ class Pdf:
             self._pdf_text = extract_text(file_bytes)
 
         for search_token in search_strings:
-            if search_token not in self._pdf_text:
+            found_token_in_page = True
+            for translation in search_token:
+                if translation not in self._pdf_text:
+                    found_token_in_page = False
+
+            if not found_token_in_page:
                 return False
 
         return True
