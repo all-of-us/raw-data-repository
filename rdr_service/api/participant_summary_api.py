@@ -29,6 +29,8 @@ class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
+        self.query = None
+
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
         self.site_dao = None
@@ -91,14 +93,12 @@ class ParticipantSummaryApi(BaseApi):
         if constraint_failed:
             raise BadRequest(f"{message}")
 
-        query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
-        query.always_return_token = self._get_request_arg_bool("_sync")
-        query.backfill_sync = self._get_request_arg_bool("_backfill", True)
-        site_filter = self._filter_by_user_site()
-        if site_filter:
-            query.field_filters.append(site_filter)
+        self.query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
+        self.query.always_return_token = self._get_request_arg_bool("_sync")
+        self.query.backfill_sync = self._get_request_arg_bool("_backfill", True)
+        self._filter_by_user_site()
 
-        return query
+        return self.query
 
     def _make_bundle(self, results, id_field, participant_id):
         if self._get_request_arg_bool("_sync"):
@@ -138,13 +138,17 @@ class ParticipantSummaryApi(BaseApi):
 
     def _query(self, id_field, participant_id=None):
         logging.info(f"Preparing query for {self.dao.model_type}.")
+
         query = self._make_query()
         results = self.dao.query(query)
         participant_ids = [obj.participantId for obj in results.items if hasattr(obj, 'participantId')]
         self._fetch_hpro_consents(participant_ids)
+
         logging.info("Query complete, bundling results.")
+
         response = self._make_bundle(results, id_field, participant_id)
         logging.info("Returning response.")
+
         return response
 
     def _fetch_hpro_consents(self, pids=None):
@@ -158,18 +162,24 @@ class ParticipantSummaryApi(BaseApi):
     def _filter_by_user_site(self, participant_id=None):
         if not self.user_info.get('site'):
             return
-        site = self.user_info.get('site')
-        if type(self.user_info.get('site')) is list:
-            site = self.user_info.get('site')[0]
+
+        user_site = self.user_info.get('site')
+        if type(user_site) is list:
+            user_site = user_site[0]
 
         self.site_dao = SiteDao()
-        site_obj = self.site_dao.get_by_google_group(site)
+        site_obj = self.site_dao.get_by_google_group(user_site)
         if not site_obj:
-            raise BadRequest(f"No site found with google group {site}, that is attached to request user")
+            raise BadRequest(f"No site found with google group {user_site}, that is attached to request user")
 
         if not participant_id:
-            site_filter = self.dao.make_query_filter('site', site)
-            return site_filter
+            user_info_site_filter = self.dao.make_query_filter('site', user_site)
+            if user_info_site_filter:
+                current_site_filter = list(filter(lambda x: x.field_name == 'siteId', self.query.field_filters))
+                if current_site_filter:
+                    self.query.field_filters.remove(current_site_filter[0])
+                self.query.field_filters.append(user_info_site_filter)
+            return
 
         participant_summary = self.dao.get_by_participant_id(participant_id)
         if not participant_summary:
@@ -177,8 +187,8 @@ class ParticipantSummaryApi(BaseApi):
 
         if participant_summary.siteId and \
                 participant_summary.siteId != site_obj.siteId:
-            raise Forbidden(f"Site attached to the request user, {site} is forbidden from accessing this participant")
-
+            raise Forbidden(f"Site attached to the request user, "
+                            f"{user_site} is forbidden from accessing this participant")
         return
 
 

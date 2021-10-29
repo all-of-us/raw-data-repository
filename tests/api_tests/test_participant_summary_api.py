@@ -3801,4 +3801,28 @@ class ParticipantSummaryApiTest(BaseTestCase):
         self.assertEqual(bad_message, response.json['message'])
         self.assertEqual(response.status_code, 403)
 
+    def test_user_site_override_site_in_args(self):
+        google_group_one = 'hpo-site-monroeville'
+        google_group_two = 'hpo-site-bannerphoenix'
+        num_summary, first_name = 10, "Testy"
+
+        monroe = self.site_dao.get_by_google_group(google_group_one)
+        phoenix = self.site_dao.get_by_google_group(google_group_two)
+
+        self.overwrite_test_user_site(google_group_one)
+
+        for num in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=first_name,
+                    lastName="Tester",
+                    siteId=monroe.siteId if num % 2 == 0 else phoenix.siteId
+                )
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}&site={google_group_two}")
+        responses = response['entry']
+
+        self.assertEqual(len(responses), num_summary // 2)
+        self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+        self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
 
