@@ -253,7 +253,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pass  # CE doesn't have cohort 1 participants to have needed re-consents
 
     def _get_source_bucket(self) -> str:
-        return 'ce-uploads-all-of-us-rdr-prod'
+        return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
 
     def _get_source_prefix(self) -> str:
         return 'Participants'
@@ -727,7 +727,7 @@ class Pdf:
             if self._is_text_match(element.get_text(), search_str):
                 return True
 
-        if isinstance(element, LTTextBox) or isinstance(element, LTFigure):
+        if isinstance(element, LTTextBox):
             for child_text in element:
                 if self._is_text_in_layout_element(child_text, search_str):
                     return True
