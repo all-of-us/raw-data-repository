@@ -31,6 +31,11 @@ class ConsentControllerTest(BaseTestCase):
         )
         consent_factory_patch.start()
         self.addCleanup(consent_factory_patch.stop)
+        consent_metrics_dispatch_rebuild_patch = mock.patch(
+            'rdr_service.services.consent.validation.dispatch_rebuild_consent_metrics_tasks'
+        )
+        self.dispatch_rebuild_consent_metrics_mock = consent_metrics_dispatch_rebuild_patch.start()
+        self.addCleanup(consent_metrics_dispatch_rebuild_patch.stop)
 
         self.consent_controller = ConsentValidationController(
             consent_dao=self.consent_dao_mock,
@@ -46,56 +51,59 @@ class ConsentControllerTest(BaseTestCase):
         replaced by new files.
         """
         self.consent_dao_mock.get_files_needing_correction.return_value = [
-            ConsentFile(type=ConsentType.GROR, file_path='/invalid_gror_1'),
-            ConsentFile(type=ConsentType.GROR, file_path='/invalid_gror_2'),
-            ConsentFile(type=ConsentType.CABOR, file_path='/invalid_cabor_1'),
-            ConsentFile(type=ConsentType.PRIMARY, file_path='/invalid_primary_1'),
-            ConsentFile(type=ConsentType.PRIMARY, file_path='/invalid_primary_2')
+            ConsentFile(id=1, type=ConsentType.GROR, file_path='/invalid_gror_1'),
+            ConsentFile(id=2, type=ConsentType.GROR, file_path='/invalid_gror_2'),
+            ConsentFile(id=3, type=ConsentType.CABOR, file_path='/invalid_cabor_1'),
+            ConsentFile(id=4, type=ConsentType.PRIMARY, file_path='/invalid_primary_1'),
+            ConsentFile(id=5, type=ConsentType.PRIMARY, file_path='/invalid_primary_2')
         ]
 
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_2'),
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_1')
+            ConsentFile(id=4, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
+            ConsentFile(id=5, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_2'),
+            ConsentFile(id=6, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_1')
         ]
         self.consent_validator_mock.get_cabor_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_cabor_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
+            ConsentFile(id=3, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_cabor_1'),
+            ConsentFile(id=7, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
         ]
         self.consent_validator_mock.get_gror_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_2'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_3')
+            ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_1'),
+            ConsentFile(id=2, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_2'),
+            ConsentFile(id=8, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_3')
         ]
 
         self.consent_controller.check_for_corrections(session=mock.MagicMock())
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
-                ConsentFile(file_path='/invalid_primary_1', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(file_path='/invalid_primary_2', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(file_path='/valid_primary_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(file_path='/invalid_cabor_1', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(file_path='/invalid_gror_3', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
+                ConsentFile(id=4, file_path='/invalid_primary_1', sync_status=ConsentSyncStatus.OBSOLETE),
+                ConsentFile(id=5, file_path='/invalid_primary_2', sync_status=ConsentSyncStatus.OBSOLETE),
+                ConsentFile(id=6, file_path='/valid_primary_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
+                ConsentFile(id=3, file_path='/invalid_cabor_1', sync_status=ConsentSyncStatus.OBSOLETE),
+                ConsentFile(id=7, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
+                ConsentFile(id=8, file_path='/invalid_gror_3', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
             ]
         )
+        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
+        # values from the expected_updates list
+        self.assertDispatchRebuildConsentMetricsCalled([4, 5, 6, 3, 7, 8])
 
     def test_new_consent_validation(self):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_2'),
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_3')
+            ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
+            ConsentFile(id=2, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_2'),
+            ConsentFile(id=3, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_3')
         ]
         self.consent_validator_mock.get_cabor_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
+            ConsentFile(id=4, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
         ]
         self.consent_validator_mock.get_ehr_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_1'),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_2')
+            ConsentFile(id=5, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_1'),
+            ConsentFile(id=6, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_ehr_2')
         ]
         self.consent_validator_mock.get_gror_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror_not_checked')
+            ConsentFile(id=7, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror_not_checked')
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
@@ -132,12 +140,15 @@ class ConsentControllerTest(BaseTestCase):
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(
             expected_updates=[
-                ConsentFile(file_path='/valid_primary_2', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(file_path='/invalid_ehr_2', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
-                ConsentFile(file_path='/invalid_ehr_2', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
-                ConsentFile(file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
+                ConsentFile(id=2, file_path='/valid_primary_2', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
+                ConsentFile(id=5, file_path='/invalid_ehr_1', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
+                ConsentFile(id=6, file_path='/invalid_ehr_2', sync_status=ConsentSyncStatus.NEEDS_CORRECTING),
+                ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
             ]
         )
+        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
+        # values from the expected_updates list
+        self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4])
 
     def test_no_duplication_in_validation(self):
         """
@@ -145,13 +156,13 @@ class ConsentControllerTest(BaseTestCase):
         new validation records for consents that have already been checked
         """
         self.consent_dao_mock.get_validation_results_for_participants.return_value = [
-            ConsentFile(file_path='/previous_1', file_exists=True),
-            ConsentFile(file_path='/previous_2', file_exists=True),
+            ConsentFile(id=1, file_path='/previous_1', file_exists=True),
+            ConsentFile(id=2, file_path='/previous_2', file_exists=True),
         ]
         self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1', file_exists=True),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2', file_exists=True),
-            ConsentFile(sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1', file_exists=True)
+            ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_1', file_exists=True),
+            ConsentFile(id=2, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/previous_2', file_exists=True),
+            ConsentFile(id=3, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/new_file_1', file_exists=True)
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
@@ -174,6 +185,9 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(file_path='/new_file_1', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
             ]
         )
+        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
+        # values from the expected_updates list
+        self.assertDispatchRebuildConsentMetricsCalled([3])
 
     def test_validating_specific_consents(self):
         """Make sure only the provided consent types are validated when specified"""
@@ -185,11 +199,12 @@ class ConsentControllerTest(BaseTestCase):
         )
 
         # Mock out the consent files for the participant
-        primary_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/primary', file_exists=True)
+        primary_file = ConsentFile(id=1, sync_status=ConsentSyncStatus.READY_FOR_SYNC,
+                                   file_path='/primary', file_exists=True)
         self.consent_validator_mock.get_primary_validation_results.return_value = [primary_file]
-        ehr_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/ehr', file_exists=True)
+        ehr_file = ConsentFile(id=2, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/ehr', file_exists=True)
         self.consent_validator_mock.get_ehr_validation_results.return_value = [ehr_file]
-        gror_file = ConsentFile(sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror', file_exists=True)
+        gror_file = ConsentFile(id=3, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/gror', file_exists=True)
         self.consent_validator_mock.get_gror_validation_results.return_value = [gror_file]
 
         # Make sure that only specific consent types are validated
@@ -200,6 +215,22 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.store_strategy.process_results()
         self.assertConsentValidationResultsUpdated(expected_updates=[ehr_file, gror_file])
+        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
+        # values from the expected_updates list
+        self.assertDispatchRebuildConsentMetricsCalled([ehr_file.id, gror_file.id])
+
+    def assertDispatchRebuildConsentMetricsCalled(self, expected_id_list, call_count=1, call_number=1):
+        """
+        Confirm the mocked dispatch_rebuild_consent_metrics_tasks method was called with the expected id list
+        Most test cases should only expect a single call to the dispatch method, but a different expected call_count
+        and a different (1-based) call_number whose id_list argument should be validated can be specified
+        """
+        self.assertEqual(call_count, self.dispatch_rebuild_consent_metrics_mock.call_count)
+        # Testing first (0th) arg: dispatch_rebuild_consent_metrics_task(id_list, <more kwargs>). kwargs ignored (_)
+        # Adjust call_number for 0-based indexing.  assertCountEqual tests list equivalence regardless of the order of
+        # the values in the compared lists
+        args, _ = self.dispatch_rebuild_consent_metrics_mock.call_args_list[call_number - 1]
+        self.assertCountEqual(args[0], expected_id_list)
 
     def assertConsentValidationResultsUpdated(self, expected_updates: List[ConsentFile]):
         """Make sure the validation results are sent to the dao"""
