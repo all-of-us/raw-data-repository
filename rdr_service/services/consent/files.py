@@ -7,7 +7,7 @@ from typing import List, Union
 
 from geometry import Rect
 from google.cloud.storage.blob import Blob
-from pdfminer.high_level import extract_pages
+from pdfminer.high_level import extract_pages, extract_text
 from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
 
 from rdr_service import config
@@ -18,17 +18,23 @@ class ConsentFileAbstractFactory(ABC):
     @classmethod
     def get_file_factory(cls, participant_id: int, participant_origin: str,
                          storage_provider: GoogleCloudStorageProvider) -> 'ConsentFileAbstractFactory':
-        if participant_origin == 'vibrent':
-            return VibrentConsentFactory(participant_id, storage_provider)
+        origin_factory_class_map = {
+            'vibrent': VibrentConsentFactory,
+            'careevolution': CeConsentFactory
+        }
 
-        raise Exception(f'Unsupported participant origin {participant_origin}')
+        if participant_origin in origin_factory_class_map:
+            return origin_factory_class_map[participant_origin](participant_id, storage_provider)
+        else:
+            raise Exception(f'Unsupported participant origin {participant_origin}')
 
     def __init__(self, participant_id: int, storage_provider: GoogleCloudStorageProvider):
         # Get the PDF Blobs from Google's API for the participant's consent files
         factory_consent_bucket = self._get_source_bucket()
+        participant_path_prefix = self._get_source_prefix()
         file_blobs = storage_provider.list(
             bucket_name=factory_consent_bucket,
-            prefix=f'Participant/P{participant_id}'
+            prefix=f'{participant_path_prefix}/P{participant_id}'
         )
         self.consent_blobs: List[_ConsentBlobWrapper] = [
             _ConsentBlobWrapper(blob) for blob in file_blobs if blob.name.endswith('.pdf')
@@ -200,38 +206,54 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
 class CeConsentFactory(ConsentFileAbstractFactory):
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        pass
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            'Consent to Join the All of Us Research Program',
+            'Consentimiento para Participar en el Programa Científico All of Us'
+        )])
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        pass
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            "California Experimental Subject's Bill of Rights",
+            'Declaración de Derechos del Sujeto de Investigación Experimental, de California'
+        )])
 
     def _is_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        pass
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            'HIPAA Authorization for Research EHR',
+            'Autorización para Investigación de HIPAA'
+        )])
 
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        pass
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            'Consent to Receive DNA Results',
+            'Consentimiento para Recibir Resultados de ADN'
+        )])
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
-        pass
+        return False  # CE doesn't have cohort 1 participants to have needed re-consents
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
-        pass
+        return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _build_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'CaborConsentFile':
-        pass
+        return CeCaborConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _build_ehr_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'EhrConsentFile':
-        pass
+        return CeEhrConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
-        pass
+        return CeGrorConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
             -> 'PrimaryConsentUpdateFile':
-        pass
+        pass  # CE doesn't have cohort 1 participants to have needed re-consents
 
     def _get_source_bucket(self) -> str:
-        return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
+        return 'ce-uploads-all-of-us-rdr-prod'
 
     def _get_source_prefix(self) -> str:
         return 'Participants'
@@ -254,6 +276,7 @@ class ConsentFile(ABC):
         self.pdf = pdf
         self.upload_time = blob.updated
         self.file_path = f'{blob.bucket.name}/{blob.name}'
+        self._blob = blob
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
@@ -269,20 +292,23 @@ class ConsentFile(ABC):
                 return True
 
     def get_date_signed(self):
+        date_str = self._get_date_signed_str()
+        if date_str:
+            return parser.parse(date_str).date()
+        else:
+            return None
+
+    def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
             if isinstance(element, LTFigure):
-                date_str = ''.join([char_child.get_text() for char_child in element]).strip()
-                if date_str:
-                    return parser.parse(date_str).date()
+                return ''.join([char_child.get_text() for char_child in element]).strip()
 
-    @abstractmethod
     def _get_signature_elements(self):
-        ...
+        return []
 
-    @abstractmethod
     def _get_date_elements(self):
-        ...
+        return []
 
 
 class PrimaryConsentFile(ConsentFile, ABC):
@@ -476,16 +502,159 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
             return False
 
 
+class CeConsentFile:
+    def _text_in_bounds(self, search_rect: Rect, page_number: int):
+        page = self.pdf.pages[page_number]
+        return self._recurse_text_in_bounds(page, search_rect)
+
+    def _recurse_text_in_bounds(self, element, search_rect: Rect) -> List[str]:
+        if hasattr(element, 'get_text'):
+            return element.get_text()
+        elif hasattr(element, '__iter__'):
+            strings = []
+            characters_for_next_string = []
+            for child in element:
+                if isinstance(child, LTChar):
+                    if Pdf.rect_for_element(child).intersection(search_rect) is not None:
+                        characters_for_next_string.append(child.get_text())
+                else:
+                    if characters_for_next_string:
+                        strings.append(''.join(characters_for_next_string))
+                        characters_for_next_string = []
+                    strings.extend(self._recurse_text_in_bounds(child, search_rect=search_rect))
+
+            if characters_for_next_string:
+                strings.append(''.join(characters_for_next_string))
+
+            return strings
+
+        return []
+
+
+class CePrimaryConsentFile(PrimaryConsentFile, CeConsentFile):
+    SIGNATURE_PAGE = 5
+
+    def get_signature_on_file(self):
+        signature_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=50, right=300, bottom=760, top=762),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if signature_string_list:
+            return signature_string_list[0]
+        else:
+            return None
+
+    def _get_date_signed_str(self):
+        date_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=380, right=500, bottom=760, top=762),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if date_string_list:
+            return date_string_list[0]
+        else:
+            return None
+
+
+class CeCaborConsentFile(CaborConsentFile, CeConsentFile):
+    SIGNATURE_PAGE = 1
+
+    def get_signature_on_file(self):
+        signature_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=50, right=300, bottom=792, top=794),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if signature_string_list:
+            return signature_string_list[0]
+        else:
+            return None
+
+    def _get_date_signed_str(self):
+        date_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=380, right=500, bottom=792, top=794),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if date_string_list:
+            return date_string_list[0]
+        else:
+            return None
+
+
+class CeEhrConsentFile(EhrConsentFile, CeConsentFile):
+    SIGNATURE_PAGE = 2
+
+    def get_signature_on_file(self):
+        signature_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=50, right=300, bottom=740, top=742),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if signature_string_list:
+            return signature_string_list[0]
+        else:
+            return None
+
+    def _get_date_signed_str(self):
+        date_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=380, right=500, bottom=740, top=742),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if date_string_list:
+            return date_string_list[0]
+        else:
+            return None
+
+
+class CeGrorConsentFile(GrorConsentFile, CeConsentFile):
+    SIGNATURE_PAGE = 4
+
+    def get_signature_on_file(self):
+        signature_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=50, right=300, bottom=794, top=796),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if signature_string_list:
+            return signature_string_list[0]
+        else:
+            return None
+
+    def _get_date_signed_str(self):
+        date_string_list = self._text_in_bounds(
+            search_rect=Rect.from_edges(left=380, right=500, bottom=794, top=796),
+            page_number=self.SIGNATURE_PAGE
+        )
+        if date_string_list:
+            return date_string_list[0]
+        else:
+            return None
+
+    def is_confirmation_selected(self):
+        # CE GROR files don't contain a checkmark to have selected or not
+        return True
+
+    def _get_confirmation_check_elements(self):
+        return []
+
+
 class Pdf:
 
-    def __init__(self, pages):
+    def __init__(self, pages, blob: Blob):
         self.pages = pages
+        self._pdf_text = None
+        self._blob = blob
 
     @classmethod
     def from_google_storage_blob(cls, blob: Blob):
         file_bytes = BytesIO(blob.download_as_string())
         pages = list(extract_pages(file_bytes))
-        return Pdf(pages)
+        return Pdf(pages, blob)
+
+    @classmethod
+    def rect_for_element(cls, element):
+        return Rect.from_edges(
+            left=element.x0,
+            right=element.x1,
+            bottom=element.y0,
+            top=element.y1
+        )
 
     def get_elements_intersecting_box(self, search_box: Rect, page=0):
         if page is None or len(self.pages) <= page:
@@ -494,12 +663,7 @@ class Pdf:
         elements = []
         page = self.pages[page]
         for element in page:
-            element_rect = Rect.from_edges(
-                left=element.x0,
-                right=element.x1,
-                bottom=element.y0,
-                top=element.y1
-            )
+            element_rect = self.rect_for_element(element)
             if element_rect.intersection(search_box) is not None:
                 elements.append(element)
 
@@ -528,6 +692,17 @@ class Pdf:
 
         return None
 
+    def has_text(self, search_strings):
+        if self._pdf_text is None:
+            file_bytes = BytesIO(self._blob.download_as_string())
+            self._pdf_text = extract_text(file_bytes)
+
+        for search_token in search_strings:
+            if search_token not in self._pdf_text:
+                return False
+
+        return True
+
     @classmethod
     def get_first_child_of_element(cls, element):
         try:
@@ -547,7 +722,7 @@ class Pdf:
             if self._is_text_match(element.get_text(), search_str):
                 return True
 
-        if isinstance(element, LTTextBox):
+        if isinstance(element, LTTextBox) or isinstance(element, LTFigure):
             for child_text in element:
                 if self._is_text_in_layout_element(child_text, search_str):
                     return True
