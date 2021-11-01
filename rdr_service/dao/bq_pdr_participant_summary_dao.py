@@ -1,14 +1,9 @@
-import os
-
-from dateutil.relativedelta import relativedelta
 
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
-from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
 from rdr_service.participant_enums import OrderStatus
-from rdr_service.resource.generators import ParticipantSummaryGenerator
 
 
 class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
@@ -80,27 +75,9 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
 
         # Calculate contact information
         summary = self._merge_schema_dicts(summary, self._set_contact_flags(ps_bqr))
-        # Calculate UBR
-        summary = self._merge_schema_dicts(summary, self._calculate_ubr(ps_bqr, p_id))
 
         bqr = BQRecord(schema=BQPDRParticipantSummarySchema, data=summary, convert_to_enum=convert_to_enum)
         return bqr
-
-    def _import_rural_zipcodes(self):
-        """
-        Load the file app_data/rural_zipcodes.txt
-        """
-        self.rural_zipcodes = list()
-        paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data')
-
-        for path in paths:
-            if os.path.exists(os.path.join(path, 'rural_zipcodes.txt')):
-                with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
-                    # pylint: disable=unused-variable
-                    for count, line in enumerate(handle):
-                        # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it
-                        self.rural_zipcodes.append(line.split(',')[1].strip().zfill(5))
-                break
 
     def _set_contact_flags(self, ps_bqr):
         """
@@ -113,127 +90,4 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             'phone_number_available': 1 if (getattr(ps_bqr, 'login_phone_number', None) or
                                             getattr(ps_bqr, 'phone_number', None)) else 0
         }
-        return data
-
-    def _calculate_ubr(self, ps_bqr, p_id):
-        """
-        Calculate the UBR values for this participant
-        :param ps_bqr: A BQParticipantSummary BQRecord object.
-        :param p_id: Participant ID
-        :return: dict
-        """
-        # setup default values, all UBR values must be 0 or 1.
-        data = {
-            'ubr_sex': 0,
-            'ubr_sexual_orientation': 0,
-            'ubr_gender_identity': 0,
-            'ubr_ethnicity': 0,
-            'ubr_geography': 0,
-            'ubr_education': 0,
-            'ubr_income': 0,
-            'ubr_sexual_gender_minority': 0,
-            'ubr_age_at_consent': 0,
-            'ubr_overall': 0,
-        }
-        birth_sex = 'unknown'
-
-        # ubr_sex
-        if hasattr(ps_bqr, 'sex') and ps_bqr.sex:
-            birth_sex = ps_bqr.sex
-            if ps_bqr.sex in ('SexAtBirth_SexAtBirthNoneOfThese', 'SexAtBirth_Intersex'):
-                data['ubr_sex'] = 1
-
-        # ubr_sexual_orientation
-        if hasattr(ps_bqr, 'sexual_orientation') and ps_bqr.sexual_orientation:
-            if ps_bqr.sexual_orientation not in \
-                    ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip', None]:
-                data['ubr_sexual_orientation'] = 1
-
-        # ubr_gender_identity
-        if hasattr(ps_bqr, 'genders') and isinstance(ps_bqr.genders, list):
-            data['ubr_gender_identity'] = 1  # easier to default to 1.
-            if len(ps_bqr.genders) == 1 and (
-                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Man' and
-                        birth_sex in ['SexAtBirth_Male', 'PMI_Skip', None]) or
-                (ps_bqr.genders[0]['gender'] == 'GenderIdentity_Woman' and
-                        birth_sex in ['SexAtBirth_Female', 'PMI_Skip', None]) or
-                ps_bqr.genders[0]['gender'] in ('PMI_Skip', 'PMI_PreferNotToAnswer')):
-                data['ubr_gender_identity'] = 0
-
-        # ubr_ethnicity
-        if hasattr(ps_bqr, 'races') and ps_bqr.races:
-            data['ubr_ethnicity'] = 1  # easier to default to 1.
-            if len(ps_bqr.races) == 1 and \
-                ps_bqr.races[0]['race'] in ('WhatRaceEthnicity_White', 'PMI_Skip', 'PMI_PreferNotToAnswer', None):
-                data['ubr_ethnicity'] = 0
-
-        # ubr_geography
-        if hasattr(ps_bqr, 'addresses') and isinstance(ps_bqr.addresses, list):
-            for addr in ps_bqr.addresses:
-                if addr['addr_type_id'] == BQStreetAddressTypeEnum.RESIDENCE.value:
-                    data['addr_city'] = addr['addr_city']
-                    data['addr_state'] = addr['addr_state']
-                    data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else addr['addr_zip']
-                    zipcode = addr['addr_zip']
-                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
-                    if zipcode and len(zipcode) > 5:
-                        zipcode = zipcode[:5]
-
-                    # See if we need to import the rural zip code list.
-                    if not self.rural_zipcodes:
-                        self._import_rural_zipcodes()
-                    if zipcode in self.rural_zipcodes:
-                        data['ubr_geography'] = 1
-
-        # ubr_education
-        if hasattr(ps_bqr, 'education') and ps_bqr.education:
-            if ps_bqr.education in (
-                'HighestGrade_NeverAttended', 'HighestGrade_OneThroughFour', 'HighestGrade_NineThroughEleven',
-                'HighestGrade_FiveThroughEight'):
-                data['ubr_education'] = 1
-
-        # ubr_income
-        if hasattr(ps_bqr, 'income') and ps_bqr.income:
-            if ps_bqr.income in ('AnnualIncome_less10k', 'AnnualIncome_10k25k'):
-                data['ubr_income'] = 1
-
-        # ubr_sexual_gender_minority
-        if data['ubr_sexual_orientation'] == 1 or data['ubr_gender_identity'] == 1:
-            data['ubr_sexual_gender_minority'] = 1
-
-        # ubr_disability
-        qnans = ParticipantSummaryGenerator.get_module_answers(self.ro_dao, 'TheBasics', p_id)
-        data['ubr_disability'] = 0
-        if qnans:
-            if qnans.get('Employment_EmploymentStatus') == 'EmploymentStatus_UnableToWork' or \
-                    qnans.get('Disability_Blind') == 'Blind_Yes' or \
-                    qnans.get('Disability_WalkingClimbing') == 'WalkingClimbing_Yes' or \
-                    qnans.get('Disability_DressingBathing') == 'DressingBathing_Yes' or \
-                    qnans.get('Disability_ErrandsAlone') == 'ErrandsAlone_Yes' or \
-                    qnans.get('Disability_Deaf') == 'Deaf_Yes' or \
-                    qnans.get('Disability_DifficultyConcentrating') == 'DifficultyConcentrating_Yes':
-                data['ubr_disability'] = 1
-
-        # ubr_age_at_consent
-        if hasattr(ps_bqr, 'date_of_birth') and ps_bqr.date_of_birth and \
-                ps_bqr.consents and len(ps_bqr.consents) > 0:
-
-            consent_date = None
-            for consent_type in ['ConsentPII', 'EHRConsentPII_ConsentPermission', 'DVEHRSharing_AreYouInterested']:
-                if consent_date:
-                    break
-                for consent in ps_bqr.consents:
-                    if consent['consent'] == consent_type and \
-                                consent['consent_value'] in ['ConsentPermission_Yes', 'DVEHRSharing_Yes']:
-                        consent_date = consent['consent_date']
-                        break
-
-            if consent_date:
-                rd = relativedelta(consent_date, ps_bqr.date_of_birth)
-                if not 18 <= rd.years < 65:
-                    data['ubr_age_at_consent'] = 1
-
-        # If any UBR value has been set to 1, set 'ubr_overall' to 1.
-        data['ubr_overall'] = max(v for k, v in data.items() if k.startswith('ubr_'))
-
         return data

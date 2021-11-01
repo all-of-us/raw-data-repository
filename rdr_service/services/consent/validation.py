@@ -12,6 +12,7 @@ from rdr_service.model.consent_file import ConsentFile as ParsingResult, Consent
     ConsentOtherErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -73,6 +74,8 @@ class StoreResultStrategy(ValidationOutputStrategy):
         )
         self._consent_dao.batch_update_consent_files(new_results_to_store, self._session)
         self._session.commit()
+        if new_results_to_store:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in new_results_to_store])
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
@@ -122,6 +125,9 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                         results_to_update.extend(new_results)
 
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
+        self.session.commit()
+        if results_to_update:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_update])
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
@@ -290,6 +296,9 @@ class ConsentValidationController:
                             validation_updates.append(new_result)
 
         self.consent_dao.batch_update_consent_files(validation_updates, session)
+        session.commit()
+        if validation_updates:
+            dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                       min_authored_date: date = None,
@@ -492,7 +501,9 @@ class ConsentValidator:
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_primary_update_consents(),
+            consent_files=self.factory.get_primary_update_consents(
+                self.participant_summary.consentForStudyEnrollmentAuthored
+            ),
             consent_type=ConsentType.PRIMARY_UPDATE,
             additional_validation=extra_primary_update_checks,
             expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored

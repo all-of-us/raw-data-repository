@@ -112,20 +112,6 @@ def open_biobank_samples(biobank_ids, tests):
     return csv_str
 
 
-def open_genomic_set_file(test_filename):
-    """
-  Returns a string representing the genomic set CSV file.
-  :return: StringIO object
-  """
-    with open(data_path(test_filename)) as f:
-        lines = f.readlines()
-        csv_str = ""
-        for line in lines:
-            csv_str += line
-
-        return csv_str
-
-
 def load_questionnaire_response_with_consents(
     questionnaire_id, participant_id, first_name_link_id, last_name_link_id, email_address_link_id, consent_pdf_paths
 ):
