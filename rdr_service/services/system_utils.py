@@ -337,6 +337,18 @@ def run_external_program(args, cwd=None, env=None, shell=False, debug=False):
     return p.returncode, stdoutdata, stderrdata
 
 
+def list_chunks(lst, chunk_size):
+    """
+    Yield successive chunk_size sublists from lst.  Useful for tools/process that need to adhere to size limits
+    when processing large lists of items (e.g., batching groups of records to be processed by a cloud task).  Example:
+            for batch_of_ids in list_chunks(big_list_of_ids, chunk_size):
+                <process the chunk-sized sublist of ids>
+    :param lst:  The list object to be broken into chunks
+    :param chunk_size:  int value of the desired sublist/chunk size
+    """
+    for i in range(0, len(lst), chunk_size):
+        yield lst[i:i + chunk_size]
+
 def is_valid_email(email):
     """
   Validate email parameter is a valid formatted email address

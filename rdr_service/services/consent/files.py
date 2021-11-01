@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from dateutil import parser
 from io import BytesIO
 from os.path import basename
@@ -76,11 +77,11 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_gror_consent(blob_wrapper)
         ]
 
-    def get_primary_update_consents(self) -> List['PrimaryConsentUpdateFile']:
+    def get_primary_update_consents(self, consent_date: datetime) -> List['PrimaryConsentUpdateFile']:
         return [
-            self._build_primary_update_consent(blob_wrapper)
+            self._build_primary_update_consent(blob_wrapper, consent_date)
             for blob_wrapper in self.consent_blobs
-            if self._is_primary_update_consent(blob_wrapper)
+            if self._is_primary_update_consent(blob_wrapper, consent_date)
         ]
 
     @abstractmethod
@@ -100,7 +101,7 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
-    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
         ...
 
     @abstractmethod
@@ -120,7 +121,8 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
-    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
+            -> 'PrimaryConsentUpdateFile':
         ...
 
     @abstractmethod
@@ -160,12 +162,13 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         return basename(blob_wrapper.blob.name).startswith('GROR')
 
-    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date) -> bool:
         return (
             basename(blob_wrapper.blob.name).startswith('PrimaryConsentUpdate')
-            and blob_wrapper.get_parsed_pdf().get_page_number_of_text([
-                'Do you agree to this updated consent?'
-            ]) is not None
+            and (
+                PrimaryConsentUpdateFile.pdf_has_update_text(blob_wrapper.get_parsed_pdf())
+                or consent_date < VibrentPrimaryConsentUpdateFile.FIRST_VERSION_END_DATE
+            )
         )
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
@@ -180,8 +183,13 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
         return VibrentGrorConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
-    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
-        return VibrentPrimaryConsentUpdateFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
+            -> 'PrimaryConsentUpdateFile':
+        return VibrentPrimaryConsentUpdateFile(
+            pdf=blob_wrapper.get_parsed_pdf(),
+            blob=blob_wrapper.blob,
+            consent_date=consent_date
+        )
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -203,7 +211,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pass
 
-    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+    def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
         pass
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
@@ -218,7 +226,8 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _build_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'GrorConsentFile':
         pass
 
-    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentUpdateFile':
+    def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
+            -> 'PrimaryConsentUpdateFile':
         pass
 
     def _get_source_bucket(self) -> str:
@@ -310,17 +319,22 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
     needed to agree to (or decline) new wording for DNA data
     """
 
-    def is_agreement_selected(self):
-        for element in self._get_agreement_check_elements():
-            for child in element:
-                if isinstance(child, LTChar) and child.get_text() == '4':
-                    return True
-
-        return False
-
     @abstractmethod
-    def _get_agreement_check_elements(self):
+    def is_agreement_selected(self):
         ...
+
+    @classmethod
+    def pdf_has_update_text(cls, pdf: 'Pdf'):
+        # Text being checked is based on the F1.20a.C1U.0915.Eng/Esp and later versions of the Cohort 1 Update consent
+        # file. Found at https://joinallofus.atlassian.net/wiki/spaces/PROT/pages/2678587466/
+        # Primary+Consent#Primary-Consent-Form-(Appendix-F1)
+        update_agreement_page_number = pdf.get_page_number_of_text([
+            (
+                'Do you agree to this updated consent?',
+                '¿Está de acuerdo con este consentimiento actualizado?'
+            )
+        ])
+        return update_agreement_page_number is not None
 
 
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
@@ -410,25 +424,56 @@ class VibrentGrorConsentFile(GrorConsentFile):
 
 
 class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
-    _SIGNATURE_PAGE = 13
+    FIRST_VERSION_END_DATE = datetime(2020, 11, 1)
+
+    def __init__(self, *args, consent_date: datetime, **kwargs):
+        super(VibrentPrimaryConsentUpdateFile, self).__init__(*args, **kwargs)
+
+        # In Sep 2020, the content of the update consent changed. Versions prior ot that were essentially just
+        # copies of the Primary consent file. If the given file is close enough to the switch-over date then
+        # treat it as a normal consent.
+        self.wrapped_consent_file = None
+        if consent_date < self.FIRST_VERSION_END_DATE and not PrimaryConsentUpdateFile.pdf_has_update_text(self.pdf):
+            self.wrapped_consent_file = VibrentPrimaryConsentFile(*args, **kwargs)
+
+    def _get_signature_page(self):
+        return self.pdf.get_page_number_of_text([
+            ('Do you agree to this updated consent?', '¿Está de acuerdo con este consentimiento actualizado?')
+        ])
 
     def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=150, right=400, bottom=155, top=160),
-            page=self._SIGNATURE_PAGE
-        )
+        if self.wrapped_consent_file:
+            return self.wrapped_consent_file._get_signature_elements()
+        else:
+            return self.pdf.get_elements_intersecting_box(
+                Rect.from_edges(left=150, right=400, bottom=155, top=160),
+                page=self._get_signature_page()
+            )
 
     def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=130, right=400, bottom=110, top=115),
-            page=self._SIGNATURE_PAGE
-        )
+        if self.wrapped_consent_file:
+            return self.wrapped_consent_file._get_date_elements()
+        else:
+            return self.pdf.get_elements_intersecting_box(
+                Rect.from_edges(left=130, right=400, bottom=110, top=115),
+                page=self._get_signature_page()
+            )
 
-    def _get_agreement_check_elements(self):
-        return self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=38, right=40, bottom=676, top=678),
-            page=self._SIGNATURE_PAGE
-        )
+    def is_agreement_selected(self):
+        if self.wrapped_consent_file:
+            return True  # TODO: implement and use checkbox validation of Primary consent
+        else:
+            agreement_elements = self.pdf.get_elements_intersecting_box(
+                Rect.from_edges(left=38, right=40, bottom=676, top=678),
+                page=self._get_signature_page()
+            )
+
+            for element in agreement_elements:
+                for child in element:
+                    if isinstance(child, LTChar) and child.get_text() == '4':
+                        return True
+
+            return False
 
 
 class Pdf:

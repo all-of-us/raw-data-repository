@@ -131,52 +131,30 @@ def reconcile_metrics_vs_wgs_data(provider=None):
         )
 
 
-def aw3_array_manifest_workflow(max_num=4000):
+def aw3_array_manifest_workflow():
     """
     Entrypoint for AW3 Array Workflow
     """
     with GenomicJobController(GenomicJob.AW3_ARRAY_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=max_num) as controller:
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_ARRAY,
             _genome_type=config.GENOME_TYPE_ARRAY,
         )
 
 
-def aw3_wgs_manifest_workflow(max_num=4000):
+def aw3_wgs_manifest_workflow():
     """
     Entrypoint for AW3 WGS Workflow
     """
     with GenomicJobController(GenomicJob.AW3_WGS_WORKFLOW,
                               bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              max_num=max_num) as controller:
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
         controller.generate_manifest(
             GenomicManifestTypes.AW3_WGS,
             _genome_type=config.GENOME_TYPE_WGS,
         )
-
-
-def aw4_array_manifest_workflow():
-    """
-    Entrypoint for AW4 Array Workflow
-    """
-    with GenomicJobController(GenomicJob.AW4_ARRAY_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[0]
-                              ) as controller:
-        controller.run_general_ingestion_workflow()
-
-
-def aw4_wgs_manifest_workflow():
-    """
-    Entrypoint for AW4 WGS Workflow
-    """
-    with GenomicJobController(GenomicJob.AW4_WGS_WORKFLOW,
-                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
-                              sub_folder_name=config.DRC_BROAD_AW4_SUBFOLDERS[1],
-                              ) as controller:
-        controller.run_general_ingestion_workflow()
 
 
 def gem_a1_manifest_workflow():
@@ -368,7 +346,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
     :param _task_data: dictionary of metadata needed by the controller
     """
 
-    if _task_data.job in (
+    ingestion_workflows = (
         GenomicJob.AW1_MANIFEST,
         GenomicJob.AW1F_MANIFEST,
         GenomicJob.METRICS_INGESTION,
@@ -376,14 +354,20 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW4_WGS_WORKFLOW,
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST
-    ):
+    )
+
+    if _task_data.job in ingestion_workflows:
         # Ingestion Job
         with GenomicJobController(_task_data.job,
                                   task_data=_task_data,
-                                  bq_project_id=project_id) as controller:
+                                  sub_folder_name=_task_data.subfolder if hasattr(_task_data, 'subfolder') else None,
+                                  bq_project_id=project_id,
+                                  max_num=config.getSetting(config.GENOMIC_MAX_NUM_INGEST, default=1000)
+                                  ) as controller:
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
+
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:

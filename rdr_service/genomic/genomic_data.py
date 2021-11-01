@@ -54,7 +54,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
-                    GenomicSetMember.gcManifestSampleSource
+                    GenomicSetMember.gcManifestSampleSource,
+                    GenomicGCValidationMetrics.pipelineId
                 ]
             ).select_from(
                 sqlalchemy.join(

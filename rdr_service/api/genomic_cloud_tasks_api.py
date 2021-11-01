@@ -156,9 +156,13 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
             if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in file_path:
                 job_id = GenomicJob.AW4_ARRAY_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_ARRAY
+                subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[0])
+
             elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in file_path:
                 job_id = GenomicJob.AW4_WGS_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_WGS
+                subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[1])
+
             else:
                 logging.warning(f'Can not determine manifest type from file_path: {file_path}.')
                 return {"success": False}
@@ -167,6 +171,7 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
             task_data = {
                 "job": job_id,
                 "bucket": self.data["bucket_name"],
+                "subfolder": subfolder,
                 "file_data": {
                     "create_feedback_record": False,
                     "upload_date": self.data["upload_date"],

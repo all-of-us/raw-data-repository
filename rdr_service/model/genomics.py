@@ -452,6 +452,7 @@ class GenomicAW2Raw(Base):
     chipwellbarcode = Column(String(255), nullable=True)
     call_rate = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
@@ -584,6 +585,8 @@ class GenomicGCValidationMetrics(Base):
     contaminationCategory = Column('contamination_category',
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
+
+    pipelineId = Column('pipeline_id', String(255), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
@@ -774,3 +777,30 @@ class GcDataFileStaging(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     bucket_name = Column(String(128), nullable=False, index=True)
     file_path = Column(String(255), nullable=False, index=True)
+
+
+class GemToGpMigration(Base):
+    """
+    Used for storing GEM to GP migration records
+    """
+
+    __tablename__ = 'gem_to_gp_migration'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
+    dev_note = Column(String(255), nullable=True)
+    file_path = Column(String(255), nullable=True, index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+
+    # Fields sent to GP
+    participant_id = Column(Integer, nullable=True, index=True)
+    informing_loop_status = Column(String(64), nullable=True)
+    informing_loop_authored = Column(DateTime, index=True)
+    ancestry_traits_response = Column(String(64), nullable=True, index=True)
+
+
+event.listen(GemToGpMigration, 'before_insert', model_insert_listener)
+event.listen(GemToGpMigration, 'before_update', model_update_listener)

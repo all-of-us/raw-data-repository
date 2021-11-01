@@ -8,9 +8,11 @@ from typing import Collection, List
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType,\
+    ConsentOtherErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -72,6 +74,8 @@ class StoreResultStrategy(ValidationOutputStrategy):
         )
         self._consent_dao.batch_update_consent_files(new_results_to_store, self._session)
         self._session.commit()
+        if new_results_to_store:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in new_results_to_store])
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
@@ -121,6 +125,9 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
                         results_to_update.extend(new_results)
 
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
+        self.session.commit()
+        if results_to_update:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_update])
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
@@ -289,6 +296,9 @@ class ConsentValidationController:
                             validation_updates.append(new_result)
 
         self.consent_dao.batch_update_consent_files(validation_updates, session)
+        session.commit()
+        if validation_updates:
+            dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                       min_authored_date: date = None,
@@ -465,7 +475,7 @@ class ConsentValidator:
 
         def check_for_checkmark(consent: files.GrorConsentFile, result):
             if not consent.is_confirmation_selected():
-                result.other_errors = 'missing consent check mark'
+                result.other_errors = ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
         return self._generate_validation_results(
@@ -480,7 +490,7 @@ class ConsentValidator:
             errors_detected = []
 
             if not consent.is_agreement_selected():
-                errors_detected.append('missing consent check mark')
+                errors_detected.append(ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK)
 
             va_version_error_str = self._check_for_va_version_mismatch(consent)
             if va_version_error_str:
@@ -491,7 +501,9 @@ class ConsentValidator:
                 result.sync_status = ConsentSyncStatus.NEEDS_CORRECTING
 
         return self._generate_validation_results(
-            consent_files=self.factory.get_primary_update_consents(),
+            consent_files=self.factory.get_primary_update_consents(
+                self.participant_summary.consentForStudyEnrollmentAuthored
+            ),
             consent_type=ConsentType.PRIMARY_UPDATE,
             additional_validation=extra_primary_update_checks,
             expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored
@@ -500,9 +512,9 @@ class ConsentValidator:
     def _check_for_va_version_mismatch(self, consent):
         is_va_consent = consent.get_is_va_consent()
         if self.participant_summary.hpoId == self.va_hpo_id and not is_va_consent:
-            return 'non-veteran consent for veteran participant'
+            return ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN
         elif self.participant_summary.hpoId != self.va_hpo_id and is_va_consent:
-            return 'veteran consent for non-veteran participant'
+            return ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
 
         return None
 

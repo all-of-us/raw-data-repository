@@ -27,6 +27,7 @@ BQ_TABLES = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRStopParticipating'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRSDOH'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine3'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalFamilyHistory'),
 
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRParticipantSummary'),
 
@@ -85,6 +86,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRWithdrawalView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRSDOHView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRCOPEVaccine3View'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRPersonalFamilyHistoryView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
