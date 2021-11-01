@@ -160,12 +160,16 @@ ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
 # resolutions up to the specified end date for this report.
 ALL_RESOLVED_SQL = """
            SELECT cf.participant_id,
+                  cf.id,
+                  ps.participant_origin,
                   cf.type,
                   DATE(cf.modified) AS resolved_date
            FROM consent_file cf
            -- Alias to ps to be consistent with other queries that use common filters
            JOIN participant ps on ps.participant_id = cf.participant_id
-           WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{validation_end_date}"
+           WHERE cf.sync_status = 3
+                 AND DATE(cf.modified) <= "{validation_end_date}"
+                 AND ps.is_test_participant = 0 and (ps.is_ghost_id is null or ps.is_ghost_id = 0) and ps.hpo_id != 21
 """
 
 # TODO:  Remove this when we expand consent validation to include CE consents
@@ -781,14 +785,14 @@ class WeeklyConsentReport(ConsentReport):
         issue resolution.
         """
         sql = ALL_RESOLVED_SQL + VIBRENT_SQL_FILTER
-        sql = sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
+        sql = sql.format_map(SafeDict(validation_end_date=self.validation_end_date.strftime("%Y-%m-%d")))
         resolved_df = pandas.read_sql_query(sql, self.db_conn)
 
         # Make sure we only pick up resolved counts for the consent types currently enabled in the CONSENTS_LIST
         # See https://www.geeksforgeeks.org/python-pandas-dataframe-isin/ for more details on this pandas construct
         filter_mask = resolved_df.type.isin(CONSENTS_LIST)
-        return resolved_df[filter_mask]
 
+        return resolved_df[filter_mask]
 
     def add_weekly_validation_burndown_section(self):
         """
