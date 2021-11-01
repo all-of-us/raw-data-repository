@@ -47,7 +47,8 @@ googleapis-common-protos[grpc]==1.51.0  # via google-api-core, grpc-google-iam-v
 googlemaps==4.4.1         # via -r requirements.in
 greenlet==0.4.15          # via gevent
 grpc-google-iam-v1==0.12.3  # via google-cloud-tasks
-grpcio==1.29.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
+grpcio==1.41.1            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
+
 gspread==3.7.0
 gunicorn==20.0.4          # via -r requirements.in
 httplib2==0.19.1          # via google-api-python-client, google-auth-httplib2, oauth2client
