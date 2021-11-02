@@ -380,19 +380,19 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, state):
+    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param genome_type:
-        :param state: genomic_workflow_state
+        :param states: array of genomic_workflow_states
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState == state
+                GenomicSetMember.genomicWorkflowState.in_(states)
             ).one_or_none()
         return member
 

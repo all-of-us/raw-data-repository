@@ -254,6 +254,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.GEM_RPT_READY: GEMReportReady(),
         GenomicWorkflowState.GEM_RPT_PENDING_DELETE: GEMReportPendingDelete(),
         GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
+        GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),  # Replating is functionally equivalent to AW0
     }
 
     @classmethod
