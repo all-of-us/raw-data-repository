@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil import parser
 from io import BytesIO
 from os.path import basename
-from typing import List, Union
+from typing import List, Optional, Union
 
 from geometry import Rect
 from google.cloud.storage.blob import Blob
@@ -209,7 +209,7 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
             'Consent to Join the All of Us Research Program',
-            'Consentimiento para Participar en el Programa Científico All of Us'
+            'Consentimiento para Participar en el Programa Científico'
         )])
 
     def _is_cabor_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
@@ -502,13 +502,54 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
             return False
 
 
-class CeConsentFile:
-    def _text_in_bounds(self, search_rect: Rect, page_number: int):
-        page = self.pdf.pages[page_number]
-        return self._recurse_text_in_bounds(page, search_rect)
+class CeFileWrapper:
+    def __init__(self, pdf):
+        self.pdf = pdf
 
-    def _recurse_text_in_bounds(self, element, search_rect: Rect) -> List[str]:
-        if hasattr(element, 'get_text'):
+    def get_signature_on_file(self):
+        signature_page = self._get_last_page()
+        signature_footer_location = self._get_location_of_string(signature_page, "Participant's Name (printed)")
+
+        if signature_footer_location:
+            signature_string_list = self._text_in_bounds(
+                search_rect=self._rect_shifted_up_from_footer(signature_footer_location),
+                element=signature_page
+            )
+            if signature_string_list:
+                return signature_string_list[0]
+
+        return None
+
+    def get_date_signed_str(self):
+        signature_page = self._get_last_page()
+        signature_footer_location = self._get_location_of_string(signature_page, 'Date')
+
+        if signature_footer_location:
+            date_string_list = self._text_in_bounds(
+                search_rect=self._rect_shifted_up_from_footer(signature_footer_location),
+                element=signature_page
+            )
+            if date_string_list:
+                return date_string_list[0]
+
+        return None
+
+    def _get_last_page(self):
+        last_page_index = len(self.pdf.pages) - 1
+        return self.pdf.pages[last_page_index]
+
+    @classmethod
+    def _rect_shifted_up_from_footer(cls, footer_rect: Rect) -> Rect:
+        return Rect.from_edges(
+            left=footer_rect.left - 3,
+            right=footer_rect.right + 200,
+            bottom=footer_rect.top + 8,
+            top=footer_rect.top + 10
+        )
+
+    def _text_in_bounds(self, element, search_rect: Rect) -> List[str]:
+        if hasattr(element, 'get_text') and hasattr(element, 'x0') and \
+                Pdf.rect_for_element(element).intersection(search_rect) is not None:
             return element.get_text()
         elif hasattr(element, '__iter__'):
             strings = []
@@ -521,7 +562,7 @@ class CeConsentFile:
                     if characters_for_next_string:
                         strings.append(''.join(characters_for_next_string))
                         characters_for_next_string = []
-                    strings.extend(self._recurse_text_in_bounds(child, search_rect=search_rect))
+                    strings.extend(self._text_in_bounds(element=child, search_rect=search_rect))
 
             if characters_for_next_string:
                 strings.append(''.join(characters_for_next_string))
@@ -530,101 +571,77 @@ class CeConsentFile:
 
         return []
 
+    def _get_location_of_string(self, element, string: str) -> Optional[Rect]:
+        char_index_to_match = 0
+        location_rect = None
+        if hasattr(element, '__iter__'):
+            for child in element:
+                if isinstance(child, LTChar) and child.get_text() == string[char_index_to_match]:
+                    char_location = Pdf.rect_for_element(child)
+                    if location_rect is None:
+                        location_rect = char_location
+                    else:
+                        location_rect = location_rect.union(char_location)
+                    char_index_to_match += 1
+                    if char_index_to_match == len(string):
+                        return location_rect
+                elif location_rect is None:  # Only check children if we haven't started the string yet
+                    children_location = self._get_location_of_string(child, string)
+                    if children_location is not None:
+                        return children_location
+                else:  # reset the box if we've only matched on part of a string
+                    char_index_to_match = 0
+                    location_rect = None
 
-class CePrimaryConsentFile(PrimaryConsentFile, CeConsentFile):
-    SIGNATURE_PAGE = 5
-
-    def get_signature_on_file(self):
-        signature_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=50, right=300, bottom=760, top=762),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if signature_string_list:
-            return signature_string_list[0]
-        else:
-            return None
-
-    def _get_date_signed_str(self):
-        date_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=380, right=500, bottom=760, top=762),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if date_string_list:
-            return date_string_list[0]
-        else:
-            return None
-
-
-class CeCaborConsentFile(CaborConsentFile, CeConsentFile):
-    SIGNATURE_PAGE = 1
-
-    def get_signature_on_file(self):
-        signature_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=50, right=300, bottom=792, top=794),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if signature_string_list:
-            return signature_string_list[0]
-        else:
-            return None
-
-    def _get_date_signed_str(self):
-        date_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=380, right=500, bottom=792, top=794),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if date_string_list:
-            return date_string_list[0]
-        else:
-            return None
+        return location_rect
 
 
-class CeEhrConsentFile(EhrConsentFile, CeConsentFile):
-    SIGNATURE_PAGE = 2
+class CePrimaryConsentFile(PrimaryConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CePrimaryConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
 
     def get_signature_on_file(self):
-        signature_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=50, right=300, bottom=740, top=742),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if signature_string_list:
-            return signature_string_list[0]
-        else:
-            return None
+        return self.pdf_wrapper.get_signature_on_file()
 
     def _get_date_signed_str(self):
-        date_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=380, right=500, bottom=740, top=742),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if date_string_list:
-            return date_string_list[0]
-        else:
-            return None
+        return self.pdf_wrapper.get_date_signed_str()
 
 
-class CeGrorConsentFile(GrorConsentFile, CeConsentFile):
-    SIGNATURE_PAGE = 4
+class CeCaborConsentFile(CaborConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CeCaborConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
 
     def get_signature_on_file(self):
-        signature_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=50, right=300, bottom=794, top=796),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if signature_string_list:
-            return signature_string_list[0]
-        else:
-            return None
+        return self.pdf_wrapper.get_signature_on_file()
 
     def _get_date_signed_str(self):
-        date_string_list = self._text_in_bounds(
-            search_rect=Rect.from_edges(left=380, right=500, bottom=794, top=796),
-            page_number=self.SIGNATURE_PAGE
-        )
-        if date_string_list:
-            return date_string_list[0]
-        else:
-            return None
+        return self.pdf_wrapper.get_date_signed_str()
+
+
+class CeEhrConsentFile(EhrConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CeEhrConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
+
+    def get_signature_on_file(self):
+        return self.pdf_wrapper.get_signature_on_file()
+
+    def _get_date_signed_str(self):
+        return self.pdf_wrapper.get_date_signed_str()
+
+
+class CeGrorConsentFile(GrorConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CeGrorConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
+
+    def get_signature_on_file(self):
+        return self.pdf_wrapper.get_signature_on_file()
+
+    def _get_date_signed_str(self):
+        return self.pdf_wrapper.get_date_signed_str()
 
     def is_confirmation_selected(self):
         # CE GROR files don't contain a checkmark to have selected or not
@@ -648,7 +665,7 @@ class Pdf:
         return Pdf(pages, blob)
 
     @classmethod
-    def rect_for_element(cls, element):
+    def rect_for_element(cls, element) -> Optional[Rect]:
         return Rect.from_edges(
             left=element.x0,
             right=element.x1,
@@ -695,13 +712,13 @@ class Pdf:
     def has_text(self, search_strings):
         if self._pdf_text is None:
             file_bytes = BytesIO(self._blob.download_as_string())
-            self._pdf_text = extract_text(file_bytes)
+            self._pdf_text = extract_text(file_bytes)[:200]
 
         for search_token in search_strings:
-            found_token_in_page = True
+            found_token_in_page = False
             for translation in search_token:
-                if translation not in self._pdf_text:
-                    found_token_in_page = False
+                if translation in self._pdf_text:
+                    found_token_in_page = True
 
             if not found_token_in_page:
                 return False

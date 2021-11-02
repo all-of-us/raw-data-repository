@@ -282,7 +282,9 @@ class ConsentFileParsingTest(BaseTestCase):
             CePdfPage(
                 [
                     CePdfText(string='Test Name', starting_at=Rect.from_edges(52, 60, 757, 766)),
-                    CePdfText(string='10/31/2021', starting_at=Rect.from_edges(392, 400, 757, 766))
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 747, 756)),
+                    CePdfText(string='10/31/2021', starting_at=Rect.from_edges(392, 400, 757, 766)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 747, 756))
                 ]
             )
         ])
@@ -339,7 +341,9 @@ class ConsentFileParsingTest(BaseTestCase):
             CePdfPage(
                 [
                     CePdfText(string='Test Cabor', starting_at=Rect.from_edges(52, 60, 789, 798)),
-                    CePdfText(string='12/09/2020', starting_at=Rect.from_edges(392, 400, 789, 798))
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 779, 788)),
+                    CePdfText(string='12/09/2020', starting_at=Rect.from_edges(392, 400, 789, 798)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 779, 788))
                 ]
             )
         ])
@@ -397,11 +401,12 @@ class ConsentFileParsingTest(BaseTestCase):
 
     def _get_ce_ehr_test_data(self):
         basic_pdf = self._build_ce_pdf(pages=[
-            CePdfPage(), CePdfPage(),
             CePdfPage(
                 [
                     CePdfText(string='Test EHR', starting_at=Rect.from_edges(52, 60, 736, 745)),
-                    CePdfText(string='2/3/2020', starting_at=Rect.from_edges(392, 400, 736, 745))
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 726, 735)),
+                    CePdfText(string='2/3/2020', starting_at=Rect.from_edges(392, 400, 736, 745)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 726, 735))
                 ]
             )
         ])
@@ -486,11 +491,12 @@ class ConsentFileParsingTest(BaseTestCase):
 
     def _get_ce_gror_test_data(self):
         basic_pdf = self._build_ce_pdf(pages=[
-            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
             CePdfPage(
                 [
                     CePdfText(string='Test GROR', starting_at=Rect.from_edges(52, 60, 789, 798)),
-                    CePdfText(string='Apr 1, 2018', starting_at=Rect.from_edges(392, 400, 789, 798))
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 779, 788)),
+                    CePdfText(string='Apr 1, 2018', starting_at=Rect.from_edges(392, 400, 789, 798)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 779, 788))
                 ]
             )
         ])
@@ -667,7 +673,7 @@ class ConsentFileParsingTest(BaseTestCase):
         element_mock.height = y1-y0
         element_mock.bbox = bbox
 
-    def _build_ce_pdf(self, pages: Collection['PdfPage']):
+    def _build_ce_pdf(self, pages: Collection['CePdfPage']):
         return self._build_pdf([[self._build_ce_page_figure(page)] for page in pages])
 
     def _build_ce_page_figure(self, page: 'CePdfPage'):
@@ -690,7 +696,7 @@ class ConsentFileParsingTest(BaseTestCase):
                     bbox=(current_rect.left, current_rect.bottom, current_rect.right, current_rect.top)
                 )
             )
-            current_rect.left += 8
+            current_rect.left += 4
         return chars
 
 
