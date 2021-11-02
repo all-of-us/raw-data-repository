@@ -423,6 +423,12 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.id.in_(member_ids)
             ).all()
 
+    def get_members_with_non_null_sample_ids(self):
+        with self.session() as session:
+            return session.query(GenomicSetMember).filter(
+                GenomicSetMember.sampleId.isnot(None)
+            ).all()
+
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
         Retrieves a genomic set member record matching the sample_id

@@ -1062,6 +1062,11 @@ class GenomicFileIngester:
                 else:
                     metric_id = None
 
+                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
+                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
+                        # Insert a new member
+                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
                 # Update GC Metrics for PDR
@@ -1094,6 +1099,35 @@ class GenomicFileIngester:
                                                 )
 
         return GenomicSubProcessResult.SUCCESS
+
+    def insert_member_for_replating(self, member, category):
+        """
+        Inserts a new member record for replating.
+        :param member: GenomicSetMember
+        :param category: GenomicContaminationCategory
+        :return:
+        """
+        new_member_wgs = GenomicSetMember(
+            biobankId=member.biobankId,
+            genomicSetId=member.genomicSetId,
+            participantId=member.participantId,
+            nyFlag=member.nyFlag,
+            sexAtBirth=member.sexAtBirth,
+            validationStatus=member.validationStatus,
+            validationFlags=member.validationFlags,
+            ai_an=member.ai_an,
+            genomeType=GENOME_TYPE_WGS,
+            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+        )
+
+        if category == GenomicContaminationCategory.EXTRACT_BOTH:
+            new_member_array = deepcopy(new_member_wgs)
+            new_member_array.genomeType = GENOME_TYPE_ARRAY
+            self.member_dao.insert(new_member_array)
+
+        self.member_dao.insert(new_member_wgs)
 
     def _ingest_cvl_w2_manifest(self, rows):
         """

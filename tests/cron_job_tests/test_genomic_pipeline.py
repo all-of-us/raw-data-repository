@@ -621,6 +621,10 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual('1001', member.sampleId)
         self.assertEqual(1, member.aw2FileProcessedId)
 
+        # Test new members created for re-extraction
+        members = self.member_dao.get_all()
+        self.assertEqual(len(members), 5)
+
         # Test successful run result
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
@@ -656,6 +660,10 @@ class GenomicPipelineTest(BaseTestCase):
 
                 # Test negative contamination is 0
                 self.assertEqual('0', gc_metrics[1].contamination)
+
+        # Test new members created for re-extraction again
+        members = self.member_dao.get_all()
+        self.assertEqual(len(members), 5)
 
     def test_ingest_specific_aw2_file(self):
         self._create_fake_datasets_for_gc_tests(3, arr_override=True,
@@ -3217,7 +3225,7 @@ class GenomicPipelineTest(BaseTestCase):
         incident_name = GenomicIncidentCode.MANIFEST_GENERATE_DATA_VALIDATION_FAILED.name
         should_be_incident_count = 0
 
-        current_members = self.member_dao.get_all()
+        current_members = self.member_dao.get_members_with_non_null_sample_ids()
 
         first_sample_id = current_members[0].sampleId
         last_sample_id = None
