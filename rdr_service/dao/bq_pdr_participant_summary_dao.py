@@ -69,10 +69,11 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     'biosp_baseline_tests_confirmed': baseline_tests_confirmed,
                 })
 
-        for addr in ps_bqr.addresses:
-            if addr['addr_type_id'] == BQStreetAddressTypeEnum.RESIDENCE.value:
-                data['addr_state'] = addr['addr_state']
-                data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else None
+        if hasattr(ps_bqr, 'addresses') and isinstance(ps_bqr.addresses, list):
+            for addr in ps_bqr.addresses:
+                if addr['addr_type_id'] == BQStreetAddressTypeEnum.RESIDENCE.value:
+                    data['addr_state'] = addr['addr_state']
+                    data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else None
 
         summary = self._merge_schema_dicts(summary, data)
 
