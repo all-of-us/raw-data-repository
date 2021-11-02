@@ -19,6 +19,7 @@ from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -34,7 +35,8 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration)
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
@@ -1162,6 +1164,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
+            'pipelineId': 'pipelineid'
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -2403,3 +2406,51 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
                 update_record.resolved = 1
                 update_record.resolved_date = datetime.utcnow()
                 self.update(update_record)
+
+
+class GemToGpMigrationDao(BaseDao):
+    def __init__(self):
+        super(GemToGpMigrationDao, self).__init__(
+            GemToGpMigration, order_by_ending=['id'])
+
+    @staticmethod
+    def prepare_obj(row, job_run, file_path):
+        return GemToGpMigration(
+            file_path=file_path,
+            run_id=job_run,
+            participant_id=row.participantId,
+            informing_loop_status='success',
+            informing_loop_authored=row.authored,
+            ancestry_traits_response=row.value,
+        )
+
+    def get_data_for_export(self, run_id, limit=None):
+        with self.session() as session:
+            results = session.query(
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.authored,
+                Code.value
+            ).join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            ).outerjoin(
+                GemToGpMigration,
+                and_(GemToGpMigration.participant_id == QuestionnaireResponse.participantId,
+                     GemToGpMigration.run_id == run_id)
+            ).filter(
+                Code.value.in_(["ConsentAncestryTraits_Yes",
+                                "ConsentAncestryTraits_No",
+                                "ConsentAncestryTraits_NotSure"])
+            )
+            if limit:
+                results = results.limit(limit)
+
+            return results.all()
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+

@@ -28,8 +28,11 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.site import Site
 from rdr_service.participant_enums import QuestionnaireStatus
+
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_cp
 from rdr_service.storage import GoogleCloudStorageProvider
+
 
 SOURCE_BUCKET = {
     "vibrent": "ptc-uploads-all-of-us-rdr-prod",
@@ -175,6 +178,7 @@ class ConsentSyncController:
             hpo_names=hpo_names,
             org_names=org_names
         )
+        updated_rec_ids = list()
         pairing_info_map = self._build_participant_pairing_map(file_list)
 
         for file in file_list:
@@ -203,10 +207,15 @@ class ConsentSyncController:
 
                 file.sync_time = datetime.utcnow()
                 file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
+                updated_rec_ids.append(file.id)
 
         self._zip_and_upload()
         with self.consent_dao.session() as session:
             self.consent_dao.batch_update_consent_files(file_list, session)
+
+        # Queue tasks to rebuild consent metrics resource data records (for PDR)
+        if len(updated_rec_ids):
+            dispatch_rebuild_consent_metrics_tasks(updated_rec_ids)
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):
