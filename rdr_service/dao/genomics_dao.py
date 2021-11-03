@@ -385,7 +385,7 @@ class GenomicSetMemberDao(UpdatableDao):
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param genome_type:
-        :param states: array of genomic_workflow_states
+        :param states: list of genomic_workflow_states
         :return: a GenomicSetMember object
         """
         with self.session() as session:
@@ -424,10 +424,15 @@ class GenomicSetMemberDao(UpdatableDao):
             ).all()
 
     def get_members_with_non_null_sample_ids(self):
-        with self.session() as session:
-            return session.query(GenomicSetMember).filter(
-                GenomicSetMember.sampleId.isnot(None)
-            ).all()
+        """
+        For use by unit tests only
+        :return: query results
+        """
+        if GAE_PROJECT == "localhost":
+            with self.session() as session:
+                return session.query(GenomicSetMember).filter(
+                    GenomicSetMember.sampleId.isnot(None)
+                ).all()
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
