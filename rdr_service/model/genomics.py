@@ -229,6 +229,11 @@ class GenomicSetMember(Base):
     # Developer note
     devNote = Column('dev_note', String(255), nullable=True)
 
+    # For tracking replates
+    replatedMemberId = Column('replated_member_id',
+                              ForeignKey('genomic_set_member.id'),
+                              nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
