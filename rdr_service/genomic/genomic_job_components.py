@@ -1121,6 +1121,7 @@ class GenomicFileIngester:
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
+            replatedMemberId=member.id,
         )
 
         if category == GenomicContaminationCategory.EXTRACT_BOTH:
