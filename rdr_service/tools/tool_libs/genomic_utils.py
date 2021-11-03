@@ -2070,8 +2070,18 @@ class BackFillReplates(GenomicManifestBase):
     def run(self):
         self.gcp_env.activate_sql_proxy()
         self.dao = GenomicSetMemberDao()
-        existing_members = self.dao.get_all_contamination_reextract()
-        print(existing_members)
+        ingester = GenomicFileIngester()
+
+        existing_records = self.dao.get_all_contamination_reextract()
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.insert_member_for_replating(existing_record.GenomicSetMember,
+                                                     existing_record.contaminationCategory)
+            else:
+                _logger.info(f'Would create member based on id: {existing_record.GenomicSetMember.id}')
+
+        return 0
 
 
 def get_process_for_run(args, gcp_env):

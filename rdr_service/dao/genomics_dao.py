@@ -8,6 +8,7 @@ from dateutil import parser
 from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
 from werkzeug.exceptions import BadRequest, NotFound
@@ -614,11 +615,22 @@ class GenomicSetMemberDao(UpdatableDao):
         reextract_states = [GenomicContaminationCategory.EXTRACT_BOTH,
                             GenomicContaminationCategory.EXTRACT_WGS]
         with self.session() as session:
-            return session.query(GenomicSetMember).join(
+            replated = aliased(GenomicSetMember)
+
+            return session.query(
+                GenomicSetMember,
+                GenomicGCValidationMetrics.contaminationCategory
+            ).join(
                 GenomicGCValidationMetrics,
                 GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).outerjoin(
+                replated,
+                replated.replatedMemberId == GenomicSetMember.id
             ).filter(
-                GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states)
+                GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+                replated.id.is_(None)
             ).all()
 
     def update_report_consent_removal_date(self, member, date):
