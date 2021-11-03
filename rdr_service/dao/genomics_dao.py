@@ -42,7 +42,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
-    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState
+    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -609,6 +609,17 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicGCValidationMetrics.craiPath.isnot(None),
                 )
             return members_query.all()
+
+    def get_all_contamination_reextract(self):
+        reextract_states = [GenomicContaminationCategory.EXTRACT_BOTH,
+                            GenomicContaminationCategory.EXTRACT_WGS]
+        with self.session() as session:
+            return session.query(GenomicSetMember).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).filter(
+                GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states)
+            ).all()
 
     def update_report_consent_removal_date(self, member, date):
         """
