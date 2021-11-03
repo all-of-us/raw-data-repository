@@ -20,6 +20,7 @@ from rdr_service.model.organization import Organization
 INVALID_DOB_AGE_CUTOFF = 124
 VALID_AGE_AT_CONSENT = 18
 MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE = date(year=2018, month=7, day=13)
+
 METRICS_ERROR_LIST = [
     'missing_file', 'invalid_signing_date', 'signature_missing', 'checkbox_unchecked', 'non_va_consent_for_va',
     'va_consent_for_non_va', 'invalid_dob', 'invalid_age_at_consent'
@@ -29,7 +30,6 @@ class ConsentMetricGenerator(generators.BaseGenerator):
     """
     Generate a ConsentMetric resource object
     """
-
     ro_dao = None
 
     @classmethod
@@ -51,6 +51,39 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             ConsentType.GROR: rec.consentForGenomicsRORAuthored,
             ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
         }
+
+    def generate_error_text(self, consent_file_rec):
+        """
+        Create a textual error report from a ConsentMetric generator result.  This is used in
+        reporting errors to PTSC via Jira
+        :param consent_file_rec: A consent_file table row
+        :return: A text string with the error details, or None if the generator data has the ignore flag set
+        Example return string (formatted, without final newline chars):
+            participant id:	P123456789
+            consent type:	PRIMARY_UPDATE
+            file path:	ptc-uploads-all-of-us-rdr-prod/Participant/P123456789/PrimaryConsentUpdate__8979.pdf
+            file upload time:	2020-07-27 10:07:17
+            Errors detected:	signature missing, non va consent for va
+        """
+        resource_data = self.make_resource(consent_file_rec.id).get_data()
+        if resource_data['ignore']:
+            return None
+
+        # Need to include file details for PTSC error reports (vs. usual metrics reports)
+        resource_data['file_path'] = consent_file_rec.file_path
+        resource_data['file_upload_time'] = consent_file_rec.file_upload_time
+        error_text = ''
+        for field in ['participant_id', 'consent_type', 'file_path', 'file_upload_time']:
+            error_text += f'{field.replace("_", " ")}:\t{resource_data[field]}\n'
+
+        error_text += "Errors detected:\t"
+        for error_flag_field in METRICS_ERROR_LIST:
+            if resource_data[error_flag_field]:
+                error_text += f'{error_flag_field.replace("_", " ")}, '
+
+        # Replace trailing comma and space with newlines (for visual separation when this method is called iteratively)
+        error_text = error_text[:-2] + "\n\n"
+        return error_text
 
     def make_resource(self, _pk, consent_validation_rec=None):
         """

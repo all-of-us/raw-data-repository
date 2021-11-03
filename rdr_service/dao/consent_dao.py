@@ -70,11 +70,21 @@ class ConsentDao(BaseDao):
         return query.all()
 
     @classmethod
-    def get_files_needing_correction(cls, session, min_modified_datetime: datetime = None) -> Collection[ConsentFile]:
+    def get_files_needing_correction(cls, session,
+                                     min_modified_datetime: datetime = None,
+                                     min_created_datetime: datetime = None,
+                                     participant_origin: str = None) -> Collection[ConsentFile]:
+
         query = session.query(ConsentFile).filter(
             ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
         )
-        if min_modified_datetime:
+        if participant_origin:
+            query = query.join(Participant).filter(Participant.participantOrigin == participant_origin)
+        # min_created_datetime takes precedence over min_modified_datetime to limit results to only newly created
+        # NEEDS_CORRECTING records
+        if min_created_datetime:
+            query = query.filter(ConsentFile.created >= min_created_datetime)
+        elif min_modified_datetime:
             query = query.filter(ConsentFile.modified >= min_modified_datetime)
         return query.all()
 

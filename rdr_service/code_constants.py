@@ -187,6 +187,9 @@ AW2_BUCKETS = [
 ]
 
 # Source of a created participant
-ORIGINATING_SOURCES = ['vibrent', 'careevolution', 'example']
+PTSC_ORIGIN = 'vibrent'
+CE_ORIGIN = 'careevolution'
+TEST_ORIGIN = 'example'
+ORIGINATING_SOURCES = [PTSC_ORIGIN, CE_ORIGIN, TEST_ORIGIN]
 
 

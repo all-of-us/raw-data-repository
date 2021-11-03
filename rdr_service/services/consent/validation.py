@@ -5,6 +5,7 @@ from io import StringIO
 import pytz
 from typing import Collection, List
 
+from rdr_service.code_constants import PTSC_ORIGIN
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -12,6 +13,7 @@ from rdr_service.model.consent_file import ConsentFile as ParsingResult, Consent
     ConsentOtherErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
+from rdr_service.resource.generators import ConsentMetricGenerator
 from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -300,6 +302,29 @@ class ConsentValidationController:
         if validation_updates:
             dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
+    def report_new_errors(self, created_since, session=None):
+        """ Generate an error report, currently only for PTSC, to report newly found errors via a Jira ticket """
+        if session:
+            ptsc_errors = self.consent_dao.get_files_needing_correction(session,
+                                                                        min_created_datetime=created_since,
+                                                                        participant_origin=PTSC_ORIGIN)
+        else:
+            with self.consent_dao.session() as session:
+                ptsc_errors = self.consent_dao.get_files_needing_correction(session,
+                                                                            min_created_datetime=created_since,
+                                                                            participant_origin=PTSC_ORIGIN)
+        if ptsc_errors:
+            error_text_list = list()
+            res_gen = ConsentMetricGenerator()
+            for rec in ptsc_errors:
+                error_text = res_gen.generate_error_text(rec)
+                if error_text:
+                    error_text_list.append(error_text)
+
+        # TODO:  Attach the error text entries to a Jira ticket creation payload
+        for error_str in error_text_list:
+            print(error_str)
+
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                       min_authored_date: date = None,
                                       types_to_validate: Collection[ConsentType] = None):
@@ -338,6 +363,7 @@ class ConsentValidationController:
     def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
                                 max_consent_date=None):
         """Find all the expected consents since the minimum date and check the files that have been uploaded"""
+        start_validation_timestamp = datetime.utcnow()
         for summary in self.consent_dao.get_participants_with_consents_in_range(
             session,
             start_date=min_consent_date,
@@ -348,6 +374,7 @@ class ConsentValidationController:
                 output_strategy=output_strategy,
                 min_authored_date=min_consent_date
             )
+        self.report_new_errors(start_validation_timestamp)
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
@@ -591,3 +618,4 @@ class ConsentValidator:
 
     def _get_date_from_datetime(self, timestamp: datetime):
         return timestamp.replace(tzinfo=pytz.utc).astimezone(self._central_time).date()
+
