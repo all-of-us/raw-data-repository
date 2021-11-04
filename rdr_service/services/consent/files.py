@@ -205,6 +205,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
 
 
 class CeConsentFactory(ConsentFileAbstractFactory):
+    # Text being checked is based on the content of the files found at
+    # https://joinallofus.atlassian.net/wiki/spaces/PROT/pages/2678587466/
+
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
         return pdf.has_text([(
