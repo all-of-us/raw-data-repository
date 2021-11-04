@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
+from geometry import Rect
 import mock
-from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBoxHorizontal, LTTextLineHorizontal
-from typing import List
+from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTPage, LTTextBoxHorizontal, LTTextLineHorizontal
+from typing import Collection, List
 
 from rdr_service.services.consent import files
 from tests.helpers.unittest_base import BaseTestCase
@@ -20,8 +21,20 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
+    def test_ce_primary_consent(self):
+        for consent_example in self._get_ce_primary_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
     def test_vibrent_cabor_consent(self):
         for consent_example in self._get_vibrent_cabor_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
+    def test_ce_cabor_consent(self):
+        for consent_example in self._get_ce_cabor_test_data():
             consent_file = consent_example.file
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
@@ -33,12 +46,24 @@ class ConsentFileParsingTest(BaseTestCase):
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.expected_to_be_va_file, consent_file.get_is_va_consent())
 
+    def test_ce_ehr_consent(self):
+        for consent_example in self._get_ce_ehr_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
+
     def test_vibrent_gror_consent(self):
         for consent_example in self._get_vibrent_gror_test_data():
             consent_file = consent_example.file
             self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
             self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
             self.assertEqual(consent_example.has_yes_selected, consent_file.is_confirmation_selected())
+
+    def test_ce_gror_consent(self):
+        for consent_example in self._get_ce_gror_test_data():
+            consent_file = consent_example.file
+            self.assertEqual(consent_example.expected_signature, consent_file.get_signature_on_file())
+            self.assertEqual(consent_example.expected_sign_date, consent_file.get_date_signed())
 
     def test_vibrent_primary_update_consent(self):
         for consent_example in self._get_vibrent_primary_update_test_data():
@@ -251,6 +276,36 @@ class ConsentFileParsingTest(BaseTestCase):
 
         return test_data
 
+    def _get_ce_primary_test_data(self):
+        basic_pdf = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
+            CePdfPage(
+                [
+                    CePdfText(string='Test Name', starting_at=Rect.from_edges(52, 60, 757, 766)),
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 747, 756)),
+                    CePdfText(string='10/31/2021', starting_at=Rect.from_edges(392, 400, 757, 766)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 747, 756))
+                ]
+            )
+        ])
+        basic_expected_data = PrimaryConsentTestData(
+            file=files.CePrimaryConsentFile(pdf=basic_pdf, blob=mock.MagicMock()),
+            expected_signature='Test Name',
+            expected_sign_date=date(2021, 10, 31)
+        )
+
+        missing_signature_and_date = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
+            CePdfPage()
+        ])
+        missing_expected_data = PrimaryConsentTestData(
+            file=files.CePrimaryConsentFile(pdf=missing_signature_and_date, blob=mock.MagicMock()),
+            expected_signature=None,
+            expected_sign_date=None
+        )
+
+        return [basic_expected_data, missing_expected_data]
+
     def _get_vibrent_cabor_test_data(self) -> List['ConsentTestData']:
         """Builds a list of PDFs that represent the different layouts of Vibrent's CaBOR consent"""
 
@@ -279,6 +334,35 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         return [basic_cabor_case, older_cabor_case]
+
+    def _get_ce_cabor_test_data(self):
+        basic_pdf = self._build_ce_pdf(pages=[
+            CePdfPage(),
+            CePdfPage(
+                [
+                    CePdfText(string='Test Cabor', starting_at=Rect.from_edges(52, 60, 789, 798)),
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 779, 788)),
+                    CePdfText(string='12/09/2020', starting_at=Rect.from_edges(392, 400, 789, 798)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 779, 788))
+                ]
+            )
+        ])
+        basic_expected_data = ConsentTestData(
+            file=files.CeCaborConsentFile(pdf=basic_pdf, blob=mock.MagicMock()),
+            expected_signature='Test Cabor',
+            expected_sign_date=date(2020, 12, 9)
+        )
+
+        missing_signature_and_date = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage()
+        ])
+        missing_expected_data = ConsentTestData(
+            file=files.CeCaborConsentFile(pdf=missing_signature_and_date, blob=mock.MagicMock()),
+            expected_signature=None,
+            expected_sign_date=None
+        )
+
+        return [basic_expected_data, missing_expected_data]
 
     def _get_vibrent_ehr_test_data(self) -> List['EhrConsentTestData']:
         six_empty_pages = [[], [], [], [], [], []]  # The EHR signature is expected to be on the 7th page
@@ -314,6 +398,35 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         return [basic_ehr_case, va_ehr_case]
+
+    def _get_ce_ehr_test_data(self):
+        basic_pdf = self._build_ce_pdf(pages=[
+            CePdfPage(
+                [
+                    CePdfText(string='Test EHR', starting_at=Rect.from_edges(52, 60, 736, 745)),
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 726, 735)),
+                    CePdfText(string='2/3/2020', starting_at=Rect.from_edges(392, 400, 736, 745)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 726, 735))
+                ]
+            )
+        ])
+        basic_expected_data = EhrConsentTestData(
+            file=files.CeEhrConsentFile(pdf=basic_pdf, blob=mock.MagicMock()),
+            expected_signature='Test EHR',
+            expected_sign_date=date(2020, 2, 3)
+        )
+
+        missing_signature_and_date = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(),
+            CePdfPage()
+        ])
+        missing_expected_data = EhrConsentTestData(
+            file=files.CeEhrConsentFile(pdf=missing_signature_and_date, blob=mock.MagicMock()),
+            expected_signature=None,
+            expected_sign_date=None
+        )
+
+        return [basic_expected_data, missing_expected_data]
 
     def _get_vibrent_gror_test_data(self) -> List['GrorConsentTestData']:
         # The GROR signature is expected to be on the 10th page
@@ -375,6 +488,37 @@ class ConsentFileParsingTest(BaseTestCase):
         )
 
         return [basic_gror_case, no_confirmation_case, spanish_gror_case]
+
+    def _get_ce_gror_test_data(self):
+        basic_pdf = self._build_ce_pdf(pages=[
+            CePdfPage(
+                [
+                    CePdfText(string='Test GROR', starting_at=Rect.from_edges(52, 60, 789, 798)),
+                    CePdfText(string="Participant's Name (printed)", starting_at=Rect.from_edges(52, 60, 779, 788)),
+                    CePdfText(string='Apr 1, 2018', starting_at=Rect.from_edges(392, 400, 789, 798)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 779, 788))
+                ]
+            )
+        ])
+        basic_expected_data = GrorConsentTestData(
+            file=files.CeGrorConsentFile(pdf=basic_pdf, blob=mock.MagicMock()),
+            expected_signature='Test GROR',
+            expected_sign_date=date(2018, 4, 1),
+            has_yes_selected=True
+        )
+
+        missing_signature_and_date = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
+            CePdfPage()
+        ])
+        missing_expected_data = GrorConsentTestData(
+            file=files.CeGrorConsentFile(pdf=missing_signature_and_date, blob=mock.MagicMock()),
+            expected_signature=None,
+            expected_sign_date=None,
+            has_yes_selected=True
+        )
+
+        return [basic_expected_data, missing_expected_data]
 
     def _get_vibrent_primary_update_test_data(self) -> List['PrimaryUpdateConsentTestData']:
         basic_update_pdf = self._build_pdf(pages=[
@@ -465,11 +609,12 @@ class ConsentFileParsingTest(BaseTestCase):
         """
         page_mocks = []
         for page_elements in pages:
-            page_mock = mock.MagicMock()
+            page_mock = mock.MagicMock(spec=LTPage)
             page_mock.__iter__.return_value = page_elements
+            page_mock.testcontents = page_elements
             page_mocks.append(page_mock)
 
-        return files.Pdf(pages=page_mocks)
+        return files.Pdf(pages=page_mocks, blob=mock.MagicMock())
 
     def _build_pdf_element(self, cls, text: str = None, children: list = None, bbox=None):
         """Create a generic pdf element to add to the page"""
@@ -528,6 +673,32 @@ class ConsentFileParsingTest(BaseTestCase):
         element_mock.height = y1-y0
         element_mock.bbox = bbox
 
+    def _build_ce_pdf(self, pages: Collection['CePdfPage']):
+        return self._build_pdf([[self._build_ce_page_figure(page)] for page in pages])
+
+    def _build_ce_page_figure(self, page: 'CePdfPage'):
+        figure_mock = mock.MagicMock(spec=LTFigure)
+        ce_text_chars = []
+        for text in page.texts:
+            ce_text_chars.extend(self._ce_chars_from_text(text))
+        figure_mock.__iter__.return_value = ce_text_chars
+        figure_mock.testfigcontents = ce_text_chars
+        return figure_mock
+
+    def _ce_chars_from_text(self, text: 'CePdfText'):
+        current_rect = text.starting_at
+        chars = []
+        for char in text.string:
+            chars.append(
+                self._build_pdf_element(
+                    cls=LTChar,
+                    text=char,
+                    bbox=(current_rect.left, current_rect.bottom, current_rect.right, current_rect.top)
+                )
+            )
+            current_rect.left += 4
+        return chars
+
 
 @dataclass
 class ConsentTestData:
@@ -559,3 +730,14 @@ class PrimaryUpdateConsentTestData(ConsentTestData):
     file: files.PrimaryConsentUpdateFile
     has_yes_selected: bool = False
     expected_to_be_va_file: bool = False
+
+
+@dataclass
+class CePdfPage:
+    texts: Collection['CePdfText'] = field(default_factory=list)
+
+
+@dataclass
+class CePdfText:
+    starting_at: Rect
+    string: str
