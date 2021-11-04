@@ -413,7 +413,7 @@ class GenomicFileIngester:
         :param rows:
         :return: result code
         """
-        _state = GenomicWorkflowState.AW0
+        _states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
         _site = self._get_site_from_aw1()
         for row in rows:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
@@ -471,13 +471,14 @@ class GenomicFileIngester:
                 member = self.member_dao.get_member_from_biobank_id_in_state(
                     bid,
                     row_copy['genometype'],
-                    _state
+                    _states
                 )
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
                     if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                        with self.member_dao.session() as session:
-                            self._record_sample_as_contaminated(session, member.collectionTubeId)
+                        if member.collectionTubeId:
+                            with self.member_dao.session() as session:
+                                self._record_sample_as_contaminated(session, member.collectionTubeId)
 
                         member.collectionTubeId = row_copy['collectiontubeid']
                 else:
@@ -976,12 +977,12 @@ class GenomicFileIngester:
 
         # Only update the state if it was AW0 or AW1 (if in failure manifest workflow)
         # We do not want to regress a state for reingested data
-        state_to_update = GenomicWorkflowState.AW0
+        states_to_update = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
 
         if self.controller.job_id == GenomicJob.AW1F_MANIFEST:
-            state_to_update = GenomicWorkflowState.AW1
+            states_to_update = [GenomicWorkflowState.AW1]
 
-        if member.genomicWorkflowState == state_to_update:
+        if member.genomicWorkflowState in states_to_update:
             _signal = "aw1-reconciled"
 
             # Set the signal for a failed sample
@@ -1062,6 +1063,11 @@ class GenomicFileIngester:
                 else:
                     metric_id = None
 
+                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
+                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
+                        # Insert a new member
+                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
                 # Update GC Metrics for PDR
@@ -1094,6 +1100,36 @@ class GenomicFileIngester:
                                                 )
 
         return GenomicSubProcessResult.SUCCESS
+
+    def insert_member_for_replating(self, member, category):
+        """
+        Inserts a new member record for replating.
+        :param member: GenomicSetMember
+        :param category: GenomicContaminationCategory
+        :return:
+        """
+        new_member_wgs = GenomicSetMember(
+            biobankId=member.biobankId,
+            genomicSetId=member.genomicSetId,
+            participantId=member.participantId,
+            nyFlag=member.nyFlag,
+            sexAtBirth=member.sexAtBirth,
+            validationStatus=member.validationStatus,
+            validationFlags=member.validationFlags,
+            ai_an=member.ai_an,
+            genomeType=GENOME_TYPE_WGS,
+            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            replatedMemberId=member.id,
+        )
+
+        if category == GenomicContaminationCategory.EXTRACT_BOTH:
+            new_member_array = deepcopy(new_member_wgs)
+            new_member_array.genomeType = GENOME_TYPE_ARRAY
+            self.member_dao.insert(new_member_array)
+
+        self.member_dao.insert(new_member_wgs)
 
     def _ingest_cvl_w2_manifest(self, rows):
         """

@@ -380,19 +380,19 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, state):
+    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param genome_type:
-        :param state: genomic_workflow_state
+        :param states: list of genomic_workflow_states
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState == state
+                GenomicSetMember.genomicWorkflowState.in_(states)
             ).one_or_none()
         return member
 
@@ -422,6 +422,17 @@ class GenomicSetMemberDao(UpdatableDao):
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
             ).all()
+
+    def get_members_with_non_null_sample_ids(self):
+        """
+        For use by unit tests only
+        :return: query results
+        """
+        if GAE_PROJECT == "localhost":
+            with self.session() as session:
+                return session.query(GenomicSetMember).filter(
+                    GenomicSetMember.sampleId.isnot(None)
+                ).all()
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """

@@ -21,6 +21,7 @@ from rdr_service.concepts import Concept
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import CodeType
 from rdr_service.model.consent_file import ConsentType
@@ -227,13 +228,14 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
     def setUp(self):
         super().setUp()
+        self.faker = faker.Faker()
         self.hpo_dao = HPODao()
+        self.ps_dao = ParticipantSummaryDao()
+        self.site_dao = SiteDao()
         # Needed by test_switch_to_test_account
         self.hpo_dao.insert(
             HPO(hpoId=TEST_HPO_ID, name=TEST_HPO_NAME, displayName="Test", organizationType=OrganizationType.UNSET)
         )
-        self.ps_dao = ParticipantSummaryDao()
-        self.faker = faker.Faker()
 
         # Patching to prevent consent validation checks from running
         build_validator_patch = mock.patch(
@@ -251,6 +253,11 @@ class ParticipantSummaryApiTest(BaseTestCase):
     def overwrite_test_user_roles(self, roles):
         new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
         new_user_info['example@example.com']['roles'] = roles
+        self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
+
+    def overwrite_test_user_site(self, site):
+        new_user_info = deepcopy(config.getSettingJson(config.USER_INFO))
+        new_user_info['example@example.com']['site'] = site
         self.temporarily_override_config_setting(config.USER_INFO, new_user_info)
 
     def create_demographics_questionnaire(self):
@@ -3690,3 +3697,132 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         self.assertEqual(bad_message, response.json['message'])
         self.assertEqual(response.status_code, 400)
+
+    def test_site_in_roles_gives_correct_response(self):
+        google_group = 'hpo-site-monroeville'
+        monroe = self.site_dao.get_by_google_group(google_group)
+
+        num_summary, first_name, second_pid = 10, "Testy", None
+
+        for num in range(num_summary):
+            ps = self.data_generator \
+                .create_database_participant_summary(
+                    firstName=first_name,
+                    lastName="Tester",
+                    siteId=monroe.siteId if num % 2 == 0 else 3
+                )
+
+            if num == 2:
+                second_pid = ps.participantId
+
+        response = self.send_get(f"Participant/P{second_pid}/Summary")
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response['site'], google_group)
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        responses = response['entry']
+
+        self.assertEqual(len(responses), num_summary)
+        self.assertFalse(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+
+        self.overwrite_test_user_site(google_group)
+
+        response = self.send_get(f"Participant/P{second_pid}/Summary")
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response['site'], google_group)
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        responses = response['entry']
+
+        self.assertEqual(len(responses), num_summary // 2)
+        self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+        self.assertFalse(any(obj['resource']['site'] != monroe.googleGroup for obj in responses))
+
+    def test_list_to_first_site_in_roles(self):
+        google_group = 'hpo-site-monroeville'
+        monroe = self.site_dao.get_by_google_group(google_group)
+
+        num_summary, first_name = 10, "Testy"
+
+        for _ in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=first_name,
+                    lastName="Tester",
+                    siteId=monroe.siteId
+                )
+
+        self.overwrite_test_user_site([google_group])
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}")
+        responses = response['entry']
+        self.assertEqual(len(responses), num_summary)
+
+    def test_bad_site_in_roles_throws_exception(self):
+        google_group, num_summary, first_name = 'fake-hpo-site', 10, "Testy"
+
+        for _ in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=first_name,
+                    lastName="Tester",
+                    siteId=1
+                )
+
+        self.overwrite_test_user_site(google_group)
+
+        bad_message = f"No site found with google group {google_group}, that is attached to request user"
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}",
+                                 expected_status=http.client.BAD_REQUEST)
+
+        self.assertEqual(bad_message, response.json['message'])
+        self.assertEqual(response.status_code, 400)
+
+    def test_single_participant_with_conflicting_sites_throws_exception(self):
+        google_group = 'hpo-site-monroeville'
+
+        ps = self.data_generator \
+            .create_database_participant_summary(
+                firstName="Testy",
+                lastName="Tester",
+                siteId=3
+        )
+
+        self.overwrite_test_user_site(google_group)
+
+        bad_message = f"Site attached to the request user, {google_group} is forbidden from accessing this participant"
+
+        response = self.send_get(f"Participant/P{ps.participantId}/Summary",
+                                 expected_status=403)
+
+        self.assertEqual(bad_message, response.json['message'])
+        self.assertEqual(response.status_code, 403)
+
+    def test_user_site_override_site_in_args(self):
+        google_group_one = 'hpo-site-monroeville'
+        google_group_two = 'hpo-site-bannerphoenix'
+        num_summary, first_name = 10, "Testy"
+
+        monroe = self.site_dao.get_by_google_group(google_group_one)
+        phoenix = self.site_dao.get_by_google_group(google_group_two)
+
+        self.overwrite_test_user_site(google_group_one)
+
+        for num in range(num_summary):
+            self.data_generator \
+                .create_database_participant_summary(
+                    firstName=first_name,
+                    lastName="Tester",
+                    siteId=monroe.siteId if num % 2 == 0 else phoenix.siteId
+                )
+
+        response = self.send_get(f"ParticipantSummary?firstName={first_name}&site={google_group_two}")
+        responses = response['entry']
+
+        self.assertEqual(len(responses), num_summary // 2)
+        self.assertTrue(all(obj['resource']['site'] == monroe.googleGroup for obj in responses))
+        self.assertFalse(any(obj['resource']['site'] == phoenix.googleGroup for obj in responses))
+
