@@ -393,6 +393,34 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             expected_sign_date=date(year=2018, month=1, day=1),
             file_exists=1,
             is_signature_valid=0,
+            is_signing_date_valid=0
+        )
+        self.assertIsNotNone(consent_file_rec.id)
+        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
+        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+
+        # Confirm this record's ignore flag was set due to filtering the signature_missing error
+        self.assertEqual(resource_data['ignore'], True)
+
+    def test_consent_metrics_generator_invalid_signing_date_error_filtered(self):
+        """
+        Ignore known potential false positives for valid signature but missing signing dates
+        for consents authored before 2018-07-13
+        """
+        # Create participant summary data with a primary consent authored date before the false positive cutoff
+        participant = self._create_participant_with_custom_primary_consent_authored(
+            datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+        )
+        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        consent_file_rec = self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
