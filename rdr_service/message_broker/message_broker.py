@@ -45,7 +45,8 @@ class BaseMessageBroker:
                 self.dest_auth_dao.update(auth_info)
                 return r_json['access_token']
             else:
-                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}')
+                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}, '
+                                 f'response error: {str(response.status_code)}')
 
     def _get_message_dest_url(self):
         dest_url = self.message_metadata_dao.get_dest_url(self.message.eventType, self.message.messageDest)
