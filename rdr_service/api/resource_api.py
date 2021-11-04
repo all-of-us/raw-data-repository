@@ -239,6 +239,8 @@ class ResourceRequestApi(Resource):
         resource.batch_ids = resource.batch_ids[:1000]  # Restrict maximum number of resource ids in batch to 1,000.
         with self.dao.session() as session:
 
+            # Get the resource type id from ResourceType table.  resourceURI is a UNIQUE field, only one match possible
+            type_id = session.query(ResourceType.id).filter(ResourceType.resourceURI == resource.resource_uri).first()
             # Determine if we are going to use ResourceData.pk_id or Resource.pk_alt_id for lookups.
             # See if we can convert a resource id to an integer.
             if isinstance(resource.batch_ids[0], str):
@@ -251,11 +253,16 @@ class ResourceRequestApi(Resource):
                 if pk_id_lookup:
                     resource.batch_ids = [int(re.sub('\D', '', x)) for x in resource.batch_ids]
 
-            query = session.query(ResourceData.id, ResourceData.created, ResourceData.modified, ResourceData.resource)
+            query = session.query(ResourceData.id,
+                                  ResourceData.created,
+                                  ResourceData.modified,
+                                  ResourceData.resource
+                                  ).filter(ResourceData.resourceTypeID == type_id)
             if pk_id_lookup:
                 query = query.filter(ResourceData.resourcePKID.in_(resource.batch_ids))
             else:
                 query = query.filter(ResourceData.resourcePKAltID.in_(resource.batch_ids))
+
             # sql = self.dao.query_to_text(query)
             if '_count' in resource.uri_args:
                 return {"count": query.count()}
