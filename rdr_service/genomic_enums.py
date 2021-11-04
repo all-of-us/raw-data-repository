@@ -163,6 +163,9 @@ class GenomicWorkflowState(messages.Enum):
     LR_REJECTED = 36
     LR_ACCEPTED = 37
 
+    # Replating
+    EXTRACT_REQUESTED = 38
+
 
 class GenomicReportState(messages.Enum):
 
