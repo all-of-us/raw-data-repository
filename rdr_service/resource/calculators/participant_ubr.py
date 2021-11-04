@@ -8,7 +8,7 @@
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse
 
-from rdr_service.resource.helpers import RURAL_ZIPCODES
+from rdr_service.resource.helpers import RURAL_ZIPCODES, RURAL_2020_CUTOFF
 
 
 class ParticipantUBRCalculator:
@@ -102,9 +102,10 @@ class ParticipantUBRCalculator:
         return 1
 
     @staticmethod
-    def ubr_geography(answer):
+    def ubr_geography(consent_date, answer):
         """
         Calculate the geography UBR value.
+        :param consent_date: Date original consent was submitted.
         :param answer: Answer code to StreetAddress_PIIZIP question in "ConsentPII" survey.
         :return: 1 if UBR else 0
         """
@@ -113,7 +114,7 @@ class ParticipantUBRCalculator:
         # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
         if len(answer) > 5:
             answer = answer.strip()[:5]
-        if answer in RURAL_ZIPCODES:
+        if answer in RURAL_ZIPCODES['2014' if consent_date < RURAL_2020_CUTOFF else '2020']:
             return 1
         return 0
 
