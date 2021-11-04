@@ -345,7 +345,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         participant = self._create_participant_with_all_consents_authored(
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
-        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        # Create consent_file record with checkbox error, status NEEDS_CORRECTING
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.EHR,
             sync_status=ConsentSyncStatus.OBSOLETE,
@@ -385,7 +385,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
-        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        # Create consent_file record with signature missing/signing date missing, status NEEDS_CORRECTING
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -399,7 +399,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
-        # Confirm this record's ignore flag was set due to filtering the signature_missing error
+        # Confirm this record's ignore flag was set due to filtering the false positive case for missing signature
         self.assertEqual(resource_data['ignore'], True)
 
     def test_consent_metrics_generator_invalid_signing_date_error_filtered(self):
@@ -412,7 +412,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
-        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        # Create consent_file record with the missing signing date condition
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -426,20 +426,19 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
 
-        # Confirm this record's ignore flag was set due to filtering the signature_missing error
+        # Confirm this record's ignore flag was set due to filtering the invalid_signing_date error
         self.assertEqual(resource_data['ignore'], True)
 
     def test_consent_metrics_generator_special_sync_status_filtered(self):
         """
         Ignore consent records whose current sync_status is a special case status such as UNKNOWN or DELAYING_SYNC
         """
-        # Create participant summary data with a primar consent authored date before the false positive cutoff
         participant = self._create_participant_with_all_consents_authored(
             consentForStudyEnrollmentAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d'))
         )
-        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        # Create consent_file record with a "non-standard" sync_status
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.DELAYING_SYNC,
@@ -487,6 +486,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
     def test_consent_metrics_generator_test_participant(self):
         """ Confirm test_participant flag is set by generator if participant is paired to TEST hpo """
+        # Create a test participant and a consent_file record for them
         test_hpo = self.data_generator.create_database_hpo(hpoId=2000, name='TEST')
         participant = self._create_participant_with_all_consents_authored(
             consentForStudyEnrollmentFirstYesAuthored=datetime.strptime('2018-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
@@ -494,7 +494,6 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
             hpoId=test_hpo.hpoId
         )
-        # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
@@ -507,6 +506,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.assertIsNotNone(consent_file_rec.id)
         res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
         resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        # Confirm the consent_metric PDR data generator flagged the test participant
         self.assertTrue(resource_data.get('test_participant'))
 
 
