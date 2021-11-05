@@ -1,3 +1,4 @@
-biobank_id,sample_id,biobankidsampleid,sex_at_birth,site_id,red_idat,red_idat_md5,green_idat,green_idat_md5,vcf,vcf_index,vcf_md5
-T3,1003,,,,D,D,D,D,D,D,D
-T4,1004,,,,D,ND,D,D,ND,D,D
+biobank_id,sample_id,biobankidsampleid,sex_at_birth,site_id,red_idat,red_idat_md5,red_idat_basename,red_idat_md5_hash,green_idat,green_idat_md5,green_idat_basename,green_idat_md5_hash,vcf,vcf_index,vcf_md5,vcf_basename,vcf_md5_hash
+
+T3,1003,,,,D,D,D,D,D,D,D,D,D,D,D
+T4,1004,,,,D,ND,D,D,D,D,D,D,ND,D,D
