@@ -837,7 +837,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 sampleId="21042005280",
                 genomeType="aou_wgs" if num & 2 == 0 else "aou_array",
                 participantId=participant.participantId,
-                ai_an='N',
+                ai_an='N' if num & 2 == 0 else 'Y',
                 aw3ManifestJobRunID=gen_job_run.id,
                 genomicWorkflowStateModifiedTime=workflow_date
             )
