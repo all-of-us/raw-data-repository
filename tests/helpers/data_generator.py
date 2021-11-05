@@ -65,7 +65,7 @@ class DataGenerator:
         self._next_unique_biobank_stored_sample_id = 800000000
         self._next_unique_questionnaire_response_id = 500000000
 
-        # Create some commonly used test data, setting high-value code ids to avoid conflicting with pre-existing tests
+        # Set placeholders for withdrawal survey questionnaires
         self.withdrawal_questionnaire = None
         self.ceremony_question_code = None
         self.ceremony_yes_answer_code = None
