@@ -1,10 +1,11 @@
 from datetime import datetime
-from rdr_service.code_constants import PPI_SYSTEM
+from rdr_service.code_constants import PPI_SYSTEM, RACE_AIAN_CODE, RACE_QUESTION_CODE, WITHDRAWAL_CEREMONY_NO,\
+    WITHDRAWAL_CEREMONY_QUESTION_CODE, WITHDRAWAL_CEREMONY_YES
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.biobank_order import BiobankMailKitOrder, BiobankOrder, BiobankOrderHistory,\
     BiobankOrderedSample, BiobankOrderedSampleHistory, BiobankOrderIdentifier, BiobankSpecimen, BiobankSpecimenAttribute
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
-from rdr_service.model.code import Code
+from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
@@ -47,7 +48,8 @@ from rdr_service.participant_enums import (
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
-    WithdrawalStatus,
+    WithdrawalAIANCeremonyStatus,
+    WithdrawalStatus
 )
 
 
@@ -62,6 +64,15 @@ class DataGenerator:
         self._next_unique_biobank_order_id = 100000000
         self._next_unique_biobank_stored_sample_id = 800000000
         self._next_unique_questionnaire_response_id = 500000000
+
+        # Create some commonly used test data, setting high-value code ids to avoid conflicting with pre-existing tests
+        self.withdrawal_questionnaire = None
+        self.ceremony_question_code = None
+        self.ceremony_yes_answer_code = None
+        self.ceremony_no_answer_code = None
+
+        self.race_question_code = None
+        self.native_answer_code = None
 
     def _commit_to_database(self, model):
         self.session.add(model)
@@ -732,4 +743,87 @@ class DataGenerator:
         consent = self._hpro_consent_file(**kwargs)
         self._commit_to_database(consent)
         return consent
+
+    def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
+                                     requests_ceremony=None, withdrawal_time=datetime.utcnow()):
+        participant = self.create_database_participant(
+            withdrawalTime=withdrawal_time,
+            withdrawalStatus=WithdrawalStatus.NO_USE,
+            withdrawalReasonJustification=withdrawal_reason_justification
+        )
+
+        # Withdrawal report only includes participants that have stored samples
+        self.create_database_biobank_stored_sample(biobankId=participant.biobankId, test='test')
+
+        # Create a questionnaire response that satisfies the parameters for the test participant
+        questionnaire = self.get_withdrawal_questionnaire()
+        answers = []
+        for question in questionnaire.questions:
+            answer_code_id = None
+            if question.codeId == self.race_question_code.codeId and is_native_american:
+                answer_code_id = self.native_answer_code.codeId
+            elif question.codeId == self.ceremony_question_code.codeId and requests_ceremony:
+                if requests_ceremony == WithdrawalAIANCeremonyStatus.REQUESTED:
+                    answer_code_id = self.ceremony_yes_answer_code.codeId
+                elif requests_ceremony == WithdrawalAIANCeremonyStatus.DECLINED:
+                    answer_code_id = self.ceremony_no_answer_code.codeId
+
+            if answer_code_id:
+                answers.append(QuestionnaireResponseAnswer(
+                    questionId=question.questionnaireQuestionId,
+                    valueCodeId=answer_code_id
+                ))
+        self.create_database_questionnaire_response(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            answers=answers,
+            participantId=participant.participantId
+        )
+
+        return participant
+
+    def get_withdrawal_questionnaire(self):
+        if self.withdrawal_questionnaire is None:
+            self.initialize_common_codes()
+
+            race_question = self.create_database_questionnaire_question(
+                codeId=self.race_question_code.codeId
+            )
+            ceremony_question = self.create_database_questionnaire_question(
+                codeId=self.ceremony_question_code.codeId
+            )
+
+            self.withdrawal_questionnaire = self.create_database_questionnaire_history(
+                # As of writing this, the pipeline only checks for the answers, regardless of questionnaire
+                # so putting them in the same questionnaire for convenience of the test code
+                questions=[race_question, ceremony_question]
+            )
+
+        return self.withdrawal_questionnaire
+
+    def initialize_common_codes(self):
+        if self.race_question_code is None:
+            self.ceremony_question_code = self.create_database_code(
+                value=WITHDRAWAL_CEREMONY_QUESTION_CODE,
+                codeType=CodeType.QUESTION,
+            )
+            self.ceremony_yes_answer_code = self.create_database_code(
+                value=WITHDRAWAL_CEREMONY_YES,
+                codeType=CodeType.QUESTION,
+            )
+            self.ceremony_no_answer_code = self.create_database_code(
+                value=WITHDRAWAL_CEREMONY_NO,
+                codeType=CodeType.QUESTION,
+            )
+
+            self.race_question_code = self.create_database_code(
+                value=RACE_QUESTION_CODE,
+                codeType=CodeType.QUESTION,
+                mapped=True
+            )
+            self.native_answer_code = self.create_database_code(
+                value=RACE_AIAN_CODE,
+                codeType=CodeType.ANSWER,
+                mapped=True
+            )
 
