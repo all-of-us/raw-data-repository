@@ -19,7 +19,10 @@
     "questionnaireOnCopeDec",
     "questionnaireOnCopeFeb",
     "questionnaireOnCopeVaccineMinute1",
-    "questionnaireOnCopeVaccineMinute2"
+    "questionnaireOnCopeVaccineMinute2",
+    "questionnaireOnCopeVaccineMinute3",
+    "questionnaireOnSocialDeterminantsOfHealth",
+    "questionnaireOnPersonalAndFamilyHealthHistory"
   ],
   "baseline_sample_test_codes": [
   	"1ED04",
@@ -75,7 +78,6 @@
     "a3_manifest_workflow": 1,
     "aw0_manifest_workflow": 1,
     "aw1_manifest_workflow": 1,
-    "aw1f_manifest_workflow": 1,
     "aw1c_manifest_workflow": 0,
     "aw1cf_manifest_workflow": 0,
     "aw2f_manifest_workflow": 1,

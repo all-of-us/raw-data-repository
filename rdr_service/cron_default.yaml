@@ -72,17 +72,12 @@ cron:
 - description: Transfer Health Pro consents
   url: /offline/TransferHealthProConsents
   timezone: America/New_York
-  schedule: every day 22:00
+  schedule: every day 10:00
   target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
   schedule: every day 06:30
-  target: offline
-- description: Genomic AW1 Failures Workflow
-  url: /offline/GenomicFailuresWorkflow
-  timezone: America/New_York
-  schedule: every day 06:00
   target: offline
 - description: Genomic AW1C (CVL) Workflow (Manual)
   url: /offline/GenomicAW1CManifestWorkflow

@@ -56,7 +56,7 @@ from rdr_service.dao.genomics_dao import (
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
-from rdr_service.services.email import Email, EmailService
+from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
 
@@ -280,6 +280,7 @@ class GenomicJobController:
                                                 _controller=self)
 
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
+
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -536,10 +537,10 @@ class GenomicJobController:
             num_days=num_days
         )
 
-    def resolve_missing_gc_files(self):
+    def resolve_missing_gc_files(self, limit=800):
         logging.info('Resolving missing gc data files')
 
-        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit=200)
+        files_to_resolve = self.missing_files_dao.get_files_to_resolve(limit)
         if files_to_resolve:
 
             resolve_arrays = [obj for obj in files_to_resolve if obj.identifier_type == 'chipwellbarcode']
@@ -923,27 +924,6 @@ class GenomicJobController:
                                                 _controller=self)
 
             self.job_result = self.ingester.generate_file_queue_and_do_ingestion()
-        except RuntimeError:
-            self.job_result = GenomicSubProcessResult.ERROR
-
-    def run_aw1f_manifest_workflow(self):
-        """
-        Ingests the BB to GC failure manifest (AW1F)
-        from post-accessioning subfolder.
-        """
-        try:
-            for gc_bucket_name in self.bucket_name_list:
-                for folder in self.sub_folder_tuple:
-                    self.sub_folder_name = config.getSetting(folder)
-                    self.ingester = GenomicFileIngester(job_id=self.job_id,
-                                                        job_run_id=self.job_run.id,
-                                                        bucket=gc_bucket_name,
-                                                        sub_folder=self.sub_folder_name,
-                                                        _controller=self)
-                    self.subprocess_results.add(
-                        self.ingester.generate_file_queue_and_do_ingestion()
-                    )
-            self.job_result = self._aggregate_run_results()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

@@ -5,7 +5,6 @@
 from datetime import datetime
 from enum import IntEnum
 
-
 class SchemaID(IntEnum):
     """
     Unique identifiers for each resource schema.  Schema id values should be grouped by schema types.
@@ -60,6 +59,9 @@ class SchemaID(IntEnum):
 
     # Metrics
     retention_metrics = 2120
+
+    # Consent Validation Metrics
+    consent_metrics = 6000
 
 
 # Used to calculate participant enrollment cohort.

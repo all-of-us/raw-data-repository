@@ -110,6 +110,9 @@ class GenomicJob(messages.Enum):
     WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
     DAILY_SUMMARY_REPORT_INCIDENTS = 105
 
+    # Gem to GP Migration Job
+    GEM_GP_MIGRATION_EXPORT = 1001
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
@@ -159,6 +162,9 @@ class GenomicWorkflowState(messages.Enum):
     LR_PENDING = 35
     LR_REJECTED = 36
     LR_ACCEPTED = 37
+
+    # Replating
+    EXTRACT_REQUESTED = 38
 
 
 class GenomicReportState(messages.Enum):
@@ -243,6 +249,7 @@ class GenomicIncidentCode(messages.Enum):
     FILE_VALIDATION_FAILED_STRUCTURE = 6
     UNABLE_TO_FIND_METRIC = 7
     MANIFEST_GENERATE_DATA_VALIDATION_FAILED = 8
+    FILE_VALIDATION_FAILED_VALUES = 9
 
 
 class GenomicIncidentStatus(messages.Enum):

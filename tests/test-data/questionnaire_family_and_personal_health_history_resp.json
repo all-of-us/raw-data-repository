@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "id": "107251069",
+  "authored": "2018-07-23T21:21:12Z",
+  "subject": {
+    "reference": "Patient/{participant_id}"
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ST-language",
+      "valueCode": "en"
+    }
+  ],
+  "resourceType": "QuestionnaireResponse",
+  "questionnaire": {
+    "reference": "Questionnaire/{questionnaire_id}"
+  },
+  "group": {
+    "linkId": "root_group",
+    "title": "Personal and Family Health History",
+    "question": [
+      {
+        "answer": [
+          {
+            "valueCoding": {
+              "code": "BladderCancerCurrently_Yes",
+              "system": "http://terminology.pmi-ops.org/CodeSystem/ppi",
+              "display": "Yes"
+            }
+          }
+        ],
+        "linkId": "6252",
+        "text": "Are you still seeing a doctor or health care provider for bladder cancer?"
+      }
+    ],
+    "text": "Personal and Family Health History"
+  }
+}

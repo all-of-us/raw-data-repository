@@ -11,7 +11,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.address import Address
 from sqlalchemy import or_, cast, Date, and_
 from sqlalchemy.orm import subqueryload, joinedload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed, ServiceUnavailable
-from rdr_service.api.mayolink_api import MayoLinkApi
+from rdr_service.api.mayolink_api import MayoLinkApi, MayoLinkOrder, MayolinkQuestion, MayoLinkTest
 from rdr_service import clock
 from rdr_service.api_util import get_site_id_by_site_value as get_site, format_json_code
 from rdr_service.app_util import get_account_origin_id
@@ -598,47 +598,39 @@ class BiobankOrderDao(UpdatableDao):
             if item.system == KIT_ID_SYSTEM:
                 kit_id = item.value
 
-        order = {
-            "order": {
-                "collected": str(collected_time),
-                "account": "",
-                "number": kit_id,
-                "patient": {
-                    "medical_record_number": str(to_client_biobank_id(summary.biobankId)),
-                    "first_name": "*",
-                    "last_name": str(to_client_biobank_id(summary.biobankId)),
-                    "middle_name": "",
-                    "birth_date": "3/3/1933",
-                    "gender": gender_val,
-                    "address1": summary.streetAddress,
-                    "address2": summary.streetAddress2,
-                    "city": summary.city,
-                    "state": code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
-                    "postal_code": str(summary.zipCode),
-                    "phone": str(summary.phoneNumber),
-                    "account_number": None,
-                    "race": str(summary.race),
-                    "ethnic_group": None,
-                },
-                "physician": {"name": "None", "phone": None, "npi": None},
-                "report_notes": "",
-                "tests": [],
-                "comments": "",
-            }
-        }
+        order = MayoLinkOrder(
+            collected=str(collected_time),
+            number=kit_id,
+            medical_record_number=str(to_client_biobank_id(summary.biobankId)),
+            last_name=str(to_client_biobank_id(summary.biobankId)),
+            sex=gender_val,
+            address1=summary.streetAddress,
+            address2=summary.streetAddress2,
+            city=summary.city,
+            state=code_dict["state"][-2:] if code_dict["state"] not in (UNMAPPED, UNSET) else '',
+            postal_code=str(summary.zipCode),
+            phone=str(summary.phoneNumber),
+            race=str(summary.race),
+            tests=[]
+        )
+
         test_codes = []
-        centrifuge_codes = {'1SS08': '1SSTP', '1PS08': '1PSTP'}
+        centrifuge_code_map = {
+            '1SS08': '1SSTP',
+            '1PS08': '1PSTP'
+        }
         for sample in resource.samples:
-            sample_dict = {"test": {"code": sample.test, "name": sample.description, "comments": None}}
-            if sample.test in centrifuge_codes:
-                sample_dict['test']['questions'] = {
-                    "question": {
-                        "code": centrifuge_codes[sample.test],
-                        "prompt": f"{centrifuge_codes[sample.test][1:4]} Centrifuge Type",
-                        "answer": "Swinging Bucket"
-                    }
-                }
-            order['order']['tests'].append(sample_dict)
+            test = MayoLinkTest(
+                code=sample.test,
+                name=sample.description
+            )
+            if sample.test in centrifuge_code_map:
+                test.questions = [MayolinkQuestion(
+                    code=centrifuge_code_map[sample.test],
+                    prompt=f'{centrifuge_code_map[sample.test][1:4]} Centrifuge Type',
+                    answer='Swinging Bucket'
+                )]
+            order.tests.append(test)
             test_codes.append(sample.test)
         response = mayo.post(order)
         try:

@@ -37,6 +37,9 @@ class GenomicQueryClass:
                     distinct(GenomicGCValidationMetrics.chipwellbarcode),
                     sqlalchemy.func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                     GenomicSetMember.sampleId,
+                    sqlalchemy.func.concat(get_biobank_id_prefix(),
+                                           GenomicSetMember.biobankId, '_',
+                                           GenomicSetMember.sampleId),
                     GenomicSetMember.sexAtBirth,
                     GenomicSetMember.gcSiteId,
                     GenomicGCValidationMetrics.idatRedPath,
@@ -51,6 +54,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.contamination,
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
+                    GenomicSetMember.gcManifestSampleSource,
+                    GenomicGCValidationMetrics.pipelineId
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -91,9 +96,6 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.hfVcfPath,
                     GenomicGCValidationMetrics.hfVcfTbiPath,
                     GenomicGCValidationMetrics.hfVcfMd5Path,
-                    GenomicGCValidationMetrics.rawVcfPath,
-                    GenomicGCValidationMetrics.rawVcfTbiPath,
-                    GenomicGCValidationMetrics.rawVcfMd5Path,
                     GenomicGCValidationMetrics.cramPath,
                     GenomicGCValidationMetrics.cramMd5Path,
                     GenomicGCValidationMetrics.craiPath,
@@ -105,6 +107,9 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.meanCoverage,
                     Participant.researchId,
                     GenomicSetMember.sampleId,
+                    GenomicSetMember.gcManifestSampleSource,
+                    GenomicGCValidationMetrics.mappedReadsPct,
+                    GenomicGCValidationMetrics.sexPloidy
                 ]
             ).select_from(
                 sqlalchemy.join(

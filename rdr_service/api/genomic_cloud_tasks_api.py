@@ -66,7 +66,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
 
 class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest AW1 Manifest.
+    Cloud Task endpoint: Ingest AW1/AW1F Manifest.
     """
     def post(self):
         super(IngestAW1ManifestTaskApi, self).post()
@@ -78,12 +78,14 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
             job = GenomicJob.AW1_MANIFEST
             manifest_type = GenomicManifestTypes.BIOBANK_GC
             create_fb = True
+            message = 'AW1'
 
             # Write a different manifest type and JOB ID if an AW1F
-            if "FAILURE" in file_path:
+            if "failure" in file_path.lower():
                 job = GenomicJob.AW1F_MANIFEST
                 manifest_type = GenomicManifestTypes.AW1F
                 create_fb = False
+                message = 'AW1F'
 
             # Set up file/JSON
             task_data = {
@@ -97,7 +99,7 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
                 }
             }
 
-            logging.info(f'AW1 task data: {task_data}')
+            logging.info(f'{message} task data: {task_data}')
 
             # Call pipeline function
             genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
@@ -154,9 +156,13 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
             if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in file_path:
                 job_id = GenomicJob.AW4_ARRAY_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_ARRAY
+                subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[0])
+
             elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in file_path:
                 job_id = GenomicJob.AW4_WGS_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_WGS
+                subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[1])
+
             else:
                 logging.warning(f'Can not determine manifest type from file_path: {file_path}.')
                 return {"success": False}
@@ -165,6 +171,7 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
             task_data = {
                 "job": job_id,
                 "bucket": self.data["bucket_name"],
+                "subfolder": subfolder,
                 "file_data": {
                     "create_feedback_record": False,
                     "upload_date": self.data["upload_date"],

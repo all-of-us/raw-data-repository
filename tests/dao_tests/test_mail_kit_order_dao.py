@@ -61,9 +61,9 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            'rdr_service.dao.mail_kit_order_dao.MayoLinkApi',
+            **{'return_value.post.return_value': self.mayolink_response}
         )
-
         self.mock_mayolinkapi = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
 
@@ -101,11 +101,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["order_id"], 999999)
 
         mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
-        mayo_order_payload = mayo_order_payload['order']
-        mayo_payload_fields = ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments']
-
-        self.assertEqual(mayo_order_payload['number'], version_one_barcode)
-        self.assertTrue(all(key in mayo_order_payload.keys() for key in mayo_payload_fields))
+        self.assertEqual(version_one_barcode, mayo_order_payload.number)
 
     def test_insert_biobank_order_version_two_barcode(self):
         version_two_barcode = 'SABR9016012221IN'
@@ -134,18 +130,12 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         self.assertEqual(put_response["barcode"], version_two_barcode)
 
         mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
-        mayo_order_payload = mayo_order_payload['order']
-
-        mayo_request_test_data = mayo_order_payload['tests'][0]['test']
-        self.assertEqual(mayo_request_test_data['client_passthrough_fields']['field1'], version_two_barcode)
-        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field2'])
-        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field3'])
-        self.assertIsNone(mayo_request_test_data['client_passthrough_fields']['field4'])
-        self.assertEqual(
-            ['collected', 'account', 'number', 'patient', 'physician', 'report_notes', 'tests', 'comments'],
-            list(mayo_order_payload.keys())
-        )
-        self.assertIsNone(mayo_order_payload['patient']['race'])
+        passthrough_fields_sent = mayo_order_payload.tests[0].passthrough_fields
+        self.assertEqual(version_two_barcode, passthrough_fields_sent.field1)
+        self.assertEqual('', passthrough_fields_sent.field2)
+        self.assertEqual('', passthrough_fields_sent.field3)
+        self.assertEqual('', passthrough_fields_sent.field4)
+        self.assertIsNone(mayo_order_payload.race)
 
         # Make sure the correct account is used for version two
         self.mock_mayolinkapi.assert_called_once_with(credentials_key='version_two')
@@ -181,8 +171,8 @@ class MailKitOrderDaoTestBase(BaseTestCase):
 
         self.assertEqual(put_response["barcode"], cleaned_barcode)
 
-        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]['order']['tests'][0]['test']
-        self.assertEqual(mayo_order_payload['client_passthrough_fields']['field1'], cleaned_barcode)
+        mayo_order_payload = self.mock_mayolinkapi.return_value.post.call_args.args[0]
+        self.assertEqual(cleaned_barcode, mayo_order_payload.tests[0].passthrough_fields.field1)
 
     def test_barcode_length_exceeded(self):
         bad_barcode = '1' * 24

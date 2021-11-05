@@ -2,8 +2,8 @@ import datetime
 import json
 import logging
 import re
-from collections import OrderedDict
 
+from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
 from sqlalchemy import func, desc, exc
@@ -43,10 +43,9 @@ from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, 
     DeceasedReportStatus, QuestionnaireResponseStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
     TEST_HPO_NAME, TEST_LOGIN_PHONE_NUMBER_PREFIX, SampleCollectionMethod
 from rdr_service.resource import generators, schemas
-from rdr_service.resource.calculators import EnrollmentStatusCalculator
+from rdr_service.resource.calculators import EnrollmentStatusCalculator, ParticipantUBRCalculator as ubr
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
-from rdr_service.resource.helpers import RURAL_ZIPCODES
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
 
 
@@ -190,7 +189,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             # calculate distinct visits
             summary = self._merge_schema_dicts(summary, self._calculate_distinct_visits(summary))
             # calculate UBR flags
-            summary = self._merge_schema_dicts(summary, self._calculate_ubr(summary))
+            summary = self._merge_schema_dicts(summary, self._calculate_ubr(p_id, summary, ro_session))
             # calculate test participant status (if it was not already set by _prep_participant() )
             if summary['test_participant'] == 0:
                 summary = self._merge_schema_dicts(summary, self._check_for_test_credentials(summary))
@@ -528,6 +527,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # TODO: Update this to a JSONObject instead of BQRecord object.
         qnan = BQRecord(schema=None, data=qnans)  # use only most recent response.
 
+        # TODO: Should DOB be captured only from the first ConsentPII received?
         try:
             # Value can be None, 'PMISkip' or date string.
             dob = parser.parse(qnan.get('PIIBirthInformation_BirthDate')).date()
@@ -594,14 +594,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                    QuestionnaireConcept.questionnaireId).label('codeId')
 
         # Responses are sorted by authored date ascending and then created date descending
-        # This should result in a list where any replays of a response are adjacent (most recently created first)
+        # This should result in a list where any replays of a response are adjacent (most recently created first).
+        # Note: There is at least one instance where there are two responses for the same survey with identical
+        #       'authored' and 'created' timestamps, but they are not a duplicate response, so we also add
+        #       "externalId" to the order_by. 'questionnaireResponseId' is randomly generated and can't be used.
         query = ro_session.query(
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
                 QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
-            order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc())
+            order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
+                     QuestionnaireResponse.externalId.desc())
         # sql = self.ro_dao.query_to_text(query)
         results = query.all()
 
@@ -790,17 +794,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['sex_id'] = self._lookup_code_id(qnan.get('BiologicalSexAtBirth_SexAtBirth'), ro_session)
         data['sexual_orientation'] = qnan.get('TheBasics_SexualOrientation')
         data['sexual_orientation_id'] = self._lookup_code_id(qnan.get('TheBasics_SexualOrientation'), ro_session)
-
-        # Set ubr_disability flag.
-        data['ubr_disability'] = 0
-        if qnans.get('Employment_EmploymentStatus') == 'EmploymentStatus_UnableToWork' or \
-            qnans.get('Disability_Blind') == 'Blind_Yes' or \
-            qnans.get('Disability_WalkingClimbing') == 'WalkingClimbing_Yes' or \
-            qnans.get('Disability_DressingBathing') == 'DressingBathing_Yes' or \
-            qnans.get('Disability_ErrandsAlone') == 'ErrandsAlone_Yes' or \
-            qnans.get('Disability_Deaf') == 'Deaf_Yes' or \
-            qnans.get('Disability_DifficultyConcentrating') == 'DifficultyConcentrating_Yes':
-            data['ubr_disability'] = 1
 
         return data
 
@@ -1437,109 +1430,70 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return True
 
-    def _calculate_ubr(self, summary):
+    def _calculate_ubr(self, p_id, summary, ro_session):
         """
         Calculate the UBR values for this participant
+        :param p_id: participant id.
         :param summary: summary data
+        :param ro_session: Readonly DAO session object
         :return: dict
         """
-        # setup default values, all UBR values must be 0 or 1.
-        data = {
-            'ubr_sex': 0,
-            'ubr_sexual_orientation': 0,
-            'ubr_gender_identity': 0,
-            'ubr_ethnicity': 0,
-            'ubr_geography': 0,
-            'ubr_education': 0,
-            'ubr_income': 0,
-            'ubr_sexual_gender_minority': 0,
-            'ubr_age_at_consent': 0,
-            'ubr_overall': 0,
-        }
-        birth_sex = 'unknown'
+        data = dict()
+
+        # ubr_geography - note: we only need a ConsentPII submission for ubr_geography.
+        addresses = summary.get('addresses', [])
+        consent_date = summary.get('enrl_participant_time', None)
+        if addresses and consent_date:
+            zip_code = None
+            for addr in addresses:
+                if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
+                    zip_code = addr.get('addr_zip', None)
+                    break
+            data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
+
+        # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
+        #       are going to do our own query to get the first TheBasics submission after consent. Due to
+        #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
+        #       'external_id' in the order by clause.
+        sql = """
+            select questionnaire_response_id
+            from questionnaire_response qr 
+                inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                inner join code c on qc.code_id = c.code_id
+            where qr.participant_id = :p_id and c.value = 'TheBasics'
+            order by qr.authored, qr.created, qr.external_id limit 1;
+        """
+        row = ro_session.execute(sql, {"p_id": p_id}).first()
+        if not row:
+            return data
+
+        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=row.questionnaire_response_id)
 
         # ubr_sex
-        if 'sex' in summary and summary['sex']:
-            birth_sex = summary['sex']
-            if birth_sex in ('SexAtBirth_SexAtBirthNoneOfThese', 'SexAtBirth_Intersex'):
-                data['ubr_sex'] = 1
-
+        data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
         # ubr_sexual_orientation
-        if 'sexual_orientation' in summary and summary['sexual_orientation']:
-            if summary['sexual_orientation'] not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
-                data['ubr_sexual_orientation'] = 1
-
+        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(qnan.get('TheBasics_SexualOrientation', None))
         # ubr_gender_identity
-        if 'genders' in summary and summary['genders']:
-            data['ubr_gender_identity'] = 1  # easier to default to 1.
-            if len(summary['genders']) == 1 and (
-                (summary['genders'][0]['gender'] == 'GenderIdentity_Man' and birth_sex == 'SexAtBirth_Male') or
-                (summary['genders'][0]['gender'] == 'GenderIdentity_Woman' and birth_sex == 'SexAtBirth_Female') or
-                summary['genders'][0]['gender'] in ('PMI_Skip', 'PMI_PreferNotToAnswer')):
-                data['ubr_gender_identity'] = 0
-
-        # ubr_ethnicity
-        if 'races' in summary and summary['races']:
-            data['ubr_ethnicity'] = 1  # easier to default to 1.
-            if len(summary['races']) == 1 and \
-                summary['races'][0]['race'] in ('WhatRaceEthnicity_White', 'PMI_Skip', 'PMI_PreferNotToAnswer'):
-                data['ubr_ethnicity'] = 0
-
-        # ubr_geography
-        if 'addresses' in summary and summary['addresses']:
-            for addr in summary['addresses']:
-                if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
-                    zipcode = addr['addr_zip']
-                    # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
-                    if zipcode and len(zipcode) > 5:
-                        zipcode = zipcode[:5]
-                    if zipcode in RURAL_ZIPCODES:
-                        data['ubr_geography'] = 1
-
-        # ubr_education
-        if 'education' in summary and summary['education']:
-            if summary['education'] in (
-                'HighestGrade_NeverAttended', 'HighestGrade_OneThroughFour', 'HighestGrade_NineThroughEleven',
-                'HighestGrade_FiveThroughEight'):
-                data['ubr_education'] = 1
-
-        # ubr_income
-        if 'income' in summary and summary['income']:
-            if summary['income'] in ('AnnualIncome_less10k', 'AnnualIncome_10k25k'):
-                data['ubr_income'] = 1
-
+        data['ubr_gender_identity'] = ubr.ubr_gender_identity(qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
+            qnan.get('Gender_GenderIdentity', None), qnan.get('GenderIdentity_SexualityCloserDescription', None))
         # ubr_sexual_gender_minority
-        if data['ubr_sex'] == 1 or data['ubr_gender_identity'] == 1:
-            data['ubr_sexual_gender_minority'] = 1
-
+        data['ubr_sexual_gender_minority'] = \
+            ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
+        # ubr_ethnicity
+        data['ubr_ethnicity'] = ubr.ubr_ethnicity(qnan.get('Race_WhatRaceEthnicity', None))
+        # ubr_education
+        data['ubr_education'] = ubr.ubr_education(qnan.get('EducationLevel_HighestGrade', None))
+        # ubr_income
+        data['ubr_income'] = ubr.ubr_income(qnan.get('Income_AnnualIncome', None))
         # ubr_disability
-        # Note: This ubr value is set in the self._prep_the_basics() method.
-
+        data['ubr_disability'] = ubr.ubr_disability(qnan)
         # ubr_age_at_consent
-        if 'date_of_birth' in summary and 'consents' in summary and summary['date_of_birth'] and summary['consents']:
-            consent_date = None
-            for consent_type in ['ConsentPII', 'EHRConsentPII_ConsentPermission', 'DVEHRSharing_AreYouInterested']:
-                if consent_date:
-                    break
-                for consent in summary['consents']:
-                    if consent['consent'] == consent_type and \
-                        consent['consent_value'] in ['ConsentPermission_Yes', 'DVEHRSharing_Yes']:
-                        consent_date = consent['consent_date']
-                        break
-
-            if consent_date:
-                age = (consent_date - summary['date_of_birth']).days / 365
-                if not 18.0 <= age <= 65.0:
-                    data['ubr_age_at_consent'] = 1
-
-        # pylint: disable=unused-variable
-        for key, value in data.items():
-            if value == 1:
-                data['ubr_overall'] = 1
-                break
+        data['ubr_age_at_consent'] = \
+            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
+        # ubr_overall
+        data['ubr_overall'] = max([v for v in data.values()])
 
         return data
-
 
 
 def rebuild_participant_summary_resource(p_id, res_gen=None, patch_data=None):

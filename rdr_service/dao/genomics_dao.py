@@ -8,6 +8,7 @@ from dateutil import parser
 from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
 from werkzeug.exceptions import BadRequest, NotFound
@@ -19,6 +20,7 @@ from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -34,13 +36,14 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration)
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
     SuspensionStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
-    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState
+    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -378,19 +381,19 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, state):
+    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param genome_type:
-        :param state: genomic_workflow_state
+        :param states: list of genomic_workflow_states
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState == state
+                GenomicSetMember.genomicWorkflowState.in_(states)
             ).one_or_none()
         return member
 
@@ -420,6 +423,17 @@ class GenomicSetMemberDao(UpdatableDao):
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
             ).all()
+
+    def get_members_with_non_null_sample_ids(self):
+        """
+        For use by unit tests only
+        :return: query results
+        """
+        if GAE_PROJECT == "localhost":
+            with self.session() as session:
+                return session.query(GenomicSetMember).filter(
+                    GenomicSetMember.sampleId.isnot(None)
+                ).all()
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
@@ -596,6 +610,28 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicGCValidationMetrics.craiPath.isnot(None),
                 )
             return members_query.all()
+
+    def get_all_contamination_reextract(self):
+        reextract_states = [GenomicContaminationCategory.EXTRACT_BOTH,
+                            GenomicContaminationCategory.EXTRACT_WGS]
+        with self.session() as session:
+            replated = aliased(GenomicSetMember)
+
+            return session.query(
+                GenomicSetMember,
+                GenomicGCValidationMetrics.contaminationCategory
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).outerjoin(
+                replated,
+                replated.replatedMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+                replated.id.is_(None)
+            ).all()
 
     def update_report_consent_removal_date(self, member, date):
         """
@@ -1153,6 +1189,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'genomeCoverage': 'genomecoverage',
             'aouHdrCoverage': 'aouhdrcoverage',
             'contamination': 'contamination',
+            'mappedReadsPct': 'mappedreadspct',
             'contaminationCategory': 'contamination_category',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
@@ -1161,6 +1198,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'processingStatus': 'processingstatus',
             'notes': 'notes',
             'siteId': 'siteid',
+            'pipelineId': 'pipelineid'
         }
         # The mapping between the columns in the DB and the data to ingest
 
@@ -2046,6 +2084,12 @@ class GenomicAW1RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW1Raw).filter(
+                GenomicAW1Raw.file_path == filepath
+            ).delete()
+
 
 class GenomicAW2RawDao(BaseDao):
     def __init__(self):
@@ -2102,6 +2146,17 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.biobank_id != "",
                 GenomicAW2Raw.sample_id != "",
             ).order_by(GenomicAW2Raw.id).all()
+
+    def delete_from_filepath(self, filepath):
+        with self.session() as session:
+            session.query(GenomicAW2Raw).filter(
+                GenomicAW2Raw.file_path == filepath
+            ).delete()
+
+    def truncate(self):
+        if GAE_PROJECT == 'localhost':
+            with self.session() as session:
+                session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
@@ -2355,9 +2410,9 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
             ).subquery()
 
             results = session.query(
-                GenomicGcDataFile
-            ).join(
                 subquery,
+            ).join(
+                GenomicGcDataFile,
                 and_(GenomicGcDataFile.identifier_type == subquery.c.identifier_type,
                      GenomicGcDataFile.identifier_value == subquery.c.identifier_value,
                      GenomicGcDataFile.file_type == subquery.c.file_type, )
@@ -2368,19 +2423,67 @@ class GenomicGcDataFileMissingDao(UpdatableDao):
 
             return results.all()
 
-    def batch_update_resolved_file(self, records):
+    def batch_update_resolved_file(self, unresolved_files):
         file_dao = GenomicGcDataFileDao()
         method_map = {
             'chipwellbarcode': file_dao.get_with_chipwellbarcode,
             'sample_id': file_dao.get_with_sample_id
         }
-        get_method = method_map[records[0].identifier_type]
+        get_method = method_map[unresolved_files[0].identifier_type]
 
-        for record in records:
-            data_records = get_method(record.identifier_value)
-            has_file_type_record = any([obj.file_type == record.file_type for obj in data_records])
+        for unresolved_file in unresolved_files:
+            existing_data_files = get_method(unresolved_file.identifier_value)
+            has_file_type_record = any([obj.file_type == unresolved_file.file_type for obj in existing_data_files])
             if has_file_type_record:
-                update_record = self.get(record.id)
+                update_record = self.get(unresolved_file.id)
                 update_record.resolved = 1
                 update_record.resolved_date = datetime.utcnow()
                 self.update(update_record)
+
+
+class GemToGpMigrationDao(BaseDao):
+    def __init__(self):
+        super(GemToGpMigrationDao, self).__init__(
+            GemToGpMigration, order_by_ending=['id'])
+
+    @staticmethod
+    def prepare_obj(row, job_run, file_path):
+        return GemToGpMigration(
+            file_path=file_path,
+            run_id=job_run,
+            participant_id=row.participantId,
+            informing_loop_status='success',
+            informing_loop_authored=row.authored,
+            ancestry_traits_response=row.value,
+        )
+
+    def get_data_for_export(self, run_id, limit=None):
+        with self.session() as session:
+            results = session.query(
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.authored,
+                Code.value
+            ).join(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+            ).join(
+                Code,
+                Code.codeId == QuestionnaireResponseAnswer.valueCodeId
+            ).outerjoin(
+                GemToGpMigration,
+                and_(GemToGpMigration.participant_id == QuestionnaireResponse.participantId,
+                     GemToGpMigration.run_id == run_id)
+            ).filter(
+                Code.value.in_(["ConsentAncestryTraits_Yes",
+                                "ConsentAncestryTraits_No",
+                                "ConsentAncestryTraits_NotSure"])
+            )
+            if limit:
+                results = results.limit(limit)
+
+            return results.all()
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
+
