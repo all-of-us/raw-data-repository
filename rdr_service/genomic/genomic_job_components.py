@@ -1548,14 +1548,22 @@ class GenomicFileValidator:
             "vcfhf",
             "vcfhfindex",
             "vcfhfmd5",
+            "vcfhfbasename",
+            "vcfhfmd5hash",
             "vcfraw",
             "vcfrawindex",
             "vcfrawmd5",
+            "vcfrawbasename",
+            "vcfrawmd5hash",
             "cram",
             "crammd5",
             "crai",
+            "crambasename",
+            "crammd5hash",
             "gvcf",
             "gvcfmd5",
+            "gvcfbasename",
+            "gvcfmd5hash",
         }
 
         self.AW5_ARRAY_SCHEMA = {
@@ -1566,11 +1574,17 @@ class GenomicFileValidator:
             "siteid",
             "redidat",
             "redidatmd5",
+            "redidatbasename",
+            "redidatmd5hash",
             "greenidat",
+            "greenidatbasename",
+            "greenidatmd5hash",
             "greenidatmd5",
             "vcf",
             "vcfindex",
             "vcfmd5",
+            "vcfbasename",
+            "vcfmd5hash",
         }
 
         self.values_for_validation = {
