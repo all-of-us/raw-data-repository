@@ -81,7 +81,10 @@ class ConsentDao(BaseDao):
     @classmethod
     def _batch_update_consent_files_with_session(cls, session, consent_files: Collection[ConsentFile]):
         for file_record in consent_files:
-            session.merge(file_record)
+            if file_record.id:
+                session.merge(file_record)
+            else:
+                session.add(file_record)
 
     def batch_update_consent_files(self, consent_files: Collection[ConsentFile], session=None):
         if session is None:

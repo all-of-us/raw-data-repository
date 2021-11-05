@@ -8,6 +8,7 @@ from dateutil import parser
 from sqlalchemy import and_
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
 from werkzeug.exceptions import BadRequest, NotFound
@@ -42,7 +43,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
-    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState
+    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -380,19 +381,19 @@ class GenomicSetMemberDao(UpdatableDao):
             ).first()
         return member
 
-    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, state):
+    def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param genome_type:
-        :param state: genomic_workflow_state
+        :param states: list of genomic_workflow_states
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState == state
+                GenomicSetMember.genomicWorkflowState.in_(states)
             ).one_or_none()
         return member
 
@@ -422,6 +423,17 @@ class GenomicSetMemberDao(UpdatableDao):
             return session.query(GenomicSetMember).filter(
                 GenomicSetMember.id.in_(member_ids)
             ).all()
+
+    def get_members_with_non_null_sample_ids(self):
+        """
+        For use by unit tests only
+        :return: query results
+        """
+        if GAE_PROJECT == "localhost":
+            with self.session() as session:
+                return session.query(GenomicSetMember).filter(
+                    GenomicSetMember.sampleId.isnot(None)
+                ).all()
 
     def get_member_from_sample_id_with_state(self, sample_id, genome_type, state):
         """
@@ -598,6 +610,28 @@ class GenomicSetMemberDao(UpdatableDao):
                     GenomicGCValidationMetrics.craiPath.isnot(None),
                 )
             return members_query.all()
+
+    def get_all_contamination_reextract(self):
+        reextract_states = [GenomicContaminationCategory.EXTRACT_BOTH,
+                            GenomicContaminationCategory.EXTRACT_WGS]
+        with self.session() as session:
+            replated = aliased(GenomicSetMember)
+
+            return session.query(
+                GenomicSetMember,
+                GenomicGCValidationMetrics.contaminationCategory
+            ).join(
+                GenomicGCValidationMetrics,
+                GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId
+            ).outerjoin(
+                replated,
+                replated.replatedMemberId == GenomicSetMember.id
+            ).filter(
+                GenomicGCValidationMetrics.contaminationCategory.in_(reextract_states),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicGCValidationMetrics.ignoreFlag == 0,
+                replated.id.is_(None)
+            ).all()
 
     def update_report_consent_removal_date(self, member, date):
         """

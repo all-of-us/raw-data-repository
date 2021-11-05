@@ -1438,6 +1438,19 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
+        data = dict()
+
+        # ubr_geography - note: we only need a ConsentPII submission for ubr_geography.
+        addresses = summary.get('addresses', [])
+        consent_date = summary.get('enrl_participant_time', None)
+        if addresses and consent_date:
+            zip_code = None
+            for addr in addresses:
+                if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
+                    zip_code = addr.get('addr_zip', None)
+                    break
+            data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
+
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
         #       are going to do our own query to get the first TheBasics submission after consent. Due to
         #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
@@ -1450,8 +1463,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             where qr.participant_id = :p_id and c.value = 'TheBasics'
             order by qr.authored, qr.created, qr.external_id limit 1;
         """
-
-        data = dict()
         row = ro_session.execute(sql, {"p_id": p_id}).first()
         if not row:
             return data
@@ -1470,14 +1481,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])
         # ubr_ethnicity
         data['ubr_ethnicity'] = ubr.ubr_ethnicity(qnan.get('Race_WhatRaceEthnicity', None))
-        # ubr_geography
-        addresses = summary.get('addresses', [])
-        zip_code = None
-        for addr in addresses:
-            if addr['addr_type_id'] == StreetAddressTypeEnum.RESIDENCE.value:
-                zip_code = addr.get('addr_zip', None)
-                break
-        data['ubr_geography'] = ubr.ubr_geography(zip_code)
         # ubr_education
         data['ubr_education'] = ubr.ubr_education(qnan.get('EducationLevel_HighestGrade', None))
         # ubr_income

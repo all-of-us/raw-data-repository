@@ -7,9 +7,10 @@ from rdr_service.api.base_api import BaseApi, make_sync_results_for_request
 from rdr_service.api_util import AWARDEE, DEV_MAIL, RDR_AND_PTC, PTC_HEALTHPRO_AWARDEE_CURATION
 from rdr_service.app_util import auth_required, get_validated_user_info, restrict_to_gae_project
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
+from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
-from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
+from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.config import getSettingList, HPO_LITE_AWARDEE
@@ -28,8 +29,11 @@ class ParticipantSummaryApi(BaseApi):
     def __init__(self):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
+        self.query = None
+
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
+        self.site_dao = None
 
     @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
@@ -56,6 +60,7 @@ class ParticipantSummaryApi(BaseApi):
         if p_id is not None:
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
+            self._filter_by_user_site(participant_id=p_id)
             self._fetch_hpro_consents(pids=p_id)
             return super(ParticipantSummaryApi, self).get(p_id)
         else:
@@ -88,12 +93,12 @@ class ParticipantSummaryApi(BaseApi):
         if constraint_failed:
             raise BadRequest(f"{message}")
 
-        query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
-        query.always_return_token = self._get_request_arg_bool("_sync")
-        query.backfill_sync = self._get_request_arg_bool("_backfill", True)
-        # Note: leaving for future use if we go back to using a relationship to PatientStatus table.
-        # query.options = self.dao.get_eager_child_loading_query_options()
-        return query
+        self.query = super(ParticipantSummaryApi, self)._make_query(check_invalid)
+        self.query.always_return_token = self._get_request_arg_bool("_sync")
+        self.query.backfill_sync = self._get_request_arg_bool("_backfill", True)
+        self._filter_by_user_site()
+
+        return self.query
 
     def _make_bundle(self, results, id_field, participant_id):
         if self._get_request_arg_bool("_sync"):
@@ -133,24 +138,58 @@ class ParticipantSummaryApi(BaseApi):
 
     def _query(self, id_field, participant_id=None):
         logging.info(f"Preparing query for {self.dao.model_type}.")
+
         query = self._make_query()
         results = self.dao.query(query)
         participant_ids = [obj.participantId for obj in results.items if hasattr(obj, 'participantId')]
         self._fetch_hpro_consents(participant_ids)
+
         logging.info("Query complete, bundling results.")
+
         response = self._make_bundle(results, id_field, participant_id)
         logging.info("Returning response.")
+
         return response
 
     def _fetch_hpro_consents(self, pids=None):
-        valid_roles = ['healthpro']
-        if not any(role in valid_roles for role in self.user_info.get('roles')) or not pids:
+        if not any(role in ['healthpro'] for role in self.user_info.get('roles')) or not pids:
             return
-
         if type(pids) is not list:
             self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
         else:
             self.dao.hpro_consents = self.hpro_consent_dao.batch_get_by_participant(pids)
+
+    def _filter_by_user_site(self, participant_id=None):
+        if not self.user_info.get('site'):
+            return
+
+        user_site = self.user_info.get('site')
+        if type(user_site) is list:
+            user_site = user_site[0]
+
+        self.site_dao = SiteDao()
+        site_obj = self.site_dao.get_by_google_group(user_site)
+        if not site_obj:
+            raise BadRequest(f"No site found with google group {user_site}, that is attached to request user")
+
+        if not participant_id:
+            user_info_site_filter = self.dao.make_query_filter('site', user_site)
+            if user_info_site_filter:
+                current_site_filter = list(filter(lambda x: x.field_name == 'siteId', self.query.field_filters))
+                if current_site_filter:
+                    self.query.field_filters.remove(current_site_filter[0])
+                self.query.field_filters.append(user_info_site_filter)
+            return
+
+        participant_summary = self.dao.get_by_participant_id(participant_id)
+        if not participant_summary:
+            return
+
+        if participant_summary.siteId and \
+                participant_summary.siteId != site_obj.siteId:
+            raise Forbidden(f"Site attached to the request user, "
+                            f"{user_site} is forbidden from accessing this participant")
+        return
 
 
 class ParticipantSummaryModifiedApi(BaseApi):

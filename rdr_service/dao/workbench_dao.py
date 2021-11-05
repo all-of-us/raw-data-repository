@@ -3,8 +3,8 @@ import json
 from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
-from sqlalchemy import desc, or_, and_, func, distinct
-from sqlalchemy.orm import subqueryload, joinedload
+from sqlalchemy import desc, or_, and_, func, distinct, case
+from sqlalchemy.orm import subqueryload, joinedload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from datetime import timedelta
@@ -320,25 +320,45 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
         results = []
         with self.session() as session:
+            workbench_workspace_snapshot_alias = aliased(WorkbenchWorkspaceSnapshot)
+            active_id = session.query(func.max(WorkbenchWorkspaceSnapshot.id))\
+                .filter(WorkbenchWorkspaceSnapshot.status == WorkbenchWorkspaceStatus.ACTIVE)\
+                .filter(WorkbenchWorkspaceSnapshot.workspaceSourceId ==
+                        workbench_workspace_snapshot_alias.workspaceSourceId)\
+                .as_scalar()
+            case_stmt = case(
+                [
+                    (and_(workbench_workspace_snapshot_alias.status == WorkbenchWorkspaceStatus.INACTIVE,
+                          active_id != None),
+                     active_id)
+                ],
+                else_=workbench_workspace_snapshot_alias.id
+            )
+            subquery = session.query(case_stmt.label('active_id'), workbench_workspace_snapshot_alias).subquery()
             query = (
-                session.query(WorkbenchWorkspaceSnapshot, WorkbenchResearcherHistory)
+                session.query(WorkbenchWorkspaceSnapshot,
+                              WorkbenchResearcherHistory,
+                              subquery.c.id.label('current_id'),
+                              subquery.c.status.label('current_status'))
+                    .distinct()
                     .options(joinedload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser),
                              joinedload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
-                            WorkbenchWorkspaceSnapshot.id == WorkbenchWorkspaceUserHistory.workspaceId)
+                            WorkbenchWorkspaceSnapshot.id == subquery.c.active_id,
+                            subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId)
             )
 
             if workspace_id:
                 query = query.filter(WorkbenchWorkspaceSnapshot.workspaceSourceId == workspace_id)\
-                    .order_by(desc(WorkbenchWorkspaceSnapshot.id)).limit(1)
+                    .order_by(desc(subquery.c.id)).limit(1)
             elif snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id == snapshot_id)
+                query = query.filter(subquery.c.id == snapshot_id)
             elif last_snapshot_id:
-                query = query.filter(WorkbenchWorkspaceSnapshot.id > last_snapshot_id)\
-                    .order_by(WorkbenchWorkspaceSnapshot.id)
-
+                query = query.filter(subquery.c.id > last_snapshot_id)\
+                    .order_by(subquery.c.id)
             items = query.all()
-            for workspace, researcher in items:
+
+            for workspace, researcher, current_id, current_status in items:
                 verified_institutional_affiliation = {}
                 affiliations = []
                 if researcher.workbenchInstitutionalAffiliations:
@@ -374,19 +394,19 @@ class WorkbenchWorkspaceDao(UpdatableDao):
 
                 exist = False
                 for result in results:
-                    if result['snapshotId'] == workspace.id:
+                    if result['snapshotId'] == current_id:
                         result['workspaceResearchers'].append(workspace_researcher)
                         exist = True
                         break
                 if exist:
                     continue
                 record = {
-                    'snapshotId': workspace.id,
+                    'snapshotId': current_id,
                     'workspaceId': workspace.workspaceSourceId,
                     'name': workspace.name,
                     'creationTime': workspace.creationTime,
                     'modifiedTime': workspace.modifiedTime,
-                    'status': str(WorkbenchWorkspaceStatus(workspace.status)),
+                    'status': str(WorkbenchWorkspaceStatus(current_status)),
                     'workspaceUsers': [
                         {
                             "userId": user.userId,

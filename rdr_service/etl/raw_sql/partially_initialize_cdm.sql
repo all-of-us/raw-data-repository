@@ -123,10 +123,10 @@ DROP TABLE IF EXISTS cdm.death;
 CREATE TABLE cdm.death
 (
     id bigint NOT NULL,
-    person_id bigint NOT NULL,
-    death_date date NOT NULL,
+    person_id bigint,
+    death_date date,
     death_datetime datetime,
-    death_type_concept_id bigint NOT NULL,
+    death_type_concept_id bigint,
     cause_concept_id bigint NOT NULL,
     cause_source_value varchar(50),
     cause_source_concept_id bigint NOT NULL,
@@ -164,9 +164,19 @@ CREATE TABLE cdm.payer_plan_period
     person_id bigint NOT NULL,
     payer_plan_period_start_date date NOT NULL,
     payer_plan_period_end_date date NOT NULL,
+    payer_concept_id bigint,
     payer_source_value varchar(50),
+    payer_source_concept_id bigint,
+    plan_concept_id bigint,
     plan_source_value varchar(50),
+    plan_source_concept_id bigint,
+    sponsor_concept_id bigint,
+    sponsor_source_value  varchar(50),
+    sponsor_source_concept_id bigint,
     family_source_value varchar(50),
+    stop_reason_concept_id bigint,
+    stop_reason_source_value  varchar(50),
+    stop_reason_source_concept_id bigint,
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (payer_plan_period_id),
     UNIQUE KEY (id)
@@ -218,9 +228,11 @@ CREATE TABLE cdm.condition_occurrence
     condition_end_date date,
     condition_end_datetime datetime,
     condition_type_concept_id bigint NOT NULL,
+    condition_status_concept_id bigint,
     stop_reason varchar(20),
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     condition_source_value varchar(50) NOT NULL,
     condition_source_concept_id bigint NOT NULL,
     unit_id varchar(50) NOT NULL,
@@ -246,9 +258,10 @@ CREATE TABLE cdm.procedure_occurrence
     quantity int,
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     procedure_source_value varchar(1024) NOT NULL,
     procedure_source_concept_id bigint NOT NULL,
-    qualifier_source_value varchar(50),
+    modifier_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (procedure_occurrence_id),
     UNIQUE KEY (id)
@@ -303,6 +316,7 @@ CREATE TABLE cdm.measurement
     measurement_concept_id bigint NOT NULL,
     measurement_date date NOT NULL,
     measurement_datetime datetime,
+    measurement_time varchar(50),
     measurement_type_concept_id bigint NOT NULL,
     operator_concept_id bigint NOT NULL,
     value_as_number decimal(20,6),
@@ -312,6 +326,7 @@ CREATE TABLE cdm.measurement
     range_high decimal(20,6),
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     measurement_source_value varchar(50),
     measurement_source_concept_id bigint NOT NULL,
     unit_source_value varchar(50),
@@ -344,6 +359,7 @@ CREATE TABLE cdm.note
     encoding_concept_id bigint NOT NULL,
     language_concept_id bigint NOT NULL,
     provider_id bigint,
+    visit_detail_id bigint,
     note_source_value varchar(50),
     visit_occurrence_id bigint,
     unit_id varchar(50) NOT NULL,
@@ -376,6 +392,7 @@ CREATE TABLE cdm.drug_exposure
     lot_number varchar(50),
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     drug_source_value varchar(50) NOT NULL,
     drug_source_concept_id bigint,
     route_source_value varchar(50),
@@ -405,6 +422,7 @@ CREATE TABLE cdm.device_exposure
     quantity decimal(20,6),
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     device_source_value varchar(50) NOT NULL,
     device_source_concept_id bigint,
     unit_id varchar(50) NOT NULL,
@@ -440,7 +458,7 @@ CREATE TABLE cdm.cost
     amount_allowed decimal(20,6),
     revenue_code_concept_id bigint NOT NULL,
     revenue_code_source_value varchar(50),
-    drg_concept_id bigint NOT NULL,
+    drg_concept_id bigint,
     drg_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (cost_id),
@@ -521,4 +539,73 @@ CREATE TABLE cdm.dose_era
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (dose_era_id),
     UNIQUE KEY (id)
+);
+
+-- -----------------------------------------------
+-- metadata
+-- -----------------------------------------------
+DROP TABLE IF EXISTS cdm.metadata;
+
+CREATE TABLE cdm.metadata
+(
+    metadata_concept_id bigint NOT NULL,
+    metadata_type_concept_id bigint NOT NULL,
+    name varchar(256) NOT NULL,
+    value_as_string varchar(1024),
+    value_as_concept_id bigint,
+    metadata_date date,
+    metadata_datetime datetime
+);
+
+-- -----------------------------------------------
+-- note_nlp
+-- -----------------------------------------------
+DROP TABLE IF EXISTS cdm.note_nlp;
+
+CREATE TABLE cdm.note_nlp
+(
+    note_nlp_id bigint NOT NULL,
+    note_id bigint NOT NULL,
+    section_concept_id bigint,
+    snippet varchar(512),
+    offset varchar(256),
+    lexical_variant varchar(1024) NOT NULL,
+    note_nlp_concept_id bigint,
+    note_nlp_source_concept_id bigint,
+    nlp_system varchar(256),
+    nlp_date date NOT NULL,
+    nlp_datetime datetime,
+    term_exists varchar(256),
+    term_temporal varchar(256),
+    term_modifiers  varchar(256),
+    PRIMARY KEY (note_nlp_id)
+);
+
+-- -----------------------------------------------
+-- visit_detail
+-- -----------------------------------------------
+DROP TABLE IF EXISTS cdm.visit_detail;
+
+CREATE TABLE cdm.visit_detail
+(
+    visit_detail_id bigint NOT NULL,
+    person_id bigint NOT NULL,
+    visit_detail_concept_id bigint NOT NULL,
+    visit_detail_start_date date NOT NULL,
+    visit_detail_start_datetime datetime,
+    visit_detail_end_date date NOT NULL,
+    visit_detail_end_datetime datetime,
+    visit_detail_type_concept_id bigint NOT NULL,
+    provider_id bigint,
+    care_site_id bigint,
+    visit_detail_source_value varchar(256),
+    visit_detail_source_concept_id bigint,
+    admitting_source_value  varchar(256),
+    admitting_source_concept_id bigint,
+    discharge_to_source_value varchar(256),
+    discharge_to_concept_id bigint,
+    preceding_visit_detail_id bigint,
+    visit_detail_parent_id bigint,
+    visit_occurrence_id bigint NOT NULL,
+    PRIMARY KEY (visit_detail_id)
 );

@@ -2,6 +2,7 @@
 from rdr_service.dao.bigquery_sync_dao import BigQueryGenerator, BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator
 from rdr_service.model.bq_base import BQRecord
+from rdr_service.model.bq_participant_summary import BQStreetAddressTypeEnum
 from rdr_service.model.bq_pdr_participant_summary import BQPDRParticipantSummarySchema
 from rdr_service.participant_enums import OrderStatus
 
@@ -32,14 +33,12 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
             ps_bqr = BQParticipantSummaryGenerator().make_bqrecord(p_id, convert_to_enum=convert_to_enum)
         bqr = BQRecord(schema=BQPDRParticipantSummarySchema, data=ps_bqr.to_dict(), convert_to_enum=convert_to_enum)
 
-        if hasattr(bqr, 'addr_zip') and getattr(bqr, 'addr_zip'):
-            setattr(bqr, 'addr_zip', getattr(bqr, 'addr_zip')[:3])
-
         summary = bqr.to_dict()
+        data = {}
         # Populate BQPDRBiospecimenSchema if there are biobank orders.
         # TODO:  Deprecate this BQPDRBiospecimenSchema and transition PDR users to utilize BQBiobankOrderSchema data
         if hasattr(ps_bqr, 'biobank_orders'):
-            data = {'biospec': list()}
+            data['biospec'] = list()
             for order in ps_bqr.biobank_orders:
                 # Count the number of DNA and Baseline tests in this order.
                 dna_tests = 0
@@ -70,8 +69,13 @@ class BQPDRParticipantSummaryGenerator(BigQueryGenerator):
                     'biosp_baseline_tests_confirmed': baseline_tests_confirmed,
                 })
 
+        if hasattr(ps_bqr, 'addresses') and isinstance(ps_bqr.addresses, list):
+            for addr in ps_bqr.addresses:
+                if addr['addr_type_id'] == BQStreetAddressTypeEnum.RESIDENCE.value:
+                    data['addr_state'] = addr['addr_state']
+                    data['addr_zip'] = addr['addr_zip'][:3] if addr['addr_zip'] else None
 
-            summary = self._merge_schema_dicts(summary, data)
+        summary = self._merge_schema_dicts(summary, data)
 
         # Calculate contact information
         summary = self._merge_schema_dicts(summary, self._set_contact_flags(ps_bqr))

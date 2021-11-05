@@ -2058,6 +2058,32 @@ class GemToGpMigrationClass(GenomicManifestBase):
                 print(f'Would insert batch starting with: {batch[0].participantId}')
 
 
+class BackFillReplates(GenomicManifestBase):
+    """
+    Inserts new genomic_set_member records for all samples
+    that require replating
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(BackFillReplates, self).__init__(args, gcp_env)
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+        ingester = GenomicFileIngester()
+
+        existing_records = self.dao.get_all_contamination_reextract()
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.insert_member_for_replating(existing_record.GenomicSetMember,
+                                                     existing_record.contaminationCategory)
+            else:
+                _logger.info(f'Would create member based on id: {existing_record.GenomicSetMember.id}')
+
+        return 0
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2116,6 +2142,9 @@ def get_process_for_run(args, gcp_env):
         },
         'gem-to-gp': {
             'process': GemToGpMigrationClass(args, gcp_env)
+        },
+        'backfill-replates': {
+            'process': BackFillReplates(args, gcp_env)
         }
     }
 
@@ -2266,6 +2295,7 @@ def run():
     # Backfill GenomicFileProcessed UploadDate
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
+    backfill_replate_parser = subparser.add_parser("backfill-replates")  # pylint: disable=unused-variable
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")

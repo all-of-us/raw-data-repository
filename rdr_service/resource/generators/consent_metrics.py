@@ -120,12 +120,13 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             missing signatures.  Returns True if all the following conditions exist:
                 expected_sign_date < 2018-07-13 AND
                 signing_date is null AND
-                resource data dict has no other errors set besides signature_missing
+                resource data dict has no other errors set besides signature_missing and/or invalid_signing_date
             """
             if (resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
                     or signing_date
                     or (expected_sign_date and expected_sign_date >= MISSING_SIGNATURE_FALSE_POSITIVE_CUTOFF_DATE)
-                    or ConsentMetricGenerator.has_errors(resource, exclude=['signature_missing'])):
+                    or ConsentMetricGenerator.has_errors(resource, exclude=['signature_missing',
+                                                                            'invalid_signing_date'])):
                 return False
 
             return True
