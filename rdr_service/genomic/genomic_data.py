@@ -2,7 +2,7 @@ import sqlalchemy
 from sqlalchemy import distinct
 from sqlalchemy.orm import aliased
 
-from rdr_service import config as cfg
+from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -73,7 +73,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == cfg.GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -127,7 +127,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == cfg.GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_WGS) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
@@ -235,7 +235,7 @@ class GenomicQueryClass:
                 GenomicGCValidationMetrics.chipwellbarcode,
                 sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
             ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(
-                cfg.getSetting(cfg.A1_LIMIT)
+                config.getSetting(config.A1_LIMIT)
             )),
             GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
                 [
@@ -398,7 +398,7 @@ class GenomicQueryClass:
             """
 
     @staticmethod
-    def remaining_saliva_participants(config):
+    def remaining_saliva_participants(query_config):
         is_ror = None
         originated = {
             # at home
@@ -411,22 +411,22 @@ class GenomicQueryClass:
             }
         }
 
-        if config['ror'] >= 0:
+        if query_config['ror'] >= 0:
             # unset = 0
             # submitted = 1
             # submitted_not_consent = 2
-            if config['ror'] == 0:
+            if query_config['ror'] == 0:
                 is_ror = """AND (ps.consent_for_genomics_ror = {}  \
-                    OR ps.consent_for_genomics_ror IS NULL) """.format(config['ror'])
+                    OR ps.consent_for_genomics_ror IS NULL) """.format(query_config['ror'])
             else:
-                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror'])
+                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(query_config['ror'])
 
         # in clinic
         is_clinic_id_null = "AND mk.id IS NULL" \
-            if config['origin'] and config['origin'] == 2 else ""
+            if query_config['origin'] and query_config['origin'] == 2 else ""
 
-        is_home_or_clinic = originated[config['origin']]['sql'] \
-            if config['origin'] else ""
+        is_home_or_clinic = originated[query_config['origin']]['sql'] \
+            if query_config['origin'] else ""
 
         # Base query for only saliva samples in RDR w/options passed in
         return """
