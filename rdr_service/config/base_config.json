@@ -61,47 +61,39 @@
   ],
   "ehr_status_bigquery_view_participant": [],
   "ehr_status_bigquery_view_organization": [],
-  "gc_name_to_id_mapping": {
-    "baylor_array": "jh",
-    "baylor_wgs": "bcm",
-    "broad": "bi",
-    "northwest": "uw",
-    "rdr": "rdr"
+  "research_workbench_audit_sheet_bucket": ["test_bucket_audit_sheets"],
+  "consent_sync_buckets": {
+    "orgs": {
+      "CAL_PMC_UCD": {"bucket": "aou185", "zip_consents": false},
+      "CAL_PMC_USC": {"bucket": "aou298", "zip_consents": false},
+      "UT_HEALTH_HOUSTON": {"bucket": "aou984", "zip_consents": false},
+      "UT_HEALTH_TYLER": {"bucket": "aou984", "zip_consents": false},
+      "WASH_U_WASHU": {"bucket": "aou783", "zip_consents": false}
+    },
+    "hpos": {
+      "VA": {"bucket": "aou179", "zip_consents": true},
+      "VCU": {"bucket": "aou818", "zip_consents": false}
+    }
   },
-  "rdr_slack_webhooks": {
-    "rdr_genomic_alerts": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
-    "rdr_genomic_reports": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+  "dna_program_consent_update_code": "ProgramUpdate",
+  "biobank_samples_daily_inventory_file_pattern": "Sample Inventory Report v1",
+  "biobank_samples_monthly_inventory_file_pattern": "Sample Inventory Report 60d",
+  "cope_form_id_map": {
+    "Vibrent_FORM_ID_1413,COPE Survey": "May",
+    "June COPE Survey,Vibrent_FORM_ID_1416": "June",
+    "July COPE Survey,Vibrent_FORM_ID_1424": "July",
+    "October COPE Survey,Vibrent_FORM_ID_1442": "Nov",
+    "December COPE Survey,Vibrent_FORM_ID_1453": "Dec",
+    "February COPE Survey,Vibrent_FORM_ID_1456": "Feb",
+    "cope_vaccine1,Vibrent_FORM_ID_1502": "vaccine1",
+    "cope_vaccine2,Vibrent_FORM_ID_1513": "vaccine2",
+    "cope_vaccine3,Vibrent_FORM_ID_1535": "vaccine3"
   },
-  "genomic_cron_jobs": {
-    "a1_manifest_workflow": 1,
-    "a2_manifest_workflow": 1,
-    "a3_manifest_workflow": 1,
-    "aw0_manifest_workflow": 1,
-    "aw1_manifest_workflow": 1,
-    "aw1c_manifest_workflow": 0,
-    "aw1cf_manifest_workflow": 0,
-    "aw2f_manifest_workflow": 1,
-    "aw2f_remainder_workflow": 1,
-    "aw3_array_manifest_workflow": 1,
-    "aw3_wgs_manifest_workflow": 1,
-    "array_reconciliation_workflow": 1,
-    "daily_ingestion_summary": 1,
-    "daily_incident_summary": 1,
-    "feedback_record_reconciliation_workflow": 1,
-    "missing_files_clean_up_workflow": 1,
-    "missing_files_resolve_workflow": 1,
-    "reconcile_gc_data_file_to_table_workflow": 1,
-    "reconcile_raw_to_aw1_ingested_workflow": 1,
-    "reconcile_raw_to_aw2_ingested_workflow": 1,
-    "members_state_resolved_workflow": 1,
-    "wgs_reconciliation_workflow": 1,
-    "w1_manifest_workflow": 0,
-    "w2_manifest_workflow": 0,
-    "w3_manifest_workflow": 0
+  "project_api_keys": {
+    "cope_nov": "064D944FD1D8E953EDB755D3565ED098",
+    "familyhistory_v2": "854AA75BE3E396FFAEB3E8440BC561F8"
   },
-  "data_bucket_subfolders_prod": {
-    "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
-    "prod-genomics-data-broad": ["Genotyping_sample_raw_data", "wgs_sample_raw_data"],
-    "prod-genomics-data-northwest": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"]
-  }
+  "drive_export_folder": "1wPnDWjpURfuyc5msDtQiourLGPHSUHUn",
+  "code_export_service_account": "exporter@all-of-us-rdr-prod.iam.gserviceaccount.com",
+  "a1_limit": [10000]
 }

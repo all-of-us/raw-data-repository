@@ -2,7 +2,7 @@ import sqlalchemy
 from sqlalchemy import distinct
 from sqlalchemy.orm import aliased
 
-from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
+from rdr_service import config as cfg
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -73,7 +73,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == cfg.GENOME_TYPE_ARRAY) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -127,7 +127,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == cfg.GENOME_TYPE_WGS) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
@@ -234,8 +234,9 @@ class GenomicQueryClass:
                 ParticipantSummary.consentForGenomicsRORAuthored,
                 GenomicGCValidationMetrics.chipwellbarcode,
                 sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
-            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
-                                          ),
+            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(
+                cfg.getSetting(cfg.A1_LIMIT)
+            )),
             GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
                 [
                     GenomicSetMember.biobankId,

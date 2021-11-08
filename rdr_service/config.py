@@ -59,6 +59,7 @@ GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME = "genomic_biobank_manifest_result_f
 GENOMIC_GENOTYPING_SAMPLE_MANIFEST_FOLDER_NAME = 'genotyping_sample_manifest_folder_name'
 GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER = "genomic_cvl_reconciliation_report_subfolder"
 GENOMIC_GC_PROCESSED_FOLDER_NAME = "processed_by_rdr"
+A1_LIMIT = "a1_limit"
 CVL_W1_MANIFEST_SUBFOLDER = "w1_wgs_cvl_manifests"
 CVL_W2_MANIFEST_SUBFOLDER = "w2_wgs_cvl_manifests"
 CVL_W3_MANIFEST_SUBFOLDER = "w3_wgs_cvl_manifests"

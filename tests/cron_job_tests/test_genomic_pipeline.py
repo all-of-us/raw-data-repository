@@ -2651,6 +2651,43 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_gem_a1_limit(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
+                                                array_participants=range(1, 5),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        for i in range(1, 5):
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=i,
+                processingStatus='pass',
+            )
+
+        config.override_setting(config.A1_LIMIT, [1])
+
+        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+
+        members = self.member_dao.get_all()
+        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
+        self.assertEqual(1, len(a1_members))
+
+        config.override_setting(config.A1_LIMIT, [1000]) # reset for full testing
+
     def test_cvl_w1_manifest(self):
 
         # Need GC Manifest for source query : run_id = 1

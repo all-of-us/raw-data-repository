@@ -245,5 +245,6 @@
   },
   "hpro_consent_bucket": [
     "healthpro-consents-sandbox"
-  ]
+  ],
+  "a1_limit": [10000]
 }
