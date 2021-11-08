@@ -84,6 +84,8 @@ GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
 GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
 GENOMIC_CRON_JOBS = "genomic_cron_jobs"
+GENOMIC_MAX_NUM_GENERATE = "genomic_max_num_generate"
+GENOMIC_MAX_NUM_INGEST = "genomic_max_num_ingest"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
 BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
@@ -116,7 +118,9 @@ COPE_FORM_ID_MAP = 'cope_form_id_map'
 HPO_LITE_AWARDEE = 'hpo_lite_awardee'
 HPO_LITE_REDCAP_PROJECT_TOKEN = 'hpo_lite_pairing_import_key'
 HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
+DATA_BUCKET_SUBFOLDERS_PROD = 'data_bucket_subfolders_prod'
 HEALTHPRO_CONSENT_BUCKET = 'hpro_consent_bucket'
+HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [

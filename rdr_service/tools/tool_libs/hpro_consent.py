@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 
+from rdr_service import config
 from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 
@@ -25,19 +26,21 @@ tool_desc = "Tool for initial and subsequent large backfills of consent files to
 class HealthProConsentTool(ToolBase):
 
     def run(self):
-        transfer_failures = []
         self.gcp_env.activate_sql_proxy()
+        server_config = self.get_server_config()
+
         hpro_consents = HealthProConsentFile(
             logger=_logger,
             store_failures=True
         )
 
+        hpro_consents.hpro_bucket = server_config[config.HEALTHPRO_CONSENT_BUCKET][0]
         hpro_consents.initialize_consent_transfer()
 
         if hpro_consents.transfer_failures:
             output_local_csv(
                 filename='transfer_delta.csv',
-                data=transfer_failures
+                data=hpro_consents.transfer_failures
             )
 
 

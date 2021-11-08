@@ -530,9 +530,10 @@ SELECT
     NULL                                        AS quantity,
     NULL                                        AS provider_id,
     NULL                                        AS visit_occurrence_id,
+    NULL                                        AS visit_detail_id,
     stcm.source_code                            AS procedure_source_value,
     COALESCE(stcm.source_concept_id, 0)         AS procedure_source_concept_id,
-    NULL                                        AS qualifier_source_value,
+    NULL                                        AS modifier_source_value,
     'procedure'                                 AS unit_id
 FROM cdm.src_mapped src_m1
 INNER JOIN cdm.source_to_concept_map stcm
@@ -977,6 +978,7 @@ SELECT
     meas.cv_concept_id                      AS measurement_concept_id,
     DATE(meas.measurement_time)             AS measurement_date,
     meas.measurement_time                   AS measurement_datetime,
+    NULL                                    AS measurement_time,
     44818701                                AS measurement_type_concept_id, -- 44818701, From physical examination
     0                                       AS operator_concept_id,
     meas.value_decimal                      AS value_as_number,
@@ -986,6 +988,7 @@ SELECT
     NULL                                    AS range_high,
     NULL                                    AS provider_id,
     meas.physical_measurements_id           AS visit_occurrence_id,
+    NULL                                    AS visit_detail_id,
     meas.code_value                         AS measurement_source_value,
     meas.cv_source_concept_id               AS measurement_source_concept_id,
     meas.value_unit                         AS unit_source_value,
@@ -1036,6 +1039,7 @@ SELECT
     0                                       AS encoding_concept_id,
     4180186                                 AS language_concept_id,     -- 4180186 - 'English language'
     NULL                                    AS provider_id,
+    NULL                                    AS visit_detail_id,
     meas.code_value                         AS note_source_value,
     meas.physical_measurements_id           AS visit_occurrence_id,
     'note'                                  AS unit_id

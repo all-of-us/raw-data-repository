@@ -98,6 +98,10 @@ class GenomicJob(messages.Enum):
     GENERATE_AW2F_REMAINDER = 44
     UPDATE_MEMBERS_STATE_RESOLVED_DATA_FILES = 45
 
+    # Ingestion Reconciliatino Jobs
+    RECONCILE_GC_DATA_FILE_TO_TABLE = 46
+    RECONCILE_RAW_AW1_INGESTED = 47
+
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
     DAILY_SUMMARY_REPORT_JOB_RUNS = 101
@@ -105,6 +109,9 @@ class GenomicJob(messages.Enum):
     DAILY_SUMMARY_REPORT_INGESTIONS = 103
     WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
     DAILY_SUMMARY_REPORT_INCIDENTS = 105
+
+    # Gem to GP Migration Job
+    GEM_GP_MIGRATION_EXPORT = 1001
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -116,7 +123,7 @@ class GenomicWorkflowState(messages.Enum):
     AW1F_PRE = 4
     AW1F_POST = 5
     AW2 = 6
-    AW2_MISSING = 7
+    GC_DATA_FILES_MISSING = 7
     AW2_FAIL = 8
 
     # CVL Workflow only
@@ -155,6 +162,9 @@ class GenomicWorkflowState(messages.Enum):
     LR_PENDING = 35
     LR_REJECTED = 36
     LR_ACCEPTED = 37
+
+    # Replating
+    EXTRACT_REQUESTED = 38
 
 
 class GenomicReportState(messages.Enum):
@@ -239,6 +249,7 @@ class GenomicIncidentCode(messages.Enum):
     FILE_VALIDATION_FAILED_STRUCTURE = 6
     UNABLE_TO_FIND_METRIC = 7
     MANIFEST_GENERATE_DATA_VALIDATION_FAILED = 8
+    FILE_VALIDATION_FAILED_VALUES = 9
 
 
 class GenomicIncidentStatus(messages.Enum):

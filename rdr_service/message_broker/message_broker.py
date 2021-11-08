@@ -25,8 +25,10 @@ class BaseMessageBroker:
             raise BadRequest(f'can not find auth info for dest: {self.message.messageDest}')
 
         now = clock.CLOCK.now()
-        five_mins_later = now + timedelta(minutes=5)
-        if auth_info.accessToken and auth_info.expiredAt > five_mins_later:
+        # the token will be expired in 300 secs, compare with the timestamp of 20 secs later
+        # to make sure we use a valid token
+        secs_later = now + timedelta(seconds=20)
+        if auth_info.accessToken and auth_info.expiredAt > secs_later:
             return auth_info.accessToken
         else:
             token_endpoint = auth_info.tokenEndpoint
@@ -43,7 +45,8 @@ class BaseMessageBroker:
                 self.dest_auth_dao.update(auth_info)
                 return r_json['access_token']
             else:
-                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}')
+                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}, '
+                                 f'response error: {str(response.status_code)}')
 
     def _get_message_dest_url(self):
         dest_url = self.message_metadata_dao.get_dest_url(self.message.eventType, self.message.messageDest)

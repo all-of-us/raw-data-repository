@@ -229,6 +229,11 @@ class GenomicSetMember(Base):
     # Developer note
     devNote = Column('dev_note', String(255), nullable=True)
 
+    # For tracking replates
+    replatedMemberId = Column('replated_member_id',
+                              ForeignKey('genomic_set_member.id'),
+                              nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
@@ -382,12 +387,12 @@ class GenomicAW1Raw(Base):
     box_storageunit_id = Column("box_storageunit_id", String(255), nullable=True)
     box_id_plate_id = Column("box_id_plate_id", String(255), nullable=True)
     well_position = Column("well_position", String(255), nullable=True)
-    sample_id = Column("sample_id", String(255), nullable=True)
-    parent_sample_id = Column("parent_sample_id", String(255), nullable=True)
-    collection_tube_id = Column("collection_tube_id", String(255), nullable=True)
+    sample_id = Column("sample_id", String(255), nullable=True, index=True)
+    parent_sample_id = Column("parent_sample_id", String(255), nullable=True, index=True)
+    collection_tube_id = Column("collection_tube_id", String(255), nullable=True, index=True)
     matrix_id = Column("matrix_id", String(255), nullable=True)
     collection_date = Column("collection_date", String(255), nullable=True)
-    biobank_id = Column("biobank_id", String(255), nullable=True)
+    biobank_id = Column("biobank_id", String(255), nullable=True, index=True)
     sex_at_birth = Column("sex_at_birth", String(255), nullable=True)
     """Assigned sex at birth"""
     age = Column("age", String(255), nullable=True)
@@ -405,10 +410,10 @@ class GenomicAW1Raw(Base):
     email = Column("email", String(255), nullable=True)
     study_pi = Column("study_pi", String(255), nullable=True)
     site_name = Column("site_name", String(255), nullable=True, index=True)
-    test_name = Column("test_name", String(255), nullable=True)
+    test_name = Column("test_name", String(255), nullable=True, index=True)
     failure_mode = Column("failure_mode", String(255), nullable=True)
     failure_mode_desc = Column("failure_mode_desc", String(255), nullable=True)
-    genome_type = Column(String(80), nullable=True)
+    genome_type = Column(String(80), nullable=True, index=True)
 
 
 event.listen(GenomicAW1Raw, 'before_insert', model_insert_listener)
@@ -441,6 +446,8 @@ class GenomicAW2Raw(Base):
     genome_coverage = Column(String(255), nullable=True)
     aouhdr_coverage = Column(String(255), nullable=True)
     contamination = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
     sex_concordance = Column(String(255), nullable=True)
     sex_ploidy = Column(String(255), nullable=True)
     aligned_q30_bases = Column(String(255), nullable=True)
@@ -450,6 +457,7 @@ class GenomicAW2Raw(Base):
     chipwellbarcode = Column(String(255), nullable=True)
     call_rate = Column(String(255), nullable=True)
     genome_type = Column(String(80), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
 
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
@@ -481,8 +489,8 @@ class GenomicGCValidationMetrics(Base):
     meanCoverage = Column('mean_coverage', String(10), nullable=True)
     genomeCoverage = Column('genome_coverage', String(10), nullable=True)
     aouHdrCoverage = Column('aou_hdr_coverage', String(10), nullable=True)
-    # TODO: change datatype of contamintion to float in RDR and PDR
     contamination = Column('contamination', String(10), nullable=True)
+    mappedReadsPct = Column('mapped_reads_pct', String(10), nullable=True)
     sexConcordance = Column('sex_concordance', String(10), nullable=True)
     sexPloidy = Column('sex_ploidy', String(10), nullable=True)
     alignedQ30Bases = Column('aligned_q30_bases', BigInteger, nullable=True)
@@ -582,6 +590,8 @@ class GenomicGCValidationMetrics(Base):
     contaminationCategory = Column('contamination_category',
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
+
+    pipelineId = Column('pipeline_id', String(255), nullable=True)
 
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
@@ -757,3 +767,43 @@ class GenomicGcDataFileMissing(Base):
 
 event.listen(GenomicGcDataFileMissing, 'before_insert', model_insert_listener)
 event.listen(GenomicGcDataFileMissing, 'before_update', model_update_listener)
+
+
+class GcDataFileStaging(Base):
+    """
+    Staging table for "GC data file reconciliation to table" job
+    Cleared and reloaded every job run
+    """
+
+    __tablename__ = 'gc_data_file_staging'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    bucket_name = Column(String(128), nullable=False, index=True)
+    file_path = Column(String(255), nullable=False, index=True)
+
+
+class GemToGpMigration(Base):
+    """
+    Used for storing GEM to GP migration records
+    """
+
+    __tablename__ = 'gem_to_gp_migration'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)  # 0 is no, 1 is yes
+    dev_note = Column(String(255), nullable=True)
+    file_path = Column(String(255), nullable=True, index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
+
+    # Fields sent to GP
+    participant_id = Column(Integer, nullable=True, index=True)
+    informing_loop_status = Column(String(64), nullable=True)
+    informing_loop_authored = Column(DateTime, index=True)
+    ancestry_traits_response = Column(String(64), nullable=True, index=True)
+
+
+event.listen(GemToGpMigration, 'before_insert', model_insert_listener)
+event.listen(GemToGpMigration, 'before_update', model_update_listener)

@@ -2,6 +2,7 @@ import argparse
 import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from itertools import islice
 
 import requests
 
@@ -11,10 +12,12 @@ from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_dao import ParticipantHistoryDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
-from rdr_service.services.consent.validation import ConsentValidationController, LogResultStrategy, StoreResultStrategy
+from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
+    LogResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -146,10 +149,14 @@ class ConsentTool(ToolBase):
                     callback=lambda parsed_value: setattr(file, 'sync_status', parsed_value)
                 )
                 self._consent_dao.batch_update_consent_files([file], session)
+                session.commit()
+                dispatch_rebuild_consent_metrics_tasks([file.id],
+                                                       project_id=self.gcp_env.project, build_locally=True)
 
     def validate_consents(self):
-        min_date = parse(self.args.min_date)
-        max_date = parse(self.args.max_date) if self.args.max_date else None
+        consent_type = None
+        if self.args.type:
+            consent_type = ConsentType(self.args.type)
 
         controller = ConsentValidationController(
             consent_dao=ConsentDao(),
@@ -157,16 +164,22 @@ class ConsentTool(ToolBase):
             hpo_dao=HPODao(),
             storage_provider=GoogleCloudStorageProvider()
         )
-        with self.get_session() as session, StoreResultStrategy(
-            session=session,
-            consent_dao=controller.consent_dao
-        ) as store_strategy:
-            controller.validate_recent_uploads(
-                session,
-                store_strategy,
-                min_consent_date=min_date,
-                max_consent_date=max_date
-            )
+        with open(self.args.pid_file) as pid_file,\
+                self.get_session() as session,\
+                ReplacementStoringStrategy(session=session, consent_dao=controller.consent_dao) as store_strategy:
+            # Get participant ids from the file in batches
+            # (retrieving all their summaries at once, processing them before the next batch)
+            participant_lookup_batch_size = 500
+            participant_ids = list(islice(pid_file, participant_lookup_batch_size))
+            while participant_ids:
+                summaries = ParticipantSummaryDao.get_by_ids_with_session(session=session, obj_ids=participant_ids)
+                for participant_summary in summaries:
+                    controller.validate_participant_consents(
+                        summary=participant_summary,
+                        output_strategy=store_strategy,
+                        types_to_validate=[consent_type]
+                    )
+                participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
     def upload_records(self):
         data_to_upload = []
@@ -177,6 +190,10 @@ class ConsentTool(ToolBase):
 
         with self.get_session() as session:
             self._consent_dao.batch_update_consent_files(data_to_upload, session)
+            session.commit()
+            if data_to_upload:
+                dispatch_rebuild_consent_metrics_tasks([d.id for d in data_to_upload],
+                                                       project_id=self.gcp_env.project)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
@@ -243,8 +260,9 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     )
 
     modify_parser = subparsers.add_parser('validate')
-    modify_parser.add_argument('--min_date', help='Earliest date of the expected consents to validate', required=True)
-    modify_parser.add_argument('--max_date', help='Latest date of the expected consents to validate')
+    modify_parser.add_argument('--pid-file', help='File listing the participant ids to validate', required=True)
+    modify_parser.add_argument('--type', help='Consent type to validate, defaults to validating all consents.')
+
 
     modify_parser = subparsers.add_parser('upload')
     modify_parser.add_argument(

@@ -3,7 +3,9 @@
 # file 'LICENSE', which is part of this source code package.
 #
 from .participant_enrollment_status import EnrollmentStatusCalculator
+from .participant_ubr import ParticipantUBRCalculator
 
 __all__ = [
-    EnrollmentStatusCalculator
+    EnrollmentStatusCalculator,
+    ParticipantUBRCalculator
 ]

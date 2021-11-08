@@ -23,7 +23,7 @@ from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.services.gcp_config import RdrEnvironment
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
-from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -62,7 +62,7 @@ CONSENT_ERROR_COUNT_COLUMNS = [
     ('Invalid DOB', 12),
     ('Age at Primary Consent < 18', 13),
     ('Checkbox Unchecked', 14),
-    ('Non-VA Consent for VA Particip[ant', 15),
+    ('Non-VA Consent for VA Participant', 15),
     ('VA Consent for Non-VA Participant', 16)
 
 ]
@@ -87,6 +87,7 @@ CONSENTS_LIST = [int(v) for v in CONSENT_PARTICIPANT_SUMMARY_FIELDS.keys()]
 CONSENT_REPORT_SQL_BODY =  """
             SELECT cf.participant_id,
                    ps.date_of_birth,
+                   ps.participant_origin,
                    CASE
                       WHEN (h.name IS NOT NULL and h.name != 'UNSET') THEN h.name
                       ELSE '(Unpaired)'
@@ -102,6 +103,7 @@ CONSENT_REPORT_SQL_BODY =  """
                    -- Adding signing date details to data pull to support new filtering logic on the results
                    cf.signing_date,
                    cf.expected_sign_date,
+                   CASE WHEN cf.sync_status = 3 then DATE(cf.modified) ELSE NULL END AS resolved_date,
                    -- Calculated fields to generate 0 or 1 values for the known tracked error conditions
                    -- (1 if error found)
                    NOT cf.file_exists AS missing_file,
@@ -118,16 +120,15 @@ CONSENT_REPORT_SQL_BODY =  """
                                  ps.consent_for_study_enrollment_first_yes_authored) < 18
                     AS invalid_age_at_consent,
                    -- Map the text for other errors we know about to its TRACKED_CONSENT_ERRORS name
-                   (cf.file_exists AND cf.other_errors LIKE '%missing consent check mark%') AS checkbox_unchecked,
-                   (cf.file_exists AND cf.other_errors LIKE '%non-veteran consent for veteran participant%')
+                   (cf.file_exists AND cf.other_errors LIKE "%{missing_check_mark}%") AS checkbox_unchecked,
+                   (cf.file_exists AND cf.other_errors LIKE "%{non_va_for_va}")
                       AS non_va_consent_for_va,
-                   (cf.file_exists AND cf.other_errors LIKE '%veteran consent for non-veteran participant%')
+                   (cf.file_exists AND cf.other_errors LIKE "%{va_for_non_va}%")
                       AS va_consent_for_non_va
-            FROM participant_summary ps
-            -- Eliminate test/ghost pids from the result
+            FROM consent_file cf
+            JOIN participant_summary ps on cf.participant_id = ps.participant_id
             JOIN participant p on p.participant_id = ps.participant_id
                  AND p.is_test_participant = 0 and (p.is_ghost_id is null or not p.is_ghost_id) and p.hpo_id != 21
-            JOIN consent_file cf ON ps.participant_id = cf.participant_id
             LEFT OUTER JOIN hpo h ON p.hpo_id = h.hpo_id
             LEFT OUTER JOIN organization o on ps.organization_id = o.organization_id
         """
@@ -150,19 +151,25 @@ DAILY_CONSENTS_SQL_FILTER = """
 # specified end date for this report
 ALL_UNRESOLVED_ERRORS_SQL_FILTER = """
             WHERE cf.type = {consent_type}
-                  AND DATE(cf.created) <= "{end_date}"
+                  AND DATE(cf.created) <= "{validation_end_date}"
                   AND cf.sync_status = 1
     """
 
 # Filter for generating stats on file issues resolved by retransmission (OBSOLETE consent_file entries)
 # The last modified timestamp for an OBSOLETE record should reflect when it was moved into OBSOLETE status; include
-# resolutions up to the specified end date for this report
+# resolutions up to the specified end date for this report.
 ALL_RESOLVED_SQL = """
            SELECT cf.participant_id,
+                  cf.id,
+                  ps.participant_origin,
                   cf.type,
                   DATE(cf.modified) AS resolved_date
            FROM consent_file cf
-           WHERE cf.sync_status = 3 AND DATE(cf.modified) <= "{end_date}"
+           -- Alias to ps to be consistent with other queries that use common filters
+           JOIN participant ps on ps.participant_id = cf.participant_id
+           WHERE cf.sync_status = 3
+                 AND DATE(cf.modified) <= "{validation_end_date}"
+                 AND ps.is_test_participant = 0 and (ps.is_ghost_id is null or ps.is_ghost_id = 0) and ps.hpo_id != 21
 """
 
 # TODO:  Remove this when we expand consent validation to include CE consents
@@ -503,6 +510,8 @@ class ConsentReport(object):
                               (df.missing_file == 1) | (df.invalid_dob == 1) | (df.invalid_age_at_consent == 1) |\
                               (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1)]
 
+        print(f'Filtered count for consent version false positives: {df.shape[0] - filtered_df.shape[0]}')
+
         return filtered_df
 
     def _get_consent_validation_dataframe(self, sql_template):
@@ -525,7 +534,11 @@ class ConsentReport(object):
             consent_authored_field = CONSENT_PARTICIPANT_SUMMARY_FIELDS[ConsentType(consent_int)][1]
             sql = sql.format_map(SafeDict(consent_type=consent_int,
                                           status_field=consent_status_field,
-                                          authored_field=consent_authored_field))
+                                          authored_field=consent_authored_field,
+                                          missing_check_mark=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK,
+                                          non_va_for_va=ConsentOtherErrors.NON_VETERAN_CONSENT_FOR_VETERAN,
+                                          va_for_non_va=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+                                          ))
             consent_df = pandas.read_sql_query(sql, self.db_conn)
             # Replace any null values in the calculated error flag columns  with (uint8 vs. pandas default float) zeroes
             for error_type in TRACKED_CONSENT_ERRORS:
@@ -563,7 +576,7 @@ class DailyConsentReport(ConsentReport):
             self.report_date = args.report_date
         else:
             # Default to yesterday's date as the filter for consent authored date
-            self.report_date = datetime.now() - timedelta(1)
+            self.report_date = datetime.now() - timedelta(days=1)
         if args.csv_file:
             self.csv_filename = args.csv_file
         else:
@@ -685,7 +698,6 @@ class DailyConsentReport(ConsentReport):
         """
         Execute the DailyConsentReport builder
         """
-
         # Set up DB and googlesheets doc access
         self._connect_to_rdr_replica()
         service_key_info = gcp_get_iam_service_key_info(self.gcp_env.service_key_id)
@@ -717,8 +729,11 @@ class WeeklyConsentReport(ConsentReport):
             raise ValueError('Please use the --doc-id arg or export WEEKLY_CONSENT_DOC_ID environment var')
 
         # Default to yesterday's date as the end of the weekly report range, and a week prior to that as start date
-        self.end_date = args.end_date or (datetime.now() - timedelta(1))
-        self.start_date = args.start_date or (self.end_date - timedelta(7))
+        self.end_date = args.end_date or (datetime.now() - timedelta(days=1))
+        self.start_date = args.start_date or (self.end_date - timedelta(days=7))
+        # When looking for unresolved records for the weekly report, the consent_file.created date could be a day
+        # later than the end_date range for the authored dates.
+        self.validation_end_date = self.end_date + timedelta(days=1)
         self.report_date = datetime.now()
         self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
         self.sheet_rows = 800
@@ -759,19 +774,25 @@ class WeeklyConsentReport(ConsentReport):
                              (df.checkbox_unchecked == 1) | (df.non_va_consent_for_va == 1) |\
                              (df.expected_sign_date >= filter_date) | (df.signing_date.isnull() == False)].reset_index()
 
+        print(f'Filtered count for signature_missing false positives: {df.shape[0] - filtered_df.shape[0]}')
         return filtered_df
 
     def get_resolved_consent_issues_dataframe(self):
         """
         Returns a dataframe of all issues marked OBSOLETE up to and including on the report end date.  OBSOLETE implies
-        the file which did not pass validation has been superceded by a new/retransmitted consent file which was
+        the file which did not pass validation has been superseded by a new/retransmitted consent file which was
         successfully validated.  In some cases, a consent_file entry may be marked OBSOLETE after a manual inspection/
         issue resolution.
         """
-        sql = ALL_RESOLVED_SQL.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d")))
+        sql = ALL_RESOLVED_SQL + VIBRENT_SQL_FILTER
+        sql = sql.format_map(SafeDict(validation_end_date=self.validation_end_date.strftime("%Y-%m-%d")))
         resolved_df = pandas.read_sql_query(sql, self.db_conn)
 
-        return resolved_df
+        # Make sure we only pick up resolved counts for the consent types currently enabled in the CONSENTS_LIST
+        # See https://www.geeksforgeeks.org/python-pandas-dataframe-isin/ for more details on this pandas construct
+        filter_mask = resolved_df.type.isin(CONSENTS_LIST)
+
+        return resolved_df[filter_mask]
 
     def add_weekly_validation_burndown_section(self):
         """
@@ -930,10 +951,9 @@ class WeeklyConsentReport(ConsentReport):
 
         self.row_pos += 1
 
-
     def create_weekly_report(self, spreadsheet):
         existing_sheets = spreadsheet.worksheets()
-        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly eports
+        # Perform rolling deletion of the oldest reports so we keep a pre-defined maximum number of weekly reports
         # NOTE:  this assumes all the reports in the file were generated in order, with the most recent date at the
         # leftmost tab (index 0).   This deletes sheets from the existing_sheets list, starting at the rightmost tab
         for ws_index in range(len(existing_sheets), self.max_weekly_reports - 1, -1):
@@ -1000,12 +1020,15 @@ class WeeklyConsentReport(ConsentReport):
 
         _logger.info('Retrieving consent validation records...')
         # consent_df will contain all the outstanding NEEDS_CORRECTING issues that still need resolution
+        # start_date/end_date refer to the consent authored date range; the validation end date (when the
+        # consent_file records were created) is up to a day later than the consent authored end date
         self.consent_df = self._get_consent_validation_dataframe(
-            self.report_sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
-                                                start_date=self.start_date.strftime("%Y-%m-%d"),
+            self.report_sql.format_map(SafeDict(start_date=self.start_date.strftime("%Y-%m-%d"),
+                                                end_date=self.end_date.strftime("%Y-%m-%d"),
+                                                validation_end_date=self.validation_end_date.strftime("%Y-%m-%d"),
                                                 report_date=self.report_date.strftime("%Y-%m-%d"))))
-        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files where it
-        # couldn't find signature/signing date, even though the files looked okay on visual inspection
+        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files
+        # where it couldn't find signature/signing date, even though the files looked okay on visual inspection
         self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
 
         # Get all the resolved/OBSOLETE issues for generating resolution stats
@@ -1057,7 +1080,7 @@ def run():
         elif args.report_type == 'weekly_status':
             process = WeeklyConsentReport(args, gcp_env)
         else:
-            raise("Invalid report type specified")
+            raise(ValueError, "Invalid report type specified")
 
         exit_code = process.execute()
         return exit_code

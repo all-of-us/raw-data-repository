@@ -837,7 +837,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 sampleId="21042005280",
                 genomeType="aou_wgs" if num & 2 == 0 else "aou_array",
                 participantId=participant.participantId,
-                ai_an='N',
+                ai_an='N' if num & 2 == 0 else 'Y',
                 aw3ManifestJobRunID=gen_job_run.id,
                 genomicWorkflowStateModifiedTime=workflow_date
             )
@@ -1078,6 +1078,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['bucket'], data['bucket_name'])
         self.assertEqual(call_json['job'], GenomicJob.AW4_ARRAY_WORKFLOW)
         self.assertIsNotNone(call_json['file_data'])
+        self.assertEqual(call_json['subfolder'], 'AW4_array_manifest')
 
         data = {
             "file_path": aw4_wgs_file_path,
@@ -1098,6 +1099,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['bucket'], data['bucket_name'])
         self.assertEqual(call_json['job'], GenomicJob.AW4_WGS_WORKFLOW)
         self.assertIsNotNone(call_json['file_data'])
+        self.assertEqual(call_json['subfolder'], 'AW4_wgs_manifest')
 
     @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
     def test_ingest_aw5_data_task_api(self, ingest_aw5_mock):

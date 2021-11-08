@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import aliased
 from typing import List, Type
 
+from rdr_service.model.code import Code
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant import Participant
 from rdr_service.model.patient_status import PatientStatus
-from rdr_service.model.questionnaire import Questionnaire, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory, \
+    QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse
 
 
 class _ModelQualityChecker(ABC):
@@ -20,6 +23,13 @@ class _ModelQualityChecker(ABC):
     @abstractmethod
     def run_data_quality_checks(self, for_data_since: datetime = None):
         ...
+
+    @classmethod
+    def _date_less_than_or_equal(cls, earlier_date: datetime, later_date: datetime, tolerance : timedelta = None):
+        if tolerance is None:
+            tolerance = timedelta(seconds=0)
+
+        return earlier_date <= (later_date + tolerance)
 
 
 class DeceasedReportQualityChecker(_ModelQualityChecker):
@@ -105,33 +115,72 @@ class QuestionnaireQualityChecker(_ModelQualityChecker):
 
 class ResponseQualityChecker(_ModelQualityChecker):
     def run_data_quality_checks(self, for_data_since: datetime = None):
+        # Alias fields used to determine the earliest release of a questionnaire with the same module code
+        all_matching_concepts: QuestionnaireConcept = aliased(QuestionnaireConcept)
+        all_matching_questionnaire: QuestionnaireHistory = aliased(QuestionnaireHistory)
+
         query = (
             self.session.query(
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.created,
                 QuestionnaireResponse.authored,
                 Participant.signUpTime,
-                func.count(QuestionnaireResponseAnswer.questionnaireResponseAnswerId)
+                Participant.suspensionTime,
+                Participant.withdrawalAuthored,
+                func.min(all_matching_questionnaire.created),
+                func.group_concat(Code.value.distinct())
             )
             .join(Participant)
-            .outerjoin(QuestionnaireResponseAnswer)
+            .outerjoin(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+                )
+            )
+            .outerjoin(
+                Code,
+                Code.codeId == QuestionnaireConcept.codeId
+            )
+            .outerjoin(
+                all_matching_concepts,
+                all_matching_concepts.codeId == Code.codeId
+            )
+            .outerjoin(
+                all_matching_questionnaire,
+                and_(
+                    all_matching_questionnaire.questionnaireId == all_matching_concepts.questionnaireId,
+                    all_matching_questionnaire.version == all_matching_concepts.questionnaireVersion
+                )
+            )
             .group_by(QuestionnaireResponse.questionnaireResponseId)
         )
         if for_data_since is not None:
             query = query.filter(QuestionnaireResponse.created >= for_data_since)
 
-        for response_id, created_time, authored_time, participant_signup_time, answer_count in query.all():
-            if authored_time is not None and authored_time > created_time:
-                logging.warning(
-                    f'Response {response_id} authored with future date of {authored_time} (received at {created_time})'
-                )
-            elif authored_time is not None and authored_time < participant_signup_time:
-                logging.warning(
-                    f'Response {response_id} authored at {authored_time} '
-                    f'but participant signed up at {participant_signup_time}'
-                )
-            elif answer_count == 0:
-                logging.warning(f'Response {response_id} has no answers')
+        for response_id, created_time, authored_time, participant_signup_time, suspension_datetime,\
+                withdrawal_datetime, min_questionnaire_created_time, module_code in query.all():
+            if authored_time is not None:
+                if not self._date_less_than_or_equal(
+                    earlier_date=authored_time,
+                    later_date=created_time,
+                    tolerance=timedelta(seconds=3600)  # Allowing the source server's time to be off by up to an hour
+                ):
+                    logging.error(
+                        f'Response {response_id} authored with future date '
+                        f'of {authored_time} (received at {created_time})'
+                    )
+                if authored_time < participant_signup_time:
+                    logging.error(
+                        f'Response {response_id} authored at {authored_time} '
+                        f'but participant signed up at {participant_signup_time}'
+                    )
+                if suspension_datetime and authored_time > suspension_datetime:
+                    logging.error(f'Response {response_id} authored for suspended participant')
+                if withdrawal_datetime and authored_time > withdrawal_datetime:
+                    logging.error(f'Response {response_id} authored for withdrawn participant')
+                if min_questionnaire_created_time and min_questionnaire_created_time > authored_time:
+                    logging.error(f'Response {response_id} to {module_code} authored before survey released')
 
 
 class DataQualityChecker(_ModelQualityChecker):

@@ -15,6 +15,7 @@ from .genomics import GenomicSetSchema, GenomicSetMemberSchema, GenomicJobRunSch
     GenomicGCValidationMetricsSchema, GenomicFileProcessedSchema, GenomicManifestFileSchema, \
     GenomicManifestFeedbackSchema
 from .retention_metrics import RetentionMetricSchema
+from .consent_metrics import ConsentMetricSchema
 
 __all__ = [
     'ParticipantSchema',
@@ -36,5 +37,6 @@ __all__ = [
     'GenomicFileProcessedSchema',
     'GenomicManifestFileSchema',
     'GenomicManifestFeedbackSchema',
-    'RetentionMetricSchema'
+    'RetentionMetricSchema',
+    'ConsentMetricSchema'
 ]

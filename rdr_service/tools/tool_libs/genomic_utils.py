@@ -24,7 +24,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
-    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao
+    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
@@ -1047,6 +1047,11 @@ class GenomicProcessRunner(GenomicManifestBase):
                                   manifest_type=GenomicManifestTypes.AW3_ARRAY,
                                   genome_type=config.GENOME_TYPE_ARRAY)
 
+        if self.gen_job_name == 'RESOLVE_MISSING_FILES':
+            self.resolve_missing_files(
+                job=GenomicJob.RESOLVE_MISSING_FILES,
+            )
+
         if self.gen_job_name in (
             'METRICS_INGESTION',
             'AW4_ARRAY_WORKFLOW',
@@ -1275,6 +1280,11 @@ class GenomicProcessRunner(GenomicManifestBase):
                 manifest_type=manifest_type,
                 _genome_type=genome_type,
             )
+
+    def resolve_missing_files(self, job):
+        # Run the resolve_missing_files job
+        with GenomicJobController(job_id=job, bq_project_id=self.gcp_env.project) as controller:
+            controller.resolve_missing_gc_files()
 
     def run_calculate_record_counts_aw1(self, manifest_id):
         _logger.info(f"Calculating record count for manifest_id: {manifest_id}")
@@ -1969,6 +1979,111 @@ class LoadRawManifest(GenomicManifestBase):
         return 0
 
 
+class ReconcileGcDataFileBucket(GenomicManifestBase):
+    """
+    Loads a manifest in GCS to the raw manifest table
+    currently only supports AW1/AW2 manifests
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ReconcileGcDataFileBucket, self).__init__(args, gcp_env)
+
+    def run(self):
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+
+        with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE,
+                                  storage_provider=self.gscp,
+                                  bq_project_id=self.gcp_env.project) as controller:
+            controller.reconcile_gc_data_file_to_table()
+
+        return 0
+
+
+class GemToGpMigrationClass(GenomicManifestBase):
+    """
+    Load a GEM to GP Migration batch
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(GemToGpMigrationClass, self).__init__(args, gcp_env)
+
+        self.gem_gp_dao = None
+
+    def run(self):
+
+        # Activate the SQL Proxy
+        self.gcp_env.activate_sql_proxy()
+        self.gem_gp_dao = GemToGpMigrationDao()
+
+        with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
+                                  bq_project_id=self.gcp_env.project) as controller:
+
+            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
+
+            if results:
+                self.export_to_gem_gp_table(controller.job_run.id, results)
+            else:
+                _logger.info('No data to export.')
+
+        return 0
+
+    def export_to_gem_gp_table(self, run_id, results):
+        batch = []
+        batch_size = 1000
+
+        now_str = clock.CLOCK.now().strftime('%Y%m%d%H%M%S')
+        file_path = f"gem_gp_export_{now_str}.csv"
+
+        for row in results:
+            obj = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
+            batch.append(obj)
+
+            # write to table in batches
+            if len(batch) % batch_size == 0:
+                if not self.args.dryrun:
+                    _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
+                    self.gem_gp_dao.insert_bulk(batch)
+
+                else:
+                    _logger.info(f'Would insert batch starting with: {batch[0].participantId}')
+                batch = []
+
+        # Insert remainder
+        if batch:
+            if not self.args.dryrun:
+                print(f'Inserting batch starting with: {batch[0].participantId}')
+                self.gem_gp_dao.insert_bulk(batch)
+            else:
+                print(f'Would insert batch starting with: {batch[0].participantId}')
+
+
+class BackFillReplates(GenomicManifestBase):
+    """
+    Inserts new genomic_set_member records for all samples
+    that require replating
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(BackFillReplates, self).__init__(args, gcp_env)
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+        ingester = GenomicFileIngester()
+
+        existing_records = self.dao.get_all_contamination_reextract()
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.insert_member_for_replating(existing_record.GenomicSetMember,
+                                                     existing_record.contaminationCategory)
+            else:
+                _logger.info(f'Would create member based on id: {existing_record.GenomicSetMember.id}')
+
+        return 0
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2022,6 +2137,15 @@ def get_process_for_run(args, gcp_env):
         'load-raw-manifest': {
             'process': LoadRawManifest(args, gcp_env)
         },
+        'reconcile-gc-data-file': {
+            'process': ReconcileGcDataFileBucket(args, gcp_env)
+        },
+        'gem-to-gp': {
+            'process': GemToGpMigrationClass(args, gcp_env)
+        },
+        'backfill-replates': {
+            'process': BackFillReplates(args, gcp_env)
+        }
     }
 
     return process_config[util]['process']
@@ -2144,7 +2268,8 @@ def run():
                                            'AW2F_MANIFEST',
                                            'CALCULATE_RECORD_COUNT_AW1',
                                            'AW3_WGS_WORKFLOW',
-                                           'AW3_ARRAY_WORKFLOW'
+                                           'AW3_ARRAY_WORKFLOW',
+                                           'RESOLVE_MISSING_FILES'
                                        ],
                                        type=str
                                        )
@@ -2169,6 +2294,8 @@ def run():
 
     # Backfill GenomicFileProcessed UploadDate
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
+    recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
+    backfill_replate_parser = subparser.add_parser("backfill-replates")  # pylint: disable=unused-variable
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
@@ -2214,6 +2341,10 @@ def run():
                                          default=False, required=False, action="store_true")  # noqa
     sample_ingestion_parser.add_argument("--cloud-task", help="Denotes whether to run workflow in cloud task",
                                          default=False, required=False)  # noqa
+
+    gem_to_gp_parser = subparser.add_parser("gem-to-gp")
+    gem_to_gp_parser.add_argument("--limit", help="limit for migration query", type=int,
+                                  default=None, required=False)  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files
     compare_ingestion_parser = subparser.add_parser("compare-ingestion")

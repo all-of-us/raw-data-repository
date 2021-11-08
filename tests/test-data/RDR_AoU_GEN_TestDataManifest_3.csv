@@ -1,3 +1,3 @@
-Biobank ID,Sample ID,Biobankid Sampleid,LIMS ID,Chipwellbarcode,Call Rate,Sex Concordance,Contamination,Processing Status,Notes
-T1,1001,T1_1991,10001,10001_R01C01,0.3456789012,True,0.01,Pass,This sample passed
-T2,1002,T2_1992,10002,10002_R01C02,0.3456789012,True,0.1345,Pass,This sample passed
+Biobank ID,Sample ID,Biobankid Sampleid,LIMS ID,Chipwellbarcode,Call Rate,Sex Concordance,Contamination,Sample_Source,Processing Status,Notes,Pipeline ID
+T1,1001,T1_1991,10001,10001_R01C01,0.3456789012,True,0.01,Whole Blood,Pass,This sample passed,cidr_egt_1
+T2,1002,T2_1992,10002,10002_R01C02,0.3456789012,True,0.1345,Whole Blood,Pass,This sample passed,cidr_egt_1

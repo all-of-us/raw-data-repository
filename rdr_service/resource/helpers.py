@@ -6,6 +6,7 @@
 #
 import datetime
 import os
+import re
 
 
 class DateRange:
@@ -115,19 +116,30 @@ class DateCollection:
 def _import_rural_zipcodes():
     """
     Load the file app_data/rural_zipcodes.txt and return a list of rural zipcodes.
+    :return: dictionary containing each year of release for rural codes lists.
+            IE: { "2014": list(zipcodes), "2020": list(zipcodes) }
     """
-    paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data')
-    codes = list()
+    paths = ('app_data', 'rdr_service/app_data', 'rest-api/app_data', '../../rdr_service/app_data',
+             '../rdr_service/app_data')
+    data = dict()
+    # Note: The 2020 file was created on 09/15/2020 based on the "created" property value of the original spreadsheet
+    #       downloaded from the FORHP website.
+    files = ['rural_zipcodes_2014.txt', 'rural_zipcodes_2020.txt']
 
     for path in paths:
-        if os.path.exists(os.path.join(path, 'rural_zipcodes.txt')):
-            with open(os.path.join(path, 'rural_zipcodes.txt')) as handle:
-                # pylint: disable=unused-variable
-                for count, line in enumerate(handle):
-                    # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file, add it back
-                    codes.append(line.split(',')[1].strip().zfill(5))
+        if os.path.exists(os.path.join(path, files[0])):
+            for file in files:
+                codes = list()
+                with open(os.path.join(path, file)) as handle:
+                    # pylint: disable=unused-variable
+                    for count, line in enumerate(handle):
+                        # If 5-digit zipcodes starting with 0 had the leading zero dropped in the source file,
+                        # add it back.
+                        codes.append(line.split(',')[1].strip().zfill(5))
+                data[re.sub("[^0-9]", "", file)] = codes
             break
-    return codes
+    return data
 
 
 RURAL_ZIPCODES = _import_rural_zipcodes()
+RURAL_2020_CUTOFF = datetime.date(2020, 9, 15)

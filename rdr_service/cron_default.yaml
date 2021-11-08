@@ -72,17 +72,12 @@ cron:
 - description: Transfer Health Pro consents
   url: /offline/TransferHealthProConsents
   timezone: America/New_York
-  schedule: 1 of jan 12:00 # placeholder schedule until initial backfill is run
+  schedule: every day 10:00
   target: offline
 - description: Genomic Pipeline AW0 (Cohort 3) Workflow
   url: /offline/GenomicC3AW0Workflow
   timezone: America/New_York
   schedule: every day 06:30
-  target: offline
-- description: Genomic AW1 Failures Workflow
-  url: /offline/GenomicFailuresWorkflow
-  timezone: America/New_York
-  schedule: every day 06:00
   target: offline
 - description: Genomic AW1C (CVL) Workflow (Manual)
   url: /offline/GenomicAW1CManifestWorkflow
@@ -158,6 +153,21 @@ cron:
   url: /offline/GenomicMissingFilesResolve
   timezone: America/New_York
   schedule: every 6 hours
+  target: offline
+- description: Reconcile GC Data File to Table
+  url: /offline/ReconcileGCDataFileToTable
+  timezone: America/New_York
+  schedule: every tuesday 02:00
+  target: offline
+- description: Reconcile Raw AW1 to Genomic Set Member Table
+  url: /offline/ReconcileRawToAw1Ingested
+  timezone: America/New_York
+  schedule: every friday 02:00
+  target: offline
+- description: Reconcile Raw AW2 to Validation Metrics
+  url: /offline/ReconcileRawToAw2Ingested
+  timezone: America/New_York
+  schedule: every saturday 02:00
   target: offline
 - description: Genomic Update Members With Missing Files Resolved
   url: /offline/GenomicUpdateMembersStateResolved

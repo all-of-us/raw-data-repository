@@ -407,7 +407,7 @@ def migrate_requests_logs(target_db):
 @app_util.auth_required_cron
 def transfer_hpro_consents():
     hpro_consents = HealthProConsentFile()
-    hpro_consents.transfer_limit = 1000
+    hpro_consents.transfer_limit = config.getSetting(config.HEALTHPRO_CONSENTS_TRANSFER_LIMIT, default=1000)
     hpro_consents.initialize_consent_transfer()
     return '{ "success": "true" }'
 
@@ -434,14 +434,6 @@ def genomic_c1_participant_workflow():
 @app_util.auth_required_cron
 def genomic_gc_manifest_workflow():
     genomic_pipeline.genomic_centers_manifest_workflow()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('aw1f_manifest_workflow')
-def genomic_aw1f_failures_workflow():
-    genomic_pipeline.genomic_centers_aw1f_manifest_workflow()
-    genomic_pipeline.genomic_centers_accessioning_failures_workflow()
     return '{"success": "true"}'
 
 
@@ -597,6 +589,27 @@ def genomic_missing_files_clean_up():
 @run_genomic_cron_job('missing_files_resolve_workflow')
 def genomic_missing_files_resolve():
     genomic_pipeline.genomic_missing_files_resolve()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_gc_data_file_to_table_workflow')
+def reconcile_gc_data_file_to_table():
+    genomic_pipeline.reconcile_gc_data_file_to_table()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_raw_to_aw1_ingested_workflow')
+def reconcile_raw_to_aw1_ingested():
+    genomic_pipeline.reconcile_raw_to_aw1_ingested()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_raw_to_aw2_ingested_workflow')
+def reconcile_raw_to_aw2_ingested():
+    genomic_pipeline.reconcile_raw_to_aw2_ingested()
     return '{"success": "true"}'
 
 
@@ -778,12 +791,6 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicFailuresWorkflow",
-        endpoint="genomic_aw1f_failures_workflow",
-        view_func=genomic_aw1f_failures_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicAW1CManifestWorkflow",
         endpoint="aw1c_manifest_workflow",
         view_func=aw1c_manifest_workflow,
@@ -888,6 +895,24 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicMissingFilesResolve",
         endpoint="genomic_missing_files_resolve",
         view_func=genomic_missing_files_resolve,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileGCDataFileToTable",
+        endpoint="reconcile_gc_data_file_to_table",
+        view_func=reconcile_gc_data_file_to_table,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileRawToAw1Ingested",
+        endpoint="reconcile_raw_to_aw1_ingested",
+        view_func=reconcile_raw_to_aw1_ingested,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "ReconcileRawToAw2Ingested",
+        endpoint="reconcile_raw_to_aw2_ingested",
+        view_func=reconcile_raw_to_aw2_ingested,
         methods=["GET"]
     )
     offline_app.add_url_rule(
