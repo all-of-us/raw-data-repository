@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import mock
 
-from rdr_service import config
+from rdr_service import clock, config
 from rdr_service.model.participant import Participant
 from rdr_service.participant_enums import WithdrawalAIANCeremonyStatus, WithdrawalStatus
 from rdr_service.tools.tool_libs.biobank_report import BiobankReportTool
@@ -105,6 +105,55 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
             withdrawal_reason_justification='withdraw before delivery'
         )
 
+    def test_default_date_calculations(self):
+        """
+        Make sure the script will perform the correct date calculations
+        when finding the date range and name for the report
+        """
+        with mock.patch('rdr_service.tools.tool_libs.biobank_report.open') as open_mock, \
+                mock.patch('rdr_service.tools.tool_libs.biobank_report.get_withdrawal_report_query') as get_query_mock,\
+                mock.patch('rdr_service.tools.tool_libs.biobank_report.BiobankReportTool.get_session'):
+            get_query_mock.return_value = None
+
+            # Check file name generated when generating report at the start of the month
+            with clock.FakeClock(datetime(2021, 3, 1)):
+                self.run_withdrawal_report()
+                open_mock.assert_called_with('report_2021-2_withdrawals.csv', 'w')
+                get_query_mock.assert_called_with(start_date=datetime(2021, 1, 27))
+
+            # Check file name generated when generating report later in the month
+            with clock.FakeClock(datetime(2022, 1, 18)):
+                self.run_withdrawal_report()
+                open_mock.assert_called_with('report_2021-12_withdrawals.csv', 'w')
+                get_query_mock.assert_called_with(start_date=datetime(2021, 11, 27))
+
+    def test_fails_without_proper_header(self):
+        with self.assertRaises(Exception):
+            self.run_report_upload(report_headers=[
+                'participant_id'
+            ])
+
+    def test_withdrawal_report_upload_call(self):
+        with mock.patch('rdr_service.tools.tool_libs.biobank_report.GoogleCloudStorageProvider') as google_storage_mock, \
+                clock.FakeClock(datetime(2020, 5, 4)):
+            storage_instance_mock = google_storage_mock.return_value
+            self.run_report_upload(local_file_name='test_file.txt', report_headers=[
+                'biobank_id',
+                'withdrawal_time',
+                'is_native_american',
+                'needs_disposal_ceremony',
+                'participant_origin',
+                'paired_hpo',
+                'paired_org',
+                'paired_site',
+                'withdrawal_reason_justification',
+                'deceased_status'
+            ])
+            storage_instance_mock.upload_from_file.assert_called_with(
+                source_file='test_file.txt',
+                path='test_bucket_name/reconciliation/report_2020-4_withdrawals.csv'
+            )
+
     def _assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_date_str,
                                            withdrawal_reason_justification, as_native_american: bool = False,
                                            needs_ceremony_indicator: str = 'NA', paired_hpo='UNSET', paired_org=None,
@@ -128,12 +177,31 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
         with mock.patch('rdr_service.tools.tool_libs.biobank_report.csv') as csv_mock:
             self.run_tool(
                 BiobankReportTool,
-                tool_args={'command': 'withdrawal'},
+                tool_args={
+                    'report_type': 'withdrawal',
+                    'generate': True,
+                    'upload_file': None
+                },
                 server_config={config.BIOBANK_ID_PREFIX: 'Z'}
             )
 
             dict_writer_mock = csv_mock.DictWriter.return_value
             return [call.args[0] for call in dict_writer_mock.writerow.call_args_list]
+
+    def run_report_upload(self, report_headers: list, local_file_name='go-get-file-data'):
+        with mock.patch('rdr_service.tools.tool_libs.biobank_report.csv') as csv_mock, \
+                mock.patch('rdr_service.tools.tool_libs.biobank_report.open'):
+            csv_mock.reader.return_value.__next__.return_value = report_headers
+
+            self.run_tool(
+                BiobankReportTool,
+                tool_args={
+                    'report_type': 'withdrawal',
+                    'upload_file': local_file_name,
+                    'generate': False
+                },
+                server_config={config.BIOBANK_SAMPLES_BUCKET_NAME: ['test_bucket_name']}
+            )
 
     def _datetime_n_days_ago(self, days_ago: int) -> datetime:
         # Clearing microseconds to avoid rounding time up in database and causing test to fail

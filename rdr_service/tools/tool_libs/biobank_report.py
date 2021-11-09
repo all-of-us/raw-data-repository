@@ -2,9 +2,10 @@ import argparse
 import csv
 from datetime import datetime, timedelta
 
-from rdr_service import config
+from rdr_service import clock, config
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.offline.biobank_samples_pipeline import get_withdrawal_report_query
+from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
 tool_cmd = 'biobank-report'
@@ -15,17 +16,23 @@ class BiobankReportTool(ToolBase):
     def run(self):
         super(BiobankReportTool, self).run()
 
-        if self.args.command == 'withdrawal':
-            self.generate_withdrawal_report()
+        if self.args.report_type == 'withdrawal':
+            if self.args.upload_file and self.args.generate:
+                logger.error('Can only generate a report or upload one, not both at the same time.')
+            elif self.args.generate:
+                self.generate_withdrawal_report()
+            elif self.args.upload_file:
+                self.upload_withdrawal_report(self.args.upload_file)
+            else:
+                logger.error('Need to specify to either generate or upload a withdrawal report')
 
     def generate_withdrawal_report(self, start_date: datetime = None, file_path: str = None):
-        now = datetime.now()
+        now = clock.CLOCK.now()
         if start_date is None:
             two_months_ago = now - timedelta(weeks=8)
             start_date = datetime(two_months_ago.year, two_months_ago.month, 27)
         if file_path is None:
-            one_month_ago = now - timedelta(weeks=4)
-            file_path = f'report_{one_month_ago.year}-{one_month_ago.month}_withdrawals.csv'
+            file_path = self._get_default_withdrawal_name()
 
         logger.info(f'Generating withdrawal report for data since {start_date}')
         with self.get_session() as session, open(file_path, 'w') as output_file:
@@ -65,10 +72,53 @@ class BiobankReportTool(ToolBase):
 
         logger.info(f'SUCCESS: report written to {file_path}')
 
+    def upload_withdrawal_report(self, report_file_path: str):
+        # Check that the file's columns are correct
+        with open(report_file_path) as withdrawal_report_file:
+            csv_reader = csv.reader(withdrawal_report_file)
+            report_headers = next(csv_reader)
+            if report_headers != [
+                'biobank_id',
+                'withdrawal_time',
+                'is_native_american',
+                'needs_disposal_ceremony',
+                'participant_origin',
+                'paired_hpo',
+                'paired_org',
+                'paired_site',
+                'withdrawal_reason_justification',
+                'deceased_status'
+            ]:
+                # This makes sure all the expected columns are in the file,
+                # but especially to make sure participant_id was removed
+                raise Exception('Unexpected set of columns in the file.')
+
+        # Upload the file to Google Storage
+        biobank_bucket_name = self.get_server_config()[config.BIOBANK_SAMPLES_BUCKET_NAME][0]
+        destination_path = f'{biobank_bucket_name}/reconciliation/{self._get_default_withdrawal_name()}'
+
+        logger.info(f'Uploading {self.args.upload_file} to {destination_path}')
+        storage_provider = GoogleCloudStorageProvider()
+        storage_provider.upload_from_file(source_file=self.args.upload_file, path=destination_path)
+
+    @classmethod
+    def _get_default_withdrawal_name(cls):
+        one_month_ago = clock.CLOCK.now() - timedelta(weeks=4)
+        return f'report_{one_month_ago.year}-{one_month_ago.month}_withdrawals.csv'
+
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
-    subparsers = parser.add_subparsers(dest='command', required=True)
-    subparsers.add_parser('withdrawal')
+    subparsers = parser.add_subparsers(dest='report_type', required=True)
+
+    withdrawal_parser = subparsers.add_parser('withdrawal')
+    withdrawal_parser.add_argument(
+        '--generate',
+        help='Generates the withdrawal report to be audited.',
+        action='store_true',
+        default=False
+    )
+    withdrawal_parser.add_argument('--upload-file', help='Upload an audited report to the bucket.', default=None)
+
 
 def run():
     return cli_run(tool_cmd, tool_desc, BiobankReportTool, add_additional_arguments)
