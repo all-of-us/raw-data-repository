@@ -55,7 +55,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
-                    GenomicGCValidationMetrics.pipelineId
+                    GenomicGCValidationMetrics.pipelineId,
+                    GenomicSetMember.ai_an
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -109,7 +110,8 @@ class GenomicQueryClass:
                     GenomicSetMember.sampleId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
-                    GenomicGCValidationMetrics.sexPloidy
+                    GenomicGCValidationMetrics.sexPloidy,
+                    GenomicSetMember.ai_an
                 ]
             ).select_from(
                 sqlalchemy.join(
