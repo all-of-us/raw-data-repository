@@ -726,6 +726,7 @@ class GenomicFileIngester:
             member
         )
         row['contamination_category'] = category
+        row['contamination_category_str'] = category.name
 
         # handle mapped reads in case they are longer than field length
         if 'mappedreadspct' in row.keys():
@@ -780,6 +781,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal=_signal)
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -846,6 +848,7 @@ class GenomicFileIngester:
 
                 member.aw4ManifestJobRunID = self.job_run_id
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
+                member.qcStatusStr = member.qcStatus.name
 
                 metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
@@ -992,6 +995,8 @@ class GenomicFileIngester:
             member.genomicWorkflowState = GenomicStateHandler.get_new_state(
                 member.genomicWorkflowState,
                 signal=_signal)
+
+            member.genomicWorkflowStateStr = member.genomicWorkflowState.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         return member
@@ -1119,6 +1124,7 @@ class GenomicFileIngester:
             ai_an=member.ai_an,
             genomeType=GENOME_TYPE_WGS,
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            genomicWorkflowStateStr=GenomicWorkflowState.EXTRACT_REQUESTED.name,
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             replatedMemberId=member.id,
@@ -1161,6 +1167,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal='w2-ingestion-success')
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -1248,6 +1255,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal=_signal)
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -1316,7 +1324,8 @@ class GenomicFileIngester:
             collectionTubeId=aw1_data['collectiontubeid'],
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=aw1_data['genometype'],
-            genomicWorkflowState=GenomicWorkflowState.AW1
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name
         )
 
         # Set member attribures from AW1
@@ -2333,6 +2342,7 @@ class GenomicBiobankSamplesCoupler:
                     ai_an=participant.ai_an,
                     genomeType=genome_type,
                     genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
+                    genomicWorkflowStateStr=GenomicWorkflowState.LR_PENDING.name,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
@@ -2422,6 +2432,7 @@ class GenomicBiobankSamplesCoupler:
                     ai_an='Y' if samples_meta.is_ai_an[i] else 'N',
                     genomeType=self._ARRAY_GENOME_TYPE,
                     genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    genomicWorkflowStateStr=GenomicWorkflowState.AW0_READY.name,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )

@@ -153,6 +153,7 @@ class GenomicJobController:
                 modified=now,
                 uploadDate=_uploadDate,
                 manifestTypeId=_manifest_type,
+                manifestTypeIdStr=_manifest_type.name,
                 filePath=_file_path,
                 bucketName=path_list[0],
                 recordCount=0,  # Initializing with 0, counting records when processing file
@@ -1057,6 +1058,7 @@ class GenomicJobController:
                         new_manifest_obj = GenomicManifestFile(
                             uploadDate=now_time,
                             manifestTypeId=manifest_type,
+                            manifestTypeIdStr=manifest_type.name,
                             filePath=manifest['file_path'],
                             bucketName=self.bucket_name,
                             recordCount=manifest['record_count'],
