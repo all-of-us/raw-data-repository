@@ -380,7 +380,8 @@ class GenomicPipelineTest(BaseTestCase):
         genome_center=None,
         aw3_job_id=None,
         gc_manifest_parent_sample_id=None,
-        sample_source=None
+        sample_source=None,
+        ai_an=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -406,6 +407,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.aw3ManifestJobRunID = aw3_job_id
         genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
         genomic_set_member.gcManifestSampleSource = sample_source
+        genomic_set_member.ai_an = ai_an
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -496,6 +498,7 @@ class GenomicPipelineTest(BaseTestCase):
                 aw3_job_id=kwargs.get('aw3_job_id'),
                 gc_manifest_parent_sample_id=1000+p,
                 sample_source=kwargs.get('sample_source'),
+                ai_an=kwargs.get('ai_an')
             )
 
     def _update_site_states(self):
@@ -1537,7 +1540,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100007, int(rows[8][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[8][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[8][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[8][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("Y", rows[8][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_array", rows[8][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -1545,7 +1548,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(100007, int(rows[9][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
             self.assertEqual("F", rows[9][ExpectedCsvColumns.SEX_AT_BIRTH])
             self.assertEqual("N", rows[9][ExpectedCsvColumns.NY_FLAG])
-            self.assertEqual("N", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
+            self.assertEqual("Y", rows[9][ExpectedCsvColumns.VALIDATION_PASSED])
             self.assertEqual("Y", rows[9][ExpectedCsvColumns.AI_AN])
             self.assertEqual("aou_wgs", rows[9][ExpectedCsvColumns.GENOME_TYPE])
 
@@ -1566,7 +1569,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(6, len(new_genomic_members))
+        self.assertEqual(8, len(new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -1660,7 +1663,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(6, len(new_genomic_members))
+        self.assertEqual(8, len(new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -2651,6 +2654,43 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_gem_a1_limit(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
+                                                array_participants=range(1, 5),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        for i in range(1, 5):
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=i,
+                processingStatus='pass',
+            )
+
+        config.override_setting(config.A1_LIMIT, [1])
+
+        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+
+        members = self.member_dao.get_all()
+        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
+        self.assertEqual(1, len(a1_members))
+
+        config.override_setting(config.A1_LIMIT, [1000]) # reset for full testing
+
     def test_cvl_w1_manifest(self):
 
         # Need GC Manifest for source query : run_id = 1
@@ -2908,7 +2948,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1,
-                                                sample_source="Whole Blood")
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
@@ -3014,7 +3055,8 @@ class GenomicPipelineTest(BaseTestCase):
             "processing_status",
             "research_id",
             "sample_source",
-            "pipeline_id"
+            "pipeline_id",
+            "ai_an"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3037,6 +3079,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(1000002, int(rows[1]['research_id']))
             self.assertEqual('Whole Blood', rows[1]['sample_source'])
             self.assertEqual('cidr_egt_1', rows[1]['pipeline_id'])
+            self.assertEqual('N', rows[1]['ai_an'])
 
             # Test File Paths
             metric = self.metrics_dao.get(2)
@@ -3176,7 +3219,8 @@ class GenomicPipelineTest(BaseTestCase):
             "processing_status",
             "research_id",
             "sample_source",
-            "pipeline_id"
+            "pipeline_id",
+            "ai_an"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3406,7 +3450,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 recon_gc_man_id=1,
                                                 genome_center='rdr',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1,
-                                                sample_source="Whole Blood")
+                                                sample_source="Whole Blood",
+                                                ai_an='N')
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
@@ -3428,6 +3473,7 @@ class GenomicPipelineTest(BaseTestCase):
                 gcManifestParentSampleId=1000+i,
                 genomeType="aou_array",
                 aw3ManifestJobRunID=1,
+                ai_an='N'
             )
 
         genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
@@ -3516,7 +3562,8 @@ class GenomicPipelineTest(BaseTestCase):
             "research_id",
             "sample_source",
             "mapped_reads_pct",
-            "sex_ploidy"
+            "sex_ploidy",
+            "ai_an"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3548,6 +3595,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('Whole Blood', row['sample_source'])
             self.assertEqual('88.8888888', row['mapped_reads_pct'])
             self.assertEqual('XY', row['sex_ploidy'])
+            self.assertEqual('N', row['ai_an'])
 
             self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
             self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
@@ -3783,7 +3831,8 @@ class GenomicPipelineTest(BaseTestCase):
                                                 arr_override=False,
                                                 recon_gc_man_id=1,
                                                 genome_center='rdr',
-                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                ai_an='N')
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
@@ -3894,7 +3943,8 @@ class GenomicPipelineTest(BaseTestCase):
             "research_id",
             "sample_source",
             "mapped_reads_pct",
-            "sex_ploidy"
+            "sex_ploidy",
+            "ai_an"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)

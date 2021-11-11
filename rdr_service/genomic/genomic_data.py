@@ -2,7 +2,7 @@ import sqlalchemy
 from sqlalchemy import distinct
 from sqlalchemy.orm import aliased
 
-from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
+from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -55,7 +55,8 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
-                    GenomicGCValidationMetrics.pipelineId
+                    GenomicGCValidationMetrics.pipelineId,
+                    GenomicSetMember.ai_an
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -73,7 +74,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -109,7 +110,8 @@ class GenomicQueryClass:
                     GenomicSetMember.sampleId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
-                    GenomicGCValidationMetrics.sexPloidy
+                    GenomicGCValidationMetrics.sexPloidy,
+                    GenomicSetMember.ai_an
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -127,7 +129,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_WGS) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
@@ -234,8 +236,9 @@ class GenomicQueryClass:
                 ParticipantSummary.consentForGenomicsRORAuthored,
                 GenomicGCValidationMetrics.chipwellbarcode,
                 sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
-            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
-                                          ),
+            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(
+                config.getSetting(config.A1_LIMIT)
+            )),
             GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
                 [
                     GenomicSetMember.biobankId,
@@ -363,8 +366,8 @@ class GenomicQueryClass:
                     WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
                     END AS gror_consent,
                     CASE
-                        WHEN native.participant_id IS NULL THEN 1 ELSE 0
-                    END AS valid_ai_an
+                        WHEN native.participant_id IS NULL THEN 0 ELSE 1
+                    END AS is_ai_an
                 FROM
                     participant_summary ps
                     JOIN code c ON c.code_id = ps.sex_id
@@ -389,7 +392,6 @@ class GenomicQueryClass:
                     AND ps.participant_origin = "vibrent"
                 HAVING TRUE
                     # Validations for Cohort 2
-                    AND valid_ai_an = 1
                     AND valid_age = 1
                     AND general_consent_given = 1
                     AND valid_suspension_status = 1
@@ -398,7 +400,7 @@ class GenomicQueryClass:
             """
 
     @staticmethod
-    def remaining_saliva_participants(config):
+    def remaining_saliva_participants(query_config):
         is_ror = None
         originated = {
             # at home
@@ -411,22 +413,22 @@ class GenomicQueryClass:
             }
         }
 
-        if config['ror'] >= 0:
+        if query_config['ror'] >= 0:
             # unset = 0
             # submitted = 1
             # submitted_not_consent = 2
-            if config['ror'] == 0:
+            if query_config['ror'] == 0:
                 is_ror = """AND (ps.consent_for_genomics_ror = {}  \
-                    OR ps.consent_for_genomics_ror IS NULL) """.format(config['ror'])
+                    OR ps.consent_for_genomics_ror IS NULL) """.format(query_config['ror'])
             else:
-                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror'])
+                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(query_config['ror'])
 
         # in clinic
         is_clinic_id_null = "AND mk.id IS NULL" \
-            if config['origin'] and config['origin'] == 2 else ""
+            if query_config['origin'] and query_config['origin'] == 2 else ""
 
-        is_home_or_clinic = originated[config['origin']]['sql'] \
-            if config['origin'] else ""
+        is_home_or_clinic = originated[query_config['origin']]['sql'] \
+            if query_config['origin'] else ""
 
         # Base query for only saliva samples in RDR w/options passed in
         return """
@@ -458,9 +460,8 @@ class GenomicQueryClass:
             WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
             END AS gror_consent,
             CASE
-                WHEN native.participant_id IS NULL THEN 1 ELSE 0
-            END AS valid_ai_an
-
+            WHEN native.participant_id IS NULL THEN 0 ELSE 1
+            END AS is_ai_an
         FROM
             participant_summary ps
             JOIN code c ON c.code_id = ps.sex_id
@@ -476,7 +477,6 @@ class GenomicQueryClass:
             {is_ror}
             {is_clinic_id_null}
         HAVING TRUE
-            AND valid_ai_an = 1
             AND valid_age = 1
             AND general_consent_given = 1
             AND valid_suspension_status = 1
@@ -519,8 +519,8 @@ class GenomicQueryClass:
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
               END AS gror_consent,
               CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
+                WHEN native.participant_id IS NULL THEN 0 ELSE 1
+              END AS is_ai_an
             FROM
                 participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
@@ -549,7 +549,6 @@ class GenomicQueryClass:
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 1
-                AND valid_ai_an = 1
                 AND valid_age = 1
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
@@ -588,8 +587,8 @@ class GenomicQueryClass:
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
               END AS gror_consent,
               CASE
-                  WHEN native.participant_id IS NULL THEN 1 ELSE 0
-              END AS valid_ai_an
+                WHEN native.participant_id IS NULL THEN 0 ELSE 1
+              END AS is_ai_an
             FROM
                 participant_summary ps
                 JOIN code c ON c.code_id = ps.sex_id
@@ -613,7 +612,6 @@ class GenomicQueryClass:
                 AND m.id IS NULL
             HAVING TRUE
                 # Validations for Cohort 2
-                AND valid_ai_an = 1
                 AND valid_age = 1
                 AND general_consent_given = 1
                 AND valid_suspension_status = 1
@@ -699,8 +697,8 @@ class GenomicQueryClass:
             WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
           END AS gror_consent,
           CASE
-              WHEN native.participant_id IS NULL THEN 1 ELSE 0
-          END AS valid_ai_an,
+              WHEN native.participant_id IS NULL THEN 0 ELSE 1
+          END AS is_ai_an,
           ss.status,
           ss.test
         FROM

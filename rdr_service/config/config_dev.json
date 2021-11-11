@@ -101,6 +101,14 @@
   "metrics_shards": [
     "10"
   ],
+  "gc_name_to_id_mapping": {
+    "baylor_array": "jh",
+    "baylor_wgs": "bcm",
+    "broad": "bi",
+    "northwest": "uw",
+    "rdr": "rdr"
+  },
   "mayolink_creds": ["rdr-mayolink-creds-test.json"],
-  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"]
+  "mayolink_endpoint": ["https://test.orders.mayocliniclabs.com/orders/create.xml"],
+  "a1_limit": [10000]
 }
