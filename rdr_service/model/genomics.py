@@ -644,6 +644,7 @@ class GenomicIncident(Base):
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
     data_file_path = Column(String(512))
+    submitted_gc_site_id = Column(String(128), nullable=True)
 
 
 event.listen(GenomicIncident, 'before_insert', model_insert_listener)
