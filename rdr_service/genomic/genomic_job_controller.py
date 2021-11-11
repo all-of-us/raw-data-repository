@@ -1403,6 +1403,7 @@ class DataQualityJobController:
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
+            GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.get_report,
         }
 
         return job_registry[job]
@@ -1438,15 +1439,11 @@ class DataQualityJobController:
         """
 
         rc = ReportingComponent(self)
-
         report_params = rc.get_report_parameters(**kwargs)
 
         rc.set_report_def(**report_params)
-
         report_data = rc.get_report_data()
-
         report_string = rc.format_report(report_data)
-
         report_result = report_string
 
         # Compile long reports to cloud file and post link
