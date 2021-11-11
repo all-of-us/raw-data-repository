@@ -274,7 +274,7 @@ class ResendSamplesClass(GenomicManifestBase):
                 return 1
 
         # Execute manifest resends
-        if self.args.manifest == "DRC_BIOBANK":
+        if self.args.manifest == "AW0":
             self.generate_bb_manifest_from_sample_list(samples_list)
 
         return 0
@@ -297,7 +297,7 @@ class GenerateManifestClass(GenomicManifestBase):
         self.limit = args.limit
 
         # AW0 Manifest
-        if args.manifest == "DRC_BIOBANK":
+        if args.manifest == "AW0":
             if args.cohort and int(args.cohort) == 2:
                 _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_remainder_manifest()
