@@ -1404,7 +1404,6 @@ class GenomicFileValidator:
         self.genome_type = None
         self.controller = controller
         self.gc_site_id = None
-        self.filename_components = []
 
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
@@ -1603,7 +1602,8 @@ class GenomicFileValidator:
             self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
 
     def set_gc_site_id(self, fn_component):
-        if fn_component in self.VALID_GENOME_CENTERS and \
+        if fn_component and \
+            fn_component.lower() in self.VALID_GENOME_CENTERS and \
                 self.job_id in [
                     GenomicJob.METRICS_INGESTION,
                     GenomicJob.AW1_MANIFEST,

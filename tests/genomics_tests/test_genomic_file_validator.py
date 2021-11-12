@@ -41,6 +41,18 @@ class GenomicFileValidatorTest(BaseTestCase):
         self.assertEqual(file_validator.genome_type, GENOME_TYPE_WGS)
 
     def test_set_gc_site_id_filename(self):
-        pass
 
+        gc_file_name = 'RDR_AoU_GEN_PKG-1908-218051.csv'
+        rdr_file_components = [x.lower() for x in gc_file_name.split('/')[-1].split("_")]
+
+        file_validator = GenomicFileValidator(
+            filename=gc_file_name,
+            job_id=GenomicJob.AW1_MANIFEST
+        )
+
+        file_validator.set_gc_site_id(rdr_file_components[0])
+
+        self.assertIsNotNone(file_validator.gc_site_id)
+        self.assertTrue(file_validator.gc_site_id in file_validator.VALID_GENOME_CENTERS)
+        self.assertEqual(file_validator.gc_site_id, rdr_file_components[0])
 
