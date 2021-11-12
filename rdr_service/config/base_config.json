@@ -105,5 +105,14 @@
     "prod-genomics-data-broad": ["Genotyping_sample_raw_data", "wgs_sample_raw_data"],
     "prod-genomics-data-northwest": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"]
   },
-  "a1_limit": [10000]
+  "a1_limit": [10000],
+  "genomic_daily_validation_emails": {
+    "send_emails": 1,
+    "recipients": {
+      "bcm": ["Kimberly.Walker@bcm.edu", "sdugan@bcm.edu"],
+      "jh": ["kdoheny@jhmi.edu", "mzilka1@jhmi.edu"],
+      "uw": ["cfrazar@uw.edu", "jmw54@uw.edu", "kolart@uw.edu"],
+      "bi": ["namrata@broadinstitute.org", "katiel@broadinstitute.org"]
+    }
+  }
 }

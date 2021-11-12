@@ -1811,8 +1811,12 @@ class GenomicFileValidator:
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
-        is_valid_filename = name_rules[self.job_id]()
-        return is_valid_filename
+        try:
+            is_valid_filename = name_rules[self.job_id]()
+            return is_valid_filename
+
+        except KeyError:
+            return GenomicSubProcessResult.ERROR
 
     def validate_values(self, data):
         is_invalid, message = False, None

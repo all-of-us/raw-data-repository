@@ -322,7 +322,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_test_set = self._create_fake_genomic_set(
             genomic_set_name="control-samples",
             genomic_set_criteria=".",
-            genomic_set_filename="../cron_job_tests"
+            genomic_set_filename="."
         )
 
         self._create_fake_genomic_member(
