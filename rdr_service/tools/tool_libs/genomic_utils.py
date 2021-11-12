@@ -2084,6 +2084,40 @@ class BackFillReplates(GenomicManifestBase):
         return 0
 
 
+class ArbitraryReplates(GenomicManifestBase):
+    """
+    Inserts new genomic_set_member records for
+    supplied existing genomic_set_member IDs
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ArbitraryReplates, self).__init__(args, gcp_env)
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+        ingester = GenomicFileIngester()
+
+        member_ids = []
+        if self.args.csv:
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    member_ids.append(int(line.strip()))
+        else:
+            _logger.error('Need --csv')
+
+        existing_records = self.dao.get_members_from_member_ids(member_ids)
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.copy_member_for_replating(existing_record)
+            else:
+                _logger.info(f'Would create member based on id: {existing_record.id}')
+
+        return 0
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2145,6 +2179,9 @@ def get_process_for_run(args, gcp_env):
         },
         'backfill-replates': {
             'process': BackFillReplates(args, gcp_env)
+        },
+        'arbitrary-replates': {
+            'process': ArbitraryReplates(args, gcp_env)
         }
     }
 
@@ -2296,6 +2333,9 @@ def run():
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
     backfill_replate_parser = subparser.add_parser("backfill-replates")  # pylint: disable=unused-variable
+
+    arbitrary_replate_parser = subparser.add_parser("arbitrary-replates")  # pylint: disable=unused-variable
+    arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
