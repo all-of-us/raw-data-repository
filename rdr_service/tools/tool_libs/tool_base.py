@@ -40,6 +40,7 @@ class ToolBase:
             return self.run()
 
     def run(self):
+        """Checking codacy build"""
         proxy_pid = self.gcp_env.activate_sql_proxy()
         if not proxy_pid:
             logger.error("activating google sql proxy failed.")
