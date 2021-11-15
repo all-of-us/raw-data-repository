@@ -206,7 +206,7 @@ class GenomicSetMember(Base):
     gemMetricsAvailableResults = Column('gem_metrics_available_results',
                                         String(255), nullable=True)
 
-    gemMetricsResultsReleasedAt = Column('gem_metrics_results_released_at',
+    gemResultsReleasedAt = Column('gem_metrics_results_released_at',
                                          DateTime, nullable=True)
 
     # Genomic State Fields

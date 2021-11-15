@@ -1,6 +1,6 @@
 from rdr_service import clock
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao
-from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -8,6 +8,8 @@ class GenomicDaoTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.member_dao = GenomicSetMemberDao()
+        self.incident_dao = GenomicIncidentDao()
+
         self.gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
@@ -129,3 +131,44 @@ class GenomicDaoTest(BaseTestCase):
 
         job_run_members = [obj for obj in members if obj.id in first]
         self.assertTrue(all(obj for obj in job_run_members if obj.gemA1ManifestJobRunId == self.gen_job_run.id))
+
+    def test_batch_update_email_notifications_sent(self):
+        incident_ids = []
+
+        for _ in range(5):
+            current_incident = self.data_generator.create_database_genomic_incident(
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message="File has failed validation.",
+                submitted_gc_site_id='bcm'
+            )
+            incident_ids.append(current_incident.id)
+
+        all_incidents = self.incident_dao.get_all()
+
+        self.assertTrue(all(obj.email_notification_sent_date is None for obj in all_incidents))
+        self.assertTrue(all(obj.email_notification_sent == 0 for obj in all_incidents))
+
+        self.incident_dao.batch_update_validation_emails_sent(incident_ids)
+
+        all_incidents = self.incident_dao.get_all()
+
+        self.assertTrue(all(obj.email_notification_sent_date is not None for obj in all_incidents))
+        self.assertTrue(all(obj.email_notification_sent == 1 for obj in all_incidents))
+
+        new_incident = self.data_generator.create_database_genomic_incident(
+            code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+            message="File has failed validation.",
+            submitted_gc_site_id='bcm'
+        )
+
+        new_incident_obj = self.incident_dao.get(new_incident.id)
+
+        self.assertTrue(new_incident_obj.email_notification_sent == 0)
+        self.assertTrue(new_incident_obj.email_notification_sent_date is None)
+
+        self.incident_dao.batch_update_validation_emails_sent(new_incident_obj.id)
+
+        new_incident_obj = self.incident_dao.get(new_incident.id)
+
+        self.assertTrue(new_incident_obj.email_notification_sent == 1)
+        self.assertTrue(new_incident_obj.email_notification_sent_date is not None)

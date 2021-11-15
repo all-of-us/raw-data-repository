@@ -112,7 +112,8 @@
       "bcm": ["Kimberly.Walker@bcm.edu", "sdugan@bcm.edu"],
       "jh": ["kdoheny@jhmi.edu", "mzilka1@jhmi.edu"],
       "uw": ["cfrazar@uw.edu", "jmw54@uw.edu", "kolart@uw.edu"],
-      "bi": ["namrata@broadinstitute.org", "katiel@broadinstitute.org"]
+      "bi": ["namrata@broadinstitute.org", "katiel@broadinstitute.org"],
+      "drc_broad": []
     }
   }
 }

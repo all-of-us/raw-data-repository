@@ -16,6 +16,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
+from rdr_service.genomic_enums import GenomicJob
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
@@ -1680,11 +1681,11 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value,
                         literal('informingLoop')
                     )
-                    .join(
+                        .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicInformingLoop.participant_id
                     )
-                    .join(
+                        .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
                     ).filter(
@@ -1699,15 +1700,15 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.participantId.label('participant_id'),
                         literal('informingLoop')
                     )
-                    .join(
+                        .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicSetMember.participantId
                     )
-                    .join(
+                        .join(
                         GenomicGCValidationMetrics,
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
-                    .filter(
+                        .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         ParticipantSummary.consentForGenomicsROR == 1,
@@ -2158,6 +2159,7 @@ class GenomicAW2RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
+
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
 
@@ -2212,6 +2214,52 @@ class GenomicIncidentDao(UpdatableDao):
             value = value[:max_length]
 
         return is_truncated, value
+
+    def get_new_incidents_for_emails(self, job_ids=None):
+
+        if not job_ids:
+            job_ids = [
+                GenomicJob.METRICS_INGESTION,
+                GenomicJob.AW1_MANIFEST,
+                # GenomicJob.AW1C_INGEST,
+                # GenomicJob.AW1CF_INGEST,
+                GenomicJob.AW1F_MANIFEST
+            ]
+
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.id,
+                GenomicIncident.code,
+                GenomicIncident.submitted_gc_site_id,
+                GenomicIncident.message,
+                GenomicJobRun.jobId,
+                GenomicFileProcessed.filePath,
+                GenomicFileProcessed.fileName
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicIncident.source_job_run_id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.email_notification_sent == 0,
+                GenomicJobRun.jobId.in_(job_ids),
+                GenomicIncident.source_file_processed_id.isnot(None),
+                GenomicIncident.source_job_run_id.isnot(None),
+                GenomicIncident.submitted_gc_site_id.isnot(None)
+            ).all()
+
+            return incidents
+
+    def batch_update_validation_emails_sent(self, ids):
+        if not type(ids) is list:
+            ids = [ids]
+
+        for _id in ids:
+            current_incident = self.get(_id)
+            current_incident.email_notification_sent = 1
+            current_incident.email_notification_sent_date = datetime.utcnow()
+            self.update(current_incident)
 
 
 class GenomicCloudRequestsDao(UpdatableDao):
@@ -2486,4 +2534,3 @@ class GemToGpMigrationDao(BaseDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
-

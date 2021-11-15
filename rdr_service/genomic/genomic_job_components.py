@@ -1626,18 +1626,21 @@ class GenomicFileValidator:
         file_processed = self.controller. \
             file_processed_dao.get_record_from_filename(filename)
 
+        # validates filenames for each job
         validated_filename = self.validate_filename(filename)
         if not validated_filename:
             self.controller.create_incident(
                 source_job_run_id=self.controller.job_run.id,
                 source_file_processed_id=file_processed.id,
-                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
-                message=f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation.",
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation due to an"
+                        f"incorrect file name.",
                 slack=True,
                 submitted_gc_site_id=self.gc_site_id
             )
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
+        # validates values in fields if specified for job
         values_validation_failed, message = self.validate_values(data_to_validate)
         if values_validation_failed:
             self.controller.create_incident(
@@ -1650,7 +1653,7 @@ class GenomicFileValidator:
             )
             return GenomicSubProcessResult.ERROR
 
-        # if not data_to_validate
+        # validates file structure rules
         struct_valid_result, missing_fields, extra_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
 

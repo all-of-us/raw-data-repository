@@ -251,6 +251,7 @@ class GenomicIncidentCode(messages.Enum):
     UNABLE_TO_FIND_METRIC = 7
     MANIFEST_GENERATE_DATA_VALIDATION_FAILED = 8
     FILE_VALIDATION_FAILED_VALUES = 9
+    FILE_VALIDATION_INVALID_FILE_NAME = 10
 
 
 class GenomicIncidentStatus(messages.Enum):
