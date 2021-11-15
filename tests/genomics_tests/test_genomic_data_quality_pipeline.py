@@ -341,12 +341,15 @@ class GenomicDataQualityReportTest(BaseTestCase):
         bucket_name = 'test_bucket'
         sub_folder = 'test_subfolder'
 
-        current_incidents_for_emails = incident_dao.get_new_incidents_for_emails()
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
 
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()
 
         self.assertEqual(email_mock.call_count, len(current_incidents_for_emails))
+
+        today = clock.CLOCK.now()
+        from_date = today - datetime.timedelta(days=1)
 
         gen_job_run_one = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.METRICS_INGESTION,
@@ -362,14 +365,15 @@ class GenomicDataQualityReportTest(BaseTestCase):
             fileName=file_name,
         )
 
-        self.data_generator.create_database_genomic_incident(
-            source_job_run_id=gen_job_run_one.id,
-            source_file_processed_id=gen_processed_file_one.id,
-            code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
-            message=f"{job_id}: File name {file_name} has failed validation due to an"
-                                f"incorrect file name.",
-            submitted_gc_site_id='bcm'
-        )
+        with clock.FakeClock(from_date):
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run_one.id,
+                source_file_processed_id=gen_processed_file_one.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{job_id}: File name {file_name} has failed validation due to an"
+                                    f"incorrect file name.",
+                submitted_gc_site_id='bcm'
+            )
 
         gen_job_run_two = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.METRICS_INGESTION,
@@ -385,16 +389,23 @@ class GenomicDataQualityReportTest(BaseTestCase):
             fileName=file_name,
         )
 
-        self.data_generator.create_database_genomic_incident(
-            source_job_run_id=gen_job_run_two.id,
-            source_file_processed_id=gen_processed_file_two.id,
-            code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
-            message=f"{job_id}: File structure of BCM_AoU_SEQ_DataManifest_02262021_008v2.csv is not valid. "
-                    f"Missing fields: ['mappedreadspct', 'samplesource']",
-            submitted_gc_site_id='jh'
-        )
+        with clock.FakeClock(from_date):
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run_two.id,
+                source_file_processed_id=gen_processed_file_two.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
+                message=f"{job_id}: File structure of BCM_AoU_SEQ_DataManifest_02262021_008v2.csv is not valid. "
+                        f"Missing fields: ['mappedreadspct', 'samplesource']",
+                submitted_gc_site_id='jh'
+            )
 
-        current_incidents_for_emails = incident_dao.get_new_incidents_for_emails()
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=2)
+
+        self.assertEqual(len(current_incidents_for_emails), 0)
+
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
+
+        self.assertEqual(len(current_incidents_for_emails), 2)
 
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()
@@ -409,7 +420,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             incident.email_notification_sent = 0
             incident_dao.update(incident)
 
-        current_incidents_for_emails = incident_dao.get_new_incidents_for_emails()
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
 
         # should be reset back to 2
         self.assertEqual(len(current_incidents_for_emails), 2)

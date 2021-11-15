@@ -1480,7 +1480,7 @@ class DataQualityJobController:
         if not email_config.get('send_emails'):
             return
 
-        validation_incidents = self.incident_dao.get_new_incidents_for_emails()
+        validation_incidents = self.incident_dao.get_new_ingestion_incidents(from_days=1)
 
         if not validation_incidents:
             logging.warning('No records found for validation email notifications')

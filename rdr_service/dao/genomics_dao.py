@@ -2215,16 +2215,13 @@ class GenomicIncidentDao(UpdatableDao):
 
         return is_truncated, value
 
-    def get_new_incidents_for_emails(self, job_ids=None):
+    def get_new_ingestion_incidents(self, from_days=1):
 
-        if not job_ids:
-            job_ids = [
-                GenomicJob.METRICS_INGESTION,
-                GenomicJob.AW1_MANIFEST,
-                # GenomicJob.AW1C_INGEST,
-                # GenomicJob.AW1CF_INGEST,
-                GenomicJob.AW1F_MANIFEST
-            ]
+        job_ids = [
+            GenomicJob.METRICS_INGESTION,
+            GenomicJob.AW1_MANIFEST,
+            GenomicJob.AW1F_MANIFEST
+        ]
 
         with self.session() as session:
             incidents = session.query(
@@ -2247,9 +2244,13 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.source_file_processed_id.isnot(None),
                 GenomicIncident.source_job_run_id.isnot(None),
                 GenomicIncident.submitted_gc_site_id.isnot(None)
-            ).all()
+            )
 
-            return incidents
+            if from_days:
+                incidents = incidents.filter(
+                    GenomicIncident.created <= CLOCK.now() - timedelta(days=from_days)
+                )
+            return incidents.all()
 
     def batch_update_validation_emails_sent(self, ids):
         if not type(ids) is list:
