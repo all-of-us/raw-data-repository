@@ -374,7 +374,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 source_file_processed_id=gen_processed_file_one.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
                 message=f"{job_id}: File name {file_name} has failed validation due to an"
-                                    f"incorrect file name.",
+                        f" incorrect file name.",
                 submitted_gc_site_id='bcm'
             )
 
@@ -409,7 +409,26 @@ class GenomicDataQualityReportTest(BaseTestCase):
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()
 
+        email_config = config.getSettingJson(config.GENOMIC_DAILY_VALIDATION_EMAILS)
+
         self.assertEqual(email_mock.call_count, len(current_incidents_for_emails))
+
+        call_args = email_mock.call_args_list
+        self.assertEqual(len(call_args), len(current_incidents_for_emails))
+
+        config_recipients = [obj for obj in email_config['recipients'].values()]
+
+        self.assertEqual(len(config_recipients), len(set([obj.submitted_gc_site_id for obj in
+                                                          current_incidents_for_emails])))
+
+        for call_arg in call_args:
+            recipient_called_list = call_arg.args[0].recipients
+            plain_text = call_arg.args[0].plain_text_content
+
+            self.assertTrue(recipient_called_list in config_recipients)
+            self.assertTrue(job_id not in plain_text)
+            self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
+            self.assertEqual('All of Us GC/DRC Manifest Ingestion Failure', call_arg.args[0].subject)
 
         current_mock_count = email_mock.call_count
 
