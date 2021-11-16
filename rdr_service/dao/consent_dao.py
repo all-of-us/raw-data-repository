@@ -24,7 +24,6 @@ class ConsentDao(BaseDao):
             Participant,
             Participant.participantId == ParticipantSummary.participantId
         ).filter(
-            ParticipantSummary.participantOrigin == 'vibrent',
             Participant.isGhostId.isnot(True),
             Participant.isTestParticipant.isnot(True),
             or_(

@@ -2498,18 +2498,19 @@ class GemToGpMigrationDao(BaseDao):
         super(GemToGpMigrationDao, self).__init__(
             GemToGpMigration, order_by_ending=['id'])
 
-    @staticmethod
-    def prepare_obj(row, job_run, file_path):
-        return GemToGpMigration(
+    def prepare_obj(self, row, job_run, file_path):
+        return self.to_dict(GemToGpMigration(
             file_path=file_path,
             run_id=job_run,
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
             participant_id=row.participantId,
             informing_loop_status='success',
             informing_loop_authored=row.authored,
             ancestry_traits_response=row.value,
-        )
+        ))
 
-    def get_data_for_export(self, run_id, limit=None):
+    def get_data_for_export(self, run_id, limit=None, pids=None):
         with self.session() as session:
             results = session.query(
                 QuestionnaireResponse.participantId,
@@ -2528,8 +2529,13 @@ class GemToGpMigrationDao(BaseDao):
             ).filter(
                 Code.value.in_(["ConsentAncestryTraits_Yes",
                                 "ConsentAncestryTraits_No",
-                                "ConsentAncestryTraits_NotSure"])
+                                "ConsentAncestryTraits_NotSure"]),
             )
+            if pids:
+                results = results.filter(
+                    QuestionnaireResponse.participantId.in_(pids)
+                )
+
             if limit:
                 results = results.limit(limit)
 

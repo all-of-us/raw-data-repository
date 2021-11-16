@@ -13,7 +13,6 @@ import pytz
 from sqlalchemy import case
 from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import func, or_
-from sqlalchemy.sql.functions import concat
 from typing import Dict
 
 from rdr_service import clock, config
@@ -30,10 +29,13 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.config_utils import from_client_biobank_id, get_biobank_id_prefix
+from rdr_service.model.hpo import HPO
+from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.site import Site
 from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.participant_enums import BiobankOrderStatus, OrganizationType, get_sample_status_enum_value,\
@@ -306,10 +308,10 @@ def write_reconciliation_report(now, report_type="daily"):
 def _get_report_paths(report_datetime, report_type="daily"):
     """Returns a list of output filenames for samples: (received, late, missing, withdrawals, salivary_missing)."""
 
-    report_name_suffix = ("received", "missing", "modified", "withdrawals", "salivary_missing")
+    report_name_suffix = ("received", "missing", "modified", "salivary_missing")
 
     if report_type == "monthly":
-        report_name_suffix = ("received_monthly", "missing_monthly", "modified_monthly", "withdrawals_monthly")
+        report_name_suffix = ("received_monthly", "missing_monthly", "modified_monthly")
 
     return [_get_report_path(report_datetime, report_name) for report_name in report_name_suffix]
 
@@ -319,44 +321,52 @@ def _get_report_path(report_datetime, report_name):
     return f'{_REPORT_SUBDIR}/report_{report_date_str}_{report_name}.csv'
 
 
-def _query_and_write_withdrawal_report(exporter, file_path, report_cover_range, now):
+def get_withdrawal_report_query(start_date: datetime):
     """
     Generates a report on participants that have withdrawn in the past n days and have samples collected,
     including their biobank ID, withdrawal time, their origin, and whether they are Native American
     (as biobank samples for Native Americans are disposed of differently)
     """
     ceremony_answer_subquery = _participant_answer_subquery(WITHDRAWAL_CEREMONY_QUESTION_CODE)
-    earliest_report_date = now - datetime.timedelta(days=report_cover_range)
-    withdrawal_report_query = (
+    return (
         Query([
-            concat(get_biobank_id_prefix(), Participant.biobankId).label('biobank_id'),
+            Participant.participantId.label('participant_id'),
+            Participant.biobankId.label('biobank_id'),
             func.date_format(Participant.withdrawalTime, MYSQL_ISO_DATE_FORMAT).label('withdrawal_time'),
             case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'Y')], else_='N')
                 .label('is_native_american'),
             case([
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
-                    (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
-                ], else_=(
-                    case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'U')], else_='NA')
-                )
+                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_YES, 'Y'),
+                (ceremony_answer_subquery.c.value == WITHDRAWAL_CEREMONY_NO, 'N'),
+            ], else_=(
+                case([(_participant_has_answer(RACE_QUESTION_CODE, RACE_AIAN_CODE), 'U')], else_='NA')
+            )
             ).label('needs_disposal_ceremony'),
-            Participant.participantOrigin.label('participant_origin')
+            Participant.participantOrigin.label('participant_origin'),
+            HPO.name.label('paired_hpo'),
+            Organization.externalId.label('paired_org'),
+            Site.googleGroup.label('paired_site'),
+            Participant.withdrawalReasonJustification.label('withdrawal_reason_justification'),
+            case(
+                [(ParticipantSummary.deceasedStatus.is_(None), 'UNSET')],
+                else_=ParticipantSummary.deceasedStatus  # TODO: test that the status string gets used
+            ).label('deceased_status')
         ])
         .select_from(Participant)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)
         .join(BiobankStoredSample, BiobankStoredSample.biobankId == Participant.biobankId)
+        .outerjoin(ParticipantSummary, ParticipantSummary.participantId == Participant.participantId)
+        .outerjoin(HPO, HPO.hpoId == Participant.hpoId)
+        .outerjoin(Organization, Organization.organizationId == Participant.organizationId)
+        .outerjoin(Site, Site.siteId == Participant.siteId)
         .filter(
             Participant.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
             or_(
-                Participant.withdrawalTime >= earliest_report_date,
-                BiobankStoredSample.created >= earliest_report_date
+                Participant.withdrawalTime > start_date,
+                BiobankStoredSample.created > start_date
             )
-        )
-        .distinct()
+        ).distinct()
     )
-
-    exporter.run_export(file_path, withdrawal_report_query, backup=True)
-    logging.info(f"Completed {file_path} report.")
 
 
 def _build_query_params(start_date: datetime):
@@ -397,8 +407,7 @@ def _query_and_write_received_report(exporter, report_path, query_params, report
 
 
 def _query_and_write_reports(exporter, now: datetime, report_type, path_received,
-                             path_missing, path_modified,
-                             path_withdrawals, path_salivary_missing=None):
+                             path_missing, path_modified, path_salivary_missing=None):
     """Runs the reconciliation MySQL queries and writes result rows to the given CSV writers.
 
   Note that due to syntax differences, the query runs on MySQL only (not SQLite in unit tests).
@@ -451,9 +460,6 @@ def _query_and_write_reports(exporter, now: datetime, report_type, path_received
             predicate=report_predicate
         )
         logging.info(f"Completed {report_path} report.")
-
-    if config.getSetting('biobank_withdrawal_report_enabled', default=True):
-        _query_and_write_withdrawal_report(exporter, path_withdrawals, report_cover_range, now)
 
     # Check if cumulative received report should be generated
     # biobank_cumulative_received_schedule should be a dictionary with keys giving when the report should
