@@ -1,4 +1,3 @@
-
 from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
 from rdr_service.genomic_enums import GenomicJob
 from rdr_service.genomic.genomic_job_components import GenomicFileValidator
@@ -55,4 +54,15 @@ class GenomicFileValidatorTest(BaseTestCase):
         self.assertIsNotNone(file_validator.gc_site_id)
         self.assertTrue(file_validator.gc_site_id in file_validator.VALID_GENOME_CENTERS)
         self.assertEqual(file_validator.gc_site_id, rdr_file_components[0])
+
+        file_validator = GenomicFileValidator(
+            filename=gc_file_name,
+            job_id=GenomicJob.AW4_ARRAY_WORKFLOW
+        )
+
+        file_validator.set_gc_site_id(rdr_file_components[0])
+
+        self.assertIsNotNone(file_validator.gc_site_id)
+        self.assertEqual(file_validator.gc_site_id, 'drc_broad')
+
 

@@ -1440,6 +1440,7 @@ class GenomicFileValidator:
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
+        self.DRC_BROAD = 'drc_broad'
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.AW1_MANIFEST_SCHEMA = (
@@ -1604,14 +1605,21 @@ class GenomicFileValidator:
     def set_gc_site_id(self, fn_component):
         if fn_component and \
             fn_component.lower() in self.VALID_GENOME_CENTERS and \
-                self.job_id in [
-                    GenomicJob.METRICS_INGESTION,
-                    GenomicJob.AW1_MANIFEST,
-                    GenomicJob.AW1C_INGEST,
-                    GenomicJob.AW1CF_INGEST,
-                    GenomicJob.AW1F_MANIFEST
-                ]:
+            self.job_id in [
+                GenomicJob.METRICS_INGESTION,
+                GenomicJob.AW1_MANIFEST,
+                GenomicJob.AW1C_INGEST,
+                GenomicJob.AW1CF_INGEST,
+                GenomicJob.AW1F_MANIFEST
+        ]:
             self.gc_site_id = fn_component
+        elif self.job_id in [
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
+        ]:
+            self.gc_site_id = self.DRC_BROAD
 
     def validate_ingestion_file(self, *, filename, data_to_validate):
         """
