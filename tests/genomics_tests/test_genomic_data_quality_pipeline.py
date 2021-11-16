@@ -349,7 +349,10 @@ class GenomicDataQualityReportTest(BaseTestCase):
         self.assertEqual(email_mock.call_count, len(current_incidents_for_emails))
 
         today = clock.CLOCK.now()
+
         from_date = today - datetime.timedelta(days=1)
+        from_date = from_date + datetime.timedelta(hours=6)
+        from_date = from_date.replace(microsecond=0)
 
         gen_job_run_one = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.METRICS_INGESTION,
@@ -398,10 +401,6 @@ class GenomicDataQualityReportTest(BaseTestCase):
                         f"Missing fields: ['mappedreadspct', 'samplesource']",
                 submitted_gc_site_id='jh'
             )
-
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=2)
-
-        self.assertEqual(len(current_incidents_for_emails), 0)
 
         current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
 

@@ -1495,7 +1495,9 @@ class DataQualityJobController:
                 for gc_validation_email in gc_validation_emails_to_send:
                     validation_message = gc_validation_email.message.split(':')[0]
                     message = f"{validation_message}\n"
-                    message += f"Full file path: gs://{gc_validation_email.filePath}"
+                    message += f"Full file path: gs://{gc_validation_email.filePath}\n"
+                    message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
+                               f"designated bucket."
                     email_message = Email(
                         recipients=recipient_list,
                         subject="All of Us GC Manifest Ingestion Failure",

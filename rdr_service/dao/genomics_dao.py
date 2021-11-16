@@ -2247,9 +2247,11 @@ class GenomicIncidentDao(UpdatableDao):
             )
 
             if from_days:
-                from_date = datetime.utcnow() - timedelta(days=from_days)
+                from_date = clock.CLOCK.now() - timedelta(days=from_days)
+                from_date = from_date.replace(microsecond=0)
+
                 incidents = incidents.filter(
-                    GenomicIncident.created < from_date
+                    GenomicIncident.created >= from_date
                 )
             return incidents.all()
 
