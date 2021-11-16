@@ -251,10 +251,8 @@
   "genomic_daily_validation_emails": {
     "send_emails": 1,
     "recipients": {
-      "bcm": ["Kimberly.Walker@bcm.edu", "sdugan@bcm.edu"],
-      "jh": ["kdoheny@jhmi.edu", "mzilka1@jhmi.edu"],
-      "uw": ["cfrazar@uw.edu", "jmw54@uw.edu", "kolart@uw.edu"],
-      "bi": ["namrata@broadinstitute.org", "katiel@broadinstitute.org"]
+      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
+      "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
   }
 }
