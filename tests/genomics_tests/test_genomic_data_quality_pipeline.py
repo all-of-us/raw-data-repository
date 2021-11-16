@@ -341,7 +341,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
         bucket_name = 'test_bucket'
         sub_folder = 'test_subfolder'
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
 
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()
@@ -402,7 +402,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 submitted_gc_site_id='jh'
             )
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
 
         self.assertEqual(len(current_incidents_for_emails), 2)
 
@@ -419,7 +419,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             incident.email_notification_sent = 0
             incident_dao.update(incident)
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents(from_days=1)
+        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
 
         # should be reset back to 2
         self.assertEqual(len(current_incidents_for_emails), 2)

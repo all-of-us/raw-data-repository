@@ -1473,14 +1473,14 @@ class DataQualityJobController:
     def send_validation_emails(self):
         """
         Send emails via sendgrid for previous day
-        validation failures on GC manifest ingestions
+        validation failures on GC/DRC manifest ingestions
         """
         email_config = config.getSettingJson(config.GENOMIC_DAILY_VALIDATION_EMAILS, {})
 
         if not email_config.get('send_emails'):
             return
 
-        validation_incidents = self.incident_dao.get_new_ingestion_incidents(from_days=1)
+        validation_incidents = self.incident_dao.get_new_ingestion_incidents()
 
         if not validation_incidents:
             logging.warning('No records found for validation email notifications')
@@ -1498,9 +1498,10 @@ class DataQualityJobController:
                     message += f"Full file path: gs://{gc_validation_email.filePath}\n"
                     message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
                                f"designated bucket."
+
                     email_message = Email(
                         recipients=recipient_list,
-                        subject="All of Us GC Manifest Ingestion Failure",
+                        subject="All of Us GC/DRC Manifest Ingestion Failure",
                         plain_text_content=message
                     )
 
