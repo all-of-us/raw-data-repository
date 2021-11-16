@@ -434,6 +434,9 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         all_incidents = incident_dao.get_all()
 
+        self.assertTrue(all(obj.email_notification_sent == 1 and obj.email_notification_sent_date is not None for obj
+                            in all_incidents))
+
         for incident in all_incidents:
             incident.email_notification_sent = 0
             incident_dao.update(incident)
