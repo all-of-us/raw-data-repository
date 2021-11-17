@@ -1489,6 +1489,7 @@ class GenomicOutreachDao(BaseDao):
             raise BadRequest("Resource is missing required fields: status, date")
 
         member = GenomicSetMember(participantId=participant_id,
+                                  biobankId=p.biobankId,
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
