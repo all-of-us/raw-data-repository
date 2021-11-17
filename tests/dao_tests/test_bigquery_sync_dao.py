@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 from rdr_service.clock import FakeClock
@@ -12,6 +12,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.hpo import HPO
 from rdr_service.model.measurements import PhysicalMeasurements
 from rdr_service.model.site import Site
+from rdr_service.participant_enums import WithdrawalAIANCeremonyStatus
 from tests.test_data import load_measurement_json
 from tests.helpers.unittest_base import BaseTestCase, PDRGeneratorTestMixin
 
@@ -443,4 +444,45 @@ class BigQuerySyncDaoTest(BaseTestCase, PDRGeneratorTestMixin):
         # This field should be None for consent payloads that don't contain the expiration hidden question code
         self.assertIsNone(ehr_consents[2].get('consent_expired', ''))
 
+    def test_ceremony_decision_fields(self):
+        # Set up data for different scenarios of withdrawn participants
+        # Clearing microseconds to avoid rounding time up in database and causing test to fail
+        two_days_ago = datetime.today().replace(microsecond=0) - timedelta(days=2)
+        withdrawal_reason_justification = 'testing withdrawal'
+        no_ceremony_native_american_participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_reason_justification=withdrawal_reason_justification,
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.DECLINED,
+            withdrawal_time=two_days_ago
+        )
+        ceremony_native_american_participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_reason_justification=withdrawal_reason_justification,
+            is_native_american=True,
+            requests_ceremony=WithdrawalAIANCeremonyStatus.REQUESTED,
+            withdrawal_time=two_days_ago
+        )
+        # Non-AIAN should not have been presented with a ceremony choice
+        non_native_american_participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_reason_justification=withdrawal_reason_justification,
+            is_native_american=False,
+            requests_ceremony=None,
+            withdrawal_time=two_days_ago
+        )
 
+        ps_bqs_data = self.make_bq_participant_summary(no_ceremony_native_american_participant.participantId)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.DECLINED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.DECLINED))
+
+        ps_bqs_data = self.make_bq_participant_summary(ceremony_native_american_participant.participantId)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.REQUESTED))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.REQUESTED))
+
+        ps_bqs_data = self.make_bq_participant_summary(non_native_american_participant.participantId)
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status'),
+                         str(WithdrawalAIANCeremonyStatus.UNSET))
+        self.assertEqual(ps_bqs_data.get('withdrawal_aian_ceremony_status_id'),
+                         int(WithdrawalAIANCeremonyStatus.UNSET))

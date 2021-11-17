@@ -2016,10 +2016,18 @@ class GemToGpMigrationClass(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
         self.gem_gp_dao = GemToGpMigrationDao()
 
+        pids = None
+        if self.args.csv:
+            pids = []
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    pids.append(line.strip())
+
         with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
                                   bq_project_id=self.gcp_env.project) as controller:
 
-            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
+            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit, pids=pids)
 
             if results:
                 self.export_to_gem_gp_table(controller.job_run.id, results)
@@ -2036,26 +2044,26 @@ class GemToGpMigrationClass(GenomicManifestBase):
         file_path = f"gem_gp_export_{now_str}.csv"
 
         for row in results:
-            obj = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
-            batch.append(obj)
+            obj_dict = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
+            batch.append(obj_dict)
 
             # write to table in batches
             if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
-                    _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Inserting batch starting with: {batch[0].participant_id}')
                     self.gem_gp_dao.insert_bulk(batch)
 
                 else:
-                    _logger.info(f'Would insert batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Would insert batch starting with: {batch[0].participant_id}')
                 batch = []
 
         # Insert remainder
         if batch:
             if not self.args.dryrun:
-                print(f'Inserting batch starting with: {batch[0].participantId}')
+                print(f'Inserting batch starting with: {batch[0]["participant_id"]}')
                 self.gem_gp_dao.insert_bulk(batch)
             else:
-                print(f'Would insert batch starting with: {batch[0].participantId}')
+                print(f'Would insert batch starting with: {batch[0]["participant_id"]}')
 
 
 class BackFillReplates(GenomicManifestBase):
@@ -2384,6 +2392,8 @@ def run():
 
     gem_to_gp_parser = subparser.add_parser("gem-to-gp")
     gem_to_gp_parser.add_argument("--limit", help="limit for migration query", type=int,
+                                  default=None, required=False)  # noqa
+    gem_to_gp_parser.add_argument("--csv", help="csv file with list of pids", type=str,
                                   default=None, required=False)  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files

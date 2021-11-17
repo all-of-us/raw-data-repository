@@ -103,5 +103,6 @@
     "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],
     "prod-genomics-data-broad": ["Genotyping_sample_raw_data", "wgs_sample_raw_data"],
     "prod-genomics-data-northwest": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"]
-  }
+  },
+  "a1_limit": [10000]
 }

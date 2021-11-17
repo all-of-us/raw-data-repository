@@ -25,7 +25,6 @@ class HealthProConsentDao(UpdatableDao):
                     ConsentSyncStatus.READY_FOR_SYNC,
                     ConsentSyncStatus.SYNC_COMPLETE
                 ]),
-                ConsentFile.file_path.notlike('%ce-uploads%'),
                 HealthProConsentFile.id.is_(None)
             )
 

@@ -2203,7 +2203,6 @@ class GenomicBiobankSamplesCoupler:
                          GenomicValidationFlag.INVALID_SUSPENSION_STATUS,
                          GenomicValidationFlag.INVALID_CONSENT,
                          GenomicValidationFlag.INVALID_AGE,
-                         GenomicValidationFlag.INVALID_AIAN,
                          GenomicValidationFlag.INVALID_SEX_AT_BIRTH)
 
     _ARRAY_GENOME_TYPE = "aou_array"
@@ -2225,7 +2224,7 @@ class GenomicBiobankSamplesCoupler:
                                                          "valid_ages",
                                                          "sabs",
                                                          "gror",
-                                                         "valid_ai_ans"])
+                                                         "is_ai_an"])
 
     def __init__(self, run_id, controller=None):
         self.samples_dao = BiobankStoredSampleDao()
@@ -2415,7 +2414,6 @@ class GenomicBiobankSamplesCoupler:
                     samples_meta.valid_suspension_status[i],
                     samples_meta.gen_consents[i],
                     samples_meta.valid_ages[i],
-                    samples_meta.valid_ai_ans[i],
                     samples_meta.sabs[i] in self._SEX_AT_BIRTH_CODES.values()
                 )
                 valid_flags = self._calculate_validation_flags(validation_criteria)
@@ -2447,7 +2445,7 @@ class GenomicBiobankSamplesCoupler:
                     validationStatus=(GenomicSetMemberStatus.INVALID if len(valid_flags) > 0
                                       else GenomicSetMemberStatus.VALID),
                     validationFlags=valid_flags,
-                    ai_an='N' if samples_meta.valid_ai_ans[i] else 'Y',
+                    ai_an='Y' if samples_meta.is_ai_an[i] else 'N',
                     genomeType=self._ARRAY_GENOME_TYPE,
                     genomicWorkflowState=GenomicWorkflowState.AW0_READY,
                     created=clock.CLOCK.now(),
@@ -2918,7 +2916,8 @@ class ManifestDefinitionProvider:
                 "processing_status",
                 "research_id",
                 "sample_source",
-                "pipeline_id"
+                "pipeline_id",
+                "ai_an"
             ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
@@ -2968,7 +2967,8 @@ class ManifestDefinitionProvider:
                 "research_id",
                 "sample_source",
                 "mapped_reads_pct",
-                "sex_ploidy"
+                "sex_ploidy",
+                "ai_an"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",
