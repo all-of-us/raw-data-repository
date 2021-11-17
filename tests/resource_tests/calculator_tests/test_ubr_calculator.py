@@ -199,7 +199,7 @@ class UBRCalculatorTest(BaseTestCase):
         zip_both = '72529'  # In both the 2014 file and 2020 file.
         zip_none = '58493'  # Zip code not in either file.
 
-        # Test with Null and PMI_Skip values
+        # Test with Null values, there are no PMI_Skip values currently for a zip code value.
         self.assertEqual(self.ubr.ubr_geography(consent_2014, None), UBRValueEnum.NullSkip)
         self.assertEqual(self.ubr.ubr_geography(consent_2020, None), UBRValueEnum.NullSkip)
 
@@ -210,13 +210,20 @@ class UBRCalculatorTest(BaseTestCase):
         # Test zip code in both files for UBR
         self.assertEqual(self.ubr.ubr_geography(consent_2014, zip_both), UBRValueEnum.UBR)
         self.assertEqual(self.ubr.ubr_geography(consent_2020, zip_both), UBRValueEnum.UBR)
+        # Test zip+4 values for UBR.
+        self.assertEqual(self.ubr.ubr_geography(consent_2014, zip_2014 + '-1234'), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_geography(consent_2020, zip_2020 + '-1234'), UBRValueEnum.UBR)
 
         # Test for RBR value
         self.assertEqual(self.ubr.ubr_geography(consent_2014, zip_none), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_geography(consent_2020, zip_none), UBRValueEnum.RBR)
+        # Test zip+4 values for RBR.
+        self.assertEqual(self.ubr.ubr_geography(consent_2020, zip_2014 + '-1234'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_geography(consent_2014, zip_2020 + '-1234'), UBRValueEnum.RBR)
 
         # Bad or unknown value will default to RBR.
         self.assertEqual(self.ubr.ubr_geography(consent_2020, '123-abc'), UBRValueEnum.RBR)
+
 
     def test_ubr_education(self):
         """
