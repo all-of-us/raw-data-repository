@@ -1492,6 +1492,7 @@ class GenomicOutreachDao(BaseDao):
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
+                                  gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
         return member
