@@ -1681,11 +1681,11 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value,
                         literal('informingLoop')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicInformingLoop.participant_id
                     )
-                        .join(
+                    .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
                     ).filter(
@@ -1700,15 +1700,15 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.participantId.label('participant_id'),
                         literal('informingLoop')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicSetMember.participantId
                     )
-                        .join(
+                    .join(
                         GenomicGCValidationMetrics,
                         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
                     )
-                        .filter(
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         ParticipantSummary.consentForGenomicsROR == 1,
@@ -1746,15 +1746,15 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicMemberReportState.participant_id
                     )
-                        .join(
+                    .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicMemberReportState.participant_id
                     )
-                        .filter(
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
