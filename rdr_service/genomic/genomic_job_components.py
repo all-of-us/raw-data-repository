@@ -455,10 +455,18 @@ class GenomicFileIngester:
                 continue
 
             # Find the existing GenomicSetMember
-            # Set the member based on collection tube ID
-            # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
-            member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
-                                                                     row_copy['genometype'])
+            if self.job_id == GenomicJob.AW1F_MANIFEST:
+                # Set the member based on collection tube ID will null sample
+                member = self.member_dao.get_member_from_collection_tube(
+                    row_copy['collectiontubeid'],
+                    row_copy['genometype'],
+                    state=GenomicWorkflowState.AW1
+                )
+            else:
+                # Set the member based on collection tube ID will null sample
+                member = self.member_dao.get_member_from_collection_tube_with_null_sample_id(
+                    row_copy['collectiontubeid'],
+                    row_copy['genometype'])
 
             # Since member not found, and not a control sample,
             # check if collection tube id was swapped by Biobank
