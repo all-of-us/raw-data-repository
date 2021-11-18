@@ -351,11 +351,12 @@ class GenomicJobController:
                         self.set_aw1_attributes_from_raw(record_to_update)
                     # AW2
                     elif self.job_id == GenomicJob.METRICS_INGESTION:
-                        self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
-                        metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
-                        metrics_obj = session.merge(metrics_obj)
-                        session.commit()
-                        metrics.append(metrics_obj.id)
+                        proceed = self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
+                        if proceed:
+                            metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
+                            metrics_obj = session.merge(metrics_obj)
+                            session.commit()
+                            metrics.append(metrics_obj.id)
 
                     session.merge(record_to_update[0])
                     completed_members.append(record_to_update[0].id)
@@ -668,11 +669,12 @@ class GenomicJobController:
 
                 # Insert record into genomic_gc_validation_metrics
                 with self.metrics_dao.session() as session:
-                    self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
-                    metrics_obj = self.set_validation_metrics_from_raw((member, record))
-                    metrics_obj = session.merge(metrics_obj)
-                    session.commit()
-                    inserted_metric_ids.append(metrics_obj.id)
+                    proceed = self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
+                    if proceed:
+                        metrics_obj = self.set_validation_metrics_from_raw((member, record))
+                        metrics_obj = session.merge(metrics_obj)
+                        session.commit()
+                        inserted_metric_ids.append(metrics_obj.id)
 
         # Metrics
         bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
@@ -740,13 +742,16 @@ class GenomicJobController:
             if raw.contamination < 0:
                 raw.contamination = 0
         except ValueError:
-            raise ValueError(f'contamination must be a number for member_id: {member.id}')
+            logging.error(f'contamination must be a number for member_id: {member.id}')
+            return False
 
         # Calculate contamination_category using an ingester
         ingester = GenomicFileIngester(_controller=self, job_id=self.job_id)
         category = ingester.calculate_contamination_category(member.collectionTubeId,
                                                              raw.contamination, member)
         raw.contamination_category = category
+
+        return True
 
     @staticmethod
     def compile_raw_ingestion_results(completed, missing, multiples, metrics):
@@ -1349,6 +1354,7 @@ class DataQualityJobController:
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
+        self.incident_dao = GenomicIncidentDao()
         self.genomic_report_slack = SlackMessageHandler(
             webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_reports')
         )
@@ -1405,6 +1411,7 @@ class DataQualityJobController:
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
+            GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
         }
 
         return job_registry[job]
@@ -1440,15 +1447,11 @@ class DataQualityJobController:
         """
 
         rc = ReportingComponent(self)
-
         report_params = rc.get_report_parameters(**kwargs)
 
         rc.set_report_def(**report_params)
-
         report_data = rc.get_report_data()
-
         report_string = rc.format_report(report_data)
-
         report_result = report_string
 
         # Compile long reports to cloud file and post link
@@ -1460,7 +1463,6 @@ class DataQualityJobController:
                        f" https://storage.cloud.google.com{file_path}"
 
             message_data = {'text': message}
-
             report_result = file_path
 
         else:
@@ -1473,5 +1475,44 @@ class DataQualityJobController:
             )
 
         self.job_run_result = GenomicSubProcessResult.SUCCESS
-
         return report_result
+
+    def send_validation_emails(self):
+        """
+        Send emails via sendgrid for previous day
+        validation failures on GC/DRC manifest ingestions
+        """
+        email_config = config.getSettingJson(config.GENOMIC_DAILY_VALIDATION_EMAILS, {})
+
+        if not email_config.get('send_emails'):
+            return
+
+        validation_incidents = self.incident_dao.get_new_ingestion_incidents()
+
+        if not validation_incidents:
+            logging.warning('No records found for validation email notifications')
+            return
+
+        recipients = email_config.get('recipients')
+
+        for gc, recipient_list in recipients.items():
+            gc_validation_emails_to_send = list(filter(lambda x: x.submitted_gc_site_id == gc, validation_incidents))
+
+            if gc_validation_emails_to_send:
+                for gc_validation_email in gc_validation_emails_to_send:
+                    validation_message = gc_validation_email.message.split(':')[1]
+                    message = f"{validation_message}\n"
+                    message += f"Full file path: gs://{gc_validation_email.filePath}\n"
+                    message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
+                               f"designated bucket."
+
+                    email_message = Email(
+                        recipients=recipient_list,
+                        subject="All of Us GC/DRC Manifest Ingestion Failure",
+                        plain_text_content=message
+                    )
+
+                    EmailService.send_email(email_message)
+
+            self.incident_dao.batch_update_validation_emails_sent([obj.id for obj in gc_validation_emails_to_send])
+

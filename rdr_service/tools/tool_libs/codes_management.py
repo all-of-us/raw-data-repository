@@ -151,7 +151,7 @@ class CodesSyncClass(ToolBase):
 
     def run_process(self):
         if self.args.reuse_codes:
-            self.codes_allowed_for_reuse = [code_val.strip() for code_val in self.args.reuse_codes.split(',')]
+            self.codes_allowed_for_reuse = [code_val.strip().lower() for code_val in self.args.reuse_codes.split(',')]
 
         if self.args.project == '_all':
             for project in GCP_INSTANCES.keys():

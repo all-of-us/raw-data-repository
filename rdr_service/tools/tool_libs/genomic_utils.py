@@ -2018,10 +2018,18 @@ class GemToGpMigrationClass(GenomicManifestBase):
         self.gcp_env.activate_sql_proxy()
         self.gem_gp_dao = GemToGpMigrationDao()
 
+        pids = None
+        if self.args.csv:
+            pids = []
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    pids.append(line.strip())
+
         with GenomicJobController(GenomicJob.GEM_GP_MIGRATION_EXPORT,
                                   bq_project_id=self.gcp_env.project) as controller:
 
-            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit)
+            results = self.gem_gp_dao.get_data_for_export(controller.job_run.id, limit=self.args.limit, pids=pids)
 
             if results:
                 self.export_to_gem_gp_table(controller.job_run.id, results)
@@ -2038,26 +2046,26 @@ class GemToGpMigrationClass(GenomicManifestBase):
         file_path = f"gem_gp_export_{now_str}.csv"
 
         for row in results:
-            obj = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
-            batch.append(obj)
+            obj_dict = self.gem_gp_dao.prepare_obj(row, run_id, file_path)
+            batch.append(obj_dict)
 
             # write to table in batches
             if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
-                    _logger.info(f'Inserting batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Inserting batch starting with: {batch[0].participant_id}')
                     self.gem_gp_dao.insert_bulk(batch)
 
                 else:
-                    _logger.info(f'Would insert batch starting with: {batch[0].participantId}')
+                    _logger.info(f'Would insert batch starting with: {batch[0].participant_id}')
                 batch = []
 
         # Insert remainder
         if batch:
             if not self.args.dryrun:
-                print(f'Inserting batch starting with: {batch[0].participantId}')
+                print(f'Inserting batch starting with: {batch[0]["participant_id"]}')
                 self.gem_gp_dao.insert_bulk(batch)
             else:
-                print(f'Would insert batch starting with: {batch[0].participantId}')
+                print(f'Would insert batch starting with: {batch[0]["participant_id"]}')
 
 
 class BackFillReplates(GenomicManifestBase):
@@ -2084,6 +2092,62 @@ class BackFillReplates(GenomicManifestBase):
                 _logger.info(f'Would create member based on id: {existing_record.GenomicSetMember.id}')
 
         return 0
+
+
+class ArbitraryReplates(GenomicManifestBase):
+    """
+    Inserts new genomic_set_member records for
+    supplied existing genomic_set_member IDs
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ArbitraryReplates, self).__init__(args, gcp_env)
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+        ingester = GenomicFileIngester()
+
+        member_ids = []
+        if self.args.csv:
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    member_ids.append(int(line.strip()))
+        else:
+            _logger.error('Need --csv')
+
+        existing_records = self.dao.get_members_from_member_ids(member_ids)
+
+        if self.args.genome_type:
+            genome_type = self.args.genome_type
+        else:
+            genome_type = None
+
+        if not self.args.dryrun:
+            new_set = self.make_new_set()
+        else:
+            new_set = None
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.copy_member_for_replating(existing_record,
+                                                   genome_type=genome_type,
+                                                   set_id=new_set.id)
+            else:
+                _logger.info(f'Would create {genome_type} member based on id: {existing_record.id}')
+
+        return 0
+
+    @staticmethod
+    def make_new_set():
+        set_dao = GenomicSetDao()
+        new_set = GenomicSet(
+            genomicSetName=f"replating_{clock.CLOCK.now().replace(microsecond=0)}",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        return set_dao.insert(new_set)
 
 
 def get_process_for_run(args, gcp_env):
@@ -2147,6 +2211,9 @@ def get_process_for_run(args, gcp_env):
         },
         'backfill-replates': {
             'process': BackFillReplates(args, gcp_env)
+        },
+        'arbitrary-replates': {
+            'process': ArbitraryReplates(args, gcp_env)
         }
     }
 
@@ -2299,6 +2366,11 @@ def run():
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
     backfill_replate_parser = subparser.add_parser("backfill-replates")  # pylint: disable=unused-variable
 
+    arbitrary_replate_parser = subparser.add_parser("arbitrary-replates")  # pylint: disable=unused-variable
+    arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--genome-type", help="genome_type for new records",
+                                          type=str, default=None)  # noqa
+
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
     collection_tube_parser.add_argument("--file", help="A CSV file with collection-tube, biobank_id",
@@ -2346,6 +2418,8 @@ def run():
 
     gem_to_gp_parser = subparser.add_parser("gem-to-gp")
     gem_to_gp_parser.add_argument("--limit", help="limit for migration query", type=int,
+                                  default=None, required=False)  # noqa
+    gem_to_gp_parser.add_argument("--csv", help="csv file with list of pids", type=str,
                                   default=None, required=False)  # noqa
 
     # Tool for calculate descripancies in AW2 ingestion and AW2 files

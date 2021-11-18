@@ -606,14 +606,14 @@ class MySqlReconciliationTest(BaseTestCase):
         p_present_salivary = self._insert_participant(race_codes=[RACE_WHITE_CODE])
         self._create_dv_order(p_present_salivary, missing=False, received=True)
 
-        received, missing, modified, withdrawals = "rx.csv", "missing.csv", "modified.csv", "withdrawals.csv"
+        received, missing, modified = "rx.csv", "missing.csv", "modified.csv"
         missing_salivary = "missing_salivary.csv"
         exporter = InMemorySqlExporter(self)
         biobank_samples_pipeline._query_and_write_reports(
-            exporter, file_time, "daily", received, missing, modified, withdrawals, missing_salivary
+            exporter, file_time, "daily", received, missing, modified, missing_salivary
         )
 
-        exporter.assertFilesEqual((received, missing, modified, withdrawals, missing_salivary))
+        exporter.assertFilesEqual((received, missing, modified, missing_salivary))
 
         # sent-and-received: 4 on-time, 2 late, none of the missing/extra/repeated ones;
         # not includes orders/samples from more than 10 days ago;
@@ -786,41 +786,6 @@ class MySqlReconciliationTest(BaseTestCase):
             },
         )
 
-        # We don't include the old withdrawal.
-        exporter.assertRowCount(withdrawals, 4)
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "Y",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_late_and_missing.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "N",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_extra.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "N",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_old_extra.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "Y",
-            },
-        )
-
         # Test the missing DV order is in salivary_missing report
         exporter.assertRowCount(missing_salivary, 1)
         exporter.assertHasRow(
@@ -843,12 +808,10 @@ class MySqlReconciliationTest(BaseTestCase):
         exporter.assertHasRow(received, participant_origin_data)
         exporter.assertHasRow(missing, participant_origin_data)
         exporter.assertHasRow(modified, participant_origin_data)
-        exporter.assertHasRow(withdrawals, participant_origin_data)
         exporter.assertHasRow(missing_salivary, participant_origin_data)
 
     def test_monthly_reconciliation_report(self):
-        self.setup_codes([RACE_QUESTION_CODE], CodeType.QUESTION)
-        self.setup_codes([RACE_AIAN_CODE, RACE_WHITE_CODE], CodeType.ANSWER)
+        self.setup_codes([RACE_WHITE_CODE], CodeType.ANSWER)
         self._questionnaire_id = self.create_questionnaire("questionnaire3.json")
         # MySQL and Python sub-second rounding differs, so trim micros from generated times.
         order_time = clock.CLOCK.now().replace(microsecond=0)
@@ -1215,18 +1178,17 @@ class MySqlReconciliationTest(BaseTestCase):
                     within_24_hours + datetime.timedelta(hours=repetition - 1),
                 )
 
-        received, missing, modified, withdrawals = (
+        received, missing, modified = (
             "rx_monthly.csv",
             "missing_monthly.csv",
             "modified_monthly.csv",
-            "withdrawals_monthly.csv",
         )
         exporter = InMemorySqlExporter(self)
         biobank_samples_pipeline._query_and_write_reports(
-            exporter, file_time, "monthly", received, missing, modified, withdrawals
+            exporter, file_time, "monthly", received, missing, modified
         )
 
-        exporter.assertFilesEqual((received, missing, modified, withdrawals))
+        exporter.assertFilesEqual((received, missing, modified))
 
         # sent-and-received: 4 on-time, 2 late, 2 edge, none of the missing/extra/repeated ones;
         # not includes orders/samples from more than 60 days ago
@@ -1395,41 +1357,6 @@ class MySqlReconciliationTest(BaseTestCase):
                 "edited_cancelled_restored_name": "mike@pmi-ops.org",
                 "edited_cancelled_restored_site_reason": 'I didn"t mess something up :( ',
                 "edited_cancelled_restored_site_name": "Monroeville Urgent Care Center",
-            },
-        )
-
-        # We don't include the old withdrawal.
-        exporter.assertRowCount(withdrawals, 4)
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_old_on_time.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "Y",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_late_and_missing.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "N",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_extra.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "N",
-            },
-        )
-        exporter.assertHasRow(
-            withdrawals,
-            {
-                "biobank_id": to_client_biobank_id(p_withdrawn_old_extra.biobankId),
-                "withdrawal_time": database_utils.format_datetime(within_24_hours),
-                "is_native_american": "Y",
             },
         )
 

@@ -16,6 +16,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
+from rdr_service.genomic_enums import GenomicJob
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
@@ -472,7 +473,29 @@ class GenomicSetMemberDao(UpdatableDao):
             ).one_or_none()
         return member
 
-    def get_member_from_collection_tube(self, tube_id, genome_type):
+    def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
+        """
+        Retrieves a genomic set member record matching the collection_tube_id
+        Needs a genome type
+        :param state:
+        :param genome_type: aou_wgs, aou_array, aou_cvl
+        :param tube_id:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.collectionTubeId == tube_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            )
+            if state:
+                member = member.filter(
+                    GenomicSetMember.genomicWorkflowState == state
+                )
+            member = member.first()
+        return member
+
+    def get_member_from_collection_tube_with_null_sample_id(self, tube_id, genome_type):
         """
         Retrieves a genomic set member record matching the collection_tube_id
         Needs a genome type
@@ -485,6 +508,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.collectionTubeId == tube_id,
                 GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.sampleId.is_(None)
             ).first()
         return member
 
@@ -1496,10 +1520,12 @@ class GenomicOutreachDao(BaseDao):
             raise BadRequest("Resource is missing required fields: status, date")
 
         member = GenomicSetMember(participantId=participant_id,
+                                  biobankId=p.biobankId,
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
                                   genomicWorkflowStateStr=report_state.name,
+                                  gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
         return member
@@ -1753,15 +1779,15 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicMemberReportState.participant_id
                     )
-                        .join(
+                    .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicMemberReportState.participant_id
                     )
-                        .filter(
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
@@ -2166,6 +2192,7 @@ class GenomicAW2RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
+
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
 
@@ -2220,6 +2247,56 @@ class GenomicIncidentDao(UpdatableDao):
             value = value[:max_length]
 
         return is_truncated, value
+
+    def get_new_ingestion_incidents(self, from_days=1):
+
+        job_ids = [
+            GenomicJob.METRICS_INGESTION,
+            GenomicJob.AW1_MANIFEST,
+            GenomicJob.AW1F_MANIFEST
+        ]
+
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.id,
+                GenomicIncident.code,
+                GenomicIncident.submitted_gc_site_id,
+                GenomicIncident.message,
+                GenomicJobRun.jobId,
+                GenomicFileProcessed.filePath,
+                GenomicFileProcessed.fileName
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicIncident.source_job_run_id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.email_notification_sent == 0,
+                GenomicJobRun.jobId.in_(job_ids),
+                GenomicIncident.source_file_processed_id.isnot(None),
+                GenomicIncident.source_job_run_id.isnot(None),
+                GenomicIncident.submitted_gc_site_id.isnot(None)
+            )
+
+            if from_days:
+                from_date = clock.CLOCK.now() - timedelta(days=from_days)
+                from_date = from_date.replace(microsecond=0)
+
+                incidents = incidents.filter(
+                    GenomicIncident.created >= from_date
+                )
+            return incidents.all()
+
+    def batch_update_validation_emails_sent(self, ids):
+        if not type(ids) is list:
+            ids = [ids]
+
+        for _id in ids:
+            current_incident = self.get(_id)
+            current_incident.email_notification_sent = 1
+            current_incident.email_notification_sent_date = datetime.utcnow()
+            self.update(current_incident)
 
 
 class GenomicCloudRequestsDao(UpdatableDao):
@@ -2454,18 +2531,19 @@ class GemToGpMigrationDao(BaseDao):
         super(GemToGpMigrationDao, self).__init__(
             GemToGpMigration, order_by_ending=['id'])
 
-    @staticmethod
-    def prepare_obj(row, job_run, file_path):
-        return GemToGpMigration(
+    def prepare_obj(self, row, job_run, file_path):
+        return self.to_dict(GemToGpMigration(
             file_path=file_path,
             run_id=job_run,
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
             participant_id=row.participantId,
             informing_loop_status='success',
             informing_loop_authored=row.authored,
             ancestry_traits_response=row.value,
-        )
+        ))
 
-    def get_data_for_export(self, run_id, limit=None):
+    def get_data_for_export(self, run_id, limit=None, pids=None):
         with self.session() as session:
             results = session.query(
                 QuestionnaireResponse.participantId,
@@ -2484,8 +2562,13 @@ class GemToGpMigrationDao(BaseDao):
             ).filter(
                 Code.value.in_(["ConsentAncestryTraits_Yes",
                                 "ConsentAncestryTraits_No",
-                                "ConsentAncestryTraits_NotSure"])
+                                "ConsentAncestryTraits_NotSure"]),
             )
+            if pids:
+                results = results.filter(
+                    QuestionnaireResponse.participantId.in_(pids)
+                )
+
             if limit:
                 results = results.limit(limit)
 
@@ -2494,4 +2577,3 @@ class GemToGpMigrationDao(BaseDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
-

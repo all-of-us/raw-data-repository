@@ -168,6 +168,7 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
     @mock.patch('rdr_service.tools.tool_libs.codes_management.logger')
     def test_failure_on_question_code_reuse(self, mock_logger):
         self.data_generator.create_database_code(value='old_code')
+        self.data_generator.create_database_code(value='Legacy_Code')
 
         return_val, _, _ = self.run_code_import([
             self._get_mock_dictionary_item(
@@ -186,16 +187,22 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
                 'text'
             ),
             self._get_mock_dictionary_item(
+                'legacy_code',
+                'This is another unintended reuse',
+                'text'
+            ),
+            self._get_mock_dictionary_item(
                 'another_code',
                 'Just making sure other codes do not get saved',
                 'text'
             )
         ])
-        self.assertEqual(1, self.session.query(Code).count(), 'No codes should be created when running the tool')
+        self.assertEqual(2, self.session.query(Code).count(), 'No codes should be created when running the tool')
         self.assertEqual(0, self.session.query(Survey).count(), 'No survey objects should be created')
         self.assertEqual(0, self.session.query(SurveyQuestion).count(), 'No survey objects should be created')
 
         mock_logger.error.assert_any_call('Code "old_code" is already in use')
+        mock_logger.error.assert_any_call('Code "legacy_code" is already in use')
         self.assertEqual(1, return_val, 'Script should exit with an error code')
 
     def test_auto_ignore_answer_code_reuse(self):
@@ -433,7 +440,9 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
             'project_title': project_title
         })
 
-        # Run again to see if it will allow code reuse without explicitly saying they should be reusable
+        # Run again to see if it will allow code reuse without explicitly saying they should be reusable.
+        # Change the case of one of the codes to make sure case doesn't matter
+        data_dictionary[1] = self._get_mock_dictionary_item('Participant_Id', 'Participant ID', 'text')
         update_exit_code, *_ = self.run_code_import(data_dictionary, project_info={
             'project_id': project_id,
             'project_title': project_title
