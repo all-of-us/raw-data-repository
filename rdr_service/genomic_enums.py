@@ -101,6 +101,7 @@ class GenomicJob(messages.Enum):
     # Ingestion Reconciliatino Jobs
     RECONCILE_GC_DATA_FILE_TO_TABLE = 46
     RECONCILE_RAW_AW1_INGESTED = 47
+    RECONCILE_RAW_AW2_INGESTED = 48
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
