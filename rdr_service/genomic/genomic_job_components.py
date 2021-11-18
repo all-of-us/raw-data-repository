@@ -1119,8 +1119,6 @@ class GenomicFileIngester:
             genomeType=genome_type if genome_type else member.genomeType,
             collectionTubeId=f'replated_{member.id}',
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
-            created=clock.CLOCK.now(),
-            modified=clock.CLOCK.now(),
             replatedMemberId=member.id,
         )
 
