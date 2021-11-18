@@ -473,7 +473,29 @@ class GenomicSetMemberDao(UpdatableDao):
             ).one_or_none()
         return member
 
-    def get_member_from_collection_tube(self, tube_id, genome_type):
+    def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
+        """
+        Retrieves a genomic set member record matching the collection_tube_id
+        Needs a genome type
+        :param state:
+        :param genome_type: aou_wgs, aou_array, aou_cvl
+        :param tube_id:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.collectionTubeId == tube_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            )
+            if state:
+                member = member.filter(
+                    GenomicSetMember.genomicWorkflowState == state
+                )
+            member = member.first()
+        return member
+
+    def get_member_from_collection_tube_with_null_sample_id(self, tube_id, genome_type):
         """
         Retrieves a genomic set member record matching the collection_tube_id
         Needs a genome type
@@ -486,6 +508,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.collectionTubeId == tube_id,
                 GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.sampleId.is_(None)
             ).first()
         return member
 
@@ -1493,6 +1516,7 @@ class GenomicOutreachDao(BaseDao):
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
+                                  gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
         return member
