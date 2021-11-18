@@ -2117,13 +2117,35 @@ class ArbitraryReplates(GenomicManifestBase):
 
         existing_records = self.dao.get_members_from_member_ids(member_ids)
 
+        if self.args.genome_type:
+            genome_type = self.args.genome_type
+        else:
+            genome_type = None
+
+        if not self.args.dryrun:
+            new_set = self.make_new_set()
+        else:
+            new_set = None
+
         for existing_record in existing_records:
             if not self.args.dryrun:
-                ingester.copy_member_for_replating(existing_record)
+                ingester.copy_member_for_replating(existing_record,
+                                                   genome_type=genome_type,
+                                                   set_id=new_set.id)
             else:
-                _logger.info(f'Would create member based on id: {existing_record.id}')
+                _logger.info(f'Would create {genome_type} member based on id: {existing_record.id}')
 
         return 0
+
+    @staticmethod
+    def make_new_set():
+        set_dao = GenomicSetDao()
+        new_set = GenomicSet(
+            genomicSetName=f"replating_{clock.CLOCK.now().replace(microsecond=0)}",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        return set_dao.insert(new_set)
 
 
 def get_process_for_run(args, gcp_env):
@@ -2344,6 +2366,8 @@ def run():
 
     arbitrary_replate_parser = subparser.add_parser("arbitrary-replates")  # pylint: disable=unused-variable
     arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--genome-type", help="genome_type for new records",
+                                          type=str, default=None)  # noqa
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
