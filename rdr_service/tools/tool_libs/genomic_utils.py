@@ -2092,6 +2092,62 @@ class BackFillReplates(GenomicManifestBase):
         return 0
 
 
+class ArbitraryReplates(GenomicManifestBase):
+    """
+    Inserts new genomic_set_member records for
+    supplied existing genomic_set_member IDs
+    """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject):
+        super(ArbitraryReplates, self).__init__(args, gcp_env)
+
+    def run(self):
+        self.gcp_env.activate_sql_proxy()
+        self.dao = GenomicSetMemberDao()
+        ingester = GenomicFileIngester()
+
+        member_ids = []
+        if self.args.csv:
+            with open(self.args.csv, encoding='utf-8-sig') as h:
+                lines = h.readlines()
+                for line in lines:
+                    member_ids.append(int(line.strip()))
+        else:
+            _logger.error('Need --csv')
+
+        existing_records = self.dao.get_members_from_member_ids(member_ids)
+
+        if self.args.genome_type:
+            genome_type = self.args.genome_type
+        else:
+            genome_type = None
+
+        if not self.args.dryrun:
+            new_set = self.make_new_set()
+        else:
+            new_set = None
+
+        for existing_record in existing_records:
+            if not self.args.dryrun:
+                ingester.copy_member_for_replating(existing_record,
+                                                   genome_type=genome_type,
+                                                   set_id=new_set.id)
+            else:
+                _logger.info(f'Would create {genome_type} member based on id: {existing_record.id}')
+
+        return 0
+
+    @staticmethod
+    def make_new_set():
+        set_dao = GenomicSetDao()
+        new_set = GenomicSet(
+            genomicSetName=f"replating_{clock.CLOCK.now().replace(microsecond=0)}",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        return set_dao.insert(new_set)
+
+
 def get_process_for_run(args, gcp_env):
 
     util = args.util
@@ -2153,6 +2209,9 @@ def get_process_for_run(args, gcp_env):
         },
         'backfill-replates': {
             'process': BackFillReplates(args, gcp_env)
+        },
+        'arbitrary-replates': {
+            'process': ArbitraryReplates(args, gcp_env)
         }
     }
 
@@ -2304,6 +2363,11 @@ def run():
     upload_date_parser = subparser.add_parser("backfill-upload-date")  # pylint: disable=unused-variable
     recon_gc_data_file = subparser.add_parser("reconcile-gc-data-file")  # pylint: disable=unused-variable
     backfill_replate_parser = subparser.add_parser("backfill-replates")  # pylint: disable=unused-variable
+
+    arbitrary_replate_parser = subparser.add_parser("arbitrary-replates")  # pylint: disable=unused-variable
+    arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--genome-type", help="genome_type for new records",
+                                          type=str, default=None)  # noqa
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")

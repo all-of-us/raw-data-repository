@@ -1109,6 +1109,29 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
+    def copy_member_for_replating(self, member, genome_type=None, set_id=None):
+        """
+        Inserts a new member record for replating.
+        :param member: GenomicSetMember
+        :return:
+        """
+        new_member = GenomicSetMember(
+            biobankId=member.biobankId,
+            genomicSetId=set_id if set_id else member.genomicSetId,
+            participantId=member.participantId,
+            nyFlag=member.nyFlag,
+            sexAtBirth=member.sexAtBirth,
+            validationStatus=member.validationStatus,
+            validationFlags=member.validationFlags,
+            ai_an=member.ai_an,
+            genomeType=genome_type if genome_type else member.genomeType,
+            collectionTubeId=f'replated_{member.id}',
+            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            replatedMemberId=member.id,
+        )
+
+        self.member_dao.insert(new_member)
+
     def insert_member_for_replating(self, member, category):
         """
         Inserts a new member record for replating.
@@ -1124,6 +1147,7 @@ class GenomicFileIngester:
             sexAtBirth=member.sexAtBirth,
             validationStatus=member.validationStatus,
             validationFlags=member.validationFlags,
+            collectionTubeId=f'replated_{member.id}',
             ai_an=member.ai_an,
             genomeType=GENOME_TYPE_WGS,
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
