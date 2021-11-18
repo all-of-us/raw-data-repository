@@ -350,11 +350,12 @@ class GenomicJobController:
                         self.set_aw1_attributes_from_raw(record_to_update)
                     # AW2
                     elif self.job_id == GenomicJob.METRICS_INGESTION:
-                        self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
-                        metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
-                        metrics_obj = session.merge(metrics_obj)
-                        session.commit()
-                        metrics.append(metrics_obj.id)
+                        proceed = self.preprocess_aw2_attributes_from_raw(record_to_update, file_proc_map)
+                        if proceed:
+                            metrics_obj = self.set_validation_metrics_from_raw(record_to_update)
+                            metrics_obj = session.merge(metrics_obj)
+                            session.commit()
+                            metrics.append(metrics_obj.id)
 
                     session.merge(record_to_update[0])
                     completed_members.append(record_to_update[0].id)
@@ -667,11 +668,12 @@ class GenomicJobController:
 
                 # Insert record into genomic_gc_validation_metrics
                 with self.metrics_dao.session() as session:
-                    self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
-                    metrics_obj = self.set_validation_metrics_from_raw((member, record))
-                    metrics_obj = session.merge(metrics_obj)
-                    session.commit()
-                    inserted_metric_ids.append(metrics_obj.id)
+                    proceed = self.preprocess_aw2_attributes_from_raw((member, record), file_proc_map)
+                    if proceed:
+                        metrics_obj = self.set_validation_metrics_from_raw((member, record))
+                        metrics_obj = session.merge(metrics_obj)
+                        session.commit()
+                        inserted_metric_ids.append(metrics_obj.id)
 
         # Metrics
         bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
@@ -739,13 +741,16 @@ class GenomicJobController:
             if raw.contamination < 0:
                 raw.contamination = 0
         except ValueError:
-            raise ValueError(f'contamination must be a number for member_id: {member.id}')
+            logging.error(f'contamination must be a number for member_id: {member.id}')
+            return False
 
         # Calculate contamination_category using an ingester
         ingester = GenomicFileIngester(_controller=self, job_id=self.job_id)
         category = ingester.calculate_contamination_category(member.collectionTubeId,
                                                              raw.contamination, member)
         raw.contamination_category = category
+
+        return True
 
     @staticmethod
     def compile_raw_ingestion_results(completed, missing, multiples, metrics):
