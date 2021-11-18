@@ -1411,6 +1411,7 @@ class GenomicFileValidator:
         self.job_id = job_id
         self.genome_type = None
         self.controller = controller
+        self.gc_site_id = None
 
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
@@ -1447,6 +1448,7 @@ class GenomicFileValidator:
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
+        self.DRC_BROAD = 'drc_broad'
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.AW1_MANIFEST_SCHEMA = (
@@ -1603,10 +1605,29 @@ class GenomicFileValidator:
             },
         }
 
-    def set_genome_type(self, filename):
-        if self.job_id in [GenomicJob.METRICS_INGESTION]:
-            file_type = filename.lower().split("_")[2]
+    def set_genome_type(self):
+        if self.job_id in [GenomicJob.METRICS_INGESTION] and self.filename:
+            file_type = self.filename.lower().split("_")[2]
             self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
+
+    def set_gc_site_id(self, fn_component):
+        if fn_component and \
+            fn_component.lower() in self.VALID_GENOME_CENTERS and \
+            self.job_id in [
+                GenomicJob.METRICS_INGESTION,
+                GenomicJob.AW1_MANIFEST,
+                GenomicJob.AW1C_INGEST,
+                GenomicJob.AW1CF_INGEST,
+                GenomicJob.AW1F_MANIFEST
+        ]:
+            self.gc_site_id = fn_component
+        elif self.job_id in [
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
+        ]:
+            self.gc_site_id = self.DRC_BROAD
 
     def validate_ingestion_file(self, *, filename, data_to_validate):
         """
@@ -1616,11 +1637,26 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
-        self.set_genome_type(filename)
+        self.set_genome_type()
 
         file_processed = self.controller. \
             file_processed_dao.get_record_from_filename(filename)
 
+        # validates filenames for each job
+        validated_filename = self.validate_filename(filename)
+        if not validated_filename:
+            self.controller.create_incident(
+                source_job_run_id=self.controller.job_run.id,
+                source_file_processed_id=file_processed.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation due to an"
+                        f"incorrect file name.",
+                slack=True,
+                submitted_gc_site_id=self.gc_site_id
+            )
+            return GenomicSubProcessResult.INVALID_FILE_NAME
+
+        # validates values in fields if specified for job
         values_validation_failed, message = self.validate_values(data_to_validate)
         if values_validation_failed:
             self.controller.create_incident(
@@ -1628,19 +1664,14 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_VALUES.name,
                 message=message,
-                slack=True
+                slack=True,
+                submitted_gc_site_id=self.gc_site_id
             )
             return GenomicSubProcessResult.ERROR
 
-        if not self.validate_filename(filename):
-            return GenomicSubProcessResult.INVALID_FILE_NAME
-
-        # if not data_to_validate
+        # validates file structure rules
         struct_valid_result, missing_fields, extra_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
-
-        if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
 
         if not struct_valid_result:
             slack = True
@@ -1656,7 +1687,8 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
-                slack=slack
+                slack=slack,
+                submitted_gc_site_id=self.gc_site_id
             )
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 
@@ -1670,21 +1702,10 @@ class GenomicFileValidator:
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
-        if self.job_id in [GenomicJob.BB_RETURN_MANIFEST]:
-            filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
-        else:
-            filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        self.set_gc_site_id(filename_components[0])
 
         # Naming Rule Definitions
-        def bb_result_name_rule():
-            """Biobank to DRC Result name rule"""
-            return (
-                filename_components[0] == 'genomic' and
-                filename_components[1] == 'manifest' and
-                filename_components[2] in ('aou_array', 'aou_wgs') and
-                filename.lower().endswith('csv')
-            )
-
         def gc_validation_metrics_name_rule():
             """GC metrics file name rule"""
             return (
@@ -1795,7 +1816,6 @@ class GenomicFileValidator:
             return filename.lower().endswith('csv')
 
         name_rules = {
-            GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
@@ -1810,17 +1830,12 @@ class GenomicFileValidator:
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
-        is_valid_filename = name_rules[self.job_id]()
+        try:
+            is_valid_filename = name_rules[self.job_id]()
+            return is_valid_filename
 
-        if not is_valid_filename:
-            invalid_message = f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation."
-            self.controller.create_incident(
-                save_incident=False,
-                slack=True,
-                message=invalid_message,
-            )
-
-        return is_valid_filename
+        except KeyError:
+            return GenomicSubProcessResult.ERROR
 
     def validate_values(self, data):
         is_invalid, message = False, None
@@ -1862,9 +1877,6 @@ class GenomicFileValidator:
 
         if not self.valid_schema:
             self.valid_schema = self._set_schema()
-
-        if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
 
         cases = tuple([self._clean_field_name(field) for field in fields])
 
@@ -1916,7 +1928,7 @@ class GenomicFileValidator:
                 return self.AW5_ARRAY_SCHEMA
 
         except (IndexError, KeyError):
-            return GenomicSubProcessResult.INVALID_FILE_NAME
+            return GenomicSubProcessResult.ERROR
 
 
 class GenomicFileMover:

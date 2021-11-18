@@ -4,7 +4,7 @@ from rdr_service import clock, config
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob
-from tests.cron_job_tests.test_genomic_pipeline import create_ingestion_test_file
+from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 

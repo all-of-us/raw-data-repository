@@ -69,3 +69,8 @@ cron:
   timezone: America/New_York
   schedule: every day 08:05
   target: offline
+- description: Genomic Daily Incident Validation Emails
+  url: /offline/GenomicDataQualityDailyValidationEmails
+  timezone: America/New_York
+  schedule: every day 08:10
+  target: offline

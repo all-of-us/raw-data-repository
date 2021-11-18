@@ -1347,6 +1347,7 @@ class DataQualityJobController:
 
         # Components
         self.job_run_dao = GenomicJobRunDao()
+        self.incident_dao = GenomicIncidentDao()
         self.genomic_report_slack = SlackMessageHandler(
             webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_reports')
         )
@@ -1403,6 +1404,7 @@ class DataQualityJobController:
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
+            GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
         }
 
         return job_registry[job]
@@ -1438,15 +1440,11 @@ class DataQualityJobController:
         """
 
         rc = ReportingComponent(self)
-
         report_params = rc.get_report_parameters(**kwargs)
 
         rc.set_report_def(**report_params)
-
         report_data = rc.get_report_data()
-
         report_string = rc.format_report(report_data)
-
         report_result = report_string
 
         # Compile long reports to cloud file and post link
@@ -1458,7 +1456,6 @@ class DataQualityJobController:
                        f" https://storage.cloud.google.com{file_path}"
 
             message_data = {'text': message}
-
             report_result = file_path
 
         else:
@@ -1471,5 +1468,44 @@ class DataQualityJobController:
             )
 
         self.job_run_result = GenomicSubProcessResult.SUCCESS
-
         return report_result
+
+    def send_validation_emails(self):
+        """
+        Send emails via sendgrid for previous day
+        validation failures on GC/DRC manifest ingestions
+        """
+        email_config = config.getSettingJson(config.GENOMIC_DAILY_VALIDATION_EMAILS, {})
+
+        if not email_config.get('send_emails'):
+            return
+
+        validation_incidents = self.incident_dao.get_new_ingestion_incidents()
+
+        if not validation_incidents:
+            logging.warning('No records found for validation email notifications')
+            return
+
+        recipients = email_config.get('recipients')
+
+        for gc, recipient_list in recipients.items():
+            gc_validation_emails_to_send = list(filter(lambda x: x.submitted_gc_site_id == gc, validation_incidents))
+
+            if gc_validation_emails_to_send:
+                for gc_validation_email in gc_validation_emails_to_send:
+                    validation_message = gc_validation_email.message.split(':')[1]
+                    message = f"{validation_message}\n"
+                    message += f"Full file path: gs://{gc_validation_email.filePath}\n"
+                    message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
+                               f"designated bucket."
+
+                    email_message = Email(
+                        recipients=recipient_list,
+                        subject="All of Us GC/DRC Manifest Ingestion Failure",
+                        plain_text_content=message
+                    )
+
+                    EmailService.send_email(email_message)
+
+            self.incident_dao.batch_update_validation_emails_sent([obj.id for obj in gc_validation_emails_to_send])
+
