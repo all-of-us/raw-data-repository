@@ -78,6 +78,8 @@ class BQModuleStatusSchema(BQSchema):
     mod_consent_expired = BQField('mod_consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_non_participant_answer = BQField('mod_non_participant_answer', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
+    mod_semantic_version = BQField('mod_semantic_version', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
