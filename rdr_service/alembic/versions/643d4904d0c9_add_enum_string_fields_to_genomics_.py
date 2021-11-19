@@ -1,7 +1,7 @@
 """add enum string fields to genomics tables
 
 Revision ID: 643d4904d0c9
-Revises: 47199ca259e2
+Revises: 968bbe502102
 Create Date: 2021-11-11 12:30:47.924259
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '643d4904d0c9'
-down_revision = '47199ca259e2'
+down_revision = '968bbe502102'
 branch_labels = None
 depends_on = None
 
