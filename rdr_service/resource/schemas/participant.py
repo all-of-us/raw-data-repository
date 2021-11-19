@@ -14,6 +14,14 @@ from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
 
+class SexualOrientationEnum(Enum):
+    SexualOrientation_None = 1
+    SexualOrientation_Straight = 2
+    SexualOrientation_Lesbian = 3
+    SexualOrientation_Gay = 4
+    SexualOrientation_Bisexual = 5
+
+
 class StreetAddressTypeEnum(Enum):
     RESIDENCE = 1
     MAILING = 2
@@ -117,6 +125,19 @@ class GenderSchema(Schema):
     class Meta:
         schema_id = SchemaID.participant_gender
         resource_uri = 'Participant/{participant_id}/Genders'
+        # Exclude fields and/or functions to strip PII information from fields.
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).
+
+
+class SexualOrientationSchema(Schema):
+    """ Participant race information """
+    sexual_orientation = fields.EnumString(enum=SexualOrientationEnum)
+    sexual_orientation_id = fields.EnumInteger(enum=SexualOrientationEnum)
+
+    class Meta:
+        schema_id = SchemaID.participant_sexual_orientation
+        resource_uri = 'Participant/{participant_id}/SexualOrientations'
         # Exclude fields and/or functions to strip PII information from fields.
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
@@ -352,14 +373,13 @@ class ParticipantSchema(Schema):
 
     sex = fields.String(validate=validate.Length(max=80))
     sex_id = fields.Int32()
-    sexual_orientation = fields.String(validate=validate.Length(max=80))
-    sexual_orientation_id = fields.Int32()
 
     pairing_history = fields.Nested(PairingHistorySchema, many=True)
     pm = fields.Nested(PhysicalMeasurementsSchema, many=True)
 
     races = fields.Nested(RaceSchema, many=True)
     genders = fields.Nested(GenderSchema, many=True)
+    sexual_orientations = fields.Nested(SexualOrientationSchema, many=True)
     modules = fields.Nested(ModuleStatusSchema, many=True)
     # TODO: Deprecated, but leave around until BigQuery table support is removed.
     # consents = fields.Nested(ConsentSchema, many=True)

@@ -177,7 +177,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
             # prep physical measurements
             summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
-            # prep race and gender
+            # prep race, gender and sexual orientation
             summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
@@ -782,9 +782,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if qnan.get('GenderIdentity_SexualityCloserDescription'):
             for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
-
         if len(gl) > 0:
             data['genders'] = gl
+
+        so = list()
+        if qnan.get('TheBasics_SexualOrientation'):
+            for val in qnan.get('TheBasics_SexualOrientation').split(','):
+                so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
+        if len(so) > 0:
+            data['sexual_orientations'] = so
 
         data['education'] = qnan.get('EducationLevel_HighestGrade')
         data['education_id'] = self._lookup_code_id(qnan.get('EducationLevel_HighestGrade'), ro_session)
