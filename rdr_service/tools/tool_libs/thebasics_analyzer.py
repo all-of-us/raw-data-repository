@@ -120,7 +120,7 @@ class TheBasicsAnalyzerClass(object):
                         f'{pid} partial response {first_rsp["questionnaire_response_id"]}',
                         f'(external id {first_rsp["external_id"]})',
                         f'received/processed before full response {first_full_rsp["questionnaire_response_id"]}',
-                        f'(external id {first_rsp["external_id"]}, both have same authored {first_full_ts}'])
+                        f'(external id {first_full_rsp["external_id"]}), both have same authored {first_full_ts}'])
                 )
                 self.conflicting_payloads_with_same_authored.append(pid)
             else:
@@ -150,38 +150,20 @@ class TheBasicsAnalyzerClass(object):
 
         dao = BigQuerySyncDao(backup=True)
         with dao.session() as session:
-            records = session.query(
-                BigQuerySync
-            ).join(
-                QuestionnaireResponse, QuestionnaireResponse.questionnaireResponseId == BigQuerySync.pk_id
-            ).filter(
-                BigQuerySync.tableId == 'pdr_mod_thebasics',
-                BigQuerySync.projectId == 'aou-pdr-data-prod',
-            ).filter(
-                QuestionnaireResponse.participantId.in_(self.id_list)
-            ).order_by(QuestionnaireResponse.participantId, QuestionnaireResponse.authored,
-                       QuestionnaireResponse.created
-            ).all()
+            for pid in self.id_list:
+                records = session.query(
+                    BigQuerySync
+                    ).join(
+                        QuestionnaireResponse, QuestionnaireResponse.questionnaireResponseId == BigQuerySync.pk_id
+                    ).filter(
+                        BigQuerySync.tableId == 'pdr_mod_thebasics',
+                        BigQuerySync.projectId == 'aou-pdr-data-prod',
+                    ).filter(
+                        QuestionnaireResponse.participantId == pid
+                    ).order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created).all()
 
-            last_participant = None
-            participant_responses = []
-            for record in records:
-                # Keep appending responses for the same participant to a list, until we get to a different pid in the
-                # ordered by participant_id results
-                current_participant = int(record.resource.get('participant_id', None))
-                if not last_participant:  # Need to initialize on the first pass through
-                    last_participant = current_participant
-
-                if last_participant != current_participant:
-                    if len(participant_responses):
-                        self.process_participant_responses(last_participant, participant_responses)
-                        participant_responses = []
-                    last_participant = current_participant
-                participant_responses.append(record.resource)
-
-            # Process responses for the last participant in the resultset
-            if len(participant_responses):
-                self.process_participant_responses(current_participant, participant_responses)
+                if records:
+                    self.process_participant_responses(pid, [r.resource for r in records])
 
             if len(self.id_list) > 1:
                 print(f'{len(self.missing_full_survey_list)} participants are missing a full survey response')
