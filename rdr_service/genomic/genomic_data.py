@@ -58,7 +58,7 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.pipelineId,
                     GenomicSetMember.ai_an,
                     sqlalchemy.func.IF(
-                        GenomicSetMember.blockResearch == QuestionnaireStatus.SUBMITTED,
+                        GenomicSetMember.blockResearch == 1,
                         sqlalchemy.sql.expression.literal("Y"),
                         sqlalchemy.sql.expression.literal("")),
                     sqlalchemy.func.IF(

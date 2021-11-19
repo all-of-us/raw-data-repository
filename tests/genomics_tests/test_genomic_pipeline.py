@@ -381,7 +381,9 @@ class GenomicPipelineTest(BaseTestCase):
         aw3_job_id=None,
         gc_manifest_parent_sample_id=None,
         sample_source=None,
-        ai_an=None
+        ai_an=None,
+        block_research=None,
+        block_research_reason=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -408,6 +410,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.gcManifestParentSampleId = gc_manifest_parent_sample_id
         genomic_set_member.gcManifestSampleSource = sample_source
         genomic_set_member.ai_an = ai_an
+        genomic_set_member.blockResearch = block_research
+        genomic_set_member.blockResearchReason = block_research_reason
 
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
@@ -498,7 +502,9 @@ class GenomicPipelineTest(BaseTestCase):
                 aw3_job_id=kwargs.get('aw3_job_id'),
                 gc_manifest_parent_sample_id=1000+p,
                 sample_source=kwargs.get('sample_source'),
-                ai_an=kwargs.get('ai_an')
+                ai_an=kwargs.get('ai_an'),
+                block_research=kwargs.get('block_research'),
+                block_research_reason=kwargs.get('block_research_reason'),
             )
 
     def _update_site_states(self):
@@ -3104,6 +3110,105 @@ class GenomicPipelineTest(BaseTestCase):
             # Test run record is success
             run_obj = self.job_run_dao.get(4)
 
+            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_aw3_array_blocklist_populated(self):
+        block_research_reason = 'Sample Swap'
+
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True,
+                                                array_participants=range(1, 4),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N',
+                                                block_research=1,
+                                                block_research_reason=block_research_reason)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+
+        create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        )
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+        # Test sequencing file (required for GEM)
+        sequencing_test_files = (
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+        )
+
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            for f in sequencing_test_files:
+                # Set file type
+                if "idat" in f.lower():
+                    file_type = f.split('/')[-1].split("_")[-1]
+                else:
+                    file_type = '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'jh',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 3
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_manifest_workflow()  # run_id = 4
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_ARRAY_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+
+            self.assertTrue(all(obj['blocklisted'] == 'Y' and obj['blocklisted'] is not None for obj in rows))
+            self.assertTrue(all(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason'] is not
+                                None for obj in rows))
+
+            # Test run record is success
+            run_obj = self.job_run_dao.get(4)
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_array_manifest_with_max_num(self):
