@@ -60,7 +60,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFeedbackDao,
     GenomicManifestFileDao,
     GenomicAW1RawDao,
-    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao)
+    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao, GenomicIncidentDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -125,6 +125,7 @@ class GenomicFileIngester:
         self.sample_dao = BiobankStoredSampleDao()
         self.feedback_dao = GenomicManifestFeedbackDao()
         self.manifest_dao = GenomicManifestFileDao()
+        self.incident_dao = GenomicIncidentDao()
 
     def generate_file_processing_queue(self):
         """
@@ -285,6 +286,8 @@ class GenomicFileIngester:
 
                 return validation_result
 
+            self._set_manifest_file_resolved()
+
             try:
                 ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
                 ingestion_type = ingestion_map[self.job_id]
@@ -318,6 +321,20 @@ class GenomicFileIngester:
             all_ingestions.append(data_rows)
 
         return all_ingestions
+
+    def _set_manifest_file_resolved(self):
+        if not self.file_obj:
+            return
+
+        has_failed_validation = self.incident_dao.get_open_incident_by_path(self.file_obj.filePath)
+
+        if not has_failed_validation:
+            return
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in has_failed_validation],
+            _type='status'
+        )
 
     @staticmethod
     def get_aw1_manifest_column_mappings():

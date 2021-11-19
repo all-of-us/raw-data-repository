@@ -148,7 +148,7 @@ class GenomicDaoTest(BaseTestCase):
         self.assertTrue(all(obj.email_notification_sent_date is None for obj in all_incidents))
         self.assertTrue(all(obj.email_notification_sent == 0 for obj in all_incidents))
 
-        self.incident_dao.batch_update_validation_emails_sent(incident_ids)
+        self.incident_dao.batch_update_incident_fields(incident_ids)
 
         all_incidents = self.incident_dao.get_all()
 
@@ -166,7 +166,7 @@ class GenomicDaoTest(BaseTestCase):
         self.assertTrue(new_incident_obj.email_notification_sent == 0)
         self.assertTrue(new_incident_obj.email_notification_sent_date is None)
 
-        self.incident_dao.batch_update_validation_emails_sent(new_incident_obj.id)
+        self.incident_dao.batch_update_incident_fields(new_incident_obj.id)
 
         new_incident_obj = self.incident_dao.get(new_incident.id)
 

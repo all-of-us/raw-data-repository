@@ -16,7 +16,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT
-from rdr_service.genomic_enums import GenomicJob
+from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
@@ -2280,15 +2280,37 @@ class GenomicIncidentDao(UpdatableDao):
                 )
             return incidents.all()
 
-    def batch_update_validation_emails_sent(self, ids):
+    def batch_update_incident_fields(self, ids, _type='email'):
+        value_update_map = {
+            'email': {
+                'email_notification_sent': 1,
+                'email_notification_sent_date': datetime.utcnow()
+            },
+            'resolved': {
+                'status': GenomicIncidentStatus.OPEN.name
+            }
+        }
+
+        value_dict = value_update_map[_type]
+
         if not type(ids) is list:
             ids = [ids]
 
         for _id in ids:
             current_incident = self.get(_id)
-            current_incident.email_notification_sent = 1
-            current_incident.email_notification_sent_date = datetime.utcnow()
+            for key, value in value_dict.items():
+                setattr(current_incident, key, value)
+
             self.update(current_incident)
+
+    def get_open_incident_by_path(self, file_path):
+        with self.session() as session:
+            return session.query(
+                GenomicIncident
+            ).filter(
+                GenomicIncident.manifest_file_path == file_path,
+                GenomicIncident.status == GenomicIncidentStatus.OPEN.name
+            ).all()
 
 
 class GenomicCloudRequestsDao(UpdatableDao):

@@ -1512,5 +1512,5 @@ class DataQualityJobController:
 
                     EmailService.send_email(email_message)
 
-            self.incident_dao.batch_update_validation_emails_sent([obj.id for obj in gc_validation_emails_to_send])
+            self.incident_dao.batch_update_incident_fields([obj.id for obj in gc_validation_emails_to_send])
 
