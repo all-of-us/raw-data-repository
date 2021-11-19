@@ -3056,7 +3056,9 @@ class GenomicPipelineTest(BaseTestCase):
             "research_id",
             "sample_source",
             "pipeline_id",
-            "ai_an"
+            "ai_an",
+            "blocklisted",
+            "blocklisted_reason"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3220,7 +3222,9 @@ class GenomicPipelineTest(BaseTestCase):
             "research_id",
             "sample_source",
             "pipeline_id",
-            "ai_an"
+            "ai_an",
+            "blocklisted",
+            "blocklisted_reason"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3563,7 +3567,9 @@ class GenomicPipelineTest(BaseTestCase):
             "sample_source",
             "mapped_reads_pct",
             "sex_ploidy",
-            "ai_an"
+            "ai_an",
+            "blocklisted",
+            "blocklisted_reason"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -3944,7 +3950,9 @@ class GenomicPipelineTest(BaseTestCase):
             "sample_source",
             "mapped_reads_pct",
             "sex_ploidy",
-            "ai_an"
+            "ai_an",
+            "blocklisted",
+            "blocklisted_reason"
         )
 
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)

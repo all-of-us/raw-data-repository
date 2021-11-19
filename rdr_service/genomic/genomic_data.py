@@ -56,7 +56,15 @@ class GenomicQueryClass:
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.pipelineId,
-                    GenomicSetMember.ai_an
+                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == QuestionnaireStatus.SUBMITTED,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearchReason.isnot(None),
+                        GenomicSetMember.blockResearchReason,
+                        sqlalchemy.sql.expression.literal("")),
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -111,7 +119,15 @@ class GenomicQueryClass:
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
                     GenomicGCValidationMetrics.sexPloidy,
-                    GenomicSetMember.ai_an
+                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == QuestionnaireStatus.SUBMITTED,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearchReason.isnot(None),
+                        GenomicSetMember.blockResearchReason,
+                        sqlalchemy.sql.expression.literal("")),
                 ]
             ).select_from(
                 sqlalchemy.join(
