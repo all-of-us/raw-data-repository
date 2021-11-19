@@ -602,7 +602,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
                 QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor,
-                QuestionnaireHistory.semanticVersion). \
+                QuestionnaireHistory.semanticVersion, QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
@@ -642,7 +642,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'questionnaire_response_id': row.questionnaireResponseId,
                     'consent': 1 if module_name in _consent_module_question_map else 0,
                     'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None,
-                    'semantic_version': row.semanticVersion
+                    'semantic_version': row.semanticVersion,
+                    'irb_mapping': row.irbMapping
                 }
 
                 mod_ca = dict()
