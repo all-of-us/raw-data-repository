@@ -3725,6 +3725,110 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_aw3_wgs_blocklist_populated(self):
+        block_research_reason = 'Sample Swap'
+
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(3, arr_override=False,
+                                                recon_gc_man_id=1,
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1,
+                                                sample_source="Whole Blood",
+                                                ai_an='N',
+                                                block_research=1,
+                                                block_research_reason=block_research_reason)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+
+        create_ingestion_test_file(
+            'RDR_AoU_SEQ_TestDataManifest.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0])
+        )
+
+        self._update_test_sample_ids()
+        self._create_stored_samples([(2, 1002)])
+
+        # Create corresponding array genomic_set_members
+        for i in range(1, 4):
+            self.data_generator.create_database_genomic_set_member(
+                participantId=i,
+                genomicSetId=1,
+                biobankId=i,
+                gcManifestParentSampleId=1000+i,
+                genomeType="aou_array",
+                aw3ManifestJobRunID=1,
+                ai_an='N'
+            )
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 2
+
+        # Test sequencing file (required for AW3 WGS)
+        sequencing_test_files = (
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.md5sum',
+            f'test_data_folder/RDR_2_1002_10002_1.cram.crai',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz',
+            f'test_data_folder/RDR_2_1002_10002_1.hard-filtered.gvcf.gz.md5sum',
+        )
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 3
+
+        # finally run the AW3 manifest workflow
+        fake_dt = datetime.datetime(2020, 8, 3, 0, 0, 0, 0)
+
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 4
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
+        sub_folder = config.GENOMIC_AW3_WGS_SUBFOLDER
+
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+
+            row = rows[0]
+
+            self.assertTrue(obj['blocklisted'] == 'Y' and obj['blocklisted'] is not None for obj in row)
+            self.assertTrue(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason']
+                            is not None for obj in row)
+
+            # Test run record is success
+            run_obj = self.job_run_dao.get(4)
+            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
     def test_aw3_wgs_manifest_validation(self):
         stored_samples = [
             (2, 1002),
