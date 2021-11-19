@@ -233,7 +233,7 @@ class GenomicSetMember(Base):
     replatedMemberId = Column('replated_member_id',
                               ForeignKey('genomic_set_member.id'),
                               nullable=True)
-    ignore = Column(SmallInteger, nullable=False, default=0)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
     block_research = Column(SmallInteger, nullable=False, default=0)
     block_research_reason = Column(String(255), nullable=True)
     block_results = Column(SmallInteger, nullable=False, default=0)
