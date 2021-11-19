@@ -5,10 +5,20 @@
 #
 # Calculator for calculating Participant UBR values.
 #
+import re
+
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import parse
+from enum import IntEnum
 
 from rdr_service.resource.helpers import RURAL_ZIPCODES, RURAL_2020_CUTOFF
+
+
+class UBRValueEnum(IntEnum):
+
+    RBR = 0
+    UBR = 1
+    NullSkip = 2
 
 
 class ParticipantUBRCalculator:
@@ -18,26 +28,30 @@ class ParticipantUBRCalculator:
           recent responses.
     """
     @staticmethod
-    def ubr_sex(answer: str):
+    def ubr_sex(answer: (str, None)):
         """
         Calculate the sex UBR value.
         :param answer: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        if answer and answer in ('SexAtBirth_SexAtBirthNoneOfThese', 'SexAtBirth_Intersex'):
-            return 1
-        return 0
+        if answer is None or answer == 'PMI_Skip':
+            return UBRValueEnum.NullSkip
+        if answer in ('SexAtBirth_SexAtBirthNoneOfThese', 'SexAtBirth_Intersex'):
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_sexual_orientation(answer: str):
+    def ubr_sexual_orientation(answer: (str, None)):
         """
-        Calculate the sexual orientation UBR value.
+        Calculate the sexual orientation UBR value. Value can be a comma delimited list of multiple choice values.
         :param answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip', None]:
-            return 1
-        return 0
+        if answer is None or answer == 'PMI_Skip':
+            return UBRValueEnum.NullSkip
+        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
 
     @staticmethod
     def ubr_gender_identity(birth_sex, gender_ident, gender_ident_closer):
@@ -48,8 +62,10 @@ class ParticipantUBRCalculator:
                         survey.
         :param gender_ident_closer: Comma delimited str of answer codes to GenderIdentity_SexualityCloserDescription
                         question in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
+        if gender_ident is None and gender_ident_closer is None:
+            return UBRValueEnum.NullSkip
         # 'gender_ident' can be null, but 'gender_ident_other' can contain a valid answer.
         if not gender_ident:
             gender_ident = ''
@@ -64,87 +80,108 @@ class ParticipantUBRCalculator:
         tmp_list = gender_ident.split(',') + gender_ident_closer.split(',')
         answers = [i for i in tmp_list if i]
         if not answers:
-            return 0
+            return UBRValueEnum.RBR
 
         # Note: assume ubr by default and check for exclusion criteria.
         if len(answers) == 1:
             answer = answers[0]
-            if answer in ('PMI_Skip', 'PMI_PreferNotToAnswer', None) or \
+            if answer is None or answer == 'PMI_Skip':
+                return UBRValueEnum.NullSkip
+            if (answer == 'PMI_PreferNotToAnswer' or answer == 'GenderIdentity_PreferNotToAnswer') or \
                     (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip', None]) or \
                     (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip', None]):
-                return 0
-        return 1
+                return UBRValueEnum.RBR
+        return UBRValueEnum.UBR
 
     @staticmethod
     def ubr_sexual_gender_minority(ubr_sexual_orientation, ubr_gender_identity):
         """
-        Calculate the "sexual gender minority" UBR value.
+        Calculate the "sexual gender minority" UBR value. If only one of the two args is NullSkip, we convert the
+        arg NullSkip value to RBR so we can ignore it.
         :param ubr_sexual_orientation: Value returned from self.ubr_sexual_orientation().
         :param ubr_gender_identity: Value returned from self.ubr_gender_identity().
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        return ubr_sexual_orientation or ubr_gender_identity
+        # If both are NullSkip, return NullSkip.
+        if ubr_sexual_orientation == UBRValueEnum.NullSkip and ubr_gender_identity == UBRValueEnum.NullSkip:
+            return UBRValueEnum.NullSkip
+        # If either are NullSkip, convert them to RBR.
+        if ubr_sexual_orientation == UBRValueEnum.NullSkip:
+            ubr_sexual_orientation = UBRValueEnum.RBR
+        if ubr_gender_identity == UBRValueEnum.NullSkip:
+            ubr_gender_identity = UBRValueEnum.RBR
+        return max([ubr_sexual_orientation, ubr_gender_identity])
 
     @staticmethod
     def ubr_ethnicity(answers):
         """
         Calculate the ethnicity UBR value.
         :param answers: Comma delimited str of answer codes to Race_WhatRaceEthnicity questions in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        # Note: assume ubr by default and check for exclusion criteria.
-        if answers:
-            answers = answers.split(',')
-            if len(answers) == 1:
-                answer = answers[0]
-                if answer in ('WhatRaceEthnicity_White', 'PMI_Skip', 'PMI_PreferNotToAnswer', None):
-                    return 0
-        return 1
+        if answers is None:
+            return UBRValueEnum.NullSkip
+        # Note: assume UBR by default and check for exclusion criteria.
+        answers = answers.split(',')
+        if len(answers) == 1:
+            answer = answers[0]
+            if answer == 'PMI_Skip':
+                return UBRValueEnum.NullSkip
+            if answer in ('WhatRaceEthnicity_White', 'PMI_PreferNotToAnswer'):
+                return UBRValueEnum.RBR
+        return UBRValueEnum.UBR
 
     @staticmethod
-    def ubr_geography(consent_date, answer):
+    def ubr_geography(consent_date, answer: (str, None)):
         """
         Calculate the geography UBR value.
         :param consent_date: Date original consent was submitted.
         :param answer: Answer code to StreetAddress_PIIZIP question in "ConsentPII" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        if not answer:
-            return 0
+        # Remove non-numeric characters from string.
+        if isinstance(answer, str):
+            answer = re.sub('[^0-9]', '', answer)
+        if answer is None:
+            return UBRValueEnum.NullSkip
         # Some participants provide ZIP+4 format.  Use 5-digit zipcode to check for rural zipcode match
         if len(answer) > 5:
             answer = answer.strip()[:5]
         if answer in RURAL_ZIPCODES['2014' if consent_date < RURAL_2020_CUTOFF else '2020']:
-            return 1
-        return 0
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_education(answer):
+    def ubr_education(answer: (str, None)):
         """
         Calculate the education UBR value.
         :param answer: Answer code to EducationLevel_HighestGrade question in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
+        if answer is None or answer == 'PMI_Skip':
+            return UBRValueEnum.NullSkip
         if answer in (
                 'HighestGrade_NeverAttended',
                 'HighestGrade_OneThroughFour',
-                'HighestGrade_NineThroughEleven',
-                'HighestGrade_FiveThroughEight'):
-            return 1
-        return 0
+                'HighestGrade_FiveThroughEight',
+                'HighestGrade_NineThroughEleven'):
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_income(answer):
+    def ubr_income(answer: (str, None)):
         """
         Calculate the income UBR value.
         :param answer: Answer code to Income_AnnualIncome question in "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
+        if answer is None or answer == 'PMI_Skip':
+            return UBRValueEnum.NullSkip
         if answer in (
                 'AnnualIncome_less10k',
                 'AnnualIncome_10k25k'):
-            return 1
-        return 0
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
 
     @staticmethod
     def ubr_disability(answers: dict):
@@ -153,7 +190,7 @@ class ParticipantUBRCalculator:
         :param answers: Dict with keys and answer codes for 'Employment_EmploymentStatus', 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
         if answers:
             if answers.get('Employment_EmploymentStatus', None) == 'EmploymentStatus_UnableToWork' or \
@@ -163,24 +200,36 @@ class ParticipantUBRCalculator:
                     answers.get('Disability_ErrandsAlone', None) == 'ErrandsAlone_Yes' or \
                     answers.get('Disability_Deaf', None) == 'Deaf_Yes' or \
                     answers.get('Disability_DifficultyConcentrating', None) == 'DifficultyConcentrating_Yes':
-                return 1
-        return 0
+                return UBRValueEnum.UBR
+        # Check and see if all question answers are either Null or PMI_Skip.
+        null_skip = True
+        for k in ['Employment_EmploymentStatus', 'Disability_Blind',
+                        'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
+                        'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
+            if answers.get(k, None) not in (None, 'PMI_Skip'):
+                null_skip = False
+                break
+        if null_skip is True:
+            return UBRValueEnum.NullSkip
+        return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_age_at_consent(consent_time, answer):
+    def ubr_age_at_consent(consent_time, answer: (str, None)):
         """
         Calculate the "age at consent" UBR value.
         :param consent_time: Timestamp of primary consent.
         :param answer: Answer to the PIIBirthInformation_BirthDate question in the ConsentPII survey.
-        :return: 1 if UBR else 0
+        :return: UBRValueEnum
         """
-        if not consent_time or not answer:
-            return 0
+        if answer is None or answer == 'PMI_Skip':
+            return UBRValueEnum.NullSkip
+        if not consent_time:
+            return UBRValueEnum.RBR
         # Convert date string to date object if needed.
         if isinstance(answer, str):
             answer = parse(answer)
 
         rd = relativedelta(consent_time, answer)
         if not 18 <= rd.years < 65:
-            return 1
-        return 0
+            return UBRValueEnum.UBR
+        return UBRValueEnum.RBR
