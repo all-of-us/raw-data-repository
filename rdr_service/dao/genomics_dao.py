@@ -2253,7 +2253,11 @@ class GenomicIncidentDao(UpdatableDao):
         job_ids = [
             GenomicJob.METRICS_INGESTION,
             GenomicJob.AW1_MANIFEST,
-            GenomicJob.AW1F_MANIFEST
+            GenomicJob.AW1F_MANIFEST,
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
         ]
 
         with self.session() as session:
