@@ -583,7 +583,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "manifest_type": GenomicManifestTypes.AW2,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
             }
         }
@@ -600,6 +600,9 @@ class GenomicPipelineTest(BaseTestCase):
         file_processed = self.file_processed_dao.get(1)
         self.assertEqual(test_date.astimezone(pytz.utc), pytz.utc.localize(file_processed.uploadDate))
         self.assertEqual(1, file_processed.genomicManifestFileId)
+
+        manifest_file_obj = self.manifest_file_dao.get(1)
+        self.assertEqual('AW2', manifest_file_obj.manifestTypeIdStr)
 
         self.assertEqual(
             file_processed.fileName,
@@ -735,7 +738,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name_seq}"
             }
         }
@@ -746,7 +749,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name_gen}"
             }
         }
@@ -890,6 +893,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('True', record.sexConcordance)
             self.assertEqual('0.01', record.contamination)
             self.assertEqual(GenomicContaminationCategory.EXTRACT_WGS, record.contaminationCategory)
+            self.assertEqual(GenomicContaminationCategory.EXTRACT_WGS.name, record.contaminationCategoryStr)
             self.assertEqual('Pass', record.processingStatus)
             self.assertEqual('This sample passed', record.notes)
 
@@ -937,6 +941,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test Unsuccessful run
         run_obj = self.job_run_dao.get(1)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
+        self.assertEqual(GenomicSubProcessResult.ERROR.name, run_obj.runResultStr)
 
         should_not_be_processed = [test_files_names[2], test_files_names[3], test_files_names[4]]
 
@@ -1024,7 +1029,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
             }
         }
@@ -1045,6 +1050,8 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(gc_metrics[0].genomeCoverage, '2')
         self.assertEqual(gc_metrics[0].aouHdrCoverage, '2')
         self.assertEqual(gc_metrics[0].contamination, '3')
+        self.assertEqual(gc_metrics[0].contaminationCategory, GenomicContaminationCategory.EXTRACT_BOTH)
+        self.assertEqual(gc_metrics[0].contaminationCategoryStr, 'EXTRACT_BOTH')
         self.assertEqual(gc_metrics[0].mappedReadsPct, '88.8888888')
         self.assertEqual(gc_metrics[0].sexConcordance, 'True')
         self.assertEqual(gc_metrics[0].arrayConcordance, 'True')
@@ -1061,6 +1068,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end-to-end result code
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(1).runResult)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
+        self.assertEqual("SUCCESS", self.job_run_dao.get(2).runResultStr)
 
     def test_gc_metrics_reconciliation_vs_array_data(self):
 
@@ -1165,10 +1173,12 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member updated with job ID
         member = self.member_dao.get(1)
         self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
 
         # Test member updated with job ID
         member = self.member_dao.get(2)
         self.assertEqual(GenomicWorkflowState.GEM_READY, member.genomicWorkflowState)
+        self.assertEqual('GEM_READY', member.genomicWorkflowStateStr)
 
         missing_file = self.missing_file_dao.get(1)
         self.assertEqual("rdr", missing_file.gc_site_id)
@@ -1262,6 +1272,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test member updated with job ID and state
         member = self.member_dao.get(2)
         self.assertEqual(GenomicWorkflowState.GC_DATA_FILES_MISSING, member.genomicWorkflowState)
+        self.assertEqual('GC_DATA_FILES_MISSING', member.genomicWorkflowStateStr)
 
         missing_file = self.missing_file_dao.get(1)
         self.assertEqual("rdr", missing_file.gc_site_id)
@@ -1414,6 +1425,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('100002', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == 100003:
@@ -1422,6 +1434,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('003_1ED10', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == 100004:
@@ -1430,6 +1443,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('100004', member.collectionTubeId)
                 self.assertEqual('NA', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == 100006:
@@ -1438,6 +1452,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('100006', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
 
             if member.biobankId == 100007:
@@ -1446,6 +1461,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('100007', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.INVALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('Y', member.ai_an)
 
             if member.biobankId == 100008:
@@ -1454,6 +1470,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('100008', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
+                self.assertEqual(GenomicWorkflowState.AW0.name, member.genomicWorkflowStateStr)
                 self.assertEqual('N', member.ai_an)
 
         for bid in member_genome_types.keys():
@@ -2083,7 +2100,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{file_name}"
             }
         }
@@ -2147,7 +2164,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{file_name}"
             }
         }
@@ -2189,7 +2206,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{file_name}"
             }
         }
@@ -2251,7 +2268,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{file_name}"
             }
         }
@@ -2413,7 +2430,8 @@ class GenomicPipelineTest(BaseTestCase):
                 GenomicSetMember.gemA1ManifestJobRunId,
                 GenomicSetMember.gcSiteId,
                 GenomicGCValidationMetrics.chipwellbarcode,
-                GenomicSetMember.genomicWorkflowState).filter(
+                GenomicSetMember.genomicWorkflowState,
+                GenomicSetMember.genomicWorkflowStateStr).filter(
                 GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
                 GenomicSet.id == GenomicSetMember.genomicSetId,
                 ParticipantSummary.participantId == GenomicSetMember.participantId,
@@ -2421,6 +2439,7 @@ class GenomicPipelineTest(BaseTestCase):
             ).one()
 
         self.assertEqual(GenomicWorkflowState.A1, test_member_1.genomicWorkflowState)
+        self.assertEqual('A1', test_member_1.genomicWorkflowStateStr)
 
         # Test the manifest file contents
         expected_gem_columns = (
@@ -2535,6 +2554,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("Y", member.gemPass)
                 self.assertEqual(2, member.gemA2ManifestJobRunId)
                 self.assertEqual(GenomicWorkflowState.GEM_RPT_READY, member.genomicWorkflowState)
+                self.assertEqual('GEM_RPT_READY', member.genomicWorkflowStateStr)
                 self.assertIsNotNone(report_state)
                 r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
                 self.assertEqual(report_state.genomic_set_member_id, member.id)
@@ -2544,6 +2564,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
                 self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
+                self.assertEqual('A2F', member.genomicWorkflowStateStr)
                 self.assertIsNone(report_state)
 
         # Test Files Processed
@@ -2604,10 +2625,12 @@ class GenomicPipelineTest(BaseTestCase):
         # Picked up by job
         test_member_3 = self.member_dao.get(3)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
+        self.assertEqual('GEM_RPT_DELETED', test_member_3.genomicWorkflowStateStr)
 
         # picked up by job
         test_member_2 = self.member_dao.get(2)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_2.genomicWorkflowState)
+        self.assertEqual('GEM_RPT_DELETED', test_member_2.genomicWorkflowStateStr)
 
         members = self.member_dao.get_all()
 
@@ -4147,9 +4170,11 @@ class GenomicPipelineTest(BaseTestCase):
             if member.id == 1:
                 self.assertEqual('TRUE', metrics.drcSexConcordance)
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+                self.assertEqual('PASS', member.qcStatusStr)
             if member.id == 2:
                 self.assertEqual('FALSE', metrics.drcSexConcordance)
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
+                self.assertEqual('FAIL', member.qcStatusStr)
 
         # Test Files Processed
         file_record = self.file_processed_dao.get(1)
@@ -4226,9 +4251,11 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual('63.2800', metrics.drcMeanCoverage)
             if member.id == 1:
                 self.assertEqual(GenomicQcStatus.PASS, member.qcStatus)
+                self.assertEqual('PASS', member.qcStatusStr)
                 self.assertEqual('TRUE', metrics.drcFpConcordance)
             if member.id == 2:
                 self.assertEqual(GenomicQcStatus.FAIL, member.qcStatus)
+                self.assertEqual('FAIL', member.qcStatusStr)
                 self.assertEqual('FALSE', metrics.drcFpConcordance)
 
         # Test Files Processed
@@ -4369,7 +4396,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-11-20 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{sub_folder}/{file_name}"
             }
         }
@@ -4382,7 +4409,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test data was inserted correctly
         # manifest_file
         self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
-        self.assertEqual(GenomicManifestTypes.BIOBANK_GC, manifest_record.manifestTypeId)
+        self.assertEqual(GenomicManifestTypes.AW1, manifest_record.manifestTypeId)
         self.assertEqual(0, manifest_record.recordCount)
         self.assertEqual(bucket_name, manifest_record.bucketName)
         self.assertEqual(f"{bucket_name}/{sub_folder}/{file_name}", manifest_record.filePath)
@@ -4424,7 +4451,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": test_date,
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{bucket_name}/{sub_folder}/{gc_manifest_filename}"
             }
         }
@@ -4605,7 +4632,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": clock.CLOCK.now(),
-                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "manifest_type": GenomicManifestTypes.AW2,
                 "file_path": f"{bucket_name}/{aw2_subfolder}/{new_aw2}"
             }
         }
@@ -4955,7 +4982,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
             }
         }
@@ -5004,7 +5031,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
             }
         }
@@ -5037,7 +5064,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "manifest_type": GenomicManifestTypes.AW2,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{subfolder}/{test_file_name}"
             }
         }
@@ -5099,7 +5126,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.GC_DRC,
+                "manifest_type": GenomicManifestTypes.AW2,
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
             }
         }
@@ -5141,7 +5168,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
             }
         }
@@ -5728,7 +5755,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
             }
         }
@@ -5765,7 +5792,7 @@ class GenomicPipelineTest(BaseTestCase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": "2020-10-13 00:00:00",
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": f"{_FAKE_GENOMIC_CENTER_BUCKET_A}/{file_name}"
             }
         }
