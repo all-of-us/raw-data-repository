@@ -394,8 +394,9 @@ class GenomicSetMemberDao(UpdatableDao):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState.in_(states)
-            ).one_or_none()
+                GenomicSetMember.genomicWorkflowState.in_(states),
+                GenomicSetMember.sampleId.is_(None),
+            ).first()
         return member
 
     def get_member_from_sample_id(self, sample_id, genome_type=None):
