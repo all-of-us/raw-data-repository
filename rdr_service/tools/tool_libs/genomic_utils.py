@@ -274,7 +274,7 @@ class ResendSamplesClass(GenomicManifestBase):
                 return 1
 
         # Execute manifest resends
-        if self.args.manifest == "DRC_BIOBANK":
+        if self.args.manifest == "AW0":
             self.generate_bb_manifest_from_sample_list(samples_list)
 
         return 0
@@ -297,7 +297,7 @@ class GenerateManifestClass(GenomicManifestBase):
         self.limit = args.limit
 
         # AW0 Manifest
-        if args.manifest == "DRC_BIOBANK":
+        if args.manifest == "AW0":
             if args.cohort and int(args.cohort) == 2:
                 _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_remainder_manifest()
@@ -475,6 +475,7 @@ class ControlSampleClass(GenomicManifestBase):
                             genomicSetId=inserted_set.id,
                             sampleId=_sample_id,
                             genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE,
+                            genomicWorkflowStateStr=GenomicWorkflowState.CONTROL_SAMPLE.name,
                             participantId=0,
                         )
 
@@ -548,6 +549,7 @@ class ManualSampleClass(GenomicManifestBase):
                                 sampleId=_sample_id,
                                 collectionTubeId=_sample_id,
                                 genomicWorkflowState=_state,
+                                genomicWorkflowStateStr=_state.name,
                                 participantId=int(_pid),
                                 genomeType=_genome_type,
                                 sexAtBirth=_sab,
@@ -1191,7 +1193,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": _blob.updated,
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": self.args.manifest_file,
             }
         }
@@ -2446,7 +2448,7 @@ def run():
         "--manifest-type",
         default=None,
         required=True,
-        choices=['AW1', 'AW2'],  # AW1 => BIOBANK_GC, AW2 => GC_DRC
+        choices=['AW1', 'AW2'],  # AW1 => AW1, AW2 => AW2
         type=str,
     )
     compare_records.add_argument(

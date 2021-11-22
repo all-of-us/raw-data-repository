@@ -752,6 +752,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
 
         member.genomicWorkflowState = new_state
+        member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
@@ -945,6 +946,7 @@ class GenomicSetMemberDao(UpdatableDao):
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=record.genome_type,
             genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name,
             gcSiteId=record.site_name,
             packageId=record.package_id,
             sampleId=record.sample_id,
@@ -985,6 +987,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 report_obj = GenomicMemberReportState()
                 report_obj.genomic_set_member_id = obj.id
                 report_obj.genomic_report_state = state
+                report_obj.genomic_report_state_str = state.name
                 report_obj.participant_id = obj.participantId
                 report_obj.module = 'GEM'
                 self.report_state_dao.insert(report_obj)
@@ -1029,6 +1032,7 @@ class GenomicJobRunDao(UpdatableDao):
         """
         job_run = GenomicJobRun()
         job_run.jobId = job_id
+        job_run.jobIdStr = job_id.name
         job_run.startTime = clock.CLOCK.now()
 
         return self.insert(job_run)
@@ -1050,6 +1054,7 @@ class GenomicJobRunDao(UpdatableDao):
                 .values(
                 {
                     GenomicJobRun.runResult: sqlalchemy.bindparam("run_result_param"),
+                    GenomicJobRun.runResultStr: sqlalchemy.bindparam("run_result_str_param"),
                     GenomicJobRun.runStatus: sqlalchemy.bindparam("run_status_param"),
                     GenomicJobRun.endTime: sqlalchemy.bindparam("end_time_param"),
                 }
@@ -1058,6 +1063,7 @@ class GenomicJobRunDao(UpdatableDao):
         query_params = {
             "run_id_param": run_id,
             "run_result_param": result,
+            "run_result_str_param": result.name,
             "run_status_param": status,
             "end_time_param": clock.CLOCK.now()
         }
@@ -1215,6 +1221,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'contamination': 'contamination',
             'mappedReadsPct': 'mappedreadspct',
             'contaminationCategory': 'contamination_category',
+            'contaminationCategoryStr': 'contamination_category_str',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
             'alignedQ30Bases': 'alignedq30bases',
@@ -1517,6 +1524,7 @@ class GenomicOutreachDao(BaseDao):
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
+                                  genomicWorkflowStateStr=report_state.name,
                                   gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
@@ -1881,7 +1889,7 @@ class GenomicManifestFileDao(BaseDao):
 
     def count_records_for_manifest_file(self, manifest_file_obj):
         with self.session() as session:
-            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.BIOBANK_GC:
+            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.AW1:
                 return session.query(
                     functions.count(GenomicSetMember.id)
                 ).join(
@@ -2245,7 +2253,11 @@ class GenomicIncidentDao(UpdatableDao):
         job_ids = [
             GenomicJob.METRICS_INGESTION,
             GenomicJob.AW1_MANIFEST,
-            GenomicJob.AW1F_MANIFEST
+            GenomicJob.AW1F_MANIFEST,
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
         ]
 
         with self.session() as session:
