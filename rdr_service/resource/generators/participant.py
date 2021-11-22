@@ -599,6 +599,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         #       'authored' and 'created' timestamps, but they are not a duplicate response, so we also add
         #       "externalId" to the order_by. 'questionnaireResponseId' is randomly generated and can't be used.
         query = ro_session.query(
+                QuestionnaireResponse.answerHash,
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
                 QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor). \
@@ -615,7 +616,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         min_valid_authored = datetime.datetime(2017, 1, 1, 0, 0, 0)
 
         if results:
-            # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
+            # Track the last module/consent data dictionaries, so we can detect and omit replayed responses
+            last_answer_hash = None  # Track the answer hash of the response payload just processed (PDR-484)
             last_mod_processed = {}
             last_consent_processed = {}
             for row in results:
@@ -644,10 +646,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 }
 
                 mod_ca = dict()
-
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
-
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
@@ -705,19 +705,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         mod_ca['answer_id'] = consent['consent_value_id']
 
                         # Compare against the last consent response processed to filter replays/duplicates
-                        if not self.is_replay(last_consent_processed, consent,
+                        if not self.is_replay(last_consent_processed, last_answer_hash,
+                                              consent, row.answerHash,
                                               ignore_keys=['consent_module_created', 'questionnaire_response_id']):
                             consents.append(consent)
                             consent_added = True
-
                         last_consent_processed = consent.copy()
 
-                # consent_added == True means we already know it wasn't a replayed consent
-                if consent_added or not self.is_replay(last_mod_processed, module_data,
+                # consent_added == True means we already know it wasn't a replayed response
+                if consent_added or not self.is_replay(last_mod_processed, last_answer_hash,
+                                                       module_data, row.answerHash,
                                                        ignore_keys=['module_created', 'questionnaire_response_id']):
-
                     modules.append(module_data)
-
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
                     mod_found = False
                     for en in ParticipantEventEnum:
@@ -733,7 +732,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         logging.debug(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
-
+                last_answer_hash = row.answerHash  # Used on next is_replay() check (PDR-484)
 
         if len(modules) > 0:
             # remove any duplicate modules and consents because of replayed responses.
@@ -1398,35 +1397,41 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         else:
             return rtn_data
 
-
     @staticmethod
-    def is_replay(prev_data_dict, data_dict, ignore_keys=None):
+    def is_replay(prev_data_dict, prev_answer_hash,
+                  curr_data_dict, curr_answer_hash,
+                  ignore_keys=[]):
         """
         Compares two module or consent data dictionaries to identify replayed responses
         Replayed/resent responses are usually the result of trying to resolve a data issue, and are basically
         duplicate QuestionnaireResponse payloads except for differing creation timestamps and questionnaire response ids
 
-        :param prev_data_dict: data dictionary to compare
-        :param data_dict: data dictionary to compare
+        :param prev_data_dict: previous response data dictionary to compare
+        :param curr_data_dict: current response data dictionary to compare
+        :param curr_answer_hash: value from the current response's QuestionnaireResponse.answerHash field
+        :param prev_answer_hash: value from the previous response's QuestionnaireResponse.answerHash field
         :param ignore_keys:  List of dict fields that should be excluded from matching.  E.g., created timestamp field
         :return:  Boolean, True if the dictionaries match on everything except the excluded keys
         """
         # Confirm both data dictionaries are populated
-        if not bool(prev_data_dict) or not bool(data_dict):
+        if not bool(prev_data_dict) or not bool(curr_data_dict):
             return False
 
-        # Validate we're comparing "like" dictionaries
-        prev_data_dict_keys = sorted(list(prev_data_dict.keys()))
-        data_dict_keys = sorted(list(data_dict.keys()))
+        # Validate we're comparing "like" dictionaries (disregarding keys to be ignored)
+        prev_data_dict_keys = sorted(list(k for k in prev_data_dict.keys() if k not in ignore_keys))
+        data_dict_keys = sorted(list(k for k in curr_data_dict.keys() if k not in ignore_keys))
         if prev_data_dict_keys != data_dict_keys:
             return False
 
-        # Content must match on everything except the specifically excluded field names
-        for key in data_dict.keys():
-            if ignore_keys and key in ignore_keys:
-                continue
-            if data_dict[key] != prev_data_dict[key]:
+        # Remaining key/value pairs must match for the two dictionaries
+        for key in data_dict_keys():
+            if curr_data_dict[key] != prev_data_dict[key]:
                 return False
+
+        # PDR-484:  Still possible for two questionnaire responses to match on all their summary/metadata details but
+        # be associated with distinct payloads.  Look for distinct answer hash values to find these non-replay cases
+        if prev_answer_hash != curr_answer_hash:
+            return False
 
         return True
 
@@ -1457,7 +1462,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         #       'external_id' in the order by clause.
         sql = """
             select questionnaire_response_id
-            from questionnaire_response qr 
+            from questionnaire_response qr
                 inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                 inner join code c on qc.code_id = c.code_id
             where qr.participant_id = :p_id and c.value = 'TheBasics'
