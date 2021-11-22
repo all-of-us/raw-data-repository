@@ -1424,7 +1424,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             return False
 
         # Remaining key/value pairs must match for the two dictionaries
-        for key in data_dict_keys():
+        for key in data_dict_keys:
             if curr_data_dict[key] != prev_data_dict[key]:
                 return False
 
