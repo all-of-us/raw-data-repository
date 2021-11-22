@@ -617,7 +617,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         if results:
             # Track the last module/consent data dictionaries, so we can detect and omit replayed responses
-            last_answer_hash = None  # Track the answer hash of the response payload just processed (PDR-484)
+            last_answer_hash = None  # Track the answer hash of the payload of the last response processed (PDR-484)
             last_mod_processed = {}
             last_consent_processed = {}
             for row in results:
@@ -732,7 +732,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         logging.debug(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
-                last_answer_hash = row.answerHash  # Used on next is_replay() check (PDR-484)
+                last_answer_hash = row.answerHash
 
         if len(modules) > 0:
             # remove any duplicate modules and consents because of replayed responses.
@@ -1428,9 +1428,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             if curr_data_dict[key] != prev_data_dict[key]:
                 return False
 
-        # PDR-484:  Still possible for two questionnaire responses to match on all their summary/metadata details but
-        # be associated with distinct payloads.  Look for distinct answer hash values to find these non-replay cases
-        if prev_answer_hash != curr_answer_hash:
+        # PDR-484:  Still possible for two responses to match on all the key/value pairs we include in the
+        # PDR participant module dicts (summary/metadata details), but have distinct response JSON payloads.  Can use
+        # the QuestionnaireResponse.answerHash values to confirm non-replays, provided both responses had an answerHash
+        # calculated for them
+        if prev_answer_hash and curr_answer_hash and (prev_answer_hash != curr_answer_hash):
             return False
 
         return True
