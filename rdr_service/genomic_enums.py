@@ -209,9 +209,9 @@ class GenomicSubProcessResult(messages.Enum):
 
 
 class GenomicManifestTypes(messages.Enum):
-    DRC_BIOBANK = 1  # AW0
-    BIOBANK_GC = 2  # AW1
-    GC_DRC = 3  # AW2
+    AW0 = 1  # AW0
+    AW1 = 2  # AW1
+    AW2 = 3  # AW2
     CVL_W1 = 4
     GEM_A1 = 5
     GEM_A3 = 6

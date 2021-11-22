@@ -76,7 +76,7 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
 
             # Set manifest_type and job
             job = GenomicJob.AW1_MANIFEST
-            manifest_type = GenomicManifestTypes.BIOBANK_GC
+            manifest_type = GenomicManifestTypes.AW1
             create_fb = True
             message = 'AW1'
 
@@ -127,7 +127,7 @@ class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
                 "file_data": {
                     "create_feedback_record": False,
                     "upload_date": self.data["upload_date"],
-                    "manifest_type": GenomicManifestTypes.GC_DRC,
+                    "manifest_type": GenomicManifestTypes.AW2,
                     "file_path": file_path,
                 }
             }

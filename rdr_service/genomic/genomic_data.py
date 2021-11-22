@@ -56,7 +56,15 @@ class GenomicQueryClass:
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.pipelineId,
-                    GenomicSetMember.ai_an
+                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearchReason.isnot(None),
+                        GenomicSetMember.blockResearchReason,
+                        sqlalchemy.sql.expression.literal("")),
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -83,7 +91,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                (GenomicSetMember.aw3ManifestJobRunID.is_(None))
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None) &
+                 GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
@@ -111,7 +120,15 @@ class GenomicQueryClass:
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
                     GenomicGCValidationMetrics.sexPloidy,
-                    GenomicSetMember.ai_an
+                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearchReason.isnot(None),
+                        GenomicSetMember.blockResearchReason,
+                        sqlalchemy.sql.expression.literal("")),
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -141,7 +158,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.craiReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfMd5Received == 1) &
-                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']))
+                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']) &
+                 GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                 [
