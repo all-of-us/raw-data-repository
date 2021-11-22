@@ -2946,7 +2946,9 @@ class ManifestDefinitionProvider:
                 "research_id",
                 "sample_source",
                 "pipeline_id",
-                "ai_an"
+                "ai_an",
+                "blocklisted",
+                "blocklisted_reason"
             ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
@@ -2997,7 +2999,9 @@ class ManifestDefinitionProvider:
                 "sample_source",
                 "mapped_reads_pct",
                 "sex_ploidy",
-                "ai_an"
+                "ai_an",
+                "blocklisted",
+                "blocklisted_reason"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",

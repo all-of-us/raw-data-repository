@@ -1471,13 +1471,15 @@ class GenomicPiiDao(BaseDao):
         """
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.biobankId,
-                              ParticipantSummary.firstName,
-                              ParticipantSummary.lastName,
-                              ParticipantSummary.consentForGenomicsROR,
-                              ParticipantSummary.dateOfBirth,
-                              GenomicSetMember.sexAtBirth, )
-                    .join(
+                session.query(
+                    GenomicSetMember.biobankId,
+                    ParticipantSummary.firstName,
+                    ParticipantSummary.lastName,
+                    ParticipantSummary.consentForGenomicsROR,
+                    ParticipantSummary.dateOfBirth,
+                    GenomicSetMember.sexAtBirth
+                )
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
@@ -1573,9 +1575,11 @@ class GenomicOutreachDao(BaseDao):
         """
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.participantId,
-                              GenomicSetMember.genomicWorkflowState)
-                    .join(
+                session.query(
+                    GenomicSetMember.participantId,
+                    GenomicSetMember.genomicWorkflowState
+                )
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
@@ -1601,9 +1605,10 @@ class GenomicOutreachDao(BaseDao):
 
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.participantId,
-                              GenomicSetMember.genomicWorkflowState)
-                    .join(
+                session.query(
+                    GenomicSetMember.participantId,
+                    GenomicSetMember.genomicWorkflowState)
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(

@@ -235,11 +235,11 @@ class GenomicSetMember(Base):
     replatedMemberId = Column('replated_member_id',
                               ForeignKey('genomic_set_member.id'),
                               nullable=True)
-    ignore_flag = Column(SmallInteger, nullable=False, default=0)
-    block_research = Column(SmallInteger, nullable=False, default=0)
-    block_research_reason = Column(String(255), nullable=True)
-    block_results = Column(SmallInteger, nullable=False, default=0)
-    block_results_reason = Column(String(255), nullable=True)
+    ignoreFlag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    blockResearch = Column('block_research', SmallInteger, nullable=False, default=0)
+    blockResearchReason = Column('block_research_reason', String(255), nullable=True)
+    blockResults = Column('block_results', SmallInteger, nullable=False, default=0)
+    blockResultsReason = Column('block_results_reason', String(255), nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
