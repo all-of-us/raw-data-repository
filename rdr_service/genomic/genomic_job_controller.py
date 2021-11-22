@@ -1411,6 +1411,7 @@ class DataQualityJobController:
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_CORRECTED_VALIDATION_FAILS: self.get_report,
             GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
         }
 

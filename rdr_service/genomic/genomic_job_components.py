@@ -326,14 +326,14 @@ class GenomicFileIngester:
         if not self.file_obj:
             return
 
-        has_failed_validation = self.incident_dao.get_open_incident_by_path(self.file_obj.filePath)
+        has_failed_validation = self.incident_dao.get_open_incident_by_file_name(self.file_obj.fileName)
 
         if not has_failed_validation:
             return
 
         self.incident_dao.batch_update_incident_fields(
             [obj.id for obj in has_failed_validation],
-            _type='status'
+            _type='resolved'
         )
 
     @staticmethod
@@ -1702,7 +1702,8 @@ class GenomicFileValidator:
                 message=f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation due to an"
                         f"incorrect file name.",
                 slack=True,
-                submitted_gc_site_id=self.gc_site_id
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
             )
             return GenomicSubProcessResult.INVALID_FILE_NAME
 
@@ -1715,7 +1716,8 @@ class GenomicFileValidator:
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_VALUES.name,
                 message=message,
                 slack=True,
-                submitted_gc_site_id=self.gc_site_id
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
             )
             return GenomicSubProcessResult.ERROR
 
@@ -1738,7 +1740,8 @@ class GenomicFileValidator:
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
                 slack=slack,
-                submitted_gc_site_id=self.gc_site_id
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
             )
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 

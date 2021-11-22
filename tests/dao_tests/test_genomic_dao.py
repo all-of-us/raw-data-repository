@@ -1,6 +1,6 @@
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao
-from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -172,3 +172,25 @@ class GenomicDaoTest(BaseTestCase):
 
         self.assertTrue(new_incident_obj.email_notification_sent == 1)
         self.assertTrue(new_incident_obj.email_notification_sent_date is not None)
+
+    def test_batch_update_resolved_incidents(self):
+
+        for _ in range(5):
+            self.data_generator.create_database_genomic_incident(
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message="File has failed validation.",
+                submitted_gc_site_id='bcm'
+            )
+
+        all_incidents = self.incident_dao.get_all()
+
+        self.assertTrue(all(obj.status == GenomicIncidentStatus.OPEN.name for obj in all_incidents))
+
+        self.incident_dao.batch_update_incident_fields([obj.id for obj in all_incidents], _type='resolved')
+
+        all_incidents = self.incident_dao.get_all()
+
+        self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in all_incidents))
+
+
+

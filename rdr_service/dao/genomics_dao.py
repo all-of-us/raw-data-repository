@@ -2304,7 +2304,7 @@ class GenomicIncidentDao(UpdatableDao):
                 'email_notification_sent_date': datetime.utcnow()
             },
             'resolved': {
-                'status': GenomicIncidentStatus.OPEN.name
+                'status': GenomicIncidentStatus.RESOLVED.name
             }
         }
 
@@ -2320,12 +2320,12 @@ class GenomicIncidentDao(UpdatableDao):
 
             self.update(current_incident)
 
-    def get_open_incident_by_path(self, file_path):
+    def get_open_incident_by_file_name(self, filename):
         with self.session() as session:
             return session.query(
                 GenomicIncident
             ).filter(
-                GenomicIncident.manifest_file_path == file_path,
+                GenomicIncident.manifest_file_name == filename,
                 GenomicIncident.status == GenomicIncidentStatus.OPEN.name
             ).all()
 

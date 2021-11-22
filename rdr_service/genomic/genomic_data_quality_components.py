@@ -106,7 +106,6 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
     @staticmethod
     def get_empty_report_string(display_name):
-
         return f"No data to display for {display_name}"
 
     def set_report_def(self, **kwargs):
@@ -142,7 +141,8 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         with dao.session() as session:
             result = session.execute(
-                self.report_def.source_data_query, self.report_def.source_data_params
+                self.report_def.source_data_query,
+                self.report_def.source_data_params
             )
 
         return result
