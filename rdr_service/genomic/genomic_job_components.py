@@ -1130,10 +1130,21 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
-    def copy_member_for_replating(self, member, genome_type=None, set_id=None):
+    def copy_member_for_replating(
+        self,
+        member,
+        genome_type=None,
+        set_id=None,
+        block_research_reason=None,
+        block_results_reason=None
+    ):
         """
         Inserts a new member record for replating.
         :param member: GenomicSetMember
+        :param genome_type:
+        :param set_id:
+        :param block_research_reason:
+        :param block_results_reason:
         :return:
         """
         new_member = GenomicSetMember(
@@ -1149,6 +1160,10 @@ class GenomicFileIngester:
             collectionTubeId=f'replated_{member.id}',
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
             replatedMemberId=member.id,
+            blockResearch=1 if block_research_reason else 0,
+            blockResearchReason=block_research_reason if block_research_reason else None,
+            blockResults=1 if block_results_reason else 0,
+            blockResultsReason=block_results_reason if block_results_reason else None
         )
 
         self.member_dao.insert(new_member)

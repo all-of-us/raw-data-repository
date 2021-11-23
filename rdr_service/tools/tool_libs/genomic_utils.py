@@ -2108,7 +2108,8 @@ class ArbitraryReplates(GenomicManifestBase):
         self.dao = GenomicSetMemberDao()
         ingester = GenomicFileIngester()
 
-        member_ids = []
+        member_ids, genome_type, block_research_reason, block_results_reason = [], None, None, None
+
         if self.args.csv:
             with open(self.args.csv, encoding='utf-8-sig') as h:
                 lines = h.readlines()
@@ -2121,8 +2122,12 @@ class ArbitraryReplates(GenomicManifestBase):
 
         if self.args.genome_type:
             genome_type = self.args.genome_type
-        else:
-            genome_type = None
+
+        if self.args.block_research_reason:
+            block_research_reason = self.args.block_research_reason
+
+        if self.args.block_results_reason:
+            block_results_reason = self.args.block_results_reason
 
         if not self.args.dryrun:
             new_set = self.make_new_set()
@@ -2133,7 +2138,9 @@ class ArbitraryReplates(GenomicManifestBase):
             if not self.args.dryrun:
                 ingester.copy_member_for_replating(existing_record,
                                                    genome_type=genome_type,
-                                                   set_id=new_set.id)
+                                                   set_id=new_set.id,
+                                                   block_research_reason=block_research_reason,
+                                                   block_results_reason=block_results_reason)
             else:
                 _logger.info(f'Would create {genome_type} member based on id: {existing_record.id}')
 
