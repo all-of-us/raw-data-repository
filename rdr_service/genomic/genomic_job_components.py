@@ -1067,10 +1067,8 @@ class GenomicFileIngester:
                                  for key in row],
                                 row.values()))
 
-            genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
-                genome_type
             )
 
             if member:
@@ -1092,11 +1090,12 @@ class GenomicFileIngester:
                         metric_id = existing_metrics_obj.id
                 else:
                     metric_id = None
+                    if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
 
-                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
-                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
-                        # Insert a new member
-                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+                        if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
+                                                                  GenomicContaminationCategory.EXTRACT_BOTH]:
+                            # Insert a new member
+                            self.insert_member_for_replating(member, row_copy['contamination_category'])
 
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 

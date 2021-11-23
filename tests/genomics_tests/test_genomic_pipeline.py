@@ -12,7 +12,6 @@ from dateutil.parser import parse
 from itertools import chain
 
 from rdr_service import clock, config, storage
-from rdr_service.genomic_enums import GenomicIncidentStatus
 from rdr_service.api_util import open_cloud_file, list_blobs
 from rdr_service.code_constants import (
     BIOBANK_TESTS, COHORT_1_REVIEW_CONSENT_YES_CODE, COHORT_1_REVIEW_CONSENT_NO_CODE)
@@ -72,7 +71,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
-    GenomicQcStatus, GenomicIncidentCode
+    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
 from rdr_service.services.email_service import Email
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -457,6 +456,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_set_criteria=".",
             genomic_set_filename="genomic-test-set-cell-line.csv"
         )
+
         # make necessary fake participant data
         id_start_from = kwargs.get('id_start_from', 0)
         for p in range(1 + id_start_from, count + 1 + id_start_from):
@@ -483,6 +483,9 @@ class GenomicPipelineTest(BaseTestCase):
                 gt = 'aou_array'
             if kwargs.get('cvl'):
                 gt = 'aou_cvl'
+            if "genome_type" in kwargs:
+                gt = kwargs.get('genome_type')
+
             self._create_fake_genomic_member(
                 genomic_set_id=genomic_test_set.id,
                 participant_id=participant.participantId,
@@ -2133,22 +2136,25 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the end result code is recorded
         self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
-    def test_ingest_manifest_creates_incident_then_resolved(self):
-        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
-        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
-        pytz.timezone('US/Central').localize(test_date)
-        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
-
+    def test_ingest_investigation_aw1_manifest(self):
         self._create_fake_datasets_for_gc_tests(3,
-                                                arr_override=True,
+                                                genome_type='aou_array_investigation',
                                                 array_participants=range(1, 4),
-                                                genomic_workflow_state=GenomicWorkflowState.AW0
+                                                genomic_workflow_state=GenomicWorkflowState.EXTRACT_REQUESTED
                                                 )
 
-        self._insert_control_sample_genomic_set_member(sample_id=30003, genome_type="aou_array")
+        for m in self.member_dao.get_all():
+            m.collectionTubeId = f'replated_{m.collectionTubeId}'
+            self.member_dao.update(m)
 
         # Setup Test file
-        gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-Extra-Field.csv")
+        gc_manifest_file = open_genomic_set_file("AW1-investigation-test.csv")
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
 
         with clock.FakeClock(test_date):
             write_cloud_csv(
@@ -2158,6 +2164,7 @@ class GenomicPipelineTest(BaseTestCase):
                 folder=_FAKE_GENOTYPING_FOLDER,
             )
 
+        # Get   subfolder, and filename from argument
         file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
 
         # Set up file/JSON
@@ -2175,33 +2182,18 @@ class GenomicPipelineTest(BaseTestCase):
         # Call pipeline function
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
 
-        gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
+        # Test the data was ingested OK
+        members = [m for m in self.member_dao.get_all() if m.id in [1, 2]]
+        self.assertEqual(2, len(members))
 
-        all_incidents = self.incident_dao.get_all()
-        correct_incident = list(filter(lambda x: gc_manifest_filename in x.message, all_incidents))
-        correct_incident = correct_incident[0]
+        for member in members:
+            self.assertEqual(2, member.reconcileGCManifestJobRunId)
+            self.assertEqual('rdr', member.gcSiteId)
+            self.assertEqual("aou_array_investigation", member.gcManifestTestName)
+            self.assertEqual(GenomicWorkflowState.AW1, member.genomicWorkflowState)
 
-        self.assertEqual(correct_incident.status, GenomicIncidentStatus.OPEN.name)
-
-        self.assertEqual(GenomicSubProcessResult.ERROR, self.job_run_dao.get(2).runResult)
-
-        with clock.FakeClock(test_date):
-            write_cloud_csv(
-                gc_manifest_filename,
-                gc_manifest_file,
-                bucket=bucket_name,
-                folder=_FAKE_GENOTYPING_FOLDER,
-            )
-
-        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
-
-        all_incidents = self.incident_dao.get_all()
-        correct_incident = list(filter(lambda x: gc_manifest_filename in x.message, all_incidents))
-        correct_incident = correct_incident[0]
-
-        self.assertEqual(correct_incident.status, GenomicIncidentStatus.RESOLVED.name)
-
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(6).runResult)
+        # Test the end result code is recorded
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(2).runResult)
 
     def test_ingest_aw1_with_replated_samples(self):
         self._create_fake_datasets_for_gc_tests(3,
@@ -5026,6 +5018,76 @@ class GenomicPipelineTest(BaseTestCase):
                 test='1SAL2'
             )
 
+    def test_ingest_manifest_creates_incident_then_resolved(self):
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
+        pytz.timezone('US/Central').localize(test_date)
+        gc_manifest_filename = "RDR_AoU_GEN_PKG-1908-218051.csv"
+
+        self._create_fake_datasets_for_gc_tests(3,
+                                                arr_override=True,
+                                                array_participants=range(1, 4),
+                                                genomic_workflow_state=GenomicWorkflowState.AW0
+                                                )
+
+        self._insert_control_sample_genomic_set_member(sample_id=30003, genome_type="aou_array")
+
+        # Setup Test file
+        gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-Extra-Field.csv")
+
+        with clock.FakeClock(test_date):
+            write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=bucket_name,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
+
+        file_name = _FAKE_GENOTYPING_FOLDER + '/' + gc_manifest_filename
+
+        # Set up file/JSON
+        task_data = {
+            "job": GenomicJob.AW1_MANIFEST,
+            "bucket": bucket_name,
+            "file_data": {
+                "create_feedback_record": True,
+                "upload_date": "2020-10-13 00:00:00",
+                "manifest_type": GenomicManifestTypes.AW1,
+                "file_path": f"{bucket_name}/{file_name}"
+            }
+        }
+
+        # Call pipeline function
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)  # job_id 1 & 2
+
+        gc_manifest_file = open_genomic_set_file("Genomic-GC-Manifest-Workflow-Test-6.csv")
+
+        all_incidents = self.incident_dao.get_all()
+        correct_incident = list(filter(lambda x: gc_manifest_filename in x.message, all_incidents))
+        correct_incident = correct_incident[0]
+
+        self.assertEqual(correct_incident.status, GenomicIncidentStatus.OPEN.name)
+
+        self.assertEqual(GenomicSubProcessResult.ERROR, self.job_run_dao.get(2).runResult)
+
+        with clock.FakeClock(test_date):
+            write_cloud_csv(
+                gc_manifest_filename,
+                gc_manifest_file,
+                bucket=bucket_name,
+                folder=_FAKE_GENOTYPING_FOLDER,
+            )
+
+        genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+
+        all_incidents = self.incident_dao.get_all()
+        correct_incident = list(filter(lambda x: gc_manifest_filename in x.message, all_incidents))
+        correct_incident = correct_incident[0]
+
+        self.assertEqual(correct_incident.status, GenomicIncidentStatus.RESOLVED.name)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, self.job_run_dao.get(6).runResult)
+
     def test_aw1_load_manifest_to_raw_table(self):
         # Set up test AW1 manifest
 
@@ -6092,4 +6154,3 @@ class GenomicPipelineTest(BaseTestCase):
 
         records = self.aw2_raw_dao.get_all()
         self.assertEqual(0, len(records))
-
