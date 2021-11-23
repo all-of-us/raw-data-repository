@@ -129,6 +129,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         if len(returned_from_method) > 1:
             report_def.source_data_query, report_def.source_data_params = returned_from_method
+        # lean into dao usage
         else:
             report_def.source_data = returned_from_method
 

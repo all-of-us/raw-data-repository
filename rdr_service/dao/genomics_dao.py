@@ -2205,6 +2205,15 @@ class GenomicIncidentDao(UpdatableDao):
     def __init__(self):
         super(GenomicIncidentDao, self).__init__(
             GenomicIncident, order_by_ending=['id'])
+        self.ingestion_job_ids = [
+            GenomicJob.METRICS_INGESTION,
+            GenomicJob.AW1_MANIFEST,
+            GenomicJob.AW1F_MANIFEST,
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
+        ]
 
     def get_id(self, obj):
         return obj.id
@@ -2255,17 +2264,6 @@ class GenomicIncidentDao(UpdatableDao):
         return is_truncated, value
 
     def get_new_ingestion_incidents(self, from_days=1):
-
-        job_ids = [
-            GenomicJob.METRICS_INGESTION,
-            GenomicJob.AW1_MANIFEST,
-            GenomicJob.AW1F_MANIFEST,
-            GenomicJob.AW4_ARRAY_WORKFLOW,
-            GenomicJob.AW4_WGS_WORKFLOW,
-            GenomicJob.AW5_ARRAY_MANIFEST,
-            GenomicJob.AW5_WGS_MANIFEST
-        ]
-
         with self.session() as session:
             incidents = session.query(
                 GenomicIncident.id,
@@ -2283,7 +2281,7 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
             ).filter(
                 GenomicIncident.email_notification_sent == 0,
-                GenomicJobRun.jobId.in_(job_ids),
+                GenomicJobRun.jobId.in_(self.ingestion_job_ids),
                 GenomicIncident.source_file_processed_id.isnot(None),
                 GenomicIncident.source_job_run_id.isnot(None),
                 GenomicIncident.submitted_gc_site_id.isnot(None)
@@ -2330,8 +2328,29 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.status == GenomicIncidentStatus.OPEN.name
             ).all()
 
-    def get_resolved_manifests(self, from_days=1):
-        pass
+    def get_resolved_manifests(self, from_date):
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.id,
+                GenomicJobRun.jobId,
+                GenomicFileProcessed.filePath,
+                GenomicFileProcessed.fileName,
+                GenomicIncident.status
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicIncident.source_job_run_id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.status == GenomicIncidentStatus.RESOLVED.name,
+                GenomicJobRun.jobId.in_(self.ingestion_job_ids),
+                GenomicIncident.source_file_processed_id.isnot(None),
+                GenomicIncident.source_job_run_id.isnot(None),
+                GenomicIncident.created >= from_date.replace(microsecond=0)
+            )
+
+            return incidents.all()
 
 
 class GenomicCloudRequestsDao(UpdatableDao):

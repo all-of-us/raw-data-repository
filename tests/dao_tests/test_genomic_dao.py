@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
@@ -171,7 +173,6 @@ class GenomicDaoTest(BaseTestCase):
         new_incident_obj = self.incident_dao.get(new_incident.id)
 
         self.assertTrue(new_incident_obj.email_notification_sent == 1)
-        self.assertTrue(new_incident_obj.email_notification_sent_date is not None)
 
     def test_batch_update_resolved_incidents(self):
 
@@ -192,5 +193,44 @@ class GenomicDaoTest(BaseTestCase):
 
         self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in all_incidents))
 
+    def test_get_resolved_manifests(self):
+        file_name = 'test_file_name.csv'
+        bucket_name = 'test_bucket'
+        sub_folder = 'test_subfolder'
+
+        from_date = clock.CLOCK.now() - timedelta(days=1)
+
+        with clock.FakeClock(from_date):
+            for _ in range(5):
+                gen_job_run = self.data_generator.create_database_genomic_job_run(
+                    jobId=GenomicJob.METRICS_INGESTION,
+                    startTime=clock.CLOCK.now(),
+                    runResult=GenomicSubProcessResult.SUCCESS
+                )
+
+                gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+                    runId=gen_job_run.id,
+                    startTime=clock.CLOCK.now(),
+                    filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+                    bucketName=bucket_name,
+                    fileName=file_name,
+                )
+
+                self.data_generator.create_database_genomic_incident(
+                    source_job_run_id=gen_job_run.id,
+                    source_file_processed_id=gen_processed_file.id,
+                    code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                    message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
+                )
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in self.incident_dao.get_all()],
+            _type='resolved'
+        )
+
+        resolved_incidents = self.incident_dao.get_resolved_manifests(from_date)
+
+        self.assertEqual(len(resolved_incidents), len(self.incident_dao.get_all()))
+        self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in resolved_incidents))
 
 
