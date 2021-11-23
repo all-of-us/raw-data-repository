@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.genomics_dao import GenomicJobRunDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.config import GENOMIC_REPORT_PATH
 
@@ -24,6 +24,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         super().__init__(controller=controller)
 
         self.query = GenomicQueryClass()
+        self.incident_dao = GenomicIncidentDao()
         self.report_def = None
 
     class ReportDef:
@@ -38,6 +39,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
             self.source_data_query = None
             self.source_data_params = None
+            self.source_data = None
 
         def get_sql(self):
             """Returns string representation of source data query"""
@@ -119,12 +121,16 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
             ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
-            ("SUMMARY", "INCIDENTS"): self.query.dq_report_incident_detail(report_def.from_date)
+            ("SUMMARY", "INCIDENTS"): self.query.dq_report_incident_detail(report_def.from_date),
+            ("SUMMARY", "RESOLVED"): self.incident_dao.get_resolved_manifests(report_def.from_date)
         }
 
-        report_def.source_data_query, report_def.source_data_params = target_mappings[
-            (report_def.level, report_def.target)
-        ]
+        returned_from_method = target_mappings[(report_def.level, report_def.target)]
+
+        if len(returned_from_method) > 1:
+            report_def.source_data_query, report_def.source_data_params = returned_from_method
+        else:
+            report_def.source_data = returned_from_method
 
         self.report_def = report_def
 

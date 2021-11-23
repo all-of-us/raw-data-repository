@@ -2330,6 +2330,9 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.status == GenomicIncidentStatus.OPEN.name
             ).all()
 
+    def get_resolved_manifests(self, from_days=1):
+        pass
+
 
 class GenomicCloudRequestsDao(UpdatableDao):
     validate_version_match = False
