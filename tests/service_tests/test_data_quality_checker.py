@@ -192,6 +192,21 @@ class DataQualityCheckerTest(BaseTestCase):
             )
         ])
 
+    def test_patient_status_date_fuzzing(self, mock_logging):
+        """Check warnings are not logged for patient statuses authored close to the created or signup times"""
+        participant = self.data_generator.create_database_participant(signUpTime=datetime(2020, 10, 31))
+        self.data_generator.create_database_patient_status(
+            participantId=participant.participantId,
+            authored=participant.signUpTime - timedelta(minutes=37)
+        )
+        self.data_generator.create_database_patient_status(
+            participantId=participant.participantId,
+            authored=datetime.utcnow() + timedelta(minutes=48)
+        )
+
+        self.checker.run_data_quality_checks()
+        mock_logging.warning.assert_not_called()
+
     def test_deceased_report_checks(self, mock_logging):
         """Check warnings that DeceasedReport was authored with a future date or before the participant's sign up"""
         participant = self.data_generator.create_database_participant(signUpTime=datetime(2019, 10, 31))
