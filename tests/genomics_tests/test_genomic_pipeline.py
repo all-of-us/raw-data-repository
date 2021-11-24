@@ -3173,7 +3173,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(1000002, int(rows[1]['research_id']))
             self.assertEqual('Whole Blood', rows[1]['sample_source'])
             self.assertEqual('cidr_egt_1', rows[1]['pipeline_id'])
-            self.assertEqual('N', rows[1]['ai_an'])
+            self.assertEqual('False', rows[1]['ai_an'])
 
             # Test File Paths
             metric = self.metrics_dao.get(2)
@@ -3289,7 +3289,7 @@ class GenomicPipelineTest(BaseTestCase):
             csv_reader = csv.DictReader(csv_file)
             rows = list(csv_reader)
 
-            self.assertTrue(all(obj['blocklisted'] == 'Y' and obj['blocklisted'] is not None for obj in rows))
+            self.assertTrue(all(obj['blocklisted'] == 'True' and obj['blocklisted'] is not None for obj in rows))
             self.assertTrue(all(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason'] is not
                                 None for obj in rows))
 
@@ -3792,7 +3792,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual('Whole Blood', row['sample_source'])
             self.assertEqual('88.8888888', row['mapped_reads_pct'])
             self.assertEqual('XY', row['sex_ploidy'])
-            self.assertEqual('N', row['ai_an'])
+            self.assertEqual('False', row['ai_an'])
 
             self.assertEqual(metric.hfVcfPath, row["vcf_hf_path"])
             self.assertEqual(metric.hfVcfTbiPath, row["vcf_hf_index_path"])
@@ -3907,7 +3907,7 @@ class GenomicPipelineTest(BaseTestCase):
 
             row = rows[0]
 
-            self.assertTrue(obj['blocklisted'] == 'Y' and obj['blocklisted'] is not None for obj in row)
+            self.assertTrue(obj['blocklisted'] == 'True' and obj['blocklisted'] is not None for obj in row)
             self.assertTrue(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason']
                             is not None for obj in row)
 

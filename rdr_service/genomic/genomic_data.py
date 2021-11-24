@@ -56,15 +56,15 @@ class GenomicQueryClass:
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.pipelineId,
-                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.ai_an == 'Y',
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
                     sqlalchemy.func.IF(
                         GenomicSetMember.blockResearch == 1,
-                        sqlalchemy.sql.expression.literal("Y"),
-                        sqlalchemy.sql.expression.literal("")),
-                    sqlalchemy.func.IF(
-                        GenomicSetMember.blockResearchReason.isnot(None),
-                        GenomicSetMember.blockResearchReason,
-                        sqlalchemy.sql.expression.literal("")),
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    GenomicSetMember.blockResearchReason
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -120,15 +120,15 @@ class GenomicQueryClass:
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
                     GenomicGCValidationMetrics.sexPloidy,
-                    GenomicSetMember.ai_an,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.ai_an == 'Y',
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
                     sqlalchemy.func.IF(
                         GenomicSetMember.blockResearch == 1,
-                        sqlalchemy.sql.expression.literal("Y"),
-                        sqlalchemy.sql.expression.literal("")),
-                    sqlalchemy.func.IF(
-                        GenomicSetMember.blockResearchReason.isnot(None),
-                        GenomicSetMember.blockResearchReason,
-                        sqlalchemy.sql.expression.literal("")),
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    GenomicSetMember.blockResearchReason
                 ]
             ).select_from(
                 sqlalchemy.join(
