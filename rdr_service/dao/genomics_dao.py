@@ -2328,7 +2328,7 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.status == GenomicIncidentStatus.OPEN.name
             ).all()
 
-    def get_resolved_manifests(self, from_date):
+    def get_resolved_manifests_from_date(self, from_date):
         with self.session() as session:
             incidents = session.query(
                 GenomicIncident.id,
@@ -2349,6 +2349,21 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.source_job_run_id.isnot(None),
                 GenomicIncident.created >= from_date.replace(microsecond=0)
             )
+
+            return incidents.all()
+
+    def get_daily_report_incidents(self, from_date):
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.code,
+                GenomicIncident.created,
+                GenomicIncident.biobank_id,
+                GenomicIncident.genomic_set_member_id,
+                GenomicIncident.source_job_run_id,
+                GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.created >= from_date.replace(microsecond=0)
+            ).order_by(GenomicIncident.created.desc())
 
             return incidents.all()
 

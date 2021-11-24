@@ -140,6 +140,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 class GenomicDataQualityReportTest(BaseTestCase):
     def setUp(self, with_data=False, with_consent_codes=False) -> None:
         super().setUp()
+        self.incident_dao = GenomicIncidentDao()
 
     def test_daily_ingestion_summary(self):
         # Set up test data
@@ -332,16 +333,56 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         self.assertEqual(expected_report, report_output)
 
+    # def test_daily_resolved_manifests_report(self):
+    #     file_name = 'test_file_name.csv'
+    #     bucket_name = 'test_bucket'
+    #     sub_folder = 'test_subfolder'
+    #
+    #     from_date = clock.CLOCK.now() - datetime.timedelta(days=1)
+    #
+    #     with clock.FakeClock(from_date):
+    #         for _ in range(5):
+    #             gen_job_run = self.data_generator.create_database_genomic_job_run(
+    #                 jobId=GenomicJob.METRICS_INGESTION,
+    #                 startTime=clock.CLOCK.now(),
+    #                 runResult=GenomicSubProcessResult.SUCCESS
+    #             )
+    #
+    #             gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+    #                 runId=gen_job_run.id,
+    #                 startTime=clock.CLOCK.now(),
+    #                 filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+    #                 bucketName=bucket_name,
+    #                 fileName=file_name,
+    #             )
+    #
+    #             self.data_generator.create_database_genomic_incident(
+    #                 source_job_run_id=gen_job_run.id,
+    #                 source_file_processed_id=gen_processed_file.id,
+    #                 code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+    #                 message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
+    #             )
+    #
+    #     self.incident_dao.batch_update_incident_fields(
+    #         [obj.id for obj in self.incident_dao.get_all()],
+    #         _type='resolved'
+    #     )
+    #
+    #     with clock.FakeClock(from_date):
+    #         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED) as controller:
+    #             report_output = controller.execute_workflow()
+    #
+    #     print('Darryl')
+
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_send_daily_validation_emails(self, email_mock):
-        incident_dao = GenomicIncidentDao()
 
         job_id = 'METRICS_INGESTION'
         file_name = 'test_file_name'
         bucket_name = 'test_bucket'
         sub_folder = 'test_subfolder'
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
 
         with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
             controller.execute_workflow()
@@ -402,7 +443,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 submitted_gc_site_id='jh'
             )
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
 
         self.assertEqual(len(current_incidents_for_emails), 2)
 
@@ -432,16 +473,16 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         current_mock_count = email_mock.call_count
 
-        all_incidents = incident_dao.get_all()
+        all_incidents = self.incident_dao.get_all()
 
         self.assertTrue(all(obj.email_notification_sent == 1 and obj.email_notification_sent_date is not None for obj
                             in all_incidents))
 
         for incident in all_incidents:
             incident.email_notification_sent = 0
-            incident_dao.update(incident)
+            self.incident_dao.update(incident)
 
-        current_incidents_for_emails = incident_dao.get_new_ingestion_incidents()
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
 
         # should be reset back to 2
         self.assertEqual(len(current_incidents_for_emails), 2)

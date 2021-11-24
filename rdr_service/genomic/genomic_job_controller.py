@@ -1452,10 +1452,12 @@ class DataQualityJobController:
 
         rc.set_report_def(**report_params)
 
-        if not rc.report_def.source_data:
+        if rc.report_def.source_data_params:
             report_data = rc.get_report_data()
+            if hasattr(report_data, 'fetchall'):
+                report_data = report_data.fetchall()
         else:
-            report_data = rc.report_def.source_data
+            report_data = rc.report_def.source_data_query
 
         report_string = rc.format_report(report_data)
         report_result = report_string

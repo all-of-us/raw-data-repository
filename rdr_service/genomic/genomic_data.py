@@ -597,9 +597,9 @@ class GenomicQueryClass:
                 WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
               END AS valid_age,
               CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
+                WHEN c.value = 'SexAtBirth_Male' THEN 'M'
+                WHEN c.value = 'SexAtBirth_Female' THEN 'F'
+                ELSE 'NA'
               END as sab,
               CASE
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
@@ -652,7 +652,7 @@ class GenomicQueryClass:
                 AND ssed.test = oeds.test
         WHERE TRUE
             and ssed.biobank_id = :bid_param
-            and ssed.test in ("1ED04", "1ED10")
+            and ssed.test in ('1ED04', '1ED10')
             and ssed.status < 13
         ORDER BY oeds.collected DESC
         """
@@ -668,17 +668,17 @@ class GenomicQueryClass:
             FROM biobank_order osal
                 JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
                 JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
-                    AND sal2.test = "1SAL2"
+                    AND sal2.test = '1SAL2'
                 JOIN biobank_stored_sample sssal ON salid.value = sssal.biobank_order_identifier
             WHERE TRUE
                 and sssal.biobank_id = :bid_param
                 and sssal.status < 13
-                and sssal.test = "1SAL2"
+                and sssal.test = '1SAL2'
                 and osal.finalized_time = (
                      SELECT MAX(o.finalized_time)
                      FROM biobank_ordered_sample os
                          JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                     WHERE os.test = "1SAL2"
+                     WHERE os.test = '1SAL2'
                              AND o.participant_id = :pid_param
                          GROUP BY o.participant_id
                    )
@@ -707,9 +707,9 @@ class GenomicQueryClass:
             WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
           END AS valid_age,
           CASE
-            WHEN c.value = "SexAtBirth_Male" THEN "M"
-            WHEN c.value = "SexAtBirth_Female" THEN "F"
-            ELSE "NA"
+            WHEN c.value = 'SexAtBirth_Male' THEN 'M'
+            WHEN c.value = 'SexAtBirth_Female' THEN 'F'
+            ELSE 'NA'
           END as sab,
           CASE
             WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
@@ -836,27 +836,6 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
-            """
-
-        query_params = {
-            "from_date": from_date
-        }
-
-        return query_sql, query_params
-
-    @staticmethod
-    def dq_report_incident_detail(from_date):
-        query_sql = """
-                # Incident Detail Report Query
-            SELECT code
-                , created
-                , biobank_id
-                , genomic_set_member_id
-                , source_job_run_id
-                , source_file_processed_id
-            FROM genomic_incident
-            WHERE created >= :from_date
-            ORDER BY code, created
             """
 
         query_params = {

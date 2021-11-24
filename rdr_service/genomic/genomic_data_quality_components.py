@@ -39,7 +39,6 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
             self.source_data_query = None
             self.source_data_params = None
-            self.source_data = None
 
         def get_sql(self):
             """Returns string representation of source data query"""
@@ -121,17 +120,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
             ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
-            ("SUMMARY", "INCIDENTS"): self.query.dq_report_incident_detail(report_def.from_date),
-            ("SUMMARY", "RESOLVED"): self.incident_dao.get_resolved_manifests(report_def.from_date)
+            ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
+            ("SUMMARY", "RESOLVED"): self.incident_dao.get_resolved_manifests_from_date(report_def.from_date)
         }
 
         returned_from_method = target_mappings[(report_def.level, report_def.target)]
 
-        if len(returned_from_method) > 1:
+        if type(returned_from_method) is tuple:
             report_def.source_data_query, report_def.source_data_params = returned_from_method
-        # lean into dao usage
+        # if utilizing dao
         else:
-            report_def.source_data = returned_from_method
+            report_def.source_data_query = returned_from_method
 
         self.report_def = report_def
 
@@ -154,20 +153,20 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         return result
 
-    def format_report(self, data):
+    def format_report(self, rows):
         """
         Converts the report query ResultProxy object to report string
-        :param data: ResultProxy
+        :param rows: ResultProxy
         :return: string
         """
-        rows = data.fetchall()
-
         if rows:
+            header = rows[0].keys() if not hasattr(rows, 'keys') else rows.keys()
+
             # Report title
             report_string = "```" + self.report_def.display_name + '\n'
 
             # Header row
-            report_string += "    ".join(data.keys())
+            report_string += "    ".join(header)
             report_string += "\n"
 
             for row in rows:
@@ -175,7 +174,6 @@ class ReportingComponent(GenomicDataQualityComponentBase):
                 report_string += "\n"
 
             report_string += "```"
-
         else:
             report_string = self.report_def.empty_report_string
 
