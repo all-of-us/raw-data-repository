@@ -333,46 +333,53 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         self.assertEqual(expected_report, report_output)
 
-    # def test_daily_resolved_manifests_report(self):
-    #     file_name = 'test_file_name.csv'
-    #     bucket_name = 'test_bucket'
-    #     sub_folder = 'test_subfolder'
-    #
-    #     from_date = clock.CLOCK.now() - datetime.timedelta(days=1)
-    #
-    #     with clock.FakeClock(from_date):
-    #         for _ in range(5):
-    #             gen_job_run = self.data_generator.create_database_genomic_job_run(
-    #                 jobId=GenomicJob.METRICS_INGESTION,
-    #                 startTime=clock.CLOCK.now(),
-    #                 runResult=GenomicSubProcessResult.SUCCESS
-    #             )
-    #
-    #             gen_processed_file = self.data_generator.create_database_genomic_file_processed(
-    #                 runId=gen_job_run.id,
-    #                 startTime=clock.CLOCK.now(),
-    #                 filePath=f"{bucket_name}/{sub_folder}/{file_name}",
-    #                 bucketName=bucket_name,
-    #                 fileName=file_name,
-    #             )
-    #
-    #             self.data_generator.create_database_genomic_incident(
-    #                 source_job_run_id=gen_job_run.id,
-    #                 source_file_processed_id=gen_processed_file.id,
-    #                 code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
-    #                 message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
-    #             )
-    #
-    #     self.incident_dao.batch_update_incident_fields(
-    #         [obj.id for obj in self.incident_dao.get_all()],
-    #         _type='resolved'
-    #     )
-    #
-    #     with clock.FakeClock(from_date):
-    #         with DataQualityJobController(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED) as controller:
-    #             report_output = controller.execute_workflow()
-    #
-    #     print('Darryl')
+    def test_daily_resolved_manifests_report(self):
+        file_name = 'test_file_name.csv'
+        bucket_name = 'test_bucket'
+        sub_folder = 'test_subfolder'
+
+        from_date = clock.CLOCK.now() - datetime.timedelta(days=1)
+
+        with clock.FakeClock(from_date):
+            gen_job_run = \
+                self.data_generator.create_database_genomic_job_run(
+                    jobId=GenomicJob.METRICS_INGESTION,
+                    startTime=clock.CLOCK.now(),
+                    runResult=GenomicSubProcessResult.SUCCESS
+                )
+
+            gen_processed_file = \
+                self.data_generator.create_database_genomic_file_processed(
+                    runId=gen_job_run.id,
+                    startTime=clock.CLOCK.now(),
+                    filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+                    bucketName=bucket_name,
+                    fileName=file_name,
+                )
+
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run.id,
+                source_file_processed_id=gen_processed_file.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
+            )
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in self.incident_dao.get_all()],
+            _type='resolved'
+        )
+
+        with clock.FakeClock(from_date):
+            with DataQualityJobController(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED) as controller:
+                report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Resolved Summary\n"
+        expected_report += "jobId    filePath    fileName    status\n"
+        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    test_file_name.csv " \
+                           "   RESOLVED"
+        expected_report += "\n```"
+
+        self.assertEqual(expected_report, report_output)
 
     @mock.patch('rdr_service.services.email_service.EmailService.send_email')
     def test_send_daily_validation_emails(self, email_mock):

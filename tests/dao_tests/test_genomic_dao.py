@@ -228,7 +228,7 @@ class GenomicDaoTest(BaseTestCase):
             _type='resolved'
         )
 
-        resolved_incidents = self.incident_dao.get_resolved_manifests_from_date(from_date)
+        resolved_incidents = self.incident_dao.get_daily_report_resolved_manifests(from_date)
 
         self.assertEqual(len(resolved_incidents), len(self.incident_dao.get_all()))
         self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in resolved_incidents))

@@ -121,14 +121,14 @@ class ReportingComponent(GenomicDataQualityComponentBase):
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
             ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
             ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
-            ("SUMMARY", "RESOLVED"): self.incident_dao.get_resolved_manifests_from_date(report_def.from_date)
+            ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date)
         }
 
         returned_from_method = target_mappings[(report_def.level, report_def.target)]
 
         if type(returned_from_method) is tuple:
             report_def.source_data_query, report_def.source_data_params = returned_from_method
-        # if utilizing dao
+        # Leaning into dao method
         else:
             report_def.source_data_query = returned_from_method
 

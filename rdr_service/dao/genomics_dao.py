@@ -2328,10 +2328,9 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicIncident.status == GenomicIncidentStatus.OPEN.name
             ).all()
 
-    def get_resolved_manifests_from_date(self, from_date):
+    def get_daily_report_resolved_manifests(self, from_date):
         with self.session() as session:
             incidents = session.query(
-                GenomicIncident.id,
                 GenomicJobRun.jobId,
                 GenomicFileProcessed.filePath,
                 GenomicFileProcessed.fileName,
