@@ -2377,6 +2377,10 @@ def run():
     arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
     arbitrary_replate_parser.add_argument("--genome-type", help="genome_type for new records",
                                           type=str, default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--block_research_reason", help="reason to block from research pipelines",
+                                          type=str, default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--block_results_reason", help="reason to block from results pipelines",
+                                          type=str, default=None)  # noqa
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
