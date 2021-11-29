@@ -12,7 +12,8 @@ from google.api_core.exceptions import NotFound
 
 from rdr_service.config import GoogleCloudDatastoreConfigProvider
 from rdr_service.storage import GoogleCloudStorageProvider
-from rdr_service.services.gcp_utils import gcp_activate_sql_proxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
+from rdr_service.services.gcp_config import GCP_INSTANCES, GCP_REPLICA_INSTANCES
+from rdr_service.services.gcp_utils import CloudSqlProxy, gcp_cleanup, gcp_initialize, gcp_format_sql_instance
 from rdr_service.services.system_utils import remove_pidfile, write_pidfile_or_die, git_project_root, TerminalColors
 
 _logger = logging.getLogger("rdr_logger")
@@ -158,14 +159,12 @@ class GCPEnvConfigObject(object):
         return None
 
     def activate_sql_proxy(self, user: str = 'rdr', project: str = None,
-                           replica: bool = False, instance: str = None,
-                           port: int = None) -> int:
+                           replica: bool = False, port: int = None) -> int:
         """
         Activate a google sql proxy instance service and set DB_CONNECTION_STRING environment var.
         :param user: database user, must be one of ['root', 'alembic', 'rdr'].
         :param project: GCP project id.
         :param replica: Use replica db instance or Primary instance.
-        :param instance: may be provided from tools
         :param port: may be provided from tools
         :return: pid
         """
@@ -183,13 +182,16 @@ class GCPEnvConfigObject(object):
 
         _logger.debug("Starting google sql proxy...")
         self._sql_proxy_port = port = port if port else random.randint(10000, 65535)
-        instance = instance if instance else gcp_format_sql_instance(
-            project if project else self.project, port=port, replica=replica)
+        target_project = project if project else self.project
+        db_name = GCP_INSTANCES[target_project] if not replica else GCP_REPLICA_INSTANCES[target_project]
 
-        self._sql_proxy_process = gcp_activate_sql_proxy(instance)
+        proxy = CloudSqlProxy(db_name=db_name, port=self._sql_proxy_port)
+        self._sql_proxy_process = proxy.activate()
+
+        while not proxy.ready_for_connections:
+            time.sleep(1)
 
         if self._sql_proxy_process:
-            time.sleep(6)  # allow time for sql connection to be made.
             cfg_user = 'root' if user == 'root' else 'rdr'
             passwd = db_config[f'{cfg_user}_db_password']
             os.environ['DB_CONNECTION_STRING'] = f'mysql+mysqldb://{user}:{passwd}@127.0.0.1:{port}/rdr?charset=utf8mb4'

@@ -5,16 +5,18 @@
 #
 # superfluous-parens
 # pylint: disable=W0612
+import sys
+from collections import OrderedDict
 from dateutil import parser
-from google.auth.environment_vars import CREDENTIALS
 import glob
+from google.auth.environment_vars import CREDENTIALS
 import json
 import logging
 import os
+from random import choice
 import shlex
 import subprocess
-from collections import OrderedDict
-from random import choice
+import threading
 from typing import List
 
 from .gcp_config import GCP_INSTANCES, GCP_PROJECTS, GCP_REPLICA_INSTANCES, GCP_SERVICE_KEY_STORE
@@ -605,6 +607,41 @@ def gcp_activate_sql_proxy(instances):
     if not p:
         raise IOError("failed to execute cloud_sql_proxy")
     return p
+
+
+class CloudSqlProxy:
+    def __init__(self, db_name, port):
+        self._db_name = db_name
+        self._port = port
+        self.ready_for_connections = False
+        self.proxy_process = None
+
+    def activate(self):
+        """
+        Begin establishing the proxy. Creates a subprocess to run cloud_sql_proxy and returns immediately. A separate
+        thread is used to monitor the output of the subprocess and will switch `ready_for_connections` to True when
+        the subprocess has successfully started the proxy.
+        """
+        cloud_proxy_path = which('cloud_sql_proxy')
+        proxy_command_str = f'{cloud_proxy_path} -instances={self._db_name}=tcp:{self._port}'
+
+        self.proxy_process = subprocess.Popen(shlex.split(proxy_command_str), stderr=subprocess.PIPE)
+        if not self.proxy_process:
+            raise IOError('failed to execute cloud_sql_proxy')
+
+        thread = threading.Thread(target=self._process_output, daemon=True)
+        thread.start()
+
+        return self.proxy_process
+
+    def _process_output(self):
+        while True:
+            output_line = self.proxy_process.stderr.readline().decode('utf8')
+            if output_line:
+                print(output_line.strip(), file=sys.stderr)
+
+            if not self.ready_for_connections:
+                self.ready_for_connections = 'Ready for new connections' in output_line
 
 
 def gcp_get_mysql_instance_service_account(instance: str) -> (str, None):
