@@ -114,14 +114,22 @@ class GenomicJobController:
         self.manifest_compiler = None
         self.staging_dao = None
         self.storage_provider = storage_provider
-        self.genomic_alert_slack = SlackMessageHandler(
-            webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_alerts')
-        )
+        self.genomic_alert_slack = None
 
     def __enter__(self):
         logging.info(f'Beginning {self.job_id.name} workflow')
         self.job_run = self._create_run(self.job_id)
         self.last_run_time = self._get_last_successful_run_time()
+        slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
+        webbook_url = None
+
+        if slack_config.get('rdr_genomic_alerts'):
+            webbook_url = slack_config.get('rdr_genomic_alerts')
+
+        self.genomic_alert_slack = SlackMessageHandler(
+            webhook_url=webbook_url
+        )
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1355,14 +1363,21 @@ class DataQualityJobController:
         # Components
         self.job_run_dao = GenomicJobRunDao()
         self.incident_dao = GenomicIncidentDao()
-        self.genomic_report_slack = SlackMessageHandler(
-            webhook_url=config.getSettingJson(RDR_SLACK_WEBHOOKS).get('rdr_genomic_reports')
-        )
+        self.genomic_report_slack = None
 
     def __enter__(self):
         logging.info(f'Workflow Initiated: {self.job.name}')
         self.job_run = self.create_genomic_job_run()
         self.from_date = self.get_last_successful_run_time()
+        slack_config = config.getSettingJson(RDR_SLACK_WEBHOOKS, {})
+        webbook_url = None
+
+        if slack_config.get('rdr_genomic_reports'):
+            webbook_url = slack_config.get('rdr_genomic_reports')
+
+        self.genomic_report_slack = SlackMessageHandler(
+            webhook_url=webbook_url
+        )
 
         return self
 
