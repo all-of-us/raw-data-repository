@@ -297,9 +297,12 @@ class ConsentFile(ABC):
     def get_date_signed(self):
         date_str = self._get_date_signed_str()
         if date_str:
-            return parser.parse(date_str).date()
-        else:
-            return None
+            try:
+                return parser.parse(date_str).date()
+            except parser.ParserError:
+                ...
+
+        return None
 
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
@@ -508,10 +511,11 @@ class VibrentPrimaryConsentUpdateFile(PrimaryConsentUpdateFile):
 class CeFileWrapper:
     def __init__(self, pdf):
         self.pdf = pdf
+        self.shift_params = (8, 10)
 
-    def get_signature_on_file(self):
+    def _try_to_parse_signature(self, footer_text):
         signature_page = self._get_last_page()
-        signature_footer_location = self._get_location_of_string(signature_page, "Participant's Name (printed)")
+        signature_footer_location = self._get_location_of_string(signature_page, footer_text)
 
         if signature_footer_location:
             signature_string_list = self._text_in_bounds(
@@ -522,6 +526,37 @@ class CeFileWrapper:
                 return signature_string_list[0]
 
         return None
+
+    def get_signature_on_file(self):
+        self.shift_params = (8, 10)
+        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
+        if signature_str:
+            return signature_str
+
+        self.shift_params = (73, 75)
+        signature_str = self._try_to_parse_signature("Participant's Name (printed)")
+        if signature_str:
+            return signature_str
+
+        self.shift_params = (8, 10)
+        signature_str = self._try_to_parse_signature("'s Name (printed)")
+        if signature_str:
+            return signature_str
+
+        self.shift_params = (73, 75)
+        signature_str = self._try_to_parse_signature("'s Name (printed)")
+        if signature_str:
+            return signature_str
+
+        self.shift_params = (8, 10)
+        signature_str = self._try_to_parse_signature("Name (printed)")
+        if signature_str:
+            return signature_str
+
+        self.shift_params = (73, 75)
+        signature_str = self._try_to_parse_signature("Name (printed)")
+        if signature_str:
+            return signature_str
 
     def get_date_signed_str(self):
         signature_page = self._get_last_page()
@@ -541,19 +576,19 @@ class CeFileWrapper:
         last_page_index = len(self.pdf.pages) - 1
         return self.pdf.pages[last_page_index]
 
-    @classmethod
-    def _rect_shifted_up_from_footer(cls, footer_rect: Rect) -> Rect:
+    def _rect_shifted_up_from_footer(self, footer_rect: Rect) -> Rect:
+        shift_bottom, shift_top = self.shift_params
         return Rect.from_edges(
             left=footer_rect.left - 3,
             right=footer_rect.right + 200,
-            bottom=footer_rect.top + 8,
-            top=footer_rect.top + 10
+            bottom=footer_rect.top + shift_bottom,
+            top=footer_rect.top + shift_top
         )
 
     def _text_in_bounds(self, element, search_rect: Rect) -> List[str]:
         if hasattr(element, 'get_text') and hasattr(element, 'x0') and \
                 Pdf.rect_for_element(element).intersection(search_rect) is not None:
-            return element.get_text()
+            return [element.get_text().strip()]
         elif hasattr(element, '__iter__'):
             strings = []
             characters_for_next_string = []

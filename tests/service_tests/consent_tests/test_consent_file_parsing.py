@@ -304,7 +304,43 @@ class ConsentFileParsingTest(BaseTestCase):
             expected_sign_date=None
         )
 
-        return [basic_expected_data, missing_expected_data]
+        # Some of the labels only have "'s Name" (missing Participant)
+        partial_label = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
+            CePdfPage(
+                [
+                    CePdfText(string='Partial Label', starting_at=Rect.from_edges(52, 60, 757, 766)),
+                    CePdfText(string="'s Name (printed)", starting_at=Rect.from_edges(52, 60, 747, 756)),
+                    CePdfText(string='10/31/2021', starting_at=Rect.from_edges(392, 400, 757, 766)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 747, 756))
+                ]
+            )
+        ])
+        partial_label_expected_data = PrimaryConsentTestData(
+            file=files.CePrimaryConsentFile(pdf=partial_label, blob=mock.MagicMock()),
+            expected_signature='Partial Label',
+            expected_sign_date=date(2021, 10, 31)
+        )
+
+        # Some of the signatures and dates are offset more than usual
+        offset_label = self._build_ce_pdf(pages=[
+            CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(), CePdfPage(),
+            CePdfPage(
+                [
+                    CePdfText(string='Offset label', starting_at=Rect.from_edges(52, 60, 825, 835)),
+                    CePdfText(string="Name (printed)", starting_at=Rect.from_edges(52, 60, 747, 756)),
+                    CePdfText(string='10/31/2021', starting_at=Rect.from_edges(392, 400, 825, 835)),
+                    CePdfText(string='Date', starting_at=Rect.from_edges(392, 400, 747, 756))
+                ]
+            )
+        ])
+        offset_label_expected_data = PrimaryConsentTestData(
+            file=files.CePrimaryConsentFile(pdf=offset_label, blob=mock.MagicMock()),
+            expected_signature='Offset label',
+            expected_sign_date=date(2021, 10, 31)
+        )
+
+        return [basic_expected_data, missing_expected_data, partial_label_expected_data, offset_label_expected_data]
 
     def _get_vibrent_cabor_test_data(self) -> List['ConsentTestData']:
         """Builds a list of PDFs that represent the different layouts of Vibrent's CaBOR consent"""
