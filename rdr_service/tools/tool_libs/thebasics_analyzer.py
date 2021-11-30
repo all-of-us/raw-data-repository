@@ -4,6 +4,7 @@
 #
 
 import argparse
+import pprint
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
@@ -12,7 +13,6 @@ import os
 import sys
 
 from dateutil.relativedelta import relativedelta
-from datetime import datetime
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.model.bigquery_sync import BigQuerySync
@@ -34,15 +34,15 @@ NON_QUESTION_CODE_FIELDS = [
 ]
 
 PROFILE_UPDATE_QUESTION_CODES = [
+    'PersonOneAddress_PersonOneAddressCity',
+    'PersonOneAddress_PersonOneAddressState',
+    'PersonOneAddress_PersonOneAddressZipCode',
+    'SecondaryContactInfo_PersonOneEmail',
     'SecondaryContactInfo_PersonOneFirstName',
     'SecondaryContactInfo_PersonOneMiddleInitial',
     'SecondaryContactInfo_PersonOneLastName',
     'SecondaryContactInfo_PersonOneAddressOne',
     'SecondaryContactInfo_PersonOneAddressTwo',
-    'PersonOneAddress_PersonOneAddressCity',
-    'PersonOneAddress_PersonOneAddressState',
-    'PersonOneAddress_PersonOneAddressZipCode',
-    'SecondaryContactInfo_PersonOneEmail',
     'SecondaryContactInfo_PersonOneTelephone',
     'SecondaryContactInfo_PersonOneRelationship',
     'SecondaryContactInfo_SecondContactsFirstName',
@@ -55,6 +55,7 @@ PROFILE_UPDATE_QUESTION_CODES = [
     'SecondaryContactInfo_SecondContactsEmail',
     'SecondaryContactInfo_SecondContactsNumber',
     'SecondContactsAddress_SecondContactState',
+    'SecondaryContactInfo_SecondContactsRelationship',
     'SocialSecurity_SocialSecurityNumber'
 ]
 
@@ -71,13 +72,28 @@ class TheBasicsAnalyzerClass(object):
         self.missing_full_survey_list = []
         self.first_response_is_partial = []
         self.conflicting_payloads_with_same_authored = []
+        self.pids_with_partials = []
 
-    def process_participant_responses(self, pid, response_list):
-        if not len(response_list):
+    def add_pid_response_history(self, pid, response_history, issue_list):
+        """
+        Adds the pid's response details to one of the class's issue lists
+        Prints out the history if the --verbose option is in effect
+        """
+        # Sort the response history by authored date
+        history = sorted(response_history, key=lambda d: d['authored'])
+        issue_list.append({pid: history})
+        if self.args.verbose:
+            formatted_details = pprint.pformat(history)
+            print(f'PID {pid} TheBasics history\n{formatted_details}')
+
+    def process_participant_responses(self, pid, responses):
+        if not len(responses):
             raise (ValueError, f'{pid} TheBasics response list was empty')
 
         result_details = list()
-        for response in response_list:
+        has_partial = False
+        for rec in responses:
+            response = rec.BigQuerySync.resource
             full_survey = False
             for field, value in response.items():
                 if field in NON_QUESTION_CODE_FIELDS:
@@ -87,24 +103,30 @@ class TheBasicsAnalyzerClass(object):
                     break
 
             result_details.append(
-                {'authored': response['authored'],
-                 'questionnaire_response_id': response['questionnaire_response_id'],
+                {'authored': rec.QuestionnaireResponse.authored,
+                 'questionnaire_response_id': rec.QuestionnaireResponse.questionnaireResponseId,
                  'full_survey': full_survey,
-                 'external_id': response['external_id']
+                 'external_id': rec.QuestionnaireResponse.externalId
                  }
              )
+
+            has_partial = has_partial or not full_survey
+
+        if has_partial:
+            self.pids_with_partials.append({pid: result_details})
 
         # Find the first full survey response location in the list of processed responses, if one exists
         first_full_index = next((index for (index, rsp) in enumerate(result_details) if rsp['full_survey']), None)
         # first_qrid = result_details[0]['questionnaire_response_id']
         # first_authored = result_details[0]['authored']
         if first_full_index is None:
-            self.missing_full_survey_list.append(pid)
+            # self.missing_full_survey_list.append({pid: result_details})
             _logger.error(
                 " ".join([f'{pid} did not have a full survey response,',
                           f'first partial response {result_details[0]["questionnaire_response_id"]}',
                           f'authored {result_details[0]["authored"]}'])
             )
+            self.add_pid_response_history(pid, result_details, self.missing_full_survey_list)
 
         # Process cases where the first response was preceded by a partial at index 0
         elif first_full_index > 0:
@@ -122,10 +144,10 @@ class TheBasicsAnalyzerClass(object):
                         f'received/processed before full response {first_full_rsp["questionnaire_response_id"]}',
                         f'(external id {first_full_rsp["external_id"]}), both have same authored {first_full_ts}'])
                 )
-                self.conflicting_payloads_with_same_authored.append(pid)
+                # self.conflicting_payloads_with_same_authored.append({pid: result_details})
+                self.add_pid_response_history(pid, result_details, self.conflicting_payloads_with_same_authored)
             else:
-                delta = relativedelta(datetime.strptime(first_full_ts, "%Y-%m-%dT%H:%M:%S"),
-                                               datetime.strptime(first_partial_ts, "%Y-%m-%dT%H:%M:%S"))
+                delta = relativedelta(first_full_ts,first_partial_ts)
 
                 delta_str = " ".join([
                          f'offset {delta.days} days / {delta.hours} hours /',
@@ -135,7 +157,8 @@ class TheBasicsAnalyzerClass(object):
                     " ".join([f'{pid} Partial authored {first_partial_ts} before full {first_full_ts},',
                               delta_str])
                 )
-                self.first_response_is_partial.append(pid)
+                # self.first_response_is_partial.append({pid: result_details})
+                self.add_pid_response_history(pid, result_details, self.first_response_is_partial)
 
     def run(self):
         """
@@ -152,18 +175,22 @@ class TheBasicsAnalyzerClass(object):
         with dao.session() as session:
             for pid in self.id_list:
                 records = session.query(
+                    QuestionnaireResponse,
                     BigQuerySync
                     ).join(
-                        QuestionnaireResponse, QuestionnaireResponse.questionnaireResponseId == BigQuerySync.pk_id
+                        BigQuerySync, QuestionnaireResponse.questionnaireResponseId == BigQuerySync.pk_id
                     ).filter(
                         BigQuerySync.tableId == 'pdr_mod_thebasics',
                         BigQuerySync.projectId == 'aou-pdr-data-prod',
                     ).filter(
-                        QuestionnaireResponse.participantId == pid
-                    ).order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created).all()
+                        QuestionnaireResponse.participantId == pid,
+                        QuestionnaireResponse.isDuplicate == 0
+                    ).order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created,
+                               QuestionnaireResponse.questionnaireResponseId).all()
 
                 if records:
-                    self.process_participant_responses(pid, [r.resource for r in records])
+                    # self.process_participant_responses(pid, [r.resource for r in records])
+                    self.process_participant_responses(pid, records)
 
             if len(self.id_list) > 1:
                 print(f'{len(self.missing_full_survey_list)} participants are missing a full survey response')
@@ -210,6 +237,8 @@ def run():
                         type=int, default=None)
     parser.add_argument("--from-file", help="Analyze TheBasics data for a list of participant ids in the file",
                         metavar='FILE', type=str, default=None)
+    parser.add_argument("--verbose", help="Show details for participant response history if an issue exists",
+                        default=False, action="store_true")
 
 
     args = parser.parse_args()
