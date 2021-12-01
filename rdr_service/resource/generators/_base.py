@@ -297,7 +297,8 @@ class BaseGenerator(object):
         # Code id to value mappings change from one unittest to another, we can't create a global
         # cache of data while running unittests.
         if not os.environ.get('UNITTEST_FLAG', 0) == 1 and _CODEBOOK_CODE_VALUES is None:
-            results = session.query(Code.codeId, Code.value).all()
+            results = session.query(Code.codeId, Code.value).\
+                        filter(Code.system=='http://terminology.pmi-ops.org/CodeSystem/ppi').all()
             if not results:
                 return None
             _CODEBOOK_CODE_VALUES = dict()
@@ -332,7 +333,8 @@ class BaseGenerator(object):
         # Code id to value mappings change from one unittest to another, we can't create a global
         # cache of data while running unittests.
         if not os.environ.get('UNITTEST_FLAG', 0) == 1 and _CODEBOOK_CODE_IDS is None:
-            results = session.query(Code.codeId, Code.value).all()
+            results = session.query(Code.codeId, Code.value).\
+                        filter(Code.system=='http://terminology.pmi-ops.org/CodeSystem/ppi').all()
             if not results:
                 return None
             _CODEBOOK_CODE_IDS = dict()
