@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 import logging
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, false, func, or_, text
 from sqlalchemy.orm import aliased
 from typing import List, Type
 
@@ -30,6 +30,15 @@ class _ModelQualityChecker(ABC):
             tolerance = timedelta(seconds=0)
 
         return earlier_date <= (later_date + tolerance)
+
+    @classmethod
+    def _is_date_lte_expression(cls, earlier_date, later_date):
+        """
+        Returns a sqlalchemy expression that gives whether the earlier date is less than or equal to the later date.
+        Because of server time differences, the earlier date will be allowed to be up to 60 minutes after the
+        later date before the expression will return False.
+        """
+        return func.TIMESTAMPDIFF(text('MINUTE'), earlier_date, later_date) >= -60
 
 
 class DeceasedReportQualityChecker(_ModelQualityChecker):
@@ -67,8 +76,14 @@ class DeceasedReportQualityChecker(_ModelQualityChecker):
 
 class PatientStatusQualityChecker(_ModelQualityChecker):
     def run_data_quality_checks(self, for_data_since: datetime = None):
-        has_future_authored_date_expression = PatientStatus.authored > PatientStatus.created
-        has_authored_before_signup_expression = PatientStatus.authored < Participant.signUpTime
+        has_future_authored_date_expression = self._is_date_lte_expression(
+            earlier_date=PatientStatus.authored,
+            later_date=PatientStatus.created
+        ) == false()
+        has_authored_before_signup_expression = self._is_date_lte_expression(
+            earlier_date=Participant.signUpTime,
+            later_date=PatientStatus.authored
+        ) == false()
         query = (
             self.session.query(
                 PatientStatus.id,
@@ -170,7 +185,11 @@ class ResponseQualityChecker(_ModelQualityChecker):
                         f'Response {response_id} authored with future date '
                         f'of {authored_time} (received at {created_time})'
                     )
-                if authored_time < participant_signup_time:
+                if not self._date_less_than_or_equal(
+                    earlier_date=participant_signup_time,
+                    later_date=authored_time,
+                    tolerance=timedelta(seconds=3600)
+                ):
                     logging.error(
                         f'Response {response_id} authored at {authored_time} '
                         f'but participant signed up at {participant_signup_time}'

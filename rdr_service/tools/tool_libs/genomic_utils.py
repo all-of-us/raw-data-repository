@@ -274,7 +274,7 @@ class ResendSamplesClass(GenomicManifestBase):
                 return 1
 
         # Execute manifest resends
-        if self.args.manifest == "DRC_BIOBANK":
+        if self.args.manifest == "AW0":
             self.generate_bb_manifest_from_sample_list(samples_list)
 
         return 0
@@ -297,7 +297,7 @@ class GenerateManifestClass(GenomicManifestBase):
         self.limit = args.limit
 
         # AW0 Manifest
-        if args.manifest == "DRC_BIOBANK":
+        if args.manifest == "AW0":
             if args.cohort and int(args.cohort) == 2:
                 _logger.info('Running Cohort 2 workflow')
                 return self.generate_local_c2_remainder_manifest()
@@ -475,6 +475,7 @@ class ControlSampleClass(GenomicManifestBase):
                             genomicSetId=inserted_set.id,
                             sampleId=_sample_id,
                             genomicWorkflowState=GenomicWorkflowState.CONTROL_SAMPLE,
+                            genomicWorkflowStateStr=GenomicWorkflowState.CONTROL_SAMPLE.name,
                             participantId=0,
                         )
 
@@ -548,6 +549,7 @@ class ManualSampleClass(GenomicManifestBase):
                                 sampleId=_sample_id,
                                 collectionTubeId=_sample_id,
                                 genomicWorkflowState=_state,
+                                genomicWorkflowStateStr=_state.name,
                                 participantId=int(_pid),
                                 genomeType=_genome_type,
                                 sexAtBirth=_sab,
@@ -1191,7 +1193,7 @@ class GenomicProcessRunner(GenomicManifestBase):
             "file_data": {
                 "create_feedback_record": True,
                 "upload_date": _blob.updated,
-                "manifest_type": GenomicManifestTypes.BIOBANK_GC,
+                "manifest_type": GenomicManifestTypes.AW1,
                 "file_path": self.args.manifest_file,
             }
         }
@@ -2106,7 +2108,8 @@ class ArbitraryReplates(GenomicManifestBase):
         self.dao = GenomicSetMemberDao()
         ingester = GenomicFileIngester()
 
-        member_ids = []
+        member_ids, genome_type, block_research_reason, block_results_reason = [], None, None, None
+
         if self.args.csv:
             with open(self.args.csv, encoding='utf-8-sig') as h:
                 lines = h.readlines()
@@ -2119,8 +2122,12 @@ class ArbitraryReplates(GenomicManifestBase):
 
         if self.args.genome_type:
             genome_type = self.args.genome_type
-        else:
-            genome_type = None
+
+        if self.args.block_research_reason:
+            block_research_reason = self.args.block_research_reason
+
+        if self.args.block_results_reason:
+            block_results_reason = self.args.block_results_reason
 
         if not self.args.dryrun:
             new_set = self.make_new_set()
@@ -2131,7 +2138,9 @@ class ArbitraryReplates(GenomicManifestBase):
             if not self.args.dryrun:
                 ingester.copy_member_for_replating(existing_record,
                                                    genome_type=genome_type,
-                                                   set_id=new_set.id)
+                                                   set_id=new_set.id,
+                                                   block_research_reason=block_research_reason,
+                                                   block_results_reason=block_results_reason)
             else:
                 _logger.info(f'Would create {genome_type} member based on id: {existing_record.id}')
 
@@ -2368,6 +2377,10 @@ def run():
     arbitrary_replate_parser.add_argument("--csv", help="csv of member_ids", default=None)  # noqa
     arbitrary_replate_parser.add_argument("--genome-type", help="genome_type for new records",
                                           type=str, default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--block_research_reason", help="reason to block from research pipelines",
+                                          type=str, default=None)  # noqa
+    arbitrary_replate_parser.add_argument("--block_results_reason", help="reason to block from results pipelines",
+                                          type=str, default=None)  # noqa
 
     # Collection tube
     collection_tube_parser = subparser.add_parser("collection-tube")
@@ -2446,7 +2459,7 @@ def run():
         "--manifest-type",
         default=None,
         required=True,
-        choices=['AW1', 'AW2'],  # AW1 => BIOBANK_GC, AW2 => GC_DRC
+        choices=['AW1', 'AW2'],  # AW1 => AW1, AW2 => AW2
         type=str,
     )
     compare_records.add_argument(
