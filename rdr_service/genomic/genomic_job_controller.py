@@ -1404,7 +1404,6 @@ class DataQualityJobController:
         :param job:
         :return:
         """
-        # Only 'get_report()' is used. Subsequent PRs will expand this
         job_registry = {
             GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
@@ -1423,10 +1422,10 @@ class DataQualityJobController:
         :param kwargs:
         :return: dictionary of the results of a workflow
         """
-        # print(f"Executing {self.job}")
         logging.info(f"Executing {self.job}")
 
         job_function = self.get_job_registry_entry(self.job)
+
         result_data = job_function(**kwargs)
 
         return result_data
@@ -1477,7 +1476,7 @@ class DataQualityJobController:
         self.job_run_result = GenomicSubProcessResult.SUCCESS
         return report_result
 
-    def send_validation_emails(self):
+    def send_validation_emails(self, **_):
         """
         Send emails via sendgrid for previous day
         validation failures on GC/DRC manifest ingestions
