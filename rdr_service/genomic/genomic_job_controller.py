@@ -1422,14 +1422,14 @@ class DataQualityJobController:
         :param kwargs:
         :return: dictionary of the results of a workflow
         """
-        # print(f"Executing {self.job}")
         logging.info(f"Executing {self.job}")
 
         job_function = self.get_job_registry_entry(self.job)
-        result_data = job_function(**kwargs)
 
-        if self.job == GenomicJob.DAILY_SEND_VALIDATION_EMAILS:
+        if self.job in [GenomicJob.DAILY_SEND_VALIDATION_EMAILS]:
             result_data = job_function()
+        else:
+            result_data = job_function(**kwargs)
 
         return result_data
 
