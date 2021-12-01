@@ -458,3 +458,9 @@ class GenomicDataQualityReportTest(BaseTestCase):
 
         self.assertEqual(email_mock.call_count, current_mock_count)
 
+        # test for kwargs being sent doesnt throw error
+        with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
+            controller.execute_workflow(slack=True)
+
+        self.assertEqual(email_mock.call_count, current_mock_count)
+
