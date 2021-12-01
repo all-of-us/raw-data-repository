@@ -1404,7 +1404,6 @@ class DataQualityJobController:
         :param job:
         :return:
         """
-        # Only 'get_report()' is used. Subsequent PRs will expand this
         job_registry = {
             GenomicJob.DAILY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_JOB_RUNS: self.get_report,
@@ -1428,6 +1427,9 @@ class DataQualityJobController:
 
         job_function = self.get_job_registry_entry(self.job)
         result_data = job_function(**kwargs)
+
+        if self.job == GenomicJob.DAILY_SEND_VALIDATION_EMAILS:
+            result_data = job_function()
 
         return result_data
 
