@@ -1426,10 +1426,7 @@ class DataQualityJobController:
 
         job_function = self.get_job_registry_entry(self.job)
 
-        if self.job in [GenomicJob.DAILY_SEND_VALIDATION_EMAILS]:
-            result_data = job_function()
-        else:
-            result_data = job_function(**kwargs)
+        result_data = job_function(**kwargs)
 
         return result_data
 
@@ -1479,7 +1476,7 @@ class DataQualityJobController:
         self.job_run_result = GenomicSubProcessResult.SUCCESS
         return report_result
 
-    def send_validation_emails(self):
+    def send_validation_emails(self, **_):
         """
         Send emails via sendgrid for previous day
         validation failures on GC/DRC manifest ingestions
