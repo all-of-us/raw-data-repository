@@ -223,3 +223,37 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         self.assertEqual(self.esc.core_participant_minus_pm_time, None)
         self.assertEqual(self.esc.core_participant_time, None)
         self.assertEqual(self.esc.cohort, None)
+
+    def test_registered_authored_before_signup_time(self):
+        """ Test that a ConsentPII authored prior to the sign-up-time value is used """
+        activity = [
+            {'timestamp': datetime(2018, 3, 5, 16, 35, 55), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
+             'answer_id': 767},
+            {'timestamp': datetime(2018, 3, 6, 8, 10, 30), 'group': 'Profile', 'group_id': 1,
+             'event': p_event.SignupTime},
+        ]
+
+        self.esc.run(activity)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Participant)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 5, 16, 35, 55))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 5, 16, 35, 55))
+
+    def test_participant_authored_before_signup_time(self):
+        """ Test that a ConsentPII authored prior to the sign-up-time value is used """
+        activity = [
+            {'timestamp': datetime(2018, 3, 5, 16, 35, 55), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
+             'answer_id': 767},
+            {'timestamp': datetime(2018, 3, 5, 16, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
+             'answer_id': 767},
+            {'timestamp': datetime(2018, 3, 6, 8, 10, 30), 'group': 'Profile', 'group_id': 1,
+             'event': p_event.SignupTime},
+        ]
+
+        self.esc.run(activity)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 5, 16, 35, 55))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 5, 16, 35, 55))
+        self.assertEqual(self.esc.participant_plus_ehr_time, datetime(2018, 3, 5, 16, 43, 50))

@@ -1450,7 +1450,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         data = dict()
 
-        # ubr_geography - note: we only need a ConsentPII submission for ubr_geography.
+        #### ConsentPII UBR calculations.
+        # ubr_geography
         addresses = summary.get('addresses', [])
         consent_date = summary.get('enrl_participant_time', None)
         if addresses and consent_date:
@@ -1460,7 +1461,13 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     zip_code = addr.get('addr_zip', None)
                     break
             data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
+        # ubr_age_at_consent
+        data['ubr_age_at_consent'] = \
+            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
+        # ubr_overall - This should be calculated here in case there is no TheBasics response available.
+        data['ubr_overall'] = max([v for v in data.values()])
 
+        #### TheBasics UBR calculations.
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
         #       are going to do our own query to get the first TheBasics submission after consent. Due to
         #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
@@ -1497,9 +1504,6 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_income'] = ubr.ubr_income(qnan.get('Income_AnnualIncome', None))
         # ubr_disability
         data['ubr_disability'] = ubr.ubr_disability(qnan)
-        # ubr_age_at_consent
-        data['ubr_age_at_consent'] = \
-            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
         # ubr_overall
         data['ubr_overall'] = max([v for v in data.values()])
 
