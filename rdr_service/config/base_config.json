@@ -112,5 +112,10 @@
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
+  },
+  "genomic_blocklists": {
+    "block_research": {
+      "aian": 1
+    }
   }
 }
