@@ -74,3 +74,8 @@ cron:
   timezone: America/New_York
   schedule: every day 08:10
   target: offline
+- description: Genomic Daily Resolved Validation Incidents
+  url: /offline/GenomicDataQualityDailyValidationFailsResolved
+  timezone: America/New_York
+  schedule: every day 08:15
+  target: offline

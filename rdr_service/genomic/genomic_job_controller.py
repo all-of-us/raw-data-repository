@@ -1410,6 +1410,7 @@ class DataQualityJobController:
             GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.WEEKLY_SUMMARY_REPORT_INGESTIONS: self.get_report,
             GenomicJob.DAILY_SUMMARY_REPORT_INCIDENTS: self.get_report,
+            GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED: self.get_report,
             GenomicJob.DAILY_SEND_VALIDATION_EMAILS: self.send_validation_emails,
         }
 
@@ -1449,7 +1450,14 @@ class DataQualityJobController:
         report_params = rc.get_report_parameters(**kwargs)
 
         rc.set_report_def(**report_params)
-        report_data = rc.get_report_data()
+
+        if rc.report_def.source_data_params:
+            report_data = rc.get_report_data()
+            if hasattr(report_data, 'fetchall'):
+                report_data = report_data.fetchall()
+        else:
+            report_data = rc.report_def.source_data_query
+
         report_string = rc.format_report(report_data)
         report_result = report_string
 
@@ -1513,5 +1521,5 @@ class DataQualityJobController:
 
                     EmailService.send_email(email_message)
 
-            self.incident_dao.batch_update_validation_emails_sent([obj.id for obj in gc_validation_emails_to_send])
+            self.incident_dao.batch_update_incident_fields([obj.id for obj in gc_validation_emails_to_send])
 
