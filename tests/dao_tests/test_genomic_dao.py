@@ -263,3 +263,20 @@ class GenomicDaoTest(BaseTestCase):
         self.assertIsNotNone(updated_ai_an.blockResearchReason)
         self.assertEqual(updated_ai_an.blockResearchReason, 'aian')
 
+        blocked_aian_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId="11111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+            ai_an="Y",
+            blockResearch=1,
+            blockResearchReason='sample_swap'
+        )
+
+        self.member_dao.update_member_blocklists(blocked_aian_member)
+        updated_blocked_aian_member = self.member_dao.get(blocked_aian_member.id)
+
+        # should not change if already blocked
+        self.assertEqual(updated_blocked_aian_member.blockResearch, 1)
+        self.assertIsNotNone(updated_blocked_aian_member.blockResearchReason)
+        self.assertEqual(updated_blocked_aian_member.blockResearchReason, 'sample_swap')

@@ -752,9 +752,9 @@ class GenomicSetMemberDao(UpdatableDao):
                     if items.get('conditional') is True:
                         for attr in block_type_config.get('block_attributes'):
                             value = items.get('value_string') if not attr['value'] else attr['value']
-                            if getattr(member, attr['key']) != value or getattr(member, attr['key']) is None:
+                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
                                 setattr(member, attr['key'], value)
-                        self.update(member)
+                        super(GenomicSetMemberDao, self).update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1035,12 +1035,13 @@ class GenomicSetMemberDao(UpdatableDao):
             state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
             report = self.report_state_dao.get_from_member_id(member.id)
             if not report:
-                report_obj = GenomicMemberReportState()
-                report_obj.genomic_set_member_id = member.id
-                report_obj.genomic_report_state = state
-                report_obj.genomic_report_state_str = state.name
-                report_obj.participant_id = member.participantId
-                report_obj.module = 'GEM'
+                report_obj = GenomicMemberReportState(
+                    genomic_set_member_id=member.id,
+                    genomic_report_state=state,
+                    genomic_report_state_str=state.name,
+                    participant_id=member.participantId,
+                    module='GEM'
+                )
                 self.report_state_dao.insert(report_obj)
             else:
                 report.genomic_report_state = state
