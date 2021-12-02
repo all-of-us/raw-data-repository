@@ -713,6 +713,54 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
+    def update_member_blocklists(self, member):
+        blocklist_config = {
+            'block_research': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResearch',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResearchReason',
+                        'value': None
+                    }
+                ],
+                'block_items': [
+                    {
+                        'conditional': True if member.ai_an == 'Y' else False,
+                        'value_string': 'aian'
+                    }
+                ]
+            },
+            'block_results': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResults',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResultsReason',
+                        'value': None
+                    }
+                ],
+            }
+        }
+        try:
+            for block_type_config in blocklist_config.values():
+                for items in block_type_config.get('block_items', []):
+                    if items.get('conditional') is True:
+                        for attr in block_type_config.get('block_attributes'):
+                            value = items.get('value_string') if not attr['value'] else attr['value']
+                            if getattr(member, attr['key']) != value or getattr(member, attr['key']) is None:
+                                setattr(member, attr['key'], value)
+                        self.update(member)
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
+
     def batch_update_member_field(
         self,
         member_ids,
