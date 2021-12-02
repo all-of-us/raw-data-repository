@@ -501,9 +501,10 @@ class GenomicFileIngester:
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
                     if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                        if member.collectionTubeId:
-                            with self.member_dao.session() as session:
-                                self._record_sample_as_contaminated(session, member.collectionTubeId)
+                        if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
+                            if member.collectionTubeId:
+                                with self.member_dao.session() as session:
+                                    self._record_sample_as_contaminated(session, member.collectionTubeId)
 
                         member.collectionTubeId = row_copy['collectiontubeid']
                 else:
