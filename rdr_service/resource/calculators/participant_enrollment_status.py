@@ -127,19 +127,22 @@ class EnrollmentStatusCalculator:
         :param status: Current calculated enrollment status.
         """
         # Set the first timestamp for each status the participant reaches.
-        if status == PDREnrollmentStatusEnum.Registered and not self.registered_time:
+        if not self.registered_time and self._signup:
             self.registered_time = self._signup.first_ts
-        if status == PDREnrollmentStatusEnum.Participant and not self.participant_time:
+        if not self.participant_time and self._consented:
             self.participant_time = self._consented.first_ts
-        if status == PDREnrollmentStatusEnum.ParticipantPlusEHR and not self.participant_plus_ehr_time:
+        if not self.participant_plus_ehr_time and self._ehr_consented:
             self.participant_plus_ehr_time = self._ehr_consented.first_ts
-        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_time:
+        # We specifically check for Core Minus PM status here to get the correct timestamp.
+        if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_time and \
+                self._biobank_samples and self._baseline_modules:
             self.core_participant_minus_pm_time = max([self._biobank_samples.first_ts, self._baseline_modules.last_ts])
-        if status == PDREnrollmentStatusEnum.CoreParticipant and not self.core_participant_time:
+        if not self.core_participant_time and self._biobank_samples and self._baseline_modules and \
+                    self._physical_measurements:
             self.core_participant_time = \
                 max([self._biobank_samples.first_ts, self._baseline_modules.last_ts,
                         self._physical_measurements.first_ts])
-            # If we jumped over core minus pm status, just make it the same timestamp as core.
+            # If we jumped over Core Minus PM status, just make it the same timestamp as core.
             if not self.core_participant_minus_pm_time:
                 self.core_participant_minus_pm_time = self.core_participant_time
 
@@ -166,9 +169,14 @@ class EnrollmentStatusCalculator:
         :param events: List of events
         :return: EnrollmentStatusInfo object
         """
+        # Once we have determined when the participant signed up, we don't need to keep checking.
+        if self._signup:
+            return self._signup
+
         info = EnrollmentStatusInfo()
         for ev in events:
-            if ev.event == ParticipantEventEnum.SignupTime:
+            # PDR-559: Use PTSC ConsentPII authored timestamp if prior to the RDR sign-up-time timestamp.
+            if ev.event == ParticipantEventEnum.SignupTime or ev.event == ParticipantEventEnum.ConsentPII:
                 info.calculated = True
                 info.first_ts = ev.last_ts = ev.timestamp
                 info.add_value(ev)
