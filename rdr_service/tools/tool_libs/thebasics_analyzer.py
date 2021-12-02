@@ -4,6 +4,7 @@
 #
 
 import argparse
+import copy
 import pprint
 
 # pylint: disable=superfluous-parens
@@ -11,12 +12,16 @@ import pprint
 import logging
 import os
 import sys
+# from dateutil.relativedelta import relativedelta
+from sqlalchemy.orm import aliased
+from sqlalchemy import func
 
-from dateutil.relativedelta import relativedelta
-
-from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
+from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.model.bigquery_sync import BigQuerySync
-from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.code import Code
+from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -69,10 +74,22 @@ class TheBasicsAnalyzerClass(object):
         self.gcp_env = gcp_env
         self.id_list = id_list
         self.results = {}
-        self.missing_full_survey_list = []
-        self.first_response_is_partial = []
-        self.conflicting_payloads_with_same_authored = []
-        self.pids_with_partials = []
+        self.pids_with_partials = dict()
+        self.ro_dao = None
+
+    def get_the_basics_questionnaire_ids(self):
+        """ Return a list of all questionnaire_id values associated with TheBasics survey """
+        with self.ro_dao.session() as session:
+            results = session.query(
+                Questionnaire
+            ).join(
+                QuestionnaireConcept, QuestionnaireConcept.questionnaireId == Questionnaire.questionnaireId
+            ).join(
+                Code, QuestionnaireConcept.codeId == Code.codeId
+            ).filter(
+                Code.value == 'TheBasics'
+            ).all()
+            return [r.questionnaireId for r in results]
 
     def add_pid_response_history(self, pid, response_history, issue_list):
         """
@@ -86,79 +103,114 @@ class TheBasicsAnalyzerClass(object):
             formatted_details = pprint.pformat(history)
             print(f'PID {pid} TheBasics history\n{formatted_details}')
 
-    def process_participant_responses(self, pid, responses):
+    def check_for_duplicates(self, pid):
+        """
+        This will process the entire TheBasics history for a participant (called for participants who had partials)
+        It will use the QuestionnaireResponseAnswer data for all the partial responses for this participant to look
+        for any that can be marked as duplicates.
+        """
+        answer = aliased(Code)
+        partials = full_responses = None
+        pid_data = self.pids_with_partials[pid]
+        if pid_data:
+            partials = [rsp['questionnaire_response_id'] for rsp in pid_data if not rsp['full_survey']]
+            full_responses = [rsp['questionnaire_response_id'] for rsp in pid_data if rsp['full_survey']]
+        # print(f'Participant {pid} TheBasics responses:\n')
+        print(f'P{pid} TheBasics full survey questionnaire responses:\n{full_responses}')
+        print(f'P{pid} TheBasics partial payload questionnaire responses:\n{partials}')
+
+        with self.ro_dao.session() as session:
+            last_response_dict = None
+            response_answer_set = None
+            last_qr_response_id = partials[0]
+            for response_id in partials:
+                response_dict = dict()
+                answer_list = session.query(
+                    QuestionnaireResponse.questionnaireResponseId,
+                    QuestionnaireResponse.authored,
+                    Code.value.label('question_code_value'),
+                    Code.codeId,
+                    func.coalesce(answer.value, QuestionnaireResponseAnswer.valueString,
+                                  QuestionnaireResponseAnswer.valueBoolean, QuestionnaireResponseAnswer.valueInteger,
+                                  QuestionnaireResponseAnswer.valueDate, QuestionnaireResponseAnswer.valueDateTime
+                                  ).label('answer_value')
+                ).select_from(
+                    QuestionnaireResponse
+                ).join(
+                    QuestionnaireResponseAnswer
+                ).join(
+                    QuestionnaireQuestion,
+                    QuestionnaireResponseAnswer.questionId == QuestionnaireQuestion.questionnaireQuestionId
+                ).join(
+                    Code, QuestionnaireQuestion.codeId == Code.codeId
+                ).outerjoin(
+                    answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
+                ).filter(
+                    QuestionnaireResponse.questionnaireResponseId == response_id,
+                    QuestionnaireResponse.isDuplicate == 0
+                ).order_by(QuestionnaireResponse.authored,
+                           QuestionnaireResponse.created
+                ).all()
+
+                if not answer_list:
+                    print(f'P{pid}: No answer values present for TheBasics response {response_id}')
+                    continue
+
+                if last_response_dict is None:
+                    last_response_dict = dict()
+                    for row in answer_list:
+                        last_response_dict[row.question_code_value] = row.answer_value
+                    last_answer_set = set(last_response_dict.items())
+                    print(f'First partial response id: {response_id}')
+                else:
+                    for row in answer_list:
+                        response_dict[row.question_code_value] = row.answer_value
+                    response_answer_set = set(response_dict.items())
+
+                    if response_answer_set and response_answer_set.issuperset(last_answer_set):
+                        print(f'\tResponse {last_qr_response_id} is a duplicate/subset of {response_id}')
+
+                    last_answer_set = copy.deepcopy(response_answer_set)
+                    last_qr_response_id = response_id
+
+    def process_participant_responses(self, pid, responses, session):
         if not len(responses):
-            raise (ValueError, f'{pid} TheBasics response list was empty')
+            raise (ValueError, f'P{pid}: TheBasics response list was empty')
 
         result_details = list()
         has_partial = False
-        for rec in responses:
-            response = rec.BigQuerySync.resource
-            full_survey = False
-            for field, value in response.items():
-                if field in NON_QUESTION_CODE_FIELDS:
-                    continue
-                if field not in PROFILE_UPDATE_QUESTION_CODES and value:
-                    full_survey = True
-                    break
+        for response in responses:
+            pdr_resource_rec = session.query(
+                BigQuerySync
+            ).filter(BigQuerySync.tableId == 'pdr_mod_thebasics',
+                BigQuerySync.pk_id == response.questionnaireResponseId
+            ).first()
+            if pdr_resource_rec:
+                data = pdr_resource_rec.resource
+                full_survey = False
+                for field, value in data.items():
+                    if field in NON_QUESTION_CODE_FIELDS:
+                        continue
+                    if field not in PROFILE_UPDATE_QUESTION_CODES and value:
+                        full_survey = True
+                        break
 
             result_details.append(
-                {'authored': rec.QuestionnaireResponse.authored,
-                 'questionnaire_response_id': rec.QuestionnaireResponse.questionnaireResponseId,
+                {'authored': response.authored,
+                 'questionnaire_response_id': response.questionnaireResponseId,
                  'full_survey': full_survey,
-                 'external_id': rec.QuestionnaireResponse.externalId
+                 'external_id': response.externalId
                  }
              )
 
             has_partial = has_partial or not full_survey
-
+        # For now, only analyze pids with known partial TheBasics payloads.
+        # TODO:  Also analyze pids with multiple full survey payloads
         if has_partial:
-            self.pids_with_partials.append({pid: result_details})
+            print('\n====================================================================================')
+            self.pids_with_partials[pid] = result_details
+            self.check_for_duplicates(pid)
 
-        # Find the first full survey response location in the list of processed responses, if one exists
-        first_full_index = next((index for (index, rsp) in enumerate(result_details) if rsp['full_survey']), None)
-        # first_qrid = result_details[0]['questionnaire_response_id']
-        # first_authored = result_details[0]['authored']
-        if first_full_index is None:
-            # self.missing_full_survey_list.append({pid: result_details})
-            _logger.error(
-                " ".join([f'{pid} did not have a full survey response,',
-                          f'first partial response {result_details[0]["questionnaire_response_id"]}',
-                          f'authored {result_details[0]["authored"]}'])
-            )
-            self.add_pid_response_history(pid, result_details, self.missing_full_survey_list)
-
-        # Process cases where the first response was preceded by a partial at index 0
-        elif first_full_index > 0:
-            first_rsp = result_details[0]
-            first_full_rsp = result_details[first_full_index]
-            first_full_ts = first_full_rsp['authored']
-            first_partial_ts = first_rsp['authored']
-            # Look for cases where the first full payload came in with same authored time (only have H:M:S)
-            # (results ordered by QuestionnaireResponse.created time, partial response was processed first by RDR)
-            if first_full_ts == first_partial_ts:
-                _logger.warning(
-                    " ".join([
-                        f'{pid} partial response {first_rsp["questionnaire_response_id"]}',
-                        f'(external id {first_rsp["external_id"]})',
-                        f'received/processed before full response {first_full_rsp["questionnaire_response_id"]}',
-                        f'(external id {first_full_rsp["external_id"]}), both have same authored {first_full_ts}'])
-                )
-                # self.conflicting_payloads_with_same_authored.append({pid: result_details})
-                self.add_pid_response_history(pid, result_details, self.conflicting_payloads_with_same_authored)
-            else:
-                delta = relativedelta(first_full_ts,first_partial_ts)
-
-                delta_str = " ".join([
-                         f'offset {delta.days} days / {delta.hours} hours /',
-                         f'{delta.minutes} minutes / {delta.seconds} seconds ' ])
-
-                _logger.error(
-                    " ".join([f'{pid} Partial authored {first_partial_ts} before full {first_full_ts},',
-                              delta_str])
-                )
-                # self.first_response_is_partial.append({pid: result_details})
-                self.add_pid_response_history(pid, result_details, self.first_response_is_partial)
 
     def run(self):
         """
@@ -170,35 +222,24 @@ class TheBasicsAnalyzerClass(object):
             return 1
 
         self.gcp_env.activate_sql_proxy(replica=True)
-
-        dao = BigQuerySyncDao(backup=True)
-        with dao.session() as session:
+        self.ro_dao = QuestionnaireResponseDao()
+        basics_ids = self.get_the_basics_questionnaire_ids()
+        with self.ro_dao.session() as session:
             for pid in self.id_list:
-                records = session.query(
-                    QuestionnaireResponse,
-                    BigQuerySync
-                    ).join(
-                        BigQuerySync, QuestionnaireResponse.questionnaireResponseId == BigQuerySync.pk_id
-                    ).filter(
-                        BigQuerySync.tableId == 'pdr_mod_thebasics',
-                        BigQuerySync.projectId == 'aou-pdr-data-prod',
-                    ).filter(
-                        QuestionnaireResponse.participantId == pid,
-                        QuestionnaireResponse.isDuplicate == 0
-                    ).order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created,
-                               QuestionnaireResponse.questionnaireResponseId).all()
+                responses = session.query(
+                    QuestionnaireResponse
+                ).select_from(
+                    QuestionnaireResponse
+                ).filter(
+                    QuestionnaireResponse.participantId == pid,
+                    QuestionnaireResponse.questionnaireId.in_(basics_ids)
+                ).order_by(
+                    QuestionnaireResponse.authored,
+                    QuestionnaireResponse.created
+                ).all()
+                if responses:
+                    self.process_participant_responses(pid, responses, session)
 
-                if records:
-                    # self.process_participant_responses(pid, [r.resource for r in records])
-                    self.process_participant_responses(pid, records)
-
-            if len(self.id_list) > 1:
-                print(f'{len(self.missing_full_survey_list)} participants are missing a full survey response')
-                print(f'{len(self.first_response_is_partial)} participants had partial survey as first response')
-                print(" ".join([f'{len(self.conflicting_payloads_with_same_authored)} participants',
-                                'had partial and full payloads with same timestamp, but partial received by RDR first'
-                                ])
-                )
 
 def get_id_list(fname):
     """
