@@ -756,6 +756,8 @@ class GenomicSetMemberDao(UpdatableDao):
                                 setattr(member, attr['key'], value)
                         self.update(member)
 
+            return GenomicSubProcessResult.SUCCESS
+
         # pylint: disable=broad-except
         except Exception as e:
             logging.error(e)
@@ -1023,26 +1025,30 @@ class GenomicSetMemberDao(UpdatableDao):
 
         return self.insert(new_member_obj)
 
-    def update(self, obj):
+    def update_member_wf_states(self, member):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
             GenomicWorkflowState.GEM_RPT_DELETED
         )
-        if obj.genomicWorkflowState and obj.genomicWorkflowState in gem_wf_states:
-            state = self.report_state_dao.get_report_state_from_wf_state(obj.genomicWorkflowState)
-            report = self.report_state_dao.get_from_member_id(obj.id)
+        if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
+            state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+            report = self.report_state_dao.get_from_member_id(member.id)
             if not report:
                 report_obj = GenomicMemberReportState()
-                report_obj.genomic_set_member_id = obj.id
+                report_obj.genomic_set_member_id = member.id
                 report_obj.genomic_report_state = state
                 report_obj.genomic_report_state_str = state.name
-                report_obj.participant_id = obj.participantId
+                report_obj.participant_id = member.participantId
                 report_obj.module = 'GEM'
                 self.report_state_dao.insert(report_obj)
             else:
                 report.genomic_report_state = state
                 self.report_state_dao.update(report)
+
+    def update(self, obj):
+        self.update_member_wf_states(obj)
+        self.update_member_blocklists(obj)
         super(GenomicSetMemberDao, self).update(obj)
 
 
