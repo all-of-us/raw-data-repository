@@ -233,4 +233,50 @@ class GenomicDaoTest(BaseTestCase):
         self.assertEqual(len(resolved_incidents), len(self.incident_dao.get_all()))
         self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in resolved_incidents))
 
+    def test_update_member_blocklist(self):
 
+        non_aian_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId="11111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+        )
+
+        self.member_dao.update_member_blocklists(non_aian_member)
+        updated_non_ai_an = self.member_dao.get(non_aian_member.id)
+
+        self.assertEqual(updated_non_ai_an.blockResearch, 0)
+        self.assertIsNone(updated_non_ai_an.blockResearchReason)
+
+        aian_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId="11111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+            ai_an="Y"
+        )
+
+        self.member_dao.update_member_blocklists(aian_member)
+        updated_ai_an = self.member_dao.get(aian_member.id)
+
+        self.assertEqual(updated_ai_an.blockResearch, 1)
+        self.assertIsNotNone(updated_ai_an.blockResearchReason)
+        self.assertEqual(updated_ai_an.blockResearchReason, 'aian')
+
+        blocked_aian_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId="11111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+            ai_an="Y",
+            blockResearch=1,
+            blockResearchReason='sample_swap'
+        )
+
+        self.member_dao.update_member_blocklists(blocked_aian_member)
+        updated_blocked_aian_member = self.member_dao.get(blocked_aian_member.id)
+
+        # should not change if already blocked
+        self.assertEqual(updated_blocked_aian_member.blockResearch, 1)
+        self.assertIsNotNone(updated_blocked_aian_member.blockResearchReason)
+        self.assertEqual(updated_blocked_aian_member.blockResearchReason, 'sample_swap')

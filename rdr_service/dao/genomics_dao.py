@@ -15,7 +15,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT, GENOMIC_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
@@ -713,6 +713,67 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
+    def update_member_blocklists(self, member):
+        blocklists_config = config.getSettingJson(GENOMIC_BLOCKLISTS, {})
+
+        if not blocklists_config:
+            return
+
+        blocklists_map = {
+            'block_research': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResearch',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResearchReason',
+                        'value': None
+                    }
+                ],
+                'block_items': [
+                    {
+                        'conditional': True if member.ai_an == 'Y' else False,
+                        'value_string': 'aian'
+                    }
+                ]
+            },
+            'block_results': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResults',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResultsReason',
+                        'value': None
+                    }
+                ],
+            }
+        }
+        try:
+            for block_map_type, block_map_type_config in blocklists_map.items():
+                blocklist_config_type = blocklists_config.get(block_map_type, None)
+
+                for items in block_map_type_config.get('block_items', []):
+                    value_string = items.get('value_string')
+
+                    if items.get('conditional') is True and blocklist_config_type.get(value_string):
+
+                        for attr in block_map_type_config.get('block_attributes'):
+                            value = value_string if not attr['value'] else attr['value']
+                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
+                                setattr(member, attr['key'], value)
+
+                        super(GenomicSetMemberDao, self).update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
+
     def batch_update_member_field(
         self,
         member_ids,
@@ -975,26 +1036,31 @@ class GenomicSetMemberDao(UpdatableDao):
 
         return self.insert(new_member_obj)
 
-    def update(self, obj):
+    def update_member_wf_states(self, member):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
             GenomicWorkflowState.GEM_RPT_DELETED
         )
-        if obj.genomicWorkflowState and obj.genomicWorkflowState in gem_wf_states:
-            state = self.report_state_dao.get_report_state_from_wf_state(obj.genomicWorkflowState)
-            report = self.report_state_dao.get_from_member_id(obj.id)
+        if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
+            state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+            report = self.report_state_dao.get_from_member_id(member.id)
             if not report:
-                report_obj = GenomicMemberReportState()
-                report_obj.genomic_set_member_id = obj.id
-                report_obj.genomic_report_state = state
-                report_obj.genomic_report_state_str = state.name
-                report_obj.participant_id = obj.participantId
-                report_obj.module = 'GEM'
+                report_obj = GenomicMemberReportState(
+                    genomic_set_member_id=member.id,
+                    genomic_report_state=state,
+                    genomic_report_state_str=state.name,
+                    participant_id=member.participantId,
+                    module='GEM'
+                )
                 self.report_state_dao.insert(report_obj)
             else:
                 report.genomic_report_state = state
                 self.report_state_dao.update(report)
+
+    def update(self, obj):
+        self.update_member_wf_states(obj)
+        self.update_member_blocklists(obj)
         super(GenomicSetMemberDao, self).update(obj)
 
 
