@@ -8,6 +8,7 @@ from dateutil.parser import ParserError
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 
@@ -23,6 +24,9 @@ from rdr_service.model.resource_type import ResourceType
 from rdr_service.model.site import Site
 from rdr_service.resource import fields
 
+# See BaseGenerator._lookup_code_value and BaseGenerator._lookup_code_id
+_CODEBOOK_CODE_VALUES = None
+_CODEBOOK_CODE_IDS = None
 
 class ResourceRecordSet(object):
     """
@@ -286,26 +290,70 @@ class BaseGenerator(object):
         :param session: DAO session object
         :return: string
         """
+        global _CODEBOOK_CODE_VALUES
         if code_id is None:
             return None
-        result = session.query(Code.value).filter(Code.codeId == int(code_id)).first()
-        if not result:
-            return None
-        return result.value
 
-    def _lookup_code_id(self, code, ro_session):
+        # Code id to value mappings change from one unittest to another, we can't create a global
+        # cache of data while running unittests.
+        if not os.environ.get('UNITTEST_FLAG', 0) == 1 and _CODEBOOK_CODE_VALUES is None:
+            results = session.query(Code.codeId, Code.value).\
+                        filter(Code.system=='http://terminology.pmi-ops.org/CodeSystem/ppi').all()
+            if not results:
+                return None
+            _CODEBOOK_CODE_VALUES = dict()
+            for row in results:
+                _CODEBOOK_CODE_VALUES[row.codeId] = row.value
+
+            if code_id in _CODEBOOK_CODE_VALUES:
+                return _CODEBOOK_CODE_VALUES[code_id]
+
+        # The code might not be in our data because it is new, try fetching the record.
+        # Also we might be running unittests, if that is the case we do a lookup
+        # everytime and don't cache the lookup result.
+        result = session.query(Code.value).filter(Code.codeId == int(code_id)).first()
+        if result:
+            if isinstance(_CODEBOOK_CODE_VALUES, dict):
+                _CODEBOOK_CODE_VALUES[code_id] = result.value
+            return result.value
+
+        return None
+
+    def _lookup_code_id(self, code, session):
         """
         Return the code id for the given code value string.
         :param code: code value string
-        :param ro_session: ReadOnly DAO session object
+        :param session: ReadOnly DAO session object
         :return: int
         """
+        global _CODEBOOK_CODE_IDS
         if code is None:
             return None
-        result = ro_session.query(Code.codeId).filter(Code.value == code).first()
-        if not result:
-            return None
-        return result.codeId
+
+        # Code id to value mappings change from one unittest to another, we can't create a global
+        # cache of data while running unittests.
+        if not os.environ.get('UNITTEST_FLAG', 0) == 1 and _CODEBOOK_CODE_IDS is None:
+            results = session.query(Code.codeId, Code.value).\
+                        filter(Code.system=='http://terminology.pmi-ops.org/CodeSystem/ppi').all()
+            if not results:
+                return None
+            _CODEBOOK_CODE_IDS = dict()
+            for row in results:
+                _CODEBOOK_CODE_IDS[row.value] = row.codeId
+
+            if code in _CODEBOOK_CODE_IDS:
+                return _CODEBOOK_CODE_IDS[code]
+
+        # The code might not be in our data because it is new, try fetching the record.
+        # Also we might be running unittests, if that is the case we do a lookup
+        # everytime and don't cache the lookup result.
+        result = session.query(Code.codeId).filter(Code.value == code).first()
+        if result:
+            if isinstance(_CODEBOOK_CODE_IDS, dict):
+                _CODEBOOK_CODE_IDS[code] = result.codeId
+            return result.codeId
+
+        return None
 
     def _lookup_site_name(self, site_id, ro_session):
         """

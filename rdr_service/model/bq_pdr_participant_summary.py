@@ -11,7 +11,8 @@ from rdr_service.model.bq_participant_summary import (
     BQConsentSchema,
     BQPatientStatusSchema,
     BQBiobankOrderSchema,
-    BQPairingHistorySchema
+    BQPairingHistorySchema,
+    BQSexualOrientationSchema
 )
 
 
@@ -120,6 +121,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
 
     races = BQRecordField('races', schema=BQRaceSchema)
     genders = BQRecordField('genders', schema=BQGenderSchema)
+    sexual_orientations = BQRecordField('sexual_orientations', schema=BQSexualOrientationSchema)
     modules = BQRecordField('modules', schema=BQModuleStatusSchema)
     consents = BQRecordField('consents', schema=BQConsentSchema)
 
@@ -227,6 +229,7 @@ class BQPDRParticipantSummaryView(BQView):
             'pm',
             'genders',
             'races',
+            'sexual_orientations',
             'modules',
             'consents',
             'biospec',
@@ -255,6 +258,7 @@ class BQPDRParticipantSummaryAllView(BQPDRParticipantSummaryView):
             'pm',
             'genders',
             'races',
+            'sexual_orientations',
             'modules',
             'consents',
             'biospec',
@@ -319,6 +323,21 @@ class BQPDRRaceView(BQView):
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
           FROM `{project}`.{dataset}.pdr_participant
       ) ps cross join unnest(races) as nt
+      WHERE ps.rn = 1 and ps.test_participant != 1
+  """
+
+
+class BQPDRSexualOrientationView(BQView):
+    __viewname__ = 'v_pdr_participant_sexual_orientation'
+    __viewdescr__ = 'PDR Participant Sexual Orientation View'
+    __table__ = BQPDRParticipantSummary
+    __sql__ = """
+    SELECT ps.id, ps.created, ps.modified, ps.participant_id, nt.*
+      FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
+          FROM `{project}`.{dataset}.pdr_participant
+      ) ps cross join unnest(sexual_orientations) as nt
       WHERE ps.rn = 1 and ps.test_participant != 1
   """
 

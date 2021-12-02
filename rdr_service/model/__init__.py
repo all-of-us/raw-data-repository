@@ -60,6 +60,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRPMView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRGenderView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRRaceView'),
+    ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRSexualOrientationView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRModuleView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRConsentView'),
     ('rdr_service.model.bq_pdr_participant_summary', 'BQPDRBioSpecView'),

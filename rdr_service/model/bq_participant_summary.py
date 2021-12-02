@@ -118,6 +118,14 @@ class BQGenderSchema(BQSchema):
     gender_id = BQField('gender_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
+class BQSexualOrientationSchema(BQSchema):
+    """
+    Participant race information
+    """
+    sexual_orientation = BQField('sexual_orientation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    sexual_orientation_id = BQField('sexual_orientation_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+
 class BQPhysicalMeasurements(BQSchema):
     """
     Participant Physical Measurements
@@ -375,6 +383,8 @@ class BQParticipantSummarySchema(BQSchema):
     ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ubr_age_at_consent = BQField('ubr_age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ubr_overall = BQField('ubr_overall', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    sexual_orientations = BQRecordField('sexual_orientations', schema=BQSexualOrientationSchema)
 
 
 class BQParticipantSummary(BQTable):
