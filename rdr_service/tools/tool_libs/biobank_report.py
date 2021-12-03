@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from rdr_service import clock, config
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.offline.biobank_samples_pipeline import get_withdrawal_report_query
+from rdr_service.participant_enums import DeceasedStatus
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -56,6 +57,10 @@ class BiobankReportTool(ToolBase):
             report_query = get_withdrawal_report_query(start_date=start_date)
             result_list = session.execute(report_query)
             for result in result_list:
+                deceased_status = result.deceased_status
+                if result.deceased_status is None:  # Can be None if the summary doesn't exist
+                    deceased_status = DeceasedStatus.UNSET
+
                 csv_writer.writerow({
                     'participant_id': to_client_participant_id(result.participant_id),
                     'biobank_id': f'{server_config[config.BIOBANK_ID_PREFIX][0]}{result.biobank_id}',
@@ -67,7 +72,7 @@ class BiobankReportTool(ToolBase):
                     'paired_org': result.paired_org,
                     'paired_site': result.paired_site,
                     'withdrawal_reason_justification': result.withdrawal_reason_justification,
-                    'deceased_status': result.deceased_status
+                    'deceased_status': str(deceased_status)
                 })
 
         logger.info(f'SUCCESS: report written to {file_path}')
