@@ -72,7 +72,7 @@ class BiobankReportTool(ToolBase):
                     'paired_org': result.paired_org,
                     'paired_site': result.paired_site,
                     'withdrawal_reason_justification': result.withdrawal_reason_justification,
-                    'deceased_status': str(DeceasedStatus(int(deceased_status)))
+                    'deceased_status': str(deceased_status)
                 })
 
         logger.info(f'SUCCESS: report written to {file_path}')
