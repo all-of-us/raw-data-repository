@@ -440,7 +440,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_type='informing_loop_decision',
                     module_type=module,
                     participant_id=participant.participantId,
-                    decision_value='maybe_later'
+                    decision_value='maybe_later',
+                    event_authored_time=fake_date + datetime.timedelta(days=1)
                 )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -570,7 +571,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_type='informing_loop_decision',
                     module_type=module,
                     participant_id=participant.participantId,
-                    decision_value='maybe_later'
+                    decision_value='maybe_later',
+                    event_authored_time=fake_date_one + datetime.timedelta(days=1)
                 )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -674,7 +676,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_type='informing_loop_decision',
                 module_type=module,
                 participant_id=participant.participantId,
-                decision_value='maybe_later'
+                decision_value='maybe_later',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1)
             )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -762,7 +765,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_type='informing_loop_decision',
                 module_type=module,
                 participant_id=participant.participantId,
-                decision_value='maybe_later'
+                decision_value='maybe_later',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1)
             )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -785,8 +789,95 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+
         loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
         self.assertTrue(loop_and_result)
+
+    def test_get_last_updated_informing_loop_decision(self):
+        self.num_loops = 3
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        module = 'GEM'
+        decisions = ['yes', 'no', 'maybe_later']
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant_one = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant_one,
+            consentForGenomicsRORAuthored=fake_date_two,
+            consentForStudyEnrollmentAuthored=fake_date_two
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+            participantId=participant_one.participantId,
+            genomicWorkflowStateModifiedTime=fake_date_two
+        )
+
+        for i, _ in enumerate(decisions):
+            # maybe_later => newest date
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=i + 1,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant_one.participantId,
+                decision_value=decisions[i],
+                event_authored_time=fake_date_one + datetime.timedelta(days=i)
+            )
+
+        participant_two = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant_two,
+            consentForGenomicsRORAuthored=fake_date_two,
+            consentForStudyEnrollmentAuthored=fake_date_two
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+            participantId=participant_two.participantId,
+            genomicWorkflowStateModifiedTime=fake_date_two
+        )
+
+        for i, _ in enumerate(decisions):
+            # maybe_later => newest date
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=i + 2,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant_two.participantId,
+                decision_value=decisions[i],
+                event_authored_time=fake_date_one + datetime.timedelta(days=i)
+            )
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        response_data = resp.get('data')
+        self.assertTrue(all(obj['decision'] == decisions[2] for obj in response_data))
+
+        all_loops = self.loop_dao.get_all()
+        self.assertEqual(
+            len([obj['participant_id'] for obj in response_data]),
+            len(all_loops) / len(decisions)
+        )
 
     def test_get_only_ready_informing_loop(self):
         self.num_participants = 10
