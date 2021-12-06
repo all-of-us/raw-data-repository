@@ -1386,3 +1386,43 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertTrue(update_member['success'])
         self.assertTrue(update_mock.called)
 
+    def test_ingestion_wf_run_from_config(self):
+        pass
+
+    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.BaseGenomicTaskApi.execute_manifest_ingestion')
+    def test_manifest_execute_in_manifest_ingestions(self, _):
+
+        from rdr_service.resource import main as resource_main
+
+        path_mappings = {
+            "aw1": {
+                'route': 'IngestAW1ManifestTaskApi',
+                'file_path': 'AW1_sample_manifests/test_aw1_file_1.csv',
+            },
+            "aw2": {
+                'route': 'IngestAW2ManifestTaskApi',
+                'file_path': 'AW2_data_manifests/test_aw2_file.csv'
+            },
+            "aw4": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': 'AW4_array_manifest/test_aw4_file.csv',
+            },
+            "aw5": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_array_manifest/test_aw5_file.csv'
+            },
+        }
+
+        for value in path_mappings.values():
+            self.send_post(
+                local_path=value.get('route'),
+                request_data={
+                    'file_path': value.get('file_path'),
+                    'bucket_name': 'test_bucket_name',
+                    'upload_date': '2020-09-13T20:52:12+00:00',
+                },
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        print('Darryl')
