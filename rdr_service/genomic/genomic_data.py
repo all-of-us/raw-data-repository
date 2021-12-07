@@ -91,8 +91,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                (GenomicSetMember.aw3ManifestJobRunID.is_(None) &
-                 GenomicSetMember.ignoreFlag != 1)
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
+                (GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
@@ -158,8 +158,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.craiReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfMd5Received == 1) &
-                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']) &
-                 GenomicSetMember.ignoreFlag != 1)
+                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id'])) &
+                (GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                 [
