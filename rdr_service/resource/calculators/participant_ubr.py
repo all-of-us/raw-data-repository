@@ -247,5 +247,5 @@ class ParticipantUBRCalculator:
         # Test each UBR value for a UBR status.
         for k, v in data.items():
             if k.startswith('ubr_') and v == UBRValueEnum.UBR:
-                result = 1
+                return UBRValueEnum.UBR
         return result
