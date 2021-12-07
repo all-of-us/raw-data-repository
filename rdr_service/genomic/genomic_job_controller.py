@@ -23,6 +23,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_gc_validation_metrics_update
+from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
@@ -107,6 +108,7 @@ class GenomicJobController:
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
+        self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -425,18 +427,25 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_informing_loop_records(self, *, loop_type, records):
-        if records:
-            logging.info(f'Inserting informing loop for Participant: {records[0].participantId}')
+    def ingest_informing_loop_records(self, *, message_record_id, loop_type):
+        informing_records = self.message_broker_event_dao.get_informing_loop(
+            message_record_id,
+            loop_type
+        )
 
-            module_type = [obj for obj in records if obj.fieldName == 'module_type' and obj.valueString]
-            decision_value = [obj for obj in records if obj.fieldName == 'decision_value' and obj.valueString]
+        if informing_records:
+            first_record = informing_records[0]
+            logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
+
+            module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
+            decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
+                              obj.valueString]
 
             loop_obj = GenomicInformingLoop(
-                participant_id=records[0].participantId,
-                message_record_id=records[0].messageRecordId,
+                participant_id=first_record.participantId,
+                message_record_id=first_record.messageRecordId,
                 event_type=loop_type,
-                event_authored_time=records[0].eventAuthoredTime,
+                event_authored_time=first_record.eventAuthoredTime,
                 module_type=module_type[0].valueString if module_type else None,
                 decision_value=decision_value[0].valueString if decision_value else None,
             )

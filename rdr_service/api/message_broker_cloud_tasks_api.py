@@ -65,23 +65,17 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
         return '{"success": "true"}'
 
     def call_informing_loop_task(self, obj):
-
-        if GAE_PROJECT != 'localhost' \
-                and 'informing_loop'.lower() \
+        if GAE_PROJECT != 'localhost' and 'informing_loop'.lower() \
                 in self.event_type:
 
-            payload = {}
-            informing_records = self.dao.get_informing_loop(
-                obj.messageRecordId,
-                self.event_type
-            )
+            payload = {
+                'message_record_id': obj.messageRecordId,
+                'event_type': self.event_type
+            }
 
-            if informing_records:
-                payload['event_type'] = self.event_type
-                payload['records'] = informing_records
-                _task = GCPCloudTask()
-                _task.execute(
-                    'ingest_informing_loop_task',
-                    payload=payload,
-                    queue='genomics'
-                )
+            _task = GCPCloudTask()
+            _task.execute(
+                'ingest_informing_loop_task',
+                payload=payload,
+                queue='genomics'
+            )

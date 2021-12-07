@@ -833,7 +833,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 module_type=module,
                 participant_id=participant_one.participantId,
                 decision_value=decisions[i],
-                event_authored_time=fake_date_one + datetime.timedelta(days=i)
+                event_authored_time=fake_date_one + datetime.timedelta(days=i, minutes=i+31)
             )
 
         participant_two = self.data_generator.create_database_participant()
@@ -862,7 +862,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 module_type=module,
                 participant_id=participant_two.participantId,
                 decision_value=decisions[i],
-                event_authored_time=fake_date_one + datetime.timedelta(days=i)
+                event_authored_time=fake_date_one + datetime.timedelta(days=i, minutes=i+32)
             )
 
         with clock.FakeClock(fake_now):
@@ -1386,11 +1386,12 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(ingest_mock.call_count, path_count)
 
-    def test_informing_loop_task_api(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_informing_loop_records')
+    def test_informing_loop_task_api(self, ingest_called):
 
         data = {
-            'event_type': '',
-            'records': []
+            'message_record_id': [],
+            'event_type': ''
         }
 
         from rdr_service.resource import main as resource_main
@@ -1404,6 +1405,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertIsNotNone(insert_informing_loop)
         self.assertEqual(insert_informing_loop['success'], True)
+        self.assertEqual(ingest_called.call_count, 1)
 
     def test_batch_data_file_task_api(self):
 

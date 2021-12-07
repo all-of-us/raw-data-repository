@@ -1779,6 +1779,7 @@ class GenomicOutreachDaoV2(BaseDao):
 
         with self.session() as session:
             if 'informingLoop' in self.type:
+                genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
                         GenomicInformingLoop.participant_id,
@@ -1793,15 +1794,19 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                    ).outerjoin(
+                        genomic_loop_alias,
+                        sqlalchemy.and_(
+                            genomic_loop_alias.participant_id == GenomicInformingLoop.participant_id,
+                            GenomicInformingLoop.event_authored_time < genomic_loop_alias.event_authored_time
+                        )
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
-                        GenomicInformingLoop.event_authored_time == (session.query(
-                            sqlalchemy.func.max(GenomicInformingLoop.event_authored_time)
-                        ))
+                        genomic_loop_alias.event_authored_time.is_(None)
                     )
                 )
                 ready_loop = (
