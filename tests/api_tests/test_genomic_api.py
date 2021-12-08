@@ -619,8 +619,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={informing_loop_type}'
             )
 
-        self.assertEqual(len(resp['data']), 2)
-        all_loops = all(obj for obj in resp['data'] if obj['type'] == informing_loop_type)
+        self.assertEqual(len(resp['data']), 5)
+        all_loops = all(obj['type'] == informing_loop_type for obj in resp['data'])
         self.assertTrue(all_loops)
 
         with clock.FakeClock(fake_now):
@@ -629,7 +629,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), 5)
-        all_results = all(obj for obj in resp['data'] if obj['type'] == result_type)
+        all_results = all(obj['type'] == result_type for obj in resp['data'])
         self.assertTrue(all_results)
 
     def test_get_by_module(self):
@@ -706,8 +706,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
-        all_gem = all(obj for obj in resp['data'] if obj['module'] == 'gem')
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+
+        all_gem = all(obj['module'] == 'gem' for obj in resp['data'])
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+
         self.assertTrue(all_gem)
         self.assertTrue(loop_and_result)
 
@@ -717,8 +719,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+
         all_pgx = all(obj for obj in resp['data'] if obj['module'] == 'pgx')
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+
         self.assertTrue(all_pgx)
         self.assertTrue(loop_and_result)
 
@@ -773,7 +777,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 module_type=module,
                 participant_id=participant.participantId,
                 decision_value='maybe_later',
-                event_authored_time=fake_date_one + datetime.timedelta(days=1)
+                event_authored_time=workflow_date
             )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -797,7 +801,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
 
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
         self.assertTrue(loop_and_result)
 
     def test_get_last_updated_informing_loop_decision(self):

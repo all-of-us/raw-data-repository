@@ -5,12 +5,13 @@ import sqlalchemy
 
 from datetime import datetime, timedelta
 from dateutil import parser
-from sqlalchemy import and_
 
+from sqlalchemy import and_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
+
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
@@ -1386,17 +1387,17 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                    .join(
+                .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
-                    .outerjoin(
+                .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
                          GenomicGcDataFileMissing.resolved == 0,
                          GenomicGcDataFileMissing.ignore_flag == 0)
                 )
-                    .filter(
+                .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
@@ -1412,7 +1413,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
-                    .all()
+                .all()
             )
 
     def get_with_missing_wgs_files(self, _gc_site_id):
@@ -1465,9 +1466,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                    .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
-                            GenomicGCValidationMetrics.ignoreFlag != 1)
-                    .one_or_none()
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
+                        GenomicGCValidationMetrics.ignoreFlag != 1)
+                .one_or_none()
             )
 
     def get_metric_record_counts_from_filepath(self, filepath):
@@ -1796,7 +1797,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
                     ).outerjoin(
                         genomic_loop_alias,
-                        sqlalchemy.and_(
+                        and_(
                             genomic_loop_alias.participant_id == GenomicInformingLoop.participant_id,
                             GenomicInformingLoop.event_authored_time < genomic_loop_alias.event_authored_time
                         )
@@ -1840,8 +1841,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                 if start_date:
                     decision_loop = decision_loop.filter(
-                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                        GenomicInformingLoop.event_authored_time > start_date,
+                        GenomicInformingLoop.event_authored_time < end_date
                     )
                     ready_loop = ready_loop.filter(
                         GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
