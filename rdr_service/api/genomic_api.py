@@ -200,11 +200,8 @@ class GenomicOutreachApiV2(BaseApi):
         if start_date:
             start_date = parser.parse(start_date)
             participant_data = self.dao.outreach_lookup(start_date=start_date, end_date=end_date)
-            if participant_data:
-                payload['data'] = participant_data
-                return self._make_response(payload)
-
-            raise NotFound('No participants found in date range.')
+            payload['data'] = participant_data
+            return self._make_response(payload)
 
         raise BadRequest
 

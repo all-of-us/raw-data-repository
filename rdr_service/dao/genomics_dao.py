@@ -1727,6 +1727,19 @@ class GenomicOutreachDaoV2(BaseDao):
     def to_client_json(self, _dict):
         report_statuses, report, p_status, p_module = [], {}, None, None
 
+        # handle date
+        try:
+            ts = pytz.utc.localize(_dict['date'])
+        except ValueError:
+            ts = _dict['date']
+
+        if not _dict.get('data'):
+            client_json = {
+                "data": report_statuses,
+                "timestamp": ts
+            }
+            return client_json
+
         for p in _dict['data']:
             p_type = p[-1]
             if 'result' in p_type:
@@ -1760,16 +1773,11 @@ class GenomicOutreachDaoV2(BaseDao):
                     }
                     report_statuses.append(report)
 
-        # handle date
-        try:
-            ts = pytz.utc.localize(_dict['date'])
-        except ValueError:
-            ts = _dict['date']
-
         client_json = {
             "data": report_statuses,
             "timestamp": ts
         }
+
         return client_json
 
     def outreach_lookup(self, pid=None, start_date=None, end_date=None):

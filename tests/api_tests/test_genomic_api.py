@@ -603,16 +603,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertEqual(resp.json['message'], bad_response)
         self.assertEqual(resp.status_code, 400)
 
-        bad_response = 'No participants found in date range.'
-
         with clock.FakeClock(fake_now):
             resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_three}&type={informing_loop_type}',
-                expected_status=http.client.NOT_FOUND
+                f'GenomicOutreachV2?start_date={fake_date_three}&type={informing_loop_type}'
             )
 
-        self.assertEqual(resp.json['message'], bad_response)
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp['data'], [])
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
@@ -783,16 +779,12 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
         self.assertEqual(len(total_num_set), 20)
 
-        bad_response = 'No participants found in date range.'
-
         with clock.FakeClock(fake_now):
             resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_two}',
-                expected_status=http.client.NOT_FOUND
+                f'GenomicOutreachV2?start_date={fake_date_two}'
             )
 
-        self.assertEqual(resp.json['message'], bad_response)
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp['data'], [])
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
