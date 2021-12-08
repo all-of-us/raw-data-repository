@@ -7,6 +7,7 @@ import pytz
 from rdr_service.dao.database_factory import get_database
 
 _DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%f%z"
 # MySQL uses %i for minutes
 MYSQL_ISO_DATE_FORMAT = "%Y-%m-%dT%H:%i:%SZ"
 _ISODATE_PATTERN = "ISODATE\[([^\]]+)\]"
@@ -29,6 +30,10 @@ def get_sql_and_params_for_array(arr, name_prefix):
 
 def _is_sqlite():
     return get_database().db_type == "sqlite"
+
+
+def parse_datetime_from_iso_format(datetime_str):
+    return datetime.strptime(datetime_str, _ISO_FORMAT)
 
 
 def parse_datetime(datetime_str):
