@@ -1,10 +1,11 @@
 
 
 from rdr_service import clock, config
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob
-from tests.cron_job_tests.test_genomic_pipeline import create_ingestion_test_file
+from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -12,6 +13,12 @@ class GenomicFileIngesterTest(BaseTestCase):
     def setUp(self):
         super(GenomicFileIngesterTest, self).setUp()
         self.bucket_name = 'rdr_fake_genomic_center_a_bucket'
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+        self.member_dao = GenomicSetMemberDao()
 
     def test_setting_correct_num_row_iterations(self):
         config.override_setting(config.GENOMIC_MAX_NUM_INGEST, [3])
@@ -68,5 +75,47 @@ class GenomicFileIngesterTest(BaseTestCase):
 
         distinct_list = list(distinct_sample_ids)
         self.assertEqual(distinct_list.sort(), sample_ids.sort())
+
+    def test_replating_copy(self):
+
+        job_controller = GenomicJobController(job_id=1)
+
+        file_ingester = GenomicFileIngester(
+            job_id=1,
+            _controller=job_controller
+        )
+
+        member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId="11111111",
+            sampleId="222222222222",
+            genomeType="aou_wgs",
+        )
+
+        self.assertTrue(len(self.member_dao.get_all()), 1)
+
+        block_research_reason = 'Sample Swap'
+        genome_type = 'aou_investigation'
+
+        file_ingester.copy_member_for_replating(
+            member=member,
+            genome_type=genome_type,
+            block_research_reason=block_research_reason
+        )
+
+        self.assertTrue(len(self.member_dao.get_all()), 2)
+
+        copy_member = self.member_dao.get(2)
+
+        self.assertEqual(copy_member.collectionTubeId, f'replated_{member.id}')
+
+        self.assertIsNotNone(copy_member.genomeType)
+        self.assertEquals(copy_member.genomeType, genome_type)
+
+        self.assertIsNotNone(copy_member.blockResearchReason)
+        self.assertEquals(copy_member.blockResearchReason, block_research_reason)
+        self.assertEqual(copy_member.blockResearch, 1)
+
+
 
 

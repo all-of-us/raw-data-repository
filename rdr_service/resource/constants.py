@@ -24,6 +24,7 @@ class SchemaID(IntEnum):
     participant_physical_measurements = 2030
     participant_gender = 2040
     participant_race = 2050
+    participant_sexual_orientation = 2051
     participant_consents = 2060
     participant_modules = 2070
     participant_address = 2080

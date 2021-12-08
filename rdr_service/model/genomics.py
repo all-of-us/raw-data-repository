@@ -213,6 +213,7 @@ class GenomicSetMember(Base):
     genomicWorkflowState = Column('genomic_workflow_state',
                                   Enum(GenomicWorkflowState),
                                   default=GenomicWorkflowState.UNSET)
+    genomicWorkflowStateStr = Column('genomic_workflow_state_str', String(64), default="UNSET")
 
     genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
 
@@ -222,6 +223,7 @@ class GenomicSetMember(Base):
 
     # Broad QC Status
     qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
+    qcStatusStr = Column('qc_status_str', String(64), default="UNSET")
 
     # Broad fingerprint file path
     fingerprintPath = Column('fingerprint_path', String(255), nullable=True)
@@ -233,6 +235,11 @@ class GenomicSetMember(Base):
     replatedMemberId = Column('replated_member_id',
                               ForeignKey('genomic_set_member.id'),
                               nullable=True)
+    ignoreFlag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    blockResearch = Column('block_research', SmallInteger, nullable=False, default=0)
+    blockResearchReason = Column('block_research_reason', String(255), nullable=True)
+    blockResults = Column('block_results', SmallInteger, nullable=False, default=0)
+    blockResultsReason = Column('block_results_reason', String(255), nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
@@ -253,6 +260,7 @@ class GenomicJobRun(Base):
 
     jobId = Column('job_id', Enum(GenomicJob),
                    default=GenomicJob.UNSET, nullable=False)
+    jobIdStr = Column('job_id_str', String(64), default="UNSET")
     startTime = Column('start_time', DateTime, nullable=False)
     endTime = Column('end_time', DateTime, nullable=True)
     runStatus = Column('run_status',
@@ -261,6 +269,7 @@ class GenomicJobRun(Base):
     runResult = Column('run_result',
                        Enum(GenomicSubProcessResult),
                        default=GenomicSubProcessResult.UNSET)
+    runResultStr = Column('run_result_str', String(64), default="UNSET")
     resultMessage = Column('result_message', String(150), nullable=True)
 
 
@@ -308,6 +317,7 @@ class GenomicManifestFile(Base):
     modified = Column("modified", UTCDateTime, nullable=False)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
     manifestTypeId = Column('manifest_type_id', Enum(GenomicManifestTypes), nullable=True)
+    manifestTypeIdStr = Column('manifest_type_id_str', String(64), nullable=True)
     filePath = Column('file_path', String(255), nullable=True, index=True)
     fileName = Column('file_name', String(255), nullable=True, index=True)
     bucketName = Column('bucket_name', String(128), nullable=True)
@@ -590,6 +600,7 @@ class GenomicGCValidationMetrics(Base):
     contaminationCategory = Column('contamination_category',
                                    Enum(GenomicContaminationCategory),
                                    default=GenomicSubProcessResult.UNSET)
+    contaminationCategoryStr = Column('contamination_category_str', String(64), default="UNSET")
 
     pipelineId = Column('pipeline_id', String(255), nullable=True)
 
@@ -644,6 +655,10 @@ class GenomicIncident(Base):
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
     data_file_path = Column(String(512))
+    submitted_gc_site_id = Column(String(128), nullable=True)
+    email_notification_sent = Column(SmallInteger, nullable=True, default=0)
+    email_notification_sent_date = Column(DateTime, nullable=True)
+    manifest_file_name = Column(String(512), nullable=True)
 
 
 event.listen(GenomicIncident, 'before_insert', model_insert_listener)
@@ -685,6 +700,7 @@ class GenomicMemberReportState(Base):
                 primary_key=True, autoincrement=True, nullable=False)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     genomic_report_state = Column(Enum(GenomicReportState), default=GenomicReportState.UNSET)
+    genomic_report_state_str = Column(String(64), default="UNSET")
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=True)
     created = Column(DateTime)
     modified = Column(DateTime)

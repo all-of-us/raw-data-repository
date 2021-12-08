@@ -177,7 +177,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             summary = self._merge_schema_dicts(summary, self._prep_modules(p_id, ro_session))
             # prep physical measurements
             summary = self._merge_schema_dicts(summary, self._prep_physical_measurements(p_id, ro_session))
-            # prep race and gender
+            # prep race, gender and sexual orientation
             summary = self._merge_schema_dicts(summary, self._prep_the_basics(p_id, ro_session))
             # prep biobank orders and samples
             summary = self._merge_schema_dicts(summary, self._prep_biobank_info(p_id, summary['biobank_id'],
@@ -599,9 +599,11 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         #       'authored' and 'created' timestamps, but they are not a duplicate response, so we also add
         #       "externalId" to the order_by. 'questionnaireResponseId' is randomly generated and can't be used.
         query = ro_session.query(
+                QuestionnaireResponse.answerHash,
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
-                QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor). \
+                QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor,
+                QuestionnaireHistory.semanticVersion, QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
@@ -615,7 +617,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         min_valid_authored = datetime.datetime(2017, 1, 1, 0, 0, 0)
 
         if results:
-            # Track the last module/consent data dictionaries generated, so we can detect and omit replayed responses
+            # Track the last module/consent data dictionaries, so we can detect and omit replayed responses
+            last_answer_hash = None  # Track the answer hash of the payload of the last response processed (PDR-484)
             last_mod_processed = {}
             last_consent_processed = {}
             for row in results:
@@ -640,14 +643,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'response_status_id': int(QuestionnaireResponseStatus(row.status)),
                     'questionnaire_response_id': row.questionnaireResponseId,
                     'consent': 1 if module_name in _consent_module_question_map else 0,
-                    'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None
+                    'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None,
+                    'semantic_version': row.semanticVersion,
+                    'irb_mapping': row.irbMapping
                 }
 
                 mod_ca = dict()
-
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
-
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
                     if qnans:
                         qnan = BQRecord(schema=None, data=qnans)  # use only most recent questionnaire.
@@ -705,19 +708,18 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         mod_ca['answer_id'] = consent['consent_value_id']
 
                         # Compare against the last consent response processed to filter replays/duplicates
-                        if not self.is_replay(last_consent_processed, consent,
+                        if not self.is_replay(last_consent_processed, last_answer_hash,
+                                              consent, row.answerHash,
                                               ignore_keys=['consent_module_created', 'questionnaire_response_id']):
                             consents.append(consent)
                             consent_added = True
-
                         last_consent_processed = consent.copy()
 
-                # consent_added == True means we already know it wasn't a replayed consent
-                if consent_added or not self.is_replay(last_mod_processed, module_data,
+                # consent_added == True means we already know it wasn't a replayed response
+                if consent_added or not self.is_replay(last_mod_processed, last_answer_hash,
+                                                       module_data, row.answerHash,
                                                        ignore_keys=['module_created', 'questionnaire_response_id']):
-
                     modules.append(module_data)
-
                     # Find module in ParticipantActivity Enum via a case-insensitive way.
                     mod_found = False
                     for en in ParticipantEventEnum:
@@ -733,7 +735,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                         logging.debug(f'Key ({module_name}) not found in ParticipantActivity enum.')
 
                 last_mod_processed = module_data.copy()
-
+                last_answer_hash = row.answerHash
 
         if len(modules) > 0:
             # remove any duplicate modules and consents because of replayed responses.
@@ -782,9 +784,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if qnan.get('GenderIdentity_SexualityCloserDescription'):
             for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
-
         if len(gl) > 0:
             data['genders'] = gl
+
+        so = list()
+        if qnan.get('TheBasics_SexualOrientation'):
+            for val in qnan.get('TheBasics_SexualOrientation').split(','):
+                so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
+        if len(so) > 0:
+            data['sexual_orientations'] = so
 
         data['education'] = qnan.get('EducationLevel_HighestGrade')
         data['education_id'] = self._lookup_code_id(qnan.get('EducationLevel_HighestGrade'), ro_session)
@@ -1398,35 +1406,43 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         else:
             return rtn_data
 
-
     @staticmethod
-    def is_replay(prev_data_dict, data_dict, ignore_keys=None):
+    def is_replay(prev_data_dict, prev_answer_hash,
+                  curr_data_dict, curr_answer_hash,
+                  ignore_keys=[]):
         """
         Compares two module or consent data dictionaries to identify replayed responses
         Replayed/resent responses are usually the result of trying to resolve a data issue, and are basically
         duplicate QuestionnaireResponse payloads except for differing creation timestamps and questionnaire response ids
 
-        :param prev_data_dict: data dictionary to compare
-        :param data_dict: data dictionary to compare
+        :param prev_data_dict: previous response data dictionary to compare
+        :param curr_data_dict: current response data dictionary to compare
+        :param curr_answer_hash: value from the current response's QuestionnaireResponse.answerHash field
+        :param prev_answer_hash: value from the previous response's QuestionnaireResponse.answerHash field
         :param ignore_keys:  List of dict fields that should be excluded from matching.  E.g., created timestamp field
         :return:  Boolean, True if the dictionaries match on everything except the excluded keys
         """
         # Confirm both data dictionaries are populated
-        if not bool(prev_data_dict) or not bool(data_dict):
+        if not bool(prev_data_dict) or not bool(curr_data_dict):
             return False
 
-        # Validate we're comparing "like" dictionaries
-        prev_data_dict_keys = sorted(list(prev_data_dict.keys()))
-        data_dict_keys = sorted(list(data_dict.keys()))
+        # Validate we're comparing "like" dictionaries (disregarding keys to be ignored)
+        prev_data_dict_keys = sorted(list(k for k in prev_data_dict.keys() if k not in ignore_keys))
+        data_dict_keys = sorted(list(k for k in curr_data_dict.keys() if k not in ignore_keys))
         if prev_data_dict_keys != data_dict_keys:
             return False
 
-        # Content must match on everything except the specifically excluded field names
-        for key in data_dict.keys():
-            if ignore_keys and key in ignore_keys:
-                continue
-            if data_dict[key] != prev_data_dict[key]:
+        # Remaining key/value pairs must match for the two dictionaries
+        for key in data_dict_keys:
+            if curr_data_dict[key] != prev_data_dict[key]:
                 return False
+
+        # PDR-484:  Still possible for two responses to match on all the key/value pairs we include in the
+        # PDR participant module dicts (summary/metadata details), but have distinct response JSON payloads.  Can use
+        # the QuestionnaireResponse.answerHash values to confirm non-replays, provided both responses had an answerHash
+        # calculated for them
+        if prev_answer_hash and curr_answer_hash and (prev_answer_hash != curr_answer_hash):
+            return False
 
         return True
 
@@ -1440,7 +1456,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         data = dict()
 
-        # ubr_geography - note: we only need a ConsentPII submission for ubr_geography.
+        #### ConsentPII UBR calculations.
+        # ubr_geography
         addresses = summary.get('addresses', [])
         consent_date = summary.get('enrl_participant_time', None)
         if addresses and consent_date:
@@ -1450,14 +1467,20 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     zip_code = addr.get('addr_zip', None)
                     break
             data['ubr_geography'] = ubr.ubr_geography(consent_date.date(), zip_code)
+        # ubr_age_at_consent
+        data['ubr_age_at_consent'] = \
+            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
+        # ubr_overall - This should be calculated here in case there is no TheBasics response available.
+        data['ubr_overall'] = ubr.ubr_overall(data)
 
+        #### TheBasics UBR calculations.
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
         #       are going to do our own query to get the first TheBasics submission after consent. Due to
         #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
         #       'external_id' in the order by clause.
         sql = """
             select questionnaire_response_id
-            from questionnaire_response qr 
+            from questionnaire_response qr
                 inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                 inner join code c on qc.code_id = c.code_id
             where qr.participant_id = :p_id and c.value = 'TheBasics'
@@ -1487,11 +1510,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_income'] = ubr.ubr_income(qnan.get('Income_AnnualIncome', None))
         # ubr_disability
         data['ubr_disability'] = ubr.ubr_disability(qnan)
-        # ubr_age_at_consent
-        data['ubr_age_at_consent'] = \
-            ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
         # ubr_overall
-        data['ubr_overall'] = max([v for v in data.values()])
+        data['ubr_overall'] = ubr.ubr_overall(data)
 
         return data
 

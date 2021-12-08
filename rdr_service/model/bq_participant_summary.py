@@ -78,6 +78,9 @@ class BQModuleStatusSchema(BQSchema):
     mod_consent_expired = BQField('mod_consent_expired', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     mod_non_participant_answer = BQField('mod_non_participant_answer', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
+    mod_semantic_version = BQField('mod_semantic_version', BQFieldTypeEnum.STRING,
+                                         BQFieldModeEnum.NULLABLE)
+    mod_irb_mapping = BQField('mod_irb_mapping', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):
@@ -113,6 +116,14 @@ class BQGenderSchema(BQSchema):
     """
     gender = BQField('gender', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     gender_id = BQField('gender_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+
+class BQSexualOrientationSchema(BQSchema):
+    """
+    Participant race information
+    """
+    sexual_orientation = BQField('sexual_orientation', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    sexual_orientation_id = BQField('sexual_orientation_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPhysicalMeasurements(BQSchema):
@@ -372,6 +383,8 @@ class BQParticipantSummarySchema(BQSchema):
     ubr_disability = BQField('ubr_disability', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ubr_age_at_consent = BQField('ubr_age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
     ubr_overall = BQField('ubr_overall', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+
+    sexual_orientations = BQRecordField('sexual_orientations', schema=BQSexualOrientationSchema)
 
 
 class BQParticipantSummary(BQTable):

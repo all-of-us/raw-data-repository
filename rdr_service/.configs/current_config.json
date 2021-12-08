@@ -226,6 +226,7 @@
     "array_reconciliation_workflow": 1,
     "daily_ingestion_summary": 1,
     "daily_incident_summary": 1,
+    "daily_validation_emails": 1,
     "feedback_record_reconciliation_workflow": 1,
     "missing_files_clean_up_workflow": 1,
     "missing_files_resolve_workflow": 1,
@@ -245,5 +246,13 @@
   },
   "hpro_consent_bucket": [
     "healthpro-consents-sandbox"
-  ]
+  ],
+  "a1_limit": [10000],
+  "genomic_daily_validation_emails": {
+    "send_emails": 1,
+    "recipients": {
+      "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
+      "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
+    }
+  }
 }

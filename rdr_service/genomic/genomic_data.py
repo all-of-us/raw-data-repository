@@ -2,7 +2,7 @@ import sqlalchemy
 from sqlalchemy import distinct
 from sqlalchemy.orm import aliased
 
-from rdr_service.config import GENOME_TYPE_ARRAY, GENOME_TYPE_WGS
+from rdr_service import config
 from rdr_service.genomic_enums import GenomicSubProcessResult, GenomicWorkflowState, GenomicManifestTypes, \
     GenomicContaminationCategory
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -55,7 +55,16 @@ class GenomicQueryClass:
                     GenomicGCValidationMetrics.processingStatus,
                     Participant.researchId,
                     GenomicSetMember.gcManifestSampleSource,
-                    GenomicGCValidationMetrics.pipelineId
+                    GenomicGCValidationMetrics.pipelineId,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.ai_an == 'Y',
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == 1,
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    GenomicSetMember.blockResearchReason
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -73,7 +82,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -82,7 +91,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                (GenomicSetMember.aw3ManifestJobRunID.is_(None))
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None) &
+                 GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
@@ -109,7 +119,16 @@ class GenomicQueryClass:
                     GenomicSetMember.sampleId,
                     GenomicSetMember.gcManifestSampleSource,
                     GenomicGCValidationMetrics.mappedReadsPct,
-                    GenomicGCValidationMetrics.sexPloidy
+                    GenomicGCValidationMetrics.sexPloidy,
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.ai_an == 'Y',
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    sqlalchemy.func.IF(
+                        GenomicSetMember.blockResearch == 1,
+                        sqlalchemy.sql.expression.literal("True"),
+                        sqlalchemy.sql.expression.literal("False")),
+                    GenomicSetMember.blockResearchReason
                 ]
             ).select_from(
                 sqlalchemy.join(
@@ -127,7 +146,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == config.GENOME_TYPE_WGS) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
@@ -139,7 +158,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.craiReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfMd5Received == 1) &
-                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']))
+                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']) &
+                 GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                 [
@@ -234,8 +254,9 @@ class GenomicQueryClass:
                 ParticipantSummary.consentForGenomicsRORAuthored,
                 GenomicGCValidationMetrics.chipwellbarcode,
                 sqlalchemy.func.upper(GenomicSetMember.gcSiteId),
-            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(10000)
-                                          ),
+            ).order_by(ParticipantSummary.consentForGenomicsRORAuthored).limit(
+                config.getSetting(config.A1_LIMIT)
+            )),
             GenomicManifestTypes.GEM_A3: (sqlalchemy.select(
                 [
                     GenomicSetMember.biobankId,
@@ -397,7 +418,7 @@ class GenomicQueryClass:
             """
 
     @staticmethod
-    def remaining_saliva_participants(config):
+    def remaining_saliva_participants(query_config):
         is_ror = None
         originated = {
             # at home
@@ -410,22 +431,22 @@ class GenomicQueryClass:
             }
         }
 
-        if config['ror'] >= 0:
+        if query_config['ror'] >= 0:
             # unset = 0
             # submitted = 1
             # submitted_not_consent = 2
-            if config['ror'] == 0:
+            if query_config['ror'] == 0:
                 is_ror = """AND (ps.consent_for_genomics_ror = {}  \
-                    OR ps.consent_for_genomics_ror IS NULL) """.format(config['ror'])
+                    OR ps.consent_for_genomics_ror IS NULL) """.format(query_config['ror'])
             else:
-                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(config['ror'])
+                is_ror = 'AND ps.consent_for_genomics_ror = {}'.format(query_config['ror'])
 
         # in clinic
         is_clinic_id_null = "AND mk.id IS NULL" \
-            if config['origin'] and config['origin'] == 2 else ""
+            if query_config['origin'] and query_config['origin'] == 2 else ""
 
-        is_home_or_clinic = originated[config['origin']]['sql'] \
-            if config['origin'] else ""
+        is_home_or_clinic = originated[query_config['origin']]['sql'] \
+            if query_config['origin'] else ""
 
         # Base query for only saliva samples in RDR w/options passed in
         return """
@@ -576,9 +597,9 @@ class GenomicQueryClass:
                 WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
               END AS valid_age,
               CASE
-                WHEN c.value = "SexAtBirth_Male" THEN "M"
-                WHEN c.value = "SexAtBirth_Female" THEN "F"
-                ELSE "NA"
+                WHEN c.value = 'SexAtBirth_Male' THEN 'M'
+                WHEN c.value = 'SexAtBirth_Female' THEN 'F'
+                ELSE 'NA'
               END as sab,
               CASE
                 WHEN ps.consent_for_genomics_ror = :general_consent_param THEN 1 ELSE 0
@@ -631,7 +652,7 @@ class GenomicQueryClass:
                 AND ssed.test = oeds.test
         WHERE TRUE
             and ssed.biobank_id = :bid_param
-            and ssed.test in ("1ED04", "1ED10")
+            and ssed.test in ('1ED04', '1ED10')
             and ssed.status < 13
         ORDER BY oeds.collected DESC
         """
@@ -647,17 +668,17 @@ class GenomicQueryClass:
             FROM biobank_order osal
                 JOIN biobank_order_identifier salid ON osal.biobank_order_id = salid.biobank_order_id
                 JOIN biobank_ordered_sample sal2 ON osal.biobank_order_id = sal2.order_id
-                    AND sal2.test = "1SAL2"
+                    AND sal2.test = '1SAL2'
                 JOIN biobank_stored_sample sssal ON salid.value = sssal.biobank_order_identifier
             WHERE TRUE
                 and sssal.biobank_id = :bid_param
                 and sssal.status < 13
-                and sssal.test = "1SAL2"
+                and sssal.test = '1SAL2'
                 and osal.finalized_time = (
                      SELECT MAX(o.finalized_time)
                      FROM biobank_ordered_sample os
                          JOIN biobank_order o ON o.biobank_order_id = os.order_id
-                     WHERE os.test = "1SAL2"
+                     WHERE os.test = '1SAL2'
                              AND o.participant_id = :pid_param
                          GROUP BY o.participant_id
                    )
@@ -686,9 +707,9 @@ class GenomicQueryClass:
             WHEN ps.date_of_birth < DATE_SUB(now(), INTERVAL :dob_param YEAR) THEN 1 ELSE 0
           END AS valid_age,
           CASE
-            WHEN c.value = "SexAtBirth_Male" THEN "M"
-            WHEN c.value = "SexAtBirth_Female" THEN "F"
-            ELSE "NA"
+            WHEN c.value = 'SexAtBirth_Male' THEN 'M'
+            WHEN c.value = 'SexAtBirth_Female' THEN 'F'
+            ELSE 'NA'
           END as sab,
           CASE
             WHEN ps.consent_for_genomics_ror = 1 THEN 1 ELSE 0
@@ -815,27 +836,6 @@ class GenomicQueryClass:
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
-            """
-
-        query_params = {
-            "from_date": from_date
-        }
-
-        return query_sql, query_params
-
-    @staticmethod
-    def dq_report_incident_detail(from_date):
-        query_sql = """
-                # Incident Detail Report Query
-            SELECT code
-                , created
-                , biobank_id
-                , genomic_set_member_id
-                , source_job_run_id
-                , source_file_processed_id
-            FROM genomic_incident
-            WHERE created >= :from_date
-            ORDER BY code, created
             """
 
         query_params = {

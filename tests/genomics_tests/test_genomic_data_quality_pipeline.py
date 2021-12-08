@@ -1,8 +1,9 @@
 # Tests for the Genomics Data Quality Pipeline
 import mock, datetime, pytz
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
+from rdr_service.dao.genomics_dao import GenomicIncidentDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     GenomicManifestTypes, GenomicIncidentCode
 from tests.helpers.unittest_base import BaseTestCase
@@ -71,7 +72,8 @@ class GenomicDataQualityComponentTest(BaseTestCase):
         self.assertEqual(exp_from_date_d, report_def_d.from_date)
         self.assertEqual(exp_from_date_w, report_def_w.from_date)
 
-    def test_reporting_component_get_report_def_query(self):
+    @staticmethod
+    def test_reporting_component_get_report_def_query():
         rc = ReportingComponent()
 
         # Report defs to test (QUERY, LEVEL, TARGET, TIME_FRAME)
@@ -138,6 +140,7 @@ class GenomicDataQualityComponentTest(BaseTestCase):
 class GenomicDataQualityReportTest(BaseTestCase):
     def setUp(self, with_data=False, with_consent_codes=False) -> None:
         super().setUp()
+        self.incident_dao = GenomicIncidentDao()
 
     def test_daily_ingestion_summary(self):
         # Set up test data
@@ -181,7 +184,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             uploadDate=clock.CLOCK.now(),
-            manifestTypeId=GenomicManifestTypes.BIOBANK_GC,
+            manifestTypeId=GenomicManifestTypes.AW1,
             filePath=aw1_manifest_path,
             fileName=aw1_file_name,
             bucketName=bucket_name,
@@ -195,7 +198,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             uploadDate=clock.CLOCK.now(),
-            manifestTypeId=GenomicManifestTypes.GC_DRC,
+            manifestTypeId=GenomicManifestTypes.AW2,
             filePath=aw2_manifest_path,
             fileName=aw2_file_name,
             bucketName=bucket_name,
@@ -329,3 +332,183 @@ class GenomicDataQualityReportTest(BaseTestCase):
         expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
+
+    def test_daily_resolved_manifests_report(self):
+        file_name = 'test_file_name.csv'
+        bucket_name = 'test_bucket'
+        sub_folder = 'test_subfolder'
+
+        from_date = clock.CLOCK.now() - datetime.timedelta(days=1)
+
+        with clock.FakeClock(from_date):
+            gen_job_run = \
+                self.data_generator.create_database_genomic_job_run(
+                    jobId=GenomicJob.METRICS_INGESTION,
+                    startTime=clock.CLOCK.now(),
+                    runResult=GenomicSubProcessResult.SUCCESS
+                )
+
+            gen_processed_file = \
+                self.data_generator.create_database_genomic_file_processed(
+                    runId=gen_job_run.id,
+                    startTime=clock.CLOCK.now(),
+                    filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+                    bucketName=bucket_name,
+                    fileName=file_name,
+                )
+
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run.id,
+                source_file_processed_id=gen_processed_file.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
+            )
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in self.incident_dao.get_all()],
+            _type='resolved'
+        )
+
+        with clock.FakeClock(from_date):
+            with DataQualityJobController(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED) as controller:
+                report_output = controller.execute_workflow()
+
+        expected_report = "```Daily Resolved Summary\n"
+        expected_report += "jobId    filePath    fileName    status\n"
+        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    test_file_name.csv " \
+                           "   RESOLVED"
+        expected_report += "\n```"
+
+        self.assertEqual(expected_report, report_output)
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_send_daily_validation_emails(self, email_mock):
+
+        job_id = 'METRICS_INGESTION'
+        file_name = 'test_file_name'
+        bucket_name = 'test_bucket'
+        sub_folder = 'test_subfolder'
+
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
+
+        with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
+            controller.execute_workflow()
+
+        self.assertEqual(email_mock.call_count, len(current_incidents_for_emails))
+
+        today = clock.CLOCK.now()
+
+        from_date = today - datetime.timedelta(days=1)
+        from_date = from_date + datetime.timedelta(hours=6)
+        from_date = from_date.replace(microsecond=0)
+
+        gen_job_run_one = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_INGESTION,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file_one = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run_one.id,
+            startTime=clock.CLOCK.now(),
+            filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+            bucketName=bucket_name,
+            fileName=file_name,
+        )
+
+        with clock.FakeClock(from_date):
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run_one.id,
+                source_file_processed_id=gen_processed_file_one.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{job_id}: File name {file_name} has failed validation due to an"
+                        f" incorrect file name.",
+                submitted_gc_site_id='bcm'
+            )
+
+        gen_job_run_two = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_INGESTION,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_processed_file_two = self.data_generator.create_database_genomic_file_processed(
+            runId=gen_job_run_two.id,
+            startTime=clock.CLOCK.now(),
+            filePath=f"{bucket_name}/{sub_folder}/{file_name}",
+            bucketName=bucket_name,
+            fileName=file_name,
+        )
+
+        with clock.FakeClock(from_date):
+            self.data_generator.create_database_genomic_incident(
+                source_job_run_id=gen_job_run_two.id,
+                source_file_processed_id=gen_processed_file_two.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
+                message=f"{job_id}: File structure of BCM_AoU_SEQ_DataManifest_02262021_008v2.csv is not valid. "
+                        f"Missing fields: ['mappedreadspct', 'samplesource']",
+                submitted_gc_site_id='jh'
+            )
+
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
+
+        self.assertEqual(len(current_incidents_for_emails), 2)
+
+        with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
+            controller.execute_workflow()
+
+        email_config = config.getSettingJson(config.GENOMIC_DAILY_VALIDATION_EMAILS)
+
+        self.assertEqual(email_mock.call_count, len(current_incidents_for_emails))
+
+        call_args = email_mock.call_args_list
+        self.assertEqual(len(call_args), len(current_incidents_for_emails))
+
+        config_recipients = [obj for obj in email_config['recipients'].values()]
+
+        self.assertEqual(len(config_recipients), len(set([obj.submitted_gc_site_id for obj in
+                                                          current_incidents_for_emails])))
+
+        for call_arg in call_args:
+            recipient_called_list = call_arg.args[0].recipients
+            plain_text = call_arg.args[0].plain_text_content
+
+            self.assertTrue(recipient_called_list in config_recipients)
+            self.assertTrue(job_id not in plain_text)
+            self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
+            self.assertEqual('All of Us GC/DRC Manifest Ingestion Failure', call_arg.args[0].subject)
+
+        current_mock_count = email_mock.call_count
+
+        all_incidents = self.incident_dao.get_all()
+
+        self.assertTrue(all(obj.email_notification_sent == 1 and obj.email_notification_sent_date is not None for obj
+                            in all_incidents))
+
+        for incident in all_incidents:
+            incident.email_notification_sent = 0
+            self.incident_dao.update(incident)
+
+        current_incidents_for_emails = self.incident_dao.get_new_ingestion_incidents()
+
+        # should be reset back to 2
+        self.assertEqual(len(current_incidents_for_emails), 2)
+
+        email_config = {
+            "genomic_daily_validation_emails": {
+                "send_emails": 0
+            }
+        }
+        config.override_setting(config.GENOMIC_DAILY_VALIDATION_EMAILS, email_config)
+
+        with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
+            controller.execute_workflow()
+
+        self.assertEqual(email_mock.call_count, current_mock_count)
+
+        # test for kwargs being sent doesnt throw error
+        with DataQualityJobController(GenomicJob.DAILY_SEND_VALIDATION_EMAILS) as controller:
+            controller.execute_workflow(slack=True)
+
+        self.assertEqual(email_mock.call_count, current_mock_count)
+

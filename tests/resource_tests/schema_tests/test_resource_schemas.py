@@ -177,6 +177,11 @@ class ResourceSchemaTest(BaseTestCase):
                                      rschemas.participant.RaceSchema(),
                                      bq_participant_summary.BQRaceSchema())
 
+    def test_sexual_orientation_resource_schema(self):
+        self._verify_resource_schema('SexualOrientationSchema',
+                                     rschemas.participant.SexualOrientationSchema(),
+                                     bq_participant_summary.BQSexualOrientationSchema())
+
     def test_pairing_history_resource_schema(self):
         self._verify_resource_schema('PairingHistorySchema',
                                      rschemas.participant.PairingHistorySchema(),

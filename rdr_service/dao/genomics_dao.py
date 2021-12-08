@@ -15,7 +15,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT
+from rdr_service.config import GAE_PROJECT, GENOMIC_BLOCKLISTS
+from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_manifest_file_update
@@ -393,8 +394,9 @@ class GenomicSetMemberDao(UpdatableDao):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.genomeType == genome_type,
-                GenomicSetMember.genomicWorkflowState.in_(states)
-            ).one_or_none()
+                GenomicSetMember.genomicWorkflowState.in_(states),
+                GenomicSetMember.sampleId.is_(None),
+            ).first()
         return member
 
     def get_member_from_sample_id(self, sample_id, genome_type=None):
@@ -472,7 +474,29 @@ class GenomicSetMemberDao(UpdatableDao):
             ).one_or_none()
         return member
 
-    def get_member_from_collection_tube(self, tube_id, genome_type):
+    def get_member_from_collection_tube(self, tube_id, genome_type, state=None):
+        """
+        Retrieves a genomic set member record matching the collection_tube_id
+        Needs a genome type
+        :param state:
+        :param genome_type: aou_wgs, aou_array, aou_cvl
+        :param tube_id:
+        :return: a GenomicSetMember object
+        """
+        with self.session() as session:
+            member = session.query(GenomicSetMember).filter(
+                GenomicSetMember.collectionTubeId == tube_id,
+                GenomicSetMember.genomeType == genome_type,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            )
+            if state:
+                member = member.filter(
+                    GenomicSetMember.genomicWorkflowState == state
+                )
+            member = member.first()
+        return member
+
+    def get_member_from_collection_tube_with_null_sample_id(self, tube_id, genome_type):
         """
         Retrieves a genomic set member record matching the collection_tube_id
         Needs a genome type
@@ -485,6 +509,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 GenomicSetMember.collectionTubeId == tube_id,
                 GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+                GenomicSetMember.sampleId.is_(None)
             ).first()
         return member
 
@@ -688,6 +713,67 @@ class GenomicSetMemberDao(UpdatableDao):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
+    def update_member_blocklists(self, member):
+        blocklists_config = config.getSettingJson(GENOMIC_BLOCKLISTS, {})
+
+        if not blocklists_config:
+            return
+
+        blocklists_map = {
+            'block_research': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResearch',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResearchReason',
+                        'value': None
+                    }
+                ],
+                'block_items': [
+                    {
+                        'conditional': True if member.ai_an == 'Y' else False,
+                        'value_string': 'aian'
+                    }
+                ]
+            },
+            'block_results': {
+                'block_attributes': [
+                    {
+                        'key': 'blockResults',
+                        'value': 1
+                    },
+                    {
+                        'key': 'blockResultsReason',
+                        'value': None
+                    }
+                ],
+            }
+        }
+        try:
+            for block_map_type, block_map_type_config in blocklists_map.items():
+                blocklist_config_type = blocklists_config.get(block_map_type, None)
+
+                for items in block_map_type_config.get('block_items', []):
+                    value_string = items.get('value_string')
+
+                    if items.get('conditional') is True and blocklist_config_type.get(value_string):
+
+                        for attr in block_map_type_config.get('block_attributes'):
+                            value = value_string if not attr['value'] else attr['value']
+                            if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
+                                setattr(member, attr['key'], value)
+
+                        super(GenomicSetMemberDao, self).update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        # pylint: disable=broad-except
+        except Exception as e:
+            logging.error(e)
+            return GenomicSubProcessResult.ERROR
+
     def batch_update_member_field(
         self,
         member_ids,
@@ -728,6 +814,7 @@ class GenomicSetMemberDao(UpdatableDao):
         """
 
         member.genomicWorkflowState = new_state
+        member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
@@ -921,6 +1008,7 @@ class GenomicSetMemberDao(UpdatableDao):
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=record.genome_type,
             genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name,
             gcSiteId=record.site_name,
             packageId=record.package_id,
             sampleId=record.sample_id,
@@ -948,25 +1036,31 @@ class GenomicSetMemberDao(UpdatableDao):
 
         return self.insert(new_member_obj)
 
-    def update(self, obj):
+    def update_member_wf_states(self, member):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
             GenomicWorkflowState.GEM_RPT_DELETED
         )
-        if obj.genomicWorkflowState and obj.genomicWorkflowState in gem_wf_states:
-            state = self.report_state_dao.get_report_state_from_wf_state(obj.genomicWorkflowState)
-            report = self.report_state_dao.get_from_member_id(obj.id)
+        if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
+            state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
+            report = self.report_state_dao.get_from_member_id(member.id)
             if not report:
-                report_obj = GenomicMemberReportState()
-                report_obj.genomic_set_member_id = obj.id
-                report_obj.genomic_report_state = state
-                report_obj.participant_id = obj.participantId
-                report_obj.module = 'GEM'
+                report_obj = GenomicMemberReportState(
+                    genomic_set_member_id=member.id,
+                    genomic_report_state=state,
+                    genomic_report_state_str=state.name,
+                    participant_id=member.participantId,
+                    module='GEM'
+                )
                 self.report_state_dao.insert(report_obj)
             else:
                 report.genomic_report_state = state
                 self.report_state_dao.update(report)
+
+    def update(self, obj):
+        self.update_member_wf_states(obj)
+        self.update_member_blocklists(obj)
         super(GenomicSetMemberDao, self).update(obj)
 
 
@@ -1005,6 +1099,7 @@ class GenomicJobRunDao(UpdatableDao):
         """
         job_run = GenomicJobRun()
         job_run.jobId = job_id
+        job_run.jobIdStr = job_id.name
         job_run.startTime = clock.CLOCK.now()
 
         return self.insert(job_run)
@@ -1026,6 +1121,7 @@ class GenomicJobRunDao(UpdatableDao):
                 .values(
                 {
                     GenomicJobRun.runResult: sqlalchemy.bindparam("run_result_param"),
+                    GenomicJobRun.runResultStr: sqlalchemy.bindparam("run_result_str_param"),
                     GenomicJobRun.runStatus: sqlalchemy.bindparam("run_status_param"),
                     GenomicJobRun.endTime: sqlalchemy.bindparam("end_time_param"),
                 }
@@ -1034,6 +1130,7 @@ class GenomicJobRunDao(UpdatableDao):
         query_params = {
             "run_id_param": run_id,
             "run_result_param": result,
+            "run_result_str_param": result.name,
             "run_status_param": status,
             "end_time_param": clock.CLOCK.now()
         }
@@ -1191,6 +1288,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
             'contamination': 'contamination',
             'mappedReadsPct': 'mappedreadspct',
             'contaminationCategory': 'contamination_category',
+            'contaminationCategoryStr': 'contamination_category_str',
             'sexConcordance': 'sexconcordance',
             'sexPloidy': 'sexploidy',
             'alignedQ30Bases': 'alignedq30bases',
@@ -1440,13 +1538,15 @@ class GenomicPiiDao(BaseDao):
         """
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.biobankId,
-                              ParticipantSummary.firstName,
-                              ParticipantSummary.lastName,
-                              ParticipantSummary.consentForGenomicsROR,
-                              ParticipantSummary.dateOfBirth,
-                              GenomicSetMember.sexAtBirth, )
-                    .join(
+                session.query(
+                    GenomicSetMember.biobankId,
+                    ParticipantSummary.firstName,
+                    ParticipantSummary.lastName,
+                    ParticipantSummary.consentForGenomicsROR,
+                    ParticipantSummary.dateOfBirth,
+                    GenomicSetMember.sexAtBirth
+                )
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
@@ -1489,9 +1589,12 @@ class GenomicOutreachDao(BaseDao):
             raise BadRequest("Resource is missing required fields: status, date")
 
         member = GenomicSetMember(participantId=participant_id,
+                                  biobankId=p.biobankId,
                                   genomicSetId=1,
                                   genomeType=genome_type,
                                   genomicWorkflowState=report_state,
+                                  genomicWorkflowStateStr=report_state.name,
+                                  gemPass='Y',
                                   genomicWorkflowStateModifiedTime=modified_date)
 
         return member
@@ -1539,9 +1642,11 @@ class GenomicOutreachDao(BaseDao):
         """
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.participantId,
-                              GenomicSetMember.genomicWorkflowState)
-                    .join(
+                session.query(
+                    GenomicSetMember.participantId,
+                    GenomicSetMember.genomicWorkflowState
+                )
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
@@ -1567,9 +1672,10 @@ class GenomicOutreachDao(BaseDao):
 
         with self.session() as session:
             return (
-                session.query(GenomicSetMember.participantId,
-                              GenomicSetMember.genomicWorkflowState)
-                    .join(
+                session.query(
+                    GenomicSetMember.participantId,
+                    GenomicSetMember.genomicWorkflowState)
+                .join(
                     ParticipantSummary,
                     GenomicSetMember.participantId == ParticipantSummary.participantId,
                 ).filter(
@@ -1745,15 +1851,15 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )
-                        .join(
+                    .join(
                         ParticipantSummary,
                         ParticipantSummary.participantId == GenomicMemberReportState.participant_id
                     )
-                        .join(
+                    .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicMemberReportState.participant_id
                     )
-                        .filter(
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
@@ -1855,7 +1961,7 @@ class GenomicManifestFileDao(BaseDao):
 
     def count_records_for_manifest_file(self, manifest_file_obj):
         with self.session() as session:
-            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.BIOBANK_GC:
+            if manifest_file_obj.manifestTypeId == GenomicManifestTypes.AW1:
                 return session.query(
                     functions.count(GenomicSetMember.id)
                 ).join(
@@ -2158,12 +2264,22 @@ class GenomicAW2RawDao(BaseDao):
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
+
 class GenomicIncidentDao(UpdatableDao):
     validate_version_match = False
 
     def __init__(self):
         super(GenomicIncidentDao, self).__init__(
             GenomicIncident, order_by_ending=['id'])
+        self.ingestion_job_ids = [
+            GenomicJob.METRICS_INGESTION,
+            GenomicJob.AW1_MANIFEST,
+            GenomicJob.AW1F_MANIFEST,
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
+        ]
 
     def get_id(self, obj):
         return obj.id
@@ -2212,6 +2328,109 @@ class GenomicIncidentDao(UpdatableDao):
             value = value[:max_length]
 
         return is_truncated, value
+
+    def get_new_ingestion_incidents(self, from_days=1):
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.id,
+                GenomicIncident.code,
+                GenomicIncident.submitted_gc_site_id,
+                GenomicIncident.message,
+                GenomicJobRun.jobId,
+                GenomicFileProcessed.filePath,
+                GenomicFileProcessed.fileName
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicIncident.source_job_run_id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.email_notification_sent == 0,
+                GenomicJobRun.jobId.in_(self.ingestion_job_ids),
+                GenomicIncident.source_file_processed_id.isnot(None),
+                GenomicIncident.source_job_run_id.isnot(None),
+                GenomicIncident.submitted_gc_site_id.isnot(None)
+            )
+
+            if from_days:
+                from_date = clock.CLOCK.now() - timedelta(days=from_days)
+                from_date = from_date.replace(microsecond=0)
+
+                incidents = incidents.filter(
+                    GenomicIncident.created >= from_date
+                )
+            return incidents.all()
+
+    def batch_update_incident_fields(self, ids, _type='email'):
+        value_update_map = {
+            'email': {
+                'email_notification_sent': 1,
+                'email_notification_sent_date': datetime.utcnow()
+            },
+            'resolved': {
+                'status': GenomicIncidentStatus.RESOLVED.name
+            }
+        }
+
+        value_dict = value_update_map[_type]
+
+        if not type(ids) is list:
+            ids = [ids]
+
+        for _id in ids:
+            current_incident = self.get(_id)
+            for key, value in value_dict.items():
+                setattr(current_incident, key, value)
+
+            self.update(current_incident)
+
+    def get_open_incident_by_file_name(self, filename):
+        with self.session() as session:
+            return session.query(
+                GenomicIncident
+            ).filter(
+                GenomicIncident.manifest_file_name == filename,
+                GenomicIncident.status == GenomicIncidentStatus.OPEN.name
+            ).all()
+
+    def get_daily_report_resolved_manifests(self, from_date):
+        with self.session() as session:
+            incidents = session.query(
+                GenomicJobRun.jobId,
+                GenomicFileProcessed.filePath,
+                GenomicFileProcessed.fileName,
+                GenomicIncident.status
+            ).join(
+                GenomicJobRun,
+                GenomicJobRun.id == GenomicIncident.source_job_run_id
+            ).join(
+                GenomicFileProcessed,
+                GenomicFileProcessed.id == GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.status == GenomicIncidentStatus.RESOLVED.name,
+                GenomicJobRun.jobId.in_(self.ingestion_job_ids),
+                GenomicIncident.source_file_processed_id.isnot(None),
+                GenomicIncident.source_job_run_id.isnot(None),
+                GenomicIncident.created >= from_date.replace(microsecond=0)
+            )
+
+            return incidents.all()
+
+    def get_daily_report_incidents(self, from_date):
+        with self.session() as session:
+            incidents = session.query(
+                GenomicIncident.code,
+                GenomicIncident.created,
+                GenomicIncident.biobank_id,
+                GenomicIncident.genomic_set_member_id,
+                GenomicIncident.source_job_run_id,
+                GenomicIncident.source_file_processed_id
+            ).filter(
+                GenomicIncident.created >= from_date.replace(microsecond=0)
+            ).order_by(GenomicIncident.created.desc())
+
+            return incidents.all()
 
 
 class GenomicCloudRequestsDao(UpdatableDao):
@@ -2446,18 +2665,19 @@ class GemToGpMigrationDao(BaseDao):
         super(GemToGpMigrationDao, self).__init__(
             GemToGpMigration, order_by_ending=['id'])
 
-    @staticmethod
-    def prepare_obj(row, job_run, file_path):
-        return GemToGpMigration(
+    def prepare_obj(self, row, job_run, file_path):
+        return self.to_dict(GemToGpMigration(
             file_path=file_path,
             run_id=job_run,
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
             participant_id=row.participantId,
             informing_loop_status='success',
             informing_loop_authored=row.authored,
             ancestry_traits_response=row.value,
-        )
+        ))
 
-    def get_data_for_export(self, run_id, limit=None):
+    def get_data_for_export(self, run_id, limit=None, pids=None):
         with self.session() as session:
             results = session.query(
                 QuestionnaireResponse.participantId,
@@ -2476,8 +2696,13 @@ class GemToGpMigrationDao(BaseDao):
             ).filter(
                 Code.value.in_(["ConsentAncestryTraits_Yes",
                                 "ConsentAncestryTraits_No",
-                                "ConsentAncestryTraits_NotSure"])
+                                "ConsentAncestryTraits_NotSure"]),
             )
+            if pids:
+                results = results.filter(
+                    QuestionnaireResponse.participantId.in_(pids)
+                )
+
             if limit:
                 results = results.limit(limit)
 
@@ -2486,4 +2711,3 @@ class GemToGpMigrationDao(BaseDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
-

@@ -101,6 +101,7 @@ class GenomicJob(messages.Enum):
     # Ingestion Reconciliatino Jobs
     RECONCILE_GC_DATA_FILE_TO_TABLE = 46
     RECONCILE_RAW_AW1_INGESTED = 47
+    RECONCILE_RAW_AW2_INGESTED = 48
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -109,6 +110,8 @@ class GenomicJob(messages.Enum):
     DAILY_SUMMARY_REPORT_INGESTIONS = 103
     WEEKLY_SUMMARY_REPORT_INGESTIONS = 104
     DAILY_SUMMARY_REPORT_INCIDENTS = 105
+    DAILY_SEND_VALIDATION_EMAILS = 106
+    DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED = 107
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -207,9 +210,9 @@ class GenomicSubProcessResult(messages.Enum):
 
 
 class GenomicManifestTypes(messages.Enum):
-    DRC_BIOBANK = 1  # AW0
-    BIOBANK_GC = 2  # AW1
-    GC_DRC = 3  # AW2
+    AW0 = 1  # AW0
+    AW1 = 2  # AW1
+    AW2 = 3  # AW2
     CVL_W1 = 4
     GEM_A1 = 5
     GEM_A3 = 6
@@ -250,6 +253,7 @@ class GenomicIncidentCode(messages.Enum):
     UNABLE_TO_FIND_METRIC = 7
     MANIFEST_GENERATE_DATA_VALIDATION_FAILED = 8
     FILE_VALIDATION_FAILED_VALUES = 9
+    FILE_VALIDATION_INVALID_FILE_NAME = 10
 
 
 class GenomicIncidentStatus(messages.Enum):

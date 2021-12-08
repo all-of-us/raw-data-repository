@@ -36,7 +36,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 from questionnaire_question qq where qq.questionnaire_id in (
                     select qc.questionnaire_id from questionnaire_concept qc
                             where qc.code_id = (
-                                select code_id from code c2 where c2.value = :module_id and system = :system
+                                select code_id from code c2 where c2.value = :module_id and c2.system = :system
                             )
                 )
             ) qq2 on qq2.code_id = c.code_id
@@ -208,7 +208,7 @@ def bq_questionnaire_update_task(p_id, qr_id):
     sql = text("""
     select c.value from
         questionnaire_response qr inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-        inner join code c on qc.code_id = c.code_id and system = :system
+        inner join code c on qc.code_id = c.code_id and c.system = :system
     where qr.questionnaire_response_id = :qr_id
   """)
 

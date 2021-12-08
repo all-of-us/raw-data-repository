@@ -60,7 +60,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFeedbackDao,
     GenomicManifestFileDao,
     GenomicAW1RawDao,
-    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao)
+    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao, GenomicIncidentDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -125,6 +125,7 @@ class GenomicFileIngester:
         self.sample_dao = BiobankStoredSampleDao()
         self.feedback_dao = GenomicManifestFeedbackDao()
         self.manifest_dao = GenomicManifestFileDao()
+        self.incident_dao = GenomicIncidentDao()
 
     def generate_file_processing_queue(self):
         """
@@ -285,6 +286,8 @@ class GenomicFileIngester:
 
                 return validation_result
 
+            self._set_manifest_file_resolved()
+
             try:
                 ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
                 ingestion_type = ingestion_map[self.job_id]
@@ -318,6 +321,20 @@ class GenomicFileIngester:
             all_ingestions.append(data_rows)
 
         return all_ingestions
+
+    def _set_manifest_file_resolved(self):
+        if not self.file_obj:
+            return
+
+        has_failed_validation = self.incident_dao.get_open_incident_by_file_name(self.file_obj.fileName)
+
+        if not has_failed_validation:
+            return
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in has_failed_validation],
+            _type='resolved'
+        )
 
     @staticmethod
     def get_aw1_manifest_column_mappings():
@@ -455,10 +472,18 @@ class GenomicFileIngester:
                 continue
 
             # Find the existing GenomicSetMember
-            # Set the member based on collection tube ID
-            # row_copy['testname'] is the genome type (i.e. aou_array, aou_wgs)
-            member = self.member_dao.get_member_from_collection_tube(row_copy['collectiontubeid'],
-                                                                     row_copy['genometype'])
+            if self.job_id == GenomicJob.AW1F_MANIFEST:
+                # Set the member based on collection tube ID will null sample
+                member = self.member_dao.get_member_from_collection_tube(
+                    row_copy['collectiontubeid'],
+                    row_copy['genometype'],
+                    state=GenomicWorkflowState.AW1
+                )
+            else:
+                # Set the member based on collection tube ID will null sample
+                member = self.member_dao.get_member_from_collection_tube_with_null_sample_id(
+                    row_copy['collectiontubeid'],
+                    row_copy['genometype'])
 
             # Since member not found, and not a control sample,
             # check if collection tube id was swapped by Biobank
@@ -476,9 +501,10 @@ class GenomicFileIngester:
                 # If member found, validate new collection tube ID, set collection tube ID
                 if member:
                     if self._validate_collection_tube_id(row_copy['collectiontubeid'], bid):
-                        if member.collectionTubeId:
-                            with self.member_dao.session() as session:
-                                self._record_sample_as_contaminated(session, member.collectionTubeId)
+                        if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
+                            if member.collectionTubeId:
+                                with self.member_dao.session() as session:
+                                    self._record_sample_as_contaminated(session, member.collectionTubeId)
 
                         member.collectionTubeId = row_copy['collectiontubeid']
                 else:
@@ -726,6 +752,7 @@ class GenomicFileIngester:
             member
         )
         row['contamination_category'] = category
+        row['contamination_category_str'] = category.name
 
         # handle mapped reads in case they are longer than field length
         if 'mappedreadspct' in row.keys():
@@ -780,6 +807,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal=_signal)
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -846,6 +874,7 @@ class GenomicFileIngester:
 
                 member.aw4ManifestJobRunID = self.job_run_id
                 member.qcStatus = self._get_qc_status_from_value(row_copy['qcstatus'])
+                member.qcStatusStr = member.qcStatus.name
 
                 metrics = self.metrics_dao.get_metrics_by_member_id(member.id)
 
@@ -992,6 +1021,8 @@ class GenomicFileIngester:
             member.genomicWorkflowState = GenomicStateHandler.get_new_state(
                 member.genomicWorkflowState,
                 signal=_signal)
+
+            member.genomicWorkflowStateStr = member.genomicWorkflowState.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         return member
@@ -1037,10 +1068,8 @@ class GenomicFileIngester:
                                  for key in row],
                                 row.values()))
 
-            genome_type = self.file_validator.genome_type
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
-                genome_type
             )
 
             if member:
@@ -1062,11 +1091,12 @@ class GenomicFileIngester:
                         metric_id = existing_metrics_obj.id
                 else:
                     metric_id = None
+                    if member.genomeType in [GENOME_TYPE_ARRAY, GENOME_TYPE_WGS]:
 
-                    if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
-                                                              GenomicContaminationCategory.EXTRACT_BOTH]:
-                        # Insert a new member
-                        self.insert_member_for_replating(member, row_copy['contamination_category'])
+                        if row_copy['contamination_category'] in [GenomicContaminationCategory.EXTRACT_WGS,
+                                                                  GenomicContaminationCategory.EXTRACT_BOTH]:
+                            # Insert a new member
+                            self.insert_member_for_replating(member, row_copy['contamination_category'])
 
                 upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
 
@@ -1101,6 +1131,44 @@ class GenomicFileIngester:
 
         return GenomicSubProcessResult.SUCCESS
 
+    def copy_member_for_replating(
+        self,
+        member,
+        genome_type=None,
+        set_id=None,
+        block_research_reason=None,
+        block_results_reason=None
+    ):
+        """
+        Inserts a new member record for replating.
+        :param member: GenomicSetMember
+        :param genome_type:
+        :param set_id:
+        :param block_research_reason:
+        :param block_results_reason:
+        :return:
+        """
+        new_member = GenomicSetMember(
+            biobankId=member.biobankId,
+            genomicSetId=set_id if set_id else member.genomicSetId,
+            participantId=member.participantId,
+            nyFlag=member.nyFlag,
+            sexAtBirth=member.sexAtBirth,
+            validationStatus=member.validationStatus,
+            validationFlags=member.validationFlags,
+            ai_an=member.ai_an,
+            genomeType=genome_type if genome_type else member.genomeType,
+            collectionTubeId=f'replated_{member.id}',
+            genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            replatedMemberId=member.id,
+            blockResearch=1 if block_research_reason else 0,
+            blockResearchReason=block_research_reason if block_research_reason else None,
+            blockResults=1 if block_results_reason else 0,
+            blockResultsReason=block_results_reason if block_results_reason else None
+        )
+
+        self.member_dao.insert(new_member)
+
     def insert_member_for_replating(self, member, category):
         """
         Inserts a new member record for replating.
@@ -1116,9 +1184,11 @@ class GenomicFileIngester:
             sexAtBirth=member.sexAtBirth,
             validationStatus=member.validationStatus,
             validationFlags=member.validationFlags,
+            collectionTubeId=f'replated_{member.id}',
             ai_an=member.ai_an,
             genomeType=GENOME_TYPE_WGS,
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
+            genomicWorkflowStateStr=GenomicWorkflowState.EXTRACT_REQUESTED.name,
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             replatedMemberId=member.id,
@@ -1161,6 +1231,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal='w2-ingestion-success')
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -1248,6 +1319,7 @@ class GenomicFileIngester:
                         member.genomicWorkflowState,
                         signal=_signal)
 
+                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
@@ -1316,7 +1388,8 @@ class GenomicFileIngester:
             collectionTubeId=aw1_data['collectiontubeid'],
             validationStatus=GenomicSetMemberStatus.VALID,
             genomeType=aw1_data['genometype'],
-            genomicWorkflowState=GenomicWorkflowState.AW1
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name
         )
 
         # Set member attribures from AW1
@@ -1403,6 +1476,7 @@ class GenomicFileValidator:
         self.job_id = job_id
         self.genome_type = None
         self.controller = controller
+        self.gc_site_id = None
 
         self.GC_METRICS_SCHEMAS = {
             GENOME_TYPE_WGS: (
@@ -1439,6 +1513,7 @@ class GenomicFileValidator:
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
+        self.DRC_BROAD = 'drc_broad'
         self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.AW1_MANIFEST_SCHEMA = (
@@ -1595,10 +1670,29 @@ class GenomicFileValidator:
             },
         }
 
-    def set_genome_type(self, filename):
-        if self.job_id in [GenomicJob.METRICS_INGESTION]:
-            file_type = filename.lower().split("_")[2]
+    def set_genome_type(self):
+        if self.job_id in [GenomicJob.METRICS_INGESTION] and self.filename:
+            file_type = self.filename.lower().split("_")[2]
             self.genome_type = self.GENOME_TYPE_MAPPINGS[file_type]
+
+    def set_gc_site_id(self, fn_component):
+        if fn_component and \
+            fn_component.lower() in self.VALID_GENOME_CENTERS and \
+            self.job_id in [
+                GenomicJob.METRICS_INGESTION,
+                GenomicJob.AW1_MANIFEST,
+                GenomicJob.AW1C_INGEST,
+                GenomicJob.AW1CF_INGEST,
+                GenomicJob.AW1F_MANIFEST
+        ]:
+            self.gc_site_id = fn_component
+        elif self.job_id in [
+            GenomicJob.AW4_ARRAY_WORKFLOW,
+            GenomicJob.AW4_WGS_WORKFLOW,
+            GenomicJob.AW5_ARRAY_MANIFEST,
+            GenomicJob.AW5_WGS_MANIFEST
+        ]:
+            self.gc_site_id = self.DRC_BROAD
 
     def validate_ingestion_file(self, *, filename, data_to_validate):
         """
@@ -1608,11 +1702,27 @@ class GenomicFileValidator:
         :return: result code
         """
         self.filename = filename
-        self.set_genome_type(filename)
+        self.set_genome_type()
 
         file_processed = self.controller. \
             file_processed_dao.get_record_from_filename(filename)
 
+        # validates filenames for each job
+        validated_filename = self.validate_filename(filename)
+        if not validated_filename:
+            self.controller.create_incident(
+                source_job_run_id=self.controller.job_run.id,
+                source_file_processed_id=file_processed.id,
+                code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                message=f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation due to an"
+                        f"incorrect file name.",
+                slack=True,
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
+            )
+            return GenomicSubProcessResult.INVALID_FILE_NAME
+
+        # validates values in fields if specified for job
         values_validation_failed, message = self.validate_values(data_to_validate)
         if values_validation_failed:
             self.controller.create_incident(
@@ -1620,19 +1730,15 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_VALUES.name,
                 message=message,
-                slack=True
+                slack=True,
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
             )
             return GenomicSubProcessResult.ERROR
 
-        if not self.validate_filename(filename):
-            return GenomicSubProcessResult.INVALID_FILE_NAME
-
-        # if not data_to_validate
+        # validates file structure rules
         struct_valid_result, missing_fields, extra_fields, expected = self._check_file_structure_valid(
             data_to_validate['fieldnames'])
-
-        if struct_valid_result == GenomicSubProcessResult.INVALID_FILE_NAME:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
 
         if not struct_valid_result:
             slack = True
@@ -1648,7 +1754,9 @@ class GenomicFileValidator:
                 source_file_processed_id=file_processed.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=invalid_message,
-                slack=slack
+                slack=slack,
+                submitted_gc_site_id=self.gc_site_id,
+                manifest_file_name=self.filename
             )
             return GenomicSubProcessResult.INVALID_FILE_STRUCTURE
 
@@ -1662,21 +1770,10 @@ class GenomicFileValidator:
         :param filename: passed to each name rule as 'fn'
         :return: boolean
         """
-        if self.job_id in [GenomicJob.BB_RETURN_MANIFEST]:
-            filename_components = [x.lower() for x in filename.split('/')[-1].split("-")]
-        else:
-            filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        filename_components = [x.lower() for x in filename.split('/')[-1].split("_")]
+        self.set_gc_site_id(filename_components[0])
 
         # Naming Rule Definitions
-        def bb_result_name_rule():
-            """Biobank to DRC Result name rule"""
-            return (
-                filename_components[0] == 'genomic' and
-                filename_components[1] == 'manifest' and
-                filename_components[2] in ('aou_array', 'aou_wgs') and
-                filename.lower().endswith('csv')
-            )
-
         def gc_validation_metrics_name_rule():
             """GC metrics file name rule"""
             return (
@@ -1787,7 +1884,6 @@ class GenomicFileValidator:
             return filename.lower().endswith('csv')
 
         name_rules = {
-            GenomicJob.BB_RETURN_MANIFEST: bb_result_name_rule,
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
@@ -1802,17 +1898,12 @@ class GenomicFileValidator:
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
         }
 
-        is_valid_filename = name_rules[self.job_id]()
+        try:
+            is_valid_filename = name_rules[self.job_id]()
+            return is_valid_filename
 
-        if not is_valid_filename:
-            invalid_message = f"{self.job_id.name}: File name {filename.split('/')[1]} has failed validation."
-            self.controller.create_incident(
-                save_incident=False,
-                slack=True,
-                message=invalid_message,
-            )
-
-        return is_valid_filename
+        except KeyError:
+            return GenomicSubProcessResult.ERROR
 
     def validate_values(self, data):
         is_invalid, message = False, None
@@ -1854,9 +1945,6 @@ class GenomicFileValidator:
 
         if not self.valid_schema:
             self.valid_schema = self._set_schema()
-
-        if self.valid_schema == GenomicSubProcessResult.INVALID_FILE_NAME:
-            return GenomicSubProcessResult.INVALID_FILE_NAME
 
         cases = tuple([self._clean_field_name(field) for field in fields])
 
@@ -1908,7 +1996,7 @@ class GenomicFileValidator:
                 return self.AW5_ARRAY_SCHEMA
 
         except (IndexError, KeyError):
-            return GenomicSubProcessResult.INVALID_FILE_NAME
+            return GenomicSubProcessResult.ERROR
 
 
 class GenomicFileMover:
@@ -2333,6 +2421,7 @@ class GenomicBiobankSamplesCoupler:
                     ai_an=participant.ai_an,
                     genomeType=genome_type,
                     genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
+                    genomicWorkflowStateStr=GenomicWorkflowState.LR_PENDING.name,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
@@ -2422,6 +2511,7 @@ class GenomicBiobankSamplesCoupler:
                     ai_an='Y' if samples_meta.is_ai_an[i] else 'N',
                     genomeType=self._ARRAY_GENOME_TYPE,
                     genomicWorkflowState=GenomicWorkflowState.AW0_READY,
+                    genomicWorkflowStateStr=GenomicWorkflowState.AW0_READY.name,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
@@ -2890,7 +2980,10 @@ class ManifestDefinitionProvider:
                 "processing_status",
                 "research_id",
                 "sample_source",
-                "pipeline_id"
+                "pipeline_id",
+                "ai_an",
+                "blocklisted",
+                "blocklisted_reason"
             ),
             GenomicManifestTypes.GEM_A1: (
                 'biobank_id',
@@ -2940,7 +3033,10 @@ class ManifestDefinitionProvider:
                 "research_id",
                 "sample_source",
                 "mapped_reads_pct",
-                "sex_ploidy"
+                "sex_ploidy",
+                "ai_an",
+                "blocklisted",
+                "blocklisted_reason"
             ),
             GenomicManifestTypes.AW2F: (
                 "PACKAGE_ID",

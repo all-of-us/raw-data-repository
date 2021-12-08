@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
-from rdr_service.dao.genomics_dao import GenomicJobRunDao
+from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicJobRunDao
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.config import GENOMIC_REPORT_PATH
 
@@ -24,6 +24,7 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         super().__init__(controller=controller)
 
         self.query = GenomicQueryClass()
+        self.incident_dao = GenomicIncidentDao()
         self.report_def = None
 
     class ReportDef:
@@ -106,7 +107,6 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
     @staticmethod
     def get_empty_report_string(display_name):
-
         return f"No data to display for {display_name}"
 
     def set_report_def(self, **kwargs):
@@ -120,12 +120,17 @@ class ReportingComponent(GenomicDataQualityComponentBase):
         target_mappings = {
             ("SUMMARY", "RUNS"): self.query.dq_report_runs_summary(report_def.from_date),
             ("SUMMARY", "INGESTIONS"): self.query.dq_report_ingestions_summary(report_def.from_date),
-            ("SUMMARY", "INCIDENTS"): self.query.dq_report_incident_detail(report_def.from_date)
+            ("SUMMARY", "INCIDENTS"): self.incident_dao.get_daily_report_incidents(report_def.from_date),
+            ("SUMMARY", "RESOLVED"): self.incident_dao.get_daily_report_resolved_manifests(report_def.from_date)
         }
 
-        report_def.source_data_query, report_def.source_data_params = target_mappings[
-            (report_def.level, report_def.target)
-        ]
+        returned_from_method = target_mappings[(report_def.level, report_def.target)]
+
+        if type(returned_from_method) is tuple:
+            report_def.source_data_query, report_def.source_data_params = returned_from_method
+        # Leaning into dao method
+        else:
+            report_def.source_data_query = returned_from_method
 
         self.report_def = report_def
 
@@ -142,25 +147,26 @@ class ReportingComponent(GenomicDataQualityComponentBase):
 
         with dao.session() as session:
             result = session.execute(
-                self.report_def.source_data_query, self.report_def.source_data_params
+                self.report_def.source_data_query,
+                self.report_def.source_data_params
             )
 
         return result
 
-    def format_report(self, data):
+    def format_report(self, rows):
         """
         Converts the report query ResultProxy object to report string
-        :param data: ResultProxy
+        :param rows: ResultProxy
         :return: string
         """
-        rows = data.fetchall()
-
         if rows:
+            header = rows[0].keys() if not hasattr(rows, 'keys') else rows.keys()
+
             # Report title
             report_string = "```" + self.report_def.display_name + '\n'
 
             # Header row
-            report_string += "    ".join(data.keys())
+            report_string += "    ".join(header)
             report_string += "\n"
 
             for row in rows:
@@ -168,16 +174,15 @@ class ReportingComponent(GenomicDataQualityComponentBase):
                 report_string += "\n"
 
             report_string += "```"
-
         else:
             report_string = self.report_def.empty_report_string
 
         return report_string
 
-    def create_report_file(self, report_string, display_name):
+    @staticmethod
+    def create_report_file(report_string, display_name):
         now_str = clock.CLOCK.now().replace(microsecond=0).isoformat(sep="_", )
         report_file_name = f"{display_name.replace(' ', '_')}_{now_str}.txt"
-
         path = GENOMIC_REPORT_PATH + report_file_name
 
         with open_cloud_file(path, mode='wt') as cloud_file:

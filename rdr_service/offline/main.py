@@ -634,6 +634,20 @@ def genomic_data_quality_daily_incident_summary():
     return '{"success": "true"}'
 
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('daily_validation_emails')
+def genomic_data_quality_validation_emails():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SEND_VALIDATION_EMAILS)
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('daily_validation_fails_resolved')
+def genomic_data_quality_validation_fails_resolved():
+    genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED)
+    return '{"success": "true"}'
+
+
 def _build_pipeline_app():
     """Configure and return the app with non-resource pipeline-triggering endpoints."""
     offline_app = Flask(__name__)
@@ -935,6 +949,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicDataQualityDailyIncidentSummary",
         endpoint="genomic_data_quality_daily_incident_summary",
         view_func=genomic_data_quality_daily_incident_summary, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyValidationEmails",
+        endpoint="genomic_data_quality_validation_emails",
+        view_func=genomic_data_quality_validation_emails, methods=["GET"]
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataQualityDailyValidationFailsResolved",
+        endpoint="genomic_data_quality_validation_fails_resolved",
+        view_func=genomic_data_quality_validation_fails_resolved, methods=["GET"]
     )
     # END Genomic Data Quality Jobs
 
