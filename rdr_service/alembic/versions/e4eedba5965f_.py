@@ -47,7 +47,7 @@ def upgrade_rdr():
     op.execute(
         "Update genomic_member_report_state INNER Join genomic_set_member "
         "On genomic_set_member.id = genomic_member_report_state.genomic_set_member_id "
-        "Set module = 'GEM', "
+        "Set module = 'gem', "
         "genomic_set_member_id = genomic_set_member.id, "
         "genomic_report_state = "
         "CASE WHEN genomic_set_member.genomic_workflow_state = 23 THEN 1 "

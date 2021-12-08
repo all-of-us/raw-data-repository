@@ -320,7 +320,7 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         report_state_member = self.report_state_dao.get_from_member_id(member.id)
 
         self.assertEqual(report_state_member.genomic_report_state, GenomicReportState.GEM_RPT_PENDING_DELETE)
-        self.assertEqual(report_state_member.module, 'GEM')
+        self.assertEqual(report_state_member.module, 'gem')
         self.assertEqual(report_state_member.genomic_set_member_id, member.id)
 
     def test_genomic_test_participant_not_found(self):
@@ -414,14 +414,14 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 consentForStudyEnrollmentAuthored=fake_date
             )
 
-            module = 'GEM'
+            module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
 
             if num == 0:
                 first_participant = participant
             elif num == 1:
                 second_participant = participant
-                module = 'PGX'
+                module = 'pgx'
                 report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
 
             gen_member = self.data_generator.create_database_genomic_set_member(
@@ -549,7 +549,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 consentForStudyEnrollmentAuthored=fake_date_one
             )
 
-            module = 'GEM'
+            module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
 
             if num > 4:
@@ -665,10 +665,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
             if num % 2 == 0:
-                module = 'PGX'
+                module = 'pgx'
                 report_state = GenomicReportState.PGX_RPT_READY
             else:
-                module = 'GEM'
+                module = 'gem'
                 report_state = GenomicReportState.GEM_RPT_READY
 
             self.data_generator.create_database_genomic_member_report_state(
@@ -727,7 +727,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'GEM'
+        module = 'gem'
         report_state = GenomicReportState.GEM_RPT_READY
 
         gen_set = self.data_generator.create_database_genomic_set(
@@ -805,7 +805,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'GEM'
+        module = 'gem'
         decisions = ['yes', 'no', 'maybe_later']
 
         gen_set = self.data_generator.create_database_genomic_set(
