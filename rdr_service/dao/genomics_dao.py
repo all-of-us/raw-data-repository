@@ -1854,7 +1854,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 # results
                 result_query = (
                     session.query(
-                        GenomicMemberReportState.participant_id,
+                        distinct(GenomicMemberReportState.participant_id),
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )

@@ -44,6 +44,8 @@ class GenomicApiTestBase(BaseTestCase):
         self.job_run_dao = GenomicJobRunDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.set_dao = GenomicSetDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
+
         self._setup_data()
 
     def _setup_data(self):
@@ -311,10 +313,15 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         }
 
         resp = self.send_post(local_path, request_data=payload)
-        member = self.member_dao.get(2)
 
+        member = self.member_dao.get(2)
         self.assertEqual(expected_response, resp)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
+        report_state_member = self.report_state_dao.get_from_member_id(member.id)
+
+        self.assertEqual(report_state_member.genomic_report_state, GenomicReportState.GEM_RPT_PENDING_DELETE)
+        self.assertEqual(report_state_member.module, 'GEM')
+        self.assertEqual(report_state_member.genomic_set_member_id, member.id)
 
     def test_genomic_test_participant_not_found(self):
         # P2001 doesn't exist in participant

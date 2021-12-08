@@ -7,7 +7,7 @@ from rdr_service import clock
 from rdr_service.api.base_api import BaseApi, log_api_request
 from rdr_service.api_util import GEM, RDR_AND_PTC, RDR
 from rdr_service.app_util import auth_required, restrict_to_gae_project
-from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicOutreachDao, GenomicOutreachDaoV2
+from rdr_service.dao.genomics_dao import GenomicPiiDao, GenomicSetMemberDao, GenomicOutreachDao, GenomicOutreachDaoV2
 
 PTC_ALLOWED_ENVIRONMENTS = [
     'all-of-us-rdr-sandbox',
@@ -45,6 +45,7 @@ class GenomicPiiApi(BaseApi):
 class GenomicOutreachApi(BaseApi):
     def __init__(self):
         super(GenomicOutreachApi, self).__init__(GenomicOutreachDao())
+        self.member_dao = GenomicSetMemberDao()
 
     @auth_required(RDR_AND_PTC)
     def get(self, mode=None):
@@ -129,6 +130,7 @@ class GenomicOutreachApi(BaseApi):
         # Create GenomicSetMember with report state
         model = self.dao.from_client_json(resource, participant_id=p_id, mode='gem')
         m = self._do_insert(model)
+        self.member_dao.update_member_wf_states(m)
 
         response_data = {
             'date': m.genomicWorkflowStateModifiedTime,
