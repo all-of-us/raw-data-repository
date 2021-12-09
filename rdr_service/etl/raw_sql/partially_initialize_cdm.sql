@@ -235,6 +235,7 @@ CREATE TABLE cdm.condition_occurrence
     visit_detail_id bigint,
     condition_source_value varchar(50) NOT NULL,
     condition_source_concept_id bigint NOT NULL,
+    condition_status_source_value varchar(50) NOT NULL,
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (condition_occurrence_id),
     UNIQUE KEY (id)
@@ -288,6 +289,7 @@ CREATE TABLE cdm.observation
     unit_concept_id bigint NOT NULL,
     provider_id bigint,
     visit_occurrence_id bigint,
+    visit_detail_id bigint,
     observation_source_value varchar(255) NOT NULL,
     observation_source_concept_id bigint NOT NULL,
     unit_source_value varchar(50),
@@ -382,6 +384,7 @@ CREATE TABLE cdm.drug_exposure
     drug_exposure_start_datetime datetime,
     drug_exposure_end_date date,
     drug_exposure_end_datetime datetime,
+    verbatim_end_date date,
     drug_type_concept_id bigint NOT NULL,
     stop_reason varchar(20),
     refills int,
