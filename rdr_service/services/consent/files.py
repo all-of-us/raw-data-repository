@@ -8,7 +8,12 @@ from typing import List, Optional, Union
 from geometry import Rect
 from google.cloud.storage.blob import Blob
 from pdfminer.high_level import extract_pages, extract_text
-from pdfminer.layout import LTChar, LTCurve, LTFigure, LTImage, LTTextBox
+from pdfminer.converter import PDFPageAggregator
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdftypes import PDFObjRef
+from pdfminer.utils import open_filename
+from pdfminer.layout import LAParams, LTChar, LTCurve, LTFigure, LTImage, LTTextBox
 
 from rdr_service import config
 from rdr_service.storage import GoogleCloudStorageProvider
@@ -370,39 +375,89 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
 
 
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(VibrentPrimaryConsentFile, self).__init__(*args, **kwargs)
+        self.primed_for_new_logic = False
+
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
             ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia'),
             ('sign your full name', 'Firme con su nombre completo')
         ])
 
+    # def get_signature_on_file(self):
+    #     signature_annotation = self.pdf.get_annotation(
+    #         page_no=self._get_signature_page(),
+    #         annotation_name='ParticipantTypedinSignature'
+    #     )
+    #     if signature_annotation:
+    #         return signature_annotation['V'].decode('utf8')
+    #     else:
+    #         return None
+
     def _get_signature_elements(self):
-        signature_page = self._get_signature_page()
+        page_no = self._get_signature_page()
+        page = self.pdf.pages[page_no]
 
-        elements = self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=125, right=500, bottom=155, top=160),
-            page=signature_page
-        )
-        if not elements:  # old style consent
-            elements = self.pdf.get_elements_intersecting_box(
-                Rect.from_edges(left=220, right=500, bottom=590, top=600), page=signature_page)
-
-        return elements
-
-    def _get_date_elements(self):
-        signature_page = self._get_signature_page()
-
-        elements = self.pdf.get_elements_intersecting_box(
-            Rect.from_edges(left=125, right=200, bottom=110, top=120),
-            page=signature_page
-        )
-        if not elements:  # old style consent
-            elements = self.pdf.get_elements_intersecting_box(
-                Rect.from_edges(left=110, right=200, bottom=570, top=580),
-                page=signature_page
+        # If 'sign your full name' and 'date' are in these positions then we know where the signature should be
+        signature_label_location = self.pdf.location_of_text(page, 'Sign your full name ____')
+        date_label_location = self.pdf.location_of_text(page, 'Date ____')
+        if (
+            signature_label_location and date_label_location
+            and signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=500, top=513))
+            and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=456, top=470))
+        ):
+            self.primed_for_new_logic = True
+            return self.pdf.get_elements_intersecting_box(
+                Rect.from_edges(left=80, right=400, bottom=505, top=510),
+                page=page_no
             )
 
-        return elements
+        return None
+
+        # elements = self.pdf.get_elements_intersecting_box(
+        #     Rect.from_edges(left=125, right=500, bottom=155, top=160),
+        #     page=signature_page
+        # )
+        # if not elements:  # old style consent
+        #     elements = self.pdf.get_elements_intersecting_box(
+        #         Rect.from_edges(left=220, right=500, bottom=590, top=600), page=signature_page)
+        #
+        # return elements
+
+    def _get_date_signed_str(self):
+        signature_page = self._get_signature_page()
+
+        if self.primed_for_new_logic:
+            possible_elements = self.pdf.get_elements_intersecting_box(
+                Rect.from_edges(left=80, right=380, bottom=465, top=468),
+                page=signature_page
+            )
+            date_figures = [element for element in possible_elements if isinstance(element, LTFigure)]
+
+            if date_figures:
+                for date_figure in date_figures:
+                    return ''.join([char_child.get_text() for char_child in date_figure]).strip()
+            else:
+                date_annotation = self.pdf.get_annotation(page_no=signature_page, annotation_name='date')
+                if date_annotation and 'V' in date_annotation:
+                    return date_annotation['V'].decode('utf8').strip()
+
+        return None
+
+    def _get_date_elements(self):
+        ...
+        # elements = self.pdf.get_elements_intersecting_box(
+        #     Rect.from_edges(left=125, right=200, bottom=110, top=120),
+        #     page=signature_page
+        # )
+        # if not elements:  # old style consent
+        #     elements = self.pdf.get_elements_intersecting_box(
+        #         Rect.from_edges(left=110, right=200, bottom=570, top=580),
+        #         page=signature_page
+        #     )
+        #
+        # return elements
 
 
 class VibrentCaborConsentFile(CaborConsentFile):
@@ -691,16 +746,33 @@ class CeGrorConsentFile(GrorConsentFile):
 
 class Pdf:
 
-    def __init__(self, pages, blob: Blob):
+    def __init__(self, pages, blob: Blob, pdf=None, raw_pages=None):
         self.pages = pages
         self._pdf_text = None
         self._blob = blob
+        self._pdf_structure = pdf
+        self._raw_pages = raw_pages
 
     @classmethod
     def from_google_storage_blob(cls, blob: Blob):
         file_bytes = BytesIO(blob.download_as_string())
-        pages = list(extract_pages(file_bytes))
-        return Pdf(pages, blob)
+        # page_layouts = list(extract_pages(file_bytes))
+
+        # Extracting pages using the same algorithm as pdfminer.high_level.extract_pages
+        raw_pages = []
+        page_layouts = []
+        with open_filename(file_bytes, 'rb') as pdf_file_pointer:
+            resource_manager = PDFResourceManager()
+            device = PDFPageAggregator(resource_manager, laparams=LAParams())
+            interpreter = PDFPageInterpreter(resource_manager, device)
+            for page in PDFPage.get_pages(pdf_file_pointer):
+                raw_pages.append(page)
+
+                interpreter.process_page(page)
+                layout = device.get_result()
+                page_layouts.append(layout)
+
+        return Pdf(page_layouts, blob, raw_pages=raw_pages)
 
     @classmethod
     def rect_for_element(cls, element) -> Optional[Rect]:
@@ -710,6 +782,19 @@ class Pdf:
             bottom=element.y0,
             top=element.y1
         )
+
+    @classmethod
+    def location_of_text(cls, root_element, search_text):
+        if hasattr(root_element, '__iter__'):
+            for child in root_element:
+                if hasattr(child, 'get_text') and search_text in child.get_text():
+                    return cls.rect_for_element(child)
+                else:
+                    location_in_children = cls.location_of_text(child, search_text)
+                    if location_in_children:
+                        return location_in_children
+
+        return None
 
     def get_elements_intersecting_box(self, search_box: Rect, page=0):
         if page is None or len(self.pages) <= page:
@@ -762,6 +847,19 @@ class Pdf:
                 return False
 
         return True
+
+    def get_annotation(self, page_no: int, annotation_name: str):
+        raw_page = self._raw_pages[page_no]
+        annots = raw_page.annots
+        if isinstance(annots, PDFObjRef):
+            annots = annots.resolve()
+
+        for annotation_pointer in annots:
+            annotation = annotation_pointer.resolve()
+            if annotation['T'].decode('ascii') == annotation_name:
+                return annotation
+
+        return None
 
     @classmethod
     def get_first_child_of_element(cls, element):

@@ -44,11 +44,12 @@ class ValidationOutputStrategy(ABC):
 
 
 class StoreResultStrategy(ValidationOutputStrategy):
-    def __init__(self, session, consent_dao: ConsentDao):
+    def __init__(self, session, consent_dao: ConsentDao, project_id):
         self._session = session
         self._results = []
         self._consent_dao = consent_dao
-        self._max_batch_count = 500
+        self._max_batch_count = 50
+        self.project_id = project_id
 
     def add_result(self, result: ParsingResult):
         self._results.append(result)
@@ -76,6 +77,44 @@ class StoreResultStrategy(ValidationOutputStrategy):
         self._session.commit()
         if new_results_to_store:
             dispatch_rebuild_consent_metrics_tasks([r.id for r in new_results_to_store])
+
+
+class UpdateResultStrategy(StoreResultStrategy):
+    def _get_existing_results_for_participants(self):
+        file_path_list = [file.file_path for file in self._results]
+        file_objects: List[ParsingResult] = self._session.query(ParsingResult).filter(
+            ParsingResult.file_path.in_(file_path_list)
+        ).all()
+
+        return {file.file_path: file for file in file_objects}
+
+    def process_results(self):
+        existing_results_by_file = self._get_existing_results_for_participants()
+        updated_results = []
+        for result in self._results:
+            db_result: ParsingResult = existing_results_by_file.get(result.file_path)
+            if db_result:
+                db_result.file_exists = result.file_exists
+                db_result.type = result.type
+                db_result.is_signature_valid = result.is_signature_valid
+                db_result.is_signing_date_valid = result.is_signing_date_valid
+
+                db_result.signature_str = result.signature_str
+                db_result.is_signature_image = result.is_signature_image
+                db_result.signing_date = result.signing_date
+                db_result.expected_sign_date = result.expected_sign_date
+
+                db_result.file_upload_time = result.file_upload_time
+                db_result.other_errors = result.other_errors
+                if db_result.sync_status != ConsentSyncStatus.SYNC_COMPLETE \
+                        or result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
+                    db_result.sync_status = result.sync_status
+                updated_results.append(db_result)
+
+        self._session.commit()
+
+        if updated_results:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in updated_results], project_id=self.project_id)
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
@@ -234,12 +273,13 @@ class _ValidationOutputHelper:
 
 class ConsentValidationController:
     def __init__(self, consent_dao: ConsentDao, participant_summary_dao: ParticipantSummaryDao,
-                 hpo_dao: HPODao, storage_provider: GoogleCloudStorageProvider):
+                 hpo_dao, storage_provider: GoogleCloudStorageProvider):
         self.consent_dao = consent_dao
         self.participant_summary_dao = participant_summary_dao
         self.storage_provider = storage_provider
 
-        self.va_hpo_id = hpo_dao.get_by_name('VA').hpoId
+        self.va_hpo_id = 15
+        print(hpo_dao)
 
     @classmethod
     def build_controller(cls):
@@ -304,6 +344,7 @@ class ConsentValidationController:
                                       min_authored_date: date = None,
                                       types_to_validate: Collection[ConsentType] = None):
         validator = self._build_validator(summary)
+        print(summary.participantId)
 
         if self._check_consent_type(ConsentType.PRIMARY, types_to_validate) and self._has_consent(
             consent_status=summary.consentForStudyEnrollment,
