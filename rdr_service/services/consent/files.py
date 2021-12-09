@@ -448,6 +448,19 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
                     Rect.from_edges(left=80, right=400, bottom=593, top=598),
                     page=page_no
                 )
+        else:
+            # Check for Spanish
+            signature_label_location = self.pdf.location_of_text(page, 'Firme con su \nnombre completo')
+            date_label_location = self.pdf.location_of_text(page, 'Fecha ')
+            if (
+                signature_label_location.is_inside_of(Rect.from_edges(left=75, right=172, bottom=518, top=547))
+                and date_label_location.is_inside_of(Rect.from_edges(left=76, right=117, bottom=475, top=488))
+            ):
+                self.date_search_box = Rect.from_edges(left=200, right=400, bottom=480, top=483)
+                return self.pdf.get_elements_intersecting_box(
+                    Rect.from_edges(left=150, right=400, bottom=525, top=530),
+                    page=page_no
+                )
 
         return None
 
@@ -889,7 +902,7 @@ class Pdf:
 
         for annotation_pointer in annots:
             annotation = annotation_pointer.resolve()
-            if annotation['T'].decode('ascii') == annotation_name:
+            if annotation['T'].decode('ascii').lower() == annotation_name.lower():
                 return annotation
 
         return None
