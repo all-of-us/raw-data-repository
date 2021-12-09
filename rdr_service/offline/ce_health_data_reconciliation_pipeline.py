@@ -102,6 +102,8 @@ class CeHealthDataReconciliationPipeline:
                                                                                                 bucket_stat_list))
         last_24_hours_files = [blob for blob in bucket_stat_list
                                if blob.updated >= (self.job_started_time - _MAX_INPUT_AGE)]
+        if not last_24_hours_files:
+            self._send_no_reconciliation_file_alert()
 
         return last_24_hours_files
 
@@ -130,6 +132,6 @@ class CeHealthDataReconciliationPipeline:
         with ce_health_reconciliation_dao.session() as session:
             records = ce_health_reconciliation_dao.get_missing_records_by_report_date(session, ten_days_ago)
             for record in records:
-                exist = is_cloud_file_exits(record.reportFilePath)
+                exist = is_cloud_file_exits(record.missingFilePath)
                 if exist:
                     record.status = True
