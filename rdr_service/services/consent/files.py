@@ -288,16 +288,19 @@ class ConsentFile(ABC):
 
     def get_signature_on_file(self):
         signature_elements = self._get_signature_elements()
-        for element in signature_elements:
-            first_child = Pdf.get_first_child_of_element(element)
+        if signature_elements:
+            for element in signature_elements:
+                first_child = Pdf.get_first_child_of_element(element)
 
-            if isinstance(first_child, LTChar):
-                possible_signature = ''.join([char_child.get_text() for char_child in element]).strip()
-                if possible_signature != '':
-                    return possible_signature
+                if isinstance(first_child, LTChar):
+                    possible_signature = ''.join([char_child.get_text() for char_child in element]).strip()
+                    if possible_signature != '':
+                        return possible_signature
 
-            elif isinstance(first_child, LTImage):
-                return True
+                elif isinstance(first_child, LTImage):
+                    return True
+
+        return None
 
     def get_date_signed(self):
         date_str = self._get_date_signed_str()
@@ -377,7 +380,7 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def __init__(self, *args, **kwargs):
         super(VibrentPrimaryConsentFile, self).__init__(*args, **kwargs)
-        self.primed_for_new_logic = False
+        self.date_search_box = None
 
     def _get_signature_page(self):
         return self.pdf.get_page_number_of_text([
@@ -395,6 +398,30 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
     #     else:
     #         return None
 
+    def get_signature_on_file(self):
+        signature_elements = self._get_signature_elements()
+        if signature_elements:
+            for element in signature_elements:
+                first_child = Pdf.get_first_child_of_element(element)
+
+                if isinstance(first_child, LTChar):
+                    possible_signature = ''.join([char_child.get_text() for char_child in element]).strip()
+                    if possible_signature != '':
+                        return possible_signature
+
+                elif isinstance(first_child, LTImage):
+                    return True
+
+        # No elements found worked, so check annotations
+        signature_annotation = self.pdf.get_annotation(
+            page_no=self._get_signature_page(),
+            annotation_name='ParticipantTypedinSignature'
+        )
+        if signature_annotation and 'V' in signature_annotation:
+            return signature_annotation['V'].decode('utf8').strip()
+
+        return None
+
     def _get_signature_elements(self):
         page_no = self._get_signature_page()
         page = self.pdf.pages[page_no]
@@ -402,16 +429,25 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
         # If 'sign your full name' and 'date' are in these positions then we know where the signature should be
         signature_label_location = self.pdf.location_of_text(page, 'Sign your full name ____')
         date_label_location = self.pdf.location_of_text(page, 'Date ____')
-        if (
-            signature_label_location and date_label_location
-            and signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=500, top=513))
-            and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=456, top=470))
-        ):
-            self.primed_for_new_logic = True
-            return self.pdf.get_elements_intersecting_box(
-                Rect.from_edges(left=80, right=400, bottom=505, top=510),
-                page=page_no
-            )
+        if signature_label_location and date_label_location:
+            if (
+                signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=500, top=513))
+                and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=456, top=470))
+            ):
+                self.date_search_box = Rect.from_edges(left=80, right=380, bottom=465, top=468)
+                return self.pdf.get_elements_intersecting_box(
+                    Rect.from_edges(left=80, right=400, bottom=505, top=510),
+                    page=page_no
+                )
+            elif (
+                signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=590, top=603))
+                and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=546, top=560))
+            ):
+                self.date_search_box = Rect.from_edges(left=80, right=380, bottom=550, top=555)
+                return self.pdf.get_elements_intersecting_box(
+                    Rect.from_edges(left=80, right=400, bottom=593, top=598),
+                    page=page_no
+                )
 
         return None
 
@@ -428,11 +464,8 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
     def _get_date_signed_str(self):
         signature_page = self._get_signature_page()
 
-        if self.primed_for_new_logic:
-            possible_elements = self.pdf.get_elements_intersecting_box(
-                Rect.from_edges(left=80, right=380, bottom=465, top=468),
-                page=signature_page
-            )
+        if self.date_search_box:
+            possible_elements = self.pdf.get_elements_intersecting_box(self.date_search_box, page=signature_page)
             date_figures = [element for element in possible_elements if isinstance(element, LTFigure)]
 
             if date_figures:
