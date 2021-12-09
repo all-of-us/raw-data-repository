@@ -418,7 +418,7 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
             annotation_name='ParticipantTypedinSignature'
         )
         if signature_annotation and 'V' in signature_annotation:
-            return signature_annotation['V'].decode('utf8').strip()
+            return signature_annotation['V'].decode('latin_1').strip()
 
         return None
 
@@ -487,7 +487,7 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
             else:
                 date_annotation = self.pdf.get_annotation(page_no=signature_page, annotation_name='date')
                 if date_annotation and 'V' in date_annotation:
-                    return date_annotation['V'].decode('utf8').strip()
+                    return date_annotation['V'].decode('latin_1').strip()
 
         return None
 
