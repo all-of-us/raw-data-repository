@@ -3,7 +3,7 @@ import mock
 
 from rdr_service import clock, config
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import WithdrawalAIANCeremonyStatus, WithdrawalStatus
+from rdr_service.participant_enums import DeceasedStatus, WithdrawalAIANCeremonyStatus, WithdrawalStatus
 from rdr_service.tools.tool_libs.biobank_report import BiobankReportTool
 from tests.helpers.tool_test_mixin import ToolTestMixin
 from tests.helpers.unittest_base import BaseTestCase
@@ -103,6 +103,29 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
             rows=rows_written,
             withdrawal_date_str=twenty_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ'),
             withdrawal_reason_justification='withdraw before delivery'
+        )
+
+    def test_deceased_status_string(self):
+        """Check that the withdrawal status displays as a string rather than an int."""
+        five_days_ago = self._datetime_n_days_ago(5)
+
+        # Create a participant that has a deceased status
+        withdrawn_participant = self.data_generator.create_withdrawn_participant(
+            withdrawal_reason_justification='deceased participant',
+            withdrawal_time=five_days_ago
+        )
+        self.data_generator.create_database_participant_summary(
+            deceasedStatus=DeceasedStatus.APPROVED,
+            participantId=withdrawn_participant.participantId
+        )
+
+        rows_written = self.run_withdrawal_report()
+        self._assert_participant_in_report_rows(
+            withdrawn_participant,
+            rows=rows_written,
+            withdrawal_date_str=five_days_ago.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            withdrawal_reason_justification='deceased participant',
+            deceased_status='APPROVED'
         )
 
     def test_default_date_calculations(self):

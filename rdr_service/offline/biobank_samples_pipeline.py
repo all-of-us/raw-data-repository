@@ -347,10 +347,7 @@ def get_withdrawal_report_query(start_date: datetime):
             Organization.externalId.label('paired_org'),
             Site.googleGroup.label('paired_site'),
             Participant.withdrawalReasonJustification.label('withdrawal_reason_justification'),
-            case(
-                [(ParticipantSummary.deceasedStatus.is_(None), 'UNSET')],
-                else_=ParticipantSummary.deceasedStatus  # TODO: test that the status string gets used
-            ).label('deceased_status')
+            ParticipantSummary.deceasedStatus.label('deceased_status')
         ])
         .select_from(Participant)
         .outerjoin(ceremony_answer_subquery, ceremony_answer_subquery.c.participant_id == Participant.participantId)

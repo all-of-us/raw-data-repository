@@ -32,8 +32,8 @@ class UBRCalculatorTest(BaseTestCase):
         Note: Single Value UBR Calculation
         """
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_sex(None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_sex('PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_sex(None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_sex('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         self.assertEqual(self.ubr.ubr_sex('SexAtBirth_SexAtBirthNoneOfThese'), UBRValueEnum.UBR)
@@ -53,8 +53,8 @@ class UBRCalculatorTest(BaseTestCase):
         Note: Multiple Value UBR Calculation
         """
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_sexual_orientation(None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_sexual_orientation(None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Bisexual'), UBRValueEnum.UBR)
@@ -78,12 +78,12 @@ class UBRCalculatorTest(BaseTestCase):
         Note: Multiple Value UBR Calculation
         """
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Female', None, None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Male', None, None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Intersex', None, None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Female', 'PMI_Skip', 'PMI_Skip'), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Male', None, 'PMI_Skip'), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Intersex', 'PMI_Skip', None), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Female', None, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Male', None, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Intersex', None, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Female', 'PMI_Skip', 'PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Male', None, 'PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_gender_identity('SexAtBirth_Intersex', 'PMI_Skip', None), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR values
         self.assertEqual(self.ubr.ubr_gender_identity(
@@ -140,7 +140,7 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(UBRValueEnum.RBR,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.RBR))
         self.assertEqual(UBRValueEnum.RBR,
-                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.NullSkip))
+                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.NotAnswer_Skip))
         self.assertEqual(0,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.RBR))
 
@@ -150,15 +150,15 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(UBRValueEnum.UBR,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.UBR))
         self.assertEqual(UBRValueEnum.UBR,
-                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NullSkip, UBRValueEnum.UBR))
+                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NotAnswer_Skip, UBRValueEnum.UBR))
         self.assertEqual(1,
                          self.ubr.ubr_sexual_gender_minority(UBRValueEnum.RBR, UBRValueEnum.UBR))
 
         # Test with Null/Skip Values. int(NullSkip) == 2.
-        self.assertEqual(UBRValueEnum.NullSkip,
-                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NullSkip, UBRValueEnum.NullSkip))
+        self.assertEqual(UBRValueEnum.NotAnswer_Skip,
+                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NotAnswer_Skip, UBRValueEnum.NotAnswer_Skip))
         self.assertEqual(2,
-                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NullSkip, UBRValueEnum.NullSkip))
+                         self.ubr.ubr_sexual_gender_minority(UBRValueEnum.NotAnswer_Skip, UBRValueEnum.NotAnswer_Skip))
 
     def test_ubr_ethnicity(self):
         """
@@ -167,8 +167,8 @@ class UBRCalculatorTest(BaseTestCase):
         """
         # Test with Null and PMI_Skip values
         # Note: Multiple choice question, pass comma-delimited string.
-        self.assertEqual(self.ubr.ubr_ethnicity(None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_ethnicity('PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_ethnicity(None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_ethnicity('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         self.assertEqual(self.ubr.ubr_ethnicity('WhatRaceEthnicity_AIAN'), UBRValueEnum.UBR)
@@ -200,8 +200,8 @@ class UBRCalculatorTest(BaseTestCase):
         zip_none = '58493'  # Zip code not in either file.
 
         # Test with Null values, there are no PMI_Skip values currently for a zip code value.
-        self.assertEqual(self.ubr.ubr_geography(consent_2014, None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_geography(consent_2020, None), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_geography(consent_2014, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_geography(consent_2020, None), UBRValueEnum.NotAnswer_Skip)
 
         # Test zip codes in specific files for UBR
         self.assertEqual(self.ubr.ubr_geography(consent_2014, zip_2014), UBRValueEnum.UBR)
@@ -230,8 +230,8 @@ class UBRCalculatorTest(BaseTestCase):
         UBR Calculator Test - Education
         """
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_education(None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_education('PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_education(None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_education('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         self.assertEqual(self.ubr.ubr_education('HighestGrade_NeverAttended'), UBRValueEnum.UBR)
@@ -253,8 +253,8 @@ class UBRCalculatorTest(BaseTestCase):
         UBR Calculator Test - Income
         """
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_income(None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_income('PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_income(None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_income('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         self.assertEqual(self.ubr.ubr_income('AnnualIncome_less10k'), UBRValueEnum.UBR)
@@ -279,12 +279,12 @@ class UBRCalculatorTest(BaseTestCase):
         """
         # Test with Null and PMI_Skip values
         values = self.disability_answers
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
         values['Disability_Deaf'] = 'PMI_Skip'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
         for k in self.disability_answers.keys():
             values[k] = 'PMI_Skip'
-        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         values = self.disability_answers
@@ -298,7 +298,7 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.RBR)
 
         # Bad or unknown value will default to NullSkip
-        self.assertEqual(self.ubr.ubr_disability({'ABC': 123}), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_disability({'ABC': 123}), UBRValueEnum.NotAnswer_Skip)
 
     def test_ubr_age_at_consent(self):
         """
@@ -308,8 +308,8 @@ class UBRCalculatorTest(BaseTestCase):
         consent = consent_ts.date()
 
         # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_age_at_consent(consent, None), UBRValueEnum.NullSkip)
-        self.assertEqual(self.ubr.ubr_age_at_consent(consent, 'PMI_Skip'), UBRValueEnum.NullSkip)
+        self.assertEqual(self.ubr.ubr_age_at_consent(consent, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_age_at_consent(consent, 'PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
 
         # Test UBR value
         dob = (consent_ts - relativedelta(years=17)).date()
@@ -327,3 +327,61 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_age_at_consent(None, dob), UBRValueEnum.RBR)
         dob = (consent_ts - relativedelta(years=70)).date()
         self.assertEqual(self.ubr.ubr_age_at_consent(None, dob), UBRValueEnum.RBR)
+
+    def test_ubr_overall(self):
+        """
+        UBR Calculator Test - UBR Overall
+        """
+        # Test RBR with Null value.
+        data = {'ubr_age_at_consent': None}
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.RBR)
+
+        # Test RBR with RBR value
+        data = {'ubr_age_at_consent': UBRValueEnum.RBR}
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.RBR)
+
+        # Test RBR with PMI_Skip value
+        data = {'ubr_age_at_consent': UBRValueEnum.NotAnswer_Skip}
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.RBR)
+
+        # Test RBR with mixed values, but no UBR value.
+        data = {
+            'ubr_age_at_consent': None,
+            'ubr_disability': UBRValueEnum.RBR,
+            'ubr_education': UBRValueEnum.NotAnswer_Skip
+        }
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.RBR)
+
+        # Test UBR with mixed values, with UBR value.
+        data = {
+            'ubr_age_at_consent': None,
+            'ubr_disability': UBRValueEnum.RBR,
+            'ubr_education': UBRValueEnum.NotAnswer_Skip,
+            'ubr_ethnicity': UBRValueEnum.UBR
+        }
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.UBR)
+
+        # Test UBR with all UBR values.
+        data = {
+            'ubr_age_at_consent': UBRValueEnum.UBR,
+            'ubr_disability': UBRValueEnum.UBR,
+            'ubr_education': UBRValueEnum.UBR,
+            'ubr_ethnicity': UBRValueEnum.UBR
+        }
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.UBR)
+
+        # Test RBR with all NotAnswered/Skip values.
+        data = {
+            'ubr_age_at_consent': UBRValueEnum.NotAnswer_Skip,
+            'ubr_disability': UBRValueEnum.NotAnswer_Skip,
+            'ubr_education': UBRValueEnum.NotAnswer_Skip,
+            'ubr_ethnicity': UBRValueEnum.NotAnswer_Skip
+        }
+        overall = self.ubr.ubr_overall(data)
+        self.assertEqual(overall, UBRValueEnum.RBR)
