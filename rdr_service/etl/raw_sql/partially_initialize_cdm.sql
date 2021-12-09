@@ -235,7 +235,7 @@ CREATE TABLE cdm.condition_occurrence
     visit_detail_id bigint,
     condition_source_value varchar(50) NOT NULL,
     condition_source_concept_id bigint NOT NULL,
-    condition_status_source_value varchar(50) NOT NULL,
+    condition_status_source_value varchar(50),
     unit_id varchar(50) NOT NULL,
     PRIMARY KEY (condition_occurrence_id),
     UNIQUE KEY (id)
