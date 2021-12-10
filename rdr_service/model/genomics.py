@@ -721,6 +721,8 @@ class GenomicInformingLoop(Base):
 
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
     message_record_id = Column(Integer, nullable=False)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
     event_type = Column(String(256), nullable=False)

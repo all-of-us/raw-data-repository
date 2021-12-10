@@ -271,15 +271,10 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_decision_records = self.event_data_dao.get_informing_loop(
-            message_broker_record.id,
-            loop_decision
-        )
-
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=loop_decision,
-                records=loop_decision_records
+                message_record_id=message_broker_record.id,
+                loop_type=loop_decision
             )
 
         decision_genomic_record = self.informing_loop_dao.get(1)
@@ -317,15 +312,10 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_started_records = self.event_data_dao.get_informing_loop(
-            message_broker_record_two.id,
-            loop_started
-        )
-
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=loop_started,
-                records=loop_started_records
+                message_record_id=message_broker_record_two.id,
+                loop_type=loop_started
             )
 
         started_genomic_record = self.informing_loop_dao.get(2)

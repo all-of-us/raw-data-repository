@@ -311,8 +311,8 @@ class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
                                   ) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=self.data['event_type'],
-                records=self.data['records']
+                message_record_id=self.data['message_record_id'],
+                loop_type=self.data['event_type']
             )
 
         self.create_cloud_record()
