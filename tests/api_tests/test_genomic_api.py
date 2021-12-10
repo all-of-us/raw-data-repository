@@ -7,7 +7,7 @@ from unittest import mock
 
 from rdr_service.services.system_utils import JSONObject
 from tests.helpers.unittest_base import BaseTestCase
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.genomics_dao import (
@@ -1485,29 +1485,78 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     def test_ingestion_wf_run_from_config(self):
         pass
 
-    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.BaseGenomicTaskApi.execute_manifest_ingestion')
-    def test_manifest_execute_in_manifest_ingestions(self, _):
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_manifest_execute_in_manifest_ingestions(self, pipeline_mock):
 
         from rdr_service.resource import main as resource_main
 
         path_mappings = {
             "aw1": {
                 'route': 'IngestAW1ManifestTaskApi',
-                'file_path': 'AW1_sample_manifests/test_aw1_file_1.csv',
+                'file_path': ['AW1_sample_manifests/test_aw1_file_1.csv',
+                              'AW1_sample_manifests/test_aw1_file_2.csv',
+                              'AW1_sample_manifests/test_aw1_file_3.csv',
+                              'AW1_sample_manifests/test_aw1_file_4.csv',
+                              'AW1_sample_manifests/test_aw1_file_5.csv']
             },
             "aw2": {
                 'route': 'IngestAW2ManifestTaskApi',
                 'file_path': 'AW2_data_manifests/test_aw2_file.csv'
             },
-            "aw4": {
+            "aw4_array": {
                 'route': 'IngestAW4ManifestTaskApi',
-                'file_path': 'AW4_array_manifest/test_aw4_file.csv',
+                'file_path': ['AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv']
             },
-            "aw5": {
+            "aw4_wgs": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': 'AW4_wgs_manifest/test_aw4_file.csv',
+            },
+            "aw5_array": {
                 'route': 'IngestAW5ManifestTaskApi',
                 'file_path': 'AW5_array_manifest/test_aw5_file.csv'
             },
+            "aw5_wgs": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_wgs_manifest/test_aw5_file.csv'
+            },
         }
+
+        path_count = 0
+        for value in path_mappings.values():
+
+            path_count = path_count + (len(value['file_path']) if type(value['file_path']) is list else 1)
+
+            self.send_post(
+                local_path=value.get('route'),
+                request_data={
+                    'file_path': value.get('file_path'),
+                    'bucket_name': 'test_bucket_name',
+                    'upload_date': '2020-09-13T20:52:12+00:00',
+                },
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        # from base_config all True => call count == all path count
+        self.assertEqual(pipeline_mock.call_count, path_count)
+
+        manifest_config = {
+            "aw1_manifest": 0,
+            "aw2_manifest": 0,
+            "aw4_array_manifest": 0,
+            "aw4_wgs_manifest": 1,
+            "aw5_array_manifest": 1,
+            "aw5_wgs_manifest": 1
+        }
+
+        config.override_setting(config.GENOMIC_INGESTIONS, manifest_config)
+
+        # add 3 calls tp path_count
+        true_calls = [val for val in manifest_config.values() if val == 1]
 
         for value in path_mappings.values():
             self.send_post(
@@ -1521,4 +1570,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
                 test_client=resource_main.app.test_client(),
             )
 
-        print('Darryl')
+        self.assertEqual(
+            pipeline_mock.call_count,
+            path_count + len(true_calls)
+        )

@@ -31,16 +31,16 @@ class BaseGenomicTaskApi(Resource):
         self.cloud_req_dao = GenomicCloudRequestsDao()
         self.member_dao = GenomicSetMemberDao()
         self.file_paths = None
-        self.disallowed_jobs = self.set_disallowed_jobs()
+        self.disallowed_jobs = []
 
     @task_auth_required
     def post(self):
         log_task_headers()
+        self.set_disallowed_jobs()
         self.data = request.get_json(force=True)
         self.file_paths = [self.data.get('file_path')] \
             if type(self.data.get('file_path')) is not list \
             else self.data.get('file_path')
-        # self.set_disallowed_jobs()
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
@@ -49,10 +49,13 @@ class BaseGenomicTaskApi(Resource):
             self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
 
     def set_disallowed_jobs(self):
+
+        if 'manifesttaskapi' not in self.__class__.__name__.lower():
+            return
+
         ingestion_config = getSettingJson(GENOMIC_INGESTIONS, {})
 
-        if not ingestion_config or \
-            'manifesttaskapi' not in self.__class__.__name__.lower():
+        if not ingestion_config:
             return
 
         ingestion_config_map = {
@@ -65,24 +68,21 @@ class BaseGenomicTaskApi(Resource):
             'aw5_wgs_manifest': GenomicJob.AW5_WGS_MANIFEST
         }
 
-        for config_key, job_type in ingestion_config_map:
-            if ingestion_config.get(config_key) and \
-                    ingestion_config.get(config_key) is False:
+        for config_key, job_type in ingestion_config_map.items():
+            if ingestion_config.get(config_key) == 0:
                 self.disallowed_jobs.append(job_type)
 
     def execute_manifest_ingestion(self, task_data, _type):
-
-        if task_data.get('job') in self.disallowed_jobs:
-            logging.info('Complete.')
-            return {"success": False}
-        else:
+        if not task_data.get('job') in self.disallowed_jobs:
             logging.info(f'Ingesting {_type} File: {self.data.get("filename")}')
             # Call pipeline function
             genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
             self.create_cloud_record()
-
             logging.info('Complete.')
             return {"success": True}
+
+        logging.info('Complete.')
+        return {"success": False}
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
