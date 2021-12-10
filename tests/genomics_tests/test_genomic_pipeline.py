@@ -2566,7 +2566,7 @@ class GenomicPipelineTest(BaseTestCase):
                 r_state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
                 self.assertEqual(report_state.participant_id, member.participantId)
                 self.assertEqual(report_state.genomic_report_state, r_state)
-                self.assertEqual(report_state.module, 'GEM')
+                self.assertEqual(report_state.module, 'gem')
             else:
                 self.assertIsNone(report_state)
 
@@ -2629,7 +2629,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(report_state.genomic_set_member_id, member.id)
                 self.assertEqual(report_state.participant_id, member.participantId)
                 self.assertEqual(report_state.genomic_report_state, r_state)
-                self.assertEqual(report_state.module, 'GEM')
+                self.assertEqual(report_state.module, 'gem')
             if member.id == 3:
                 self.assertEqual("N", member.gemPass)
                 self.assertEqual(GenomicWorkflowState.A2F, member.genomicWorkflowState)
@@ -2713,7 +2713,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(report_state.genomic_report_state, r_state)
             self.assertEqual(report_state.participant_id, member.participantId)
             self.assertEqual(report_state.genomic_set_member_id, member.id)
-            self.assertEqual(report_state.module, 'GEM')
+            self.assertEqual(report_state.module, 'gem')
 
         # Test the manifest file contents
         bucket_name = config.getSetting(config.GENOMIC_GEM_BUCKET_NAME)
@@ -4641,7 +4641,7 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(report_state.genomic_set_member_id, member.id)
             self.assertEqual(report_state.participant_id, member.participantId)
             self.assertEqual(report_state.genomic_report_state, r_state)
-            self.assertEqual(report_state.module, 'GEM')
+            self.assertEqual(report_state.module, 'gem')
 
             self.assertEqual(1, member.colorMetricsJobRunID)
             self.assertEqual("['ancestry','cilantro','lactose','earwax','bittertaste']",

@@ -5,12 +5,13 @@ import sqlalchemy
 
 from datetime import datetime, timedelta
 from dateutil import parser
-from sqlalchemy import and_
 
+from sqlalchemy import and_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct
+
 from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
@@ -1051,7 +1052,7 @@ class GenomicSetMemberDao(UpdatableDao):
                     genomic_report_state=state,
                     genomic_report_state_str=state.name,
                     participant_id=member.participantId,
-                    module='GEM'
+                    module='gem'
                 )
                 self.report_state_dao.insert(report_obj)
             else:
@@ -1386,17 +1387,17 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                    .join(
+                .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
-                    .outerjoin(
+                .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
                          GenomicGcDataFileMissing.resolved == 0,
                          GenomicGcDataFileMissing.ignore_flag == 0)
                 )
-                    .filter(
+                .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
@@ -1412,7 +1413,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
-                    .all()
+                .all()
             )
 
     def get_with_missing_wgs_files(self, _gc_site_id):
@@ -1424,20 +1425,21 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         """
         with self.session() as session:
             return (
-                session.query(GenomicGCValidationMetrics,
-                              GenomicSetMember.biobankId,
-                              GenomicSetMember.sampleId, )
-                    .join(
+                session.query(
+                    GenomicGCValidationMetrics,
+                    GenomicSetMember.biobankId,
+                    GenomicSetMember.sampleId, )
+                .join(
                     (GenomicSetMember,
                      GenomicSetMember.id == GenomicGCValidationMetrics.genomicSetMemberId)
                 )
-                    .outerjoin(
+                .outerjoin(
                     GenomicGcDataFileMissing,
                     and_(GenomicGcDataFileMissing.gc_validation_metric_id == GenomicGCValidationMetrics.id,
                          GenomicGcDataFileMissing.resolved == 0,
                          GenomicGcDataFileMissing.ignore_flag == 0)
                 )
-                    .filter(
+                .filter(
                     GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
@@ -1452,7 +1454,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
                     (GenomicGCValidationMetrics.craiReceived == 0)
                 )
-                    .all()
+                .all()
             )
 
     def get_metrics_by_member_id(self, member_id):
@@ -1464,9 +1466,9 @@ class GenomicGCValidationMetricsDao(UpsertableDao):
         with self.session() as session:
             return (
                 session.query(GenomicGCValidationMetrics)
-                    .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
-                            GenomicGCValidationMetrics.ignoreFlag != 1)
-                    .one_or_none()
+                .filter(GenomicGCValidationMetrics.genomicSetMemberId == member_id,
+                        GenomicGCValidationMetrics.ignoreFlag != 1)
+                .one_or_none()
             )
 
     def get_metric_record_counts_from_filepath(self, filepath):
@@ -1725,6 +1727,19 @@ class GenomicOutreachDaoV2(BaseDao):
     def to_client_json(self, _dict):
         report_statuses, report, p_status, p_module = [], {}, None, None
 
+        # handle date
+        try:
+            ts = pytz.utc.localize(_dict['date'])
+        except ValueError:
+            ts = _dict['date']
+
+        if not _dict.get('data'):
+            client_json = {
+                "data": report_statuses,
+                "timestamp": ts
+            }
+            return client_json
+
         for p in _dict['data']:
             p_type = p[-1]
             if 'result' in p_type:
@@ -1758,16 +1773,11 @@ class GenomicOutreachDaoV2(BaseDao):
                     }
                     report_statuses.append(report)
 
-        # handle date
-        try:
-            ts = pytz.utc.localize(_dict['date'])
-        except ValueError:
-            ts = _dict['date']
-
         client_json = {
             "data": report_statuses,
             "timestamp": ts
         }
+
         return client_json
 
     def outreach_lookup(self, pid=None, start_date=None, end_date=None):
@@ -1778,7 +1788,7 @@ class GenomicOutreachDaoV2(BaseDao):
 
         with self.session() as session:
             if 'informingLoop' in self.type:
-                # informingLoop
+                genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
                         GenomicInformingLoop.participant_id,
@@ -1793,11 +1803,19 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                    ).outerjoin(
+                        genomic_loop_alias,
+                        and_(
+                            genomic_loop_alias.participant_id == GenomicInformingLoop.participant_id,
+                            GenomicInformingLoop.event_authored_time < genomic_loop_alias.event_authored_time
+                        )
                     ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicInformingLoop.decision_value.isnot(None),
-                        GenomicInformingLoop.module_type.in_(self.module)
+                        GenomicInformingLoop.module_type.in_(self.module),
+                        GenomicInformingLoop.event_authored_time.isnot(None),
+                        genomic_loop_alias.event_authored_time.is_(None)
                     )
                 )
                 ready_loop = (
@@ -1822,7 +1840,6 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.aw3ManifestJobRunID.isnot(None)
                     )
                 )
-
                 if pid:
                     decision_loop = decision_loop.filter(
                         ParticipantSummary.participantId == pid
@@ -1830,11 +1847,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     ready_loop = ready_loop.filter(
                         ParticipantSummary.participantId == pid
                     )
-
                 if start_date:
                     decision_loop = decision_loop.filter(
-                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                        GenomicInformingLoop.event_authored_time > start_date,
+                        GenomicInformingLoop.event_authored_time < end_date
                     )
                     ready_loop = ready_loop.filter(
                         GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
@@ -1847,7 +1863,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 # results
                 result_query = (
                     session.query(
-                        GenomicMemberReportState.participant_id,
+                        distinct(GenomicMemberReportState.participant_id),
                         GenomicMemberReportState.genomic_report_state,
                         literal('result')
                     )

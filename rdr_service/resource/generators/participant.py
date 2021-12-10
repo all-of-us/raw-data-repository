@@ -1471,7 +1471,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_age_at_consent'] = \
             ubr.ubr_age_at_consent(summary.get('enrl_participant_time', None), summary.get('date_of_birth', None))
         # ubr_overall - This should be calculated here in case there is no TheBasics response available.
-        data['ubr_overall'] = max([v for v in data.values()])
+        data['ubr_overall'] = ubr.ubr_overall(data)
 
         #### TheBasics UBR calculations.
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
@@ -1511,7 +1511,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # ubr_disability
         data['ubr_disability'] = ubr.ubr_disability(qnan)
         # ubr_overall
-        data['ubr_overall'] = max([v for v in data.values()])
+        data['ubr_overall'] = ubr.ubr_overall(data)
 
         return data
 
