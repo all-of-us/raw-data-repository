@@ -24,12 +24,9 @@ TIME_2 = datetime(2021, 11, 10, 2, 20, 20)
 class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin):
     def setUp(self):
         super(CeHealthDataReconciliationPipelineTest, self).setUp()
-        config.override_setting(config.CE_HEALTH_DATA_BUCKET_NAME, [_FAKE_BUCKET])
-        config.override_setting(config.RDR_SLACK_WEBHOOKS, {_SLACK_WEBHOOK_NAME: 'fake_slack_webhook_url'})
-
-    def tearDown(self):
-        # reload config to remove the override impact
-        self.setup_config()
+        self.temporarily_override_config_setting(config.CE_HEALTH_DATA_BUCKET_NAME, [_FAKE_BUCKET])
+        self.temporarily_override_config_setting(config.RDR_SLACK_WEBHOOKS,
+                                                 {_SLACK_WEBHOOK_NAME: 'fake_slack_webhook_url'})
 
     def _write_cloud_csv(self, file_name, contents_str):
         with open_cloud_file("/%s/%s" % (_FAKE_BUCKET, file_name), mode='wb') as cloud_file:
