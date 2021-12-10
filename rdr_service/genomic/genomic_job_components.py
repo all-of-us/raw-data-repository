@@ -1606,12 +1606,15 @@ class GenomicFileValidator:
             "crampath",
             "crammd5path",
             "craipath",
+            "gvcfpath",
+            "gvcfmd5path",
             "researchid",
             "qcstatus",
             "drcsexconcordance",
             "drccontamination",
             "drcmeancoverage",
             "drcfpconcordance",
+            "passtoresearchpipeline"
         )
 
         self.AW5_WGS_SCHEMA = {
