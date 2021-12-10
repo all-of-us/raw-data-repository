@@ -83,6 +83,11 @@ class MailKitOrderDao(UpdatableDao):
             result = session.query(BiobankMailKitOrder.barcode).filter(BiobankMailKitOrder.order_id == order_id).first()
             barcode = None if not result else result if isinstance(result, str) else result.barcode
 
+        # We should have the barcode at this point.
+        # Put an error message in the logs if not so this order can be investigated.
+        if not barcode:
+            logging.error(f'Barcode missing for order {order_id}')
+
         # Convert to Central Timezone for Mayo
         collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
         collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
@@ -256,6 +261,14 @@ class MailKitOrderDao(UpdatableDao):
                 order.version = expected_version
                 if order.supplierStatus.lower() == "shipped":
                     barcode = fhir_resource.extension.get(url=DV_BARCODE_URL).valueString
+
+                    # Put a warning in the logs for later investigation if the barcode looks suspicious
+                    barcode_character_count = len(barcode)
+                    if barcode_character_count not in (14, 16):
+                        logging.warning(
+                            f'Potentially invalid barcode provided for order {order.order_id} (barcode: {barcode})'
+                        )
+
                     # remove non-alpha num chars from barcode
                     if barcode and not barcode.isalnum():
                         barcode = re.sub(r'\W+', '', barcode)
