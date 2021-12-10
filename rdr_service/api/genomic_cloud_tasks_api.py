@@ -31,16 +31,16 @@ class BaseGenomicTaskApi(Resource):
         self.cloud_req_dao = GenomicCloudRequestsDao()
         self.member_dao = GenomicSetMemberDao()
         self.file_paths = None
-        self.disallowed_jobs = []
+        self.disallowed_jobs = self.set_disallowed_jobs()
 
     @task_auth_required
     def post(self):
         log_task_headers()
-        self.set_disallowed_jobs()
         self.data = request.get_json(force=True)
         self.file_paths = [self.data.get('file_path')] \
             if type(self.data.get('file_path')) is not list \
             else self.data.get('file_path')
+        # self.set_disallowed_jobs()
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
@@ -49,13 +49,10 @@ class BaseGenomicTaskApi(Resource):
             self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
 
     def set_disallowed_jobs(self):
-
-        if 'manifesttaskapi' not in self.__class__.__name__.lower():
-            return
-
         ingestion_config = getSettingJson(GENOMIC_INGESTIONS, {})
 
-        if not ingestion_config or not self.file_paths:
+        if not ingestion_config or \
+            'manifesttaskapi' not in self.__class__.__name__.lower():
             return
 
         ingestion_config_map = {

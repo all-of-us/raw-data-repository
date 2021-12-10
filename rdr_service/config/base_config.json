@@ -119,6 +119,7 @@
     }
   },
   "genomic_ingestions": {
-    "aw1_manifest": 1
+    "aw1_manifest": 1,
+    "aw2_manifest": 0
   }
 }
