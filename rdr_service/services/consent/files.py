@@ -452,15 +452,29 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
             # Check for Spanish
             signature_label_location = self.pdf.location_of_text(page, 'Firme con su \nnombre completo')
             date_label_location = self.pdf.location_of_text(page, 'Fecha ')
-            if (
-                signature_label_location.is_inside_of(Rect.from_edges(left=75, right=172, bottom=518, top=547))
-                and date_label_location.is_inside_of(Rect.from_edges(left=76, right=117, bottom=475, top=488))
-            ):
-                self.date_search_box = Rect.from_edges(left=200, right=400, bottom=480, top=483)
-                return self.pdf.get_elements_intersecting_box(
-                    Rect.from_edges(left=150, right=400, bottom=525, top=530),
-                    page=page_no
-                )
+            if signature_label_location and date_label_location:
+                if (
+                    signature_label_location.is_inside_of(Rect.from_edges(left=75, right=172, bottom=518, top=547))
+                    and date_label_location.is_inside_of(Rect.from_edges(left=76, right=117, bottom=475, top=488))
+                ):
+                    self.date_search_box = Rect.from_edges(left=200, right=400, bottom=480, top=483)
+                    return self.pdf.get_elements_intersecting_box(
+                        Rect.from_edges(left=150, right=400, bottom=525, top=530),
+                        page=page_no
+                    )
+            else:
+                # Check for new location
+                signature_label_location = self.pdf.location_of_text(page, 'Sign Your  \nFull Name: \n')
+                date_label_location = self.pdf.location_of_text(page, 'Date: \n')
+                if (
+                    signature_label_location.is_inside_of(Rect.from_edges(left=80, right=152, bottom=171, top=203))
+                    and date_label_location.is_inside_of(Rect.from_edges(left=80, right=118, bottom=120, top=135))
+                ):
+                    self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                    return self.pdf.get_elements_intersecting_box(
+                        Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                        page=page_no
+                    )
 
         return None
 
