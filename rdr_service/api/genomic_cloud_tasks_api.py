@@ -81,8 +81,9 @@ class BaseGenomicTaskApi(Resource):
             logging.info('Complete.')
             return {"success": True}
 
-        logging.info('Complete.')
-        return {"success": False}
+        logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
+        self.create_cloud_record()
+        return {"success": True}
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
