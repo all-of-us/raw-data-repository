@@ -480,15 +480,36 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
                     # new spanish location
                     signature_label_location = self.pdf.location_of_text(page, 'Firme con su  \nnombre completo: \n')
                     date_label_location = self.pdf.location_of_text(page, 'Fecha: \n')
-                    if (
-                        signature_label_location.is_inside_of(Rect.from_edges(left=44, right=161, bottom=170, top=203))
-                        and date_label_location.is_inside_of(Rect.from_edges(left=44, right=92, bottom=120, top=135))
-                    ):
-                        self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
-                        return self.pdf.get_elements_intersecting_box(
-                            Rect.from_edges(left=120, right=400, bottom=150, top=153),
-                            page=page_no
+                    if signature_label_location and date_label_location:
+                        if (
+                            signature_label_location.is_inside_of(Rect.from_edges(left=44, right=161, bottom=170, top=203))
+                            and date_label_location.is_inside_of(Rect.from_edges(left=44, right=92, bottom=120, top=135))
+                        ):
+                            self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                            return self.pdf.get_elements_intersecting_box(
+                                Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                                page=page_no
+                            )
+                    else:
+                        signature_label_location = self.pdf.location_of_text(
+                            page,
+                            'Firme con su nombre completo: \n'
                         )
+                        date_label_location = self.pdf.location_of_text(page, 'Fecha: \n')
+                        if signature_label_location and date_label_location:
+                            if (
+                                signature_label_location.is_inside_of(
+                                    Rect.from_edges(left=44, right=246, bottom=170, top=185)
+                                ) and date_label_location.is_inside_of(
+                                    Rect.from_edges(left=44, right=91, bottom=120, top=135)
+                                )
+                            ):
+                                self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                                return self.pdf.get_elements_intersecting_box(
+                                    Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                                    page=page_no
+                                )
+
 
         return None
 
