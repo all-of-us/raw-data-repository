@@ -56,7 +56,6 @@ class ParticipantCohortPilotFlag(messages.Enum):
     UNSET = 0
     COHORT_2_PILOT = 1 # Genomics Cohort 2 Pilot Group
 
-
 class PatientStatusFlag(messages.Enum):
     """Site patient status"""
 
@@ -101,6 +100,23 @@ class QuestionnaireResponseStatus(messages.Enum):
     ENTERED_IN_ERROR = 3
     STOPPED = 4
 
+class QuestionnaireResponsePayloadType(messages.Enum):
+    """ A status to identify questionnaire response payloads with known data issues """
+    # Use cases:
+    # COMPLETE - default, and indicates no known issues exist with the payload
+    # DUPLICATE - For known issues where identical/retransmitted payloads were received (matching answer hash values)
+    # PROFILE_UPDATE - Cases such as a TheBasics response payload containing only profile updates/secondary contact info
+    # NO_ANSWER_VALUES - Known cases where the payload had no answers / no related QuestionnaireResponseAnswer content
+    # AUTHORED_TIME_UPDATED - A response where a subsequent payload with matching answer hash but corrected/distinct
+    #                         authored timestamp was received (not a true DUPLICATE due to differing authored times)
+    # PARTIAL - A generic status for other potential examples of incomplete responses that should be handled differently
+    #           by RDR business logic (e.g., should be excluded if calculating completed module details)
+    COMPLETE = 0
+    DUPLICATE = 1
+    PROFILE_UPDATE = 2
+    NO_ANSWER_VALUES = 3
+    AUTHORED_TIME_UPDATED = 4
+    PARTIAL = 5
 
 class EnrollmentStatus(messages.Enum):
     """A status reflecting how fully enrolled a participant is"""
