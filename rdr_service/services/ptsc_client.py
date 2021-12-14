@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from datetime import date
 
 import requests
@@ -51,14 +53,18 @@ class PtscClient:
 
         return None
 
-    def get_participant_lookup(self, participant_id: int = None, start_date: date = None):
-        url_params = ''
+    def get_participant_lookup(self, participant_id: int = None, start_date: date = None, end_date: date = None):
+        url_params = {}
         if participant_id:
-            url_params += f'drcId=P{participant_id}'
+            url_params['drcId'] = participant_id
         if start_date:
-            url_params += f'startDate={start_date.strftime("%Y-%m-%d")}&pageSize=1000'
+            url_params['startDate'] = start_date.strftime("%Y-%m-%d")
+            url_params['pageSize'] = 1000
+        if end_date:
+            url_params['endDate'] = end_date.strftime("%Y-%m-%d")
+            url_params['pageSize'] = 1000
 
-        response_json = self.make_request(f'{self.request_url}participantLookup?{url_params}')
+        response_json = self.make_request(f'{self.request_url}participantLookup?{urlencode(url_params)}')
 
         if participant_id:
             participant_list = response_json['participants']
