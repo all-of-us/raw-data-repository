@@ -2,6 +2,7 @@ import datetime
 import logging
 import json
 
+from rdr_service import clock
 from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.dao.database_utils import parse_datetime_from_iso_format
 from rdr_service import config
@@ -21,7 +22,7 @@ _SLACK_WEBHOOK_NAME = 'rdr_ce_health_data_reconciliation_alerts'
 
 class CeHealthDataReconciliationPipeline:
     def __init__(self):
-        self.job_started_time = datetime.datetime.utcnow()
+        self.job_started_time = clock.CLOCK.now()
         self.bucket_name = config.getSetting(CE_HEALTH_DATA_BUCKET_NAME)
         self.slack_alert_helper = None
 

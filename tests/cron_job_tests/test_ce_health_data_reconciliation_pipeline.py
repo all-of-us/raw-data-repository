@@ -34,8 +34,6 @@ class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin
 
     @mock.patch('rdr_service.offline.ce_health_data_reconciliation_pipeline.list_blobs')
     def test_reconciliation_pipeline(self, mock_list_blobs):
-        pipeline = CeHealthDataReconciliationPipeline()
-
         # add two missing records into the tables,
         # make sure the last 10 days missing records will be recheck during running the pipeline
         missing_record_list = []
@@ -95,9 +93,12 @@ class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin
         reconciliation_file_content_3 = test_data.load_test_data_json("fitbit_reconciliation_report_3.json")
         json_str_3 = json.dumps(reconciliation_file_content_3, indent=4)
         # write test data to the cloud files
-        self._write_cloud_csv('reconciliation/fitbit_reconciliation_report_2021-12-09T10:10:10Z.json', json_str_1)
-        self._write_cloud_csv('reconciliation/fitbit_reconciliation_report_2021-11-09T10:10:10Z.json', json_str_2)
-        self._write_cloud_csv('reconciliation/fitbit_reconciliation_report_2021-10-09T10:10:10Z.json', json_str_3)
+        self._write_cloud_csv(_RECONCILIATION_FILE_SUBDIR + '/fitbit_reconciliation_report_2021-12-09T10:10:10Z.json',
+                              json_str_1)
+        self._write_cloud_csv(_RECONCILIATION_FILE_SUBDIR + '/fitbit_reconciliation_report_2021-11-09T10:10:10Z.json',
+                              json_str_2)
+        self._write_cloud_csv(_RECONCILIATION_FILE_SUBDIR + '/fitbit_reconciliation_report_2021-10-09T10:10:10Z.json',
+                              json_str_3)
         self._write_cloud_csv('raw/health/2021/11/18/FITBIT/activities-heart-intraday/P1234567890/'
                               'activities_heart_date_2021-11-07_1d_1sec.json',
                               'test_content')
@@ -112,6 +113,7 @@ class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin
         later_in_24_hours = TIME_1 + timedelta(hours=23)
         with FakeClock(later_in_24_hours):
             # run the pipeline
+            pipeline = CeHealthDataReconciliationPipeline()
             pipeline.process_ce_manifest_files()
             pipeline.generate_missing_report()
 
@@ -129,6 +131,6 @@ class CeHealthDataReconciliationPipelineTest(BaseTestCase, PDRGeneratorTestMixin
                                                                'activities_heart_date_2021-11-10_1d_1sec.json')
 
                 self.assertEqual(rows[0]['file_transferred_time'], '2021-11-18 17:24:27.325256')
-                self.assertEqual(rows[0]['report_file_path'], 'rdr_fake_bucket/reconciliation/'
+                self.assertEqual(rows[0]['report_file_path'], 'rdr_fake_bucket/' + _RECONCILIATION_FILE_SUBDIR + '/'
                                                               'fitbit_reconciliation_report_2021-12-09T10:10:10Z.json')
                 self.assertEqual(rows[0]['report_date'], '2021-12-10 01:30:30')
