@@ -11,7 +11,7 @@ from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
 from rdr_service.dao.ce_health_reconciliation_dao import CeHealthReconciliationDao
 from rdr_service.services.slack_utils import SlackMessageHandler
 
-_RECONCILIATION_FILE_SUBDIR = 'reconciliation'
+_RECONCILIATION_FILE_SUBDIR = 'reconciliation_reports'
 _MISSING_REPORT_SUBDIR = 'missing_report'
 _FILE_NAME_PREFIX = 'fitbit_reconciliation_report'
 _MAX_INPUT_AGE = datetime.timedelta(hours=24)
