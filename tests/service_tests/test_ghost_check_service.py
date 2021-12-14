@@ -53,7 +53,7 @@ class GhostCheckServiceTest(BaseTestCase):
         self.dao_mock.get_participants_needing_checked.return_value = []
         self.client_mock.get_participant_lookup.return_value = {
             'participants': [
-                {'drcId': f'P1234'},
+                {'drcId': 'P1234'},
                 {'drcId': None, 'vibrentId': 45}
             ]
         }
