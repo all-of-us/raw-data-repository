@@ -35,7 +35,7 @@ class GhostCheckService:
             client_secret=self._config['client_secret']
         )
         response = client.get_participant_lookup(start_date=start_date, end_date=end_date)
-        while response:
+        while response:  # Keep checking until no more pages are left
             for participant_data in response['participants']:
                 participant_id_str = participant_data['drcId']
                 if not participant_id_str:
@@ -54,6 +54,7 @@ class GhostCheckService:
             response = client.request_next_page(response)
 
         for participant_id in ids_not_found:
+            # Individually check each participant not seen in the API data yet (their date might be a little off).
             response = client.get_participant_lookup(participant_id=participant_id)
             is_ghost_response = response is None
             self._record_ghost_result(
@@ -70,8 +71,8 @@ class GhostCheckService:
             ghost_flag_change_made = GhostFlagModification.GHOST_FLAG_SET
 
         if ghost_flag_change_made:
-            self._logger.error(f'{str(ghost_flag_change_made)} for {participant.participantId}')
-            # TODO: load participant and set/unset ghost flag
+            self._logger.info(f'{str(ghost_flag_change_made)} for {participant.participantId}')
+            participant.isGhostId = ghost_flag_change_made == GhostFlagModification.GHOST_FLAG_SET
 
         GhostCheckDao.record_ghost_check(
             session=self._session,
