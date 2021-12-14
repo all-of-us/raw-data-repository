@@ -279,6 +279,11 @@ def update_members_state_resolved_data_files():
         controller.update_member_aw2_missing_states_if_resolved()
 
 
+def update_members_blocklists():
+    with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+        controller.update_members_blocklists()
+
+
 def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()

@@ -621,6 +621,13 @@ def genomic_members_state_resolved():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('members_state_resolved_workflow')
+def genomic_members_update_blocklists():
+    genomic_pipeline.update_members_blocklists()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
@@ -935,7 +942,12 @@ def _build_pipeline_app():
         view_func=genomic_members_state_resolved,
         methods=["GET"]
     )
-
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicUpdateMembersBlocklists",
+        endpoint="genomic_members_update_blocklists",
+        view_func=genomic_members_update_blocklists,
+        methods=["GET"]
+    )
     # END Genomic Pipeline Jobs
 
     # BEGIN Genomic Data Quality Jobs
