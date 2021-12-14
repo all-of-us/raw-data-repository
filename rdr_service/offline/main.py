@@ -621,7 +621,7 @@ def genomic_members_state_resolved():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('members_state_resolved_workflow')
+@run_genomic_cron_job('members_update_blocklists')
 def genomic_members_update_blocklists():
     genomic_pipeline.update_members_blocklists()
     return '{"success": "true"}'
