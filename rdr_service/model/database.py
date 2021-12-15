@@ -56,6 +56,7 @@ from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, Q
 from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImportRecord
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerMetadata, MessageBrokerDestAuthInfo
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
+from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
 
 RETRY_CONNECTION_LIMIT = 10
 
