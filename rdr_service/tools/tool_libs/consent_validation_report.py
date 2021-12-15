@@ -173,7 +173,7 @@ ALL_RESOLVED_SQL = """
 """
 
 # TODO:  Remove this when we expand consent validation to include CE consents
-VIBRENT_SQL_FILTER = ' AND ps.participant_origin = "vibrent" '
+ORIGIN_SQL_FILTER = ' AND ps.participant_origin = "{origin_filter}"'
 
 # Weekly report SQL for validation burndown counts
 CONSENTED_PARTICIPANTS_COUNT_SQL = """
@@ -239,14 +239,17 @@ class ConsentReport(object):
         # A pandas dataframe to be populated with results of the specific report (daily or weekly) SQL query
         self.consent_df = None
 
+        # A participant origin filter value applied to queries
+        self.origin_value = None
+
         # Position tracker updated as content is added to the report worksheet
         self.row_pos = 1
 
         # Lists appended to as the report content is generated, containing the cell data and the cell formatting
         # The resulting data will be written out in a gspread batch_update() call, and the formatting will be applied
         # via a gspread-formatting format_cell_ranges() batch call
-        self.report_data = []
-        self.report_formatting = []
+        self.report_data = list()
+        self.report_formatting = list()
 
         # Commonly used cell formats for the consent reports, applied via gspread-formatting module (imported as gsfmt)
         # See https://libraries.io/pypi/gspread-formatting for information on its implementation of
@@ -270,6 +273,16 @@ class ConsentReport(object):
             'solid_border': gsfmt.cellFormat(borders=gsfmt.borders(top=gsfmt.border('SOLID'))),
             'solid_thick_border': gsfmt.cellFormat(borders=gsfmt.borders(bottom=gsfmt.border('SOLID_THICK')))
         }
+
+    def _set_origin_value(self, origin):
+        """ Save an origin value to use on queries """
+        self.origin_value = origin
+
+    def _clear_report(self):
+        """ Clear the report_data  """
+        self.report_data.clear()
+        self.report_formatting.clear()
+        self.row_pos = 1
 
     def _add_format_spec(self, fmt_name_key: str, fmt_spec : gsfmt.CellFormat):
         """ Add a new format spec to the instance format_specs list """
@@ -582,12 +595,12 @@ class DailyConsentReport(ConsentReport):
         else:
             self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
 
-        self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + VIBRENT_SQL_FILTER
+        self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + ORIGIN_SQL_FILTER
 
         # Max columns for the daily sheet (max column index value from the CONSENT_ERROR_COUNT_COLUMNS tuples)
         self.sheet_cols = max([column[1] for column in CONSENT_ERROR_COUNT_COLUMNS])
         # Number of days/worksheets to archive in the file (will do rolling deletion of oldest daily worksheets/tabs)
-        self.max_daily_reports = 32 # A month's worth + an extra sheet to contain a legend / notes as needed
+        self.max_daily_reports = 63 # A month's worth for both PTSC and CE + an extra sheet for Notes/legend
         self.consent_errors_found = False
 
     def create_csv_errors_file(self):
@@ -633,11 +646,14 @@ class DailyConsentReport(ConsentReport):
         """ Add content that appears on every daily consent validation report regardless of errors """
         auth_date = self.report_date.strftime("%b %-d, %Y")
         now = datetime.now().strftime("%x %X")
-        report_title = f'Report for consents authored on: {auth_date} 12:00AM-11:59PM UTC (generated on {now} Central)'
+        report_title = ' '.join([
+            f'Report for {self.origin_value} participant consents authored on: {auth_date} 12:00AM-11:59PM UTC',
+            f'(generated on {now} Central)'
+        ])
 
         report_notes = [
             ['Notes:'],
-            ['Validation is currently only done for PTSC consent files (does not include CareEvolution)'],
+            [f'Validation details on this sheet for {self.origin_value} participants only'],
             ['Checkbox validation currently only performed on GROR consents'],
             ['Total Errors can exceed Consents with Errors if any consents had multiple validation errors']
         ]
@@ -670,7 +686,7 @@ class DailyConsentReport(ConsentReport):
                 spreadsheet.del_worksheet(existing_sheets[ws_index-1])
 
             # Add the new worksheet (to leftmost tab position / index 0)
-            self.worksheet = spreadsheet.add_worksheet(self.report_date.strftime("%b %d %Y"),
+            self.worksheet = spreadsheet.add_worksheet(f'{self.origin_value} {self.report_date.strftime("%b %d %Y")}',
                                                        rows=self.sheet_rows,
                                                        cols=self.sheet_cols,
                                                        index=1)
@@ -691,8 +707,6 @@ class DailyConsentReport(ConsentReport):
 
         self._write_report_content()
 
-        _logger.info('Report complete')
-
 
     def execute(self):
         """
@@ -704,12 +718,18 @@ class DailyConsentReport(ConsentReport):
         gs_creds = gspread.service_account(service_key_info['key_path'])
         gs_file = gs_creds.open_by_key(self.doc_id)
 
-        # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
-        # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
-        self.consent_df = self._get_consent_validation_dataframe(
-            self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d")))
-        )
-        self.create_daily_report(gs_file)
+        # These strings converted to all lowercase when used as SQL query filters
+        for origin in ['Vibrent', 'CareEvolution']:
+            self._set_origin_value(origin)
+            # Retrieve the daily data and build the report.  Partial string substitution for the SQL statments is done
+            # here; the remaining substitutions occur in the _get_consent_validation_dataframe() method
+            self.consent_df = self._get_consent_validation_dataframe(
+                self.report_sql.format_map(SafeDict(report_date=self.report_date.strftime("%Y-%m-%d"),
+                                                    origin_filter=self.origin_value.lower()))
+            )
+            self.create_daily_report(gs_file)
+            _logger.info(f'{self.origin_value} Daily report complete')
+            self._clear_report()
 
 
 class WeeklyConsentReport(ConsentReport):
@@ -735,10 +755,10 @@ class WeeklyConsentReport(ConsentReport):
         # later than the end_date range for the authored dates.
         self.validation_end_date = self.end_date + timedelta(days=1)
         self.report_date = datetime.now()
-        self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + VIBRENT_SQL_FILTER
+        self.report_sql = CONSENT_REPORT_SQL_BODY + ALL_UNRESOLVED_ERRORS_SQL_FILTER + ORIGIN_SQL_FILTER
         self.sheet_rows = 800
         # Number of worksheets to archive in the file (will do rolling deletion of oldest weekly worksheets/tabs)
-        self.max_weekly_reports = 9 # Two month's worth + an extra sheet to contain a legend / notes as needed
+        self.max_weekly_reports = 17 # Two month's worth for both PTSC and CE + an extra sheet for Notes/Legend details
         self.consent_errors_found = False
         # Additional dataframe (after self.consent_df) that will hold results from querying resolved/OBSOLETE issues
         self.resolved_df = None
@@ -784,8 +804,9 @@ class WeeklyConsentReport(ConsentReport):
         successfully validated.  In some cases, a consent_file entry may be marked OBSOLETE after a manual inspection/
         issue resolution.
         """
-        sql = ALL_RESOLVED_SQL + VIBRENT_SQL_FILTER
-        sql = sql.format_map(SafeDict(validation_end_date=self.validation_end_date.strftime("%Y-%m-%d")))
+        sql = ALL_RESOLVED_SQL + ORIGIN_SQL_FILTER
+        sql = sql.format_map(SafeDict(validation_end_date=self.validation_end_date.strftime("%Y-%m-%d"),
+                                      origin_filter=self.origin_value.lower()))
         resolved_df = pandas.read_sql_query(sql, self.db_conn)
 
         # Make sure we only pick up resolved counts for the consent types currently enabled in the CONSENTS_LIST
@@ -804,15 +825,17 @@ class WeeklyConsentReport(ConsentReport):
 
         # Gets a count of non-test/ghost participants with a participant_summary (e.g, RDR got a primary consent),
         # if the primary consent authored date was on/before the end date for this report
-        sql = CONSENTED_PARTICIPANTS_COUNT_SQL + VIBRENT_SQL_FILTER
-        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"))))
+        sql = CONSENTED_PARTICIPANTS_COUNT_SQL + ORIGIN_SQL_FILTER
+        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
+                                               origin_filter=self.origin_value.lower())))
         consented_count = cursor.fetchone()[0]
 
         # Gets a count of non-test/ghost participants whose consents have been validated
         # (participant has entries in consent_file table), if the consent_file entry was created on/before the
         # end date for this report
-        sql = VALIDATED_PARTICIPANTS_COUNT_SQL + VIBRENT_SQL_FILTER
-        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"))))
+        sql = VALIDATED_PARTICIPANTS_COUNT_SQL + ORIGIN_SQL_FILTER
+        cursor.execute(sql.format_map(SafeDict(end_date=self.end_date.strftime("%Y-%m-%d"),
+                                               origin_filter=self.origin_value.lower())))
         validated_count = cursor.fetchone()[0]
 
         # Pandas: Gets the number of unique participant_id values from the main (unresolved errors) dataframe
@@ -960,7 +983,8 @@ class WeeklyConsentReport(ConsentReport):
             spreadsheet.del_worksheet(existing_sheets[ws_index - 1])
 
         # Add the new worksheet (to leftmost tab position / index 0)
-        tab_title = f'{self.start_date.strftime("%Y-%m-%d")} to {self.end_date.strftime("%Y-%m-%d")}'
+        origin_str = self.origin_value
+        tab_title = f'{origin_str} {self.start_date.strftime("%Y-%m-%d")} to {self.end_date.strftime("%Y-%m-%d")}'
         self.worksheet = spreadsheet.add_worksheet(tab_title,
                                                    rows=self.sheet_rows,
                                                    cols=self.sheet_cols,
@@ -969,13 +993,13 @@ class WeeklyConsentReport(ConsentReport):
         # Add Report title text indicating date range covered
         start_str = self.start_date.strftime("%b %-d %Y")
         end_str = self.end_date.strftime("%b %-d %Y")
-        report_title_str = f'Consent Validation Status Report for {start_str} to {end_str}'
+        report_title_str = f'{origin_str} Consent Validation Status Report for {start_str} to {end_str}'
         title_cell = self._make_a1_notation(self.row_pos)
         self._add_report_rows(title_cell, [[report_title_str]])
         self._add_report_formatting(title_cell, self.format_specs.get('bold_text'))
         self._add_text_rows(
             text_rows=[['Notes:'],
-                       ['Participant and consent counts currently limited to Vibrent participants only'],
+                       [f'Participant and consent counts in this sheet limited to {origin_str} participants only'],
                        ['Participants Not Yet Validated count may fluctuate due to newly consented participants ' +\
                         'whose consent files are pending validation'],
                        ['File resolutions include retransmission of files which are successfully validated, ' +\
@@ -1018,25 +1042,30 @@ class WeeklyConsentReport(ConsentReport):
         gs_creds = gspread.service_account(service_key_info['key_path'])
         gs_file = gs_creds.open_by_key(self.doc_id)
 
-        _logger.info('Retrieving consent validation records...')
-        # consent_df will contain all the outstanding NEEDS_CORRECTING issues that still need resolution
-        # start_date/end_date refer to the consent authored date range; the validation end date (when the
-        # consent_file records were created) is up to a day later than the consent authored end date
-        self.consent_df = self._get_consent_validation_dataframe(
-            self.report_sql.format_map(SafeDict(start_date=self.start_date.strftime("%Y-%m-%d"),
-                                                end_date=self.end_date.strftime("%Y-%m-%d"),
-                                                validation_end_date=self.validation_end_date.strftime("%Y-%m-%d"),
-                                                report_date=self.report_date.strftime("%Y-%m-%d"))))
-        # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files
-        # where it couldn't find signature/signing date, even though the files looked okay on visual inspection
-        self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
+        # These origin strings will be converted to lowercase when used as query filter values
+        for origin in ['Vibrent', 'CareEvolution']:
+            self._set_origin_value(origin)
+            _logger.info(f'Retrieving consent validation records for {self.origin_value}.....')
+            # consent_df will contain all the outstanding NEEDS_CORRECTING issues that still need resolution
+            # start_date/end_date refer to the consent authored date range; the validation end date (when the
+            # consent_file records were created) is up to a day later than the consent authored end date
+            self.consent_df = self._get_consent_validation_dataframe(
+                self.report_sql.format_map(SafeDict(start_date=self.start_date.strftime("%Y-%m-%d"),
+                                                    end_date=self.end_date.strftime("%Y-%m-%d"),
+                                                    validation_end_date=self.validation_end_date.strftime("%Y-%m-%d"),
+                                                    report_date=self.report_date.strftime("%Y-%m-%d"),
+                                                    origin_filter=self.origin_value.lower())))
+            # Workaround:  filtering out results for older consents where programmatic PDF validation flagged files
+            # where it couldn't find signature/signing date, even though the files looked okay on visual inspection
+            self.consent_df = self.remove_potential_false_positives_for_missing_signature(self.consent_df)
 
-        # Get all the resolved/OBSOLETE issues for generating resolution stats
-        self.resolved_df = self.get_resolved_consent_issues_dataframe()
-        _logger.info('Generating report data...')
-        self.create_weekly_report(gs_file)
+            # Get all the resolved/OBSOLETE issues for generating resolution stats
+            self.resolved_df = self.get_resolved_consent_issues_dataframe()
+            _logger.info('Generating report data...')
+            self.create_weekly_report(gs_file)
 
-        _logger.info('Report complete')
+            _logger.info('Report complete')
+            self._clear_report()
 
 def run():
     # Set global debug value and setup application logging.
