@@ -16,7 +16,7 @@ from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudReq
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicCloudRequests
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
@@ -42,9 +42,8 @@ class BaseGenomicTaskApi(Resource):
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
-            insert_data = {key: value for key, value in self.data.items() if key in
-                           GenomicCloudRequests.__table__.columns.keys()}
-            self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
+            insert_obj = self.cloud_req_dao.get_insert_data_from_items(self.data.items())
+            self.cloud_req_dao.insert(insert_obj)
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):

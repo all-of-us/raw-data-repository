@@ -571,6 +571,18 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
+    def get_insert_data_from_items(self, data_items):
+        """
+        :param data_items: dict_items
+        :return: obj
+        """
+        if type(data_items) is {}.items().__class__:
+            insert_data = {key: value for key, value in data_items if key in
+                           self.model_type.__table__.columns.keys()}
+            return self.model_type(**insert_data)
+        else:
+            raise TypeError
+
     @staticmethod
     def literal_sql_from_query(query):
         """
