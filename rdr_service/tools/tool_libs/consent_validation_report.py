@@ -588,10 +588,8 @@ class DailyConsentReport(ConsentReport):
         else:
             # Default to yesterday's date as the filter for consent authored date
             self.report_date = datetime.now() - timedelta(days=1)
-        if args.csv_file:
-            self.csv_filename = args.csv_file
-        else:
-            self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
+
+        self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
 
         self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + ORIGIN_SQL_FILTER
 
@@ -636,7 +634,9 @@ class DailyConsentReport(ConsentReport):
             output_rows.append(csv_values)
 
         # Write out the csv file to the local directory
-        with open(self.csv_filename, 'w', newline='') as f:
+        output_file = f'{self.origin_value}_{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
+        _logger.info(f'Writing errors to {output_file}...')
+        with open(output_file, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerows(output_rows)
 
@@ -1090,9 +1090,6 @@ def run():
                         help="Start date of range for consents (authored) in YYYY-MM-DD format.  Default is 8 days ago")
     parser.add_argument("--end-date", type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
                         help="End date of range for consents (authored) in YYYY-MM-DD format.  Default is 1 day ago")
-    parser.add_argument("--csv-file", type=str,
-                        help="output filename for the CSV error list. " +\
-                                           " Default is YYYYMMDD_consent_errors.csv where YYYYMMDD is the report date")
     parser.add_argument("--sheet-only", default=False, action="store_true",
                         help="Only generate the googlesheet report, skip generating the CSV file")
     parser.add_argument("--csv-only", default=False, action="store_true",
