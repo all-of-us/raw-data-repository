@@ -589,8 +589,6 @@ class DailyConsentReport(ConsentReport):
             # Default to yesterday's date as the filter for consent authored date
             self.report_date = datetime.now() - timedelta(days=1)
 
-        self.csv_filename = f'{self.report_date.strftime("%Y%m%d")}_consent_errors.csv'
-
         self.report_sql = CONSENT_REPORT_SQL_BODY + DAILY_CONSENTS_SQL_FILTER + ORIGIN_SQL_FILTER
 
         # Max columns for the daily sheet (max column index value from the CONSENT_ERROR_COUNT_COLUMNS tuples)
