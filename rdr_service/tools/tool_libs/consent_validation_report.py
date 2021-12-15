@@ -172,7 +172,6 @@ ALL_RESOLVED_SQL = """
                  AND ps.is_test_participant = 0 and (ps.is_ghost_id is null or ps.is_ghost_id = 0) and ps.hpo_id != 21
 """
 
-# TODO:  Remove this when we expand consent validation to include CE consents
 ORIGIN_SQL_FILTER = ' AND ps.participant_origin = "{origin_filter}"'
 
 # Weekly report SQL for validation burndown counts
