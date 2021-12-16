@@ -112,6 +112,7 @@ def recalculate_public_metrics():
 
 
 @app_util.auth_required_cron
+@nonprod
 def run_ce_health_data_reconciliation():
     ce_health_data_reconciliation_pipeline = CeHealthDataReconciliationPipeline()
     logging.info("Starting read ce manifest files.")
