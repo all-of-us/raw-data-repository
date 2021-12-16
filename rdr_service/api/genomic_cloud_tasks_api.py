@@ -77,13 +77,8 @@ class BaseGenomicTaskApi(Resource):
             logging.info(f'Ingesting {_type} File: {self.data.get("filename")}')
             # Call pipeline function
             genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
-            self.create_cloud_record()
-            logging.info('Complete.')
-            return {"success": True}
-
-        logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
-        self.create_cloud_record()
-        return {"success": True}
+        else:
+            logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
@@ -99,6 +94,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
         self.create_cloud_record()
+
         logging.info('Complete.')
         return {"success": True}
 
@@ -141,6 +137,11 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
 
             self.execute_manifest_ingestion(task_data, message)
 
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
 
 class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
     """
@@ -167,6 +168,11 @@ class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'AW2 task data: {task_data}')
 
             self.execute_manifest_ingestion(task_data, 'AW2')
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
 
 
 class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
@@ -210,6 +216,11 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
 
             self.execute_manifest_ingestion(task_data, 'AW4')
 
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
 
 class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
     """
@@ -246,6 +257,11 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'AW5 task data: {task_data}')
 
             self.execute_manifest_ingestion(task_data, 'AW5')
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
 
 
 class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
@@ -290,7 +306,7 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
                     self.data['bucket_name']
                 )
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
