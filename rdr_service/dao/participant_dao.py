@@ -127,7 +127,7 @@ class ParticipantDao(UpdatableDao):
         assert not obj.biobankId
         return self._insert_with_random_id(obj, ("participantId", "biobankId", "researchId"))
 
-    def update_ghost_participant(self, session, pid):
+    def update_ghost_participant(self, session, pid, is_ghost: bool):
         if not pid:
             raise Forbidden("Can not update participant without id")
 
@@ -138,8 +138,8 @@ class ParticipantDao(UpdatableDao):
                  but participant does not exist. Wrong environment?"
             )
         else:
-            participant.isGhostId = 1
-            participant.dateAddedGhost = clock.CLOCK.now()
+            participant.isGhostId = is_ghost
+            participant.dateAddedGhost = clock.CLOCK.now() if is_ghost else None
             self._update_history(session, participant, participant)
             super(ParticipantDao, self)._do_update(session, participant, participant)
 
