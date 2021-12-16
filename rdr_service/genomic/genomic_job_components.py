@@ -1590,6 +1590,7 @@ class GenomicFileValidator:
             "qcstatus",
             "drcsexconcordance",
             "drccallrate",
+            "passtoresearchpipeline"
         )
 
         self.AW4_WGS_SCHEMA = (
