@@ -37,6 +37,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         self.task_mappings = {
             "aw1": "IngestAW1ManifestTaskApi",
+            "aw1f": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
             "aw4": "IngestAW4ManifestTaskApi",
             "aw5": "IngestAW5ManifestTaskApi"
@@ -60,7 +61,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
 
         # AW1F files have "aw1f_pre_results" in file name
         elif 'aw1f_pre_results' in object_id:
-            task_key = "aw1"
+            task_key = "aw1f"
 
         # AW2 files have "_data_manifests" in their file name
         elif '_data_manifests' in object_id:

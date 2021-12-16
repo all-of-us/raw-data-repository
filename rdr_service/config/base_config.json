@@ -117,5 +117,14 @@
     "block_research": {
       "aian": 1
     }
+  },
+  "genomic_ingestions": {
+    "aw1_manifest": 1,
+    "aw1f_manifest": 1,
+    "aw2_manifest": 1,
+    "aw4_array_manifest": 1,
+    "aw4_wgs_manifest": 1,
+    "aw5_array_manifest": 1,
+    "aw5_wgs_manifest": 1
   }
 }
