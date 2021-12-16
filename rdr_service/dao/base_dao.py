@@ -571,17 +571,19 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
-    def get_insert_data_from_items(self, data_items):
+    def get_model_obj_from_items(self, data_items):
         """
+        Parses items from dictionary to check for all
+        items that are matches for attributes in model
         :param data_items: dict_items
-        :return: obj
+        :return: obj (model object)
         """
         if type(data_items) is {}.items().__class__:
             insert_data = {key: value for key, value in data_items if key in
                            self.model_type.__table__.columns.keys()}
             return self.model_type(**insert_data)
         else:
-            raise TypeError
+            raise TypeError('Items passed in parameter are required to be dict_items')
 
     @staticmethod
     def literal_sql_from_query(query):

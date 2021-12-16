@@ -42,7 +42,7 @@ class BaseGenomicTaskApi(Resource):
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
-            insert_obj = self.cloud_req_dao.get_insert_data_from_items(self.data.items())
+            insert_obj = self.cloud_req_dao.get_model_obj_from_items(self.data.items())
             self.cloud_req_dao.insert(insert_obj)
 
 
