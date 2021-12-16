@@ -713,6 +713,15 @@ class GenomicFileIngester:
         row['member_id'] = member.id
         row['file_id'] = self.file_obj.id
 
+        # handle mapped reads in case they are longer than field length
+        if 'mappedreadspct' in row.keys():
+            if len(row['mappedreadspct']) > 10:
+                row['mappedreadspct'] = row['mappedreadspct'][0:10]
+
+        # Set default values in case they upload "" and processing status of "fail"
+        row['contamination_category'] = GenomicContaminationCategory.UNSET
+        row['contamination_category_str'] = "UNSET"
+
         # Truncate call rate
         try:
             row['callrate'] = row['callrate'][:10]
@@ -753,11 +762,6 @@ class GenomicFileIngester:
         )
         row['contamination_category'] = category
         row['contamination_category_str'] = category.name
-
-        # handle mapped reads in case they are longer than field length
-        if 'mappedreadspct' in row.keys():
-            if len(row['mappedreadspct']) > 10:
-                row['mappedreadspct'] = row['mappedreadspct'][0:10]
 
         return row
 
@@ -1590,6 +1594,7 @@ class GenomicFileValidator:
             "qcstatus",
             "drcsexconcordance",
             "drccallrate",
+            "passtoresearchpipeline"
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1606,12 +1611,15 @@ class GenomicFileValidator:
             "crampath",
             "crammd5path",
             "craipath",
+            "gvcfpath",
+            "gvcfmd5path",
             "researchid",
             "qcstatus",
             "drcsexconcordance",
             "drccontamination",
             "drcmeancoverage",
             "drcfpconcordance",
+            "passtoresearchpipeline"
         )
 
         self.AW5_WGS_SCHEMA = {

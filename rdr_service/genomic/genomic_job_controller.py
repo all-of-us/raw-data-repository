@@ -1253,6 +1253,17 @@ class GenomicJobController:
 
         logging.warning(message)
 
+    def update_members_blocklists(self):
+        members = self.member_dao.get_members_from_date()
+
+        if not members:
+            return
+
+        logging.info(f'Updating {len(members)} newly added genomic member(s) blocklists')
+
+        for member in members:
+            self.member_dao.update_member_blocklists(member)
+
     @staticmethod
     def update_member_file_record(manifest_type):
         file_attr = None

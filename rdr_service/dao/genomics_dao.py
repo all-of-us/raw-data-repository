@@ -823,6 +823,18 @@ class GenomicSetMemberDao(UpdatableDao):
         bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
 
+    def get_members_from_date(self, from_days=1):
+        from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
+
+        with self.session() as session:
+            members = session.query(
+                GenomicSetMember
+            ).filter(
+                GenomicSetMember.created >= from_date
+            ).all()
+
+            return members
+
     def get_members_for_cvl_reconciliation(self):
         """
         Simple select from GSM
@@ -1061,7 +1073,6 @@ class GenomicSetMemberDao(UpdatableDao):
 
     def update(self, obj):
         self.update_member_wf_states(obj)
-        self.update_member_blocklists(obj)
         super(GenomicSetMemberDao, self).update(obj)
 
 

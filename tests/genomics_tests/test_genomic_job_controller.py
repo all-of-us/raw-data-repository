@@ -1,10 +1,9 @@
 from datetime import datetime
-
 import mock
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao, GenomicInformingLoopDao, \
-    GenomicGcDataFileDao
+    GenomicGcDataFileDao, GenomicSetMemberDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
@@ -15,11 +14,12 @@ from tests.helpers.unittest_base import BaseTestCase
 class GenomicJobControllerTest(BaseTestCase):
     def setUp(self):
         super(GenomicJobControllerTest, self).setUp()
-        self.metrics_dao = GenomicGCValidationMetricsDao()
-        self.incident_dao = GenomicIncidentDao()
         self.data_file_dao = GenomicGcDataFileDao()
-        self.informing_loop_dao = GenomicInformingLoopDao()
         self.event_data_dao = MessageBrokenEventDataDao()
+        self.incident_dao = GenomicIncidentDao()
+        self.informing_loop_dao = GenomicInformingLoopDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -329,4 +329,34 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.participant_id, message_broker_record_two.participantId)
         self.assertEqual(started_genomic_record.event_type, loop_started)
         self.assertEqual(started_genomic_record.module_type, 'hdr')
+
+    def test_updating_members_blocklists(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for i in range(4):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_wgs",
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                ai_an='Y' if i & 2 == 0 else 'N'
+            )
+
+        with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+            controller.update_members_blocklists()
+
+        current_members = self.member_dao.get_all()
+
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None
+            for obj in current_members if obj.ai_an == 'Y')
+        )
+
+
 

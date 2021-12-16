@@ -103,6 +103,8 @@ class GenomicJob(messages.Enum):
     RECONCILE_RAW_AW1_INGESTED = 47
     RECONCILE_RAW_AW2_INGESTED = 48
 
+    UPDATE_MEMBERS_BLOCKLISTS = 49
+
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
     DAILY_SUMMARY_REPORT_JOB_RUNS = 101
