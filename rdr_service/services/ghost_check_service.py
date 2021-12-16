@@ -4,6 +4,7 @@ from logging import Logger
 from sqlalchemy.orm import Session
 
 from rdr_service.dao.ghost_check_dao import GhostCheckDao, GhostFlagModification
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.services.ptsc_client import PtscClient
@@ -14,6 +15,7 @@ class GhostCheckService:
         self._session = session
         self._logger = logger
         self._config = ptsc_config
+        self._participant_dao = ParticipantDao()
 
     def run_ghost_check(self, start_date: date, end_date: date = None):
         """
@@ -72,7 +74,11 @@ class GhostCheckService:
 
         if ghost_flag_change_made:
             self._logger.info(f'{str(ghost_flag_change_made)} for {participant.participantId}')
-            participant.isGhostId = ghost_flag_change_made == GhostFlagModification.GHOST_FLAG_SET
+            self._participant_dao.update_ghost_participant(
+                session=self._session,
+                pid=participant.participantId,
+                is_ghost=ghost_flag_change_made == GhostFlagModification.GHOST_FLAG_SET
+            )
 
         GhostCheckDao.record_ghost_check(
             session=self._session,

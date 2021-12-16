@@ -26,7 +26,7 @@ cron:
   target: offline
 - description: Flag ghost participants
   url: /offline/MarkGhostParticipants
-  schedule: every day 00:10
+  schedule: every saturday 00:10
   timezone: America/New_York
   target: offline
 - description: Rebuild BigQuery Data (Manual)
