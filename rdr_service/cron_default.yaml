@@ -174,4 +174,9 @@ cron:
   timezone: America/New_York
   schedule: every 12 hours
   target: offline
+- description: Ce Health Data Reconciliation Pipeline
+  url: /offline/CeHealthDataReconciliation
+  timezone: America/New_York
+  schedule: every day 3:45
+  target: offline
 
