@@ -23,7 +23,7 @@ class OfflineAppTest(BaseTestCase):
         """Make sure HTTPException are logged when thrown"""
 
         # Need to raise an HTTPException on a cron call, picking an arbitrary one that is easy to mock
-        with mock.patch('rdr_service.offline.main.mark_ghost_participants') as mock_cron_call, \
+        with mock.patch('rdr_service.offline.main.check_enrollment') as mock_cron_call, \
                 mock.patch('rdr_service.app_util.check_cron', return_value=True),\
                 mock.patch('rdr_service.services.gcp_logging.logging') as mock_logging:
             def throw_exception():
@@ -32,7 +32,7 @@ class OfflineAppTest(BaseTestCase):
 
             # Call to trigger the exception
             self.send_get(
-                'MarkGhostParticipants',
+                'EnrollmentStatusCheck',
                 test_client=self.offline_test_client,
                 prefix=self.url_prefix,
                 expected_status=None
