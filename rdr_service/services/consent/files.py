@@ -556,6 +556,12 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
                             date_label_location=Rect.from_edges(left=500, right=544, bottom=73, top=88),
                             signature_search_box=Rect.from_edges(left=120, right=400, bottom=110, top=115),
                             date_search_box=Rect.from_edges(left=520, right=570, bottom=110, top=115)
+                        ),
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=236, right=269, bottom=161, top=174),
+                            date_label_location=Rect.from_edges(left=459, right=491, bottom=161, top=174),
+                            signature_search_box=Rect.from_edges(left=90, right=400, bottom=178, top=185),
+                            date_search_box=Rect.from_edges(left=430, right=510, bottom=178, top=185)
                         )
                     ]
                 ),
@@ -578,8 +584,8 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
                         LayoutVariation(
                             signature_label_location=Rect.from_edges(left=229, right=282, bottom=138, top=151),
                             date_label_location=Rect.from_edges(left=469, right=495, bottom=138, top=151),
-                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=160, top=163),
-                            date_search_box=Rect.from_edges(left=440, right=570, bottom=160, top=163)
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=160, top=170),
+                            date_search_box=Rect.from_edges(left=440, right=570, bottom=160, top=170)
                         )
                     ]
                 )
