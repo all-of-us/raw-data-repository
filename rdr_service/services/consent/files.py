@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 
 from geometry import Rect
 from google.cloud.storage.blob import Blob
-from pdfminer.high_level import extract_pages, extract_text
+from pdfminer.high_level import extract_text
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
@@ -568,6 +568,18 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
                             date_label_location=Rect.from_edges(left=504, right=539, bottom=74, top=89),
                             signature_search_box=Rect.from_edges(left=120, right=400, bottom=110, top=115),
                             date_search_box=Rect.from_edges(left=520, right=570, bottom=110, top=115)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Signature  \n',
+                    text_of_date_label='Date \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=229, right=282, bottom=138, top=151),
+                            date_label_location=Rect.from_edges(left=469, right=495, bottom=138, top=151),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=160, top=163),
+                            date_search_box=Rect.from_edges(left=440, right=570, bottom=160, top=163)
                         )
                     ]
                 )
