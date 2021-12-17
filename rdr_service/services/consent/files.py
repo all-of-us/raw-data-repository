@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 from dateutil import parser
 from io import BytesIO
@@ -377,151 +378,49 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
         return update_agreement_page_number is not None
 
 
-class VibrentPrimaryConsentFile(PrimaryConsentFile):
-    def __init__(self, *args, **kwargs):
-        super(VibrentPrimaryConsentFile, self).__init__(*args, **kwargs)
-        self.date_search_box = None
-
-    def _get_signature_page(self):
-        return self.pdf.get_page_number_of_text([
-            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia'),
-            ('sign your full name', 'Firme con su nombre completo')
-        ])
-
-    # def get_signature_on_file(self):
-    #     signature_annotation = self.pdf.get_annotation(
-    #         page_no=self._get_signature_page(),
-    #         annotation_name='ParticipantTypedinSignature'
-    #     )
-    #     if signature_annotation:
-    #         return signature_annotation['V'].decode('utf8')
-    #     else:
-    #         return None
-
+class VibrentConsentFile(ConsentFile):
     def get_signature_on_file(self):
-        signature_elements = self._get_signature_elements()
-        if signature_elements:
-            for element in signature_elements:
-                first_child = Pdf.get_first_child_of_element(element)
+        signature_from_elements = super(VibrentConsentFile, self).get_signature_on_file()
+        if signature_from_elements:
+            return signature_from_elements
+        else:
+            # No elements found worked, so check annotations
+            return self._get_signature_from_annotation()  # Either gets the signature or returns None
 
-                if isinstance(first_child, LTChar):
-                    possible_signature = ''.join([char_child.get_text() for char_child in element]).strip()
-                    if possible_signature != '':
-                        return possible_signature
+    @abstractmethod
+    def _get_signature_page(self):
+        ...
 
-                elif isinstance(first_child, LTImage):
-                    return True
-
-        # No elements found worked, so check annotations
+    def _get_signature_from_annotation(self):
         signature_annotation = self.pdf.get_annotation(
             page_no=self._get_signature_page(),
             annotation_name='ParticipantTypedinSignature'
         )
         if signature_annotation and 'V' in signature_annotation:
             return signature_annotation['V'].decode('latin_1').strip()
+        else:
+            return None
 
-        return None
-
-    def _get_signature_elements(self):
+    def _search_for_signature(self, content_variations: List['ContentVariation']):
         page_no = self._get_signature_page()
         page = self.pdf.pages[page_no]
-
-        # If 'sign your full name' and 'date' are in these positions then we know where the signature should be
-        signature_label_location = self.pdf.location_of_text(page, 'Sign your full name ____')
-        date_label_location = self.pdf.location_of_text(page, 'Date ____')
-        if signature_label_location and date_label_location:
-            if (
-                signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=500, top=513))
-                and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=456, top=470))
-            ):
-                self.date_search_box = Rect.from_edges(left=80, right=380, bottom=465, top=468)
-                return self.pdf.get_elements_intersecting_box(
-                    Rect.from_edges(left=80, right=400, bottom=505, top=510),
-                    page=page_no
-                )
-            elif (
-                signature_label_location.is_inside_of(Rect.from_edges(left=71, right=482, bottom=590, top=603))
-                and date_label_location.is_inside_of(Rect.from_edges(left=72, right=404, bottom=546, top=560))
-            ):
-                self.date_search_box = Rect.from_edges(left=80, right=380, bottom=550, top=555)
-                return self.pdf.get_elements_intersecting_box(
-                    Rect.from_edges(left=80, right=400, bottom=593, top=598),
-                    page=page_no
-                )
-        else:
-            # Check for Spanish
-            signature_label_location = self.pdf.location_of_text(page, 'Firme con su \nnombre completo')
-            date_label_location = self.pdf.location_of_text(page, 'Fecha ')
+        for variant in content_variations:
+            signature_label_location = self.pdf.location_of_text(page, variant.text_of_signature_label)
+            date_label_location = self.pdf.location_of_text(page, variant.text_of_date_label)
             if signature_label_location and date_label_location:
-                if (
-                    signature_label_location.is_inside_of(Rect.from_edges(left=75, right=172, bottom=518, top=547))
-                    and date_label_location.is_inside_of(Rect.from_edges(left=76, right=117, bottom=475, top=488))
-                ):
-                    self.date_search_box = Rect.from_edges(left=200, right=400, bottom=480, top=483)
-                    return self.pdf.get_elements_intersecting_box(
-                        Rect.from_edges(left=150, right=400, bottom=525, top=530),
-                        page=page_no
-                    )
-            else:
-                # Check for new location
-                signature_label_location = self.pdf.location_of_text(page, 'Sign Your  \nFull Name: \n')
-                date_label_location = self.pdf.location_of_text(page, 'Date: \n')
-                if signature_label_location and date_label_location:
+                for layout in variant.layout_variations:
                     if (
-                        signature_label_location.is_inside_of(Rect.from_edges(left=80, right=152, bottom=171, top=203))
-                        and date_label_location.is_inside_of(Rect.from_edges(left=80, right=118, bottom=120, top=135))
+                        signature_label_location.is_inside_of(layout.signature_label_location)
+                        and date_label_location.is_inside_of(layout.date_label_location)
                     ):
-                        self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                        self.date_search_box = layout.date_search_box
                         return self.pdf.get_elements_intersecting_box(
-                            Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            search_box=layout.signature_search_box,
                             page=page_no
                         )
-                else:
-                    # new spanish location
-                    signature_label_location = self.pdf.location_of_text(page, 'Firme con su  \nnombre completo: \n')
-                    date_label_location = self.pdf.location_of_text(page, 'Fecha: \n')
-                    if signature_label_location and date_label_location:
-                        if (
-                            signature_label_location.is_inside_of(Rect.from_edges(left=44, right=161, bottom=170, top=203))
-                            and date_label_location.is_inside_of(Rect.from_edges(left=44, right=92, bottom=120, top=135))
-                        ):
-                            self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
-                            return self.pdf.get_elements_intersecting_box(
-                                Rect.from_edges(left=120, right=400, bottom=150, top=153),
-                                page=page_no
-                            )
-                    else:
-                        signature_label_location = self.pdf.location_of_text(
-                            page,
-                            'Firme con su nombre completo: \n'
-                        )
-                        date_label_location = self.pdf.location_of_text(page, 'Fecha: \n')
-                        if signature_label_location and date_label_location:
-                            if (
-                                signature_label_location.is_inside_of(
-                                    Rect.from_edges(left=44, right=246, bottom=170, top=185)
-                                ) and date_label_location.is_inside_of(
-                                    Rect.from_edges(left=44, right=91, bottom=120, top=135)
-                                )
-                            ):
-                                self.date_search_box = Rect.from_edges(left=120, right=400, bottom=98, top=102)
-                                return self.pdf.get_elements_intersecting_box(
-                                    Rect.from_edges(left=120, right=400, bottom=150, top=153),
-                                    page=page_no
-                                )
-
+                return None
 
         return None
-
-        # elements = self.pdf.get_elements_intersecting_box(
-        #     Rect.from_edges(left=125, right=500, bottom=155, top=160),
-        #     page=signature_page
-        # )
-        # if not elements:  # old style consent
-        #     elements = self.pdf.get_elements_intersecting_box(
-        #         Rect.from_edges(left=220, right=500, bottom=590, top=600), page=signature_page)
-        #
-        # return elements
 
     def _get_date_signed_str(self):
         signature_page = self._get_signature_page()
@@ -540,35 +439,140 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile):
 
         return None
 
-    def _get_date_elements(self):
-        ...
-        # elements = self.pdf.get_elements_intersecting_box(
-        #     Rect.from_edges(left=125, right=200, bottom=110, top=120),
-        #     page=signature_page
-        # )
-        # if not elements:  # old style consent
-        #     elements = self.pdf.get_elements_intersecting_box(
-        #         Rect.from_edges(left=110, right=200, bottom=570, top=580),
-        #         page=signature_page
-        #     )
-        #
-        # return elements
 
+class VibrentPrimaryConsentFile(PrimaryConsentFile, VibrentConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(VibrentPrimaryConsentFile, self).__init__(*args, **kwargs)
+        self.date_search_box = None
 
-class VibrentCaborConsentFile(CaborConsentFile):
+    def _get_signature_page(self):
+        return self.pdf.get_page_number_of_text([
+            ('I freely and willingly choose', 'Decido participar libremente y por voluntad propia'),
+            ('sign your full name', 'Firme con su nombre completo')
+        ])
+
     def _get_signature_elements(self):
-        elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=110, top=115))
-        if not elements:  # old style cabor have signature higher up on the page
-            elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=200, right=400, bottom=165, top=170))
+        return self._search_for_signature(
+            content_variations=[
+                ContentVariation(
+                    text_of_signature_label='Sign Your Full Name:',
+                    text_of_date_label='Date: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=80, right=218, bottom=170, top=185),
+                            date_label_location=Rect.from_edges(left=80, right=118, bottom=120, top=135),
+                            signature_search_box=Rect.from_edges(left=120, right=500, bottom=148, top=152),
+                            date_search_box=Rect.from_edges(left=120, right=500, bottom=95, top=100)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Sign your full name ____',
+                    text_of_date_label='Date ____',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=71, right=482, bottom=500, top=513),
+                            date_label_location=Rect.from_edges(left=72, right=404, bottom=456, top=470),
+                            signature_search_box=Rect.from_edges(left=80, right=400, bottom=505, top=510),
+                            date_search_box=Rect.from_edges(left=80, right=380, bottom=465, top=468)
+                        ),
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=71, right=482, bottom=590, top=603),
+                            date_label_location=Rect.from_edges(left=72, right=404, bottom=546, top=560),
+                            signature_search_box=Rect.from_edges(left=80, right=400, bottom=593, top=598),
+                            date_search_box=Rect.from_edges(left=80, right=380, bottom=550, top=555)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Sign Your  \nFull Name: \n',
+                    text_of_date_label='Date: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=80, right=152, bottom=171, top=203),
+                            date_label_location=Rect.from_edges(left=80, right=118, bottom=120, top=135),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            date_search_box=Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Firme con su \nnombre completo',
+                    text_of_date_label='Fecha ',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=75, right=172, bottom=518, top=547),
+                            date_label_location=Rect.from_edges(left=76, right=117, bottom=475, top=488),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            date_search_box=Rect.from_edges(left=150, right=400, bottom=525, top=530)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Firme con su  \nnombre completo: \n',
+                    text_of_date_label='Fecha ',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=44, right=161, bottom=170, top=203),
+                            date_label_location=Rect.from_edges(left=44, right=92, bottom=120, top=135),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            date_search_box=Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Firme con su nombre completo: \n',
+                    text_of_date_label='Fecha: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=44, right=246, bottom=170, top=185),
+                            date_label_location=Rect.from_edges(left=44, right=91, bottom=119, top=135),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            date_search_box=Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                        )
+                    ]
+                )
+            ]
+        )
 
-        return elements
 
-    def _get_date_elements(self):
-        elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=110, top=115))
-        if not elements:  # old style cabor have signature higher up on the page
-            elements = self.pdf.get_elements_intersecting_box(Rect.from_edges(left=520, right=570, bottom=165, top=170))
+class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(VibrentCaborConsentFile, self).__init__(*args, **kwargs)
+        self.date_search_box = None
 
-        return elements
+    def _get_signature_page(self):
+        return 0
+
+    def _get_signature_elements(self):
+        return self._search_for_signature(
+            content_variations=[
+                ContentVariation(
+                    text_of_signature_label='Firma \n',
+                    text_of_date_label='Fecha \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=224, right=264, bottom=73, top=88),
+                            date_label_location=Rect.from_edges(left=500, right=544, bottom=73, top=88),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=110, top=115),
+                            date_search_box=Rect.from_edges(left=520, right=570, bottom=110, top=115)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Signature \n',
+                    text_of_date_label='Date \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=211, right=276, bottom=73, top=89),
+                            date_label_location=Rect.from_edges(left=504, right=539, bottom=74, top=89),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=110, top=115),
+                            date_search_box=Rect.from_edges(left=520, right=570, bottom=110, top=115)
+                        )
+                    ]
+                )
+            ]
+        )
 
 
 class VibrentEhrConsentFile(EhrConsentFile):
@@ -989,3 +993,19 @@ class Pdf:
     @classmethod
     def _get_text_for_comparison(cls, text: str):
         return ''.join(text.lower().split())
+
+
+@dataclass
+class ContentVariation:
+    text_of_signature_label: str
+    text_of_date_label: str
+    layout_variations: List['LayoutVariation']
+
+
+@dataclass
+class LayoutVariation:
+    signature_label_location: Rect
+    date_label_location: Rect
+    signature_search_box: Rect
+    date_search_box: Rect
+
