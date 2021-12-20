@@ -616,6 +616,18 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
         return self._search_for_signature(
             content_variations=[
                 ContentVariation(
+                    text_of_signature_label='Firme con su \nnombre completo: \n',
+                    text_of_date_label='Fecha de hoy:\n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=72, right=172, bottom=589, top=616),
+                            date_label_location=Rect.from_edges(left=72, right=149, bottom=550, top=563),
+                            signature_search_box=Rect.from_edges(left=180, right=500, bottom=593, top=598),
+                            date_search_box=Rect.from_edges(left=155, right=500, bottom=553, top=558)
+                        )
+                    ]
+                ),
+                ContentVariation(
                     text_of_signature_label='Firme con su  \nnombre completo: \n',
                     text_of_date_label='Fecha de hoy: \n',
                     layout_variations=[
