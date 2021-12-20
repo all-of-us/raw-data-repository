@@ -600,11 +600,14 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
 class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
     def _get_signature_page(self):
         signature_page_number = self.pdf.get_page_number_of_text([
-            ('Please print your name and sign below',)
+            ('Please print your name and sign below', 'Por favor escriba su nombre y firme en la parte de abajo')
         ])
         if not signature_page_number:
             signature_page_number = self.pdf.get_page_number_of_text([
-                ('By signing this form, I voluntarily authorize my healthcare providers')
+                (
+                    'By signing this form, I voluntarily authorize my healthcare providers',
+                    'Al firmar este documento, autorizo voluntariamente a mis proveedores'
+                )
             ])
 
         return signature_page_number
@@ -612,6 +615,18 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
     def _get_signature_elements(self):
         return self._search_for_signature(
             content_variations=[
+                ContentVariation(
+                    text_of_signature_label='Firme con su  \nnombre completo: \n',
+                    text_of_date_label='Fecha de hoy: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=44, right=161, bottom=172, top=204),
+                            date_label_location=Rect.from_edges(left=44, right=137, bottom=121, top=136),
+                            signature_search_box=Rect.from_edges(left=116, right=500, bottom=150, top=155),
+                            date_search_box=Rect.from_edges(left=116, right=500, bottom=100, top=105)
+                        )
+                    ]
+                ),
                 ContentVariation(
                     text_of_signature_label='Sign your full name: \n',
                     text_of_date_label='Today’s date: \n',
