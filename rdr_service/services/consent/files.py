@@ -599,9 +599,15 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
 
 class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
     def _get_signature_page(self):
-        return self.pdf.get_page_number_of_text([
+        signature_page_number = self.pdf.get_page_number_of_text([
             ('Please print your name and sign below',)
         ])
+        if not signature_page_number:
+            signature_page_number = self.pdf.get_page_number_of_text([
+                ('By signing this form, I voluntarily authorize my healthcare providers')
+            ])
+
+        return signature_page_number
 
     def _get_signature_elements(self):
         return self._search_for_signature(
@@ -621,6 +627,18 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
                             date_label_location=Rect.from_edges(left=72, right=160, bottom=497, top=512),
                             signature_search_box=Rect.from_edges(left=220, right=450, bottom=548, top=553),
                             date_search_box=Rect.from_edges(left=170, right=450, bottom=500, top=505)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Sign your full name:  \n',
+                    text_of_date_label='Today’s date: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=72, right=184, bottom=239, top=252),
+                            date_label_location=Rect.from_edges(left=72, right=148, bottom=195, top=208),
+                            signature_search_box=Rect.from_edges(left=200, right=450, bottom=243, top=248),
+                            date_search_box=Rect.from_edges(left=200, right=450, bottom=198, top=203)
                         )
                     ]
                 ),
