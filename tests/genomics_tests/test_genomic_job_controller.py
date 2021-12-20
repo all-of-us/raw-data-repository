@@ -2,12 +2,15 @@ from datetime import datetime
 import mock
 
 from rdr_service import clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao, GenomicInformingLoopDao, \
-    GenomicGcDataFileDao, GenomicSetMemberDao
+    GenomicGcDataFileDao, GenomicSetMemberDao, UserEventMetricsDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
-from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile
+from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident
+from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -20,6 +23,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.user_event_metrics_dao = UserEventMetricsDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -358,5 +362,40 @@ class GenomicJobControllerTest(BaseTestCase):
             for obj in current_members if obj.ai_an == 'Y')
         )
 
+    def test_ingest_user_metrics_file(self):
+        test_file = 'Genomic-Metrics-File-User-Events-Test.csv'
+        bucket_name = 'test_bucket'
+        sub_folder = 'user_events'
+        pids = []
 
+        file_ingester = GenomicFileIngester()
+
+        for _ in range(2):
+            pid = self.data_generator.create_database_participant()
+            pids.append(pid.participantId)
+
+        test_metrics_file = create_ingestion_test_file(
+            test_file,
+            bucket_name,
+            sub_folder)
+
+        test_file_path = f'{bucket_name}/{sub_folder}/{test_metrics_file}'
+
+        with open_cloud_file(test_file_path) as csv_file:
+            metrics_to_ingest = file_ingester._read_data_to_ingest(csv_file)
+
+        with GenomicJobController(GenomicJob.METRICS_FILE_INGEST) as controller:
+            controller.ingest_metrics_file(
+                metric_type='user_events',
+                file_path=test_file_path,
+            )
+
+        metrics = self.user_event_metrics_dao.get_all()
+
+        for pid in pids:
+            file_metrics = list(filter(lambda x: int(x['participant_id'].split('P')[-1]) == pid, metrics_to_ingest[
+                'rows']))
+            participant_ingested_metrics = list(filter(lambda x: x.participant_id == pid, metrics))
+
+            self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
 

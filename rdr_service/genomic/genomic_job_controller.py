@@ -279,6 +279,19 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def ingest_metrics_file(self, *, metric_type, file_path):
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=file_path,
+                                                _controller=self)
+
+            self.job_result = self.ingester.ingest_metrics_file_from_filepath(metric_type, file_path)
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def ingest_specific_manifest(self, filename):
         """
         Uses GenomicFileIngester to ingest specific Manifest file.

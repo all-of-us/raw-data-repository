@@ -1,0 +1,22 @@
+participant_id,event_name,created_at,device,operating_system,browser
+P900000000,gem.informing_loop.started,2021-10-28T05:33:28.361010Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen1,2021-10-28T05:33:28.361659Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen2,2021-10-28T05:33:29.147329Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen3,2021-10-28T05:33:35.684329Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen4,2021-10-28T05:34:01.344883Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen5,2021-10-28T05:34:54.832641Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen6,2021-10-28T05:35:03.391648Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen7,2021-10-28T05:35:32.318555Z,desktop,Mac OS X,Safari
+P900000000,gem.informing_loop.screen8_yes,2021-10-28T05:35:34.581920Z,desktop,Mac OS X,Safari
+P900000000,gem.results_first_viewed,2021-10-28T05:35:36.888371Z,desktop,Mac OS X,Safari
+P900000000,lactose.first_opened_at,2021-10-28T05:35:36.888371Z,desktop,Mac OS X,Safari
+P900000000,bitterness.first_opened_at,2021-10-28T05:38:01.849322Z,desktop,Mac OS X,Safari
+P900000000,ancestry_traits.selected_hide,2021-10-28T05:39:31.102833Z,desktop,Mac OS X,Safari
+P900000001,gem.informing_loop.started,2021-10-28T05:35:12.001839Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen1,2021-10-28T05:35:12.103772Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen2,2021-10-28T05:35:29.102888Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen3,2021-10-28T05:35:39.203719Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen4,2021-10-28T05:35:58.192734Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen5,2021-10-28T05:36:34.103772Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen6,2021-10-28T05:36:43.391648Z,mobile,Android,Chrome
+P900000001,gem.informing_loop.screen7,2021-10-28T05:37:02.318555Z,mobile,Android,Chrome

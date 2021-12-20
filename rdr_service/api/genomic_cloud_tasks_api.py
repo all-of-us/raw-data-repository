@@ -334,6 +334,32 @@ class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestUserEventMetricsApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Inserting records for GHR3 User event metrics
+    """
+    def post(self):
+        super(IngestUserEventMetricsApi, self).post()
+
+        if not self.data.get('file_path'):
+            logging.warning('Can not run user metrics ingestion for missing file path')
+            return {"success": False}
+
+        logging.info(f"Ingesting user event metrics for {self.data.get('file_path')}")
+
+        with GenomicJobController(GenomicJob.METRICS_FILE_INGEST,
+                                  ) as controller:
+            controller.ingest_metrics_file(
+                metric_type='user_events',
+                file_path=self.data['file_path']
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class CalculateRecordCountTaskApi(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Calculates genomic_manifest_file.record_count.
