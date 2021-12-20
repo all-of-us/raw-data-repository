@@ -617,11 +617,11 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
             content_variations=[
                 ContentVariation(
                     text_of_signature_label='Firme con su \nnombre completo: \n',
-                    text_of_date_label='Fecha de hoy:\n',
+                    text_of_date_label='Fecha de hoy:',
                     layout_variations=[
                         LayoutVariation(
-                            signature_label_location=Rect.from_edges(left=72, right=172, bottom=589, top=616),
-                            date_label_location=Rect.from_edges(left=72, right=149, bottom=550, top=563),
+                            signature_label_location=Rect.from_edges(left=72, right=172, bottom=589, top=617),
+                            date_label_location=Rect.from_edges(left=72, right=152, bottom=550, top=564),
                             signature_search_box=Rect.from_edges(left=180, right=500, bottom=593, top=598),
                             date_search_box=Rect.from_edges(left=155, right=500, bottom=553, top=558)
                         )
