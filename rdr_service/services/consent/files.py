@@ -404,6 +404,7 @@ class VibrentConsentFile(ConsentFile):
     def _search_for_signature(self, content_variations: List['ContentVariation']):
         page_no = self._get_signature_page()
         page = self.pdf.pages[page_no]
+
         for variant in content_variations:
             signature_label_location = self.pdf.location_of_text(page, variant.text_of_signature_label)
             date_label_location = self.pdf.location_of_text(page, variant.text_of_date_label)
@@ -427,7 +428,10 @@ class VibrentConsentFile(ConsentFile):
 
         if self.date_search_box:
             possible_elements = self.pdf.get_elements_intersecting_box(self.date_search_box, page=signature_page)
-            date_figures = [element for element in possible_elements if isinstance(element, LTFigure)]
+            date_figures = [
+                element for element in possible_elements
+                if isinstance(element, LTFigure) and not any([isinstance(child, LTImage) for child in element])
+            ]
 
             if date_figures:
                 for date_figure in date_figures:
@@ -593,12 +597,47 @@ class VibrentCaborConsentFile(CaborConsentFile, VibrentConsentFile):
         )
 
 
-class VibrentEhrConsentFile(EhrConsentFile):
-    def _get_signature_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=160, top=165), page=6)
+class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
+    def _get_signature_page(self):
+        return self.pdf.get_page_number_of_text([
+            ('Please print your name and sign below',)
+        ])
 
-    def _get_date_elements(self):
-        return self.pdf.get_elements_intersecting_box(Rect.from_edges(left=130, right=250, bottom=110, top=115), page=6)
+    def _get_signature_elements(self):
+        return self._search_for_signature(
+            content_variations=[
+                ContentVariation(
+                    text_of_signature_label='Sign your full name: \n',
+                    text_of_date_label='Today’s date: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=72, right=200, bottom=566, top=581),
+                            date_label_location=Rect.from_edges(left=72, right=160, bottom=518, top=533),
+                            signature_search_box=Rect.from_edges(left=220, right=450, bottom=570, top=575),
+                            date_search_box=Rect.from_edges(left=170, right=450, bottom=525, top=530)
+                        ),
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=72, right=200, bottom=545, top=560),
+                            date_label_location=Rect.from_edges(left=72, right=160, bottom=497, top=512),
+                            signature_search_box=Rect.from_edges(left=220, right=450, bottom=548, top=553),
+                            date_search_box=Rect.from_edges(left=170, right=450, bottom=500, top=505)
+                        )
+                    ]
+                ),
+                ContentVariation(
+                    text_of_signature_label='Sign Your  \nFull Name: \n',
+                    text_of_date_label='Today’s date: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=80, right=152, bottom=172, top=204),
+                            date_label_location=Rect.from_edges(left=80, right=169, bottom=121, top=136),
+                            signature_search_box=Rect.from_edges(left=116, right=500, bottom=150, top=155),
+                            date_search_box=Rect.from_edges(left=116, right=500, bottom=100, top=105)
+                        )
+                    ]
+                ),
+            ]
+        )
 
 
 class VibrentGrorConsentFile(GrorConsentFile):
