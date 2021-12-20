@@ -624,6 +624,12 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
                             date_label_location=Rect.from_edges(left=72, right=152, bottom=550, top=564),
                             signature_search_box=Rect.from_edges(left=180, right=500, bottom=593, top=598),
                             date_search_box=Rect.from_edges(left=155, right=500, bottom=553, top=558)
+                        ),
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=68, right=168, bottom=567, top=594),
+                            date_label_location=Rect.from_edges(left=68, right=148, bottom=523, top=536),
+                            signature_search_box=Rect.from_edges(left=172, right=500, bottom=575, top=580),
+                            date_search_box=Rect.from_edges(left=152, right=500, bottom=528, top=532)
                         )
                     ]
                 ),
