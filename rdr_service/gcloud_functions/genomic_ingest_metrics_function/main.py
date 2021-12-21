@@ -19,7 +19,7 @@ function_name = 'genomic_ingest_metrics_function'
 # --trigger-event=EVENT_TYPE --trigger-resource=RESOURCE]
 # NOTE: Default function timeout limit is 60s, maximum can be 540s.
 deploy_args = [
-    '--trigger-topic genomic_ingest_metric_files',
+    '--trigger-topic genomic_metric_files_upload',
     '--timeout=540',
     '--memory=512'
 ]
@@ -32,7 +32,12 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
 
     def __init__(self, gcp_env, _event, _context):
         super().__init__(gcp_env, _event, _context)
-        self.task_route = '/resource/task/IngestUserEventMetricsApi'
+
+        self.task_root = '/resource/task/'
+
+        self.task_mappings = {
+            "user_metrics": "IngestUserEventMetricsApi",
+        }
 
     def run(self):
         """ Handle Pub/Sub message events.
@@ -41,23 +46,33 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
         _logger.info("""This Function was triggered by messageId {} published at {}
             """.format(self.context.event_id, self.context.timestamp))
 
+        object_id = self.event.attributes.objectId.lower()
+
+        if 'user_events' in object_id:
+            task_key = "user_metrics"
+        else:
+            _logger.info(f"No files match ingestion criteria. {object_id}")
+            return
+
         _logger.info(f"Event payload: {self.event}")
 
-        _logger.info("Pushing cloud tasks...")
+        if task_key:
+            _logger.info("Pushing cloud tasks...")
 
-        data = {}
-        # data = {
-        #     "file_path": '',
-        #     "bucket_name": self.event.attributes.bucketId,
-        #     "topic": "genomic_ingest_metric_files",
-        #     "event_payload": self.event,
-        #     "task": "metrics_ingest",
-        #     "api_route": self.task_route,
-        #     "cloud_function": True,
-        # }
+            api_route = f'{self.task_root}{self.task_mappings[task_key]}'
 
-        _task = GCPCloudTask()
-        _task.execute(f'{self.task_route}', payload=data, queue=task_queue)
+            data = {
+                "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
+                "bucket_name": self.event.attributes.objectId,
+                "topic": "genomic_ingest_metric_files",
+                "event_payload": self.event,
+                "task": "metrics_ingest",
+                "api_route": api_route,
+                "cloud_function": True,
+            }
+
+            _task = GCPCloudTask()
+            _task.execute(api_route, payload=data, queue=task_queue)
 
 
 def get_deploy_args(gcp_env):
@@ -103,21 +118,18 @@ if __name__ == '__main__':
     setup_logging(_logger, function_name, debug=True)
 
     context = PubSubEventContext(1620919933899502, 'google.pubsub.v1.PubsubMessage')
-    file = "Wgs_sample_raw_data/SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered.gvcf.gz.md5sum"
+    file = "user_events_two/ghr3_user_events.csv"
 
     event = {
         "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
         "attributes": {
             "bucketId": "aou-rdr-sandbox-mock-data",
-            "eventTime": "2021-05-13T15:32:13.910124Z",
+            "eventTime": "2021-12-21T17:30:59.761138Z",
             "eventType": "OBJECT_FINALIZE",
-            "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/58",
-            "objectGeneration": "1620919933899502",
-            "objectId": "Wgs_sample_raw_data/ SS_VCF_research/BCM_A100153482_21042005280_SIA0013441__1.hard-filtered"
-                        ".gvcf.gz.md5sum",
-            "overwroteGeneration": "1620919548016598",
-            "payloadFormat": "JSON_API_V1"
-        }
+            "notificationConfig": "projects/_/buckets/aou-rdr-sandbox-mock-data/notificationConfigs/94",
+            "objectGeneration": "1640107859749184",
+            "objectId": "user_events_two/ghr3_user_events.csv",
+            "payloadFormat": "JSON_API_V1"}
     }
 
     sys.exit(genomic_ingest_metrics_function(event, context))
