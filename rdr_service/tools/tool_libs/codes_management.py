@@ -1,13 +1,17 @@
+from collections import defaultdict
 import csv
 from datetime import datetime
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
+from typing import Dict, List, Set
 
-from rdr_service.dao.code_dao import CodeDao
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from sqlalchemy.orm import Session, joinedload
+
 from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.offline.codebook_importer import CodebookImporter
 from rdr_service.services.gcp_config import GCP_INSTANCES
 from rdr_service.services.redcap_client import RedcapClient
@@ -127,6 +131,8 @@ class CodesSyncClass(ToolBase):
 
     @staticmethod
     def write_export_file(session):
+        code_map = CodeHierarchyMap(session)
+
         with open(code_export_file_path, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
             code_csv_writer.writerow([
@@ -139,13 +145,13 @@ class CodesSyncClass(ToolBase):
             for code in codes:
                 row_data = [code.value, code.display]
 
-                parent_codes = CodeDao.get_parent_codes(code, session)
-                if parent_codes:
-                    row_data.append('|'.join([parent.value for parent in parent_codes]))
+                parent_code_values = code_map.get_parents(code.codeId)
+                if parent_code_values:
+                    row_data.append('|'.join(parent_code_values))
 
-                    module_codes = CodeDao.get_module_codes(code, session)
-                    if module_codes:
-                        row_data.append('|'.join([module_code.value for module_code in module_codes]))
+                    module_code_values = code_map.get_modules(code.codeId)
+                    if module_code_values:
+                        row_data.append('|'.join(module_code_values))
                 code_csv_writer.writerow(row_data)
 
     def run_process(self):
@@ -157,12 +163,12 @@ class CodesSyncClass(ToolBase):
                 with self.initialize_process_context(self.tool_cmd, project, self.args.account,
                                                      self.args.service_account) as gcp_env:
                     self.gcp_env = gcp_env
-                    self.run(skip_file_export_write=('prod' not in project))
+                    self.run()
             return 0
         else:
             return super(CodesSyncClass, self).run_process()
 
-    def run(self, skip_file_export_write=False):
+    def run(self):
         super(CodesSyncClass, self).run()
         exit_code = 0
 
@@ -215,10 +221,62 @@ class CodesSyncClass(ToolBase):
             if not self.args.dry_run:
                 if exit_code == 1:
                     session.rollback()
-                elif not skip_file_export_write:
+                elif 'prod' in self.gcp_env.project:
+                    # We only want to write the export file for prod
                     self.write_export_file(session)
 
         return exit_code
+
+
+class CodeHierarchyMap:
+    """Constructs a data structure for accessing the parent and module code values for a given code id"""
+
+    def __init__(self, session: Session):
+        # Load all surveys with the question and option codes used
+        query = session.query(
+            Survey
+        ).options(
+            joinedload(Survey.code),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.code),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
+        )
+
+        # For each question and option code id, store the parent and module code values
+        module_map: Dict[int, Set[str]] = defaultdict(lambda: set())
+        parent_map: Dict[int, Set[str]] = defaultdict(lambda: set())
+        for survey in query.all():
+            module_code_value = survey.code.value
+            for question in survey.questions:
+                question_code_id = question.code.codeId
+                module_map[question_code_id].add(module_code_value)
+                parent_map[question_code_id].add(module_code_value)
+
+                question_code_value = question.code.value
+                for option in question.options:
+                    option_code_id = option.code.codeId
+                    module_map[option_code_id].add(module_code_value)
+                    parent_map[option_code_id].add(question_code_value)
+
+        # Go back through the sets of code values and sort them
+        self._module_map: Dict[int, List[str]] = defaultdict(lambda: list())
+        self._module_map.update({code_id: sorted(module_value_set) for code_id, module_value_set in module_map.items()})
+        self._parent_map: Dict[int, List[str]] = defaultdict(lambda: list())
+        self._parent_map.update({code_id: sorted(parent_value_set) for code_id, parent_value_set in parent_map.items()})
+
+    def get_parents(self, code_id: int) -> List[str]:
+        """
+        Returns the code values that have the given code id as a direct child.
+        That will include any module code values where the given code is used as a question,
+        and any any question code values where the given code is used as an option.
+        """
+        return self._parent_map[code_id]
+
+    def get_modules(self, code_id: int) -> List[str]:
+        """
+        Returns the module code values where the given code id is used
+        (either as a question or as an option to a question).
+        """
+        return self._module_map[code_id]
 
 
 def add_additional_arguments(parser):
