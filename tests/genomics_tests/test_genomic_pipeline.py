@@ -2593,8 +2593,8 @@ class GenomicPipelineTest(BaseTestCase):
                                               runStatus=GenomicSubProcessStatus.COMPLETED,
                                               runResult=GenomicSubProcessResult.SUCCESS))
 
-        self._create_fake_datasets_for_gc_tests(4, arr_override=True,
-                                                array_participants=range(1, 5),
+        self._create_fake_datasets_for_gc_tests(5, arr_override=True,
+                                                array_participants=range(1, 6),
                                                 recon_gc_man_id=1,
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.GEM_READY)
@@ -2604,10 +2604,12 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([
             (1, 1001),
             (2, 1002),
-            (3, 1003)
+            (3, 1003),
+            (4, 1004),
+            (5, 1005),
         ])
 
-        for i in range(1, 5):
+        for i in range(1, 6):
             self.data_generator.create_database_genomic_gc_validation_metrics(
                 genomicSetMemberId=i,
                 processingStatus='pass',
@@ -2621,6 +2623,12 @@ class GenomicPipelineTest(BaseTestCase):
         # update block_results for test
         members[3].blockResults = 1
         self.member_dao.update(members[3])
+
+        # Add participant that has already been sent
+        members[4].biobankId = 4
+        members[4].participantId = 4
+        members[4].gemA1ManifestJobRunId = 1
+        self.member_dao.update(members[4])
 
         genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
 
