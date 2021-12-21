@@ -66,12 +66,11 @@ class CodesExportClass(ToolBase):
         media = MediaFileUpload(code_export_file_path, mimetype='text/csv')
         drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
 
-    @staticmethod
-    def initialize_process_context(tool_name, project, account, service_account):
+    def initialize_process_context(self, tool_name=None, project=None, account=None, service_account=None):
         if project == '_all':
             project = 'all-of-us-rdr-prod'
 
-        return ToolBase.initialize_process_context(tool_name, project, account, service_account)
+        return super(CodesExportClass, self).initialize_process_context(tool_name, project, account, service_account)
 
     def run(self):
         # Intentionally not calling super's run
