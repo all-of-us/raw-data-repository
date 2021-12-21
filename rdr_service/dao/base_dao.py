@@ -574,8 +574,9 @@ class BaseDao(object):
     def get_model_obj_from_items(self, data_items):
         """
         Parses items from dictionary to check for all
-        items that are matches for attributes in model
-        :param data_items: dict_items
+        items that are key matches to attributes in a model
+        data_items['my_key'] => myModel.my_key
+        :param data_items: dict_items (dictionary) or odict_items (ordered dictionary)
         :return: obj (model object)
         """
         acceptable_types = ['dict_items', 'odict_items']
