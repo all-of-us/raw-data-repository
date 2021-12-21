@@ -247,6 +247,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
+                (GenomicSetMember.genomeType == "aou_array") &
                 (GenomicSetMember.ignoreFlag == 0) &
                 (self.aliases['gsm'].id.is_(None)) &
                 (GenomicSetMember.blockResults == 0) &
