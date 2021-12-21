@@ -227,11 +227,20 @@ class GenomicQueryClass:
                 ]
             ).select_from(
                 sqlalchemy.join(
-                    sqlalchemy.join(ParticipantSummary,
-                                    GenomicSetMember,
-                                    GenomicSetMember.participantId == ParticipantSummary.participantId),
+                    ParticipantSummary,
+                    GenomicSetMember,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).outerjoin(
+                    self.aliases['gsm'],
+                    sqlalchemy.and_(
+                        self.aliases['gsm'].participantId == GenomicSetMember.participantId,
+                        self.aliases['gsm'].genomeType == "aou_array",
+                        self.aliases['gsm'].gemA1ManifestJobRunId.isnot(None),
+                        self.aliases['gsm'].ignoreFlag == 0,
+                    )
                 )
             ).where(
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
@@ -239,6 +248,9 @@ class GenomicQueryClass:
                 (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                 (GenomicSetMember.genomeType == "aou_array") &
+                (GenomicSetMember.ignoreFlag == 0) &
+                (self.aliases['gsm'].id.is_(None)) &
+                (GenomicSetMember.blockResults == 0) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
