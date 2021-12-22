@@ -7,9 +7,6 @@ version: 2.1
 job_defaults: &job_defaults
   docker:
     - image: cimg/base:2021.05-18.04
-  machine:
-    pre:
-      - sudo pip install setuptools==59.6.0
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
