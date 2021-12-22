@@ -19,6 +19,9 @@ commands:
     steps:
       - checkout
       - run:
+          name: Install Cloud SDK
+          command: ./ci/install_google_sdk.sh
+      - run:
           name: Setup Python Environment
           command: ./ci/setup_python_env.sh
       - run:
