@@ -1455,6 +1455,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :return: dict
         """
         data = dict()
+        # Return if participant has not yet submitted a primary consent response.
+        if summary.get('enrl_status_id', 0) < PDREnrollmentStatusEnum.Participant:
+            return data
 
         #### ConsentPII UBR calculations.
         # ubr_geography
