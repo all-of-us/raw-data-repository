@@ -571,6 +571,22 @@ class BaseDao(object):
     """
         raise NotImplementedError()
 
+    def get_model_obj_from_items(self, data_items):
+        """
+        Parses items from dictionary to check for all
+        items that are key matches to attributes in a model
+        data_items['my_key'] => myModel.my_key
+        :param data_items: dict_items (dictionary) or odict_items (ordered dictionary)
+        :return: obj (model object)
+        """
+        acceptable_types = ['dict_items', 'odict_items']
+        if data_items.__class__.__name__.lower() in acceptable_types:
+            insert_data = {key: value for key, value in data_items if key in
+                           self.model_type.__table__.columns.keys()}
+            return self.model_type(**insert_data)
+        else:
+            raise TypeError(f"Items passed in parameter are required to be {', '.join(acceptable_types)}")
+
     @staticmethod
     def literal_sql_from_query(query):
         """

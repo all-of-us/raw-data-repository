@@ -825,3 +825,29 @@ class GemToGpMigration(Base):
 
 event.listen(GemToGpMigration, 'before_insert', model_insert_listener)
 event.listen(GemToGpMigration, 'before_update', model_update_listener)
+
+
+class UserEventMetrics(Base):
+    """
+    Used for storage GHR3 user event metrics
+    """
+
+    __tablename__ = 'user_event_metrics'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    created_at = Column(String(255))
+    event_name = Column(String(512))
+    device = Column(String(255))
+    operating_system = Column(String(255))
+    browser = Column(String(255))
+    file_path = Column(String(512), index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(UserEventMetrics, 'before_insert', model_insert_listener)
+event.listen(UserEventMetrics, 'before_update', model_update_listener)

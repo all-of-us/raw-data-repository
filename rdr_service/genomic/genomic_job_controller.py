@@ -30,7 +30,7 @@ from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_f
     wgs_file_types_attributes, array_file_types_attributes
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
+from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
     GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes
@@ -275,6 +275,19 @@ class GenomicJobController:
                     )
 
             self.job_result = self._aggregate_run_results()
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
+    def ingest_metrics_file(self, *, metric_type, file_path):
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=file_path,
+                                                _controller=self)
+
+            self.job_result = self.ingester.ingest_metrics_file_from_filepath(metric_type, file_path)
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
@@ -1237,9 +1250,8 @@ class GenomicJobController:
             return
 
         if save_incident:
-            insert_kwargs = {key: value for key, value in kwargs.items()
-                             if key in GenomicIncident.__table__.columns.keys()}
-            incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
+            insert_obj = self.incident_dao.get_model_obj_from_items(kwargs.items())
+            incident = self.incident_dao.insert(insert_obj)
 
         if slack:
             message_data = {'text': message}

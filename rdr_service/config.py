@@ -136,6 +136,7 @@ PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-data-broad",
     "prod-genomics-data-northwest",
     "prod-drc-broad",
+    "prod-color-rhp"
 ]
 
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [

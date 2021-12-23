@@ -472,6 +472,17 @@
       "payload_format": "JSON_API_V1",
       "topic_name": "genomic_manifest_upload",
       "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-color-rhp",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "51",
+      "object_name_prefix": "user_events/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_ingest_metric_files",
+      "topic_project": "all-of-us-rdr-prod"
     }
   ]
 }
