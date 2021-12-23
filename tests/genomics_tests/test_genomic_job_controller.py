@@ -399,5 +399,5 @@ class GenomicJobControllerTest(BaseTestCase):
             participant_ingested_metrics = list(filter(lambda x: x.participant_id == pid, metrics))
 
             self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
-            self.assertTrue(obj.run_id == job_run_id for obj in file_metrics)
+            self.assertTrue(all(obj.run_id == job_run_id for obj in participant_ingested_metrics))
 
