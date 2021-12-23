@@ -830,7 +830,8 @@ class GenomicSetMemberDao(UpdatableDao):
             members = session.query(
                 GenomicSetMember
             ).filter(
-                GenomicSetMember.created >= from_date
+                GenomicSetMember.created >= from_date,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0
             ).all()
 
             return members

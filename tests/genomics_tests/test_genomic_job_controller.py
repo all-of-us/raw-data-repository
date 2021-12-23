@@ -344,7 +344,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 biobankId="100153482",
                 sampleId="21042005280",
                 genomeType="aou_wgs",
-                genomicWorkflowState=GenomicWorkflowState.AW0,
+                genomicWorkflowState=GenomicWorkflowState.AW0 if i & 2 == 0 else GenomicWorkflowState.AW1,
                 ai_an='Y' if i & 2 == 0 else 'N'
             )
 
@@ -355,7 +355,7 @@ class GenomicJobControllerTest(BaseTestCase):
 
         self.assertTrue(all(
             obj.blockResearch == 1 and obj.blockResearchReason is not None
-            for obj in current_members if obj.ai_an == 'Y')
+            for obj in current_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
         )
 
 
