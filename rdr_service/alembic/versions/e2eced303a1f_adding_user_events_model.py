@@ -36,7 +36,10 @@ def upgrade_rdr():
     sa.Column('operating_system', sa.String(length=255), nullable=True),
     sa.Column('browser', sa.String(length=255), nullable=True),
     sa.Column('file_path', sa.String(length=512), nullable=True),
+    sa.Column('run_id', sa.Integer(), nullable=False),
+    sa.Column('ignore_flag', sa.SmallInteger(), nullable=False),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
+    sa.ForeignKeyConstraint(['run_id'], ['genomic_job_run.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_user_event_metrics_file_path'), 'user_event_metrics', ['file_path'], unique=False)

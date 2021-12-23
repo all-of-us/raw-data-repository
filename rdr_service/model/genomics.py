@@ -845,6 +845,8 @@ class UserEventMetrics(Base):
     operating_system = Column(String(255))
     browser = Column(String(255))
     file_path = Column(String(512), index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(UserEventMetrics, 'before_insert', model_insert_listener)

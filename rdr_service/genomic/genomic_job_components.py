@@ -940,11 +940,12 @@ class GenomicFileIngester:
                 participant_id = row['participant_id'].split('P')[-1]
                 row['participant_id'] = int(participant_id)
 
-            row_insert_obj = metric_dao.get_model_obj_from_items(row.items())
+            row['file_path'] = file_path
+            row['created'] = clock.CLOCK.now()
+            row['modified'] = clock.CLOCK.now()
+            row['run_id'] = self.controller.job_run.id
 
-            row_insert_obj.file_path = file_path
-            row_insert_obj.created = clock.CLOCK.now()
-            row_insert_obj.modified = clock.CLOCK.now()
+            row_insert_obj = metric_dao.get_model_obj_from_items(row.items())
 
             batch.append(row_insert_obj)
             item_count += 1

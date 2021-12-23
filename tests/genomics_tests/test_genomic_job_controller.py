@@ -390,6 +390,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 file_path=test_file_path,
             )
 
+        job_run_id = controller.job_run.id
         metrics = self.user_event_metrics_dao.get_all()
 
         for pid in pids:
@@ -398,4 +399,5 @@ class GenomicJobControllerTest(BaseTestCase):
             participant_ingested_metrics = list(filter(lambda x: x.participant_id == pid, metrics))
 
             self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
+            self.assertTrue(obj.run_id == job_run_id for obj in file_metrics)
 
