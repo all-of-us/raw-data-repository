@@ -1082,7 +1082,7 @@ class Pdf:
         if annots:  # Annotations can sometimes resolve to None
             for annotation_pointer in annots:
                 annotation = annotation_pointer.resolve()
-                if annotation['T'].decode('ascii').lower() == annotation_name.lower():
+                if 'T' in annotation and annotation['T'].decode('ascii').lower() == annotation_name.lower():
                     return annotation
 
         return None
