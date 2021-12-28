@@ -5186,7 +5186,7 @@ class GenomicPipelineTest(BaseTestCase):
         sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
         sorted_record = sorted_records[0]
 
-        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
+        dao_record = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(
             biobank_id=int(biobank_id),
             genome_type='aou_array'
         )
