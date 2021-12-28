@@ -80,6 +80,11 @@ class StoreResultStrategy(ValidationOutputStrategy):
 
 
 class UpdateResultStrategy(StoreResultStrategy):
+    def __init__(self, *args, **kwargs):
+        super(UpdateResultStrategy, self).__init__(*args, **kwargs)
+        self._results = self._build_consent_list_structure()
+        self.participant_ids = set()
+
     def _get_existing_results_for_participants(self):
         file_path_list = [file.file_path for file in self._results]
         file_objects: List[ParsingResult] = self._session.query(ParsingResult).filter(
@@ -88,33 +93,76 @@ class UpdateResultStrategy(StoreResultStrategy):
 
         return {file.file_path: file for file in file_objects}
 
+    def add_result(self, result: ParsingResult):
+        self._results[result.participant_id][result.type].append(result)
+        self.participant_ids.add(result.participant_id)
+
+        if len(self.participant_ids) > self._max_batch_count:
+            self.process_results()
+            self._results = self._build_consent_list_structure()
+            self.participant_ids = set()
+
     def process_results(self):
-        existing_results_by_file = self._get_existing_results_for_participants()
-        updated_results = []
-        for result in self._results:
-            db_result: ParsingResult = existing_results_by_file.get(result.file_path)
-            if db_result:
-                db_result.file_exists = result.file_exists
-                db_result.type = result.type
-                db_result.is_signature_valid = result.is_signature_valid
-                db_result.is_signing_date_valid = result.is_signing_date_valid
+        organized_previous_results = self._build_consent_list_structure()
+        consent_dao = ConsentDao()
+        previous_results = consent_dao.get_validation_results_for_participants(
+            session=self._session,
+            participant_ids=self.participant_ids
+        )
+        for result in previous_results:
+            organized_previous_results[result.participant_id][result.type].append(result)
 
-                db_result.signature_str = result.signature_str
-                db_result.is_signature_image = result.is_signature_image
-                db_result.signing_date = result.signing_date
-                db_result.expected_sign_date = result.expected_sign_date
+        results_to_build = []
+        for participant_id, consent_type_dict in self._results.items():
+            for consent_type, result_list in consent_type_dict.items():
+                previous_type_list: Collection[ParsingResult] = organized_previous_results[participant_id][consent_type]
 
-                db_result.file_upload_time = result.file_upload_time
-                db_result.other_errors = result.other_errors
-                if db_result.sync_status != ConsentSyncStatus.SYNC_COMPLETE \
-                        or result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
-                    db_result.sync_status = result.sync_status
-                updated_results.append(db_result)
+                ready_for_sync = self._find_file_ready_for_sync(result_list)
+                if ready_for_sync:
+                    found_in_previous_results = False
+                    for previous_result in previous_type_list:
+                        if previous_result.file_path == ready_for_sync.file_path:
+                            self._update_record(new_result=ready_for_sync, existing_result=previous_result)
+                            results_to_build.append(previous_result)
+                            found_in_previous_results = True
+                        elif previous_result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
+                            previous_result.sync_status = ConsentSyncStatus.OBSOLETE
+                            results_to_build.append(previous_result)
+
+                    if not found_in_previous_results:
+                        results_to_build.append(ready_for_sync)
+                        self._session.add(ready_for_sync)
 
         self._session.commit()
 
-        if updated_results:
-            dispatch_rebuild_consent_metrics_tasks([r.id for r in updated_results], project_id=self.project_id)
+        if results_to_build:
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build],
+                                                   project_id=self.project_id)
+
+    def _update_record(self, new_result: ParsingResult, existing_result: ParsingResult):
+        existing_result.file_exists = new_result.file_exists
+        existing_result.type = new_result.type
+        existing_result.is_signature_valid = new_result.is_signature_valid
+        existing_result.is_signing_date_valid = new_result.is_signing_date_valid
+
+        existing_result.signature_str = new_result.signature_str
+        existing_result.is_signature_image = new_result.is_signature_image
+        existing_result.signing_date = new_result.signing_date
+        existing_result.expected_sign_date = new_result.expected_sign_date
+
+        existing_result.file_upload_time = new_result.file_upload_time
+        existing_result.other_errors = new_result.other_errors
+        if existing_result.sync_status != ConsentSyncStatus.SYNC_COMPLETE \
+                or new_result.sync_status == ConsentSyncStatus.NEEDS_CORRECTING:
+            existing_result.sync_status = new_result.sync_status
+
+    @classmethod
+    def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
+        for result in results:
+            if result.sync_status == ConsentSyncStatus.READY_FOR_SYNC:
+                return result
+
+        return None
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
