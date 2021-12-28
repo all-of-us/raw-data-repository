@@ -312,9 +312,11 @@ class GenomicJobController:
 
         if self.job_id == GenomicJob.AW1_MANIFEST:
             raw_dao = GenomicAW1RawDao()
+            id_field = "biobankId"
 
         else:
             raw_dao = GenomicAW2RawDao()
+            id_field = "sampleId"
 
         # Get member records
         members = self.member_dao.get_members_from_member_ids(member_ids)
@@ -337,8 +339,8 @@ class GenomicJobController:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(
-                    biobank_id=bid,
+                raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
+                    identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
                     genome_type=member.genomeType
                 )
             except MultipleResultsFound:
