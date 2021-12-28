@@ -646,6 +646,18 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
                     ]
                 ),
                 ContentVariation(
+                    text_of_signature_label='Firme con su nombre completo:  \n',
+                    text_of_date_label='Fecha de hoy: \n',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=72, right=248, bottom=326, top=339),
+                            date_label_location=Rect.from_edges(left=72, right=152, bottom=282, top=295),
+                            signature_search_box=Rect.from_edges(left=260, right=500, bottom=330, top=335),
+                            date_search_box=Rect.from_edges(left=170, right=500, bottom=285, top=290)
+                        )
+                    ]
+                ),
+                ContentVariation(
                     text_of_signature_label='Sign your full name: \n',
                     text_of_date_label='Today’s date: \n',
                     layout_variations=[
@@ -1067,10 +1079,11 @@ class Pdf:
         if isinstance(annots, PDFObjRef):
             annots = annots.resolve()
 
-        for annotation_pointer in annots:
-            annotation = annotation_pointer.resolve()
-            if annotation['T'].decode('ascii').lower() == annotation_name.lower():
-                return annotation
+        if annots:  # Annotations can sometimes resolve to None
+            for annotation_pointer in annots:
+                annotation = annotation_pointer.resolve()
+                if annotation['T'].decode('ascii').lower() == annotation_name.lower():
+                    return annotation
 
         return None
 
