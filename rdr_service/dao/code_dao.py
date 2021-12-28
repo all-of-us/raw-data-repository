@@ -1,6 +1,9 @@
+from collections import defaultdict
 import logging
-from typing import Set
+from typing import Dict, List, Optional, Set
 from werkzeug.exceptions import BadRequest
+
+from sqlalchemy.orm import joinedload, Session
 
 from rdr_service import clock
 from rdr_service.dao.base_dao import BaseDao
@@ -135,6 +138,10 @@ class CodeDao(CacheAllDao):
         self.silent = silent
         self.use_cache = use_cache
 
+        # Initialize fields to hold dictionaries that map code ids to module and parent values
+        self._code_module_map: Optional[Dict[int, List[str]]] = None
+        self._code_parent_map: Optional[Dict[int, List[str]]] = None
+
     def _load_cache(self):
         result = super(CodeDao, self)._load_cache()
         for code in list(result.id_to_entity.values()):
@@ -227,57 +234,61 @@ class CodeDao(CacheAllDao):
         else:
             return result_map
 
-    @staticmethod
-    def get_parent_codes(code: Code, session) -> Set[Code]:
-        parent_codes = set()
-
-        # Add the codes for the questions that use this code as an answer
-        question_codes = session.query(Code).join(
-            SurveyQuestion
-        ).join(
-            SurveyQuestionOption
-        ).filter(
-            SurveyQuestionOption.code == code
-        ).all()
-        parent_codes.update(question_codes)
-
-        # Add the codes for the surveys that use this code as a question
-        module_codes = session.query(Code).join(
+    def _init_hierarchy_maps(self, session: Session):
+        """Constructs a set of data structures for accessing the parent and module code values for a given code id"""
+        # Load all surveys with the question and option codes used
+        query = session.query(
             Survey
-        ).join(
-            SurveyQuestion
-        ).filter(
-            SurveyQuestion.code == code
-        ).all()
-        parent_codes.update(module_codes)
-
-        return parent_codes
-
-    @staticmethod
-    def get_module_codes(code: Code, session) -> Set[Code]:
-        module_codes = set()
-
-        survey_codes_joined_with_questions = session.query(Code).join(
-            Survey
-        ).join(
-            SurveyQuestion
+        ).options(
+            joinedload(Survey.code),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.code),
+            joinedload(Survey.questions).joinedload(SurveyQuestion.options).joinedload(SurveyQuestionOption.code)
         )
 
-        # Find all modules where this code is used as an answer option
-        module_codes_where_is_answer = survey_codes_joined_with_questions.join(
-            SurveyQuestionOption
-        ).filter(
-            SurveyQuestionOption.code == code
-        ).all()
-        module_codes.update(module_codes_where_is_answer)
+        # For each question and option code id, store the parent and module code values
+        module_map: Dict[int, Set[str]] = defaultdict(lambda: set())
+        parent_map: Dict[int, Set[str]] = defaultdict(lambda: set())
+        for survey in query.all():
+            module_code_value = survey.code.value
+            for question in survey.questions:
+                question_code_id = question.code.codeId
+                module_map[question_code_id].add(module_code_value)
+                parent_map[question_code_id].add(module_code_value)
 
-        # Find all modules where this code is used as a question
-        module_codes_where_is_question = survey_codes_joined_with_questions.filter(
-            SurveyQuestion.code == code
-        ).all()
-        module_codes.update(module_codes_where_is_question)
+                question_code_value = question.code.value
+                for option in question.options:
+                    option_code_id = option.code.codeId
+                    module_map[option_code_id].add(module_code_value)
+                    parent_map[option_code_id].add(question_code_value)
 
-        return module_codes
+        # Go back through the sets of code values and sort them
+        self._code_module_map: Dict[int, List[str]] = defaultdict(lambda: list())
+        self._code_module_map.update(
+            {code_id: sorted(module_value_set) for code_id, module_value_set in module_map.items()}
+        )
+        self._code_parent_map: Dict[int, List[str]] = defaultdict(lambda: list())
+        self._code_parent_map.update(
+            {code_id: sorted(parent_value_set) for code_id, parent_value_set in parent_map.items()}
+        )
+
+    def get_parent_values(self, code_id: int, session: Session) -> List[str]:
+        """
+        Returns the code values that have the given code id as a direct child.
+        That will include any module code values where the given code is used as a question,
+        and any any question code values where the given code is used as an option.
+        """
+        if not self._code_parent_map:
+            self._init_hierarchy_maps(session)
+        return self._code_parent_map[code_id]
+
+    def get_module_values(self, code_id: int, session: Session) -> List[str]:
+        """
+        Returns the module code values where the given code id is used
+        (either as a question or as an option to a question).
+        """
+        if not self._code_module_map:
+            self._init_hierarchy_maps(session)
+        return self._code_module_map[code_id]
 
 
 class CodeHistoryDao(BaseDao):

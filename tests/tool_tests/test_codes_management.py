@@ -36,7 +36,8 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
         }
 
     @staticmethod
-    def run_code_import(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False):
+    def run_code_import(redcap_data_dictionary, project_info=None, reuse_codes=[], dry_run=False, export_only=False,
+                        project=None):
         if project_info is None:
             project_info = {
                 'project_id': 1,
@@ -52,6 +53,10 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
 
             mock_csv_writerow = mock_csv.writer.return_value.writerow
 
+            optional_run_params = {}
+            if project:
+                optional_run_params['project'] = project
+
             tool_run_result = CodesManagementTest.run_tool(CodesSyncClass, tool_args={
                 'redcap_project': 'project_one',
                 'dry_run': dry_run,
@@ -63,7 +68,7 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
                 },
                 DRIVE_EXPORT_FOLDER_ID: '1a789',
                 EXPORT_SERVICE_ACCOUNT_NAME: 'exporter@example.com'
-            })
+            }, **optional_run_params)
             return tool_run_result, mock_redcap_instance, mock_csv_writerow
 
     def assertCodeHasExpectedData(self, code: Code, expected_data):
@@ -346,7 +351,7 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
             self._get_mock_dictionary_item('participant_id', 'Participant ID', 'text'),
             self._get_mock_dictionary_item('radio', 'multi-select', 'radio',
                                            answers='A1, One | A2, Two | A3, Three | A4, Etc.')
-        ])
+        ], project='test_prod_export')
 
         mock_csv_writerow.assert_has_calls([
             mock.call(['Code Value', 'Display', 'Parent Values', 'Module Values']),
