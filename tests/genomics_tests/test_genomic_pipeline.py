@@ -5187,7 +5187,7 @@ class GenomicPipelineTest(BaseTestCase):
         sorted_record = sorted_records[0]
 
         dao_record = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(
-            biobank_id=int(biobank_id),
+            identifier=int(biobank_id),
             genome_type='aou_array'
         )
         self.assertEqual(sorted_record.id, dao_record.id)
