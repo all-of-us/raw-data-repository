@@ -682,7 +682,7 @@ class VibrentEhrConsentFile(EhrConsentFile, VibrentConsentFile):
                         LayoutVariation(
                             signature_label_location=Rect.from_edges(left=72, right=200, bottom=545, top=560),
                             date_label_location=Rect.from_edges(left=72, right=160, bottom=497, top=512),
-                            signature_search_box=Rect.from_edges(left=220, right=450, bottom=538, top=553),
+                            signature_search_box=Rect.from_edges(left=220, right=450, bottom=530, top=553),
                             date_search_box=Rect.from_edges(left=170, right=450, bottom=500, top=505)
                         ),
                         LayoutVariation(
