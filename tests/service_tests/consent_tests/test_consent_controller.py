@@ -132,7 +132,7 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(
+        self.consent_controller.validate_consent_uploads(
             session=mock.MagicMock(),
             output_strategy=self.store_strategy,
             min_consent_date=min_consent_date_checked
@@ -174,7 +174,7 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(
+        self.consent_controller.validate_consent_uploads(
             session=mock.MagicMock(),
             output_strategy=self.store_strategy,
             min_consent_date=min_consent_date_checked
