@@ -525,6 +525,18 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile, VibrentConsentFile):
                     ]
                 ),
                 ContentVariation(
+                    text_of_signature_label='Firme con su  \nnombre completo: \n',
+                    text_of_date_label='Fecha: ',
+                    layout_variations=[
+                        LayoutVariation(
+                            signature_label_location=Rect.from_edges(left=44, right=161, bottom=170, top=203),
+                            date_label_location=Rect.from_edges(left=44, right=92, bottom=120, top=135),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            date_search_box=Rect.from_edges(left=120, right=400, bottom=98, top=102)
+                        )
+                    ]
+                ),
+                ContentVariation(
                     text_of_signature_label='Firme con su nombre completo: \n',
                     text_of_date_label='Fecha: \n',
                     layout_variations=[
