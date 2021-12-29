@@ -507,7 +507,7 @@ class VibrentPrimaryConsentFile(PrimaryConsentFile, VibrentConsentFile):
                         LayoutVariation(
                             signature_label_location=Rect.from_edges(left=75, right=172, bottom=518, top=547),
                             date_label_location=Rect.from_edges(left=76, right=117, bottom=475, top=488),
-                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=150, top=153),
+                            signature_search_box=Rect.from_edges(left=120, right=400, bottom=530, top=535),
                             date_search_box=Rect.from_edges(left=150, right=400, bottom=525, top=530)
                         )
                     ]
