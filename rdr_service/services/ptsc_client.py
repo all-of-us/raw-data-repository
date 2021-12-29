@@ -56,7 +56,7 @@ class PtscClient:
     def get_participant_lookup(self, participant_id: int = None, start_date: date = None, end_date: date = None):
         url_params = {}
         if participant_id:
-            url_params['drcId'] = participant_id
+            url_params['drcId'] = f'P{participant_id}'
         if start_date:
             url_params['startDate'] = start_date.strftime("%Y-%m-%d")
             url_params['pageSize'] = 1000
