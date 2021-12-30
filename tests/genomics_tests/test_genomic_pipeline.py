@@ -6206,6 +6206,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, len(records))
 
     def test_reconcile_informing_loop(self):
+        event_dao = UserEventMetricsDao()
+        event_dao.truncate()  # for test suite
+
         for pid in range(7):
             self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
         # Set up initial job run ID
@@ -6283,8 +6286,6 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual('RECONCILE_INFORMING_LOOP_RESPONSES: Informing Loop out of sync with User Events! PID: 5',
                          incident.message)
         self.assertEqual('5', incident.participant_id)
-
-        event_dao = UserEventMetricsDao()
 
         pid_list = [1, 2, 3, 6]
         updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')

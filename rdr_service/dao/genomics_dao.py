@@ -2775,6 +2775,11 @@ class UserEventMetricsDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def truncate(self):
+        if GAE_PROJECT == 'localhost':
+            with self.session() as session:
+                session.execute("DELETE FROM user_event_metrics WHERE TRUE")
+
     def get_id(self, obj):
         pass
 
