@@ -12,7 +12,6 @@ import sys
 import difflib
 
 import yaml
-from yaml import Loader as yaml_loader
 
 from rdr_service.services.data_dictionary_updater import DataDictionaryUpdater
 from rdr_service.services.system_utils import setup_logging, setup_i18n, git_current_branch, \
@@ -35,6 +34,55 @@ _logger = logging.getLogger("rdr_logger")
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "app-engine"
 tool_desc = "manage google app engine services"
+
+
+class ConfigSettingsAggregator:
+    """By default the config files should be concatenated to each other and returned as a string."""
+    def __init__(self):
+        self._contents = ''
+
+    @classmethod
+    def _load_file_contents(cls, file_path):
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                return file.read()
+        else:
+            _logger.error(f'Error: config file not found {file_path}, skipping file.')
+
+    def extend_with_file(self, file_path: str):
+        file_contents = self._load_file_contents(file_path)
+        if file_contents:
+            self._contents += file_contents
+            self._contents += '\n'
+
+    def get_config_file_contents(self):
+        """Return the config file contents gathered so far"""
+        return self._contents
+
+
+class CronSettingsAggregator(ConfigSettingsAggregator):
+    def __init__(self):
+        super(CronSettingsAggregator, self).__init__()
+        self._contents = {}
+
+    def extend_with_file(self, file_path: str):
+        file_contents_str = self._load_file_contents(file_path)
+        if file_contents_str:
+            self._contents.update(json.loads(file_contents_str))
+
+    def get_config_file_contents(self):
+        """Return the config so far as a yaml file, cleaning up any entries that should be removed"""
+        cron_jobs = []
+        for description, config in self._contents.items():
+            if config.get('schedule') is not None:
+                new_cron_job_config = {
+                    'description': description
+                }
+                new_cron_job_config.update(config)
+                cron_jobs.append(new_cron_job_config)
+        return yaml.dump({
+            'cron': cron_jobs
+        })
 
 
 class DeployAppClass(ToolBase):
@@ -75,35 +123,12 @@ class DeployAppClass(ToolBase):
         else:
             config_file = os.path.join(self.args.git_project, filename)
 
-        config_data = ''
-
+        config_aggregator = CronSettingsAggregator() if key == 'cron' else ConfigSettingsAggregator()
         for file in config:
-            tmp_config = os.path.join(self.args.git_project, file)
-            if os.path.exists(tmp_config):
-                config_data += open(tmp_config, 'r').read()
-                config_data += '\n'
-            else:
-                _logger.error('Error: config file not found {0} for {1}, skipping file.'.format(file, key))
+            absolute_file_path = os.path.join(self.args.git_project, file)
+            config_aggregator.extend_with_file(absolute_file_path)
 
-        # extra clean up for cron config.
-        if key == 'cron':
-            lines = config_data.split('\n')
-            config_data = 'cron:\n'
-            for line in lines:
-                if not line.strip() or 'cron:' in line or line.strip().startswith('#'):
-                    continue
-                config_data += '{0}\n'.format(line)
-
-            # Remove any cron jobs that are not fully configured.
-            cron_yaml = {'cron': list()}
-            tmp_yaml = yaml.load(config_data, Loader=yaml_loader)
-            for item in tmp_yaml['cron']:
-                if 'schedule' in item and 'url' in item:
-                    cron_yaml['cron'].append(item)
-
-            config_data = yaml.dump(cron_yaml)
-
-        open(config_file, 'w').write(config_data)
+        open(config_file, 'w').write(config_aggregator.get_config_file_contents())
 
         return config_file
 

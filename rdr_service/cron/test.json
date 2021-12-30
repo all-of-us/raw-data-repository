@@ -1,0 +1,14 @@
+{
+  "Migrate RequestsLog to MySQL 8": {
+    "url": "/offline/MigrateRequestsLog/rdrmysql8",
+    "timezone": "America/New_York",
+    "schedule": "every day 22:00",
+    "target": "offline"
+  },
+  "Migrate RequestsLog to PostgreSQL": {
+    "url": "/offline/MigrateRequestsLog/rdrpostgresql",
+    "timezone": "America/New_York",
+    "schedule": "every day 1:00",
+    "target": "offline"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "Monthly reconciliation report": {},
+  "Participant count metrics (Do not manually start)": {},
+  "Flag ghost participants": {},
+  "Genomic Pipeline AW0 (Cohort 2) Workflow": {},
+  "Genomic Pipeline AW0 (Cohort 3) Workflow": {},
+  "Genomic Pipeline AW0 (Cohort 1) Workflow": {},
+  "Genomic AW1 Workflow": {},
+  "Genomic AW1 Failures Workflow": {},
+  "Genomic Feedback Manifest Workflow": {},
+  "Genomic AW1C (CVL) Workflow (Manual)": {},
+  "Genomic AW1CF (CVL) Failures Workflow (Manual)": {},
+  "Genomic AW2 Workflow": {},
+  "Genomic Reconciliation Array Data Workflow": {},
+  "Genomic Reconciliation WGS Data Workflow": {},
+  "Genomic GEM A1 Workflow": {},
+  "Genomic GEM A2 Workflow": {},
+  "Genomic GEM A3 Workflow": {},
+  "Genomic CVL W1 Workflow (Manual)": {},
+  "Genomic CVL W2 Workflow (Manual)": {},
+  "Genomic CVL W3 Workflow (Manual)": {},
+  "Genomic AW3 Array Workflow": {},
+  "Genomic AW3 WGS Workflow": {},
+  "Genomic AW4 Workflow": {},
+  "Daily Biobank sample import and order reconciliation": {
+    "url": "/offline/BiobankSamplesImport",
+    "schedule": "every day 03:00",
+    "timezone": "America/New_York",
+    "target": "offline"
+  },
+  "Rotate service account keys older than 3 days": {
+    "url": "/offline/DeleteOldKeys",
+    "schedule": "every day 01:00",
+    "timezone": "America/New_York",
+    "target": "offline"
+  },
+  "Skew duplicate last modified": {
+    "url": "/offline/SkewDuplicates",
+    "schedule": "every day 04:15",
+    "timezone": "America/New_York",
+    "target": "offline"
+  }
+}
