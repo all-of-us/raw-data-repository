@@ -92,8 +92,8 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
         'cron': {
             'type': 'config',
             'default': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_prod.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/prod.json'
             ]
         },
         'queue': {
@@ -137,27 +137,27 @@ GCP_SERVICE_CONFIG_MAP = OrderedDict({
         'cron': {
             'type': 'config',
             'default': [
-                'rdr_service/cron_default.yaml',
+                'rdr_service/cron/default.json',
             ],
             'careevo': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_careevo.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/careevo.json'
             ],
             'ptsc': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_ptsc.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/ptsc.json'
             ],
             'sandbox': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_sandbox.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/sandbox.json'
             ],
             'stable': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_stable.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/stable.json'
             ],
             'test': [
-                'rdr_service/cron_default.yaml',
-                'rdr_service/cron_test.yaml'
+                'rdr_service/cron/default.json',
+                'rdr_service/cron/test.json'
             ]
         },
         'queue': {
