@@ -1,5 +1,7 @@
 import collections
 import logging
+import os
+
 import pytz
 import sqlalchemy
 
@@ -2214,7 +2216,7 @@ class GenomicAW1RawDao(BaseDao):
             ).order_by(GenomicAW1Raw.id).all()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
@@ -2288,7 +2290,7 @@ class GenomicAW2RawDao(BaseDao):
             ).delete()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
@@ -2776,7 +2778,7 @@ class UserEventMetricsDao(BaseDao):
         pass
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM user_event_metrics WHERE TRUE")
 
