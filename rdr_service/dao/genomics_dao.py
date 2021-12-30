@@ -1,5 +1,7 @@
 import collections
 import logging
+import os
+
 import pytz
 import sqlalchemy
 
@@ -2214,7 +2216,7 @@ class GenomicAW1RawDao(BaseDao):
             ).order_by(GenomicAW1Raw.id).all()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
@@ -2288,7 +2290,7 @@ class GenomicAW2RawDao(BaseDao):
             ).delete()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
@@ -2516,6 +2518,32 @@ class GenomicInformingLoopDao(UpdatableDao):
 
     def from_client_json(self):
         pass
+
+    def get_latest_state_for_pid(self, pid, module="gem"):
+        """
+        Returns latest event_type and decision_value
+        genomic_informing_loop record for a specific participant
+        :param pid: participant_id
+        :param module: gem (default), hdr, or pgx
+        :return: query result
+        """
+        with self.session() as session:
+            informing_loop_alias = aliased(GenomicInformingLoop)
+            return session.query(
+                GenomicInformingLoop.event_type,
+                GenomicInformingLoop.decision_value
+            ).outerjoin(
+                informing_loop_alias,
+                and_(
+                    informing_loop_alias.participant_id == GenomicInformingLoop.participant_id,
+                    informing_loop_alias.module_type == module,
+                    GenomicInformingLoop.event_authored_time < informing_loop_alias.event_authored_time
+                )
+            ).filter(
+                GenomicInformingLoop.module_type == module,
+                informing_loop_alias.event_authored_time.is_(None),
+                GenomicInformingLoop.participant_id == pid
+            ).all()
 
 
 class GenomicGcDataFileDao(BaseDao):
@@ -2749,5 +2777,71 @@ class UserEventMetricsDao(BaseDao):
     def from_client_json(self):
         pass
 
+    def truncate(self):
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
+            with self.session() as session:
+                session.execute("DELETE FROM user_event_metrics WHERE TRUE")
+
     def get_id(self, obj):
         pass
+
+    def get_latest_events(self, module="gem"):
+        """
+        Returns participant_ID and latest event_name for unreconciled events
+        :param module: gem (default), hdr, or pgx
+        :return: query result
+        """
+        with self.session() as session:
+            event_metrics_alias = aliased(UserEventMetrics)
+            return session.query(
+                UserEventMetrics.id,
+                UserEventMetrics.participant_id,
+                UserEventMetrics.event_name,
+            ).outerjoin(
+                event_metrics_alias,
+                and_(
+                    event_metrics_alias.participant_id == UserEventMetrics.participant_id,
+                    event_metrics_alias.event_name.like(f"{module}.informing%"),
+                    UserEventMetrics.created_at < event_metrics_alias.created_at,
+                )
+            ).filter(
+                UserEventMetrics.ignore_flag == 0,
+                UserEventMetrics.event_name.like(f"{module}.informing%"),
+                UserEventMetrics.reconcile_job_run_id.is_(None),
+                event_metrics_alias.created_at.is_(None)
+            ).all()
+
+    def update_reconcile_job_pids(self, pid_list, job_run_id, module):
+        id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
+
+        update_mappings = [{
+            'id': i,
+            'reconcile_job_run_id': job_run_id
+        } for i in id_list]
+        with self.session() as session:
+            session.bulk_update_mappings(UserEventMetrics, update_mappings)
+
+    def get_all_event_ids_for_pid_list(self, pid_list, module=None):
+        with self.session() as session:
+            query = session.query(
+                UserEventMetrics.id
+            ).filter(
+                UserEventMetrics.participant_id.in_(pid_list),
+            )
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()
+
+    def get_all_event_objects_for_pid_list(self, pid_list, module=None):
+        with self.session() as session:
+            query =  session.query(
+                UserEventMetrics
+            ).filter(
+                UserEventMetrics.participant_id.in_(pid_list)
+            )
+
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()

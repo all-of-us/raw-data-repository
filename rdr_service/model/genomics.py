@@ -651,6 +651,7 @@ class GenomicIncident(Base):
     repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
     gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
+    participant_id = Column(String(128), index=True)
     biobank_id = Column(String(128), index=True)
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
@@ -847,6 +848,7 @@ class UserEventMetrics(Base):
     file_path = Column(String(512), index=True)
     run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    reconcile_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
 
 
 event.listen(UserEventMetrics, 'before_insert', model_insert_listener)

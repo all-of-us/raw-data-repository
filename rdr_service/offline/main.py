@@ -649,6 +649,13 @@ def genomic_members_state_resolved():
 @run_genomic_cron_job('members_update_blocklists')
 def genomic_members_update_blocklists():
     genomic_pipeline.update_members_blocklists()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_informing_loop_responses')
+def genomic_reconcile_informing_loop_responses():
+    genomic_pipeline.reconcile_informing_loop_responses()
     return '{"success": "true"}'
 
 
@@ -978,6 +985,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicUpdateMembersBlocklists",
         endpoint="genomic_members_update_blocklists",
         view_func=genomic_members_update_blocklists,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileInformingLoopResponses",
+        endpoint="reconcile_informing_loop_responses",
+        view_func=genomic_reconcile_informing_loop_responses,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs
