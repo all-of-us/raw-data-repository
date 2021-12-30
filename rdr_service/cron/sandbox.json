@@ -1,6 +1,6 @@
 {
   "Monthly reconciliation report": {},
-  "Participant count metrics (Do not manually start)":{},
+  "Participant count metrics (Do not manually start)": {},
   "Flag ghost participants": {},
   "Rotate service account keys older than 3 days": {
     "url": "/offline/DeleteOldKeys",
