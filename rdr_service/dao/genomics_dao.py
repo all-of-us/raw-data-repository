@@ -2804,8 +2804,8 @@ class UserEventMetricsDao(BaseDao):
                 event_metrics_alias.created_at.is_(None)
             ).all()
 
-    def update_reconcile_job_pids(self, pid_list, job_run_id):
-        id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list))]
+    def update_reconcile_job_pids(self, pid_list, job_run_id, module):
+        id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
 
         update_mappings = [{
             'id': i,
@@ -2814,18 +2814,27 @@ class UserEventMetricsDao(BaseDao):
         with self.session() as session:
             session.bulk_update_mappings(UserEventMetrics, update_mappings)
 
-    def get_all_event_ids_for_pid_list(self, pid_list):
+    def get_all_event_ids_for_pid_list(self, pid_list, module=None):
         with self.session() as session:
-            return session.query(
+            query = session.query(
                 UserEventMetrics.id
             ).filter(
-                UserEventMetrics.participant_id.in_(pid_list)
-            ).all()
+                UserEventMetrics.participant_id.in_(pid_list),
+            )
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()
 
-    def get_all_event_objects_for_pid_list(self, pid_list):
+    def get_all_event_objects_for_pid_list(self, pid_list, module=None):
         with self.session() as session:
-            return session.query(
+            query =  session.query(
                 UserEventMetrics
             ).filter(
                 UserEventMetrics.participant_id.in_(pid_list)
-            ).all()
+            )
+
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()

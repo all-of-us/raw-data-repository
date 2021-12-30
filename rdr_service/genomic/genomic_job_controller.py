@@ -1209,7 +1209,8 @@ class GenomicJobController:
 
             if update_pids:
                 event_dao.update_reconcile_job_pids(pid_list=update_pids,
-                                                    job_run_id=self.job_run.id)
+                                                    job_run_id=self.job_run.id,
+                                                    module=module)
 
     def run_general_ingestion_workflow(self):
         """

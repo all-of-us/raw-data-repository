@@ -6287,7 +6287,7 @@ class GenomicPipelineTest(BaseTestCase):
         event_dao = UserEventMetricsDao()
 
         pid_list = [1, 2, 3, 6]
-        updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list)
+        updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
 
