@@ -102,7 +102,7 @@ class CeHealthDataReconciliationPipeline:
             raise RuntimeError("No reconciliation files in cloud bucket %r (all files: %s)." % (self.bucket_name,
                                                                                                 bucket_stat_list))
         last_24_hours_files = [blob for blob in bucket_stat_list
-                               if blob.updated >= (self.job_started_time - _MAX_INPUT_AGE)]
+                               if blob.updated.replace(tzinfo=None) >= self.job_started_time - _MAX_INPUT_AGE]
         if not last_24_hours_files:
             self._send_no_reconciliation_file_alert()
 
