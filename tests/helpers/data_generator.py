@@ -23,8 +23,8 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile,
     GenomicManifestFeedback,
-    GenomicGcDataFileMissing
-)
+    GenomicGcDataFileMissing,
+    UserEventMetrics)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
@@ -712,6 +712,15 @@ class DataGenerator:
         informing_loop = self._genomic_informing_loop(**kwargs)
         self._commit_to_database(informing_loop)
         return informing_loop
+
+    @staticmethod
+    def _genomic_user_event_metrics(**kwargs):
+        return UserEventMetrics(**kwargs)
+
+    def create_database_genomic_user_event_metrics(self, **kwargs):
+        event_metrics = self._genomic_user_event_metrics(**kwargs)
+        self._commit_to_database(event_metrics)
+        return event_metrics
 
     @staticmethod
     def _genomic_informing_loop(**kwargs):

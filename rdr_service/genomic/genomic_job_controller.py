@@ -27,7 +27,7 @@ from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
-    wgs_file_types_attributes, array_file_types_attributes
+    wgs_file_types_attributes, array_file_types_attributes, informing_loop_event_mappings
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
@@ -53,7 +53,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao,
-    GcDataFileStagingDao)
+    GcDataFileStagingDao, UserEventMetricsDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -1157,6 +1157,59 @@ class GenomicJobController:
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
         if _genome_type == GENOME_TYPE_ARRAY:
             self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
+
+    def reconcile_informing_loop_responses(self):
+        """
+        Compare latest non-reconciled user_event_metrics records
+        to the latest participant states in genomic_informing_loop
+        Currently only support GEM since no HDR or PGx.
+        """
+        # TODO: handle multiple modules (HDR, PGx)
+        module = 'gem'
+        event_dao = UserEventMetricsDao()
+        informing_loop_dao = GenomicInformingLoopDao()
+
+        # Get unreconciled user_event_metrics records
+        latest_events = event_dao.get_latest_events()
+
+        # compare to latest state by participant in genomic_informing_loop
+        if latest_events:
+            event_mappings = informing_loop_event_mappings
+            update_pids = []
+
+            for event in latest_events:
+                incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
+                                   f'PID: {event.participant_id}'
+                incident_params = {
+                    "source_job_run_id": self.job_run.id,
+                    "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
+                    "message": incident_message,
+                    "participant_id": event.participant_id,
+                    "save_incident": True,
+                    "slack": True
+                }
+
+                latest_state = informing_loop_dao.get_latest_state_for_pid(event.participant_id)
+                if latest_state:
+                    # Parse informing loop state
+                    latest_state = [x for x in latest_state[0] if x]
+                    lookup_state = f"{module}.{'.'.join(latest_state)}"
+
+                    if event.event_name != event_mappings[lookup_state]:
+                        # create incident
+                        self.create_incident(**incident_params)
+
+                    else:
+                        # add to update_pids reconcile_job_run_id
+                        update_pids.append(event.participant_id)
+
+                else:
+                    # No informing loop for pid, create incident
+                    self.create_incident(**incident_params)
+
+            if update_pids:
+                event_dao.update_reconcile_job_pids(pid_list=update_pids,
+                                                    job_run_id=self.job_run.id)
 
     def run_general_ingestion_workflow(self):
         """

@@ -105,6 +105,7 @@ class GenomicJob(messages.Enum):
 
     UPDATE_MEMBERS_BLOCKLISTS = 49
     METRICS_FILE_INGEST = 50
+    RECONCILE_INFORMING_LOOP_RESPONSES = 51
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -257,6 +258,7 @@ class GenomicIncidentCode(messages.Enum):
     MANIFEST_GENERATE_DATA_VALIDATION_FAILED = 8
     FILE_VALIDATION_FAILED_VALUES = 9
     FILE_VALIDATION_INVALID_FILE_NAME = 10
+    INFORMING_LOOP_TO_EVENTS_MISMATCH = 11
 
 
 class GenomicIncidentStatus(messages.Enum):
