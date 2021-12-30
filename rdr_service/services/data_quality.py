@@ -195,7 +195,7 @@ class ResponseQualityChecker(_ModelQualityChecker):
                         f'but participant signed up at {participant_signup_time}'
                     )
                 if suspension_datetime and authored_time > suspension_datetime:
-                    logging.error(f'Response {response_id} authored for suspended participant')
+                    logging.error(f'Response {response_id} authored for suspended participant (module: {module_code})')
                 if withdrawal_datetime and authored_time > withdrawal_datetime:
                     logging.error(f'Response {response_id} authored for withdrawn participant')
                 if min_questionnaire_created_time and min_questionnaire_created_time > authored_time:
