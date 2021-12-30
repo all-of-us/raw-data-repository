@@ -1,7 +1,9 @@
-from datetime import datetime
+from typing import List
 
+from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -10,76 +12,53 @@ class ConsentFileDaoTest(BaseTestCase):
         super(ConsentFileDaoTest, self).setUp(*args, **kwargs)
         self.consent_dao = ConsentDao()
 
+        # Initialize questionnaire for primary update
+        self.primary_update_questionnaire = self.data_generator.create_database_questionnaire_history()
+        primary_update_question_code = self.data_generator.create_database_code(
+            value=PRIMARY_CONSENT_UPDATE_QUESTION_CODE
+        )
+        self.primary_update_question = self.data_generator.create_database_questionnaire_question(
+            codeId=primary_update_question_code.codeId,
+            questionnaireId=self.primary_update_questionnaire.questionnaireId,
+            questionnaireVersion=self.primary_update_questionnaire.version
+        )
+
     def test_loading_summaries_with_consent(self):
         """Check that participant summaries with any consents in the given time range are loaded"""
-        primary_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2020, 4, 1)
+        all_consent_no_files_participant = self._init_summary_with_consent_data(
+            submitted_consent_types=[ConsentType.CABOR, ConsentType.EHR, ConsentType.GROR, ConsentType.PRIMARY_UPDATE],
+            validated_consent_types=[]
         )
-        later_primary_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2021, 1, 1)
+        all_consent_missing_ehr_participant = self._init_summary_with_consent_data(
+            submitted_consent_types=[ConsentType.CABOR, ConsentType.EHR, ConsentType.GROR, ConsentType.PRIMARY_UPDATE],
+            validated_consent_types=[ConsentType.PRIMARY, ConsentType.CABOR, ConsentType.GROR, ConsentType.PRIMARY_UPDATE]
         )
-        cabor_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2019, 8, 27),
-            cabor=datetime(2020, 4, 27)
+        only_needs_ehr_validated = self._init_summary_with_consent_data(
+            submitted_consent_types=[ConsentType.EHR],
+            validated_consent_types=[ConsentType.PRIMARY]
         )
-        later_cabor_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2019, 8, 27),
-            cabor=datetime(2021, 1, 27)
+        only_needs_update_validated = self._init_summary_with_consent_data(
+            submitted_consent_types=[ConsentType.PRIMARY_UPDATE],
+            validated_consent_types=[ConsentType.PRIMARY]
         )
-        ehr_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2017, 9, 2),
-            ehr=datetime(2020, 5, 2)
+        # Submit some more that shouldn't show up in the results
+        self._init_summary_with_consent_data(
+            submitted_consent_types=[ConsentType.CABOR],
+            validated_consent_types=[ConsentType.PRIMARY, ConsentType.CABOR]
         )
-        later_ehr_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2017, 9, 2),
-            ehr=datetime(2021, 3, 2)
-        )
-        gror_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2020, 1, 4),
-            gror=datetime(2020, 6, 7)
-        )
-        later_gror_participant = self._init_summary_with_consent_dates(
-            primary=datetime(2020, 1, 4),
-            gror=datetime(2021, 3, 7)
-        )
-        self._init_summary_with_consent_dates(  # make one participant that has everything before the date window
-            primary=datetime(2019, 7, 1),
-            cabor=datetime(2019, 8, 1),
-            ehr=datetime(2019, 9, 1),
-            gror=datetime(2019, 10, 1)
+        self._init_summary_with_consent_data(
+            submitted_consent_types=[],
+            validated_consent_types=[ConsentType.PRIMARY]
         )
 
         with self.consent_dao.session() as session:
-            result_list = self.consent_dao.get_participants_with_consents_in_range(
-                session,
-                start_date=datetime(2020, 3, 1),
-                end_date=datetime(2020, 7, 1)
-            )
+            result_list = self.consent_dao.get_participants_with_unvalidated_files(session)
             self.assertListsMatch(
                 expected_list=[
-                    primary_participant,
-                    cabor_participant,
-                    ehr_participant,
-                    gror_participant
-                ],
-                actual_list=result_list,
-                id_attribute='participantId'
-            )
-
-            result_list = self.consent_dao.get_participants_with_consents_in_range(
-                session,
-                start_date=datetime(2020, 3, 1)
-            )
-            self.assertListsMatch(
-                expected_list=[
-                    primary_participant,
-                    cabor_participant,
-                    ehr_participant,
-                    gror_participant,
-                    later_primary_participant,
-                    later_cabor_participant,
-                    later_ehr_participant,
-                    later_gror_participant
+                    all_consent_no_files_participant,
+                    all_consent_missing_ehr_participant,
+                    only_needs_ehr_validated,
+                    only_needs_update_validated
                 ],
                 actual_list=result_list,
                 id_attribute='participantId'
@@ -87,21 +66,30 @@ class ConsentFileDaoTest(BaseTestCase):
 
     def test_ignoring_participants(self):
         """Make sure test and ghost accounts are left out of consent validation"""
-        self._init_summary_with_consent_dates(
-            primary=datetime(2020, 4, 1),
-            participantId=self.data_generator.create_database_participant(isGhostId=True).participantId
+        self._init_summary_with_consent_data(
+            submitted_consent_types=[],
+            validated_consent_types=[ConsentType.PRIMARY],
+            extra_summary_args={
+                'participantId': self.data_generator.create_database_participant(isGhostId=True).participantId
+            }
         )
-        self._init_summary_with_consent_dates(
-            primary=datetime(2020, 4, 1),
-            participantId=self.data_generator.create_database_participant(isTestParticipant=True).participantId
+        self._init_summary_with_consent_data(
+            submitted_consent_types=[],
+            validated_consent_types=[ConsentType.PRIMARY],
+            extra_summary_args={
+                'participantId': self.data_generator.create_database_participant(isTestParticipant=True).participantId
+            }
         )
-        self._init_summary_with_consent_dates(
-            primary=datetime(2020, 4, 1),
-            email='one@example.com'
+        self._init_summary_with_consent_data(
+            submitted_consent_types=[],
+            validated_consent_types=[ConsentType.PRIMARY],
+            extra_summary_args={
+                'email': 'one@example.com'
+            }
         )
 
         with self.consent_dao.session() as session:
-            results = self.consent_dao.get_participants_with_consents_in_range(session, start_date=datetime(2020, 1, 1))
+            results = self.consent_dao.get_participants_with_unvalidated_files(session)
         self.assertEqual([], results)
 
     def test_getting_files_to_correct(self):
@@ -191,12 +179,45 @@ class ConsentFileDaoTest(BaseTestCase):
         for expected_summary in expected_list:
             self.assertIn(getattr(expected_summary, id_attribute), actual_id_list)
 
-    def _init_summary_with_consent_dates(self, primary, cabor=None, ehr=None, gror=None, **kwargs):
-        return self.data_generator.create_database_participant_summary(
-            consentForStudyEnrollmentFirstYesAuthored=primary,
-            consentForCABoRAuthored=cabor,
-            consentForElectronicHealthRecordsAuthored=ehr,
-            consentForGenomicsRORAuthored=gror,
-            participantOrigin='vibrent',
-            **kwargs
-        )
+    def _init_summary_with_consent_data(self, submitted_consent_types: List[ConsentType],
+                                        validated_consent_types: List[ConsentType], extra_summary_args=None):
+        # Set up participant summary fields to indicate that the consent was submitted
+        # (ignoring PrimaryUpdate since that's not where it's checked)
+        consent_type_to_summary_field_map = {
+            ConsentType.CABOR: 'consentForCABoR',
+            ConsentType.EHR: 'consentForElectronicHealthRecords',
+            ConsentType.GROR: 'consentForGenomicsROR'
+        }
+        summary_consent_fields_to_set = {}
+        consent_submissions_to_set_on_summary = [
+            consent_type for consent_type in submitted_consent_types if consent_type != ConsentType.PRIMARY_UPDATE
+        ]
+        for consent_type in consent_submissions_to_set_on_summary:
+            participant_summary_field_name = consent_type_to_summary_field_map[consent_type]
+            summary_consent_fields_to_set[participant_summary_field_name] = QuestionnaireStatus.SUBMITTED
+
+        if extra_summary_args is not None:
+            summary_consent_fields_to_set.update(extra_summary_args)
+        summary = self.data_generator.create_database_participant_summary(**summary_consent_fields_to_set)
+
+        if ConsentType.PRIMARY_UPDATE in submitted_consent_types:
+            # PrimaryUpdate doesn't have any fields of its own,
+            # but is instead detected using questionnaire response answers
+            response = self.data_generator.create_database_questionnaire_response(
+                questionnaireId=self.primary_update_questionnaire.questionnaireId,
+                questionnaireVersion=self.primary_update_questionnaire.version,
+                participantId=summary.participantId
+            )
+            self.data_generator.create_database_questionnaire_response_answer(
+                questionnaireResponseId=response.questionnaireResponseId,
+                questionId=self.primary_update_question.questionnaireQuestionId
+            )
+
+        # Create the validation records needed and link them to the summary
+        for consent_type in validated_consent_types:
+            self.data_generator.create_database_consent_file(
+                participant_id=summary.participantId,
+                type=consent_type
+            )
+
+        return summary

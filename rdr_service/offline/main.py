@@ -262,13 +262,12 @@ def check_for_consent_corrections():
 
 @app_util.auth_required_cron
 def validate_consent_files():
-    min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
     validation_controller = _build_validation_controller()
     with validation_controller.consent_dao.session() as session, StoreResultStrategy(
         session=session,
         consent_dao=validation_controller.consent_dao
     ) as store_strategy:
-        validation_controller.validate_recent_uploads(session, store_strategy, min_consent_date=min_authored_timestamp)
+        validation_controller.validate_consent_uploads(session, store_strategy)
     return '{"success": "true"}'
 
 

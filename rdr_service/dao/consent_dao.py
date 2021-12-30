@@ -1,15 +1,20 @@
 from datetime import datetime
 from typing import Collection
 
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import aliased, Session
 
+from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus
+from rdr_service.model.code import Code
+from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.questionnaire import QuestionnaireQuestion
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.participant_enums import QuestionnaireStatus
 
 
 class ConsentDao(BaseDao):
@@ -33,29 +38,81 @@ class ConsentDao(BaseDao):
         )
 
     @classmethod
-    def get_participants_with_consents_in_range(cls, session, start_date,
-                                                end_date=None) -> Collection[ParticipantSummary]:
-        query = cls._get_query_non_test_summaries(session)
-        if end_date is None:
-            query = query.filter(
+    def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:
+        """
+        Finds all participants that should have submitted a consent, but don't have the corresponding file validated
+        """
+
+        primary_consent = aliased(ConsentFile)
+        cabor_consent = aliased(ConsentFile)
+        ehr_consent = aliased(ConsentFile)
+        gror_consent = aliased(ConsentFile)
+        primary_update_consent = aliased(ConsentFile)
+        query = (
+            cls._get_query_non_test_summaries(session)
+            .outerjoin(
+                primary_consent, and_(
+                    primary_consent.participant_id == ParticipantSummary.participantId,
+                    primary_consent.type == ConsentType.PRIMARY
+                )
+            ).outerjoin(
+                cabor_consent, and_(
+                    cabor_consent.participant_id == ParticipantSummary.participantId,
+                    cabor_consent.type == ConsentType.CABOR
+                )
+            ).outerjoin(
+                ehr_consent, and_(
+                    ehr_consent.participant_id == ParticipantSummary.participantId,
+                    ehr_consent.type == ConsentType.EHR
+                )
+            ).outerjoin(
+                gror_consent, and_(
+                    gror_consent.participant_id == ParticipantSummary.participantId,
+                    gror_consent.type == ConsentType.GROR
+                )
+            ).outerjoin(
+                primary_update_consent, and_(
+                    primary_update_consent.participant_id == ParticipantSummary.participantId,
+                    primary_update_consent.type == ConsentType.PRIMARY_UPDATE
+                )
+            ).outerjoin(
+                QuestionnaireResponse,
+                QuestionnaireResponse.participantId == ParticipantSummary.participantId
+            ).outerjoin(
+                QuestionnaireResponseAnswer,
+                QuestionnaireResponseAnswer.questionnaireResponseId == QuestionnaireResponse.questionnaireResponseId
+            ).outerjoin(
+                QuestionnaireQuestion,
+                QuestionnaireQuestion.questionnaireQuestionId == QuestionnaireResponseAnswer.questionId
+            ).outerjoin(
+                Code,
+                and_(
+                    Code.codeId == QuestionnaireQuestion.codeId,
+                    Code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE
+                )
+            ).filter(
                 or_(
-                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored >= start_date,
-                    ParticipantSummary.consentForCABoRAuthored >= start_date,
-                    ParticipantSummary.consentForElectronicHealthRecordsAuthored >= start_date,
-                    ParticipantSummary.consentForGenomicsRORAuthored >= start_date
+                    primary_consent.id.is_(None),
+                    and_(
+                        ParticipantSummary.consentForCABoR == QuestionnaireStatus.SUBMITTED,
+                        cabor_consent.id.is_(None)
+                    ),
+                    and_(
+                        ParticipantSummary.consentForElectronicHealthRecords == QuestionnaireStatus.SUBMITTED,
+                        ehr_consent.id.is_(None)
+                    ),
+                    and_(
+                        ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                        gror_consent.id.is_(None)
+                    ),
+                    and_(
+                        Code.codeId.isnot(None),
+                        primary_update_consent.id.is_(None)
+                    )
                 )
             )
-        else:
-            query = query.filter(
-                or_(
-                    ParticipantSummary.consentForStudyEnrollmentFirstYesAuthored.between(start_date, end_date),
-                    ParticipantSummary.consentForCABoRAuthored.between(start_date, end_date),
-                    ParticipantSummary.consentForElectronicHealthRecordsAuthored.between(start_date, end_date),
-                    ParticipantSummary.consentForGenomicsRORAuthored.between(start_date, end_date)
-                )
-            )
-        summaries = query.all()
-        return summaries
+        )
+        return query.distinct().all()
 
     @classmethod
     def get_participants_needing_validation(cls, session) -> Collection[ParticipantSummary]:
