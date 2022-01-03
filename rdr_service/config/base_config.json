@@ -110,6 +110,7 @@
   "a1_limit": [10000],
   "genomic_daily_validation_emails": {
     "send_emails": 1,
+    "cc_recipients": ["testone_cc.testy@vumc.edu", "testtwo_cc.testy@vumc.edu"],
     "recipients": {
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]

@@ -1603,7 +1603,7 @@ class DataQualityJobController:
             logging.warning('No records found for validation email notifications')
             return
 
-        recipients = email_config.get('recipients')
+        recipients, cc_recipients = email_config.get('recipients'), email_config.get('cc_recipients')
 
         for gc, recipient_list in recipients.items():
             gc_validation_emails_to_send = list(filter(lambda x: x.submitted_gc_site_id == gc, validation_incidents))
@@ -1618,6 +1618,7 @@ class DataQualityJobController:
 
                     email_message = Email(
                         recipients=recipient_list,
+                        cc_recipients=cc_recipients,
                         subject="All of Us GC/DRC Manifest Ingestion Failure",
                         plain_text_content=message
                     )
