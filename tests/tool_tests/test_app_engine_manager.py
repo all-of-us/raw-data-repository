@@ -58,25 +58,19 @@ class CronSettingsTest(BaseTestCase):
             path = self.open_mock.call_args.args[0]  # Retrieve the path of the file that was opened
             if path == first_file_path:
                 return """
-                    {
-                        "basic job configuration": {
-                            "url": "/offline/test",
-                            "schedule": "every day 12:00",
-                            "timezone": "Central",
-                            "target": "offline"
-                        }
-                    }
+                    - description: basic job configuration
+                      url: /offline/test
+                      schedule: every day 12:00
+                      timezone: Central
+                      target: offline
                 """
             elif path == second_file_path:
                 return """
-                    {
-                        "another job": {
-                            "url": "/offline/other",
-                            "schedule": "jan 1 12:00",
-                            "timezone": "Central",
-                            "target": "resource"
-                        }
-                    }
+                    - description: another job
+                      url: /offline/other
+                      schedule: jan 1 12:00
+                      timezone: Central
+                      target: resource
                 """
         self.file_mock.read.side_effect = return_file
 
@@ -108,21 +102,15 @@ class CronSettingsTest(BaseTestCase):
             path = self.open_mock.call_args.args[0]  # Retrieve the path of the file that was opened
             if path == default_path:
                 return """
-                    {
-                        "test job to override": {
-                            "url": "/offline/test",
-                            "schedule": "every day 12:00"
-                        }
-                    }
+                    - description: test job to override
+                      url: /offline/test
+                      schedule: every day 12:00
                 """
             elif path == env_path:
                 return """
-                    {
-                        "test job to override": {
-                            "url": "/offline/other",
-                            "schedule": "every Sunday at 5"
-                        }
-                    }
+                    - description: test job to override
+                      url: /offline/other
+                      schedule: every Sunday at 5
                 """
         self.file_mock.read.side_effect = return_file
 
@@ -147,26 +135,19 @@ class CronSettingsTest(BaseTestCase):
             path = self.open_mock.call_args.args[0]  # Retrieve the path of the file that was opened
             if path == default_path:
                 return """
-                    {
-                        "test job": {
-                            "url": "/offline/test",
-                            "schedule": "every day 12:00"
-                        },
-                        "entry to remove": {
-                            "url": "/offline/test",
-                            "schedule": "every monday at 8"
-                        }
-                    }
+                    - description: test job
+                      url: /offline/test
+                      schedule: every day 12:00
+                    - description: entry to remove
+                      url: /offline/test
+                      schedule: every monday at 8
                 """
             elif path == env_path:
                 return """
-                    {
-                        "another filler job": {
-                            "url": "/offline/another",
-                            "schedule": "Sunday at 5"
-                        },
-                        "entry to remove": {}
-                    }
+                    - description: another filler job
+                      url: /offline/another
+                      schedule: Sunday at 5
+                    - description: entry to remove
                 """
         self.file_mock.read.side_effect = return_file
 
