@@ -571,22 +571,21 @@ class ParticipantDao(UpdatableDao):
 
             return participant_map.all()
 
-    def get_pairing_data_for_ids(self, participant_ids: Collection[int]):
+    def get_pairing_data_for_ids(self, participant_ids: Collection[int], session):
         """
         Returns tuples of the format (participant id, hpo name, org external id, site google group)
         If a participant is unpaired to an HPO they will be left out. If they're unpaired to
         a site or an org then the corresponding element in the tuple will be None.
         """
-        with self.session() as session:
-            return (
-                session.query(Participant.participantId, HPO.name, Organization.externalId, Site.googleGroup)
-                .select_from(Participant)
-                .join(HPO, Participant.hpoId == HPO.hpoId)
-                .outerjoin(Organization, Participant.organizationId == Organization.organizationId)
-                .outerjoin(Site, Site.siteId == Participant.siteId)
-                .filter(Participant.participantId.in_(participant_ids))
-                .all()
-            )
+        return (
+            session.query(Participant.participantId, HPO.name, Organization.externalId, Site.googleGroup)
+            .select_from(Participant)
+            .join(HPO, Participant.hpoId == HPO.hpoId)
+            .outerjoin(Organization, Participant.organizationId == Organization.organizationId)
+            .outerjoin(Site, Site.siteId == Participant.siteId)
+            .filter(Participant.participantId.in_(participant_ids))
+            .all()
+        )
 
 
 def _get_primary_provider_link(participant):

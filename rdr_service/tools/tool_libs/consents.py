@@ -21,6 +21,9 @@ from rdr_service.services.consent.validation import ConsentValidationController,
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
+from rdr_service.offline.sync_consent_files import ConsentSyncController
+from rdr_service.dao.participant_dao import ParticipantDao
+
 
 tool_cmd = 'consents'
 tool_desc = 'Get reports of consent issues and modify validation records'
@@ -64,6 +67,8 @@ class ConsentTool(ToolBase):
             self.check_retro_sync()
         elif self.args.command == 'retro-validation':
             self.retro_validate()
+        elif self.args.command == 'sync-files':
+            self.sync_files()
 
     def _call_server_for_retro_validation(self, participant_ids):
         if len(participant_ids) > 0:
@@ -79,6 +84,18 @@ class ConsentTool(ToolBase):
 
         if response.status_code != 200:
             exit(1)  # Exiting program to prevent further calls with a bad key
+
+    def sync_files(self):
+        print('syncing consents')
+        server_config = self.get_server_config()
+
+        controller = ConsentSyncController(
+            consent_dao=ConsentDao(),
+            participant_dao=ParticipantDao(),
+            storage_provider=GoogleCloudStorageProvider()
+        )
+        with self.get_session() as session:
+            controller.sync_ready_files(server_config, session, project_id=self.gcp_env.project)
 
     def retro_validate(self):
         with self.get_session() as session:
@@ -273,6 +290,7 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
 
     subparsers.add_parser('check-retro-sync')
     subparsers.add_parser('retro-validation')
+    subparsers.add_parser('sync-files')
 
 
 def run():

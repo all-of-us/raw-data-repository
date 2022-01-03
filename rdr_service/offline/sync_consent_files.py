@@ -166,22 +166,24 @@ class ConsentSyncController:
         self.consent_dao = consent_dao
         self.participant_dao = participant_dao
         self.storage_provider = storage_provider
-        self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
+        self._destination_folder = 'Participant'
 
-    def sync_ready_files(self):
+    def sync_ready_files(self, server_settings, session, project_id):
         """Syncs any validated consent files that are ready for syncing"""
 
-        sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+        sync_config = server_settings[config.CONSENT_SYNC_BUCKETS]
         hpo_names = sync_config['hpos'].keys()
         org_names = sync_config['orgs'].keys()
         file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
             hpo_names=hpo_names,
-            org_names=org_names
+            org_names=org_names,
+            session=session
         )
         updated_rec_ids = list()
-        pairing_info_map = self._build_participant_pairing_map(file_list)
+        pairing_info_map = self._build_participant_pairing_map(file_list, session)
 
         for file in file_list:
+            print(file.participant_id)
             pairing_info = pairing_info_map.get(file.participant_id, None)
             if not pairing_info:
                 continue
@@ -209,13 +211,13 @@ class ConsentSyncController:
                 file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
                 updated_rec_ids.append(file.id)
 
+        print('zipping...')
         self._zip_and_upload()
-        with self.consent_dao.session() as session:
-            self.consent_dao.batch_update_consent_files(file_list, session)
+        self.consent_dao.batch_update_consent_files(file_list, session)
 
         # Queue tasks to rebuild consent metrics resource data records (for PDR)
         if len(updated_rec_ids):
-            dispatch_rebuild_consent_metrics_tasks(updated_rec_ids)
+            dispatch_rebuild_consent_metrics_tasks(updated_rec_ids, project_id=project_id)
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):
@@ -227,6 +229,7 @@ class ConsentSyncController:
             for org_dir in _directories_in(bucket_dir):
                 for site_dir in _directories_in(org_dir):
                     zip_file_path = os.path.join(org_dir.path, site_dir.name + '.zip')
+                    print(f'uploading {zip_file_path}')
                     with ZipFile(zip_file_path, 'w') as zip_file:
                         self._zip_files_in_directory(zip_file, site_dir.path)
                     self._upload_zip_file(
@@ -254,11 +257,11 @@ class ConsentSyncController:
         )
 
     def _download_file_for_zip(self, file: ConsentFile, bucket_name, org_name, site_name):
-        if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
-            raise Exception(
-                'Can not download consent files to machines outside the cloud, '
-                'please sync consent files using the cloud environment'
-            )
+        # if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
+        #     raise Exception(
+        #         'Can not download consent files to machines outside the cloud, '
+        #         'please sync consent files using the cloud environment'
+        #     )
 
         file_name = os.path.basename(file.file_path)
         temp_file_destination = (
@@ -286,13 +289,13 @@ class ConsentSyncController:
     def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
         return f'{bucket_name}/{self._destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
 
-    def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
+    def _build_participant_pairing_map(self, files: List[ConsentFile], session) -> Dict[int, ParticipantPairingInfo]:
         """
         Returns a dictionary mapping each participant's id to the external id for their organization
         and the google group name for their site
         """
         participant_ids = {file.participant_id for file in files}
-        participant_pairing_data = self.participant_dao.get_pairing_data_for_ids(participant_ids)
+        participant_pairing_data = self.participant_dao.get_pairing_data_for_ids(participant_ids, session)
         return {
             participant_id: ParticipantPairingInfo(hpo_name=hpo_name, org_name=org_name, site_name=site_name)
             for participant_id, hpo_name, org_name, site_name in participant_pairing_data
