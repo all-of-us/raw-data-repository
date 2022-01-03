@@ -58,6 +58,7 @@ class CronSettingsTest(BaseTestCase):
             path = self.open_mock.call_args.args[0]  # Retrieve the path of the file that was opened
             if path == first_file_path:
                 return """
+                    # comments should be ignored, and the "cron:" header is optional
                     cron:
                     - description: basic job configuration
                       url: /offline/test
