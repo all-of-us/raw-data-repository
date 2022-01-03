@@ -1,0 +1,39 @@
+cron:
+- description: Monthly reconciliation report
+- description: Participant count metrics (Do not manually start)
+- description: Flag ghost participants
+- description: Genomic Pipeline AW0 (Cohort 2) Workflow
+- description: Genomic Pipeline AW0 (Cohort 3) Workflow
+- description: Genomic Pipeline AW0 (Cohort 1) Workflow
+- description: Genomic AW1 Workflow
+- description: Genomic AW1 Failures Workflow
+- description: Genomic Feedback Manifest Workflow
+- description: Genomic AW1C (CVL) Workflow (Manual)
+- description: Genomic AW1CF (CVL) Failures Workflow (Manual)
+- description: Genomic AW2 Workflow
+- description: Genomic Reconciliation Array Data Workflow
+- description: Genomic Reconciliation WGS Data Workflow
+- description: Genomic GEM A1 Workflow
+- description: Genomic GEM A2 Workflow
+- description: Genomic GEM A3 Workflow
+- description: Genomic CVL W1 Workflow (Manual)
+- description: Genomic CVL W2 Workflow (Manual)
+- description: Genomic CVL W3 Workflow (Manual)
+- description: Genomic AW3 Array Workflow
+- description: Genomic AW3 WGS Workflow
+- description: Genomic AW4 Workflow
+- description: Daily Biobank sample import and order reconciliation
+  url: /offline/BiobankSamplesImport
+  schedule: every day 03:00
+  timezone: America/New_York
+  target: offline
+- description: Rotate service account keys older than 3 days
+  url: /offline/DeleteOldKeys
+  schedule: every day 01:00
+  timezone: America/New_York
+  target: offline
+- description: Skew duplicate last modified
+  url: /offline/SkewDuplicates
+  schedule: every day 04:15
+  timezone: America/New_York
+  target: offline
