@@ -262,13 +262,12 @@ def check_for_consent_corrections():
 
 @app_util.auth_required_cron
 def validate_consent_files():
-    min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
     validation_controller = _build_validation_controller()
     with validation_controller.consent_dao.session() as session, StoreResultStrategy(
         session=session,
         consent_dao=validation_controller.consent_dao
     ) as store_strategy:
-        validation_controller.validate_recent_uploads(session, store_strategy, min_consent_date=min_authored_timestamp)
+        validation_controller.validate_consent_uploads(session, store_strategy)
     return '{"success": "true"}'
 
 
@@ -650,6 +649,13 @@ def genomic_members_state_resolved():
 @run_genomic_cron_job('members_update_blocklists')
 def genomic_members_update_blocklists():
     genomic_pipeline.update_members_blocklists()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_informing_loop_responses')
+def genomic_reconcile_informing_loop_responses():
+    genomic_pipeline.reconcile_informing_loop_responses()
     return '{"success": "true"}'
 
 
@@ -979,6 +985,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicUpdateMembersBlocklists",
         endpoint="genomic_members_update_blocklists",
         view_func=genomic_members_update_blocklists,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileInformingLoopResponses",
+        endpoint="reconcile_informing_loop_responses",
+        view_func=genomic_reconcile_informing_loop_responses,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs
