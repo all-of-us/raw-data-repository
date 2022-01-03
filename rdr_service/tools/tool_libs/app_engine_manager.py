@@ -69,25 +69,19 @@ class CronSettingsAggregator(ConfigSettingsAggregator):
         file_contents_str = self._load_file_contents(file_path)
         if file_contents_str:
             file_yaml_data = yaml.load(file_contents_str, yaml.Loader)
-            if isinstance(file_yaml_data, dict):  # Some files start with "-cron:", but don't need to
+            if isinstance(file_yaml_data, dict):  # Some files start with "cron:", but don't need to
                 file_yaml_data = file_yaml_data['cron']
             parsed_jobs_dict = {}
             for cron_entry in file_yaml_data:
-                description = cron_entry['description']
-                del cron_entry['description']
-                parsed_jobs_dict[description] = cron_entry
+                parsed_jobs_dict[cron_entry['description']] = cron_entry
             self._contents.update(parsed_jobs_dict)
 
     def get_config_file_contents(self):
         """Return the config so far as a yaml file, cleaning up any entries that should be removed"""
         cron_jobs = []
-        for description, config in self._contents.items():
-            if config.get('schedule') is not None:
-                new_cron_job_config = {
-                    'description': description
-                }
-                new_cron_job_config.update(config)
-                cron_jobs.append(new_cron_job_config)
+        for cron_entry in self._contents.values():
+            if cron_entry.get('schedule') is not None:
+                cron_jobs.append(cron_entry)
         return yaml.dump({
             'cron': cron_jobs
         })
