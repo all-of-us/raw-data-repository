@@ -68,9 +68,11 @@ class CronSettingsAggregator(ConfigSettingsAggregator):
     def extend_with_file(self, file_path: str):
         file_contents_str = self._load_file_contents(file_path)
         if file_contents_str:
-            file_yaml_set = yaml.load(file_contents_str, yaml.Loader)
+            file_yaml_data = yaml.load(file_contents_str, yaml.Loader)
+            if isinstance(file_yaml_data, dict):  # Some files start with "-cron:", but don't need to
+                file_yaml_data = file_yaml_data['cron']
             parsed_jobs_dict = {}
-            for cron_entry in file_yaml_set:
+            for cron_entry in file_yaml_data:
                 description = cron_entry['description']
                 del cron_entry['description']
                 parsed_jobs_dict[description] = cron_entry
