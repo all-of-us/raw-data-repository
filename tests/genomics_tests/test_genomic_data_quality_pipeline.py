@@ -446,7 +446,7 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 source_file_processed_id=gen_processed_file_two.id,
                 code=GenomicIncidentCode.FILE_VALIDATION_FAILED_STRUCTURE.name,
                 message=f"{job_id}: File structure of BCM_AoU_SEQ_DataManifest_02262021_008v2.csv is not valid. "
-                        f"Missing fields: ['mappedreadspct', 'samplesource']",
+                        f"Missing fields: mappedreadspct, samplesource",
                 submitted_gc_site_id='jh'
             )
 

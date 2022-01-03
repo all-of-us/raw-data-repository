@@ -5443,7 +5443,7 @@ class GenomicPipelineTest(BaseTestCase):
         incidents = incident_dao.get_all()
 
         self.assertTrue(any(obj.code == 'FILE_VALIDATION_FAILED_STRUCTURE' for obj in incidents))
-        self.assertTrue(any('Extra fields: [\'extrafield\']' in obj.message for obj in incidents))
+        self.assertTrue(any('Extra fields: extrafield' in obj.message for obj in incidents))
 
     def test_aw2_genomic_incident_inserted(self):
         # set up test file

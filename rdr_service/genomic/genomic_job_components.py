@@ -1806,9 +1806,9 @@ class GenomicFileValidator:
             slack = True
             invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
             if extra_fields:
-                invalid_message += f' Extra fields: {extra_fields}'
+                invalid_message += f" Extra fields: {', '.join(extra_fields)}"
             if missing_fields:
-                invalid_message += f' Missing fields: {missing_fields}'
+                invalid_message += f" Missing fields: {', '.join(missing_fields)}"
                 if len(missing_fields) == len(expected):
                     slack = False
             self.controller.create_incident(
