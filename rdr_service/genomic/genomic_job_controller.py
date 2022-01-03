@@ -1613,8 +1613,7 @@ class DataQualityJobController:
                     validation_message = gc_validation_email.message.split(':', 1)[1]
                     message = f"{validation_message.strip()}\n\n"
                     message += f"Full file path: gs://{gc_validation_email.filePath}\n\n"
-                    message += f"Please correct this file and re-upload to " \
-                               f"designated bucket."
+                    message += "Please correct this file and re-upload to designated bucket."
 
                     email_message = Email(
                         recipients=recipient_list,
