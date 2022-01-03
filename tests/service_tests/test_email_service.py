@@ -56,3 +56,34 @@ class EmailServiceTest(BaseTestCase):
             ]
         }, sent_email_dict)
 
+    @mock.patch('rdr_service.services.email_service.sendgrid')
+    def test_sendgrid_email_data_with_cc(self, sendgrid_mock):
+        email = Email(
+            from_email='unit@test.me',
+            recipients=[
+                'first@test.com',
+            ],
+            cc_recipients=[
+                'first_cc@test.com',
+            ],
+            subject='Testing email data structure for SendGrid',
+            plain_text_content='This is the content\n\tof the test email'
+        )
+        EmailService.send_email(email)
+
+        sendgrid_post_mock = sendgrid_mock.SendGridAPIClient.return_value.client.mail.send.post
+        sent_email_with_cc_dict = sendgrid_post_mock.call_args.kwargs['request_body']
+
+        self.assertIsNotNone(sent_email_with_cc_dict['personalizations'][0].get('cc'))
+        self.assertEqual(sent_email_with_cc_dict['personalizations'][0].get('cc'), [{'email': 'first_cc@test.com'}])
+
+        sendgrid_mock.reset_mock()
+
+        email.cc_recipients = []
+        EmailService.send_email(email)
+
+        sendgrid_post_mock = sendgrid_mock.SendGridAPIClient.return_value.client.mail.send.post
+        sent_email_with_cc_dict = sendgrid_post_mock.call_args.kwargs['request_body']
+
+        self.assertIsNone(sent_email_with_cc_dict['personalizations'][0].get('cc'))
+

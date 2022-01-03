@@ -1603,21 +1603,21 @@ class DataQualityJobController:
             logging.warning('No records found for validation email notifications')
             return
 
-        recipients = email_config.get('recipients')
+        recipients, cc_recipients = email_config.get('recipients'), email_config.get('cc_recipients')
 
         for gc, recipient_list in recipients.items():
             gc_validation_emails_to_send = list(filter(lambda x: x.submitted_gc_site_id == gc, validation_incidents))
 
             if gc_validation_emails_to_send:
                 for gc_validation_email in gc_validation_emails_to_send:
-                    validation_message = gc_validation_email.message.split(':')[1]
-                    message = f"{validation_message}\n"
-                    message += f"Full file path: gs://{gc_validation_email.filePath}\n"
-                    message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
-                               f"designated bucket."
+                    validation_message = gc_validation_email.message.split(':', 1)[1]
+                    message = f"{validation_message.strip()}\n\n"
+                    message += f"Full file path: gs://{gc_validation_email.filePath}\n\n"
+                    message += "Please correct this file and re-upload to designated bucket."
 
                     email_message = Email(
                         recipients=recipient_list,
+                        cc_recipients=cc_recipients,
                         subject="All of Us GC/DRC Manifest Ingestion Failure",
                         plain_text_content=message
                     )
