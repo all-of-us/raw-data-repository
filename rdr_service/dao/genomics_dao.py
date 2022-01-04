@@ -18,7 +18,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT, GENOMIC_BLOCKLISTS
+from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
@@ -717,9 +717,9 @@ class GenomicSetMemberDao(UpdatableDao):
             return GenomicSubProcessResult.ERROR
 
     def update_member_blocklists(self, member):
-        blocklists_config = config.getSettingJson(GENOMIC_BLOCKLISTS, {})
+        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
 
-        if not blocklists_config:
+        if not member_blocklists_config:
             return
 
         blocklists_map = {
@@ -734,12 +734,6 @@ class GenomicSetMemberDao(UpdatableDao):
                         'value': None
                     }
                 ],
-                'block_items': [
-                    {
-                        'conditional': True if member.ai_an == 'Y' else False,
-                        'value_string': 'aian'
-                    }
-                ]
             },
             'block_results': {
                 'block_attributes': [
@@ -751,24 +745,29 @@ class GenomicSetMemberDao(UpdatableDao):
                         'key': 'blockResultsReason',
                         'value': None
                     }
-                ],
+                ]
             }
         }
+
         try:
             for block_map_type, block_map_type_config in blocklists_map.items():
-                blocklist_config_type = blocklists_config.get(block_map_type, None)
+                blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
-                for items in block_map_type_config.get('block_items', []):
-                    value_string = items.get('value_string')
+                for item in blocklist_config_items:
+                    current_attr_value = getattr(member, item.get('attribute'))
+                    evaluate_value = item.get('value')
 
-                    if items.get('conditional') is True and blocklist_config_type.get(value_string):
+                    if (isinstance(item.get('value'), list) and
+                        current_attr_value in evaluate_value) or \
+                            current_attr_value == evaluate_value:
 
                         for attr in block_map_type_config.get('block_attributes'):
-                            value = value_string if not attr['value'] else attr['value']
+                            value = item.get('reason_string') if not attr['value'] else attr['value']
+
                             if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
                                 setattr(member, attr['key'], value)
 
-                        super(GenomicSetMemberDao, self).update(member)
+                    super(GenomicSetMemberDao, self).update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -2835,7 +2834,7 @@ class UserEventMetricsDao(BaseDao):
 
     def get_all_event_objects_for_pid_list(self, pid_list, module=None):
         with self.session() as session:
-            query =  session.query(
+            query = session.query(
                 UserEventMetrics
             ).filter(
                 UserEventMetrics.participant_id.in_(pid_list)
