@@ -282,6 +282,8 @@ def update_members_state_resolved_data_files():
 def update_members_blocklists():
     with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
         controller.update_members_blocklists()
+    with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+        controller.update_members_blocklists(created=False)
 
 
 def reconcile_informing_loop_responses():

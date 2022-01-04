@@ -1322,13 +1322,14 @@ class GenomicJobController:
 
         logging.warning(message)
 
-    def update_members_blocklists(self):
-        members = self.member_dao.get_members_from_date()
+    def update_members_blocklists(self, created=True):
+        date_attr = 'created' if created else 'modified'
+        members = self.member_dao.get_members_from_date(date_attr=date_attr)
 
         if not members:
             return
 
-        logging.info(f'Checking {len(members)} newly added genomic member(s) for updating blocklists')
+        logging.info(f'Checking {len(members)} newly {date_attr} genomic member(s) for updating blocklists')
 
         for member in members:
             self.member_dao.update_member_blocklists(member)

@@ -347,7 +347,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 genomicSetId=gen_set.id,
                 biobankId="100153482",
                 sampleId="21042005280",
-                genomeType="aou_wgs",
+                genomeType='aou_array_investigation' if i & 2 == 0 else 'aou_wgs',
                 genomicWorkflowState=GenomicWorkflowState.AW0 if i & 2 == 0 else GenomicWorkflowState.AW1,
                 ai_an='Y' if i & 2 == 0 else 'N'
             )

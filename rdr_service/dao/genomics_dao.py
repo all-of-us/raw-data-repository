@@ -754,6 +754,7 @@ class GenomicSetMemberDao(UpdatableDao):
                 blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
                 for item in blocklist_config_items:
+
                     current_attr_value = getattr(member, item.get('attribute'))
                     evaluate_value = item.get('value')
 
@@ -824,18 +825,23 @@ class GenomicSetMemberDao(UpdatableDao):
         bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
 
-    def get_members_from_date(self, from_days=1):
+    def get_members_from_date(self, from_days=1, date_attr='created'):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
 
         with self.session() as session:
-            members = session.query(
-                GenomicSetMember
-            ).filter(
-                GenomicSetMember.created >= from_date,
-                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0
-            ).all()
+            date_query_map = {
+                'created': session.query(GenomicSetMember).filter(
+                    GenomicSetMember.created >= from_date,
+                    GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0
+                ),
+                'modified': session.query(GenomicSetMember).filter(
+                    GenomicSetMember.modified >= from_date
+                )
+            }
 
-            return members
+            members = date_query_map[date_attr]
+
+            return members.all()
 
     def get_members_for_cvl_reconciliation(self):
         """
