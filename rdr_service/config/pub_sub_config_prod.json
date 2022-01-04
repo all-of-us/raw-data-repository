@@ -481,7 +481,7 @@
       "id": "51",
       "object_name_prefix": "user_events/",
       "payload_format": "JSON_API_V1",
-      "topic_name": "genomic_ingest_metric_files",
+      "topic_name": "genomic_metric_files_upload",
       "topic_project": "all-of-us-rdr-prod"
     }
   ]
