@@ -124,14 +124,14 @@
         "reason_string": "aian"
       },
       {
-        "attribute": "genome_type",
+        "attribute": "genomeType",
         "value": ["aou_array_investigation", "aou_wgs_investigation"],
         "reason_string": "sample_swap"
       }
     ],
     "block_results": [
       {
-        "attribute": "genome_type",
+        "attribute": "genomeType",
         "value": ["aou_array_investigation", "aou_wgs_investigation"],
         "reason_string": "sample_swap"
       }

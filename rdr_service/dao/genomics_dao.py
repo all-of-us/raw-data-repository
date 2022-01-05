@@ -8,7 +8,7 @@ import sqlalchemy
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
@@ -768,7 +768,7 @@ class GenomicSetMemberDao(UpdatableDao):
                             if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
                                 setattr(member, attr['key'], value)
 
-                    super(GenomicSetMemberDao, self).update(member)
+                        super(GenomicSetMemberDao, self).update(member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -825,23 +825,19 @@ class GenomicSetMemberDao(UpdatableDao):
         bq_genomic_set_member_update(member.id, project_id)
         genomic_set_member_update(member.id)
 
-    def get_members_from_date(self, from_days=1, date_attr='created'):
+    def get_members_from_date(self, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
 
         with self.session() as session:
-            date_query_map = {
-                'created': session.query(GenomicSetMember).filter(
-                    GenomicSetMember.created >= from_date,
-                    GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0
-                ),
-                'modified': session.query(GenomicSetMember).filter(
-                    GenomicSetMember.modified >= from_date
-                )
-            }
+            members = session.query(
+                GenomicSetMember
+            ).filter(
+                GenomicSetMember.created >= from_date,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0,
+                or_(GenomicSetMember.modified >= from_date)
+            ).all()
 
-            members = date_query_map[date_attr]
-
-            return members.all()
+            return members
 
     def get_members_for_cvl_reconciliation(self):
         """
