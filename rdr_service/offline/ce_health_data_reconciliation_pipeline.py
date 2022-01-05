@@ -119,7 +119,7 @@ class CeHealthDataReconciliationPipeline:
                 for item in content['FileKeys']:
                     health_file_path_list.append(self.bucket_name + '/' + item)
             if 'TransferTime' in content:
-                file_transferred_time = parse_datetime_from_iso_format(content['TransferTime'])
+                file_transferred_time = parse_datetime_from_iso_format(content['TransferTime'][:26] + 'Z')
 
         return health_file_path_list, file_transferred_time
 
