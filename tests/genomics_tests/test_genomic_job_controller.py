@@ -9,7 +9,7 @@ from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -342,6 +342,7 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicSetVersion=1
         )
 
+        # for just created and wf state query and MATCHES criteria
         for i in range(4):
             self.data_generator.create_database_genomic_set_member(
                 genomicSetId=gen_set.id,
@@ -352,10 +353,19 @@ class GenomicJobControllerTest(BaseTestCase):
                 ai_an='Y' if i & 2 == 0 else 'N'
             )
 
+        # for just created and wf state query and DOES NOT MATCH criteria
+        for i in range(2):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array',
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                ai_an='N'
+            )
+
         with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
             controller.update_members_blocklists()
-
-        current_members = self.member_dao.get_all()
 
         # current config json in base
         # "block_research": [
@@ -378,30 +388,91 @@ class GenomicJobControllerTest(BaseTestCase):
         #     }
         # ]
 
+        created_members = self.member_dao.get_all()
+
         # should be RESEARCH blocked
         self.assertTrue(all(
             obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian'
-            for obj in current_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
+            for obj in created_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
         )
 
         # should NOT be RESULTS blocked
         self.assertTrue(all(
             obj.blockResults == 0 and obj.blockResultsReason is None
-            for obj in current_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
+            for obj in created_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
         )
 
         # should be RESEARCH blocked
         self.assertTrue(all(
             obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
-            for obj in current_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW0)
         )
 
         # should be RESULTS blocked
         self.assertTrue(all(
             obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
-            for obj in current_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW0)
+        )
+
+        # should NOT be RESEARCH/RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResearch == 0 and obj.blockResearchReason is None
+            for obj in created_members if obj.genomeType == 'aou_array' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in created_members if obj.genomeType == 'aou_array' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        # clear current set member records
+        with self.member_dao.session() as session:
+            session.query(GenomicSetMember).delete()
+
+        # for modified data query and MATCHES criteria
+        for i in range(4):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array_investigation' if i & 2 != 0 else 'aou_wgs',
+                genomicWorkflowState=GenomicWorkflowState.AW1,
+                ai_an='Y' if i & 2 == 0 else 'N'
+            )
+
+        with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+            controller.update_members_blocklists()
+
+        modified_members = self.member_dao.get_all()
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian'
+            for obj in modified_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW1)
+        )
+
+        # should NOT be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in modified_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW1)
+        )
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
+            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW1)
+        )
+
+        # should be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
+            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW1)
         )
 
     def test_ingest_user_metrics_file(self):
