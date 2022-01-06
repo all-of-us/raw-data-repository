@@ -1,5 +1,4 @@
 cron:
-- description: Ce Health Data Reconciliation Pipeline
 - description: Validate the previous day's consent files
   url: /offline/ValidateConsentFiles
   schedule: every day 02:00
@@ -80,3 +79,4 @@ cron:
   timezone: America/New_York
   schedule: every day 08:15
   target: offline
+
