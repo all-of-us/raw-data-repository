@@ -64,7 +64,7 @@ class GenomicIngestMetricsFunction(FunctionPubSubHandler):
             data = {
                 "file_path": f'{self.event.attributes.bucketId}/{self.event.attributes.objectId}',
                 "bucket_name": self.event.attributes.objectId,
-                "topic": "genomic_ingest_metric_files",
+                "topic": "genomic_metric_files_upload",
                 "event_payload": self.event,
                 "task": "metrics_ingest",
                 "api_route": api_route,
