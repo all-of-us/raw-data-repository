@@ -51,9 +51,117 @@ class ParticipantPairingInfo:
 
 
 @dataclass
+class ConsentFileAndPairingInfo:
+    file: ConsentFile
+    pairing_info: ParticipantPairingInfo
+
+
+@dataclass
 class PairingHistoryRecord:
     org_name: str
     start_date: datetime
+
+
+class FileSyncHandler:
+    """Responsible for syncing a specific group of consent files"""
+    def __init__(self, zip_files: bool, dest_bucket: str,
+                 storage_provider: GoogleCloudStorageProvider, root_destination_folder: str):
+        self.files_with_pairing_info: List[ConsentFileAndPairingInfo] = []
+        self.zip_files = zip_files
+        self.dest_bucket = dest_bucket
+        self.storage_provider = storage_provider
+        self.root_destination_folder = root_destination_folder
+
+    def sync_files(self):
+        for file_and_pairing_info in self.files_with_pairing_info:
+            file = file_and_pairing_info.file
+            pairing_info = file_and_pairing_info.pairing_info
+            if self.zip_files:
+                file_sync_function = self._download_file_for_zip
+            else:
+                file_sync_function = self._copy_file_in_cloud
+            file_sync_function(
+                file=file,
+                org_name=pairing_info.org_name or DEFAULT_ORG_NAME,
+                site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
+            )
+
+            file.sync_time = datetime.utcnow()
+            file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
+
+        if self.zip_files:
+            self._zip_and_upload()
+
+        return [file_pairing_info.file.id for file_pairing_info in self.files_with_pairing_info]
+
+    def _download_file_for_zip(self, file: ConsentFile, org_name, site_name):
+        if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
+            raise Exception(
+                'Can not download consent files to machines outside the cloud, '
+                'please sync consent files using the cloud environment'
+            )
+
+        file_name = os.path.basename(file.file_path)
+        temp_file_destination = (
+            TEMP_CONSENTS_PATH + f'/{self.dest_bucket}/{org_name}/{site_name}/P{file.participant_id}/{file_name}'
+        )
+        os.makedirs(os.path.dirname(temp_file_destination), exist_ok=True)
+
+        self.storage_provider.download_blob(
+            source_path=file.file_path,
+            destination_path=temp_file_destination
+        )
+
+    def _copy_file_in_cloud(self, file: ConsentFile, org_name, site_name):
+        self.storage_provider.copy_blob(
+            source_path=file.file_path,
+            destination_path=self._build_cloud_destination_path(
+                bucket_name=self.dest_bucket,
+                org_name=org_name,
+                site_name=site_name,
+                participant_id=file.participant_id,
+                file_name=os.path.basename(file.file_path)
+            )
+        )
+
+    def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
+        return f'{bucket_name}/{self.root_destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
+
+    def _zip_and_upload(self):
+        if not os.path.isdir(TEMP_CONSENTS_PATH):
+            # The directory wouldn't exist if there were no files downloaded that need to be zipped
+            return
+
+        logging.info("zipping and uploading consent files...")
+        for bucket_dir in _directories_in(TEMP_CONSENTS_PATH):
+            for org_dir in _directories_in(bucket_dir):
+                for site_dir in _directories_in(org_dir):
+                    zip_file_path = os.path.join(org_dir.path, site_dir.name + '.zip')
+                    with ZipFile(zip_file_path, 'w') as zip_file:
+                        self._zip_files_in_directory(zip_file, site_dir.path)
+                    self._upload_zip_file(
+                        zip_file_path=zip_file_path,
+                        bucket_name=bucket_dir.name,
+                        org_name=org_dir.name
+                    )
+
+        shutil.rmtree(TEMP_CONSENTS_PATH)
+
+    @classmethod
+    def _zip_files_in_directory(cls, zip_file: ZipFile, directory_path):
+        for current_path, _, files in os.walk(directory_path):
+            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
+            for file in files:
+                file_path = os.path.join(current_path, file)
+                file_path_in_zip = file_path[len(directory_path):]
+                zip_file.write(file_path, arcname=file_path_in_zip)
+
+    def _upload_zip_file(self, zip_file_path, bucket_name, org_name):
+        file_name = os.path.basename(zip_file_path)
+        self.storage_provider.upload_from_file(
+            source_file=zip_file_path,
+            path=f'{bucket_name}/{self.root_destination_folder}/{org_name}/{file_name}'
+        )
 
 
 class ConsentSyncGuesser:
@@ -168,123 +276,77 @@ class ConsentSyncController:
         self.storage_provider = storage_provider
         self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
 
+    def _build_sync_handler(self, zip_files: bool, bucket: str):
+        return FileSyncHandler(
+            zip_files=zip_files,
+            dest_bucket=bucket,
+            storage_provider=self.storage_provider,
+            root_destination_folder=self._destination_folder
+        )
+
     def sync_ready_files(self):
         """Syncs any validated consent files that are ready for syncing"""
 
         sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
-        hpo_names = sync_config['hpos'].keys()
-        org_names = sync_config['orgs'].keys()
+
+        # Build the sync handlers, storing them in dictionaries that are keyed by the org or hpo name
+        org_sync_groups = {}
+        for org_name, settings in sync_config['orgs'].items():
+            org_sync_groups[org_name] = self._build_sync_handler(
+                zip_files=settings['zip_consents'],
+                bucket=settings['bucket']
+            )
+        hpo_sync_groups = {}
+        for hpo_name, settings in sync_config['hpos'].items():
+            hpo_sync_groups[hpo_name] = self._build_sync_handler(
+                zip_files=settings['zip_consents'],
+                bucket=settings['bucket']
+            )
+
         file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
-            hpo_names=hpo_names,
-            org_names=org_names
+            hpo_names=hpo_sync_groups.keys(),
+            org_names=org_sync_groups.keys()
         )
-        updated_rec_ids = list()
+
         pairing_info_map = self._build_participant_pairing_map(file_list)
 
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)
             if not pairing_info:
+                # Skip files for unpaired participants
                 continue
 
-            sync_destination_config = None
-            if pairing_info.org_name in org_names:
-                sync_destination_config = sync_config['orgs'][pairing_info.org_name]
-            elif pairing_info.hpo_name in hpo_names:
-                sync_destination_config = sync_config['hpos'][pairing_info.hpo_name]
+            # Retrieve the sync handler based on the pairing information
+            file_group = None
+            if pairing_info.org_name in org_sync_groups:
+                file_group = org_sync_groups[pairing_info.org_name]
+            elif pairing_info.hpo_name in hpo_sync_groups:
+                file_group = hpo_sync_groups[pairing_info.hpo_name]
 
-            # Ignore participants that aren't paired to a configured hpo or organization
-            if sync_destination_config:
-                if sync_destination_config['zip_consents']:
-                    file_sync_func = self._download_file_for_zip
-                else:
-                    file_sync_func = self._copy_file_in_cloud
-                file_sync_func(
+            if file_group:
+                # Ignore participants paired to an org or hpo we aren't syncing files for
+                file_group.files_with_pairing_info.append(ConsentFileAndPairingInfo(
                     file=file,
-                    bucket_name=sync_destination_config['bucket'],
-                    org_name=pairing_info.org_name or DEFAULT_ORG_NAME,
-                    site_name=pairing_info.site_name or DEFAULT_GOOGLE_GROUP
-                )
+                    pairing_info=pairing_info
+                ))
 
-                file.sync_time = datetime.utcnow()
-                file.sync_status = ConsentSyncStatus.SYNC_COMPLETE
-                updated_rec_ids.append(file.id)
-
-        self._zip_and_upload()
+        all_updated_ids = []
         with self.consent_dao.session() as session:
-            self.consent_dao.batch_update_consent_files(file_list, session)
+            for file_group in [*org_sync_groups.values(), *hpo_sync_groups.values()]:
+                synced_file_ids = file_group.sync_files()
+                all_updated_ids.extend(synced_file_ids)
+
+                # Update the database after each group syncs so ones
+                # that have succeeded so far get saved if a later one fails
+                self.consent_dao.batch_update_consent_files(
+                    session=session,
+                    consent_files=[file_and_pairing.file for file_and_pairing in file_group.files_with_pairing_info]
+                )
+                session.commit()
 
         # Queue tasks to rebuild consent metrics resource data records (for PDR)
-        if len(updated_rec_ids):
-            dispatch_rebuild_consent_metrics_tasks(updated_rec_ids)
-
-    def _zip_and_upload(self):
-        if not os.path.isdir(TEMP_CONSENTS_PATH):
-            # The directory wouldn't exist if there were no files downloaded that need to be zipped
-            return
-
-        logging.info("zipping and uploading consent files...")
-        for bucket_dir in _directories_in(TEMP_CONSENTS_PATH):
-            for org_dir in _directories_in(bucket_dir):
-                for site_dir in _directories_in(org_dir):
-                    zip_file_path = os.path.join(org_dir.path, site_dir.name + '.zip')
-                    with ZipFile(zip_file_path, 'w') as zip_file:
-                        self._zip_files_in_directory(zip_file, site_dir.path)
-                    self._upload_zip_file(
-                        zip_file_path=zip_file_path,
-                        bucket_name=bucket_dir.name,
-                        org_name=org_dir.name
-                    )
-
-        shutil.rmtree(TEMP_CONSENTS_PATH)
-
-    @classmethod
-    def _zip_files_in_directory(cls, zip_file: ZipFile, directory_path):
-        for current_path, _, files in os.walk(directory_path):
-            # os.walk will recurse into sub_directories, so we only need to handle the files in the current directory
-            for file in files:
-                file_path = os.path.join(current_path, file)
-                file_path_in_zip = file_path[len(directory_path):]
-                zip_file.write(file_path, arcname=file_path_in_zip)
-
-    def _upload_zip_file(self, zip_file_path, bucket_name, org_name):
-        file_name = os.path.basename(zip_file_path)
-        self.storage_provider.upload_from_file(
-            source_file=zip_file_path,
-            path=f'{bucket_name}/{self._destination_folder}/{org_name}/{file_name}'
-        )
-
-    def _download_file_for_zip(self, file: ConsentFile, bucket_name, org_name, site_name):
-        if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
-            raise Exception(
-                'Can not download consent files to machines outside the cloud, '
-                'please sync consent files using the cloud environment'
-            )
-
-        file_name = os.path.basename(file.file_path)
-        temp_file_destination = (
-            TEMP_CONSENTS_PATH + f'/{bucket_name}/{org_name}/{site_name}/P{file.participant_id}/{file_name}'
-        )
-        os.makedirs(os.path.dirname(temp_file_destination), exist_ok=True)
-
-        self.storage_provider.download_blob(
-            source_path=file.file_path,
-            destination_path=temp_file_destination
-        )
-
-    def _copy_file_in_cloud(self, file: ConsentFile, bucket_name, org_name, site_name):
-        self.storage_provider.copy_blob(
-            source_path=file.file_path,
-            destination_path=self._build_cloud_destination_path(
-                bucket_name=bucket_name,
-                org_name=org_name,
-                site_name=site_name,
-                participant_id=file.participant_id,
-                file_name=os.path.basename(file.file_path)
-            )
-        )
-
-    def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
-        return f'{bucket_name}/{self._destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
+        if len(all_updated_ids):
+            dispatch_rebuild_consent_metrics_tasks(all_updated_ids)
 
     def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
         """
