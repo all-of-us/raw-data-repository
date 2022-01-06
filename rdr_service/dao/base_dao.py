@@ -19,13 +19,12 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from werkzeug.exceptions import BadRequest, NotFound, PreconditionFailed, ServiceUnavailable
 
 from rdr_service import api_util
-from rdr_service.code_constants import ORIGINATING_SOURCES
+from rdr_service.code_constants import ORIGINATING_SOURCES, UNSET
 from rdr_service.dao import database_factory
 from rdr_service.model.participant import Participant
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.model.utils import get_property_type
 from rdr_service.query import FieldFilter, Operator, PropertyType, Results
-
 # Maximum number of times we will attempt to insert an entity with a random ID before
 # giving up.
 
@@ -285,6 +284,8 @@ class BaseDao(object):
             property_type = get_property_type(prop)
             filter_value = None
             operator = Operator.EQUALS
+            if property_type == PropertyType.ENUM and value == UNSET:
+                operator = Operator.EQUALS_OR_NONE
             # If we're dealing with a comparable property type, look for a prefix that indicates an
             # operator other than EQUALS and strip it off
             if property_type in _COMPARABLE_PROPERTY_TYPES:
