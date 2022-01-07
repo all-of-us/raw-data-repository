@@ -52,7 +52,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
-    genomic_manifest_file_update
+    genomic_manifest_file_update, genomic_user_event_metrics_batch_update
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 
 
@@ -2844,6 +2844,8 @@ class UserEventMetricsDao(BaseDao):
         } for i in id_list]
         with self.session() as session:
             session.bulk_update_mappings(UserEventMetrics, update_mappings)
+        # Batch update PDR resource records.
+        genomic_user_event_metrics_batch_update(id_list)
 
     def get_all_event_ids_for_pid_list(self, pid_list, module=None):
         with self.session() as session:

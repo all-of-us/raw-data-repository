@@ -18,8 +18,8 @@ from rdr_service.resource.generators.code import rebuild_codebook_resources_task
 from rdr_service.resource.generators.participant import participant_summary_update_resource_task
 from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
     res_institutional_affiliations_batch_update, res_researcher_batch_update
-from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task,\
-    batch_rebuild_consent_metrics_task
+from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task, \
+    batch_rebuild_consent_metrics_task, batch_rebuild_user_event_metrics_task
 
 
 def log_task_headers():
@@ -223,4 +223,15 @@ class RebuildConsentMetricApi(Resource):
         log_task_headers()
         data = request.get_json(force=True)
         batch_rebuild_consent_metrics_task(data)
+        return '{"success": "true"}'
+
+class RebuildUserEventMetricsApi(Resource):
+    """
+    Cloud Task endpoint: Rebuild Color User Event Metrics records Resource records.
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        batch_rebuild_user_event_metrics_task(data)
         return '{"success": "true"}'

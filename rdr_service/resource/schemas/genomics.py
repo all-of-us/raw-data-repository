@@ -298,3 +298,27 @@ class GenomicGCValidationMetricsSchema(Schema):
         resource_pk_field = 'id'
         pii_fields = ()  # List fields that contain PII data.
         pii_filter = {}  # dict(field: lambda function).
+
+
+class GenomicUserEventMetricsSchema(Schema):
+
+    id = fields.Int32()
+    created = fields.DateTime()
+    modified = fields.DateTime()
+    participant_id = fields.String(validate=validate.Length(max=10))
+    created_at = fields.DateTime()
+    event_name = fields.String(validate=validate.Length(max=512))
+    device = fields.String(validate=validate.Length(max=255))
+    operating_system = fields.String(validate=validate.Length(max=255))
+    browser = fields.String(validate=validate.Length(max=255))
+    file_path = fields.String(validate=validate.Length(max=512))
+    run_id = fields.Int32()
+    ignore_flag = fields.Int16()
+    reconcile_job_run_id = fields.Int32()
+
+    class Meta:
+        schema_id = SchemaID.genomic_user_event_metrics
+        resource_uri = 'GenomicUserEventMetrics'
+        resource_pk_field = 'id'
+        pii_fields = ()  # List fields that contain PII data.
+        pii_filter = {}  # dict(field: lambda function).

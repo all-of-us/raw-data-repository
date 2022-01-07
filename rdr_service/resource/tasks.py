@@ -113,6 +113,23 @@ def batch_rebuild_consent_metrics_task(payload):
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt {len(results)} ConsentMetric records.')
 
+
+def batch_rebuild_user_event_metrics_task(payload):
+    """
+     Rebuild a batch of user event metrics records based on ids
+     :param payload: Dict object with list of ids to work on.
+     """
+    res_gen = generators.GenomicUserEventMetricsSchemaGenerator()
+    batch = payload.get('batch')
+    count = 0
+
+    for id_ in batch:
+        res = res_gen.make_resource(id_)
+        res.save()
+        count += 1
+
+    logging.info(f'End time: {datetime.utcnow()}, rebuilt {count} User Event Metrics records.')
+
 # TODO:  Look at consolidating dispatch_participant_rebuild_tasks() from offline/bigquery_sync.py and this into a
 # generic dispatch routine also available for other resource type rebuilds.  May need to have
 # endpoint-specific logic and/or some fancy code to dynamically populate the task.execute() args (or to allow for

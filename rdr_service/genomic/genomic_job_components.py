@@ -26,7 +26,8 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update, \
+    genomic_user_event_metrics_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -953,14 +954,22 @@ class GenomicFileIngester:
 
             if item_count == batch_size:
                 with metric_dao.session() as session:
-                    session.bulk_save_objects(batch)
+                    # Use session add_all() so we can get the newly created primary key id values back.
+                    session.add_all(batch)
+                    session.commit()
+                    # Batch update PDR resource records.
+                    genomic_user_event_metrics_batch_update([r.id for r in batch])
 
                 item_count = 0
                 batch.clear()
 
         if item_count:
             with metric_dao.session() as session:
-                session.bulk_save_objects(batch)
+                # Use session add_all() so we can get the newly created primary key id values back.
+                session.add_all(batch)
+                session.commit()
+                # Batch update PDR resource records.
+                genomic_user_event_metrics_batch_update([r.id for r in batch])
 
         return GenomicSubProcessResult.SUCCESS
 
