@@ -632,6 +632,24 @@ class ParticipantSummaryApiTest(BaseTestCase):
         resource = response_only_last_name['entry'][0]['resource']
         self.assertEqual(resource['lastName'], last_name)
 
+    def test_query_none_records_with_unset_for_enum_column(self):
+        participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
+        participant_id = participant["participantId"]
+        with FakeClock(TIME_1):
+            self.send_consent(participant_id)
+        dao = ParticipantSummaryDao()
+        # consent_for_genomics_ror will be set to default 0, update it to null for testing
+        sql = """
+            update participant_summary set consent_for_genomics_ror=null
+            where rdr.participant_summary.participant_id={}
+            """.format(participant_id[1:])
+        with dao.session() as session:
+            session.execute(sql)
+            session.commit()
+        response = self.send_get(f"ParticipantSummary?consentForGenomicsROR=UNSET&_includeTotal=true")
+        self.assertEqual(len(response['entry']), 1)
+        self.assertEqual(response['total'], 1)
+
     def test_hpro_consents(self):
         num_summary, first_pid, first_path = 2, None, None
 
