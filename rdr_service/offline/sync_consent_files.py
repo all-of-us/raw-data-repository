@@ -59,8 +59,7 @@ class PairingHistoryRecord:
 class FileSyncHandler:
     """Responsible for syncing a specific group of consent files"""
     def __init__(self, zip_files: bool, dest_bucket: str, storage_provider: GoogleCloudStorageProvider,
-                 root_destination_folder: str,
-                 participant_pairing_info: Dict[int, ParticipantPairingInfo]):
+                 root_destination_folder: str, participant_pairing_info: Dict[int, ParticipantPairingInfo]):
         self.files_to_sync: List[ConsentFile] = []
         self.zip_files = zip_files
         self.dest_bucket = dest_bucket
@@ -108,19 +107,16 @@ class FileSyncHandler:
         )
 
     def _copy_file_in_cloud(self, file: ConsentFile, org_name, site_name):
-        self.storage_provider.copy_blob(
-            source_path=file.file_path,
-            destination_path=self._build_cloud_destination_path(
-                bucket_name=self.dest_bucket,
-                org_name=org_name,
-                site_name=site_name,
-                participant_id=file.participant_id,
-                file_name=os.path.basename(file.file_path)
-            )
+        destination_path = self._build_cloud_destination_path(
+            org_name=org_name,
+            site_name=site_name,
+            participant_id=file.participant_id,
+            file_name=os.path.basename(file.file_path)
         )
+        self.storage_provider.copy_blob(source_path=file.file_path, destination_path=destination_path)
 
-    def _build_cloud_destination_path(self, bucket_name, org_name, site_name, participant_id, file_name):
-        return f'{bucket_name}/{self.root_destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
+    def _build_cloud_destination_path(self, org_name, site_name, participant_id, file_name):
+        return f'{self.dest_bucket}/{self.root_destination_folder}/{org_name}/{site_name}/P{participant_id}/{file_name}'
 
     def _zip_and_upload(self):
         if not os.path.isdir(TEMP_CONSENTS_PATH):
@@ -271,8 +267,7 @@ class ConsentSyncController:
         self.storage_provider = storage_provider
         self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
 
-    def _build_sync_handler(self, zip_files: bool, bucket: str,
-                            pairing_info: Dict[int, ParticipantPairingInfo]):
+    def _build_sync_handler(self, zip_files: bool, bucket: str, pairing_info: Dict[int, ParticipantPairingInfo]):
         return FileSyncHandler(
             zip_files=zip_files,
             dest_bucket=bucket,
