@@ -438,6 +438,7 @@ class GenomicFileIngester:
         """
         _states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
         _site = self._get_site_from_aw1()
+
         for row in rows:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row], row.values()))

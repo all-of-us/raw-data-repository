@@ -1,7 +1,6 @@
 """A query to run against a DAO (abstracted from the persistent level)."""
 from protorpc import messages
-from sqlalchemy import func, not_
-
+from sqlalchemy import func, not_, or_
 
 class Operator(messages.Enum):
     EQUALS = 0  # Case insensitive comparison for strings, exact comparison otherwise
@@ -10,6 +9,7 @@ class Operator(messages.Enum):
     LESS_THAN_OR_EQUALS = 3
     GREATER_THAN_OR_EQUALS = 4
     NOT_EQUALS = 5
+    EQUALS_OR_NONE = 6
     # Note: we don't support contains or exact string comparison at this stage
 
 
@@ -76,6 +76,7 @@ class FieldFilter(object):
             Operator.LESS_THAN_OR_EQUALS: query.filter(field <= self.value),
             Operator.GREATER_THAN_OR_EQUALS: query.filter(field >= self.value),
             Operator.NOT_EQUALS: query.filter(field != self.value),
+            Operator.EQUALS_OR_NONE: query.filter(or_(field == self.value, field == None)),
         }.get(self.operator)
         if not query:
             raise ValueError("Invalid operator: %r." % self.operator)

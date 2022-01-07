@@ -24,7 +24,7 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_gen
     bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
-    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao
+    GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao, GenomicInformingLoopDao
 from rdr_service.genomic.genomic_job_components import GenomicBiobankSamplesCoupler, GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic.genomic_biobank_manifest_handler import (
@@ -2011,12 +2011,14 @@ class GemToGpMigrationClass(GenomicManifestBase):
         super(GemToGpMigrationClass, self).__init__(args, gcp_env)
 
         self.gem_gp_dao = None
+        self.il_dao = None
 
     def run(self):
 
         # Activate the SQL Proxy
         self.gcp_env.activate_sql_proxy()
         self.gem_gp_dao = GemToGpMigrationDao()
+        self.il_dao = GenomicInformingLoopDao()
 
         pids = None
         if self.args.csv:
@@ -2033,6 +2035,7 @@ class GemToGpMigrationClass(GenomicManifestBase):
 
             if results:
                 self.export_to_gem_gp_table(controller.job_run.id, results)
+                self.export_to_informing_loop(results)
             else:
                 _logger.info('No data to export.')
 
@@ -2064,6 +2067,32 @@ class GemToGpMigrationClass(GenomicManifestBase):
             if not self.args.dryrun:
                 print(f'Inserting batch starting with: {batch[0]["participant_id"]}')
                 self.gem_gp_dao.insert_bulk(batch)
+            else:
+                print(f'Would insert batch starting with: {batch[0]["participant_id"]}')
+
+    def export_to_informing_loop(self, results):
+        batch = []
+        batch_size = 1000
+
+        for row in results:
+            obj_dict = self.il_dao.prepare_gem_migration_obj(row)
+            batch.append(obj_dict)
+
+            # write to table in batches
+            if len(batch) % batch_size == 0:
+                if not self.args.dryrun:
+                    _logger.info(f'Inserting batch starting with: {batch[0].participant_id}')
+                    self.il_dao.insert_bulk(batch)
+
+                else:
+                    _logger.info(f'Would insert batch starting with: {batch[0].participant_id}')
+                batch = []
+
+        # Insert remainder
+        if batch:
+            if not self.args.dryrun:
+                print(f'Inserting batch starting with: {batch[0]["participant_id"]}')
+                self.il_dao.insert_bulk(batch)
             else:
                 print(f'Would insert batch starting with: {batch[0]["participant_id"]}')
 
