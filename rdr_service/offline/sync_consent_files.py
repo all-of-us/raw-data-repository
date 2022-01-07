@@ -51,12 +51,6 @@ class ParticipantPairingInfo:
 
 
 @dataclass
-class ConsentFileAndPairingInfo:
-    file: ConsentFile
-    pairing_info: ParticipantPairingInfo
-
-
-@dataclass
 class PairingHistoryRecord:
     org_name: str
     start_date: datetime
@@ -64,18 +58,19 @@ class PairingHistoryRecord:
 
 class FileSyncHandler:
     """Responsible for syncing a specific group of consent files"""
-    def __init__(self, zip_files: bool, dest_bucket: str,
-                 storage_provider: GoogleCloudStorageProvider, root_destination_folder: str):
-        self.files_with_pairing_info: List[ConsentFileAndPairingInfo] = []
+    def __init__(self, zip_files: bool, dest_bucket: str, storage_provider: GoogleCloudStorageProvider,
+                 root_destination_folder: str,
+                 participant_pairing_info: Dict[int, ParticipantPairingInfo]):
+        self.files_to_sync: List[ConsentFile] = []
         self.zip_files = zip_files
         self.dest_bucket = dest_bucket
         self.storage_provider = storage_provider
         self.root_destination_folder = root_destination_folder
+        self.participant_pairing_info_map = participant_pairing_info
 
-    def sync_files(self):
-        for file_and_pairing_info in self.files_with_pairing_info:
-            file = file_and_pairing_info.file
-            pairing_info = file_and_pairing_info.pairing_info
+    def sync_files(self) -> Collection[ConsentFile]:
+        for file in self.files_to_sync:
+            pairing_info = self.participant_pairing_info_map[file.participant_id]
             if self.zip_files:
                 file_sync_function = self._download_file_for_zip
             else:
@@ -92,7 +87,7 @@ class FileSyncHandler:
         if self.zip_files:
             self._zip_and_upload()
 
-        return [file_pairing_info.file.id for file_pairing_info in self.files_with_pairing_info]
+        return self.files_to_sync
 
     def _download_file_for_zip(self, file: ConsentFile, org_name, site_name):
         if config.GAE_PROJECT == 'localhost' and not os.environ.get('UNITTEST_FLAG', None):
@@ -276,39 +271,45 @@ class ConsentSyncController:
         self.storage_provider = storage_provider
         self._destination_folder = config.getSettingJson('consent_destination_prefix', default='Participant')
 
-    def _build_sync_handler(self, zip_files: bool, bucket: str):
+    def _build_sync_handler(self, zip_files: bool, bucket: str,
+                            pairing_info: Dict[int, ParticipantPairingInfo]):
         return FileSyncHandler(
             zip_files=zip_files,
             dest_bucket=bucket,
             storage_provider=self.storage_provider,
-            root_destination_folder=self._destination_folder
+            root_destination_folder=self._destination_folder,
+            participant_pairing_info=pairing_info
         )
 
     def sync_ready_files(self):
         """Syncs any validated consent files that are ready for syncing"""
 
         sync_config = config.getSettingJson(config.CONSENT_SYNC_BUCKETS)
+        hpos_sync_config = sync_config['hpos']
+        orgs_sync_config = sync_config['orgs']
+
+        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
+            hpo_names=hpos_sync_config.keys(),
+            org_names=orgs_sync_config.keys()
+        )
+
+        pairing_info_map = self._build_participant_pairing_map(file_list)
 
         # Build the sync handlers, storing them in dictionaries that are keyed by the org or hpo name
         org_sync_groups = {}
         for org_name, settings in sync_config['orgs'].items():
             org_sync_groups[org_name] = self._build_sync_handler(
                 zip_files=settings['zip_consents'],
-                bucket=settings['bucket']
+                bucket=settings['bucket'],
+                pairing_info=pairing_info_map
             )
         hpo_sync_groups = {}
         for hpo_name, settings in sync_config['hpos'].items():
             hpo_sync_groups[hpo_name] = self._build_sync_handler(
                 zip_files=settings['zip_consents'],
-                bucket=settings['bucket']
+                bucket=settings['bucket'],
+                pairing_info=pairing_info_map
             )
-
-        file_list: List[ConsentFile] = self.consent_dao.get_files_ready_to_sync(
-            hpo_names=hpo_sync_groups.keys(),
-            org_names=org_sync_groups.keys()
-        )
-
-        pairing_info_map = self._build_participant_pairing_map(file_list)
 
         for file in file_list:
             pairing_info = pairing_info_map.get(file.participant_id, None)
@@ -323,30 +324,21 @@ class ConsentSyncController:
             elif pairing_info.hpo_name in hpo_sync_groups:
                 file_group = hpo_sync_groups[pairing_info.hpo_name]
 
-            if file_group:
-                # Ignore participants paired to an org or hpo we aren't syncing files for
-                file_group.files_with_pairing_info.append(ConsentFileAndPairingInfo(
-                    file=file,
-                    pairing_info=pairing_info
-                ))
+            if file_group:  # Ignore participants paired to an org or hpo we aren't syncing files for
+                file_group.files_to_sync.append(file)
 
-        all_updated_ids = []
         with self.consent_dao.session() as session:
             for file_group in [*org_sync_groups.values(), *hpo_sync_groups.values()]:
-                synced_file_ids = file_group.sync_files()
-                all_updated_ids.extend(synced_file_ids)
+                files_synced = file_group.sync_files()
 
                 # Update the database after each group syncs so ones
                 # that have succeeded so far get saved if a later one fails
-                self.consent_dao.batch_update_consent_files(
-                    session=session,
-                    consent_files=[file_and_pairing.file for file_and_pairing in file_group.files_with_pairing_info]
-                )
-                session.commit()
+                if len(files_synced):
+                    self.consent_dao.batch_update_consent_files(session=session, consent_files=files_synced)
+                    session.commit()
 
-        # Queue tasks to rebuild consent metrics resource data records (for PDR)
-        if len(all_updated_ids):
-            dispatch_rebuild_consent_metrics_tasks(all_updated_ids)
+                    # Queue tasks to rebuild consent metrics resource data records (for PDR)
+                    dispatch_rebuild_consent_metrics_tasks([file.id for file in files_synced])
 
     def _build_participant_pairing_map(self, files: List[ConsentFile]) -> Dict[int, ParticipantPairingInfo]:
         """
