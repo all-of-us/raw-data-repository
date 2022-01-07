@@ -2545,6 +2545,25 @@ class GenomicInformingLoopDao(UpdatableDao):
                 GenomicInformingLoop.participant_id == pid
             ).all()
 
+    def prepare_gem_migration_obj(self, row):
+        decision_mappings = {
+            "ConsentAncestryTraits_No": "no",
+            "ConsentAncestryTraits_Yes": "yes",
+            "ConsentAncestryTraits_NotSure": "maybe_later"
+        }
+        return self.to_dict(GenomicInformingLoop(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=row.participantId,
+            event_type='informing_loop_decision',
+            event_authored_time=row.authored,
+            module_type='gem',
+            decision_value=decision_mappings.get(row.value)
+        ))
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
 
 class GenomicGcDataFileDao(BaseDao):
     def __init__(self):
