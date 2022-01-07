@@ -116,10 +116,26 @@
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
   },
-  "genomic_blocklists": {
-    "block_research": {
-      "aian": 1
-    }
+  "genomic_set_member_blocklists": {
+    "block_research": [
+       {
+        "attribute": "ai_an",
+        "value": "Y",
+        "reason_string": "aian"
+      },
+      {
+        "attribute": "genomeType",
+        "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        "reason_string": "sample_swap"
+      }
+    ],
+    "block_results": [
+      {
+        "attribute": "genomeType",
+        "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        "reason_string": "sample_swap"
+      }
+    ]
   },
   "genomic_ingestions": {
     "aw1_manifest": 1,

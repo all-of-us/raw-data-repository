@@ -1328,7 +1328,7 @@ class GenomicJobController:
         if not members:
             return
 
-        logging.info(f'Checking {len(members)} newly added genomic member(s) for updating blocklists')
+        logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
 
         for member in members:
             self.member_dao.update_member_blocklists(member)
