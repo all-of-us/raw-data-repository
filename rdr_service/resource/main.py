@@ -61,10 +61,14 @@ def _build_resource_app():
                       TASK_PREFIX + "StoreMessageBrokerEventDataTaskApi",
                       endpoint="store_message_broker_event_data_task", methods=["POST"])
 
-    # Consent Validation Metrics Cloud Task API endpoint
+    # Consent Metrics / Error reporting Cloud Task API endpoints
     _api.add_resource(cloud_tasks_api.RebuildConsentMetricApi,
                       TASK_PREFIX + "RebuildConsentMetricApi",
                       endpoint="batch_rebuild_consent_metrics_task", methods=["POST"])
+
+    _api.add_resource(cloud_tasks_api.CheckConsentErrorsApi,
+                      TASK_PREFIX + "CheckConsentErrorsApi",
+                      endpoint="check_consent_errors_task", methods=["POST"])
 
     #
     # Begin Genomic Cloud Task API Endpoints

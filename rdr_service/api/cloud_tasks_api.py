@@ -19,7 +19,7 @@ from rdr_service.resource.generators.participant import participant_summary_upda
 from rdr_service.resource.generators.workbench import res_workspace_batch_update, res_workspace_user_batch_update, \
     res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task,\
-    batch_rebuild_consent_metrics_task
+    batch_rebuild_consent_metrics_task, check_consent_errors_task
 
 
 def log_task_headers():
@@ -223,4 +223,15 @@ class RebuildConsentMetricApi(Resource):
         log_task_headers()
         data = request.get_json(force=True)
         batch_rebuild_consent_metrics_task(data)
+        return '{"success": "true"}'
+
+class CheckConsentErrorsApi(Resource):
+    """
+    Cloud Task endpoint: Generate a Consent Metrics error report
+    """
+    @task_auth_required
+    def post(self):
+        log_task_headers()
+        data = request.get_json(force=True)
+        check_consent_errors_task(data)
         return '{"success": "true"}'

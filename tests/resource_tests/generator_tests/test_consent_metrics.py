@@ -14,6 +14,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentMetricGeneratorTest, self).setUp(*args, **kwargs)
         self.resource_data_dao = ResourceDataDao()
+        self._participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
         """ Populate a participant_summary record with provided data """
@@ -25,7 +26,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             'consentForElectronicHealthRecordsFirstYesAuthored': \
                 datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
             'consentForGenomicsRORAuthored': datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
-            'participantOrigin': 'vibrent'
+            'participant': self._participant
         }
 
         # Merge the kwargs and defaults dicts; kwargs values take precedence over default values
@@ -41,6 +42,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         participant = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentAuthored=authored,
             consentForStudyEnrollmentFirstYesAuthored=authored,
+            participant=self._participant,
             **kwargs
         )
         return participant
@@ -109,11 +111,11 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         """
 
         # Create participant summary data with (1) DOB missing,  and (2) DOB > 124 years from primary consent authored
-        participant_1 = self._create_participant_with_all_consents_authored(dateOfBirth=None)
-        participant_2 = self._create_participant_with_all_consents_authored(
-            participantOrigin='example',
-            dateOfBirth=datetime.date(datetime.strptime('1895-12-31', '%Y-%m-%d'))
-        )
+        invalid_dob = datetime.strptime('1894-12-31', '%Y-%m-%d')
+        p1 = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        p2 = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        participant_1 = self._create_participant_with_all_consents_authored(participant=p1, dateOfBirth=None)
+        participant_2 = self._create_participant_with_all_consents_authored(participant=p2, dateOfBirth=invalid_dob)
         # Create consent_file records for each participant's primary consent with no other error conditions
         consent_file_rec_1 = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
@@ -216,7 +218,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
          """
         # Create participant summary data (DOB < 18 years from primary consent authored date)
         participant = self._create_participant_with_all_consents_authored(
-            dateOfBirth=datetime.date(datetime.strptime('2004-01-01', '%Y-%m-%d')),
+            dateOfBirth=datetime.date(datetime.strptime('2004-01-01', '%Y-%m-%d'))
         )
         # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
         consent_file_rec = self.data_generator.create_database_consent_file(
