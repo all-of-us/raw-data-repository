@@ -196,6 +196,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             """
             if (
                 resource['sync_status'] != str(ConsentSyncStatus.NEEDS_CORRECTING)
+                # participant_id extracted from resource data is a string with leading 'P'; convert to int
                 or (self.pairing_at_consent(int(resource.get('participant_id')[1:]), authored) != 'VA'
                     and resource.get('hpo') != 'VA')
                 or ConsentMetricGenerator.has_errors(resource, exclude=['va_consent_for_non_va'])
@@ -410,8 +411,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         # email_obj = email_service.Email(subject, list([recipient_email]),  from_email, body)
         # email_service.EmailService.send_email(email_obj)
 
-        # Temporary:  Log a warning while email code is disabled/not implemented
-        error_count = body.count('Consent Type')
+        # Temporary:  Log a warning while email code is disabled/not implemented.
+        error_count = body.count('Error Detected')
         msg = '\n'.join([f'{subject} error detected for {error_count} consent file(s)',
                          'Please manually generate the error report using consent-error-report tool'])
         logging.warning(msg)
@@ -429,7 +430,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         if isinstance(ids, list):
             results = self.get_consent_validation_records(dao=self.ro_dao, id_list=ids,
                                                           sync_statuses=error_status_filter)
-            # Null out created_since so it isn't used in the primary_consents query below
+            # Null out created_since so it isn't used in the additional primary_consents query below
             created_since = None
         elif isinstance(created_since, datetime):
             results = self.get_consent_validation_records(dao=self.ro_dao, created_since_ts=created_since,
