@@ -519,7 +519,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                                                    origin=participant_origin)
 
         if not error_records:
-            msg = f'No consent errors to report based on provided filters'
+            msg = 'No consent errors to report based on provided filters'
             if to_file:
                 with open(to_file, 'w') as f:
                     f.write(msg + '\n')
