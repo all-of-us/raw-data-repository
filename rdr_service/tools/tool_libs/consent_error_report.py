@@ -1,5 +1,5 @@
-# Temporary tool for manually generating consent validation metrics (until it can be automated by dashboard team)
-# Also creates CSV files for PTSC with information about consent errors.
+# Tool for manually generating consent error reports.  Text reports intended to be sent in an auto-generated email
+# to trigger Jira ticket creation for PTSC Service Desk.  Can also redirect output to a file in lieu of emails.
 #
 
 import argparse
