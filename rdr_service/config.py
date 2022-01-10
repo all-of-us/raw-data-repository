@@ -88,7 +88,7 @@ GENOMIC_CRON_JOBS = "genomic_cron_jobs"
 GENOMIC_MAX_NUM_GENERATE = "genomic_max_num_generate"
 GENOMIC_MAX_NUM_INGEST = "genomic_max_num_ingest"
 GENOMIC_DAILY_VALIDATION_EMAILS = "genomic_daily_validation_emails"
-GENOMIC_BLOCKLISTS = "genomic_blocklists"
+GENOMIC_MEMBER_BLOCKLISTS = "genomic_set_member_blocklists"
 GENOMIC_INGESTIONS = "genomic_ingestions"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
@@ -136,6 +136,7 @@ PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-data-broad",
     "prod-genomics-data-northwest",
     "prod-drc-broad",
+    "prod-color-rhp"
 ]
 
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [

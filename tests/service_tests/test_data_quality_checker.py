@@ -66,15 +66,22 @@ class DataQualityCheckerTest(BaseTestCase):
         )
         now = datetime.now().replace(microsecond=0)
 
+        module_code = self.data_generator.create_database_code(value='test_module')
         response_authored_after_suspension = self.data_generator.create_database_questionnaire_response(
             participantId=suspended_participant.participantId,
             authored=now,
             created=now
         )
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=response_authored_after_suspension.questionnaireId,
+            questionnaireVersion=response_authored_after_suspension.questionnaireVersion,
+            codeId=module_code.codeId
+        )
 
         self.checker.run_data_quality_checks()
         mock_logging.error.assert_any_call(
-            f'Response {response_authored_after_suspension.questionnaireResponseId} authored for suspended participant'
+            f'Response {response_authored_after_suspension.questionnaireResponseId} '
+            f'authored for suspended participant (module: test_module)'
         )
 
     def test_response_after_withdrawal(self, mock_logging):

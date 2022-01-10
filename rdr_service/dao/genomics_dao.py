@@ -1,12 +1,14 @@
 import collections
 import logging
+import os
+
 import pytz
 import sqlalchemy
 
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
@@ -16,7 +18,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
-from rdr_service.config import GAE_PROJECT, GENOMIC_BLOCKLISTS
+from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
@@ -38,7 +40,7 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -50,7 +52,7 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
-    genomic_manifest_file_update
+    genomic_manifest_file_update, genomic_user_event_metrics_batch_update
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 
 
@@ -715,9 +717,9 @@ class GenomicSetMemberDao(UpdatableDao):
             return GenomicSubProcessResult.ERROR
 
     def update_member_blocklists(self, member):
-        blocklists_config = config.getSettingJson(GENOMIC_BLOCKLISTS, {})
+        member_blocklists_config = config.getSettingJson(GENOMIC_MEMBER_BLOCKLISTS, {})
 
-        if not blocklists_config:
+        if not member_blocklists_config:
             return
 
         blocklists_map = {
@@ -732,12 +734,6 @@ class GenomicSetMemberDao(UpdatableDao):
                         'value': None
                     }
                 ],
-                'block_items': [
-                    {
-                        'conditional': True if member.ai_an == 'Y' else False,
-                        'value_string': 'aian'
-                    }
-                ]
             },
             'block_results': {
                 'block_attributes': [
@@ -749,20 +745,26 @@ class GenomicSetMemberDao(UpdatableDao):
                         'key': 'blockResultsReason',
                         'value': None
                     }
-                ],
+                ]
             }
         }
+
         try:
             for block_map_type, block_map_type_config in blocklists_map.items():
-                blocklist_config_type = blocklists_config.get(block_map_type, None)
+                blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
-                for items in block_map_type_config.get('block_items', []):
-                    value_string = items.get('value_string')
+                for item in blocklist_config_items:
 
-                    if items.get('conditional') is True and blocklist_config_type.get(value_string):
+                    current_attr_value = getattr(member, item.get('attribute'))
+                    evaluate_value = item.get('value')
+
+                    if (isinstance(item.get('value'), list) and
+                        current_attr_value in evaluate_value) or \
+                            current_attr_value == evaluate_value:
 
                         for attr in block_map_type_config.get('block_attributes'):
-                            value = value_string if not attr['value'] else attr['value']
+                            value = item.get('reason_string') if not attr['value'] else attr['value']
+
                             if getattr(member, attr['key']) is None or getattr(member, attr['key']) == 0:
                                 setattr(member, attr['key'], value)
 
@@ -830,7 +832,13 @@ class GenomicSetMemberDao(UpdatableDao):
             members = session.query(
                 GenomicSetMember
             ).filter(
-                GenomicSetMember.created >= from_date
+                or_(
+                    and_(
+                        GenomicSetMember.created >= from_date,
+                        GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.AW0,
+                    ),
+                    GenomicSetMember.modified >= from_date
+                )
             ).all()
 
             return members
@@ -2183,10 +2191,10 @@ class GenomicAW1RawDao(BaseDao):
                 GenomicAW1Raw.biobank_id != ""
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
         with self.session() as session:
             record = session.query(GenomicAW1Raw).filter(
-                GenomicAW1Raw.biobank_id == biobank_id,
+                GenomicAW1Raw.biobank_id == identifier,
                 GenomicAW1Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW1Raw.ignore_flag == 0
             ).order_by(
@@ -2213,7 +2221,7 @@ class GenomicAW1RawDao(BaseDao):
             ).order_by(GenomicAW1Raw.id).all()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw1_raw WHERE TRUE")
 
@@ -2251,10 +2259,10 @@ class GenomicAW2RawDao(BaseDao):
                 GenomicAW2Raw.file_path == filepath
             ).one_or_none()
 
-    def get_raw_record_from_bid_genome_type(self, *, biobank_id, genome_type):
+    def get_raw_record_from_identifier_genome_type(self, *, identifier, genome_type):
         with self.session() as session:
             record = session.query(GenomicAW2Raw).filter(
-                GenomicAW2Raw.biobank_id == biobank_id,
+                GenomicAW2Raw.sample_id == identifier,
                 GenomicAW2Raw.file_path.like(f"%$_{genome_type_map[genome_type]}$_%", escape="$"),
                 GenomicAW2Raw.ignore_flag == 0
             ).order_by(
@@ -2287,7 +2295,7 @@ class GenomicAW2RawDao(BaseDao):
             ).delete()
 
     def truncate(self):
-        if GAE_PROJECT == 'localhost':
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
@@ -2516,6 +2524,51 @@ class GenomicInformingLoopDao(UpdatableDao):
     def from_client_json(self):
         pass
 
+    def get_latest_state_for_pid(self, pid, module="gem"):
+        """
+        Returns latest event_type and decision_value
+        genomic_informing_loop record for a specific participant
+        :param pid: participant_id
+        :param module: gem (default), hdr, or pgx
+        :return: query result
+        """
+        with self.session() as session:
+            informing_loop_alias = aliased(GenomicInformingLoop)
+            return session.query(
+                GenomicInformingLoop.event_type,
+                GenomicInformingLoop.decision_value
+            ).outerjoin(
+                informing_loop_alias,
+                and_(
+                    informing_loop_alias.participant_id == GenomicInformingLoop.participant_id,
+                    informing_loop_alias.module_type == module,
+                    GenomicInformingLoop.event_authored_time < informing_loop_alias.event_authored_time
+                )
+            ).filter(
+                GenomicInformingLoop.module_type == module,
+                informing_loop_alias.event_authored_time.is_(None),
+                GenomicInformingLoop.participant_id == pid
+            ).all()
+
+    def prepare_gem_migration_obj(self, row):
+        decision_mappings = {
+            "ConsentAncestryTraits_No": "no",
+            "ConsentAncestryTraits_Yes": "yes",
+            "ConsentAncestryTraits_NotSure": "maybe_later"
+        }
+        return self.to_dict(GenomicInformingLoop(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=row.participantId,
+            event_type='informing_loop_decision',
+            event_authored_time=row.authored,
+            module_type='gem',
+            decision_value=decision_mappings.get(row.value)
+        ))
+
+    def insert_bulk(self, batch):
+        with self.session() as session:
+            session.bulk_insert_mappings(self.model_type, batch)
 
 class GenomicGcDataFileDao(BaseDao):
     def __init__(self):
@@ -2738,3 +2791,83 @@ class GemToGpMigrationDao(BaseDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+
+class UserEventMetricsDao(BaseDao):
+    def __init__(self):
+        super(UserEventMetricsDao, self).__init__(
+            UserEventMetrics, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def truncate(self):
+        if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
+            with self.session() as session:
+                session.execute("DELETE FROM user_event_metrics WHERE TRUE")
+
+    def get_id(self, obj):
+        pass
+
+    def get_latest_events(self, module="gem"):
+        """
+        Returns participant_ID and latest event_name for unreconciled events
+        :param module: gem (default), hdr, or pgx
+        :return: query result
+        """
+        with self.session() as session:
+            event_metrics_alias = aliased(UserEventMetrics)
+            return session.query(
+                UserEventMetrics.id,
+                UserEventMetrics.participant_id,
+                UserEventMetrics.event_name,
+            ).outerjoin(
+                event_metrics_alias,
+                and_(
+                    event_metrics_alias.participant_id == UserEventMetrics.participant_id,
+                    event_metrics_alias.event_name.like(f"{module}.informing%"),
+                    UserEventMetrics.created_at < event_metrics_alias.created_at,
+                )
+            ).filter(
+                UserEventMetrics.ignore_flag == 0,
+                UserEventMetrics.event_name.like(f"{module}.informing%"),
+                UserEventMetrics.reconcile_job_run_id.is_(None),
+                event_metrics_alias.created_at.is_(None)
+            ).all()
+
+    def update_reconcile_job_pids(self, pid_list, job_run_id, module):
+        id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
+
+        update_mappings = [{
+            'id': i,
+            'reconcile_job_run_id': job_run_id
+        } for i in id_list]
+        with self.session() as session:
+            session.bulk_update_mappings(UserEventMetrics, update_mappings)
+        # Batch update PDR resource records.
+        genomic_user_event_metrics_batch_update(id_list)
+
+    def get_all_event_ids_for_pid_list(self, pid_list, module=None):
+        with self.session() as session:
+            query = session.query(
+                UserEventMetrics.id
+            ).filter(
+                UserEventMetrics.participant_id.in_(pid_list),
+            )
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()
+
+    def get_all_event_objects_for_pid_list(self, pid_list, module=None):
+        with self.session() as session:
+            query = session.query(
+                UserEventMetrics
+            ).filter(
+                UserEventMetrics.participant_id.in_(pid_list)
+            )
+
+            if module:
+                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
+            else:
+                return query.all()

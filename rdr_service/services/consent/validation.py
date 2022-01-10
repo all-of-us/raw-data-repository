@@ -301,53 +301,57 @@ class ConsentValidationController:
             dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
-                                      min_authored_date: date = None,
+                                      min_authored_date: date = None, max_authored_date: date = None,
                                       types_to_validate: Collection[ConsentType] = None):
         validator = self._build_validator(summary)
 
         if self._check_consent_type(ConsentType.PRIMARY, types_to_validate) and self._has_consent(
             consent_status=summary.consentForStudyEnrollment,
             authored=summary.consentForStudyEnrollmentFirstYesAuthored,
-            min_authored=min_authored_date
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_validation_results()))
         if self._check_consent_type(ConsentType.CABOR, types_to_validate) and self._has_consent(
             consent_status=summary.consentForCABoR,
             authored=summary.consentForCABoRAuthored,
-            min_authored=min_authored_date
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_cabor_validation_results()))
         if self._check_consent_type(ConsentType.EHR, types_to_validate) and self._has_consent(
             consent_status=summary.consentForElectronicHealthRecords,
             authored=summary.consentForElectronicHealthRecordsAuthored,
-            min_authored=min_authored_date
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_ehr_validation_results()))
         if self._check_consent_type(ConsentType.GROR, types_to_validate) and self._has_consent(
             consent_status=summary.consentForGenomicsROR,
             authored=summary.consentForGenomicsRORAuthored,
-            min_authored=min_authored_date
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
         if self._check_consent_type(ConsentType.PRIMARY_UPDATE, types_to_validate) and self._has_primary_update_consent(
             summary=summary,
-            min_authored=min_authored_date
+            min_authored=min_authored_date,
+            max_authored=max_authored_date
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
 
-    def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
-                                max_consent_date=None):
-        """Find all the expected consents since the minimum date and check the files that have been uploaded"""
-        validation_start_time = datetime.utcnow()
-        for summary in self.consent_dao.get_participants_with_consents_in_range(
-            session,
-            start_date=min_consent_date,
-            end_date=max_consent_date
-        ):
+    def validate_consent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date=None,
+                                 max_consent_date=None):
+        """
+        Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
+        """
+        validation_start_time = datetime.utcnow().replace(microsecond=0)
+        for summary in self.consent_dao.get_participants_with_unvalidated_files(session):
             self.validate_participant_consents(
                 summary=summary,
                 output_strategy=output_strategy,
-                min_authored_date=min_consent_date
+                min_authored_date=min_consent_date,
+                max_authored_date=max_consent_date
             )
 
         # Queue a task to check for new errors to report to PTSC
@@ -384,12 +388,19 @@ class ConsentValidationController:
             return results
 
     @classmethod
-    def _has_consent(cls, consent_status, authored=None, min_authored=None):
-        return consent_status == QuestionnaireStatus.SUBMITTED and (min_authored is None or authored > min_authored)
+    def _has_consent(cls, consent_status, authored=None, min_authored=None, max_authored=None):
+        return (
+            consent_status == QuestionnaireStatus.SUBMITTED
+            and (min_authored is None or authored > min_authored)
+            and (max_authored is None or authored < max_authored)
+        )
 
     @classmethod
-    def _has_primary_update_consent(cls, summary: ParticipantSummary, min_authored=None):
-        if min_authored is None or summary.consentForStudyEnrollmentAuthored > min_authored:
+    def _has_primary_update_consent(cls, summary: ParticipantSummary, min_authored=None, max_authored=None):
+        if (
+            (min_authored is None or summary.consentForStudyEnrollmentAuthored > min_authored)
+            and (max_authored is None or summary.consentForStudyEnrollmentAuthored < max_authored)
+        ):
             return (
                 summary.consentCohort == ParticipantCohort.COHORT_1 and
                 summary.consentForStudyEnrollmentAuthored.date() !=

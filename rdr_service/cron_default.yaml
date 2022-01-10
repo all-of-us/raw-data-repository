@@ -184,3 +184,8 @@ cron:
   timezone: America/New_York
   schedule: every day 07:30
   target: offline
+- description: Genomic Reconcile Informing Loop Responses
+  url: /offline/GenomicReconcileInformingLoopResponses
+  timezone: America/New_York
+  schedule: every day 04:00
+  target: offline

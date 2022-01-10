@@ -14,6 +14,7 @@ import shutil
 import string
 import sys
 import tempfile
+import textwrap
 import unittest
 from datetime import datetime
 from tempfile import mkdtemp
@@ -888,6 +889,15 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
                 }
             }
         config.override_setting("user_info", config_user_info)
+
+    @classmethod
+    def clean_multiline_str(cls, multiline_str: str):
+        """
+        Used to clean up multi-line strings for comparison in tests.
+        Will remove whitespace from start and end of the string, as well as
+        any indentation that exists at the start of each line
+        """
+        return textwrap.dedent(multiline_str).strip()
 
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):

@@ -11,6 +11,7 @@ from rdr_service.config import CE_HEALTH_DATA_BUCKET_NAME, RDR_SLACK_WEBHOOKS
 from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
 from rdr_service.dao.ce_health_reconciliation_dao import CeHealthReconciliationDao
 from rdr_service.services.slack_utils import SlackMessageHandler
+from rdr_service.app_util import datetime_as_naive_utc
 
 _RECONCILIATION_FILE_SUBDIR = 'reconciliation_reports'
 _MISSING_REPORT_SUBDIR = 'missing_report'
@@ -102,7 +103,7 @@ class CeHealthDataReconciliationPipeline:
             raise RuntimeError("No reconciliation files in cloud bucket %r (all files: %s)." % (self.bucket_name,
                                                                                                 bucket_stat_list))
         last_24_hours_files = [blob for blob in bucket_stat_list
-                               if blob.updated >= (self.job_started_time - _MAX_INPUT_AGE)]
+                               if datetime_as_naive_utc(blob.updated) >= self.job_started_time - _MAX_INPUT_AGE]
         if not last_24_hours_files:
             self._send_no_reconciliation_file_alert()
 
@@ -118,7 +119,7 @@ class CeHealthDataReconciliationPipeline:
                 for item in content['FileKeys']:
                     health_file_path_list.append(self.bucket_name + '/' + item)
             if 'TransferTime' in content:
-                file_transferred_time = parse_datetime_from_iso_format(content['TransferTime'])
+                file_transferred_time = parse_datetime_from_iso_format(content['TransferTime'][:26] + 'Z')
 
         return health_file_path_list, file_transferred_time
 

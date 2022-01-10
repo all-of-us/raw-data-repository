@@ -284,6 +284,11 @@ def update_members_blocklists():
         controller.update_members_blocklists()
 
 
+def reconcile_informing_loop_responses():
+    with GenomicJobController(GenomicJob.RECONCILE_INFORMING_LOOP_RESPONSES) as controller:
+        controller.reconcile_informing_loop_responses()
+
+
 def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()

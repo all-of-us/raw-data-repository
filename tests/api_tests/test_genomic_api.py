@@ -1482,9 +1482,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertTrue(update_member['success'])
         self.assertTrue(update_mock.called)
 
-    def test_ingestion_wf_run_from_config(self):
-        pass
-
     @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
     def test_manifest_execute_in_manifest_ingestions(self, pipeline_mock):
 
@@ -1574,3 +1571,36 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             pipeline_mock.call_count,
             path_count + len(true_calls)
         )
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_metrics_file')
+    def test_ingest_user_metrcs_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+
+        user_metrics = self.send_post(
+            local_path='IngestUserEventMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(user_metrics)
+        self.assertEqual(user_metrics['success'], False)
+        self.assertEqual(ingest_mock.call_count, 0)
+
+        data = {
+            'file_path': 'test_file_path'
+        }
+
+        user_metrics = self.send_post(
+            local_path='IngestUserEventMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(user_metrics)
+        self.assertEqual(user_metrics['success'], True)
+        self.assertEqual(ingest_mock.call_count, 1)

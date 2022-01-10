@@ -221,3 +221,9 @@ genome_centers_id_from_bucket_wgs = {
     'broad': 'bi',
     'northwest': 'uw'
 }
+
+informing_loop_event_mappings = {
+    'gem.informing_loop_started': 'gem.informing_loop.started',
+    'gem.informing_loop_decision.no': 'gem.informing_loop.screen8_no',
+    'gem.informing_loop_decision.yes': 'gem.informing_loop.screen8_yes',
+}

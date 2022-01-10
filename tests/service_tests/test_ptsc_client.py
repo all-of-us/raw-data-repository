@@ -54,3 +54,15 @@ class PtscClientTest(BaseTestCase):
 
         self.assertEqual('got status code 401. Message: error content', str(expected_exception.exception))
         self.assertEqual(2, requests_mock.get.call_count)
+
+    def test_participant_lookup_by_drc_id(self, requests_mock):
+        """Make sure the drc id uses P when interacting with the Vibrent API"""
+        def get_response(**_):
+            mock_response = mock.MagicMock()
+            mock_response.status_code = 200
+            return mock_response
+        requests_mock.get.side_effect = get_response
+        self.ptsc_client.get_participant_lookup(participant_id=1234)
+
+        request_url = requests_mock.get.call_args.kwargs['url']
+        self.assertIn('drcId=P1234', request_url)

@@ -16,7 +16,7 @@ from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudReq
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicCloudRequests
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
@@ -44,9 +44,8 @@ class BaseGenomicTaskApi(Resource):
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
-            insert_data = {key: value for key, value in self.data.items() if key in
-                           GenomicCloudRequests.__table__.columns.keys()}
-            self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
+            insert_obj = self.cloud_req_dao.get_model_obj_from_items(self.data.items())
+            self.cloud_req_dao.insert(insert_obj)
 
     def set_disallowed_jobs(self):
 
@@ -327,6 +326,32 @@ class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
             controller.ingest_informing_loop_records(
                 message_record_id=self.data['message_record_id'],
                 loop_type=self.data['event_type']
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class IngestUserEventMetricsApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Inserting records for GHR3 User event metrics
+    """
+    def post(self):
+        super(IngestUserEventMetricsApi, self).post()
+
+        if not self.data.get('file_path'):
+            logging.warning('Can not run user metrics ingestion for missing file path')
+            return {"success": False}
+
+        logging.info(f"Ingesting user event metrics for {self.data.get('file_path')}")
+
+        with GenomicJobController(GenomicJob.METRICS_FILE_INGEST,
+                                  ) as controller:
+            controller.ingest_metrics_file(
+                metric_type='user_events',
+                file_path=self.data['file_path']
             )
 
         self.create_cloud_record()

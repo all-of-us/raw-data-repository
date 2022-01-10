@@ -111,7 +111,7 @@ class ConsentControllerTest(BaseTestCase):
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
-        self.consent_dao_mock.get_participants_with_consents_in_range.return_value = [
+        self.consent_dao_mock.get_participants_with_unvalidated_files.return_value = [
             ParticipantSummary(
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
                 consentForStudyEnrollmentAuthored=min_consent_date_checked,  # Needs to be set for PrimaryUpdate check
@@ -136,7 +136,7 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(
+        self.consent_controller.validate_consent_uploads(
             session=mock.MagicMock(),
             output_strategy=self.store_strategy,
             min_consent_date=min_consent_date_checked
@@ -173,7 +173,7 @@ class ConsentControllerTest(BaseTestCase):
         ]
 
         min_consent_date_checked = datetime(2020, 4, 1)
-        self.consent_dao_mock.get_participants_with_consents_in_range.return_value = [
+        self.consent_dao_mock.get_participants_with_unvalidated_files.return_value = [
             ParticipantSummary(
                 consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
                 consentForStudyEnrollmentAuthored=datetime(2020, 5, 1),  # Needs to be set for PrimaryUpdate check
@@ -181,7 +181,7 @@ class ConsentControllerTest(BaseTestCase):
             )
         ]
 
-        self.consent_controller.validate_recent_uploads(
+        self.consent_controller.validate_consent_uploads(
             session=mock.MagicMock(),
             output_strategy=self.store_strategy,
             min_consent_date=min_consent_date_checked

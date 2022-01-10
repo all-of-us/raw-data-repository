@@ -31,7 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao)
+    GenomicGcDataFileMissingDao, UserEventMetricsDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -2585,6 +2585,56 @@ class GenomicPipelineTest(BaseTestCase):
             rows = list(csv_reader)
             self.assertEqual(1, len(rows))
             self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+
+    def test_gem_a1_block_results(self):
+        # Need GC Manifest for source query : run_id = 1
+        self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW1_MANIFEST,
+                                              startTime=clock.CLOCK.now(),
+                                              runStatus=GenomicSubProcessStatus.COMPLETED,
+                                              runResult=GenomicSubProcessResult.SUCCESS))
+
+        self._create_fake_datasets_for_gc_tests(5, arr_override=True,
+                                                array_participants=range(1, 6),
+                                                recon_gc_man_id=1,
+                                                genome_center='jh',
+                                                genomic_workflow_state=GenomicWorkflowState.GEM_READY)
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003),
+            (4, 1004),
+            (5, 1005),
+        ])
+
+        for i in range(1, 6):
+            self.data_generator.create_database_genomic_gc_validation_metrics(
+                genomicSetMemberId=i,
+                processingStatus='pass',
+            )
+
+        # update ignore_flags for test
+        members = self.member_dao.get_all()
+        members[2].ignoreFlag = 1
+        self.member_dao.update(members[2])
+
+        # update block_results for test
+        members[3].blockResults = 1
+        self.member_dao.update(members[3])
+
+        # Add participant that has already been sent
+        members[4].biobankId = 4
+        members[4].participantId = 4
+        members[4].gemA1ManifestJobRunId = 1
+        self.member_dao.update(members[4])
+
+        genomic_pipeline.gem_a1_manifest_workflow()  # run_id = 4
+
+        members = self.member_dao.get_all()
+        a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
+        self.assertEqual(2, len(a1_members))
 
     def test_gem_a2_manifest_workflow(self):
         # Create A1 manifest job run: id = 1
@@ -5186,8 +5236,8 @@ class GenomicPipelineTest(BaseTestCase):
         sorted_records = sorted(filtered_records, key=lambda record: record.created, reverse=True)
         sorted_record = sorted_records[0]
 
-        dao_record = self.aw1_raw_dao.get_raw_record_from_bid_genome_type(
-            biobank_id=int(biobank_id),
+        dao_record = self.aw1_raw_dao.get_raw_record_from_identifier_genome_type(
+            identifier=int(biobank_id),
             genome_type='aou_array'
         )
         self.assertEqual(sorted_record.id, dao_record.id)
@@ -5393,7 +5443,7 @@ class GenomicPipelineTest(BaseTestCase):
         incidents = incident_dao.get_all()
 
         self.assertTrue(any(obj.code == 'FILE_VALIDATION_FAILED_STRUCTURE' for obj in incidents))
-        self.assertTrue(any('Extra fields: [\'extrafield\']' in obj.message for obj in incidents))
+        self.assertTrue(any('Extra fields: extrafield' in obj.message for obj in incidents))
 
     def test_aw2_genomic_incident_inserted(self):
         # set up test file
@@ -6154,3 +6204,92 @@ class GenomicPipelineTest(BaseTestCase):
 
         records = self.aw2_raw_dao.get_all()
         self.assertEqual(0, len(records))
+
+    def test_reconcile_informing_loop(self):
+        event_dao = UserEventMetricsDao()
+        event_dao.truncate()  # for test suite
+
+        for pid in range(7):
+            self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
+        # Set up initial job run ID
+        self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_FILE_INGEST,
+            startTime=clock.CLOCK.now()
+        )
+
+        # Set up ingested metrics data
+        events = ['gem.informing_loop.started',
+                  'gem.informing_loop.screen8_no',
+                  'gem.informing_loop.screen8_yes',
+                  'hdr.informing_loop.started']
+        for p in range(4):
+            for i in range(4):
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    created=clock.CLOCK.now(),
+                    modified=clock.CLOCK.now(),
+                    participant_id=p+1,
+                    created_at=datetime.datetime(2021, 12, 29, 00) + datetime.timedelta(hours=i),
+                    event_name=events[i],
+                    run_id=1,
+                    ignore_flag=0,
+                    reconcile_job_run_id=1 if p == 3 and i in [0, 2] else None  # For edge case
+                )
+
+        # Insert last event for pid 5 (test for no IL response)
+        self.data_generator.create_database_genomic_user_event_metrics(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=5,
+            created_at=datetime.datetime(2021, 12, 29, 00),
+            event_name='gem.informing_loop.started',
+            run_id=1,
+            ignore_flag=0,
+        )
+
+        # Set up informing loop from message broker records
+        decisions = [None, 'no', 'yes']
+        for p in range(4):
+            for i in range(3):
+                self.data_generator.create_database_genomic_informing_loop(
+                    message_record_id=i,
+                    event_type='informing_loop_started' if i == 0 else 'informing_loop_decision',
+                    module_type='gem',
+                    participant_id=p+1,
+                    decision_value=decisions[i],
+                    event_authored_time=datetime.datetime(2021, 12, 29, 00) + datetime.timedelta(hours=i)
+                )
+
+        # Test for only started event
+        self.data_generator.create_database_genomic_user_event_metrics(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=6,
+            created_at=datetime.datetime(2021, 12, 29, 00),
+            event_name='gem.informing_loop.started',
+            run_id=1,
+            ignore_flag=0,
+        )
+        self.data_generator.create_database_genomic_informing_loop(
+            message_record_id=100,
+            event_type='informing_loop_started',
+            module_type='gem',
+            participant_id=6,
+            decision_value=None,
+            event_authored_time=datetime.datetime(2021, 12, 29, 00)
+        )
+
+        # Run reconcile job
+        genomic_pipeline.reconcile_informing_loop_responses()
+
+        # Test data ingested correctly
+        incident = self.incident_dao.get(1)
+        self.assertEqual('RECONCILE_INFORMING_LOOP_RESPONSES: Informing Loop out of sync with User Events! PID: 5',
+                         incident.message)
+        self.assertEqual('5', incident.participant_id)
+
+        pid_list = [1, 2, 3, 6]
+        updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
+        for event in updated_events:
+            self.assertEqual(2, event.reconcile_job_run_id)
+
+
