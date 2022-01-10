@@ -904,14 +904,13 @@ class GenomicJobController:
     def run_c2_participant_workflow(self):
         """
         Creates new GenomicSet, GenomicSetMembers,
-        And manifest file for Cohort 2 participants
+        And manifest file for all remaining Cohort 2 participants
         """
         self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
 
         try:
-            last_run_date = self._get_last_successful_run_time()
             logging.info('Running C2 Participant Workflow.')
-            self.job_result = self.biobank_coupler.create_c2_genomic_participants(last_run_date)
+            self.job_result = self.biobank_coupler.create_c2_genomic_participants()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
@@ -923,9 +922,8 @@ class GenomicJobController:
         self.biobank_coupler = GenomicBiobankSamplesCoupler(self.job_run.id, controller=self)
 
         try:
-            last_run_date = self._get_last_successful_run_time()
             logging.info('Running C1 Participant Workflow.')
-            self.job_result = self.biobank_coupler.create_c1_genomic_participants(last_run_date)
+            self.job_result = self.biobank_coupler.create_c1_genomic_participants()
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 

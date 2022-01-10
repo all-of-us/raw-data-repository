@@ -2399,29 +2399,28 @@ class GenomicBiobankSamplesCoupler:
                 f'Saliva Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c2_genomic_participants(self, from_date, local=False):
+    def create_c2_genomic_participants(self):
         """
-        Creates Cohort 2 Participants in the genomic system using reconsent.
-        Validation is handled in the query that retrieves the newly consented
-        participants. Only valid participants are currently sent.
+        Creates Cohort 2 Participants in the genomic system.
+        Validation is handled in the query.
         Refactored to first pull valid participants, then pull their samples,
         applying the new business logic of prioritizing
         collection date & blood over saliva.
 
-        :param: from_date : the date from which to lookup new participants
         :return: result
         """
 
-        participants = self._get_new_c2_participants(from_date)
+        samples = self._get_remaining_c2_samples()
 
-        if len(participants) > 0:
-            return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_2_ID, local=local)
+        if len(samples) > 0:
+            samples_meta = self.GenomicSampleMeta(*samples)
+            return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_2_ID)
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c1_genomic_participants(self, from_date, local=False):
+    def create_c1_genomic_participants(self):
         """
         Creates Cohort 1 Participants in the genomic system using reconsent.
         Validation is handled in the query that retrieves the newly consented
@@ -2431,10 +2430,11 @@ class GenomicBiobankSamplesCoupler:
         :return: result
         """
 
-        participants = self._get_new_c1_participants(from_date)
+        samples = self._get_remaining_c1_samples()
 
-        if len(participants) > 0:
-            return self.create_matrix_and_process_samples(participants, cohort=self.COHORT_1_ID, local=local)
+        if len(samples) > 0:
+            samples_meta = self.GenomicSampleMeta(*samples)
+            return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_1_ID)
 
         else:
             logging.info(f'Cohort 1 Participant Workflow: No participants to process.')
@@ -2764,33 +2764,7 @@ class GenomicBiobankSamplesCoupler:
         logging.error(f'Should have been able to select between '
                       f'{sample_one.biobank_stored_sample_id} and {sample_two.biobank_stored_sample_id}')
 
-    def _get_new_c2_participants(self, from_date):
-        """
-        Retrieves C2 participants and validation data.
-        Broken out so that DNA samples' business logic is handled separately
-        :param from_date:
-        :return:
-        """
-        _c2_participant_sql = self.query.new_c2_participants()
-
-        params = {
-            "sample_status_param": SampleStatus.RECEIVED.__int__(),
-            "dob_param": GENOMIC_VALID_AGE,
-            "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
-            "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
-            "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
-            "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
-        }
-
-        with self.ps_dao.session() as session:
-            result = session.execute(_c2_participant_sql, params).fetchall()
-
-        return list([list(r) for r in zip(*result)])
-
-    def _get_remaining_c2_participants(self):
+    def _get_remaining_c2_samples(self):
 
         _c2_participant_sql = self.query.remaining_c2_participants()
 
@@ -2798,43 +2772,42 @@ class GenomicBiobankSamplesCoupler:
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_2_param": ParticipantCohort.COHORT_2.__int__(),
+            "cohort_param": ParticipantCohort.COHORT_2.__int__(),
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
-        with self.ps_dao.session() as session:
+        with self.samples_dao.session() as session:
             result = session.execute(_c2_participant_sql, params).fetchall()
 
-        return list([list(r) for r in zip(*result)])
+        result = self._prioritize_samples_by_participant(result)
 
-    def _get_new_c1_participants(self, from_date):
+        return list(zip(*result))[:-2]
+
+    def _get_remaining_c1_samples(self):
         """
         Retrieves C1 participants and validation data.
-        :param from_date:
-        :return:
         """
-        _c1_participant_sql = self.query.new_c1_participants()
+        _c1_participant_sql = self.query.remaining_c1_samples()
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
             "dob_param": GENOMIC_VALID_AGE,
             "general_consent_param": QuestionnaireStatus.SUBMITTED.__int__(),
-            "ai_param": Race.AMERICAN_INDIAN_OR_ALASKA_NATIVE.__int__(),
-            "from_date_param": from_date.strftime("%Y-%m-%d"),
             "withdrawal_param": WithdrawalStatus.NOT_WITHDRAWN.__int__(),
             "suspension_param": SuspensionStatus.NOT_SUSPENDED.__int__(),
-            "cohort_1_param": ParticipantCohort.COHORT_1.__int__(),
+            "cohort_param": ParticipantCohort.COHORT_1.__int__(),
             "c1_reconsent_param": COHORT_1_REVIEW_CONSENT_YES_CODE,
             "ignore_param": GenomicWorkflowState.IGNORE.__int__(),
         }
 
-        with self.ps_dao.session() as session:
+        with self.samples_dao.session() as session:
             result = session.execute(_c1_participant_sql, params).fetchall()
 
-        return list([list(r) for r in zip(*result)])
+        result = self._prioritize_samples_by_participant(result)
+
+        return list(zip(*result))[:-2]
 
     def _get_long_read_participants(self, limit=None):
         """
