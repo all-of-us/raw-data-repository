@@ -62,6 +62,19 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             ConsentType.PRIMARY_UPDATE: rec.consentForStudyEnrollmentAuthored
         }
 
+    @staticmethod
+    def _calculate_age(dob: date, at_date: date) -> int:
+        """
+        Calculate age in years from two date objects
+        :param dob:   Date of birth (date object)
+        :param at_date:  Date at which to calculate age (date object)
+        """
+        if not (isinstance(dob, date) and isinstance(at_date, date)):
+            return None
+
+        age_delta = relativedelta(at_date, dob)
+        return age_delta.years
+
     def make_resource(self, _pk, consent_validation_rec=None):
         """
         Build a Resource object for the requested consent_file record
@@ -142,11 +155,10 @@ class ConsentMetricGenerator(generators.BaseGenerator):
             # E.g., can capture cases were DOB value was unexpectedly null
             return False
 
-        age_delta = relativedelta(consent_authored, datetime(dob.year, dob.month, dob.day))
-        if age_delta.years <= 0 or age_delta.years > INVALID_DOB_AGE_CUTOFF:
-            return False
-
-        return True
+        # Age <= 0 (e.g., future date given for DOB) or > reasonable max age is flagged as invalid DOB value
+        # TODO:  May need to refine check when calculated age is 0 years, if AoU enrollment criteria changes
+        age = cls._calculate_age(dob, consent_authored.date())
+        return 0 < age <= INVALID_DOB_AGE_CUTOFF
 
     @classmethod
     def is_valid_age_at_consent(cls, consent_authored : datetime, dob : date) -> bool:
@@ -160,11 +172,8 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         if not isinstance(dob, date):
             return False
 
-        age_delta = relativedelta(consent_authored, datetime(dob.year, dob.month, dob.day))
-        if age_delta.years < VALID_AGE_AT_CONSENT:
-            return False
-
-        return True
+        age = cls._calculate_age(dob, consent_authored.date())
+        return age >= VALID_AGE_AT_CONSENT
 
     def _make_consent_validation_dict(self, row):
         """
@@ -509,7 +518,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                                                    origin=participant_origin)
 
         if not error_records:
-            msg = f'No consent errors since {errors_created_since.strftime("%Y-%m-%dT%H:%M:%S")} to report'
+            msg = f'No consent errors to report based on provided filters'
             if to_file:
                 with open(to_file, 'w') as f:
                     f.write(msg + '\n')
@@ -519,7 +528,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
         for rec in error_records:
             authored = self._get_authored_timestamps_from_rec(rec)
-            # Resource generator will set relevant error flags, plus ignore and test_participant flags
+            # ConsentMetric resource generator provides data dict used in reporting.  Can skip records flagged as
+            # ignore, or were for a test pid / pid that doesn't match origin filter
             rsc_data = self.make_resource(rec.id, consent_validation_rec=rec).get_data()
             if (rec.participantOrigin != participant_origin
                 or rsc_data.get('ignore', False)
@@ -527,7 +537,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
             ):
                 continue
 
-            # Generate a report entry for any/all validation errors found for this consent
+            # Generate a report entry for any validation error that was detected for this consent
             for err_key in METRICS_ERROR_TYPES.keys():
                 if rsc_data.get(err_key, False):
                     consent = ConsentType(rsc_data.get('consent_type'))
@@ -537,7 +547,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                         'Authored On': authored[consent].strftime("%Y-%m-%dT%H:%M:%S"),
                         'Error Detected': METRICS_ERROR_TYPES[err_key]
                     }
-                    # Add details about the associated PDF file, if file was present
+                    # All but 'missing file' reports will contain details on the file that failed validation
                     if err_key != 'missing_file':
                         error_details['File'] = rec.file_path or ''
                         error_details['File Upload Time'] = \
@@ -567,11 +577,18 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                         error_details['Signing date found'] = rec.signing_date
                     elif err_key in ['invalid_dob', 'invalid_age_at_consent']:
                         primary_consent_authored = authored[ConsentType.PRIMARY]
-                        dob = rec.dateOfBirth
-                        error_details['DOB found'] = dob
                         error_details['Primary Consent Authored'] = primary_consent_authored
-                        if dob and primary_consent_authored:
-                            error_details['Age at consent'] = relativedelta(primary_consent_authored, dob).years
+                        dob = rec.dateOfBirth
+                        if err_key == 'invalid_dob':
+                            if not dob:
+                                note_text = 'DOB value was missing from primary consent data'
+                            else:
+                                # Invalid DOB means invalid year in the date object; don't include full DOB str (PII)
+                                note_text = f'Provided DOB value contained invalid year {str(dob.year).zfill(4)}'
+                        else:
+                            age = self._calculate_age(dob, primary_consent_authored.date())
+                            note_text = f'Age at consent was {age} years based on provided DOB value'
+                        error_details['Notes'] = note_text
 
                     self.error_list[err_key].append(error_details)
 

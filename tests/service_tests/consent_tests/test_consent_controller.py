@@ -36,7 +36,11 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.dispatch_rebuild_consent_metrics_mock = consent_metrics_dispatch_rebuild_patch.start()
         self.addCleanup(consent_metrics_dispatch_rebuild_patch.stop)
-
+        consent_metrics_dispatch_check_errors_patch = mock.patch(
+            'rdr_service.services.consent.validation.dispatch_check_consent_errors_task'
+        )
+        self.dispatch_check_consent_errors_mock = consent_metrics_dispatch_check_errors_patch.start()
+        self.addCleanup(consent_metrics_dispatch_check_errors_patch.stop)
         self.consent_controller = ConsentValidationController(
             consent_dao=self.consent_dao_mock,
             hpo_dao=self.hpo_dao_mock,
@@ -146,6 +150,9 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(id=4, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
             ]
         )
+        # Confirm call to dispatcher for task that checks for newly detected validation errors
+        self.assertEqual(1, self.dispatch_check_consent_errors_mock.call_count)
+
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
         self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4])
@@ -185,6 +192,9 @@ class ConsentControllerTest(BaseTestCase):
                 ConsentFile(file_path='/new_file_1', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
             ]
         )
+        # Confirm call to dispatcher for task that checks for newly detected validation errors
+        self.assertEqual(1, self.dispatch_check_consent_errors_mock.call_count)
+
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
         self.assertDispatchRebuildConsentMetricsCalled([3])
