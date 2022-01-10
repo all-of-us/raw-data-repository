@@ -218,3 +218,8 @@ def copy_cloud_file(source_path, destination_path):
 def download_cloud_file(source_path, destination_path):
     provider = get_storage_provider()
     return provider.download_blob(source_path, destination_path)
+
+
+def is_cloud_file_exits(path):
+    provider = get_storage_provider()
+    return provider.exists(path)

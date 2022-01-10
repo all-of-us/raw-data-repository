@@ -1,0 +1,8 @@
+{
+  "FileKeys": [
+    "raw/health/2021/11/18/FITBIT/activities-heart-intraday/P1234567890/activities_heart_date_2021-11-10_1d_1sec.json",
+    "raw/health/2021/11/18/FITBIT/activities-heart-intraday/P1234567890/activities_heart_date_2021-11-07_1d_1sec.json"
+  ],
+  "TransferTime": "2021-11-18T17:24:27.3252561Z",
+  "BucketName": "rdr-careevo-test-ce-digital-health"
+}

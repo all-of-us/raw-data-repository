@@ -14,6 +14,7 @@ import sys
 
 from werkzeug.exceptions import NotFound
 
+from rdr_service.model.genomics import UserEventMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
@@ -1039,6 +1040,125 @@ class ConsentMetricClass(object):
         return 0
 
 
+class UserEventMetricsClass(object):
+    """ Build Color user event metrics records for PDR extract """
+
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, id_list: None):
+        """
+        :param args: command line arguments.
+        :param gcp_env: gcp environment information, see: gcp_initialize().
+        :param id_list: list of integer ids from consent_file table, if from_file or modified_since were specified.
+        """
+        self.args = args
+        self.gcp_env = gcp_env
+        self.id_list = id_list
+        self.res_gen = generators.GenomicUserEventMetricsSchemaGenerator()
+
+    def update_single_id(self, id_):
+
+        try:
+            res = self.res_gen.make_resource(id_)
+            res.save()
+        except NotFound:
+            _logger.error(f'Primary key id {id_} not found in user_event_metrics table.')
+            return 1
+        return 0
+
+    def update_batch(self, ids):
+
+        count = 0
+        task = None if self.gcp_env.project == 'localhost' else GCPCloudTask()
+
+        if not self.args.debug:
+            print_progress_bar(
+                count, len(ids), prefix="{0}/{1}:".format(count, len(ids)), suffix="complete"
+            )
+
+        for batch in chunks(ids, 250):
+            if self.gcp_env.project == 'localhost':
+                for id_ in batch:
+                    self.update_single_id(id_)
+            else:
+                if isinstance(batch[0], int):
+                    payload = {'rebuild_all': False, 'batch': batch}
+                else:
+                    payload = {'rebuild_all': False, 'batch': [x[0] for x in batch]}
+                task.execute('batch_rebuild_user_event_metrics_task', payload=payload, in_seconds=15,
+                             queue='resource-rebuild', project_id=self.gcp_env.project, quiet=True)
+
+            count += len(batch)
+            if not self.args.debug:
+                print_progress_bar(
+                    count, len(ids), prefix="{0}/{1}:".format(count, len(ids)), suffix="complete"
+                )
+
+    def update_many_ids(self, ids):
+        if not ids:
+            _logger.warning(f'No records found in batch, skipping.')
+            return 1
+
+        _logger.info(f'Processing user event metrics batch...')
+        if self.args.batch:
+            self.update_batch(ids)
+            _logger.info(f'Processing retention eligible metrics batch complete.')
+            return 0
+
+        total_ids = len(ids)
+        count = 0
+        errors = 0
+
+        for id_ in ids:
+            count += 1
+
+            if self.update_single_id(id_) != 0:
+                errors += 1
+                if self.args.debug:
+                    _logger.error(f'ID {id_} not found.')
+
+            if not self.args.debug:
+                print_progress_bar(
+                    count, total_ids, prefix="{0}/{1}:".format(count, total_ids), suffix="complete"
+                )
+
+        if errors > 0:
+            _logger.warning(f'\n\nThere were {errors} IDs not found during processing.')
+
+        return 0
+
+    def run(self):
+        clr = self.gcp_env.terminal_colors
+
+        if not self.args.pid and not self.args.all_pids and not self.id_list:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nRebuild User Event Metric Records for PDR:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+
+        if self.args.all_pids :
+            dao = ResourceDataDao()
+            _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
+            _logger.info('=' * 90)
+            with dao.session() as session:
+                pids = session.query(UserEventMetrics.id).all()
+                self.update_many_ids(pids)
+        elif self.args.pid:
+            _logger.info('  Primary Key ID        : {0}'.format(clr.fmt(f'{self.args.pid}')))
+            _logger.info('=' * 90)
+            self.update_single_id(self.args.pid)
+        elif self.id_list:
+            _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
+            _logger.info('=' * 90)
+            if len(self.id_list):
+                self.update_many_ids(self.id_list)
+
+        return 1
+
 def get_id_list(fname):
     """
     Shared helper routine for tool classes that allow input from a file of integer ids (participant ids or
@@ -1212,6 +1332,17 @@ def run():
                     help="rebuild metrics records for all consent_file ids")
     update_argument(consent_metrics_parser, dest='id', help="rebuild metrics for a specific consent_file id record")
 
+    # Rebuild Color user event metrics resources
+    consent_metrics_parser = subparser.add_parser('user-event-metrics', parents=[batch_parser,
+                                                                              from_file_parser,
+                                                                              all_ids_parser,
+                                                                              id_parser])
+    update_argument(consent_metrics_parser, dest='from_file',
+                    help="rebuild user event metrics data for specific ids read from a file")
+    update_argument(consent_metrics_parser, dest='all_ids',
+                    help="rebuild user event metrics records for all ids")
+    update_argument(consent_metrics_parser, dest='id', help="rebuild user event metrics for a specific id record")
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -1260,6 +1391,10 @@ def run():
 
         elif args.resource == 'consent-metrics':
             process = ConsentMetricClass(args, gcp_env, ids)
+            exit_code = process.run()
+
+        elif args.resource == 'user-event-metrics':
+            process = UserEventMetricsClass(args, gcp_env, ids)
             exit_code = process.run()
 
         else:

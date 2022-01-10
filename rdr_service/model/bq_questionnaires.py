@@ -1106,6 +1106,92 @@ class BQPDRPersonalFamilyHistoryView(BQModuleView):
 
 
 #
+# GeneralFeedback
+#
+class BQPDRGeneralFeedbackSchema(_BQModuleSchema):
+    """ GeneralFeedback Module """
+    _module = 'GeneralFeedback'
+    _force_boolean_fields = (
+        'Other_OtherFreeTextBox',
+        'OtherReasonToJoin_FreeTextBox',
+        'OtherReasonWhyHard_FreeTextBox',
+        'AccountCreation_IdeasForEasierAccountCreation',
+        'OtherEaseOfUnderstanding_FreeTextBox',
+        'GeneralConsent_HowToMakeConsentBetter',
+        'GeneralConsent_OtherComments'
+    )
+
+
+class BQPDRGeneralFeedback(BQTable):
+    """ GeneralFeedback BigQuery Table """
+    __tablename__ = 'pdr_mod_general_feedback'
+    __schema__ = BQPDRGeneralFeedbackSchema
+
+
+class BQPDRGeneralFeedbackView(BQModuleView):
+    """ PDR GeneralFeedback BiqQuery View """
+    __viewname__ = 'v_pdr_mod_general_feedback'
+    __viewdescr__ = 'PDR GeneralFeedback Module View'
+    __table__ = BQPDRGeneralFeedback
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+#
+# PostPMBFeedback
+#
+class BQPDRPostPMBFeedbackSchema(_BQModuleSchema):
+    """ PostPMBFeedback Module """
+    _module = 'PostPMBFeedback'
+    _force_boolean_fields = (
+        'PostPMBFeedback_ProblemsComingToVisit',
+        'PostPMBFeedback_LikedDislikedAboutVisit'
+    )
+
+
+class BQPDRPostPMBFeedback(BQTable):
+    """ PostPMBFeedback BigQuery Table """
+    __tablename__ = 'pdr_mod_post_pmb_feedback'
+    __schema__ = BQPDRPostPMBFeedbackSchema
+
+
+class BQPDRPostPMBFeedbackView(BQModuleView):
+    """ PDR PostPMBFeedback BiqQuery View """
+    __viewname__ = 'v_pdr_mod_post_pmb_feedback'
+    __viewdescr__ = 'PDR PostPMBFeedback Module View'
+    __table__ = BQPDRPostPMBFeedback
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
+#
+# PPIModuleFeedback
+#
+class BQPDRPPIModuleFeedbackSchema(_BQModuleSchema):
+    """ PPIModuleFeedback Module """
+    _module = 'PPIModuleFeedback'
+    _force_boolean_fields = (
+        'PPIFeedback_WhatMadeItHardToUnderstand',
+        'PPIFeedback_WhySkippingQuestions',
+        'PPIFeedback_LikedDislikedAboutQuestions'
+    )
+
+
+class BQPDRPPIModuleFeedback(BQTable):
+    """ PPIModuleFeedback BigQuery Table """
+    __tablename__ = 'pdr_mod_ppi_module_feedback'
+    __schema__ = BQPDRPPIModuleFeedbackSchema
+
+
+class BQPDRPPIModuleFeedbackView(BQModuleView):
+    """ PDR PPIModuleFeedback BiqQuery View """
+    __viewname__ = 'v_pdr_mod_ppi_module_feedback'
+    __viewdescr__ = 'PDR PPIModuleFeedback Module View'
+    __table__ = BQPDRPPIModuleFeedback
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+#
 #
 #
 # List of modules classes that are sent to PDR.
@@ -1131,8 +1217,11 @@ PDR_MODULE_LIST = (
     BQPDRWithdrawalIntro,
     BQPDRSDOH,
     BQPDRCOPEVaccine3,
-    BQPDRPersonalFamilyHistory
+    BQPDRPersonalFamilyHistory,
+    BQPDRGeneralFeedback,
+    BQPDRPostPMBFeedback,
+    BQPDRPPIModuleFeedback
 )
 
-# Create a dictionnary of module codes and table object references.
+# Create a dictionary of module codes and table object references.
 PDR_CODE_TO_MODULE_LIST = dict(zip([m.__schema__._module for m in PDR_MODULE_LIST], PDR_MODULE_LIST))

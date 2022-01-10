@@ -651,6 +651,7 @@ class GenomicIncident(Base):
     repair_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"))
     genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"))
     gc_validation_metrics_id = Column(Integer, ForeignKey("genomic_gc_validation_metrics.id"))
+    participant_id = Column(String(128), index=True)
     biobank_id = Column(String(128), index=True)
     sample_id = Column(String(80), index=True)
     collection_tube_id = Column(String(80), index=True)
@@ -721,7 +722,9 @@ class GenomicInformingLoop(Base):
 
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-    message_record_id = Column(Integer, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    message_record_id = Column(Integer, nullable=True)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False)
     event_type = Column(String(256), nullable=False)
     event_authored_time = Column(UTCDateTime6)
@@ -823,3 +826,30 @@ class GemToGpMigration(Base):
 
 event.listen(GemToGpMigration, 'before_insert', model_insert_listener)
 event.listen(GemToGpMigration, 'before_update', model_update_listener)
+
+
+class UserEventMetrics(Base):
+    """
+    Used for storage GHR3 user event metrics
+    """
+
+    __tablename__ = 'user_event_metrics'
+
+    id = Column(Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
+    created_at = Column(String(255))
+    event_name = Column(String(512))
+    device = Column(String(255))
+    operating_system = Column(String(255))
+    browser = Column(String(255))
+    file_path = Column(String(512), index=True)
+    run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    reconcile_job_run_id = Column(Integer, ForeignKey("genomic_job_run.id"), nullable=True)
+
+
+event.listen(UserEventMetrics, 'before_insert', model_insert_listener)
+event.listen(UserEventMetrics, 'before_update', model_update_listener)

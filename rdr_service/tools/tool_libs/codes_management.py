@@ -1,15 +1,16 @@
 import csv
 from datetime import datetime
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+
 from rdr_service.dao.code_dao import CodeDao
-from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.model.code import Code
 from rdr_service.offline.codebook_importer import CodebookImporter
 from rdr_service.services.gcp_config import GCP_INSTANCES
+from rdr_service.services.gcp_utils import gcp_get_iam_service_key_info
 from rdr_service.services.redcap_client import RedcapClient
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
 
@@ -66,12 +67,11 @@ class CodesExportClass(ToolBase):
         media = MediaFileUpload(code_export_file_path, mimetype='text/csv')
         drive_service.files().create(body=file_metadata, media_body=media, supportsAllDrives=True).execute()
 
-    @staticmethod
-    def initialize_process_context(tool_name, project, account, service_account):
+    def initialize_process_context(self, tool_name=None, project=None, account=None, service_account=None):
         if project == '_all':
             project = 'all-of-us-rdr-prod'
 
-        return ToolBase.initialize_process_context(tool_name, project, account, service_account)
+        return super(CodesExportClass, self).initialize_process_context(tool_name, project, account, service_account)
 
     def run(self):
         # Intentionally not calling super's run
@@ -128,6 +128,8 @@ class CodesSyncClass(ToolBase):
 
     @staticmethod
     def write_export_file(session):
+        code_dao = CodeDao()
+
         with open(code_export_file_path, 'w') as output_file:
             code_csv_writer = csv.writer(output_file)
             code_csv_writer.writerow([
@@ -140,13 +142,13 @@ class CodesSyncClass(ToolBase):
             for code in codes:
                 row_data = [code.value, code.display]
 
-                parent_codes = CodeDao.get_parent_codes(code, session)
-                if parent_codes:
-                    row_data.append('|'.join([parent.value for parent in parent_codes]))
+                parent_code_values = code_dao.get_parent_values(code.codeId, session=session)
+                if parent_code_values:
+                    row_data.append('|'.join(parent_code_values))
 
-                    module_codes = CodeDao.get_module_codes(code, session)
-                    if module_codes:
-                        row_data.append('|'.join([module_code.value for module_code in module_codes]))
+                    module_code_values = code_dao.get_module_values(code.codeId, session=session)
+                    if module_code_values:
+                        row_data.append('|'.join(module_code_values))
                 code_csv_writer.writerow(row_data)
 
     def run_process(self):
@@ -158,12 +160,12 @@ class CodesSyncClass(ToolBase):
                 with self.initialize_process_context(self.tool_cmd, project, self.args.account,
                                                      self.args.service_account) as gcp_env:
                     self.gcp_env = gcp_env
-                    self.run(skip_file_export_write=('prod' not in project))
+                    self.run()
             return 0
         else:
             return super(CodesSyncClass, self).run_process()
 
-    def run(self, skip_file_export_write=False):
+    def run(self):
         super(CodesSyncClass, self).run()
         exit_code = 0
 
@@ -216,7 +218,8 @@ class CodesSyncClass(ToolBase):
             if not self.args.dry_run:
                 if exit_code == 1:
                     session.rollback()
-                elif not skip_file_export_write:
+                elif 'prod' in self.gcp_env.project:
+                    # We only want to write the export file for prod
                     self.write_export_file(session)
 
         return exit_code

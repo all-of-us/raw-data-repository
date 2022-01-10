@@ -1,25 +1,29 @@
 from datetime import datetime
-
 import mock
 
 from rdr_service import clock
+from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicGCValidationMetricsDao, GenomicIncidentDao, GenomicInformingLoopDao, \
-    GenomicGcDataFileDao
+    GenomicGcDataFileDao, GenomicSetMemberDao, UserEventMetricsDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
-from rdr_service.genomic.genomic_job_controller import GenomicIncident, GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile
+from rdr_service.genomic.genomic_job_components import GenomicFileIngester
+from rdr_service.genomic.genomic_job_controller import GenomicJobController
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember
+from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
 
 class GenomicJobControllerTest(BaseTestCase):
     def setUp(self):
         super(GenomicJobControllerTest, self).setUp()
-        self.metrics_dao = GenomicGCValidationMetricsDao()
-        self.incident_dao = GenomicIncidentDao()
         self.data_file_dao = GenomicGcDataFileDao()
-        self.informing_loop_dao = GenomicInformingLoopDao()
         self.event_data_dao = MessageBrokenEventDataDao()
+        self.incident_dao = GenomicIncidentDao()
+        self.informing_loop_dao = GenomicInformingLoopDao()
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.user_event_metrics_dao = UserEventMetricsDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -271,15 +275,10 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_decision_records = self.event_data_dao.get_informing_loop(
-            message_broker_record.id,
-            loop_decision
-        )
-
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=loop_decision,
-                records=loop_decision_records
+                message_record_id=message_broker_record.id,
+                loop_type=loop_decision
             )
 
         decision_genomic_record = self.informing_loop_dao.get(1)
@@ -317,15 +316,10 @@ class GenomicJobControllerTest(BaseTestCase):
                 valueString=value
             )
 
-        loop_started_records = self.event_data_dao.get_informing_loop(
-            message_broker_record_two.id,
-            loop_started
-        )
-
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=loop_started,
-                records=loop_started_records
+                message_record_id=message_broker_record_two.id,
+                loop_type=loop_started
             )
 
         started_genomic_record = self.informing_loop_dao.get(2)
@@ -339,4 +333,184 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(started_genomic_record.participant_id, message_broker_record_two.participantId)
         self.assertEqual(started_genomic_record.event_type, loop_started)
         self.assertEqual(started_genomic_record.module_type, 'hdr')
+
+    def test_updating_members_blocklists(self):
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        # for just created and wf state query and MATCHES criteria
+        for i in range(4):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array_investigation' if i & 2 != 0 else 'aou_wgs',
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                ai_an='Y' if i & 2 == 0 else 'N'
+            )
+
+        # for just created and wf state query and DOES NOT MATCH criteria
+        for i in range(2):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array',
+                genomicWorkflowState=GenomicWorkflowState.AW0,
+                ai_an='N'
+            )
+
+        with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+            controller.update_members_blocklists()
+
+        # current config json in base
+        # "block_research": [
+        #     {
+        #         "attribute": "ai_an",
+        #         "value": "Y",
+        #         "reason_string": "aian"
+        #     },
+        #     {
+        #         "attribute": "genomeType",
+        #         "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        #         "reason_string": "sample_swap"
+        #     }
+        # ],
+        # "block_results": [
+        #     {
+        #         "attribute": "genomeType",
+        #         "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        #         "reason_string": "sample_swap"
+        #     }
+        # ]
+
+        created_members = self.member_dao.get_all()
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian'
+            for obj in created_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
+        )
+
+        # should NOT be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in created_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW0)
+        )
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
+            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        # should be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
+            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        # should NOT be RESEARCH/RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResearch == 0 and obj.blockResearchReason is None
+            for obj in created_members if obj.genomeType == 'aou_array' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in created_members if obj.genomeType == 'aou_array' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW0)
+        )
+
+        # clear current set member records
+        with self.member_dao.session() as session:
+            session.query(GenomicSetMember).delete()
+
+        # for modified data query and MATCHES criteria
+        for i in range(4):
+            self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType='aou_array_investigation' if i & 2 != 0 else 'aou_wgs',
+                genomicWorkflowState=GenomicWorkflowState.AW1,
+                ai_an='Y' if i & 2 == 0 else 'N'
+            )
+
+        with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
+            controller.update_members_blocklists()
+
+        modified_members = self.member_dao.get_all()
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'aian'
+            for obj in modified_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW1)
+        )
+
+        # should NOT be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 0 and obj.blockResultsReason is None
+            for obj in modified_members if obj.ai_an == 'Y' and obj.genomicWorkflowState == GenomicWorkflowState.AW1)
+        )
+
+        # should be RESEARCH blocked
+        self.assertTrue(all(
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
+            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW1)
+        )
+
+        # should be RESULTS blocked
+        self.assertTrue(all(
+            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
+            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            GenomicWorkflowState.AW1)
+        )
+
+    def test_ingest_user_metrics_file(self):
+        test_file = 'Genomic-Metrics-File-User-Events-Test.csv'
+        bucket_name = 'test_bucket'
+        sub_folder = 'user_events'
+        pids = []
+
+        file_ingester = GenomicFileIngester()
+
+        for _ in range(2):
+            pid = self.data_generator.create_database_participant()
+            pids.append(pid.participantId)
+
+        test_metrics_file = create_ingestion_test_file(
+            test_file,
+            bucket_name,
+            sub_folder)
+
+        test_file_path = f'{bucket_name}/{sub_folder}/{test_metrics_file}'
+
+        with open_cloud_file(test_file_path) as csv_file:
+            metrics_to_ingest = file_ingester._read_data_to_ingest(csv_file)
+
+        with GenomicJobController(GenomicJob.METRICS_FILE_INGEST) as controller:
+            controller.ingest_metrics_file(
+                metric_type='user_events',
+                file_path=test_file_path,
+            )
+
+        job_run_id = controller.job_run.id
+        metrics = self.user_event_metrics_dao.get_all()
+
+        for pid in pids:
+            file_metrics = list(filter(lambda x: int(x['participant_id'].split('P')[-1]) == pid, metrics_to_ingest[
+                'rows']))
+            participant_ingested_metrics = list(filter(lambda x: x.participant_id == pid, metrics))
+
+            self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
+            self.assertTrue(all(obj.run_id == job_run_id for obj in participant_ingested_metrics))
 

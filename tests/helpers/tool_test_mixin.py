@@ -18,9 +18,9 @@ class ToolTestMixin:
 
     @classmethod
     def run_tool(cls, tool_class: Type[ToolBase], tool_args: dict = None, server_config: dict = None,
-                 mock_session=False):
+                 mock_session=False, project='localhost'):
         gcp_env = mock.MagicMock()
-        gcp_env.project = 'localhost'
+        gcp_env.project = project
 
         tool_args = ToolTestMixin._build_args(tool_args)
 

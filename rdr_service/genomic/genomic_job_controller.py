@@ -23,13 +23,14 @@ from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomi
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_gc_validation_metrics_update
+from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
     raw_aw2_to_genomic_set_member_fields, genomic_data_file_mappings, genome_centers_id_from_bucket_array, \
-    wgs_file_types_attributes, array_file_types_attributes
+    wgs_file_types_attributes, array_file_types_attributes, informing_loop_event_mappings
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
-from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, GenomicIncident, \
+from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
     GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes
@@ -52,7 +53,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao,
-    GcDataFileStagingDao)
+    GcDataFileStagingDao, UserEventMetricsDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -107,6 +108,7 @@ class GenomicJobController:
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
+        self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -277,6 +279,19 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def ingest_metrics_file(self, *, metric_type, file_path):
+        try:
+            self.ingester = GenomicFileIngester(job_id=self.job_id,
+                                                job_run_id=self.job_run.id,
+                                                bucket=self.bucket_name,
+                                                target_file=file_path,
+                                                _controller=self)
+
+            self.job_result = self.ingester.ingest_metrics_file_from_filepath(metric_type, file_path)
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     def ingest_specific_manifest(self, filename):
         """
         Uses GenomicFileIngester to ingest specific Manifest file.
@@ -310,9 +325,11 @@ class GenomicJobController:
 
         if self.job_id == GenomicJob.AW1_MANIFEST:
             raw_dao = GenomicAW1RawDao()
+            id_field = "biobankId"
 
         else:
             raw_dao = GenomicAW2RawDao()
+            id_field = "sampleId"
 
         # Get member records
         members = self.member_dao.get_members_from_member_ids(member_ids)
@@ -335,8 +352,8 @@ class GenomicJobController:
                 bid = member.biobankId
             # Get Raw AW1 Records for biobank IDs and genome_type
             try:
-                raw_rec = raw_dao.get_raw_record_from_bid_genome_type(
-                    biobank_id=bid,
+                raw_rec = raw_dao.get_raw_record_from_identifier_genome_type(
+                    identifier=bid if id_field == 'biobankId' else getattr(member, id_field),
                     genome_type=member.genomeType
                 )
             except MultipleResultsFound:
@@ -425,18 +442,25 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_informing_loop_records(self, *, loop_type, records):
-        if records:
-            logging.info(f'Inserting informing loop for Participant: {records[0].participantId}')
+    def ingest_informing_loop_records(self, *, message_record_id, loop_type):
+        informing_records = self.message_broker_event_dao.get_informing_loop(
+            message_record_id,
+            loop_type
+        )
 
-            module_type = [obj for obj in records if obj.fieldName == 'module_type' and obj.valueString]
-            decision_value = [obj for obj in records if obj.fieldName == 'decision_value' and obj.valueString]
+        if informing_records:
+            first_record = informing_records[0]
+            logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
+
+            module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
+            decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
+                              obj.valueString]
 
             loop_obj = GenomicInformingLoop(
-                participant_id=records[0].participantId,
-                message_record_id=records[0].messageRecordId,
+                participant_id=first_record.participantId,
+                message_record_id=first_record.messageRecordId,
                 event_type=loop_type,
-                event_authored_time=records[0].eventAuthoredTime,
+                event_authored_time=first_record.eventAuthoredTime,
                 module_type=module_type[0].valueString if module_type else None,
                 decision_value=decision_value[0].valueString if decision_value else None,
             )
@@ -1136,6 +1160,60 @@ class GenomicJobController:
         if _genome_type == GENOME_TYPE_ARRAY:
             self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
 
+    def reconcile_informing_loop_responses(self):
+        """
+        Compare latest non-reconciled user_event_metrics records
+        to the latest participant states in genomic_informing_loop
+        Currently only support GEM since no HDR or PGx.
+        """
+        # TODO: handle multiple modules (HDR, PGx)
+        module = 'gem'
+        event_dao = UserEventMetricsDao()
+        informing_loop_dao = GenomicInformingLoopDao()
+
+        # Get unreconciled user_event_metrics records
+        latest_events = event_dao.get_latest_events()
+
+        # compare to latest state by participant in genomic_informing_loop
+        if latest_events:
+            event_mappings = informing_loop_event_mappings
+            update_pids = []
+
+            for event in latest_events:
+                incident_message = f'{self.job_id.name}: Informing Loop out of sync with User Events! ' \
+                                   f'PID: {event.participant_id}'
+                incident_params = {
+                    "source_job_run_id": self.job_run.id,
+                    "code": GenomicIncidentCode.INFORMING_LOOP_TO_EVENTS_MISMATCH.name,
+                    "message": incident_message,
+                    "participant_id": event.participant_id,
+                    "save_incident": True,
+                    "slack": True
+                }
+
+                latest_state = informing_loop_dao.get_latest_state_for_pid(event.participant_id)
+                if latest_state:
+                    # Parse informing loop state
+                    latest_state = [x for x in latest_state[0] if x]
+                    lookup_state = f"{module}.{'.'.join(latest_state)}"
+
+                    if event.event_name != event_mappings[lookup_state]:
+                        # create incident
+                        self.create_incident(**incident_params)
+
+                    else:
+                        # add to update_pids reconcile_job_run_id
+                        update_pids.append(event.participant_id)
+
+                else:
+                    # No informing loop for pid, create incident
+                    self.create_incident(**incident_params)
+
+            if update_pids:
+                event_dao.update_reconcile_job_pids(pid_list=update_pids,
+                                                    job_run_id=self.job_run.id,
+                                                    module=module)
+
     def run_general_ingestion_workflow(self):
         """
         Ingests A single genomic file
@@ -1228,9 +1306,8 @@ class GenomicJobController:
             return
 
         if save_incident:
-            insert_kwargs = {key: value for key, value in kwargs.items()
-                             if key in GenomicIncident.__table__.columns.keys()}
-            incident = self.incident_dao.insert(GenomicIncident(**insert_kwargs))
+            insert_obj = self.incident_dao.get_model_obj_from_items(kwargs.items())
+            incident = self.incident_dao.insert(insert_obj)
 
         if slack:
             message_data = {'text': message}
@@ -1244,6 +1321,17 @@ class GenomicJobController:
                 self.incident_dao.update(incident)
 
         logging.warning(message)
+
+    def update_members_blocklists(self):
+        members = self.member_dao.get_members_from_date()
+
+        if not members:
+            return
+
+        logging.info(f'Checking {len(members)} newly added/modified genomic member(s) for updating blocklists')
+
+        for member in members:
+            self.member_dao.update_member_blocklists(member)
 
     @staticmethod
     def update_member_file_record(manifest_type):
@@ -1515,21 +1603,21 @@ class DataQualityJobController:
             logging.warning('No records found for validation email notifications')
             return
 
-        recipients = email_config.get('recipients')
+        recipients, cc_recipients = email_config.get('recipients'), email_config.get('cc_recipients')
 
         for gc, recipient_list in recipients.items():
             gc_validation_emails_to_send = list(filter(lambda x: x.submitted_gc_site_id == gc, validation_incidents))
 
             if gc_validation_emails_to_send:
                 for gc_validation_email in gc_validation_emails_to_send:
-                    validation_message = gc_validation_email.message.split(':')[1]
-                    message = f"{validation_message}\n"
-                    message += f"Full file path: gs://{gc_validation_email.filePath}\n"
-                    message += f"Please correct this file, gs://{gc_validation_email.filePath}, and re-upload to " \
-                               f"designated bucket."
+                    validation_message = gc_validation_email.message.split(':', 1)[1]
+                    message = f"{validation_message.strip()}\n\n"
+                    message += f"Full file path: gs://{gc_validation_email.filePath}\n\n"
+                    message += "Please correct this file and re-upload to designated bucket."
 
                     email_message = Email(
                         recipients=recipient_list,
+                        cc_recipients=cc_recipients,
                         subject="All of Us GC/DRC Manifest Ingestion Failure",
                         plain_text_content=message
                     )

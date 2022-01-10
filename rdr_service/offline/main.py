@@ -15,8 +15,10 @@ from werkzeug.exceptions import BadRequest
 from rdr_service import app_util, config
 from rdr_service.api_util import EXPORTER, RDR
 from rdr_service.app_util import nonprod
+from rdr_service.clock import CLOCK
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.consent_dao import ConsentDao
+from rdr_service.dao import database_factory
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.metric_set_dao import AggregateMetricsDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -24,13 +26,13 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.requests_log import RequestsLog
 from rdr_service.offline import biobank_samples_pipeline, genomic_pipeline, sync_consent_files, update_ehr_status, \
     antibody_study_pipeline, genomic_data_quality_pipeline
+from rdr_service.offline.ce_health_data_reconciliation_pipeline import CeHealthDataReconciliationPipeline
 from rdr_service.offline.base_pipeline import send_failure_alert
 from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
     daily_rebuild_bigquery_handler, rebuild_bigquery_handler
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
-from rdr_service.offline.exclude_ghost_participants import mark_ghost_participants
 from rdr_service.offline.genomic_pipeline import run_genomic_cron_job
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
@@ -48,6 +50,7 @@ from rdr_service.services.hpro_consent import HealthProConsentFile
 from rdr_service.services.flask import OFFLINE_PREFIX, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging,\
     flask_restful_log_exception_error
+from rdr_service.services.ghost_check_service import GhostCheckService
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -108,6 +111,17 @@ def recalculate_public_metrics():
 
     # Same format returned by the metric sets API.
     return json.dumps({"metrics": client_aggs})
+
+
+@app_util.auth_required_cron
+def run_ce_health_data_reconciliation():
+    ce_health_data_reconciliation_pipeline = CeHealthDataReconciliationPipeline()
+    logging.info("Starting read ce manifest files.")
+    ce_health_data_reconciliation_pipeline.process_ce_manifest_files()
+    logging.info("Read complete, generating missing report.")
+    ce_health_data_reconciliation_pipeline.generate_missing_report()
+    logging.info("Generated missing report.")
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -211,9 +225,20 @@ def update_retention_eligible_metrics():
 
 
 @app_util.auth_required_cron
-@_alert_on_exceptions
-def exclude_ghosts():
-    mark_ghost_participants()
+def find_ghosts():
+    credentials_config = config.getSettingJson('ptsc_api_config', default=None)
+    if not credentials_config:
+        logging.error('No API credentials found')
+        return '{"success": "false"}'
+
+    start_date = CLOCK.now() - timedelta(weeks=5)
+    with database_factory.get_database().session() as session:
+        service = GhostCheckService(
+            session=session,
+            logger=logging.getLogger(),
+            ptsc_config=credentials_config
+        )
+        service.run_ghost_check(start_date=start_date)
     return '{"success": "true"}'
 
 
@@ -236,13 +261,12 @@ def check_for_consent_corrections():
 
 @app_util.auth_required_cron
 def validate_consent_files():
-    min_authored_timestamp = datetime.utcnow() - timedelta(hours=26)  # Overlap just to make sure we don't miss anything
     validation_controller = _build_validation_controller()
     with validation_controller.consent_dao.session() as session, StoreResultStrategy(
         session=session,
         consent_dao=validation_controller.consent_dao
     ) as store_strategy:
-        validation_controller.validate_recent_uploads(session, store_strategy, min_consent_date=min_authored_timestamp)
+        validation_controller.validate_consent_uploads(session, store_strategy)
     return '{"success": "true"}'
 
 
@@ -621,6 +645,20 @@ def genomic_members_state_resolved():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('members_update_blocklists')
+def genomic_members_update_blocklists():
+    genomic_pipeline.update_members_blocklists()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_informing_loop_responses')
+def genomic_reconcile_informing_loop_responses():
+    genomic_pipeline.reconcile_informing_loop_responses()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
@@ -664,6 +702,13 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "FlagResponseDuplication",
         endpoint="flagResponseDuplication",
         view_func=flag_response_duplication,
+        methods=["GET"],
+    )
+
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CeHealthDataReconciliation",
+        endpoint="ceHealthDataReconciliation",
+        view_func=run_ce_health_data_reconciliation,
         methods=["GET"],
     )
 
@@ -729,7 +774,7 @@ def _build_pipeline_app():
     )
 
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "MarkGhostParticipants", endpoint="exclude_ghosts", view_func=exclude_ghosts, methods=["GET"]
+        OFFLINE_PREFIX + "MarkGhostParticipants", endpoint="find_ghosts", view_func=find_ghosts, methods=["GET"]
     )
 
     offline_app.add_url_rule(
@@ -935,7 +980,18 @@ def _build_pipeline_app():
         view_func=genomic_members_state_resolved,
         methods=["GET"]
     )
-
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicUpdateMembersBlocklists",
+        endpoint="genomic_members_update_blocklists",
+        view_func=genomic_members_update_blocklists,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicReconcileInformingLoopResponses",
+        endpoint="reconcile_informing_loop_responses",
+        view_func=genomic_reconcile_informing_loop_responses,
+        methods=["GET"]
+    )
     # END Genomic Pipeline Jobs
 
     # BEGIN Genomic Data Quality Jobs

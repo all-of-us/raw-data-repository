@@ -83,12 +83,13 @@ GENOME_TYPE_CVL = "aou_cvl"
 AW1F_ALERT_RECIPIENTS = "aw1f_alert_recipients"
 GENOMIC_AW3_ARRAY_SUBFOLDER = "AW3_array_manifest"
 GENOMIC_AW3_WGS_SUBFOLDER = "AW3_wgs_manifest"
-GENOMIC_REPORT_PATH = "/aou-rdr-sandbox-mock-data/genomic_reports_prod/"
+GENOMIC_REPORT_PATH = "/prod-rdr-genomics/daily_ingestion_reports/"
 GENOMIC_CRON_JOBS = "genomic_cron_jobs"
 GENOMIC_MAX_NUM_GENERATE = "genomic_max_num_generate"
 GENOMIC_MAX_NUM_INGEST = "genomic_max_num_ingest"
 GENOMIC_DAILY_VALIDATION_EMAILS = "genomic_daily_validation_emails"
-GENOMIC_BLOCKLISTS = "genomic_blocklists"
+GENOMIC_MEMBER_BLOCKLISTS = "genomic_set_member_blocklists"
+GENOMIC_INGESTIONS = "genomic_ingestions"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
 BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
@@ -124,6 +125,7 @@ HPO_LITE_ORG_NAME_MAPPING = 'hpo_lite_org_name_mapping'
 DATA_BUCKET_SUBFOLDERS_PROD = 'data_bucket_subfolders_prod'
 HEALTHPRO_CONSENT_BUCKET = 'hpro_consent_bucket'
 HEALTHPRO_CONSENTS_TRANSFER_LIMIT = 'hpro_consents_transfer_limit'
+CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
@@ -134,6 +136,7 @@ PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-data-broad",
     "prod-genomics-data-northwest",
     "prod-drc-broad",
+    "prod-color-rhp"
 ]
 
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [

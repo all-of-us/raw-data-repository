@@ -898,6 +898,7 @@ SELECT
     0                                           AS unit_concept_id,
     NULL                                        AS provider_id,
     NULL                                        AS visit_occurrence_id,
+    NULL                                        AS visit_detail_id,
     src_m.question_ppi_code                     AS observation_source_value,
     src_m.question_source_concept_id            AS observation_source_concept_id,
     NULL                                        AS unit_source_value,
@@ -936,6 +937,7 @@ SELECT
     meas.vu_concept_id                      AS unit_concept_id,
     NULL                                    AS provider_id,
     meas.physical_measurements_id           AS visit_occurrence_id,
+    NULL                                    AS visit_detail_id,
     meas.code_value                         AS observation_source_value,
     meas.cv_source_concept_id               AS observation_source_concept_id,
     meas.value_unit                         AS unit_source_value,
@@ -1513,7 +1515,7 @@ WHERE cdm_meas.parent_id IS NOT NULL;
 
 DROP TABLE IF EXISTS cdm.pid_rid_mapping;
 CREATE TABLE cdm.pid_rid_mapping (
-    participant_id              bigint,
+    person_id                   bigint,
     research_id                 bigint,
     external_id                 bigint
 );

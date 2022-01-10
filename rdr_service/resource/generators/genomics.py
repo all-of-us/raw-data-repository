@@ -2,6 +2,7 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+from dateutil.parser import parse as dt_parse
 from sqlalchemy.sql import text
 
 from rdr_service.dao.resource_dao import ResourceDataDao
@@ -409,6 +410,55 @@ def genomic_gc_validation_metrics_batch_update(_pk_ids):
     :param _pk_ids: list of pk ids.
     """
     gen = GenomicGCValidationMetricsSchemaGenerator()
+    w_dao = ResourceDataDao()
+    for _pk in _pk_ids:
+        genomic_gc_validation_metrics_update(_pk, gen=gen, w_dao=w_dao)
+
+
+class GenomicUserEventMetricsSchemaGenerator(generators.BaseGenerator):
+    """
+    Generate a GenomicUserEventMetrics resource object
+    """
+    ro_dao = None
+
+    def make_resource(self, _pk, backup=False):
+        """
+        Build a resource object from the given primary key id.
+        :param _pk: Primary key value from rdr table.
+        :param backup: if True, get from backup database instead of Primary.
+        :return: resource object
+        """
+        if not self.ro_dao:
+            self.ro_dao = ResourceDataDao(backup=backup)
+
+        with self.ro_dao.session() as ro_session:
+            row = ro_session.execute(text('select * from user_event_metrics where id = :id'),
+                                     {'id': _pk}).first()
+            data = self.ro_dao.to_dict(row)
+            data['created_at'] = dt_parse(data['created_at'])
+
+            return generators.ResourceRecordSet(schemas.GenomicUserEventMetricsSchema, data)
+
+
+def genomic_user_event_metrics_update(_pk, gen=None, w_dao=None):
+    """
+    Generate GenomicGCValidationMetrics resource record.
+    :param _pk: Primary Key
+    :param gen: GenomicUserEventMetricsSchemaGenerator object
+    :param w_dao: Writable DAO object.
+    """
+    if not gen:
+        gen = GenomicUserEventMetricsSchemaGenerator()
+    res = gen.make_resource(_pk)
+    res.save(w_dao=w_dao)
+
+
+def genomic_user_event_metrics_batch_update(_pk_ids):
+    """
+    Generate a batch of ids.
+    :param _pk_ids: list of pk ids.
+    """
+    gen = GenomicUserEventMetricsSchemaGenerator()
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
         genomic_gc_validation_metrics_update(_pk, gen=gen, w_dao=w_dao)

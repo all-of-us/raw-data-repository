@@ -6,8 +6,8 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service.api.cloud_tasks_api import log_task_headers
 from rdr_service.app_util import task_auth_required
-from rdr_service.config import getSetting, GENOMIC_AW5_WGS_SUBFOLDERS, GENOMIC_AW5_ARRAY_SUBFOLDERS, \
-    DRC_BROAD_AW4_SUBFOLDERS
+from rdr_service.config import getSetting, getSettingJson, DRC_BROAD_AW4_SUBFOLDERS, GENOMIC_AW5_WGS_SUBFOLDERS, \
+    GENOMIC_AW5_ARRAY_SUBFOLDERS, GENOMIC_INGESTIONS
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_job_run_batch_update, bq_genomic_file_processed_batch_update, \
     bq_genomic_gc_validation_metrics_batch_update, bq_genomic_manifest_file_batch_update, \
@@ -16,7 +16,7 @@ from rdr_service.dao.genomics_dao import GenomicManifestFileDao, GenomicCloudReq
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicManifestTypes
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicCloudRequests
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
@@ -31,10 +31,12 @@ class BaseGenomicTaskApi(Resource):
         self.cloud_req_dao = GenomicCloudRequestsDao()
         self.member_dao = GenomicSetMemberDao()
         self.file_paths = None
+        self.disallowed_jobs = []
 
     @task_auth_required
     def post(self):
         log_task_headers()
+        self.set_disallowed_jobs()
         self.data = request.get_json(force=True)
         self.file_paths = [self.data.get('file_path')] \
             if type(self.data.get('file_path')) is not list \
@@ -42,9 +44,40 @@ class BaseGenomicTaskApi(Resource):
 
     def create_cloud_record(self):
         if self.data.get('cloud_function'):
-            insert_data = {key: value for key, value in self.data.items() if key in
-                           GenomicCloudRequests.__table__.columns.keys()}
-            self.cloud_req_dao.insert(GenomicCloudRequests(**insert_data))
+            insert_obj = self.cloud_req_dao.get_model_obj_from_items(self.data.items())
+            self.cloud_req_dao.insert(insert_obj)
+
+    def set_disallowed_jobs(self):
+
+        if 'manifesttaskapi' not in self.__class__.__name__.lower():
+            return
+
+        ingestion_config = getSettingJson(GENOMIC_INGESTIONS, {})
+
+        if not ingestion_config:
+            return
+
+        ingestion_config_map = {
+            'aw1_manifest': GenomicJob.AW1_MANIFEST,
+            'aw1f_manifest': GenomicJob.AW1F_MANIFEST,
+            'aw2_manifest': GenomicJob.METRICS_INGESTION,
+            'aw4_array_manifest': GenomicJob.AW4_ARRAY_WORKFLOW,
+            'aw4_wgs_manifest': GenomicJob.AW4_WGS_WORKFLOW,
+            'aw5_array_manifest': GenomicJob.AW5_ARRAY_MANIFEST,
+            'aw5_wgs_manifest': GenomicJob.AW5_WGS_MANIFEST
+        }
+
+        for config_key, job_type in ingestion_config_map.items():
+            if ingestion_config.get(config_key) == 0:
+                self.disallowed_jobs.append(job_type)
+
+    def execute_manifest_ingestion(self, task_data, _type):
+        if not task_data.get('job') in self.disallowed_jobs:
+            logging.info(f'Ingesting {_type} File: {self.data.get("filename")}')
+            # Call pipeline function
+            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+        else:
+            logging.warning(f'Cannot run ingestion task. {task_data.get("job")} is currently disabled.')
 
 
 class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
@@ -60,6 +93,7 @@ class LoadRawAWNManifestDataAPI(BaseGenomicTaskApi):
         genomic_pipeline.load_awn_manifest_into_raw_table(self.data.get("file_path"), self.data.get("file_type"))
 
         self.create_cloud_record()
+
         logging.info('Complete.')
         return {"success": True}
 
@@ -72,7 +106,6 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
         super(IngestAW1ManifestTaskApi, self).post()
 
         for file_path in self.file_paths:
-            logging.info(f'Ingesting AW1 File: {self.data.get("filename")}')
 
             # Set manifest_type and job
             job = GenomicJob.AW1_MANIFEST
@@ -101,10 +134,9 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
 
             logging.info(f'{message} task data: {task_data}')
 
-            # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            self.execute_manifest_ingestion(task_data, message)
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
@@ -134,10 +166,9 @@ class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
 
             logging.info(f'AW2 task data: {task_data}')
 
-            # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            self.execute_manifest_ingestion(task_data, 'AW2')
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
@@ -154,12 +185,12 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'Ingesting AW4 File: {self.data.get("filename")}')
 
             if getSetting(DRC_BROAD_AW4_SUBFOLDERS[0]) in file_path:
-                job_id = GenomicJob.AW4_ARRAY_WORKFLOW
+                job = GenomicJob.AW4_ARRAY_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_ARRAY
                 subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[0])
 
             elif getSetting(DRC_BROAD_AW4_SUBFOLDERS[1]) in file_path:
-                job_id = GenomicJob.AW4_WGS_WORKFLOW
+                job = GenomicJob.AW4_WGS_WORKFLOW
                 manifest_type = GenomicManifestTypes.AW4_WGS
                 subfolder = getSetting(DRC_BROAD_AW4_SUBFOLDERS[1])
 
@@ -169,7 +200,7 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
 
             # Set up file/JSON
             task_data = {
-                "job": job_id,
+                "job": job,
                 "bucket": self.data["bucket_name"],
                 "subfolder": subfolder,
                 "file_data": {
@@ -182,10 +213,9 @@ class IngestAW4ManifestTaskApi(BaseGenomicTaskApi):
 
             logging.info(f'AW4 task data: {task_data}')
 
-            # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            self.execute_manifest_ingestion(task_data, 'AW4')
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
@@ -202,10 +232,10 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'Ingesting AW5 File: {self.data.get("filename")}')
 
             if getSetting(GENOMIC_AW5_ARRAY_SUBFOLDERS) in file_path:
-                job_id = GenomicJob.AW5_ARRAY_MANIFEST
+                job = GenomicJob.AW5_ARRAY_MANIFEST
                 manifest_type = GenomicManifestTypes.AW5_ARRAY
             elif getSetting(GENOMIC_AW5_WGS_SUBFOLDERS) in file_path:
-                job_id = GenomicJob.AW5_WGS_MANIFEST
+                job = GenomicJob.AW5_WGS_MANIFEST
                 manifest_type = GenomicManifestTypes.AW5_WGS
             else:
                 logging.warning(f'Can not determine manifest type from file_path: {file_path}.')
@@ -213,7 +243,7 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
 
             # Set up file/JSON
             task_data = {
-                "job": job_id,
+                "job": job,
                 "bucket": self.data["bucket_name"],
                 "file_data": {
                     "create_feedback_record": False,
@@ -225,10 +255,9 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
 
             logging.info(f'AW5 task data: {task_data}')
 
-            # Call pipeline function
-            genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
+            self.execute_manifest_ingestion(task_data, 'AW5')
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
@@ -276,7 +305,7 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
                     self.data['bucket_name']
                 )
 
-            self.create_cloud_record()
+        self.create_cloud_record()
 
         logging.info('Complete.')
         return {"success": True}
@@ -295,8 +324,34 @@ class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
                                   ) as controller:
             controller.ingest_informing_loop_records(
-                loop_type=self.data['event_type'],
-                records=self.data['records']
+                message_record_id=self.data['message_record_id'],
+                loop_type=self.data['event_type']
+            )
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
+class IngestUserEventMetricsApi(BaseGenomicTaskApi):
+    """
+    Cloud task endpoint: Inserting records for GHR3 User event metrics
+    """
+    def post(self):
+        super(IngestUserEventMetricsApi, self).post()
+
+        if not self.data.get('file_path'):
+            logging.warning('Can not run user metrics ingestion for missing file path')
+            return {"success": False}
+
+        logging.info(f"Ingesting user event metrics for {self.data.get('file_path')}")
+
+        with GenomicJobController(GenomicJob.METRICS_FILE_INGEST,
+                                  ) as controller:
+            controller.ingest_metrics_file(
+                metric_type='user_events',
+                file_path=self.data['file_path']
             )
 
         self.create_cloud_record()

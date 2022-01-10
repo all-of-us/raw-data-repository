@@ -26,7 +26,8 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update, \
+    genomic_user_event_metrics_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -60,7 +61,12 @@ from rdr_service.dao.genomics_dao import (
     GenomicManifestFeedbackDao,
     GenomicManifestFileDao,
     GenomicAW1RawDao,
-    GenomicAW2RawDao, GenomicGcDataFileDao, GenomicGcDataFileMissingDao, GenomicIncidentDao)
+    GenomicAW2RawDao,
+    GenomicGcDataFileDao,
+    GenomicGcDataFileMissingDao,
+    GenomicIncidentDao,
+    UserEventMetricsDao
+)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -126,6 +132,7 @@ class GenomicFileIngester:
         self.feedback_dao = GenomicManifestFeedbackDao()
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
+        self.user_metrics_dao = UserEventMetricsDao()
 
     def generate_file_processing_queue(self):
         """
@@ -264,7 +271,7 @@ class GenomicFileIngester:
                 GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
-                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest
             }
 
             self.file_validator.valid_schema = None
@@ -432,6 +439,7 @@ class GenomicFileIngester:
         """
         _states = [GenomicWorkflowState.AW0, GenomicWorkflowState.EXTRACT_REQUESTED]
         _site = self._get_site_from_aw1()
+
         for row in rows:
             row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                  for key in row], row.values()))
@@ -713,6 +721,15 @@ class GenomicFileIngester:
         row['member_id'] = member.id
         row['file_id'] = self.file_obj.id
 
+        # handle mapped reads in case they are longer than field length
+        if 'mappedreadspct' in row.keys():
+            if len(row['mappedreadspct']) > 10:
+                row['mappedreadspct'] = row['mappedreadspct'][0:10]
+
+        # Set default values in case they upload "" and processing status of "fail"
+        row['contamination_category'] = GenomicContaminationCategory.UNSET
+        row['contamination_category_str'] = "UNSET"
+
         # Truncate call rate
         try:
             row['callrate'] = row['callrate'][:10]
@@ -753,11 +770,6 @@ class GenomicFileIngester:
         )
         row['contamination_category'] = category
         row['contamination_category_str'] = category.name
-
-        # handle mapped reads in case they are longer than field length
-        if 'mappedreadspct' in row.keys():
-            if len(row['mappedreadspct']) > 10:
-                row['mappedreadspct'] = row['mappedreadspct'][0:10]
 
         return row
 
@@ -904,6 +916,62 @@ class GenomicFileIngester:
 
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
+
+    def ingest_metrics_file_from_filepath(self, metric_type, file_path):
+        metric_map = {
+            'user_events': self.user_metrics_dao
+        }
+
+        file_data = self._retrieve_data_from_path(file_path)
+
+        if not isinstance(file_data, dict):
+            return file_data
+
+        batch_size, item_count, batch = 100, 0, []
+
+        try:
+            metric_dao = metric_map[metric_type]
+
+        except KeyError:
+            logging.warning(f'Metric type {metric_type} is invalid for this method')
+            return GenomicSubProcessResult.ERROR
+
+        for row in file_data['rows']:
+
+            if row.get('participant_id') and 'P' in row.get('participant_id'):
+                participant_id = row['participant_id'].split('P')[-1]
+                row['participant_id'] = int(participant_id)
+
+            row['file_path'] = file_path
+            row['created'] = clock.CLOCK.now()
+            row['modified'] = clock.CLOCK.now()
+            row['run_id'] = self.controller.job_run.id
+
+            row_insert_obj = metric_dao.get_model_obj_from_items(row.items())
+
+            batch.append(row_insert_obj)
+            item_count += 1
+
+            if item_count == batch_size:
+                with metric_dao.session() as session:
+                    # Use session add_all() so we can get the newly created primary key id values back.
+                    session.add_all(batch)
+                    session.commit()
+                    # Batch update PDR resource records.
+                    genomic_user_event_metrics_batch_update([r.id for r in batch])
+
+                item_count = 0
+                batch.clear()
+
+        if item_count:
+            with metric_dao.session() as session:
+                # Use session add_all() so we can get the newly created primary key id values back.
+                session.add_all(batch)
+                session.commit()
+                # Batch update PDR resource records.
+                genomic_user_event_metrics_batch_update([r.id for r in batch])
+
+        return GenomicSubProcessResult.SUCCESS
 
     def _retrieve_data_from_path(self, path):
         """
@@ -1590,6 +1658,7 @@ class GenomicFileValidator:
             "qcstatus",
             "drcsexconcordance",
             "drccallrate",
+            "passtoresearchpipeline"
         )
 
         self.AW4_WGS_SCHEMA = (
@@ -1606,12 +1675,15 @@ class GenomicFileValidator:
             "crampath",
             "crammd5path",
             "craipath",
+            "gvcfpath",
+            "gvcfmd5path",
             "researchid",
             "qcstatus",
             "drcsexconcordance",
             "drccontamination",
             "drcmeancoverage",
             "drcfpconcordance",
+            "passtoresearchpipeline"
         )
 
         self.AW5_WGS_SCHEMA = {
@@ -1744,9 +1816,9 @@ class GenomicFileValidator:
             slack = True
             invalid_message = f"{self.job_id.name}: File structure of {filename} is not valid."
             if extra_fields:
-                invalid_message += f' Extra fields: {extra_fields}'
+                invalid_message += f" Extra fields: {', '.join(extra_fields)}"
             if missing_fields:
-                invalid_message += f' Missing fields: {missing_fields}'
+                invalid_message += f" Missing fields: {', '.join(missing_fields)}"
                 if len(missing_fields) == len(expected):
                     slack = False
             self.controller.create_incident(

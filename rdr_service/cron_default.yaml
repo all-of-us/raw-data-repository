@@ -26,7 +26,7 @@ cron:
   target: offline
 - description: Flag ghost participants
   url: /offline/MarkGhostParticipants
-  schedule: every day 00:10
+  schedule: every saturday 00:10
   timezone: America/New_York
   target: offline
 - description: Rebuild BigQuery Data (Manual)
@@ -174,4 +174,18 @@ cron:
   timezone: America/New_York
   schedule: every 12 hours
   target: offline
-
+- description: Ce Health Data Reconciliation Pipeline
+  url: /offline/CeHealthDataReconciliation
+  timezone: America/New_York
+  schedule: every day 3:45
+  target: offline
+- description: Genomic Update of Member Blocklist status
+  url: /offline/GenomicUpdateMembersBlocklists
+  timezone: America/New_York
+  schedule: every day 07:30
+  target: offline
+- description: Genomic Reconcile Informing Loop Responses
+  url: /offline/GenomicReconcileInformingLoopResponses
+  timezone: America/New_York
+  schedule: every day 04:00
+  target: offline

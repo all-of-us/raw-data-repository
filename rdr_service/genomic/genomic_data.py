@@ -91,8 +91,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
-                (GenomicSetMember.aw3ManifestJobRunID.is_(None) &
-                 GenomicSetMember.ignoreFlag != 1)
+                (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
+                (GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.AW3_WGS: (sqlalchemy.select(
                 [
@@ -158,8 +158,8 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.craiReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfReceived == 1) &
                 (GenomicGCValidationMetrics.gvcfMd5Received == 1) &
-                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id']) &
-                 GenomicSetMember.ignoreFlag != 1)
+                (GenomicSetMember.gcManifestParentSampleId.in_(self.subqueries['aw3_wgs_parent_sample_id'])) &
+                (GenomicSetMember.ignoreFlag != 1)
             )),
             GenomicManifestTypes.CVL_W1: (sqlalchemy.select(
                 [
@@ -227,11 +227,20 @@ class GenomicQueryClass:
                 ]
             ).select_from(
                 sqlalchemy.join(
-                    sqlalchemy.join(ParticipantSummary,
-                                    GenomicSetMember,
-                                    GenomicSetMember.participantId == ParticipantSummary.participantId),
+                    ParticipantSummary,
+                    GenomicSetMember,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                ).join(
                     GenomicGCValidationMetrics,
                     GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                ).outerjoin(
+                    self.aliases['gsm'],
+                    sqlalchemy.and_(
+                        self.aliases['gsm'].participantId == GenomicSetMember.participantId,
+                        self.aliases['gsm'].genomeType == "aou_array",
+                        self.aliases['gsm'].gemA1ManifestJobRunId.isnot(None),
+                        self.aliases['gsm'].ignoreFlag == 0,
+                    )
                 )
             ).where(
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
@@ -239,6 +248,9 @@ class GenomicQueryClass:
                 (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                 (GenomicSetMember.genomeType == "aou_array") &
+                (GenomicSetMember.ignoreFlag == 0) &
+                (self.aliases['gsm'].id.is_(None)) &
+                (GenomicSetMember.blockResults == 0) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &

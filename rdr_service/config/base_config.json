@@ -95,6 +95,8 @@
     "reconcile_raw_to_aw1_ingested_workflow": 1,
     "reconcile_raw_to_aw2_ingested_workflow": 1,
     "members_state_resolved_workflow": 1,
+    "members_update_blocklists": 1,
+    "reconcile_informing_loop_responses": 1,
     "wgs_reconciliation_workflow": 1,
     "w1_manifest_workflow": 0,
     "w2_manifest_workflow": 0,
@@ -108,14 +110,40 @@
   "a1_limit": [10000],
   "genomic_daily_validation_emails": {
     "send_emails": 1,
+    "cc_recipients": ["testone_cc.testy@vumc.edu", "testtwo_cc.testy@vumc.edu"],
     "recipients": {
       "bcm": ["testone.testy@bcm.edu", "testtwo.testy@bcm.edu"],
       "jh": ["testone.testy@jhmi.edu", "testtwo.testy@jhmi.edu"]
     }
   },
-  "genomic_blocklists": {
-    "block_research": {
-      "aian": 1
-    }
+  "genomic_set_member_blocklists": {
+    "block_research": [
+       {
+        "attribute": "ai_an",
+        "value": "Y",
+        "reason_string": "aian"
+      },
+      {
+        "attribute": "genomeType",
+        "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        "reason_string": "sample_swap"
+      }
+    ],
+    "block_results": [
+      {
+        "attribute": "genomeType",
+        "value": ["aou_array_investigation", "aou_wgs_investigation"],
+        "reason_string": "sample_swap"
+      }
+    ]
+  },
+  "genomic_ingestions": {
+    "aw1_manifest": 1,
+    "aw1f_manifest": 1,
+    "aw2_manifest": 1,
+    "aw4_array_manifest": 1,
+    "aw4_wgs_manifest": 1,
+    "aw5_array_manifest": 1,
+    "aw5_wgs_manifest": 1
   }
 }

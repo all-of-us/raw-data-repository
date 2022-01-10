@@ -7,7 +7,7 @@ from unittest import mock
 
 from rdr_service.services.system_utils import JSONObject
 from tests.helpers.unittest_base import BaseTestCase
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.genomics_dao import (
@@ -44,6 +44,8 @@ class GenomicApiTestBase(BaseTestCase):
         self.job_run_dao = GenomicJobRunDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.set_dao = GenomicSetDao()
+        self.report_state_dao = GenomicMemberReportStateDao()
+
         self._setup_data()
 
     def _setup_data(self):
@@ -311,10 +313,15 @@ class GenomicOutreachApiTest(GenomicApiTestBase):
         }
 
         resp = self.send_post(local_path, request_data=payload)
-        member = self.member_dao.get(2)
 
+        member = self.member_dao.get(2)
         self.assertEqual(expected_response, resp)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_PENDING_DELETE, member.genomicWorkflowState)
+        report_state_member = self.report_state_dao.get_from_member_id(member.id)
+
+        self.assertEqual(report_state_member.genomic_report_state, GenomicReportState.GEM_RPT_PENDING_DELETE)
+        self.assertEqual(report_state_member.module, 'gem')
+        self.assertEqual(report_state_member.genomic_set_member_id, member.id)
 
     def test_genomic_test_participant_not_found(self):
         # P2001 doesn't exist in participant
@@ -407,14 +414,14 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 consentForStudyEnrollmentAuthored=fake_date
             )
 
-            module = 'GEM'
+            module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
 
             if num == 0:
                 first_participant = participant
             elif num == 1:
                 second_participant = participant
-                module = 'PGX'
+                module = 'pgx'
                 report_state = GenomicReportState.PGX_RPT_PENDING_DELETE
 
             gen_member = self.data_generator.create_database_genomic_set_member(
@@ -440,7 +447,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_type='informing_loop_decision',
                     module_type=module,
                     participant_id=participant.participantId,
-                    decision_value='maybe_later'
+                    decision_value='maybe_later',
+                    event_authored_time=fake_date + datetime.timedelta(days=1)
                 )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -541,7 +549,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 consentForStudyEnrollmentAuthored=fake_date_one
             )
 
-            module = 'GEM'
+            module = 'gem'
             report_state = GenomicReportState.GEM_RPT_READY
 
             if num > 4:
@@ -570,7 +578,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_type='informing_loop_decision',
                     module_type=module,
                     participant_id=participant.participantId,
-                    decision_value='maybe_later'
+                    decision_value='maybe_later',
+                    event_authored_time=fake_date_one + datetime.timedelta(days=1)
                 )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -594,24 +603,20 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertEqual(resp.json['message'], bad_response)
         self.assertEqual(resp.status_code, 400)
 
-        bad_response = 'No participants found in date range.'
-
         with clock.FakeClock(fake_now):
             resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_three}&type={informing_loop_type}',
-                expected_status=http.client.NOT_FOUND
+                f'GenomicOutreachV2?start_date={fake_date_three}&type={informing_loop_type}'
             )
 
-        self.assertEqual(resp.json['message'], bad_response)
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp['data'], [])
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={informing_loop_type}'
             )
 
-        self.assertEqual(len(resp['data']), 2)
-        all_loops = all(obj for obj in resp['data'] if obj['type'] == informing_loop_type)
+        self.assertEqual(len(resp['data']), 5)
+        all_loops = all(obj['type'] == informing_loop_type for obj in resp['data'])
         self.assertTrue(all_loops)
 
         with clock.FakeClock(fake_now):
@@ -620,7 +625,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), 5)
-        all_results = all(obj for obj in resp['data'] if obj['type'] == result_type)
+        all_results = all(obj['type'] == result_type for obj in resp['data'])
         self.assertTrue(all_results)
 
     def test_get_by_module(self):
@@ -656,10 +661,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
             if num % 2 == 0:
-                module = 'PGX'
+                module = 'pgx'
                 report_state = GenomicReportState.PGX_RPT_READY
             else:
-                module = 'GEM'
+                module = 'gem'
                 report_state = GenomicReportState.GEM_RPT_READY
 
             self.data_generator.create_database_genomic_member_report_state(
@@ -674,7 +679,8 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_type='informing_loop_decision',
                 module_type=module,
                 participant_id=participant.participantId,
-                decision_value='maybe_later'
+                decision_value='maybe_later',
+                event_authored_time=fake_date_one + datetime.timedelta(days=1)
             )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
@@ -696,8 +702,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
-        all_gem = all(obj for obj in resp['data'] if obj['module'] == 'gem')
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+
+        all_gem = all(obj['module'] == 'gem' for obj in resp['data'])
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+
         self.assertTrue(all_gem)
         self.assertTrue(loop_and_result)
 
@@ -707,8 +715,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
+
         all_pgx = all(obj for obj in resp['data'] if obj['module'] == 'pgx')
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
+
         self.assertTrue(all_pgx)
         self.assertTrue(loop_and_result)
 
@@ -717,7 +727,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
         fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
         fake_now = clock.CLOCK.now().replace(microsecond=0)
-        module = 'GEM'
+        module = 'gem'
         report_state = GenomicReportState.GEM_RPT_READY
 
         gen_set = self.data_generator.create_database_genomic_set(
@@ -762,22 +772,19 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_type='informing_loop_decision',
                 module_type=module,
                 participant_id=participant.participantId,
-                decision_value='maybe_later'
+                decision_value='maybe_later',
+                event_authored_time=workflow_date
             )
 
         total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
         self.assertEqual(len(total_num_set), 20)
 
-        bad_response = 'No participants found in date range.'
-
         with clock.FakeClock(fake_now):
             resp = self.send_get(
-                f'GenomicOutreachV2?start_date={fake_date_two}',
-                expected_status=http.client.NOT_FOUND
+                f'GenomicOutreachV2?start_date={fake_date_two}'
             )
 
-        self.assertEqual(resp.json['message'], bad_response)
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp['data'], [])
 
         with clock.FakeClock(fake_now):
             resp = self.send_get(
@@ -785,8 +792,95 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             )
 
         self.assertEqual(len(resp['data']), len(total_num_set) / 2)
-        loop_and_result = all(obj for obj in resp['data'] if obj['type'] == 'informingLoop' or obj['type'] == 'result')
+
+        loop_and_result = all(obj['type'] == 'informingLoop' or obj['type'] == 'result' for obj in resp['data'])
         self.assertTrue(loop_and_result)
+
+    def test_get_last_updated_informing_loop_decision(self):
+        self.num_loops = 3
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        module = 'gem'
+        decisions = ['yes', 'no', 'maybe_later']
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        participant_one = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant_one,
+            consentForGenomicsRORAuthored=fake_date_two,
+            consentForStudyEnrollmentAuthored=fake_date_two
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+            participantId=participant_one.participantId,
+            genomicWorkflowStateModifiedTime=fake_date_two
+        )
+
+        for i, _ in enumerate(decisions):
+            # maybe_later => newest date
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=i + 1,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant_one.participantId,
+                decision_value=decisions[i],
+                event_authored_time=fake_date_one + datetime.timedelta(days=i, minutes=i+31)
+            )
+
+        participant_two = self.data_generator.create_database_participant()
+
+        self.data_generator.create_database_participant_summary(
+            participant=participant_two,
+            consentForGenomicsRORAuthored=fake_date_two,
+            consentForStudyEnrollmentAuthored=fake_date_two
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+            participantId=participant_two.participantId,
+            genomicWorkflowStateModifiedTime=fake_date_two
+        )
+
+        for i, _ in enumerate(decisions):
+            # maybe_later => newest date
+            self.data_generator.create_database_genomic_informing_loop(
+                message_record_id=i + 2,
+                event_type='informing_loop_decision',
+                module_type=module,
+                participant_id=participant_two.participantId,
+                decision_value=decisions[i],
+                event_authored_time=fake_date_one + datetime.timedelta(days=i, minutes=i+32)
+            )
+
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(
+                f'GenomicOutreachV2?start_date={fake_date_one}'
+            )
+
+        response_data = resp.get('data')
+        self.assertTrue(all(obj['decision'] == decisions[2] for obj in response_data))
+
+        all_loops = self.loop_dao.get_all()
+        self.assertEqual(
+            len([obj['participant_id'] for obj in response_data]),
+            len(all_loops) / len(decisions)
+        )
 
     def test_get_only_ready_informing_loop(self):
         self.num_participants = 10
@@ -1295,11 +1389,12 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(ingest_mock.call_count, path_count)
 
-    def test_informing_loop_task_api(self):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_informing_loop_records')
+    def test_informing_loop_task_api(self, ingest_called):
 
         data = {
-            'event_type': '',
-            'records': []
+            'message_record_id': [],
+            'event_type': ''
         }
 
         from rdr_service.resource import main as resource_main
@@ -1313,6 +1408,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertIsNotNone(insert_informing_loop)
         self.assertEqual(insert_informing_loop['success'], True)
+        self.assertEqual(ingest_called.call_count, 1)
 
     def test_batch_data_file_task_api(self):
 
@@ -1386,3 +1482,125 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertTrue(update_member['success'])
         self.assertTrue(update_mock.called)
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_manifest_execute_in_manifest_ingestions(self, pipeline_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        path_mappings = {
+            "aw1": {
+                'route': 'IngestAW1ManifestTaskApi',
+                'file_path': ['AW1_sample_manifests/test_aw1_file_1.csv',
+                              'AW1_sample_manifests/test_aw1_file_2.csv',
+                              'AW1_sample_manifests/test_aw1_file_3.csv',
+                              'AW1_sample_manifests/test_aw1_file_4.csv',
+                              'AW1_sample_manifests/test_aw1_file_5.csv']
+            },
+            "aw2": {
+                'route': 'IngestAW2ManifestTaskApi',
+                'file_path': 'AW2_data_manifests/test_aw2_file.csv'
+            },
+            "aw4_array": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': ['AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv'
+                              'AW4_array_manifest/test_aw4_file.csv',
+                              'AW4_array_manifest/test_aw4_file.csv']
+            },
+            "aw4_wgs": {
+                'route': 'IngestAW4ManifestTaskApi',
+                'file_path': 'AW4_wgs_manifest/test_aw4_file.csv',
+            },
+            "aw5_array": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_array_manifest/test_aw5_file.csv'
+            },
+            "aw5_wgs": {
+                'route': 'IngestAW5ManifestTaskApi',
+                'file_path': 'AW5_wgs_manifest/test_aw5_file.csv'
+            },
+        }
+
+        path_count = 0
+        for value in path_mappings.values():
+
+            path_count = path_count + (len(value['file_path']) if type(value['file_path']) is list else 1)
+
+            self.send_post(
+                local_path=value.get('route'),
+                request_data={
+                    'file_path': value.get('file_path'),
+                    'bucket_name': 'test_bucket_name',
+                    'upload_date': '2020-09-13T20:52:12+00:00',
+                },
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        # from base_config all True => call count == all path count
+        self.assertEqual(pipeline_mock.call_count, path_count)
+
+        manifest_config = {
+            "aw1_manifest": 0,
+            "aw2_manifest": 0,
+            "aw4_array_manifest": 0,
+            "aw4_wgs_manifest": 1,
+            "aw5_array_manifest": 1,
+            "aw5_wgs_manifest": 1
+        }
+
+        config.override_setting(config.GENOMIC_INGESTIONS, manifest_config)
+
+        # add 3 calls tp path_count
+        true_calls = [val for val in manifest_config.values() if val == 1]
+
+        for value in path_mappings.values():
+            self.send_post(
+                local_path=value.get('route'),
+                request_data={
+                    'file_path': value.get('file_path'),
+                    'bucket_name': 'test_bucket_name',
+                    'upload_date': '2020-09-13T20:52:12+00:00',
+                },
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+        self.assertEqual(
+            pipeline_mock.call_count,
+            path_count + len(true_calls)
+        )
+
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_metrics_file')
+    def test_ingest_user_metrcs_api(self, ingest_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+
+        user_metrics = self.send_post(
+            local_path='IngestUserEventMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(user_metrics)
+        self.assertEqual(user_metrics['success'], False)
+        self.assertEqual(ingest_mock.call_count, 0)
+
+        data = {
+            'file_path': 'test_file_path'
+        }
+
+        user_metrics = self.send_post(
+            local_path='IngestUserEventMetricsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(user_metrics)
+        self.assertEqual(user_metrics['success'], True)
+        self.assertEqual(ingest_mock.call_count, 1)

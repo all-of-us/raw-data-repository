@@ -66,6 +66,11 @@ def _build_resource_app():
                       TASK_PREFIX + "RebuildConsentMetricApi",
                       endpoint="batch_rebuild_consent_metrics_task", methods=["POST"])
 
+    # Color User Event Metrics Cloud Task API endpoint
+    _api.add_resource(cloud_tasks_api.RebuildUserEventMetricsApi,
+                      TASK_PREFIX + "RebuildUserEventMetricsApi",
+                      endpoint="batch_rebuild_user_event_metrics_task", methods=["POST"])
+
     #
     # Begin Genomic Cloud Task API Endpoints
     #
@@ -104,6 +109,11 @@ def _build_resource_app():
                       TASK_PREFIX + "IngestSamplesFromRawTaskAPI",
                       endpoint="ingest_samples_from_raw_task", methods=["POST"])
 
+    # Ingest user event metrics from files
+    _api.add_resource(genomic_cloud_tasks_api.IngestUserEventMetricsApi,
+                      TASK_PREFIX + "IngestUserEventMetricsApi",
+                      endpoint="ingest_user_event_metrics", methods=["POST"])
+
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestDataFilesTaskApi,
                       TASK_PREFIX + "IngestDataFilesTaskApi",
@@ -112,7 +122,6 @@ def _build_resource_app():
     # Calculate manifest file record count
     _api.add_resource(genomic_cloud_tasks_api.CalculateRecordCountTaskApi,
                       TASK_PREFIX + "CalculateRecordCountTaskApi",
-
                       endpoint="calculate_record_count_task", methods=["POST"])
     # Calculate Contamination Category
     _api.add_resource(genomic_cloud_tasks_api.CalculateContaminationCategoryApi,
