@@ -1810,7 +1810,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
-                        GenomicInformingLoop.participant_id,
+                        distinct(GenomicInformingLoop.participant_id),
                         GenomicInformingLoop.module_type,
                         GenomicInformingLoop.decision_value,
                         literal('informingLoop')
