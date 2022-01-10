@@ -14,7 +14,7 @@ import sys
 
 from werkzeug.exceptions import NotFound
 
-from model.genomics import UserEventMetrics
+from rdr_service.model.genomics import UserEventMetrics
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import rebuild_bq_participant
