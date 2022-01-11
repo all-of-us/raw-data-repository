@@ -615,6 +615,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={informing_loop_type}'
             )
 
+        decision_loop_keys = ['module', 'type', 'status', 'decision', 'participant_id']
+        all_loop_keys_data = all(not len(obj.keys() - decision_loop_keys) and obj.values() for obj in resp['data'])
+        self.assertTrue(all_loop_keys_data)
+
         self.assertEqual(len(resp['data']), 5)
         all_loops = all(obj['type'] == informing_loop_type for obj in resp['data'])
         self.assertTrue(all_loops)
@@ -623,6 +627,10 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             resp = self.send_get(
                 f'GenomicOutreachV2?start_date={fake_date_one}&type={result_type}'
             )
+
+        result_keys = ['module', 'type', 'status', 'participant_id']
+        all_result_keys_data = all(not len(obj.keys() - result_keys) and obj.values() for obj in resp['data'])
+        self.assertTrue(all_result_keys_data)
 
         self.assertEqual(len(resp['data']), 5)
         all_results = all(obj['type'] == result_type for obj in resp['data'])

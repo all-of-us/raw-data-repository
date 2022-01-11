@@ -1761,7 +1761,7 @@ class GenomicOutreachDaoV2(BaseDao):
 
         for p in _dict.get('data'):
             if 'result' in p.type:
-                p_status, p_module = self._determine_report_state(p[1])
+                p_status, p_module = self._determine_report_state(p.genomic_report_state)
                 report = {
                     "module": p_module.lower(),
                     "type": p.type,
