@@ -16,7 +16,7 @@ class RetentionEligibleMetrics(Base):
     modified = Column("modified", UTCDateTime6, nullable=True)
 
     participantId = Column("participant_id", Integer, ForeignKey("participant.participant_id"), nullable=False,
-                           index=True)
+                           index=True, unique=True)
     retentionEligible = Column("retention_eligible", Boolean)
     retentionEligibleTime = Column("retention_eligible_time", UTCDateTime6)
     lastActiveRetentionActivityTime = Column("last_active_retention_activity_time", UTCDateTime6)
