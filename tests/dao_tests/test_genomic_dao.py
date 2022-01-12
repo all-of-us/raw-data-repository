@@ -3,6 +3,7 @@ from datetime import timedelta
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicIncidentDao, GenomicSetMemberDao
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicIncidentCode, GenomicIncidentStatus
+from rdr_service.model.genomics import GenomicIncident
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -227,6 +228,36 @@ class GenomicDaoTest(BaseTestCase):
             [obj.id for obj in self.incident_dao.get_all()],
             _type='resolved'
         )
+
+        resolved_incidents = self.incident_dao.get_daily_report_resolved_manifests(from_date)
+
+        self.assertEqual(len(resolved_incidents), len(self.incident_dao.get_all()))
+        self.assertTrue(all(obj.status == GenomicIncidentStatus.RESOLVED.name for obj in resolved_incidents))
+
+        # clear current set member records
+        with self.incident_dao.session() as session:
+            session.query(GenomicIncident).delete()
+
+        with clock.FakeClock(from_date):
+            for _ in range(5):
+                self.data_generator.create_database_genomic_incident(
+                    source_job_run_id=gen_job_run.id,
+                    source_file_processed_id=gen_processed_file.id,
+                    code=GenomicIncidentCode.FILE_VALIDATION_INVALID_FILE_NAME.name,
+                    message=f"{gen_job_run.jobId}: File name {file_name} has failed validation.",
+                )
+
+        self.incident_dao.batch_update_incident_fields(
+            [obj.id for obj in self.incident_dao.get_all()],
+            _type='resolved'
+        )
+
+        current_incidents = self.incident_dao.get_all()
+
+        for incident in current_incidents:
+            incident.created = from_date - timedelta(days=4)
+            incident.modified = clock.CLOCK.now()
+            self.incident_dao.update(incident)
 
         resolved_incidents = self.incident_dao.get_daily_report_resolved_manifests(from_date)
 
