@@ -23,7 +23,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.model.questionnaire import QuestionnaireQuestion
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
-from rdr_service.participant_enums import QuestionnaireResponsePayloadType
+from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -277,8 +277,8 @@ class TheBasicsAnalyzerClass(object):
         """
         Inspect the entire TheBasics response history for a participant
         It will use the QuestionnaireResponseAnswer data for all the received payloads for this participant to
-        look for any that should be marked with a specific QuestionnaireResponsePayloadType value, such as DUPLICATE
-        or NO_ANSWER_VALUES.
+        look for any that should be marked with a specific QuestionnaireResponseClassificationType value, such as
+        DUPLICATE or NO_ANSWER_VALUES.
         :param pid:   Participant ID
         :param response_list:  List of dicts with summary details about each of the participant's TheBasics responses
         """
@@ -295,7 +295,7 @@ class TheBasicsAnalyzerClass(object):
             rsp_id = curr_response.get('questionnaire_response_id')
             # COMPLETE payloads don't have their answer data inspected by default; only if more details requested
             # But indicate payloads that could impact RDR/PDR business logic
-            if curr_response.get('payload_type') == QuestionnaireResponsePayloadType.COMPLETE:
+            if curr_response.get('payload_type') == QuestionnaireResponseClassificationType.COMPLETE:
                 if has_completed_survey:
                     response_list[curr_position]['reason'] = 'Multiple complete survey payloads'
                     # Flag if this first completed survey follows some previously appended result
@@ -310,7 +310,7 @@ class TheBasicsAnalyzerClass(object):
             # answer data was sent for any of them.  See:  questionnaire_response_ids 101422823 or 999450910
             # These will be ignored when producing diffs between chronologically adjacent authored responses
             if not answers:
-                response_list[curr_position]['payload_type'] = QuestionnaireResponsePayloadType.NO_ANSWER_VALUES
+                response_list[curr_position]['payload_type'] = QuestionnaireResponseClassificationType.NO_ANSWER_VALUES
                 continue
 
             # Sets are used here to enable check for subset/superset relationships between responses
@@ -324,11 +324,11 @@ class TheBasicsAnalyzerClass(object):
                 # duplicate of an earlier one
                 matching_hash_idx = answer_hashes.index(curr_response['answer_hash'])
                 if (matching_hash_idx != curr_position and
-                        response_list[curr_position]['payload_type'] != QuestionnaireResponsePayloadType.COMPLETE):
+                      response_list[curr_position]['payload_type'] != QuestionnaireResponseClassificationType.COMPLETE):
                     # Mark this partial payload as a duplicate of the response whose answer hash it matches
                     # TODO:  Determine what to do with COMPLETE payload dups, with/without matching authored?
                     dup_rsp_id = response_list[matching_hash_idx].get('questionnaire_response_id')
-                    response_list[curr_position]['payload_type'] = QuestionnaireResponsePayloadType.DUPLICATE
+                    response_list[curr_position]['payload_type'] = QuestionnaireResponseClassificationType.DUPLICATE
                     response_list[curr_position]['duplicate_of'] = dup_rsp_id
                     response_list[curr_position]['reason'] = 'Duplicate answer hash'
 
@@ -336,7 +336,7 @@ class TheBasicsAnalyzerClass(object):
                 # is a superset of the last, update the last response's details to mark it as a duplicate of this
                 # current response
                 elif curr_response_answer_set and curr_response_answer_set.issuperset(last_response_answer_set):
-                    response_list[curr_position-1]['payload_type'] = QuestionnaireResponsePayloadType.DUPLICATE
+                    response_list[curr_position-1]['payload_type'] = QuestionnaireResponseClassificationType.DUPLICATE
                     response_list[curr_position-1]['duplicate_of'] = rsp_id
                     response_list[curr_position-1]['reason'] = 'Subset of a cascading superset response'
 
@@ -389,8 +389,8 @@ class TheBasicsAnalyzerClass(object):
                                     'authored': response_dict.get('authored', None),
                                     'answer_hash': response_dict.get('answerHash', None),
                                     'external_id' : response_dict.get('externalId', None),
-                                    'payload_type': QuestionnaireResponsePayloadType.COMPLETE if full_survey\
-                                                    else QuestionnaireResponsePayloadType.PROFILE_UPDATE,
+                                    'payload_type': QuestionnaireResponseClassificationType.COMPLETE if full_survey\
+                                                    else QuestionnaireResponseClassificationType.PROFILE_UPDATE,
                                     'answers': response_dict.get('answers', None),
                                     'duplicate_of': None,
                                     'reason': None,
@@ -404,7 +404,7 @@ class TheBasicsAnalyzerClass(object):
             result_details = self.inspect_responses(pid, result_details)
             for rec in result_details:
                 reason = rec['reason']
-                if rec['payload_type'] == str(QuestionnaireResponsePayloadType.COMPLETE):
+                if rec['payload_type'] == str(QuestionnaireResponseClassificationType.COMPLETE):
                     if prev_complete:
                         reason = 'Multiple full survey responses'
                     # Flag if this first completed survey follows some previously appended result
