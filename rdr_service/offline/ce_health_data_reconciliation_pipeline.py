@@ -119,7 +119,12 @@ class CeHealthDataReconciliationPipeline:
                 for item in content['FileKeys']:
                     health_file_path_list.append(self.bucket_name + '/' + item)
             if 'TransferTime' in content:
-                file_transferred_time = parse_datetime_from_iso_format(content['TransferTime'][:26] + 'Z')
+                # The fractional seconds are not padded. If the value is under 1,000,000 it will be less than 7 digits.
+                # The possible range is 0-9,999,999
+                # example: both "2021-11-18T17:24:27.3Z" and "2021-11-18T17:24:27.3252561Z" are valid
+                iso_time_str = content['TransferTime'][:26] if content['TransferTime'][:26].lower().endswith('z') \
+                    else content['TransferTime'][:26] + 'Z'
+                file_transferred_time = parse_datetime_from_iso_format(iso_time_str)
 
         return health_file_path_list, file_transferred_time
 
