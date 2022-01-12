@@ -984,6 +984,80 @@ class BQPDRCOPEVaccine3View(BQModuleView):
     _show_created = True
 
 
+class BQPDRCOPEVaccine4Schema(_BQModuleSchema):
+    """ COPE Vaccine Survey 4 (New Year 2022) """
+    _module = 'cope_vaccine4'
+    _force_boolean_fields = (
+        'cdc_covid_xx_b_firstdose_other',
+        'cdc_covid_xx_symptom_cope_350',
+        'cdc_covid_xx_b_seconddose_other',
+        'cdc_covid_xx_symptom_seconddose_cope_350',
+        'dmfs_29a',
+        'dmfs_29_seconddose_other',
+        'cdc_covid_xx_b_dose3_other',
+        'cdc_covid_xx_symptom_cope_350_dose3',
+        'cdc_covid_xx_type_dose3_other',
+        'dmfs_29_additionaldose_other',
+        'cdc_covid_xx_b_dose4_other',
+        'cdc_covid_xx_symptom_cope_350_dose4',
+        'cdc_covid_xx_type_dose4_other',
+        'cdc_covid_xx_b_dose5_other',
+        'cdc_covid_xx_symptom_cope_350_dose5',
+        'cdc_covid_xx_type_dose5_other',
+        'cdc_covid_xx_b_dose6_other',
+        'cdc_covid_xx_symptom_cope_350_dose6',
+        'cdc_covid_xx_type_dose6_other',
+        'cdc_covid_xx_b_dose7_other',
+        'cdc_covid_xx_symptom_cope_350_dose7',
+        'cdc_covid_xx_type_dose7_other',
+        'cdc_covid_xx_b_dose8_other',
+        'cdc_covid_xx_symptom_cope_350_dose8',
+        'cdc_covid_xx_type_dose8_other',
+        'cdc_covid_xx_b_dose9_other',
+        'cdc_covid_xx_symptom_cope_350_dose9',
+        'cdc_covid_xx_type_dose9_other',
+        'cdc_covid_xx_b_dose10_other',
+        'cdc_covid_xx_symptom_cope_350_dose10',
+        'cdc_covid_xx_type_dose10_other',
+        'cdc_covid_xx_b_dose11_other',
+        'cdc_covid_xx_symptom_cope_350_dose11',
+        'cdc_covid_xx_type_dose11_other',
+        'cdc_covid_xx_b_dose12_other',
+        'cdc_covid_xx_symptom_cope_350_dose12',
+        'cdc_covid_xx_type_dose12_other',
+        'cdc_covid_xx_b_dose13_other',
+        'cdc_covid_xx_symptom_cope_350_dose13',
+        'cdc_covid_xx_type_dose13_other',
+        'cdc_covid_xx_b_dose14_other',
+        'cdc_covid_xx_symptom_cope_350_dose14',
+        'cdc_covid_xx_type_dose14_other',
+        'cdc_covid_xx_b_dose15_other',
+        'cdc_covid_xx_symptom_cope_350_dose15',
+        'cdc_covid_xx_type_dose15_other',
+        'cdc_covid_xx_b_dose16_other',
+        'cdc_covid_xx_symptom_cope_350_dose16',
+        'cdc_covid_xx_type_dose16_other',
+        'cdc_covid_xx_b_dose17_other',
+        'cdc_covid_xx_symptom_cope_350_dose17',
+        'cdc_covid_xx_type_dose17_other'
+    )
+
+
+class BQPDRCOPEVaccine4(BQTable):
+    """ COPE Vaccine 4 BigQuery Table """
+    __tablename__ = 'pdr_mod_cope_vaccine4'
+    __schema__ = BQPDRCOPEVaccine4Schema
+
+
+class BQPDRCOPEVaccine4View(BQModuleView):
+    """ PDR COPE Vaccine 4 BigQuery View """
+    __viewname__ = 'v_pdr_mod_cope_vaccine4'
+    __viewdescr__ = 'PDR COPE Vaccine4 Module View'
+    __table__ = BQPDRCOPEVaccine4
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
+
+
 class BQPDRPersonalFamilyHistorySchema(_BQModuleSchema):
     """  Personal and Family History Module """
     _module   = 'personalfamilyhistory'
@@ -1217,6 +1291,7 @@ PDR_MODULE_LIST = (
     BQPDRWithdrawalIntro,
     BQPDRSDOH,
     BQPDRCOPEVaccine3,
+    BQPDRCOPEVaccine4,
     BQPDRPersonalFamilyHistory,
     BQPDRGeneralFeedback,
     BQPDRPostPMBFeedback,
