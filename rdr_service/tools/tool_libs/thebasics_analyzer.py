@@ -309,9 +309,9 @@ class TheBasicsAnalyzerClass(object):
             # Sets are used here to enable check for subset/superset relationships between responses
             if last_response_answer_set is None:
                 # Initialize "last" data to this first response
-                last_response_answer_set = set(curr_response['answers'].items())
+                last_response_answer_set = set(answers.items())
             else:
-                curr_response_answer_set = set (curr_response['answers'].items())
+                curr_response_answer_set = set (answers.items())
                 # index() will find the first location in the answer_hashes list containing the current response's
                 # answer hash.  If it doesn't match the current response's position, the current response is a
                 # duplicate of an earlier one
