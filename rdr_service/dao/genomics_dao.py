@@ -1834,7 +1834,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value.isnot(None),
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
-                        genomic_loop_alias.event_authored_time.is_(None)
+                        genomic_loop_alias.event_authored_time.is_(None),
+                        GenomicSetMember.ignoreFlag != 1
                     )
                 )
                 ready_loop = (
@@ -1897,7 +1898,8 @@ class GenomicOutreachDaoV2(BaseDao):
                     .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
+                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
+                        GenomicSetMember.ignoreFlag != 1
                     )
                 )
                 if pid:
