@@ -1609,7 +1609,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('10000102', member.collectionTubeId)
+                self.assertEqual('10000101', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1645,7 +1645,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000101, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1653,7 +1653,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000101, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1703,7 +1703,7 @@ class GenomicPipelineTest(BaseTestCase):
             if member.biobankId == '100001':
                 # 100001 : Included, Valid
                 self.assertEqual(0, member.nyFlag)
-                self.assertEqual('10000102', member.collectionTubeId)
+                self.assertEqual('10000101', member.collectionTubeId)
                 self.assertEqual('F', member.sexAtBirth)
                 self.assertEqual(GenomicSetMemberStatus.VALID, member.validationStatus)
                 self.assertEqual('N', member.ai_an)
@@ -1739,7 +1739,7 @@ class GenomicPipelineTest(BaseTestCase):
                 rows = list(csv_reader)
 
                 self.assertEqual("T100001", rows[0][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000101, int(rows[0][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[0][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[0][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[0][ExpectedCsvColumns.VALIDATION_PASSED])
@@ -1747,7 +1747,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual("aou_array", rows[0][ExpectedCsvColumns.GENOME_TYPE])
 
                 self.assertEqual("T100001", rows[1][ExpectedCsvColumns.BIOBANK_ID])
-                self.assertEqual(10000102, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
+                self.assertEqual(10000101, int(rows[1][ExpectedCsvColumns.COLLECTION_TUBE_ID]))
                 self.assertEqual("F", rows[1][ExpectedCsvColumns.SEX_AT_BIRTH])
                 self.assertEqual("N", rows[1][ExpectedCsvColumns.NY_FLAG])
                 self.assertEqual("Y", rows[1][ExpectedCsvColumns.VALIDATION_PASSED])
