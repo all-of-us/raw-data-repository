@@ -20,6 +20,7 @@ from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
 from rdr_service.participant_enums import QuestionnaireResponseStatus
 
+
 class QuestionnaireResponse(Base):
     """"A response to a questionnaire for a participant. Contains answers to questions found in the
   questionnaire."""

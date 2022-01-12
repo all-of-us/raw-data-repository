@@ -56,6 +56,7 @@ class ParticipantCohortPilotFlag(messages.Enum):
     UNSET = 0
     COHORT_2_PILOT = 1 # Genomics Cohort 2 Pilot Group
 
+
 class PatientStatusFlag(messages.Enum):
     """Site patient status"""
 

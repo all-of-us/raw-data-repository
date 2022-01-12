@@ -169,9 +169,13 @@ class TheBasicsAnalyzerClass(object):
         else:
             close_session = False
 
+        # Possible for the answer_list query below to return nothing in isolated cases where there were no answers in
+        # payload.  So, grab the QuestionnaireResponse row separately as well to extract response meta data
+        meta_row = session.query(QuestionnaireResponse)\
+                   .filter(QuestionnaireResponse.questionnaireResponseId == response_id).first()
+
         answer = aliased(Code)
-        # One row returned for each questionnaire_response_answer entry associated with this questionnaire_response_id
-        # The meta data fields from QuestionnaireResponse remain the same across all rows
+
         answer_list = session.query(
             QuestionnaireResponse.questionnaireResponseId,
             QuestionnaireResponse.answerHash,
@@ -207,11 +211,12 @@ class TheBasicsAnalyzerClass(object):
         for row in answer_list:
             response_dict['answers'][row.question_code_value] = row.answer_value
 
+
         response_dict['answer_count'] = len(response_dict['answers'].keys())
         response_dict['questionnaireResponseId'] = response_id
-        response_dict['answerHash'] = row.answerHash
-        response_dict['authored'] = row.authored
-        response_dict['externalId'] = row.externalId
+        response_dict['answerHash'] = meta_row.answerHash if meta_row else None
+        response_dict['authored'] = meta_row.authored if meta_row else None
+        response_dict['externalId'] = meta_row.externalId if meta_row else None
 
         if close_session:
             session.close()
