@@ -157,8 +157,7 @@ class TheBasicsAnalyzerClass(object):
         """
         Generate a dict of a TheBasics response.  Includes meta data keys/values and an answers nested dict
         with question code keys and answer values.  The answer value is from a COALESCE of the
-        QuestionnaireResponseAnswer table's valueCodeId, valueString, valueBoolean, valueInteger, valueDate,
-        and valueDateTime columns
+        QuestionnaireResponseAnswer table's value_* columns for each possible answer datatype
         :param response_id:   Integer questionnaire response id
         :param session:       A DAO session() object, if one has already been instantiated.
         """
@@ -183,11 +182,14 @@ class TheBasicsAnalyzerClass(object):
             QuestionnaireResponse.externalId,
             Code.value.label('question_code_value'),
             func.coalesce(answer.value,
-                          QuestionnaireResponseAnswer.valueString,
                           QuestionnaireResponseAnswer.valueBoolean,
-                          QuestionnaireResponseAnswer.valueInteger,
                           QuestionnaireResponseAnswer.valueDate,
-                          QuestionnaireResponseAnswer.valueDateTime
+                          QuestionnaireResponseAnswer.valueDateTime,
+                          QuestionnaireResponseAnswer.valueDecimal,
+                          QuestionnaireResponseAnswer.valueInteger,
+                          QuestionnaireResponseAnswer.valueString,
+                          QuestionnaireResponseAnswer.valueSystem,
+                          QuestionnaireResponseAnswer.valueUri
                           ).label('answer_value')
         ).select_from(
             QuestionnaireResponse
