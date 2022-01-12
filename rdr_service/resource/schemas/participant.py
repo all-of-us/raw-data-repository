@@ -312,6 +312,7 @@ class ParticipantSchema(Schema):
     test_participant = fields.Boolean()
 
     sign_up_time = fields.DateTime()
+    age_at_consent = fields.Int16()
     enrl_status = fields.String(validate=validate.Length(max=40))
     enrl_status_id = fields.Int32()
     enrl_registered_time = fields.DateTime()

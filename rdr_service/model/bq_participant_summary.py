@@ -385,6 +385,7 @@ class BQParticipantSummarySchema(BQSchema):
     ubr_overall = BQField('ubr_overall', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
     sexual_orientations = BQRecordField('sexual_orientations', schema=BQSexualOrientationSchema)
+    age_at_consent = BQField('age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQParticipantSummary(BQTable):
