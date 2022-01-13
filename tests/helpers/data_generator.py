@@ -35,7 +35,8 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
     QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseClassificationType
 from rdr_service.model.site import Site
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption
 from rdr_service.offline.biobank_samples_pipeline import _PMI_OPS_SYSTEM
@@ -161,7 +162,7 @@ class DataGenerator:
                                ('resource', 'test'),
                                ('nonParticipantAuthor', None),
                                ('status', QuestionnaireResponseStatus.COMPLETED),
-                               ('isDuplicate', False)]:
+                               ('classificationType', QuestionnaireResponseClassificationType.COMPLETE)]:
             if field not in kwargs:
                 kwargs[field] = default
 

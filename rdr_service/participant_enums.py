@@ -113,6 +113,7 @@ class QuestionnaireResponseClassificationType(messages.Enum):
     AUTHORED_TIME_UPDATED = 4  # Known/expected retransmission of previous payloads, but with a corrected authored ts
     PARTIAL = 5                # Other cases (e.g., partial COPE surveys) where payload is not a completed survey
 
+
 class EnrollmentStatus(messages.Enum):
     """A status reflecting how fully enrolled a participant is"""
 

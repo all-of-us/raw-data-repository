@@ -21,7 +21,8 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseClassificationType
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -261,7 +262,7 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False)
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
@@ -385,7 +386,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False),
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
             and_(
                 ParticipantSummary.dateOfBirth.isnot(None),
                 func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth, CLOCK.now()) >= 18

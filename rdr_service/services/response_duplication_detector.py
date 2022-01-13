@@ -5,7 +5,7 @@ from sqlalchemy.orm import aliased
 from typing import Type
 
 from rdr_service.dao.database_factory import get_database
-from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseClassificationType
 
 
 class ResponseDuplicationDetector:
@@ -31,7 +31,7 @@ class ResponseDuplicationDetector:
 
     def _get_duplicate_responses(self, session, earliest_response_date):
         older_duplicate = aliased(QuestionnaireResponse)  # joined as older responses to be updated as duplicates
-        newer_duplicate = aliased(QuestionnaireResponse)  # used to keep isDuplicate = 0 on the latest response
+        newer_duplicate = aliased(QuestionnaireResponse)  # used to keep COMPLETE classificiaton on the latest response
         other_duplicate = aliased(QuestionnaireResponse)  # used to find the number of other duplicates there are
         return (
             session.query(
@@ -45,7 +45,7 @@ class ResponseDuplicationDetector:
                 older_duplicate,
                 and_(
                     self._responses_are_duplicates(QuestionnaireResponse, older_response=older_duplicate),
-                    older_duplicate.isDuplicate.is_(False)
+                    older_duplicate.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
                 )
             ).join(
                 other_duplicate,
@@ -54,7 +54,7 @@ class ResponseDuplicationDetector:
                 newer_duplicate,
                 self._responses_are_duplicates(newer_duplicate, older_response=QuestionnaireResponse)
             ).filter(
-                # We should use the newest duplicate, and mark the older ones with isDuplicate
+                # We should use the newest duplicate, and mark the older ones with classification DUPLICATE
                 newer_duplicate.questionnaireResponseId.is_(None),
                 QuestionnaireResponse.created >= earliest_response_date,
                 # The Questionnaire id needs to be referenced to use the index that has the created date
@@ -83,6 +83,6 @@ class ResponseDuplicationDetector:
                     update(QuestionnaireResponse)
                     .where(QuestionnaireResponse.questionnaireResponseId.in_(questionnaire_ids_to_mark_as_duplicates))
                     .values({
-                        QuestionnaireResponse.isDuplicate: True
+                        QuestionnaireResponse.classificationType: QuestionnaireResponseClassificationType.DUPLICATE
                     })
                 )
