@@ -753,8 +753,8 @@ class GenomicResultViewed(Base):
     event_type = Column(String(256), nullable=False)
     event_authored_time = Column(UTCDateTime6)
     module_type = Column(String(128))
-    first_viewed = Column(DateTime)
-    last_viewed = Column(DateTime)
+    first_viewed = Column(UTCDateTime6)
+    last_viewed = Column(UTCDateTime6)
 
 
 event.listen(GenomicResultViewed, 'before_insert', model_insert_listener)

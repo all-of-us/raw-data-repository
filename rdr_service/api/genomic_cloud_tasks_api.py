@@ -319,14 +319,23 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
     def post(self):
         super(IngestFromMessageBrokerDataApi, self).post()
 
-        if not self.get('event_type'):
-            logging.warning('Event type is required for ingestion from Message broker')
+        if not self.data.get('event_type') or not self.data.get('message_record_id'):
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
             return {"success": False}
 
-        event_type = self.get('event_type')
+        event_type = self.data.get('event_type')
 
-        if event_type not in ('informing_loop', 'result_viewed'):
-            logging.warning(f'Incorrect event_type {event_type} passed from Message broker task')
+        acceptable_event_types = [
+            'informing_loop_started',
+            'informing_loop_decision',
+            'result_viewed'
+        ]
+
+        if event_type not in acceptable_event_types:
+            logging.warning(f"Incorrect event_type {event_type} passed from Message "
+                            f"broker task, acceptable events:"
+                            f"{', '.join(acceptable_event_types)}")
+
             return {"success": False}
 
         logging.info(f'Ingesting {event_type}')
@@ -336,9 +345,9 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
             'result_viewed': GenomicJob.INGEST_RESULT_VIEWED,
         }
 
-        job_key = ingest_method_map[list(filter(lambda x: x in event_type, ingest_method_map.keys()))[0]]
+        job_type = ingest_method_map[list(filter(lambda x: x in event_type, ingest_method_map.keys()))[0]]
 
-        with GenomicJobController(ingest_method_map[job_key]) as controller:
+        with GenomicJobController(job_type) as controller:
             controller.ingest_records_from_message_broker_data(
                 message_record_id=self.data['message_record_id'],
                 event_type=event_type

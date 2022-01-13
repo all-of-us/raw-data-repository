@@ -45,8 +45,8 @@ def upgrade_rdr():
     sa.Column('event_type', sa.String(length=256), nullable=False),
     sa.Column('event_authored_time', rdr_service.model.utils.UTCDateTime6(fsp=6), nullable=True),
     sa.Column('module_type', sa.String(length=128), nullable=True),
-    sa.Column('first_viewed', sa.DateTime(), nullable=True),
-    sa.Column('last_viewed', sa.DateTime(), nullable=True),
+    sa.Column('first_viewed', rdr_service.model.utils.UTCDateTime6(fsp=6), nullable=True),
+    sa.Column('last_viewed',  rdr_service.model.utils.UTCDateTime6(fsp=6), nullable=True),
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )

@@ -2591,7 +2591,7 @@ class GenomicResultViewedDao(UpdatableDao):
             ).filter(
                 GenomicResultViewed.participant_id == pid,
                 GenomicResultViewed.module_type == module
-            )
+            ).one_or_none()
 
 
 class GenomicGcDataFileDao(BaseDao):

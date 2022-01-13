@@ -1397,26 +1397,91 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         self.assertEqual(ingest_mock.call_count, path_count)
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_informing_loop_records')
-    def test_informing_loop_task_api(self, ingest_called):
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController'
+                '.ingest_records_from_message_broker_data')
+    def test_ingest_message_broker_ingest_data_api(self, ingest_called):
+
+        from rdr_service.resource import main as resource_main
 
         data = {
             'message_record_id': [],
             'event_type': ''
         }
 
-        from rdr_service.resource import main as resource_main
-
-        insert_informing_loop = self.send_post(
-            local_path='IngestInformingLoopTaskApi',
+        bad_data_post = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
             request_data=data,
             prefix="/resource/task/",
             test_client=resource_main.app.test_client(),
         )
 
-        self.assertIsNotNone(insert_informing_loop)
-        self.assertEqual(insert_informing_loop['success'], True)
+        self.assertIsNotNone(bad_data_post)
+        self.assertEqual(bad_data_post['success'], False)
+        self.assertEqual(ingest_called.call_count, 0)
+
+        data = {
+            'message_record_id': 2,
+            'event_type': 'bad_event'
+        }
+
+        bad_value_post = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(bad_value_post)
+        self.assertEqual(bad_value_post['success'], False)
+        self.assertEqual(ingest_called.call_count, 0)
+
+        data = {
+            'message_record_id': 2,
+            'event_type': 'informing_loop_decision'
+        }
+
+        informing_loop_post = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(informing_loop_post)
+        self.assertEqual(informing_loop_post['success'], True)
         self.assertEqual(ingest_called.call_count, 1)
+
+        data = {
+            'message_record_id': 2,
+            'event_type': 'informing_loop_started'
+        }
+
+        informing_loop_post_two = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(informing_loop_post_two)
+        self.assertEqual(informing_loop_post_two['success'], True)
+        self.assertEqual(ingest_called.call_count, 2)
+
+        data = {
+            'message_record_id': 2,
+            'event_type': 'result_viewed'
+        }
+
+        result_viewed_post = self.send_post(
+            local_path='IngestFromMessageBrokerDataApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(result_viewed_post)
+        self.assertEqual(result_viewed_post['success'], True)
+        self.assertEqual(ingest_called.call_count, 3)
 
     def test_batch_data_file_task_api(self):
 

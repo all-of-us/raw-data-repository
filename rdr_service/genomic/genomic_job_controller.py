@@ -457,6 +457,8 @@ class GenomicJobController:
                 logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
 
                 module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
+                module_type = module_type[0].valueString
+
                 decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
                                   obj.valueString]
 
@@ -465,7 +467,7 @@ class GenomicJobController:
                     message_record_id=first_record.messageRecordId,
                     event_type=loop_type,
                     event_authored_time=first_record.eventAuthoredTime,
-                    module_type=module_type[0].valueString if module_type else None,
+                    module_type=module_type if module_type else None,
                     decision_value=decision_value[0].valueString if decision_value else None,
                 )
 
