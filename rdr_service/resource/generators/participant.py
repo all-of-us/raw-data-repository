@@ -6,6 +6,7 @@ import re
 from collections import OrderedDict
 from dateutil import parser, tz
 from dateutil.parser import ParserError
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, desc, exc
 from werkzeug.exceptions import NotFound
 
@@ -1198,6 +1199,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             'enrollment_core_minus_pm': esc.core_participant_minus_pm_time
             # -- End depreciated fields --
         }
+
+        # Calculate age at consent.
+        if isinstance(data['enrl_participant_time'], datetime.datetime) and \
+                    'date_of_birth' in summary and isinstance(summary['date_of_birth'], datetime.date):
+            rd = relativedelta(data['enrl_participant_time'], summary['date_of_birth'])
+            data['age_at_consent'] = rd.years
 
         return data
 
