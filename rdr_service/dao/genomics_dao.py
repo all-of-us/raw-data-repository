@@ -40,7 +40,8 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
+    GenomicResultViewed)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2568,6 +2569,30 @@ class GenomicInformingLoopDao(UpdatableDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+
+class GenomicResultViewedDao(UpdatableDao):
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicResultViewedDao, self).__init__(
+            GenomicResultViewed, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+    def get_record_by_pid_module(self, pid, module='gem'):
+        with self.session() as session:
+            return session.query(
+                GenomicResultViewed
+            ).filter(
+                GenomicResultViewed.participant_id == pid,
+                GenomicResultViewed.module_type == module
+            )
+
 
 class GenomicGcDataFileDao(BaseDao):
     def __init__(self):

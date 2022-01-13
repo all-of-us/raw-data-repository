@@ -276,9 +276,9 @@ class GenomicJobControllerTest(BaseTestCase):
             )
 
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
-            controller.ingest_informing_loop_records(
+            controller.ingest_records_from_message_broker_data(
                 message_record_id=message_broker_record.id,
-                loop_type=loop_decision
+                event_type=loop_decision
             )
 
         decision_genomic_record = self.informing_loop_dao.get(1)
@@ -317,9 +317,9 @@ class GenomicJobControllerTest(BaseTestCase):
             )
 
         with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP) as controller:
-            controller.ingest_informing_loop_records(
+            controller.ingest_records_from_message_broker_data(
                 message_record_id=message_broker_record_two.id,
-                loop_type=loop_started
+                event_type=loop_started
             )
 
         started_genomic_record = self.informing_loop_dao.get(2)

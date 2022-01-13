@@ -31,7 +31,7 @@ from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_f
 from rdr_service.genomic.genomic_set_file_handler import DataError
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicManifestFile, GenomicManifestFeedback, \
-    GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile
+    GenomicGCValidationMetrics, GenomicInformingLoop, GenomicGcDataFile, GenomicResultViewed
 from rdr_service.genomic_enums import GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicIncidentCode, GenomicManifestTypes
 from rdr_service.genomic.genomic_job_components import (
@@ -53,7 +53,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao,
-    GcDataFileStagingDao, UserEventMetricsDao)
+    GcDataFileStagingDao, UserEventMetricsDao, GenomicResultViewedDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -107,6 +107,7 @@ class GenomicJobController:
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.member_dao = GenomicSetMemberDao()
         self.informing_loop_dao = GenomicInformingLoopDao()
+        self.result_viewed_dao = GenomicResultViewedDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
         self.ingester = None
@@ -442,30 +443,66 @@ class GenomicJobController:
         except RuntimeError:
             logging.warning('Inserting data file failure')
 
-    def ingest_informing_loop_records(self, *, message_record_id, loop_type):
-        informing_records = self.message_broker_event_dao.get_informing_loop(
-            message_record_id,
-            loop_type
-        )
+    def ingest_records_from_message_broker_data(self, *, message_record_id, event_type):
 
-        if informing_records:
-            first_record = informing_records[0]
-            logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
-
-            module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
-            decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
-                              obj.valueString]
-
-            loop_obj = GenomicInformingLoop(
-                participant_id=first_record.participantId,
-                message_record_id=first_record.messageRecordId,
-                event_type=loop_type,
-                event_authored_time=first_record.eventAuthoredTime,
-                module_type=module_type[0].valueString if module_type else None,
-                decision_value=decision_value[0].valueString if decision_value else None,
+        if 'informing_loop' in event_type:
+            loop_type = event_type
+            informing_records = self.message_broker_event_dao.get_informing_loop(
+                message_record_id,
+                loop_type
             )
 
-            self.informing_loop_dao.insert(loop_obj)
+            if informing_records:
+                first_record = informing_records[0]
+                logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
+
+                module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
+                decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
+                                  obj.valueString]
+
+                loop_obj = GenomicInformingLoop(
+                    participant_id=first_record.participantId,
+                    message_record_id=first_record.messageRecordId,
+                    event_type=loop_type,
+                    event_authored_time=first_record.eventAuthoredTime,
+                    module_type=module_type[0].valueString if module_type else None,
+                    decision_value=decision_value[0].valueString if decision_value else None,
+                )
+
+                self.informing_loop_dao.insert(loop_obj)
+                return
+
+        elif 'result_viewed' in event_type:
+            result_records = self.message_broker_event_dao.get_result_viewed(
+                message_record_id
+            )
+            if result_records:
+                first_record = result_records[0]
+                logging.info(f'Inserting result_viewed for Participant: {first_record.participantId}')
+
+                module_type = [obj for obj in result_records if obj.fieldName == 'module_type' and obj.valueString]
+                module_type = module_type[0].valueString
+
+                current_record = self.result_viewed_dao.get_record_by_pid_module(
+                    first_record.participantId,
+                    module_type
+                )
+
+                if not current_record:
+                    result_obj = GenomicResultViewed(
+                        participant_id=first_record.participantId,
+                        message_record_id=first_record.messageRecordId,
+                        event_type=event_type,
+                        event_authored_time=first_record.eventAuthoredTime,
+                        module_type=module_type if module_type else None,
+                        first_viewed=first_record.eventAuthoredTime,
+                        last_viewed=first_record.eventAuthoredTime
+                    )
+                    self.result_viewed_dao.insert(result_obj)
+                    return
+
+                current_record.last_viewed = first_record.eventAuthoredTime
+                self.result_viewed_dao.update(current_record)
 
     def accession_data_files(self, file_path, bucket_name):
         data_file_dao = GenomicGcDataFileDao()

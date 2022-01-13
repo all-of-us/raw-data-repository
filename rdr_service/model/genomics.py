@@ -736,7 +736,7 @@ event.listen(GenomicInformingLoop, 'before_insert', model_insert_listener)
 event.listen(GenomicInformingLoop, 'before_update', model_update_listener)
 
 
-class GenomicsResultViewed(Base):
+class GenomicResultViewed(Base):
     """
     Used for maintaining normalized value set of
     result_viewed ingested from MessageBrokerEventData
@@ -757,8 +757,8 @@ class GenomicsResultViewed(Base):
     last_viewed = Column(DateTime)
 
 
-event.listen(GenomicsResultViewed, 'before_insert', model_insert_listener)
-event.listen(GenomicsResultViewed, 'before_update', model_update_listener)
+event.listen(GenomicResultViewed, 'before_insert', model_insert_listener)
+event.listen(GenomicResultViewed, 'before_update', model_update_listener)
 
 
 class GenomicGcDataFile(Base):
