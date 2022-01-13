@@ -10,6 +10,7 @@ from tests.helpers.unittest_base import BaseTestCase
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
 import rdr_service.resource.generators
+# Note:  This generator doesn't have its own
 
 class ConsentMetricGeneratorTest(BaseTestCase):
 
