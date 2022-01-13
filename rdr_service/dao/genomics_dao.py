@@ -2447,7 +2447,8 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicJobRun.jobId.in_(self.ingestion_job_ids),
                 GenomicIncident.source_file_processed_id.isnot(None),
                 GenomicIncident.source_job_run_id.isnot(None),
-                GenomicIncident.created >= from_date.replace(microsecond=0)
+                or_(GenomicIncident.created >= from_date.replace(microsecond=0),
+                    GenomicIncident.modified >= from_date.replace(microsecond=0))
             )
 
             return incidents.all()
