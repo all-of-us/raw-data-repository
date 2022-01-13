@@ -29,7 +29,6 @@ def new_participant_workflow():
 def c2_participant_workflow():
     """
     Entrypoint for Cohort 2 Participant Workflow,
-    Sources from Cohort 2 participants that have reconsented.
     """
     with GenomicJobController(GenomicJob.C2_PARTICIPANT_WORKFLOW) as controller:
         controller.run_c2_participant_workflow()
