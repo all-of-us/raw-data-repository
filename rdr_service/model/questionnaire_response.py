@@ -53,7 +53,7 @@ class QuestionnaireResponse(Base):
 
     classificationType = Column('classification_type',
       EnumZeroBased(QuestionnaireResponseClassificationType),
-      nullable=False,
+      nullable=True, # To remain consistent with existing column definition and enable op.alter_column
       default=QuestionnaireResponseClassificationType.COMPLETE,
       server_default=text(str(int(QuestionnaireResponseClassificationType.COMPLETE))))
     """ Classification of a response (e.g., COMPLETE or DUPLICATE) which can determine if it should be ignored """
