@@ -37,7 +37,8 @@ from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.site import Site
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseClassificationType
 from rdr_service.participant_enums import EnrollmentStatusV2, WithdrawalStatus, WithdrawalReason, SuspensionStatus, \
     SampleStatus, BiobankOrderStatus, PatientStatusFlag, ParticipantCohortPilotFlag, EhrStatus, DeceasedStatus, \
     DeceasedReportStatus, QuestionnaireResponseStatus, OrderStatus, WithdrawalAIANCeremonyStatus, \
@@ -605,7 +606,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor,
                 QuestionnaireHistory.semanticVersion, QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
-            filter(QuestionnaireResponse.participantId == p_id, QuestionnaireResponse.isDuplicate.is_(False)). \
+            filter(QuestionnaireResponse.participantId == p_id,
+                   QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE). \
             order_by(QuestionnaireResponse.authored, QuestionnaireResponse.created.desc(),
                      QuestionnaireResponse.externalId.desc())
         # sql = self.ro_dao.query_to_text(query)
@@ -1291,7 +1293,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     INNER JOIN questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                     INNER JOIN questionnaire q on q.questionnaire_id = qc.questionnaire_id
             WHERE qr.participant_id = :p_id and qc.code_id in (select c1.code_id from code c1 where c1.value = :mod)
-                AND qr.is_duplicate = FALSE
+                AND qr.classification_type != 1
             ORDER BY qr.created;
         """
 

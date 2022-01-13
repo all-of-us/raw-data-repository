@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import mock
 
-from rdr_service.model.questionnaire_response import QuestionnaireResponse
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseClassificationType
 from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -18,7 +18,10 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         return self.data_generator.create_database_questionnaire_response(**response_params)
 
     def test_duplicates_are_marked(self):
-        """Any responses found to be a duplicate of another should have isDuplicate set (except the most recent one)"""
+        """
+        Any responses found to be a duplicate of another should have DUPLICATE classification
+        (except the most recent one)
+        """
 
         # Create some responses, some that are duplicates of each other
         participant = self.data_generator.create_database_participant()
@@ -52,17 +55,17 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         detector = ResponseDuplicationDetector(duplication_threshold=2)
         detector.flag_duplicate_responses(num_days_ago=30)
 
-        # Reload responses in the current session so we can get the updated info on the isDuplicate field
+        # Reload responses in the current session so we can get the updated info on the classificationType field
         self.session.refresh(one)
         self.session.refresh(duplicate_of_one)
         self.session.refresh(last_duplicate_of_one)
         self.session.refresh(two)
 
-        # Check that the isDuplicate flags were set correctly
-        self.assertTrue(one.isDuplicate)
-        self.assertTrue(duplicate_of_one.isDuplicate)
-        self.assertFalse(last_duplicate_of_one.isDuplicate)
-        self.assertFalse(two.isDuplicate)
+        # Check that the response classifications were set correctly
+        self.assertEqual(one.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
+        self.assertEqual(duplicate_of_one.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
+        self.assertNotEqual(last_duplicate_of_one.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
+        self.assertNotEqual(two.classificationType, QuestionnaireResponseClassificationType.DUPLICATE)
 
     @mock.patch('rdr_service.services.response_duplication_detector.logging')
     def test_duplicates_are_not_reprocessed(self, mock_logging):
@@ -74,7 +77,7 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
             externalId='one',
             answerHash='badbeef',
             created=datetime.now() - timedelta(days=5),
-            isDuplicate=True
+            classificationType=QuestionnaireResponseClassificationType.DUPLICATE
         )
         another_response = self._make_duplicate_of(
             response=first_response,
@@ -119,7 +122,7 @@ class ResponseDuplicationDetectorTests(BaseTestCase):
         # Check that nothing is marked as a duplicate of anything else
         detector.flag_duplicate_responses()
         duplicate_response = self.session.query(QuestionnaireResponse).filter(
-            QuestionnaireResponse.isDuplicate.is_(True)
+            QuestionnaireResponse.classificationType == QuestionnaireResponseClassificationType.DUPLICATE
         ).first()
         self.assertIsNone(duplicate_response)
 
