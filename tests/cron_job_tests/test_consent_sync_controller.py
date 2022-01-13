@@ -117,7 +117,13 @@ class ConsentSyncControllerTest(BaseTestCase):
             ],
             any_order=True
         )
-        mock_dispatch_rebuild.assert_called_once_with([self.bob_file.id, self.foo_file.id, self.bar_file.id])
+        mock_dispatch_rebuild.assert_has_calls(
+            [
+                mock.call([self.bob_file.id]),
+                mock.call([self.foo_file.id]),
+                mock.call([self.bar_file.id]),
+            ], any_order=True
+        )
 
     def test_zipping_specified_orgs(self, mock_dispatch_rebuild):
         """Test that the controller zips consents for organizations that give that they should be zipped"""
@@ -152,7 +158,12 @@ class ConsentSyncControllerTest(BaseTestCase):
             source_file=mock.ANY,  # Uploading archive generated from temp directory
             path=f'{self.foo_bucket_name}/Participant/{self.foo_org_name}/{DEFAULT_GOOGLE_GROUP}.zip'
         )
-        mock_dispatch_rebuild.assert_called_once_with([self.bob_file.id, self.foo_file.id])
+        mock_dispatch_rebuild.assert_has_calls(
+            [
+                mock.call([self.bob_file.id]),
+                mock.call([self.foo_file.id]),
+            ], any_order=True
+        )
 
     def test_unpaired_participants(self, mock_dispatch_rebuild):
         """Test that any participants that aren't paired are ignored"""
@@ -191,7 +202,13 @@ class ConsentSyncControllerTest(BaseTestCase):
             self.assertIn(expected_key, org_name_keys)
 
         # All files still had their sync_status updated
-        mock_dispatch_rebuild.assert_called_once_with([self.bob_file.id, self.foo_file.id, self.bar_file.id])
+        mock_dispatch_rebuild.assert_has_calls(
+            [
+                mock.call([self.bob_file.id]),
+                mock.call([self.foo_file.id]),
+                mock.call([self.bar_file.id]),
+            ], any_order=True
+        )
 
     @classmethod
     def _build_expected_dest_path(cls, bucket_name, org_id, site_group, participant_id, file_name):
