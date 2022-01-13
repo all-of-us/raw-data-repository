@@ -12,7 +12,7 @@ from rdr_service.model.consent_file import ConsentFile as ParsingResult, Consent
     ConsentOtherErrors
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
-from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
+from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks, dispatch_check_consent_errors_task
 from rdr_service.services.consent import files
 from rdr_service.storage import GoogleCloudStorageProvider
 
@@ -345,6 +345,7 @@ class ConsentValidationController:
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
+        validation_start_time = datetime.utcnow().replace(microsecond=0)
         for summary in self.consent_dao.get_participants_with_unvalidated_files(session):
             self.validate_participant_consents(
                 summary=summary,
@@ -352,6 +353,9 @@ class ConsentValidationController:
                 min_authored_date=min_consent_date,
                 max_authored_date=max_consent_date
             )
+
+        # Queue a task to check for new errors to report to PTSC
+        dispatch_check_consent_errors_task(validation_start_time)
 
     def validate_all_for_participant(self, participant_id: int, output_strategy: ValidationOutputStrategy):
         summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)

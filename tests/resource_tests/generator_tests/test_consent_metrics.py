@@ -2,18 +2,24 @@
 # This file is subject to the terms and conditions defined in the
 # file 'LICENSE', which is part of this source code package.
 #
+import mock
+
 from datetime import datetime, date
 from tests.helpers.unittest_base import BaseTestCase
 
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
 import rdr_service.resource.generators
+# Note:  This generator doesn't have its own
 
 class ConsentMetricGeneratorTest(BaseTestCase):
 
     def setUp(self, *args, **kwargs) -> None:
         super(ConsentMetricGeneratorTest, self).setUp(*args, **kwargs)
         self.resource_data_dao = ResourceDataDao()
+        self._participant = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        self.consent_metric_resource_generator = rdr_service.resource.generators.ConsentMetricGenerator()
+        self.consent_error_report_generator = rdr_service.resource.generators.ConsentErrorReportGenerator()
 
     def _create_participant_with_all_consents_authored(self, **kwargs):
         """ Populate a participant_summary record with provided data """
@@ -25,7 +31,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             'consentForElectronicHealthRecordsFirstYesAuthored': \
                 datetime.strptime('2020-01-01 03:00:00', "%Y-%m-%d %H:%M:%S"),
             'consentForGenomicsRORAuthored': datetime.strptime('2020-01-01 04:00:00', "%Y-%m-%d %H:%M:%S"),
-            'participantOrigin': 'vibrent'
+            'participant': self._participant
         }
 
         # Merge the kwargs and defaults dicts; kwargs values take precedence over default values
@@ -41,6 +47,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         participant = self.data_generator.create_database_participant_summary(
             consentForStudyEnrollmentAuthored=authored,
             consentForStudyEnrollmentFirstYesAuthored=authored,
+            participant=self._participant,
             **kwargs
         )
         return participant
@@ -71,7 +78,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
 
         return expected_values_dict
 
-    def test_consent_metrics_generator_no_errors(self):
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_no_errors(self, send_error_report_mock):
         """ Test the consent_metrics generator with no error conditions """
 
         # Use a valid datOfBirth for participant summary data
@@ -79,6 +87,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with no error conditions
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
@@ -91,8 +100,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         )
         self.assertIsNotNone(consent_file_rec.id)
 
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
 
         # No expected_errors provided, all error conditions default to False
         expected = self._create_expected_metrics_dict(participant, expected_errors=[])
@@ -103,23 +112,28 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.assertEqual(resource_data.get('consent_authored_date', None),
                          datetime.date(participant.consentForElectronicHealthRecordsFirstYesAuthored))
 
-    def test_consent_metrics_generator_dob_invalid(self):
+        # No error emails to send
+        self.assertEqual(0, send_error_report_mock.call_count)
+
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_dob_invalid(self, send_error_report_mock):
         """
         invalid_dob error calculated from participant_summary data, sync_status can still be READY_TO_SYNC
         """
 
         # Create participant summary data with (1) DOB missing,  and (2) DOB > 124 years from primary consent authored
-        participant_1 = self._create_participant_with_all_consents_authored(dateOfBirth=None)
-        participant_2 = self._create_participant_with_all_consents_authored(
-            participantOrigin='example',
-            dateOfBirth=datetime.date(datetime.strptime('1895-12-31', '%Y-%m-%d'))
-        )
+        invalid_dob = datetime.strptime('1894-12-31', '%Y-%m-%d')
+        p1 = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        p2 = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        p1_consents = self._create_participant_with_all_consents_authored(participant=p1, dateOfBirth=None)
+        p2_consents = self._create_participant_with_all_consents_authored(participant=p2, dateOfBirth=invalid_dob)
         # Create consent_file records for each participant's primary consent with no other error conditions
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec_1 = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
-            participant_id=participant_1.participantId,
-            signing_date=participant_1.consentForStudyEnrollmentFirstYesAuthored.date(),
+            participant_id=p1_consents.participantId,
+            signing_date=p1_consents.consentForStudyEnrollmentFirstYesAuthored.date(),
             expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
@@ -128,8 +142,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         consent_file_rec_2 = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
-            participant_id=participant_2.participantId,
-            signing_date=participant_2.consentForStudyEnrollmentFirstYesAuthored.date(),
+            participant_id=p2_consents.participantId,
+            signing_date=p2_consents.consentForStudyEnrollmentFirstYesAuthored.date(),
             expected_sign_date=date(year=2020, month=1, day=1),
             file_exists=1,
             is_signature_valid=1,
@@ -137,21 +151,29 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         )
         self.assertIsNotNone(consent_file_rec_1.id)
         self.assertIsNotNone(consent_file_rec_2.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: Invalid DOB because DOB is missing
-        resource_data = res_gen.make_resource(consent_file_rec_1.id).get_data()
-        expected = self._create_expected_metrics_dict(participant_1, expected_errors=['invalid_dob'])
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec_1.id).get_data()
+        expected = self._create_expected_metrics_dict(p1_consents, expected_errors=['invalid_dob'])
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
         # Expected: Invalid DOB because DOB is > 124 years before primary consent authored date
-        resource_data = res_gen.make_resource(consent_file_rec_2.id).get_data()
-        expected = self._create_expected_metrics_dict(participant_2, expected_errors=['invalid_dob'])
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec_2.id).get_data()
+        expected = self._create_expected_metrics_dict(p2_consents, expected_errors=['invalid_dob'])
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
-    def test_consent_metrics_generator_invalid_age_at_consent(self):
+        # Email generated for one error type (invalid DOB), with two instances described in the email body text
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        self.assertEqual(1, send_error_report_mock.call_count)
+        subject = send_error_report_mock.call_args[0][0]
+        body = send_error_report_mock.call_args[0][1]
+        self.assertIn('Invalid date of birth', subject)
+        self.assertEqual(2, body.count('Error Detected'))
+
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_invalid_age_at_consent(self, send_error_report_mock):
         """
          invalid_age_at_consent errors come from participant_summary data, sync_status can still be READY_TO_SYNC
          """
@@ -160,6 +182,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('2014-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with no other error conditions
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.READY_FOR_SYNC,
@@ -171,15 +194,24 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: invalid_age_at_consent (less than 18 years of age)
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         expected = self._create_expected_metrics_dict(participant, expected_errors=['invalid_age_at_consent'])
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
-    def test_consent_metrics_generator_missing_file(self):
+        # Email generated for one error type (invalid age at consent), with one instance described in the email
+        # body text
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        self.assertEqual(1, send_error_report_mock.call_count)
+        subject = send_error_report_mock.call_args[0][0]
+        body = send_error_report_mock.call_args[0][1]
+        self.assertIn('Invalid age at consent', subject)
+        self.assertEqual(1, body.count('Error Detected'))
+
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_missing_file(self, send_error_report_mock):
         """
         Consent metrics missing_file error based on consent_file having file_exists = 0
         """
@@ -188,6 +220,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -199,10 +232,9 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
-        # Expected: invalid_age_at_consent (less than 18 years of age)
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        # Expected: Missing file
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         # Note:  if file is missing, neither the signature_missing or invalid_signing_date errors should be set
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -210,15 +242,26 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
-    def test_consent_metrics_generator_dob_and_file_errors(self):
+        # Email generated for one error type (invalid age at consent), with one instance described in the email
+        # body text
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        self.assertEqual(1, send_error_report_mock.call_count)
+        subject = send_error_report_mock.call_args[0][0]
+        body = send_error_report_mock.call_args[0][1]
+        self.assertIn('Missing file', subject)
+        self.assertEqual(1, body.count('Error Detected'))
+
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_dob_and_file_errors(self, send_error_report_mock):
         """
          Consent metrics signature_missing error + invalid_age_at_consent error from primary consent
          """
         # Create participant summary data (DOB < 18 years from primary consent authored date)
         participant = self._create_participant_with_all_consents_authored(
-            dateOfBirth=datetime.date(datetime.strptime('2004-01-01', '%Y-%m-%d')),
+            dateOfBirth=datetime.date(datetime.strptime('2004-01-01', '%Y-%m-%d'))
         )
         # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -231,17 +274,21 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: invalid_age_at_consent and signature_missing errors
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_status=ConsentSyncStatus.NEEDS_CORRECTING,
                                                       expected_errors=['invalid_age_at_consent', 'signature_missing'])
         generated = {k: v for k, v in resource_data.items() if k in expected}
         self.assertDictEqual(generated, expected)
 
-    def test_consent_metrics_generator_other_errors(self):
+        # Emails generated for two error types (invalid age at consent, missing signature), in indeterminate order
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        self.assertEqual(2, send_error_report_mock.call_count)
+
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_other_errors(self, send_error_report_mock):
         """
         Consent metrics errors that are extracted from the consent_file other_errors string field
         """
@@ -250,6 +297,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with missing check error,  status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec_1 = self.data_generator.create_database_consent_file(
             type=ConsentType.GROR,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -290,10 +338,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                                    ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK])
         )
 
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-
         # Expected: checkbox_unchecked error for consent_file_rec_1
-        resource_data = res_gen.make_resource(consent_file_rec_1.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec_1.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.GROR,
                                                       consent_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -308,7 +354,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                          datetime.date(participant.consentForGenomicsRORAuthored))
 
         # Expected: non_va_consent_for_va for consent_file_rec_2
-        resource_data = res_gen.make_resource(consent_file_rec_2.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec_2.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.EHR,
                                                       consent_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -323,7 +369,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
                          datetime.date(participant.consentForElectronicHealthRecordsFirstYesAuthored))
 
         # Expected: checkbox_unchecked, non_va_for_va_consent for consent_file_rec_3
-        resource_data=res_gen.make_resource(consent_file_rec_3.id).get_data()
+        resource_data= self.consent_metric_resource_generator.make_resource(consent_file_rec_3.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.EHR,
                                                       consent_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -336,6 +382,10 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         # Also validate the resource data consent_authored_date matches the participant_summary EHR authored date
         self.assertEqual(resource_data.get('consent_authored_date', None),
                          datetime.date(participant.consentForElectronicHealthRecordsFirstYesAuthored))
+
+        # Expected:  Three email reports (in indeterminate order), for each distinct error type
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        self.assertEqual(3, send_error_report_mock.call_count)
 
     def test_consent_metrics_generator_resolved_date(self):
         """
@@ -357,10 +407,9 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             other_errors=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
 
         # Expected: checkbox_unchecked error
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         expected = self._create_expected_metrics_dict(participant,
                                                       consent_type=ConsentType.EHR,
                                                       consent_status=ConsentSyncStatus.OBSOLETE,
@@ -376,7 +425,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         self.assertEqual(resource_data.get('resolved_date', None),
                          datetime.date(consent_file_rec.modified))
 
-    def test_consent_metrics_generator_signature_missing_error_filtered(self):
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_signature_missing_error_filtered(self, send_error_report_mock):
         """
         Ignore known potential false positives for missing signatures, for consents authored before 2018-07-13
         """
@@ -386,6 +436,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with signature missing/signing date missing, status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -396,13 +447,16 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data =  self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
 
         # Confirm this record's ignore flag was set due to filtering the false positive case for missing signature
+        # and that no email report was generated
         self.assertEqual(resource_data['ignore'], True)
+        self.assertEqual(0, send_error_report_mock.call_count)
 
-    def test_consent_metrics_generator_invalid_signing_date_error_filtered(self):
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_invalid_signing_date_error_filtered(self, send_error_report_mock):
         """
         Ignore known potential false positives for valid signature but missing signing dates
         for consents authored before 2018-07-13
@@ -413,6 +467,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
         )
         # Create consent_file record with the missing signing date condition
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -423,13 +478,16 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=0
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
 
-        # Confirm this record's ignore flag was set due to filtering the invalid_signing_date error
+        # Confirm this record's ignore flag was set due to filtering the invalid_signing_date error, and that
+        # no email report was generated
         self.assertEqual(resource_data['ignore'], True)
+        self.assertEqual(0, send_error_report_mock.call_count)
 
-    def test_consent_metrics_generator_special_sync_status_filtered(self):
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_special_sync_status_filtered(self, send_error_report_mock):
         """
         Ignore consent records whose current sync_status is a special case status such as UNKNOWN or DELAYING_SYNC
         """
@@ -439,6 +497,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d'))
         )
         # Create consent_file record with a "non-standard" sync_status
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.DELAYING_SYNC,
@@ -449,13 +508,16 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
 
-        # Confirm this record's ignore flag was set due to filtering on the special sync_status
+        # Confirm this record's ignore flag was set due to filtering on the special sync_status and that
+        # no email report was generated
         self.assertEqual(resource_data['ignore'], True)
+        self.assertEqual(0, send_error_report_mock.call_count)
 
-    def test_consent_metrics_generator_va_consent_for_non_va_filtered(self):
+    @mock.patch('rdr_service.resource.generators.consent_metrics.ConsentErrorReportGenerator.send_consent_error_email')
+    def test_consent_metrics_generator_va_consent_for_non_va_filtered(self, send_error_report_mock):
         """
         Ignore va_consent_for_non_va errors if that's the only error and participant's current pairing is to the VA HPO
         """
@@ -467,6 +529,7 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             hpoId=va_hpo.hpoId
         )
         # Create consent_file record with file_exists set to false, status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
         consent_file_rec = self.data_generator.create_database_consent_file(
             type=ConsentType.PRIMARY,
             sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
@@ -478,11 +541,13 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
 
-        # Confirm this record's ignore flag was set due to filtering the va_consent_for_non_va error
+        # Confirm this record's ignore flag was set due to filtering the va_consent_for_non_va error and no
+        # error report email was sent
         self.assertEqual(resource_data['ignore'], True)
+        self.assertEqual(0, send_error_report_mock.call_count)
 
     def test_consent_metrics_generator_test_participant(self):
         """ Confirm test_participant flag is set by generator if participant is paired to TEST hpo """
@@ -504,9 +569,6 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             is_signing_date_valid=1
         )
         self.assertIsNotNone(consent_file_rec.id)
-        res_gen = rdr_service.resource.generators.ConsentMetricGenerator()
-        resource_data = res_gen.make_resource(consent_file_rec.id).get_data()
+        resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         # Confirm the consent_metric PDR data generator flagged the test participant
         self.assertTrue(resource_data.get('test_participant'))
-
-

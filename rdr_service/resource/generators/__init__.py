@@ -11,7 +11,7 @@ from .genomics import GenomicSetSchemaGenerator, GenomicManifestFileSchemaGenera
     GenomicManifestFeedbackSchemaGenerator, GenomicUserEventMetricsSchemaGenerator
 from .workbench import WBWorkspaceGenerator, WBWorkspaceUsersGenerator, WBInstitutionalAffiliationsGenerator, \
     WBResearcherGenerator
-from .consent_metrics import ConsentMetricGenerator
+from .consent_metrics import ConsentMetricGenerator, ConsentErrorReportGenerator
 
 __all__ = [
     'BaseGenerator',
@@ -20,6 +20,7 @@ __all__ = [
     'ParticipantSummaryGenerator',
     'RetentionEligibleMetricGenerator',
     'ConsentMetricGenerator',
+    'ConsentErrorReportGenerator',
     'GenomicSetSchemaGenerator',
     'GenomicManifestFileSchemaGenerator',
     'GenomicJobRunSchemaGenerator',
