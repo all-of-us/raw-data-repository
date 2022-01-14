@@ -79,7 +79,7 @@ class StoreResultStrategy(ValidationOutputStrategy):
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
-    def __init__(self, session, consent_dao: ConsentDao, project_id):
+    def __init__(self, session, consent_dao: ConsentDao, project_id=None):
         self.session = session
         self.consent_dao = consent_dao
         self.participant_ids = set()
