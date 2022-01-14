@@ -172,7 +172,7 @@ class MessageBrokerApiTest(BaseTestCase):
         from rdr_service.resource import main as resource_main
 
         request_json_decision = {
-            "event": "informing_loop_decision",
+            "event": loop_decision,
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": to_client_participant_id(participant_one.participantId),
             "messageBody": {
@@ -258,3 +258,58 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertIsNotNone(loop_record.valueString)
             self.assertEqual(format_datetime(loop_record.eventAuthoredTime), event_time)
             self.assertTrue(any(obj for obj in loop_decision_records if obj.valueString == 'hdr'))
+
+    @mock.patch('rdr_service.dao.participant_dao.get_account_origin_id')
+    @mock.patch('rdr_service.message_broker.message_broker.PtscMessageBroker.send_request')
+    def test_result_viewed(self, send_request, request_origin):
+        send_request.return_value = 200, {'result': 'mocked result'}, ''
+        request_origin.return_value = 'color'
+
+        participant_one = self.data_generator.create_database_participant(participantOrigin='vibrent')
+        event_type = 'result_viewed'
+
+        from rdr_service.resource import main as resource_main
+
+        request_json_decision = {
+            "event": event_type,
+            "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
+            "participantId": to_client_participant_id(participant_one.participantId),
+            "messageBody": {
+                'module_type': 'gem',
+            }
+        }
+
+        self.send_post("MessageBroker", request_json_decision)
+
+        records = self.record_dao.get_all()
+        record = records[0]
+        event_time = format_datetime(record.eventAuthoredTime)
+
+        payload = {
+            'id': record.id,
+            'eventType': record.eventType,
+            'eventAuthoredTime': event_time,
+            'participantId': record.participantId,
+            'requestBody': record.requestBody
+        }
+
+        self.send_post(
+            local_path='StoreMessageBrokerEventDataTaskApi',
+            request_data=payload,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        result_viewed_records = self.event_data_dao.get_result_viewed(
+            record.id
+        )
+
+        self.assertIsNotNone(result_viewed_records)
+        self.assertEqual(len(result_viewed_records), 1)
+
+        for result in result_viewed_records:
+            self.assertIsNotNone(result.valueString)
+            self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
+            self.assertEqual(result.valueString, 'gem')
+
+
