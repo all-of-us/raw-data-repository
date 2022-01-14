@@ -474,6 +474,64 @@ event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW2Raw, 'before_update', model_update_listener)
 
 
+class GenomicAW3Raw(Base):
+    """
+    Raw data from AW3 files
+    """
+    __tablename__ = 'genomic_aw3_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255), nullable=True)
+    manifest_authored_time = Column(DateTime, nullable=True)
+    genome_type = Column(String(255), nullable=True, index=True)
+
+    # Raw AW3 Data
+    chipwellbarcode = Column(String(255), nullable=True, index=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    research_id = Column(String(255), nullable=True, index=True)
+    biobankidsampleid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    site_id = Column(String(255), nullable=True, index=True)
+    callrate = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+    blocklisted = Column(String(255), nullable=True, index=True)
+    blocklisted_reason = Column(String(255), nullable=True)
+    red_idat_path = Column(String(255), nullable=True)
+    red_idat_md5_path = Column(String(255), nullable=True)
+    green_idat_path = Column(String(255), nullable=True)
+    green_idat_md5_path = Column(String(255), nullable=True)
+    vcf_path = Column(String(255), nullable=True)
+    vcf_index_path = Column(String(255), nullable=True)
+    vcf_md5_path = Column(String(255), nullable=True)
+    vcf_hf_path = Column(String(255), nullable=True)
+    vcf_hf_index_path = Column(String(255), nullable=True)
+    vcf_hf_md5_path = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    crai_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
+
+
+event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW3Raw, 'before_update', model_update_listener)
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
