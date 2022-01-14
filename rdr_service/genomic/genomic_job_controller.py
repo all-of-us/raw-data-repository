@@ -445,6 +445,11 @@ class GenomicJobController:
 
     def ingest_records_from_message_broker_data(self, *, message_record_id, event_type):
 
+        def _set_module_type(records):
+            mod_type = [obj for obj in records if obj.fieldName == 'module_type' and obj.valueString]
+            mod_type = mod_type[0].valueString if mod_type else None
+            return mod_type
+
         if 'informing_loop' in event_type:
             loop_type = event_type
             informing_records = self.message_broker_event_dao.get_informing_loop(
@@ -456,8 +461,7 @@ class GenomicJobController:
                 first_record = informing_records[0]
                 logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
 
-                module_type = [obj for obj in informing_records if obj.fieldName == 'module_type' and obj.valueString]
-                module_type = module_type[0].valueString
+                module_type = _set_module_type(informing_records)
 
                 decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
                                   obj.valueString]
@@ -467,7 +471,7 @@ class GenomicJobController:
                     message_record_id=first_record.messageRecordId,
                     event_type=loop_type,
                     event_authored_time=first_record.eventAuthoredTime,
-                    module_type=module_type if module_type else None,
+                    module_type=module_type,
                     decision_value=decision_value[0].valueString if decision_value else None,
                 )
 
@@ -482,8 +486,7 @@ class GenomicJobController:
                 first_record = result_records[0]
                 logging.info(f'Inserting result_viewed for Participant: {first_record.participantId}')
 
-                module_type = [obj for obj in result_records if obj.fieldName == 'module_type' and obj.valueString]
-                module_type = module_type[0].valueString
+                module_type = _set_module_type(result_records)
 
                 current_record = self.result_viewed_dao.get_result_record_by_pid_module(
                     first_record.participantId,
@@ -496,7 +499,7 @@ class GenomicJobController:
                         message_record_id=first_record.messageRecordId,
                         event_type=event_type,
                         event_authored_time=first_record.eventAuthoredTime,
-                        module_type=module_type if module_type else None,
+                        module_type=module_type,
                         first_viewed=first_record.eventAuthoredTime,
                         last_viewed=first_record.eventAuthoredTime
                     )
