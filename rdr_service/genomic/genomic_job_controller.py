@@ -485,7 +485,7 @@ class GenomicJobController:
                 module_type = [obj for obj in result_records if obj.fieldName == 'module_type' and obj.valueString]
                 module_type = module_type[0].valueString
 
-                current_record = self.result_viewed_dao.get_record_by_pid_module(
+                current_record = self.result_viewed_dao.get_result_record_by_pid_module(
                     first_record.participantId,
                     module_type
                 )

@@ -65,8 +65,10 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
         return '{"success": "true"}'
 
     def call_genomic_ingest_data_task(self, obj):
-        if GAE_PROJECT != 'localhost' \
-                and ('informing_loop'.lower() or 'result_viewed'.lower()) in self.event_type:
+        if ('informing_loop'.lower() or 'result_viewed'.lower()) in self.event_type:
+
+            if GAE_PROJECT == 'localhost':
+                return
 
             payload = {
                 'message_record_id': obj.messageRecordId,

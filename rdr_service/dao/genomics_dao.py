@@ -1737,6 +1737,7 @@ class GenomicOutreachDaoV2(BaseDao):
         self.allowed_types = ['result', 'informingLoop']
         self.type = self.allowed_types
         self.report_query_state = self.get_report_state_query_config()
+        self.result_viewed_dao = GenomicResultViewedDao()
 
     def get_id(self, obj):
         pass
@@ -1763,11 +1764,21 @@ class GenomicOutreachDaoV2(BaseDao):
         for p in _dict.get('data'):
             if 'result' in p.type:
                 p_status, p_module = self._determine_report_state(p.genomic_report_state)
+                pid = p.participant_id
+                genomic_result_viewed = p.GenomicResultViewed
+                result_viewed = 'no'
+
+                if genomic_result_viewed \
+                    and genomic_result_viewed.participant_id \
+                        and genomic_result_viewed.module_type == p_module:
+                    result_viewed = 'yes'
+
                 report = {
                     "module": p_module.lower(),
                     "type": p.type,
                     "status": p_status,
-                    "participant_id": f'P{p.participant_id}',
+                    "viewed": result_viewed,
+                    "participant_id": f'P{pid}',
                 }
                 report_statuses.append(report)
             elif 'informingLoop' in p.type:
@@ -1884,6 +1895,7 @@ class GenomicOutreachDaoV2(BaseDao):
                     session.query(
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
+                        GenomicResultViewed,
                         literal('result').label('type')
                     )
                     .join(
@@ -1893,11 +1905,13 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicMemberReportState.participant_id
-                    )
-                    .filter(
+                    ).outerjoin(
+                        GenomicResultViewed,
+                        GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                    ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state)
+                        GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
                     )
                 )
                 if pid:
@@ -2584,7 +2598,7 @@ class GenomicResultViewedDao(UpdatableDao):
     def from_client_json(self):
         pass
 
-    def get_record_by_pid_module(self, pid, module='gem'):
+    def get_result_record_by_pid_module(self, pid, module='gem'):
         with self.session() as session:
             return session.query(
                 GenomicResultViewed

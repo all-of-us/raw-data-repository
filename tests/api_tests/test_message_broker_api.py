@@ -217,7 +217,7 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertTrue(any(obj for obj in loop_decision_records if obj.valueString == 'yes'))
 
         request_json_started = {
-            "event": "informing_loop_started",
+            "event": loop_started,
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": to_client_participant_id(participant_two.participantId),
             "messageBody": {

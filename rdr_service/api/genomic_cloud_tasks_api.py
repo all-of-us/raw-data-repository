@@ -331,7 +331,7 @@ class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
             'result_viewed'
         ]
 
-        if event_type not in acceptable_event_types:
+        if ('informing_loop'.lower() or 'result_viewed'.lower()) not in self.event_type:
             logging.warning(f"Incorrect event_type {event_type} passed from Message "
                             f"broker task, acceptable events:"
                             f"{', '.join(acceptable_event_types)}")
