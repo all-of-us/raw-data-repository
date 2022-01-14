@@ -44,11 +44,12 @@ class ValidationOutputStrategy(ABC):
 
 
 class StoreResultStrategy(ValidationOutputStrategy):
-    def __init__(self, session, consent_dao: ConsentDao):
+    def __init__(self, session, consent_dao: ConsentDao, project_id=None):
         self._session = session
         self._results = []
         self._consent_dao = consent_dao
         self._max_batch_count = 500
+        self.project_id = project_id
 
     def add_result(self, result: ParsingResult):
         self._results.append(result)
@@ -75,16 +76,17 @@ class StoreResultStrategy(ValidationOutputStrategy):
         self._consent_dao.batch_update_consent_files(new_results_to_store, self._session)
         self._session.commit()
         if new_results_to_store:
-            dispatch_rebuild_consent_metrics_tasks([r.id for r in new_results_to_store])
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in new_results_to_store], project_id=self.project_id)
 
 
 class ReplacementStoringStrategy(ValidationOutputStrategy):
-    def __init__(self, session, consent_dao: ConsentDao):
+    def __init__(self, session, consent_dao: ConsentDao, project_id=None):
         self.session = session
         self.consent_dao = consent_dao
         self.participant_ids = set()
         self.results = self._build_consent_list_structure()
         self._max_batch_count = 500
+        self.project_id = project_id
 
     def add_result(self, result: ParsingResult):
         self.results[result.participant_id][result.type].append(result)
@@ -127,7 +129,7 @@ class ReplacementStoringStrategy(ValidationOutputStrategy):
         self.consent_dao.batch_update_consent_files(results_to_update, self.session)
         self.session.commit()
         if results_to_update:
-            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_update])
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_update], project_id=self.project_id)
 
     @classmethod
     def _find_file_ready_for_sync(cls, results: List[ParsingResult]):
