@@ -446,8 +446,8 @@ class GenomicJobController:
     def ingest_records_from_message_broker_data(self, *, message_record_id, event_type):
 
         def _set_module_type(records):
-            mod_type = [obj for obj in records if obj.fieldName == 'module_type' and obj.valueString]
-            mod_type = mod_type[0].valueString if mod_type else None
+            mod_type = [obj for obj in records if obj.fieldName in ['module_type', 'result_type'] and obj.valueString]
+            mod_type = mod_type[0].valueString
             return mod_type
 
         if 'informing_loop' in event_type:

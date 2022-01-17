@@ -270,12 +270,13 @@ class MessageBrokerApiTest(BaseTestCase):
 
         from rdr_service.resource import main as resource_main
 
+        # result_viewed events use result_type instead of module_type
         request_json_decision = {
             "event": event_type,
             "eventAuthoredTime": format_datetime(clock.CLOCK.now()),
             "participantId": to_client_participant_id(participant_one.participantId),
             "messageBody": {
-                'module_type': 'gem',
+                'result_type': 'gem',
             }
         }
 
@@ -311,5 +312,6 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertIsNotNone(result.valueString)
             self.assertEqual(format_datetime(result.eventAuthoredTime), event_time)
             self.assertEqual(result.valueString, 'gem')
+            self.assertEqual(result.fieldName, 'result_type')
 
 
