@@ -340,6 +340,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
     def setUp(self):
         super(GenomicOutreachApiV2Test, self).setUp()
         self.loop_dao = GenomicInformingLoopDao()
+        self.report_dao = GenomicMemberReportStateDao()
         self.result_dao = GenomicResultViewedDao()
         self.member_dao = GenomicSetMemberDao()
         self.num_participants = 5
@@ -451,7 +452,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_authored_time=fake_date + datetime.timedelta(days=1)
                 )
 
-        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 6)
 
         with clock.FakeClock(fake_now):
@@ -516,7 +517,6 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         self.assertEqual(expected, resp)
 
     def test_get_not_found_participant(self):
-
         fake_now = clock.CLOCK.now().replace(microsecond=0)
         bad_id = 111111111
         bad_response = f'Participant P{bad_id} does not exist in the Genomic system.'
@@ -585,7 +585,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                     event_authored_time=fake_date_one + datetime.timedelta(days=1)
                 )
 
-        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 15)
 
         bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
@@ -694,7 +694,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_authored_time=fake_date_one + datetime.timedelta(days=1)
             )
 
-        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 20)
 
         bad_response = 'Participant ID or Start Date is required for GenomicOutreach lookup.'
@@ -787,7 +787,7 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
                 event_authored_time=workflow_date
             )
 
-        total_num_set = self.loop_dao.get_all() + self.result_dao.get_all()
+        total_num_set = self.loop_dao.get_all() + self.report_dao.get_all()
         self.assertEqual(len(total_num_set), 20)
 
         with clock.FakeClock(fake_now):
