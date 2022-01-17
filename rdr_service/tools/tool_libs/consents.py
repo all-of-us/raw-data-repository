@@ -250,9 +250,10 @@ class ConsentTool(ToolBase):
         with open(self.args.file) as input_file, self.get_session() as session:
             input_csv = csv.DictReader(input_file)
             for validation_data in input_csv:
-                consent_file: ConsentFile = session.query(ConsentFile).filter(
-                    ConsentFile.id == validation_data['id']
-                ).one()
+                consent_file: ConsentFile = self._consent_dao.get_with_session(
+                    session=session,
+                    obj_id=validation_data['id']
+                )
 
                 for field_name, value in validation_data.items():
                     if not hasattr(ConsentFile, field_name):
@@ -263,6 +264,8 @@ class ConsentTool(ToolBase):
                     field_definition = getattr(ConsentFile, field_name)
                     if field_name == 'type':
                         value = ConsentType(int(value))
+                    elif field_name == 'sync_status':
+                        value = ConsentSyncStatus(int(value))
                     elif isinstance(field_definition.expression.type, Boolean):
                         value = (value == '1')
                     elif isinstance(field_definition.expression.type, Integer):
