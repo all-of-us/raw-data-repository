@@ -1128,7 +1128,7 @@ class UserEventMetricsClass(object):
     def run(self):
         clr = self.gcp_env.terminal_colors
 
-        if not self.args.pid and not self.args.all_pids and not self.id_list:
+        if not self.args.id and not self.args.all_ids and not self.id_list:
             _logger.error('Nothing to do')
             return 1
 
@@ -1140,17 +1140,17 @@ class UserEventMetricsClass(object):
         _logger.info('=' * 90)
         _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
 
-        if self.args.all_pids :
+        if self.args.all_ids :
             dao = ResourceDataDao()
             _logger.info('  Rebuild All Records   : {0}'.format(clr.fmt('Yes')))
             _logger.info('=' * 90)
             with dao.session() as session:
-                pids = session.query(UserEventMetrics.id).all()
-                self.update_many_ids(pids)
-        elif self.args.pid:
-            _logger.info('  Primary Key ID        : {0}'.format(clr.fmt(f'{self.args.pid}')))
+                ids = session.query(UserEventMetrics.id).all()
+                self.update_many_ids(ids)
+        elif self.args.id:
+            _logger.info('  Primary Key ID        : {0}'.format(clr.fmt(f'{self.args.id}')))
             _logger.info('=' * 90)
-            self.update_single_id(self.args.pid)
+            self.update_single_id(self.args.id)
         elif self.id_list:
             _logger.info('  Total Records         : {0}'.format(clr.fmt(len(self.id_list))))
             _logger.info('=' * 90)

@@ -1845,7 +1845,8 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicInformingLoop.decision_value.isnot(None),
                         GenomicInformingLoop.module_type.in_(self.module),
                         GenomicInformingLoop.event_authored_time.isnot(None),
-                        genomic_loop_alias.event_authored_time.is_(None)
+                        genomic_loop_alias.event_authored_time.is_(None),
+                        GenomicSetMember.ignoreFlag != 1
                     )
                 )
                 ready_loop = (
@@ -1912,6 +1913,7 @@ class GenomicOutreachDaoV2(BaseDao):
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
+                        GenomicSetMember.ignoreFlag != 1
                     )
                 )
                 if pid:
@@ -2461,7 +2463,8 @@ class GenomicIncidentDao(UpdatableDao):
                 GenomicJobRun.jobId.in_(self.ingestion_job_ids),
                 GenomicIncident.source_file_processed_id.isnot(None),
                 GenomicIncident.source_job_run_id.isnot(None),
-                GenomicIncident.created >= from_date.replace(microsecond=0)
+                or_(GenomicIncident.created >= from_date.replace(microsecond=0),
+                    GenomicIncident.modified >= from_date.replace(microsecond=0))
             )
 
             return incidents.all()

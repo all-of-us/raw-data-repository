@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Collection
 
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
@@ -6,13 +7,12 @@ from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPL
 from rdr_service.etl.model.src_clean import SrcClean
 from rdr_service.model.code import Code
 from rdr_service.model.participant import Participant
-from rdr_service.participant_enums import QuestionnaireResponseStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
 from rdr_service.tools.tool_libs.curation import CurationExportClass
 from tests.helpers.unittest_base import BaseTestCase
 from tests.helpers.tool_test_mixin import ToolTestMixin
 
 TIME = datetime(2000, 1, 10)
-
 
 class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
@@ -44,8 +44,13 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         self.questionnaire_response = self._setup_questionnaire_response(self.participant, self.questionnaire)
 
     def _setup_questionnaire_response(self, participant, questionnaire, authored=datetime(2020, 3, 15),
-                                      created=datetime(2020, 3, 15), indexed_answers=None,
-                                      status=QuestionnaireResponseStatus.COMPLETED, is_duplicate=False):
+                                      created=datetime(2020, 3, 15), indexed_answers=None, ignored_answer_indexes=None,
+                                      status=QuestionnaireResponseStatus.COMPLETED,
+                                      classification_type=QuestionnaireResponseClassificationType.COMPLETE):
+
+        if not ignored_answer_indexes:
+            ignored_answer_indexes = []
+
         questionnaire_response = self.data_generator.create_database_questionnaire_response(
             participantId=participant.participantId,
             questionnaireId=questionnaire.questionnaireId,
@@ -53,7 +58,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             authored=authored,
             created=created,
             status=status,
-            isDuplicate=is_duplicate
+            classificationType=classification_type
         )
 
         if indexed_answers is None:
@@ -68,7 +73,8 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
             self.data_generator.create_database_questionnaire_response_answer(
                 questionnaireResponseId=questionnaire_response.questionnaireResponseId,
                 questionId=question.questionnaireQuestionId,
-                **{answer_field_name: answer_string}
+                **{answer_field_name: answer_string},
+                ignore=question_index in ignored_answer_indexes
             )
 
         return questionnaire_response
@@ -312,7 +318,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         duplicate_response = self._setup_questionnaire_response(
             participant,
             self.questionnaire,
-            is_duplicate=True
+            classification_type=QuestionnaireResponseClassificationType.DUPLICATE
         )
 
         self.run_cdm_data_generation()
@@ -400,3 +406,41 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
 
+    def test_ignored_answers_are_nulled(self):
+        """Any answers that have the ignore field set to True should give null answers in the result"""
+        questionnaire_response = self._setup_questionnaire_response(
+            self.participant,
+            self.questionnaire,
+            indexed_answers=[
+                (0, 'valueString', 'first_answer'),
+                (1, 'valueString', 'ignored answer'),
+                (2, 'valueBoolean', True),
+                (3, 'valueDate', datetime.now())
+            ],
+            ignored_answer_indexes=[1, 2, 3]
+        )
+
+        # Check that we are only be seeing the answers from the latest questionnaire response
+        self.run_cdm_data_generation()
+        src_clean_answers: Collection[SrcClean] = self.session.query(SrcClean).filter(
+            SrcClean.questionnaire_response_id == questionnaire_response.questionnaireResponseId
+        ).all()
+
+        # Should be getting 4 records still (even though some of them are blank)
+        self.assertEqual(4, len(src_clean_answers))
+        for index, answer in enumerate(src_clean_answers):
+            if index == 0:
+                self.assertEqual('first_answer', answer.value_string)
+            else:
+                # Make sure none of the answer fields have an answer value
+                self.assertFalse(any([
+                    answer is not None
+                    for answer in [
+                        answer.value_string,
+                        answer.value_number,
+                        answer.value_date,
+                        answer.value_boolean,
+                        answer.value_code_id,
+                        answer.value_ppi_code
+                    ]
+                ]))

@@ -101,6 +101,18 @@ class QuestionnaireResponseStatus(messages.Enum):
     ENTERED_IN_ERROR = 3
     STOPPED = 4
 
+class QuestionnaireResponseClassificationType(messages.Enum):
+    """
+    Categorize questionnaire response payloads exhibiting known data issues
+    See:  DA-2192 and the linked investigation document for more details
+    """
+    COMPLETE = 0               # Default, no known issues / normal completed survey payload
+    DUPLICATE = 1              # Identical answer hash to another response or has a cascading subset/superset signature
+    PROFILE_UPDATE = 2         # E.g., TheBasics response payloads which only contain secondary contact updates
+    NO_ANSWER_VALUES = 3       # Isolated cases where payload had question data with no answer values
+    AUTHORED_TIME_UPDATED = 4  # Known/expected retransmission of previous payloads, but with a corrected authored ts
+    PARTIAL = 5                # Other cases (e.g., partial COPE surveys) where payload is not a completed survey
+
 
 class EnrollmentStatus(messages.Enum):
     """A status reflecting how fully enrolled a participant is"""

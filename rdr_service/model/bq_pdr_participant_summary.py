@@ -200,6 +200,7 @@ class BQPDRParticipantSummarySchema(BQSchema):
     pairing_history = BQRecordField('pairing_history', schema=BQPairingHistorySchema)
     enrl_status = BQField('enrl_status', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
     enrl_status_id = BQField('enrl_status_id', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
+    age_at_consent = BQField('age_at_consent', BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQPDRParticipantSummary(BQTable):

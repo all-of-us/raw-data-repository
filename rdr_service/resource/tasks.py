@@ -16,6 +16,7 @@ from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.resource import generators
 from rdr_service.resource.generators.participant import rebuild_participant_summary_resource
+from rdr_service.resource.generators.consent_metrics import ConsentErrorReportGenerator
 from rdr_service.services.system_utils import list_chunks
 
 
@@ -97,6 +98,23 @@ def batch_rebuild_retention_metrics_task(payload):
 
     logging.info(f'End time: {datetime.utcnow()}, rebuilt {count} Retention Metrics records.')
 
+def check_consent_errors_task(payload):
+    """
+    Review new records from the daily consent validation and generate an automated error report
+    """
+    created_since = payload.get('errors_created_since')
+    origin = payload.get('participant_origin', 'vibrent')
+    if isinstance(created_since, datetime):
+        date_filter=created_since
+    elif isinstance(created_since, str):
+        date_filter = datetime.strptime(created_since, "%Y-%m-%dT%H:%M:%S")
+    else:
+        raise ValueError('Invalid errors_created_since value in payload for check_consent_errors_task')
+
+    gen = ConsentErrorReportGenerator()
+    gen.create_error_reports(errors_created_since=date_filter, participant_origin=origin)
+
+
 def batch_rebuild_consent_metrics_task(payload):
     """
      Rebuild a batch of consent metrics records based on ids from the consent_file table
@@ -135,10 +153,13 @@ def batch_rebuild_user_event_metrics_task(payload):
 # endpoint-specific logic and/or some fancy code to dynamically populate the task.execute() args (or to allow for
 # local rebuilds vs. cloud tasks)
 def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, batch_size=150,
-                                           project_id=config.GAE_PROJECT, build_locally=False):
+                                           project_id=None, build_locally=False):
     """
     Helper method to handle queuing batch rebuild requests for rebuilding consent metrics resource data
     """
+    if project_id is None:
+        project_id = config.GAE_PROJECT
+
     if not all(isinstance(id, int) for id in id_list):
         raise (ValueError, "Invalid id list; must be a list that contains only integer consent_file ids")
 
@@ -154,3 +175,22 @@ def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, b
             completed_batches += 1
 
         logging.info(f'Dispatched {completed_batches} batch_rebuild_consent_metrics tasks of max size {batch_size}')
+
+def dispatch_check_consent_errors_task(created_since, in_seconds=30, quiet=True,
+                                       project_id=config.GAE_PROJECT, build_locally=False):
+    """
+    Create / queue a task that will check for newly created consent validation errors and generate error reports
+    for PTSC
+    """
+    if not isinstance(created_since, datetime):
+        raise(ValueError, "Invalid errors_created_since datetime filter value supplied")
+
+    payload = {'errors_created_since': created_since}
+    if build_locally or project_id == 'localhost':
+        check_consent_errors_task(payload)
+    else:
+        task = GCPCloudTask()
+        task.execute('check_consent_errors_task', payload=payload, in_seconds=in_seconds,
+                     queue='resource-tasks', quiet=quiet, project_id=project_id)
+
+        logging.info(f'Dispatched consent error reporting task to run in {in_seconds} seconds')

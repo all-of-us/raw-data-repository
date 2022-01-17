@@ -21,7 +21,8 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseClassificationType
 from rdr_service.participant_enums import QuestionnaireResponseStatus, WithdrawalStatus
 from rdr_service.services.gcp_utils import gcp_sql_export_csv
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -261,14 +262,23 @@ class CurationExportClass(ToolBase):
             QuestionnaireQuestion
         ).filter(
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False)
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         )
 
         insert_query = insert(QuestionnaireAnswersByModule).from_select(column_map.keys(), answers_by_module_select)
         session.execute(insert_query)
 
-    @staticmethod
-    def _get_base_src_clean_answers_select(session):
+    @classmethod
+    def _null_if_answer_ignored(cls, else_value):
+        return case(
+            [
+                (QuestionnaireResponseAnswer.ignore.is_(True), None)
+            ],
+            else_=else_value
+        )
+
+    @classmethod
+    def _get_base_src_clean_answers_select(cls, session):
         module_code = aliased(Code)
         question_code = aliased(Code)
         answer_code = aliased(Code)
@@ -286,18 +296,18 @@ class CurationExportClass(ToolBase):
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
             SrcClean.value_ppi_code: answer_code.value,
             SrcClean.topic_value: answer_code.topic,
-            SrcClean.value_code_id: QuestionnaireResponseAnswer.valueCodeId,
-            SrcClean.value_number: case([(
+            SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
+            SrcClean.value_number: cls._null_if_answer_ignored(else_value=case([(
                 # Only set value number if the question code is not one of the zip codes to re-map
                 question_code.value.notin_(zipcode_question_codes_to_remap),
                 coalesce(QuestionnaireResponseAnswer.valueDecimal, QuestionnaireResponseAnswer.valueInteger)
-            )]),
-            SrcClean.value_boolean: QuestionnaireResponseAnswer.valueBoolean,
-            SrcClean.value_date: coalesce(
+            )])),
+            SrcClean.value_boolean: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueBoolean),
+            SrcClean.value_date: cls._null_if_answer_ignored(else_value=coalesce(
                 QuestionnaireResponseAnswer.valueDate,
                 QuestionnaireResponseAnswer.valueDateTime
-            ),
-            SrcClean.value_string: coalesce(
+            )),
+            SrcClean.value_string: cls._null_if_answer_ignored(else_value=coalesce(
                 func.left(QuestionnaireResponseAnswer.valueString, 1024),
                 QuestionnaireResponseAnswer.valueDate,
                 QuestionnaireResponseAnswer.valueDateTime,
@@ -306,7 +316,7 @@ class CurationExportClass(ToolBase):
                     (question_code.value.in_(zipcode_question_codes_to_remap),
                      QuestionnaireResponseAnswer.valueInteger)
                 ])
-            ),
+            )),
             SrcClean.questionnaire_response_id: QuestionnaireResponse.questionnaireResponseId,
             SrcClean.unit_id: concat(
                 'cln.',
@@ -376,7 +386,7 @@ class CurationExportClass(ToolBase):
                 QuestionnaireResponseAnswer.valueString.isnot(None)
             ),
             QuestionnaireResponse.status != QuestionnaireResponseStatus.IN_PROGRESS,
-            QuestionnaireResponse.isDuplicate.is_(False),
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
             and_(
                 ParticipantSummary.dateOfBirth.isnot(None),
                 func.timestampdiff(text('YEAR'), ParticipantSummary.dateOfBirth, CLOCK.now()) >= 18

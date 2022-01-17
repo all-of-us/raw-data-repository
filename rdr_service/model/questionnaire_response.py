@@ -12,13 +12,13 @@ from sqlalchemy import (
 )
 from sqlalchemy import BLOB  # pylint: disable=unused-import
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import text, expression
+from sqlalchemy.sql import text
 from typing import List
 
 from rdr_service.model.base import Base
 from rdr_service.model.utils import EnumZeroBased, UTCDateTime
 from rdr_service.model.field_types import BlobUTF8
-from rdr_service.participant_enums import QuestionnaireResponseStatus
+from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType
 
 
 class QuestionnaireResponse(Base):
@@ -51,8 +51,12 @@ class QuestionnaireResponse(Base):
     externalId = Column('external_id', String(30), nullable=True)
     """@rdr_dictionary_internal_column"""
 
-    isDuplicate = Column("is_duplicate", Boolean, server_default=expression.false())
-    """Indicates that the response is a duplicate of another that was received and should be ignored"""
+    classificationType = Column('classification_type',
+      EnumZeroBased(QuestionnaireResponseClassificationType),
+      nullable=True, # To remain consistent with existing column definition and enable op.alter_column
+      default=QuestionnaireResponseClassificationType.COMPLETE,
+      server_default=text(str(int(QuestionnaireResponseClassificationType.COMPLETE))))
+    """ Classification of a response (e.g., COMPLETE or DUPLICATE) which can determine if it should be ignored """
 
     resource = Column("resource", BlobUTF8, nullable=False)
     status = Column(
@@ -136,6 +140,17 @@ class QuestionnaireResponseAnswer(Base):
     """
     When the response is a Uniform Resource Identifier Reference (RFC 3986 ).
     Note: URIs are case sensitive. For UUID (urn:uuid:53fefa32-fcbb-4ff8-8a92-55ee120877b7) use all lowercase
+    """
+    ignore = Column(Boolean)
+    """
+    A boolean (1 or 0) value indicating whether the answer should be ignored or not. This is used in
+    special circumstances to prevent mis-configured or otherwise invalid answers from being passed downstream.
+    See the `ignore_reason` column for notes on why a given answer is ignored.
+    """
+    ignore_reason = Column(String(300))
+    """
+    A note on the reason why a particular answer is being ignored. Will ideally link to further documentation
+    that can provide further context on the reason for ignoring the answer.
     """
 
 
