@@ -48,6 +48,7 @@ MYSQL_PORT = os.getenv('RDR_UNITTEST_SQL_SERVER_PORT', 10010)
 
 def configure_unittest_connection_string():
     db_conn_str = f'mysql+mysqldb://root@{MYSQL_HOST}:{MYSQL_PORT}/?charset=utf8mb4'
+    print(f'attempting connection to {db_conn_str}')
     config.override_setting('unittest_db_connection_string', db_conn_str)
 
 

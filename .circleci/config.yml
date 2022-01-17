@@ -7,9 +7,10 @@ version: 2.1
 job_defaults: &job_defaults
   docker:
     - image: cimg/base:2021.05-18.04
+      environment:
+        RDR_UNITTEST_SQL_SERVER_PORT: 3306
     - image: circleci/mysql:5.7
       environment:
-        MYSQL_HOST: 127.0.0.1
         MYSQL_ROOT_PASSWORD: root
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
