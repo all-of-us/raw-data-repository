@@ -59,6 +59,7 @@ def upgrade_rdr():
         "From message_broker_event_data "
         "Where true "
         "And message_broker_event_data.event_type = 'result_viewed'"
+        "And message_broker_event_data.value_string = 'gem'"
     )
     # ### end Alembic commands ###
 

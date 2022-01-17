@@ -458,10 +458,15 @@ class GenomicJobController:
             )
 
             if informing_records:
+                module_type = _set_module_type(informing_records)
+
+                if module_type.lower() != 'gem':
+                    logging.info(f'Cannot insert Message broker data for module {module_type}, only accepting gem '
+                                 f'modules at this time')
+                    return
+
                 first_record = informing_records[0]
                 logging.info(f'Inserting informing loop for Participant: {first_record.participantId}')
-
-                module_type = _set_module_type(informing_records)
 
                 decision_value = [obj for obj in informing_records if obj.fieldName == 'decision_value' and
                                   obj.valueString]
@@ -483,10 +488,15 @@ class GenomicJobController:
                 message_record_id
             )
             if result_records:
+                module_type = _set_module_type(result_records)
+
+                if module_type.lower() != 'gem':
+                    logging.info(f'Cannot insert Message broker data for module {module_type}, only accepting gem '
+                                 f'modules at this time')
+                    return
+
                 first_record = result_records[0]
                 logging.info(f'Inserting result_viewed for Participant: {first_record.participantId}')
-
-                module_type = _set_module_type(result_records)
 
                 current_record = self.result_viewed_dao.get_result_record_by_pid_module(
                     first_record.participantId,
