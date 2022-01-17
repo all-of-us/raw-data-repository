@@ -48,7 +48,6 @@ MYSQL_PORT = os.getenv('RDR_UNITTEST_SQL_SERVER_PORT', 10010)
 
 def configure_unittest_connection_string():
     db_conn_str = f'mysql+mysqldb://root@{MYSQL_HOST}:{MYSQL_PORT}/?charset=utf8mb4'
-    print(f'attempting connection to {db_conn_str}')
     config.override_setting('unittest_db_connection_string', db_conn_str)
 
 
@@ -199,9 +198,9 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
 def reset_mysql_instance(with_data=True, with_consent_codes=False):
 
-    # with warnings.catch_warnings():
-    #     warnings.simplefilter("ignore", ResourceWarning)
-    #     start_mysql_instance()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ResourceWarning)
+        start_mysql_instance()
     # setup the initial database structure
     _initialize_database(with_data, with_consent_codes)
 
