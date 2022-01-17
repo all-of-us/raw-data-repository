@@ -7,6 +7,13 @@ version: 2.1
 job_defaults: &job_defaults
   docker:
     - image: cimg/base:2021.05-18.04
+        environment:
+          RDR_UNITTEST_SQL_SERVER_PORT: 3306
+          CIRCLECI_FLAG: 1
+    - image: circleci/mysql:5.7
+        environment:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD: ''
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
   shell: /bin/bash --login
@@ -33,9 +40,6 @@ commands:
             export PYTHONPATH=$PYTHONPATH:`pwd`
             python3.7 ./ci/check_licenses.py --root ./venv/lib/python3.7/site-packages \
                             --licenses_file ci/license_allowed_list.txt --exceptions_file ci/license_exceptions.txt
-      - run:
-          name: Install MySQL Server
-          command: ./ci/install_mysql.sh
       - run:
           name: Launch Flask Unittest Service
           command: ./ci/run_unittest_flask_server.sh
