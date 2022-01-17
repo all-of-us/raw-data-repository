@@ -198,9 +198,9 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
 def reset_mysql_instance(with_data=True, with_consent_codes=False):
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", ResourceWarning)
-        start_mysql_instance()
+    # with warnings.catch_warnings():
+    #     warnings.simplefilter("ignore", ResourceWarning)
+    #     start_mysql_instance()
     # setup the initial database structure
     _initialize_database(with_data, with_consent_codes)
 
