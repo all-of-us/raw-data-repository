@@ -3,8 +3,10 @@ import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from itertools import islice
+from typing import Collection
 
 import requests
+from sqlalchemy import Boolean, Integer
 
 from rdr_service import config
 from rdr_service.app_util import BatchManager
@@ -15,6 +17,8 @@ from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.participant import Participant
+from rdr_service.model.utils import Enum
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
 from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
     LogResultStrategy
@@ -64,6 +68,8 @@ class ConsentTool(ToolBase):
             self.check_retro_sync()
         elif self.args.command == 'retro-validation':
             self.retro_validate()
+        elif self.args.command == 'files-for-update':
+            self.files_for_update()
 
     def _call_server_for_retro_validation(self, participant_ids):
         if len(participant_ids) > 0:
@@ -79,6 +85,60 @@ class ConsentTool(ToolBase):
 
         if response.status_code != 200:
             exit(1)  # Exiting program to prevent further calls with a bad key
+
+    def files_for_update(self):
+        logger.info('Generating file...')
+        storage_provider = GoogleCloudStorageProvider()
+        with open('output.csv', 'w') as output_file, self.get_session() as session:
+            # Updatable query to get the files to verify and modify
+            files: Collection[ConsentFile] = session.query(ConsentFile).join(
+                Participant, Participant.participantId == ConsentFile.participant_id
+            ).filter(
+                ConsentFile.type == ConsentType.EHR,
+                ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+            ).order_by(ConsentFile.participant_id, ConsentFile.file_upload_time).limit(500).all()
+
+            fields_to_output = [
+                'id',
+                'file_path',
+                'file',
+                'participant_id',
+                'type',
+                'file_exists',
+                'is_signature_valid',
+                'is_signing_date_valid',
+                'signature_str',
+                'expected_sign_date',
+                'signing_date',
+                'sync_status'
+            ]
+
+            csv_writer = csv.DictWriter(output_file, fields_to_output)
+            csv_writer.writeheader()
+            for file in files:
+                output_record = {
+                    'file': None
+                }
+                for field_name in [name for name in fields_to_output if hasattr(ConsentFile, name)]:
+                    value = getattr(file, field_name)
+
+                    field_type = getattr(ConsentFile, field_name).expression.type
+                    if isinstance(field_type, (Enum, Boolean)):
+                        value = int(value)
+
+                    output_record[field_name] = value
+
+                if file.file_path:
+                    bucket_name, *name_parts = file.file_path.split('/')
+                    blob = storage_provider.get_blob(
+                        bucket_name=bucket_name,
+                        blob_name='/'.join(name_parts)
+                    )
+                    output_record['file'] = blob.generate_signed_url(datetime.utcnow() + timedelta(hours=4))
+
+                csv_writer.writerow(output_record)
+
+        input('Press Enter to exit...')  # The Google SA key will need to stay active for links to docs to work
 
     def retro_validate(self):
         with self.get_session() as session:
@@ -182,18 +242,34 @@ class ConsentTool(ToolBase):
                 participant_ids = list(islice(pid_file, participant_lookup_batch_size))
 
     def upload_records(self):
-        data_to_upload = []
-        with open(self.args.file) as input_file:
+        file_ids_modified = []
+        with open(self.args.file) as input_file, self.get_session() as session:
             input_csv = csv.DictReader(input_file)
             for validation_data in input_csv:
-                data_to_upload.append(ConsentFile(**validation_data))
+                consent_file: ConsentFile = session.query(ConsentFile).filter(
+                    ConsentFile.id == validation_data['id']
+                ).one()
 
-        with self.get_session() as session:
-            self._consent_dao.batch_update_consent_files(data_to_upload, session)
-            session.commit()
-            if data_to_upload:
-                dispatch_rebuild_consent_metrics_tasks([d.id for d in data_to_upload],
-                                                       project_id=self.gcp_env.project)
+                for field_name, value in validation_data.items():
+                    if not hasattr(ConsentFile, field_name):
+                        continue  # Skip any fields that were just for output purpose, like the link for the file
+                    if value == '':
+                        value = None
+
+                    field_definition = getattr(ConsentFile, field_name)
+                    if field_name == 'type':
+                        value = ConsentType(int(value))
+                    elif isinstance(field_definition.expression.type, Boolean):
+                        value = (value == '1')
+                    elif isinstance(field_definition.expression.type, Integer):
+                        value = int(value)
+
+                    setattr(consent_file, field_name, value)
+
+                file_ids_modified.append(consent_file.id)
+
+        if file_ids_modified:
+            dispatch_rebuild_consent_metrics_tasks(file_ids_modified, project_id=self.gcp_env.project)
 
     @classmethod
     def _get_date_error_details(cls, file: ConsentFile, verbose: bool = False):
@@ -263,7 +339,6 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
     modify_parser.add_argument('--pid-file', help='File listing the participant ids to validate', required=True)
     modify_parser.add_argument('--type', help='Consent type to validate, defaults to validating all consents.')
 
-
     modify_parser = subparsers.add_parser('upload')
     modify_parser.add_argument(
         '--file',
@@ -273,6 +348,7 @@ def add_additional_arguments(parser: argparse.ArgumentParser):
 
     subparsers.add_parser('check-retro-sync')
     subparsers.add_parser('retro-validation')
+    subparsers.add_parser('files-for-update')
 
 
 def run():
