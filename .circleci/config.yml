@@ -9,6 +9,7 @@ job_defaults: &job_defaults
     - image: cimg/base:2021.05-18.04
     - image: circleci/mysql:5.7
       environment:
+        MYSQL_HOST: 127.0.0.1
         MYSQL_ROOT_PASSWORD: root
   working_directory: ~/all-of-us/raw-data-repository
   parallelism: 1
