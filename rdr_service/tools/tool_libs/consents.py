@@ -226,7 +226,11 @@ class ConsentTool(ToolBase):
         )
         with open(self.args.pid_file) as pid_file,\
                 self.get_session() as session,\
-                ReplacementStoringStrategy(session=session, consent_dao=controller.consent_dao) as store_strategy:
+                ReplacementStoringStrategy(
+                    session=session,
+                    consent_dao=controller.consent_dao,
+                    project_id=self.gcp_env.project
+                ) as store_strategy:
             # Get participant ids from the file in batches
             # (retrieving all their summaries at once, processing them before the next batch)
             participant_lookup_batch_size = 500
