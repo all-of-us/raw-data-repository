@@ -198,9 +198,11 @@ def _initialize_database(with_data=True, with_consent_codes=False):
 
 def reset_mysql_instance(with_data=True, with_consent_codes=False):
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", ResourceWarning)
-        start_mysql_instance()
+    if not os.environ.get('CIRCLECI_FLAG'):
+        # If we're not in CircleCI, start an instance of the mysql server
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            start_mysql_instance()
     # setup the initial database structure
     _initialize_database(with_data, with_consent_codes)
 
