@@ -50,6 +50,16 @@ def upgrade_rdr():
     sa.ForeignKeyConstraint(['participant_id'], ['participant.participant_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+
+    op.execute(
+        "Insert into genomic_result_viewed(created, modified, participant_id, message_record_id, event_type, "
+        "event_authored_time, module_type, first_viewed, last_viewed) "
+        "Select event_authored_time, event_authored_time, participant_id, message_record_id, event_type, "
+        "event_authored_time, value_string, event_authored_time, event_authored_time "
+        "From message_broker_event_data "
+        "Where true "
+        "And message_broker_event_data.event_type = 'result_viewed'"
+    )
     # ### end Alembic commands ###
 
 

@@ -1494,22 +1494,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         data = {
             'message_record_id': 2,
-            'event_type': 'bad_event'
-        }
-
-        bad_value_post = self.send_post(
-            local_path='IngestFromMessageBrokerDataApi',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        self.assertIsNotNone(bad_value_post)
-        self.assertEqual(bad_value_post['success'], False)
-        self.assertEqual(ingest_called.call_count, 0)
-
-        data = {
-            'message_record_id': 2,
             'event_type': 'informing_loop_decision'
         }
 
