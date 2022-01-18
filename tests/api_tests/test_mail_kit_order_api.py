@@ -48,7 +48,7 @@ class MailKitOrderApiTestBase(BaseTestCase):
         self.summary_dao.insert(self.summary)
 
         mayolinkapi_patcher = mock.patch(
-            "rdr_service.dao.mail_kit_order_dao.MayoLinkApi", **{"return_value.post.return_value": self.mayolink_response}
+            "rdr_service.dao.mail_kit_order_dao.MayoLinkClient", **{"return_value.post.return_value": self.mayolink_response}
         )
         self.mock_mayolink_api = mayolinkapi_patcher.start()
         self.addCleanup(mayolinkapi_patcher.stop)
