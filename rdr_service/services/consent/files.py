@@ -307,7 +307,8 @@ class ConsentFile(ABC):
     def _get_date_signed_str(self):
         date_elements = self._get_date_elements()
         for element in date_elements:
-            if isinstance(element, LTFigure):
+            if isinstance(element, LTFigure) and len(element) > 0:
+                # Some files have empty Figures in the same place as the date
                 return ''.join([char_child.get_text() for char_child in element]).strip()
 
     def _get_signature_elements(self):
