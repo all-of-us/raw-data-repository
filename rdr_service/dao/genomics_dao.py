@@ -755,6 +755,9 @@ class GenomicSetMemberDao(UpdatableDao):
 
                 for item in blocklist_config_items:
 
+                    if not hasattr(member, item.get('attribute')):
+                        continue
+
                     current_attr_value = getattr(member, item.get('attribute'))
                     evaluate_value = item.get('value')
 
