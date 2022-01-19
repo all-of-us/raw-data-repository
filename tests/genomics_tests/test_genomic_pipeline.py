@@ -1426,9 +1426,12 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(14, len(new_genomic_members))
 
-        all_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
+        all_ps_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
                        for obj in new_genomic_members]
-        self.assertEqual(len(set(all_origins)), len(participant_origins))
+        self.assertEqual(len(set(all_ps_origins)), len(participant_origins))
+
+        all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
+        self.assertEqual(len(set(all_member_origins)), len(participant_origins))
 
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
@@ -1437,6 +1440,7 @@ class GenomicPipelineTest(BaseTestCase):
         for member in new_genomic_members:
             member_genome_types[member.biobankId].append(member.genomeType)
 
+            self.assertIsNotNone(member.participantOrigin)
             self.assertIsNotNone(member.created)
             self.assertIsNotNone(member.modified)
 

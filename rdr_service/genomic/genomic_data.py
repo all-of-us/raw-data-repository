@@ -397,6 +397,7 @@ class GenomicQueryClass:
                   CASE
                       WHEN native.participant_id IS NULL THEN 0 ELSE 1
                   END AS is_ai_an,
+                  ps.participant_origin,
                   ss.status,
                   ss.test
                 FROM
@@ -484,7 +485,8 @@ class GenomicQueryClass:
             END AS gror_consent,
             CASE
             WHEN native.participant_id IS NULL THEN 0 ELSE 1
-            END AS is_ai_an
+            END AS is_ai_an,
+            ps.participant_origin
         FROM
             participant_summary ps
             JOIN code c ON c.code_id = ps.sex_id
@@ -544,6 +546,7 @@ class GenomicQueryClass:
               CASE
                   WHEN native.participant_id IS NULL THEN 0 ELSE 1
               END AS is_ai_an,
+              ps.participant_origin,
               ss.status,
               ss.test
             FROM
@@ -655,6 +658,7 @@ class GenomicQueryClass:
           CASE
               WHEN native.participant_id IS NULL THEN 0 ELSE 1
           END AS is_ai_an,
+          ps.participant_origin,
           ss.status,
           ss.test
         FROM
