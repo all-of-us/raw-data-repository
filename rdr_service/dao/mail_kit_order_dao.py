@@ -90,15 +90,14 @@ class MailKitOrderDao(UpdatableDao):
             logging.error(f'Barcode missing for order {order_id}')
 
         # Convert to Central Timezone for Mayo
-        collected_time_utc = parser.parse(fhir_resource.occurrenceDateTime).replace(tzinfo=_UTC)
-        collected_time_central = collected_time_utc.astimezone(_US_CENTRAL)
+        collected_time = parser.parse(fhir_resource.occurrenceDateTime)
 
         order_test = MayoLinkTest(
             code='1SAL2',
             name='PMI Saliva, FDA Kit'
         )
         order = MayoLinkOrder(
-            collected=str(collected_time_central),
+            collected_datetime_utc=collected_time,
             number=barcode,
             medical_record_number=str(to_client_biobank_id(summary.biobankId)),
             last_name=str(to_client_biobank_id(summary.biobankId)),

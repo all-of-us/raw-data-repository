@@ -589,17 +589,13 @@ class BiobankOrderDao(UpdatableDao):
         if not resource.samples:
             raise BadRequest("No sample found in the payload")
 
-        # Convert to Central Timezone for Mayo
-        collected_time_utc = resource.samples[0].collected.date.replace(tzinfo=_UTC)
-        collected_time = collected_time_utc.astimezone(_US_CENTRAL)
-
         kit_id = None
         for item in resource.identifier:
             if item.system == KIT_ID_SYSTEM:
                 kit_id = item.value
 
         order = MayoLinkOrder(
-            collected=str(collected_time),
+            collected_datetime_utc=resource.samples[0].collected.date,
             number=kit_id,
             medical_record_number=str(to_client_biobank_id(summary.biobankId)),
             last_name=str(to_client_biobank_id(summary.biobankId)),

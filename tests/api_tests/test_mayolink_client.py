@@ -1,4 +1,8 @@
+from datetime import datetime
 import mock
+
+import pytz
+import xmltodict
 
 from rdr_service.services.mayolink_client import MayoLinkClient, MayoLinkOrder, MayolinkQuestion, MayoLinkTest, \
     MayolinkTestPassthroughFields
@@ -32,6 +36,19 @@ class MayolinkClientTest(BaseTestCase):
             }
         """
 
+        self.client = MayoLinkClient()
+        mayo_auth_patch = mock.patch('rdr_service.services.mayolink_client.check_auth')
+        mayo_auth_patch.start()
+        self.addCleanup(mayo_auth_patch.stop)
+
+        # Return an empty result to the MayolinkClient
+        http_patch = mock.patch('rdr_service.services.mayolink_client.httplib2')
+        http_mock = http_patch.start()
+        self.addCleanup(http_patch.stop)
+
+        self.request_mock = http_mock.Http.return_value.request
+        self.request_mock.return_value = ({'status': '201'}, b'<result></result>')
+
     def test_default_credentials(self):
         """Test that the client uses the default account by default"""
         mayolink_client = MayoLinkClient()
@@ -64,21 +81,15 @@ class MayolinkClientTest(BaseTestCase):
         self.assertEqual('9283', mayolink_client.pw)
         self.assertEqual(7676, mayolink_client.account)
 
-    @mock.patch('rdr_service.services.mayolink_client.httplib2')
-    def test_order_xml_structure(self, http_mock):
+    def test_order_xml_structure(self):
         """Make sure the resulting xml lines up with the order object sent using the client interface"""
         order = self._get_default_order()
 
-        client = MayoLinkClient()
-        request_mock = http_mock.Http.return_value.request
-        request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
-            client.post(order)
-
-        sent_xml = request_mock.call_args.kwargs['body']
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
         self.assertEqual(
             b'<orders xmlns="http://orders.mayomedicallaboratories.com"><order>'
-            b'<collected>2021-05-01</collected>'
+            b'<collected>2020-12-03 11:09:00-06:00</collected>'
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
@@ -96,8 +107,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.services.mayolink_client.httplib2')
-    def test_order_test_collection_data(self, http_mock):
+    def test_order_test_collection_data(self):
         """Test the data structure with a test object provided (following the process used for mailkit orders)"""
         order = self._get_default_order()
         order.report_notes = ''
@@ -114,16 +124,11 @@ class MayolinkClientTest(BaseTestCase):
             )
         ]
 
-        client = MayoLinkClient()
-        request_mock = http_mock.Http.return_value.request
-        request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
-            client.post(order)
-
-        sent_xml = request_mock.call_args.kwargs['body']
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
         self.assertEqual(
             b'<orders xmlns="http://orders.mayomedicallaboratories.com"><order>'
-            b'<collected>2021-05-01</collected>'
+            b'<collected>2020-12-03 11:09:00-06:00</collected>'
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
@@ -145,8 +150,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.services.mayolink_client.httplib2')
-    def test_passthrough_fields(self, http_mock):
+    def test_passthrough_fields(self):
         """Test the data structure with passthrough fields added in"""
         order = self._get_default_order()
         order.tests = [
@@ -160,16 +164,11 @@ class MayolinkClientTest(BaseTestCase):
             )
         ]
 
-        client = MayoLinkClient()
-        request_mock = http_mock.Http.return_value.request
-        request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
-            client.post(order)
-
-        sent_xml = request_mock.call_args.kwargs['body']
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
         self.assertEqual(
             b'<orders xmlns="http://orders.mayomedicallaboratories.com"><order>'
-            b'<collected>2021-05-01</collected>'
+            b'<collected>2020-12-03 11:09:00-06:00</collected>'
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
@@ -196,8 +195,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.services.mayolink_client.httplib2')
-    def test_question_fields(self, http_mock):
+    def test_question_fields(self):
         """Test the data structure with questions fields added in"""
         order = self._get_default_order()
         order.tests = [MayoLinkTest(
@@ -210,16 +208,11 @@ class MayolinkClientTest(BaseTestCase):
             ]
         )]
 
-        client = MayoLinkClient()
-        request_mock = http_mock.Http.return_value.request
-        request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
-            client.post(order)
-
-        sent_xml = request_mock.call_args.kwargs['body']
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
         self.assertEqual(
             b'<orders xmlns="http://orders.mayomedicallaboratories.com"><order>'
-            b'<collected>2021-05-01</collected>'
+            b'<collected>2020-12-03 11:09:00-06:00</collected>'
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
@@ -244,9 +237,26 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
+    def test_collected_time_converted_to_central(self):
+        """MayoLINK expects that the times sent are in Central. Make sure the client converts appropriately"""
+        order = self._get_default_order()
+        # default order time is 2020-12-03 17:09 UTC
+
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
+        sent_dict = xmltodict.parse(sent_xml)
+        self.assertEqual('2020-12-03 11:09:00-06:00', sent_dict['orders']['order']['collected'])
+
+        # Make sure a naive datetime is treated as UTC
+        order.collected_datetime_utc = datetime(2021, 7, 9, 2, 18)
+        self.client.post(order)
+        sent_xml = self.request_mock.call_args.kwargs['body']
+        sent_dict = xmltodict.parse(sent_xml)
+        self.assertEqual('2021-07-08 21:18:00-05:00', sent_dict['orders']['order']['collected'])
+
     def _get_default_order(self):
         return MayoLinkOrder(
-            collected='2021-05-01',
+            collected_datetime_utc=datetime(2020, 12, 3, 17, 9, tzinfo=pytz.utc),
             number='12345',
             medical_record_number='Z6789',
             last_name='Smith',

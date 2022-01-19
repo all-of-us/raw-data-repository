@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import httplib2
 import logging
@@ -6,6 +7,8 @@ from typing import List
 from werkzeug.exceptions import ServiceUnavailable
 import xml.etree.ElementTree as ET
 import xmltodict
+
+import pytz
 
 from rdr_service import config
 from rdr_service.api_util import RDR_AND_PTC, open_cloud_file
@@ -38,7 +41,7 @@ class MayoLinkTest:
 
 @dataclass
 class MayoLinkOrder:
-    collected: str
+    collected_datetime_utc: datetime
     number: str
     medical_record_number: str
     last_name: str
@@ -114,7 +117,7 @@ class MayoLinkClient:
     def _dict_from_order(self, order: MayoLinkOrder):
         order_dict = {
             'order': {
-                'collected': order.collected,
+                'collected': str(self._convert_to_central_time(order.collected_datetime_utc)),
                 'account': self.account,
                 'number': order.number,
                 'patient': {
@@ -190,3 +193,11 @@ class MayoLinkClient:
             return root
         elif dict_tree is not None:
             root.text = str(dict_tree)
+
+    @classmethod
+    def _convert_to_central_time(cls, timestamp: datetime):
+        # Set the timezone as UTC if it's a naive datetime
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=pytz.utc)
+
+        return timestamp.astimezone(pytz.timezone('US/Central'))
