@@ -679,7 +679,6 @@ class GenomicQueryClass:
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
-            AND ps.participant_origin != 'careevolution'
             AND m.id IS NULL
         """
 

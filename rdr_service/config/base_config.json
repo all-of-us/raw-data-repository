@@ -126,15 +126,15 @@
       },
       {
         "attribute": "genomeType",
-        "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        "reason_string": "sample_swap"
+        "value": ["test_investigation_one", "test_investigation_two"],
+        "reason_string": "test_sample_swap"
       }
     ],
     "block_results": [
       {
         "attribute": "genomeType",
-        "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        "reason_string": "sample_swap"
+        "value": ["test_investigation_one", "test_investigation_two"],
+        "reason_string": "test_sample_swap"
       }
     ]
   },

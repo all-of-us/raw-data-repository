@@ -1308,6 +1308,8 @@ class GenomicPipelineTest(BaseTestCase):
         test_biobank_ids = (100001, 100002, 100003, 100004, 100005, 100006, 100007, 100008, 100009)
         fake_datetime_old = datetime.datetime(2019, 12, 31, tzinfo=pytz.utc)
         fake_datetime_new = datetime.datetime(2020, 1, 5, tzinfo=pytz.utc)
+        participant_origins = ['careevolution', 'example']
+
         # update the sites' States for the state test (NY or AZ)
         self._update_site_states()
 
@@ -1330,7 +1332,7 @@ class GenomicPipelineTest(BaseTestCase):
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
                                consentCohort=3,
-                               participantOrigin='careevolution' if bid == 100009 else 'example')
+                               participantOrigin=participant_origins[random.randint(0, 1)])
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -1417,7 +1419,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Should be a aou_wgs and aou_array for each
         new_genomic_members = self.member_dao.get_all()
-        self.assertEqual(12, len(new_genomic_members))
+        self.assertEqual(14, len(new_genomic_members))
+
+        all_origins = [self.summary_dao.get_by_participant_id(obj.participantId).participantOrigin
+                       for obj in new_genomic_members]
+        self.assertEqual(len(set(all_origins)), len(participant_origins))
 
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,

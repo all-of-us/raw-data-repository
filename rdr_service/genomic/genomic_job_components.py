@@ -2382,7 +2382,7 @@ class GenomicBiobankSamplesCoupler:
         """
         samples = self._get_new_biobank_samples(from_date)
 
-        if len(samples) > 0:
+        if samples:
             samples_meta = self.GenomicSampleMeta(*samples)
             return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_3_ID)
 

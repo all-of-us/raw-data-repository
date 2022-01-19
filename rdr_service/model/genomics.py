@@ -240,6 +240,7 @@ class GenomicSetMember(Base):
     blockResearchReason = Column('block_research_reason', String(255), nullable=True)
     blockResults = Column('block_results', SmallInteger, nullable=False, default=0)
     blockResultsReason = Column('block_results_reason', String(255), nullable=True)
+    participantOrigin = Column("participant_origin", String(80), nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
