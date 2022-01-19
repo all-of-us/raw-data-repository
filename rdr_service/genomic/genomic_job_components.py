@@ -41,7 +41,7 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
     GenomicAW1Raw,
-    GenomicAW2Raw, GenomicGcDataFileMissing, GenomicAW4Raw)
+    GenomicAW2Raw, GenomicGcDataFileMissing, GenomicAW4Raw, GenomicAW3Raw)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -66,7 +66,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicAW4RawDao)
+    GenomicAW4RawDao, GenomicAW3RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -433,38 +433,39 @@ class GenomicFileIngester:
     def get_aw3_raw_column_mappings():
         return {
             "chipwellbarcode": "chipwellbarcode",
-            "biobank_id": "biobank_id",
-            "sample_id": "sample_id",
-            "research_id": "research_id",
+            "biobank_id": "biobankid",
+            "sample_id": "sampleid",
+            "research_id": "researchid",
             "biobankidsampleid": "biobankidsampleid",
-            "sex_at_birth": "sex_at_birth",
-            "site_id": "site_id",
+            "sex_at_birth": "sexatbirth",
+            "site_id": "siteid",
             "callrate": "callrate",
-            "sex_concordance": "sex_concordance",
+            "sex_concordance": "sexconcordance",
             "contamination": "contamination",
-            "processing_status": "processing_status",
-            "mean_coverage": "mean_coverage",
-            "sample_source": "sample_source",
-            "mapped_reads_pct": "mapped_reads_pct",
-            "sex_ploidy": "sex_ploidy",
-            "ai_an": "ai_an",
+            "processing_status": "processingstatus",
+            "mean_coverage": "meancoverage",
+            "sample_source": "samplesource",
+            "pipeline_id": "pipelineid",
+            "mapped_reads_pct": "mappedreadspct",
+            "sex_ploidy": "sexploidy",
+            "ai_an": "aian",
             "blocklisted": "blocklisted",
-            "blocklisted_reason": "blocklisted_reason",
-            "red_idat_path": "red_idat_path",
-            "red_idat_md5_path": "red_idat_md5_path",
-            "green_idat_path": "green_idat_path",
-            "green_idat_md5_path": "green_idat_md5_path",
-            "vcf_path": "vcf_path",
-            "vcf_index_path": "vcf_index_path",
-            "vcf_md5_path": "vcf_md5_path",
-            "vcf_hf_path": "vcf_hf_path",
-            "vcf_hf_index_path": "vcf_hf_index_path",
-            "vcf_hf_md5_path": "vcf_hf_md5_path",
-            "cram_path": "cram_path",
-            "cram_md5_path": "cram_md5_path",
-            "crai_path": "crai_path",
-            "gvcf_path": "gvcf_path",
-            "gvcf_md5_path": "gvcf_md5_path",
+            "blocklisted_reason": "blocklistedreason",
+            "red_idat_path": "redidatpath",
+            "red_idat_md5_path": "redidatmd5path",
+            "green_idat_path": "greenidatpath",
+            "green_idat_md5_path": "greenidatmd5path",
+            "vcf_path": "vcfpath",
+            "vcf_index_path": "vcfindexpath",
+            "vcf_md5_path": "vcfmd5path",
+            "vcf_hf_path": "vcfhfpath",
+            "vcf_hf_index_path": "vcfhfindexpath",
+            "vcf_hf_md5_path": "vcfhfmd5path",
+            "cram_path": "crampath",
+            "cram_md5_path": "crammd5path",
+            "crai_path": "craipath",
+            "gvcf_path": "gvcfpath",
+            "gvcf_md5_path": "gvcfmd5path",
         }
 
     @staticmethod
@@ -630,6 +631,11 @@ class GenomicFileIngester:
             dao = GenomicAW2RawDao()
             awn_model = GenomicAW2Raw
             columns = self.get_aw2_raw_column_mappings()
+
+        elif self.controller.job_id == GenomicJob.LOAD_AW3_TO_RAW_TABLE:
+            dao = GenomicAW3RawDao()
+            awn_model = GenomicAW3Raw
+            columns = self.get_aw3_raw_column_mappings()
 
         elif self.controller.job_id == GenomicJob.LOAD_AW4_TO_RAW_TABLE:
             dao = GenomicAW4RawDao()

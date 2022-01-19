@@ -2319,7 +2319,8 @@ class GenomicAW3RawDao(BaseDao):
             return session.query(
                 GenomicAW3Raw
             ).filter(
-                GenomicAW3Raw.file_path == filepath
+                GenomicAW3Raw.file_path == filepath,
+                GenomicAW3Raw.ignore_flag == 0,
             ).all()
 
 
@@ -2339,7 +2340,8 @@ class GenomicAW4RawDao(BaseDao):
             return session.query(
                 GenomicAW4Raw
             ).filter(
-                GenomicAW4Raw.file_path == filepath
+                GenomicAW4Raw.file_path == filepath,
+                GenomicAW4Raw.ignore_flag == 0,
             ).all()
 
 

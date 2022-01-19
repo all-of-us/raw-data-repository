@@ -31,7 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao)
+    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao, GenomicAW3RawDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -3243,10 +3243,28 @@ class GenomicPipelineTest(BaseTestCase):
 
             self.assertEqual(metric.pipelineId, rows[1]['pipeline_id'])
 
-            # Test run record is success
-            run_obj = self.job_run_dao.get(4)
+            # Test AW3 loaded into raw table
+            aw3_dao = GenomicAW3RawDao()
+            raw_records = aw3_dao.get_all()
+            raw_records.sort(key=lambda x: x.biobank_id)
 
-            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+            # Check rows in file against records in raw table
+            self.assertEqual(len(rows), len(raw_records))
+
+            for file_row in rows:
+                i = int(file_row['biobank_id'][1:])-1
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+
+                self.assertEqual("aou_array", raw_records[i].genome_type)
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_array_blocklist_populated(self):
         block_research_reason = 'Sample Swap'
@@ -3343,9 +3361,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertTrue(all(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason'] is not
                                 None for obj in rows))
 
-            # Test run record is success
-            run_obj = self.job_run_dao.get(4)
-            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_array_manifest_with_max_num(self):
         stored_samples = [
@@ -3486,6 +3507,10 @@ class GenomicPipelineTest(BaseTestCase):
 
         run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
 
     def test_aw3_array_manifest_validation(self):
         stored_samples = [
@@ -3683,6 +3708,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertTrue(all(i for i in all_incidents if i.slack_notification == 1 and i.slack_notification_date is
                             not None))
 
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_wgs_manifest_generation(self, cloud_task):
         # Need GC Manifest for source query : run_id = 1
@@ -3856,10 +3884,27 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertEqual(metric.processingStatus, row['processing_status'])
             self.assertEqual(metric.meanCoverage, row['mean_coverage'])
 
-            # Test run record is success
-            run_obj = self.job_run_dao.get(4)
+            # Test AW3 loaded into raw table
+            aw3_dao = GenomicAW3RawDao()
+            raw_records = aw3_dao.get_all()
+            raw_records.sort(key=lambda x: x.biobank_id)
 
-            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+            # Check rows in file against records in raw table
+            self.assertEqual(len(rows), len(raw_records))
+
+            for file_row in rows:
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[0], field.lower()))
+
+                self.assertEqual("aou_wgs", raw_records[0].genome_type)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_aw3_wgs_blocklist_populated(self):
         block_research_reason = 'Sample Swap'
@@ -3961,9 +4006,12 @@ class GenomicPipelineTest(BaseTestCase):
             self.assertTrue(obj['blocklisted_reason'] == block_research_reason and obj['blocklisted_reason']
                             is not None for obj in row)
 
-            # Test run record is success
-            run_obj = self.job_run_dao.get(4)
-            self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        # Test run record is success
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_wgs_manifest_validation(self):
         stored_samples = [
@@ -4101,7 +4149,7 @@ class GenomicPipelineTest(BaseTestCase):
             genomic_pipeline.aw3_wgs_manifest_workflow()
 
         should_be_incident_count += 1
-        run_obj = self.job_run_dao.get(5)
+        run_obj = self.job_run_dao.get(6)
         self.assertEqual(GenomicSubProcessResult.ERROR, run_obj.runResult)
 
         incident = self.incident_dao.get_by_message(
@@ -4163,6 +4211,9 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(len(all_incidents), should_be_incident_count)
         self.assertTrue(all(i for i in all_incidents if i.slack_notification == 1 and i.slack_notification_date is
                             not None))
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_wgs_manifest_with_max_num(self):
         stored_samples = [
@@ -4319,6 +4370,10 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(4)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
+        config.override_setting(config.GENOMIC_MAX_NUM_GENERATE, [4000])
+
     def test_aw3_no_records(self):
         genomic_pipeline.aw3_wgs_manifest_workflow()  # run_id = 1
 
@@ -4326,6 +4381,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(1)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw1c_manifest_ingestion(self):
         # Need W3 Manifest Job Run: run_id = 1
@@ -4536,6 +4593,8 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        self.clear_table_after_test('genomic_aw4_raw')
+
     def test_aw4_wgs_manifest_ingest(self):
         # Create AW3 WGS manifest job run: id = 1
         self.job_run_dao.insert(GenomicJobRun(jobId=GenomicJob.AW3_WGS_WORKFLOW,
@@ -4636,6 +4695,8 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        self.clear_table_after_test('genomic_aw4_raw')
 
     def test_sub_folder_same_file_names(self):
         # Create AW3 array manifest job run: id = 1

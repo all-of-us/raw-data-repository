@@ -46,6 +46,7 @@ def upgrade_rdr():
     sa.Column('processing_status', sa.String(length=255), nullable=True),
     sa.Column('mean_coverage', sa.String(length=255), nullable=True),
     sa.Column('sample_source', sa.String(length=255), nullable=True),
+    sa.Column('pipeline_id', sa.String(length=255), nullable=True),
     sa.Column('mapped_reads_pct', sa.String(length=255), nullable=True),
     sa.Column('sex_ploidy', sa.String(length=255), nullable=True),
     sa.Column('ai_an', sa.String(length=255), nullable=True),

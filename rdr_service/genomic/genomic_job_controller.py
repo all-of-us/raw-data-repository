@@ -1082,6 +1082,7 @@ class GenomicJobController:
                     and self.manifests_generated:
 
                 now_time = datetime.utcnow()
+                result['output_files'] = []
 
                 for manifest in self.manifests_generated:
                     compiled_file_name = manifest["file_path"].split(f'{self.bucket_name}/')[-1]

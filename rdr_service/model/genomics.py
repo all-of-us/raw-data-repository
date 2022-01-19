@@ -506,6 +506,7 @@ class GenomicAW3Raw(Base):
     processing_status = Column(String(255), nullable=True)
     mean_coverage = Column(String(255), nullable=True)
     sample_source = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
     mapped_reads_pct = Column(String(255), nullable=True)
     sex_ploidy = Column(String(255), nullable=True)
     ai_an = Column(String(255), nullable=True)
