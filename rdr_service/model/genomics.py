@@ -490,7 +490,6 @@ class GenomicAW3Raw(Base):
     file_path = Column(String(255), nullable=True, index=True)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     dev_note = Column(String(255), nullable=True)
-    manifest_authored_time = Column(DateTime, nullable=True)
     genome_type = Column(String(255), nullable=True, index=True)
 
     # Raw AW3 Data
@@ -549,7 +548,6 @@ class GenomicAW4Raw(Base):
     file_path = Column(String(255), nullable=True, index=True)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
     dev_note = Column(String(255), nullable=True)
-    upload_date = Column(DateTime, nullable=True)
     genome_type = Column(String(255), nullable=True, index=True)
 
     # Raw AW4 Data

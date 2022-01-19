@@ -411,6 +411,8 @@ def load_awn_manifest_into_raw_table(
     jobs = {
         "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
         "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
+        "aw3": GenomicJob.LOAD_AW3_TO_RAW_TABLE,
+        "aw4": GenomicJob.LOAD_AW4_TO_RAW_TABLE,
     }
 
     with GenomicJobController(jobs[manifest_type],

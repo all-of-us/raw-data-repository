@@ -31,7 +31,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao,
-    GenomicGcDataFileMissingDao, UserEventMetricsDao)
+    GenomicGcDataFileMissingDao, UserEventMetricsDao, GenomicAW4RawDao)
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao, ParticipantRaceAnswersDao
@@ -4513,6 +4513,25 @@ class GenomicPipelineTest(BaseTestCase):
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
 
+        # Test AW4 Raw table
+        genomic_pipeline.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+
+        aw4_dao = GenomicAW4RawDao()
+        raw_records = aw4_dao.get_all()
+        raw_records.sort(key=lambda x: x.biobank_id)
+
+        with open_cloud_file(os.path.normpath(f"{bucket_name}/{sub_folder}/{file_name}")) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            file_rows = list(csv_reader)
+
+            # Check rows in file against records in raw table
+            for file_row in file_rows:
+                i = int(file_row['biobank_id'])-1
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+
+                self.assertEqual("aou_array", raw_records[i].genome_type)
+
         # Test the job result
         run_obj = self.job_run_dao.get(2)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
@@ -4594,6 +4613,25 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(f'{bucket_name}/{sub_folder}/{file_name}',
                          file_record.filePath)
         self.assertEqual(file_name, file_record.fileName)
+
+        # Test AW4 Raw table
+        genomic_pipeline.load_awn_manifest_into_raw_table(f"{bucket_name}/{sub_folder}/{file_name}", "aw4")
+
+        aw4_dao = GenomicAW4RawDao()
+        raw_records = aw4_dao.get_all()
+        raw_records.sort(key=lambda x: x.biobank_id)
+
+        with open_cloud_file(os.path.normpath(f"{bucket_name}/{sub_folder}/{file_name}")) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            file_rows = list(csv_reader)
+
+            # Check rows in file against records in raw table
+            for file_row in file_rows:
+                i = int(file_row['biobank_id'])-1
+                for field in file_row.keys():
+                    self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+
+                self.assertEqual("aou_wgs", raw_records[i].genome_type)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)

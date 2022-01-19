@@ -41,7 +41,7 @@ from rdr_service.model.genomics import (
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
     GenomicAW1Raw,
-    GenomicAW2Raw, GenomicGcDataFileMissing)
+    GenomicAW2Raw, GenomicGcDataFileMissing, GenomicAW4Raw)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -65,8 +65,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
-    UserEventMetricsDao
-)
+    UserEventMetricsDao,
+    GenomicAW4RawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -429,6 +429,78 @@ class GenomicFileIngester:
             "pipeline_id": "pipelineid",
         }
 
+    @staticmethod
+    def get_aw3_raw_column_mappings():
+        return {
+            "chipwellbarcode": "chipwellbarcode",
+            "biobank_id": "biobank_id",
+            "sample_id": "sample_id",
+            "research_id": "research_id",
+            "biobankidsampleid": "biobankidsampleid",
+            "sex_at_birth": "sex_at_birth",
+            "site_id": "site_id",
+            "callrate": "callrate",
+            "sex_concordance": "sex_concordance",
+            "contamination": "contamination",
+            "processing_status": "processing_status",
+            "mean_coverage": "mean_coverage",
+            "sample_source": "sample_source",
+            "mapped_reads_pct": "mapped_reads_pct",
+            "sex_ploidy": "sex_ploidy",
+            "ai_an": "ai_an",
+            "blocklisted": "blocklisted",
+            "blocklisted_reason": "blocklisted_reason",
+            "red_idat_path": "red_idat_path",
+            "red_idat_md5_path": "red_idat_md5_path",
+            "green_idat_path": "green_idat_path",
+            "green_idat_md5_path": "green_idat_md5_path",
+            "vcf_path": "vcf_path",
+            "vcf_index_path": "vcf_index_path",
+            "vcf_md5_path": "vcf_md5_path",
+            "vcf_hf_path": "vcf_hf_path",
+            "vcf_hf_index_path": "vcf_hf_index_path",
+            "vcf_hf_md5_path": "vcf_hf_md5_path",
+            "cram_path": "cram_path",
+            "cram_md5_path": "cram_md5_path",
+            "crai_path": "crai_path",
+            "gvcf_path": "gvcf_path",
+            "gvcf_md5_path": "gvcf_md5_path",
+        }
+
+    @staticmethod
+    def get_aw4_raw_column_mappings():
+        return {
+            "biobank_id": "biobankid",
+            "sample_id": "sampleid",
+            "sex_at_birth": "sexatbirth",
+            "site_id": "siteid",
+            "red_idat_path": "redidatpath",
+            "red_idat_md5_path": "redidatmd5path",
+            "green_idat_path": "greenidatpath",
+            "green_idat_md5_path": "greenidatmd5path",
+            "vcf_path": "vcfpath",
+            "vcf_index_path": "vcfindexpath",
+            "vcf_hf_path": "vcfhfpath",
+            "vcf_hf_md5_path": "vcfhfmd5path",
+            "vcf_hf_index_path": "vcfhfindexpath",
+            "vcf_raw_path": "vcfrawpath",
+            "vcf_raw_md5_path": "vcfrawmd5path",
+            "vcf_raw_index_path": "vcfrawindexpath",
+            "gvcf_path": "gvcfpath",
+            "gvcf_md5_path": "gvcfmd5path",
+            "cram_path": "crampath",
+            "cram_md5_path": "crammd5path",
+            "crai_path": "craipath",
+            "research_id": "researchid",
+            "qc_status": "qcstatus",
+            "drc_sex_concordance": "drcsexconcordance",
+            "drc_call_rate": "drccallrate",
+            "drc_contamination": "drccontamination",
+            "drc_mean_coverage": "drcmeancoverage",
+            "drc_fp_concordance": "drcfpconcordance",
+            "pass_to_research_pipeline": "passtoresearchpipeline",
+        }
+
     def _ingest_aw1_manifest(self, rows):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
@@ -559,8 +631,13 @@ class GenomicFileIngester:
             awn_model = GenomicAW2Raw
             columns = self.get_aw2_raw_column_mappings()
 
+        elif self.controller.job_id == GenomicJob.LOAD_AW4_TO_RAW_TABLE:
+            dao = GenomicAW4RawDao()
+            awn_model = GenomicAW4Raw
+            columns = self.get_aw4_raw_column_mappings()
+
         else:
-            logging.error("Job ID not LOAD_AW1_TO_RAW_TABLE or LOAD_AW2_TO_RAW_TABLE")
+            logging.error("Job ID not valid load raw job.")
             return GenomicSubProcessResult.ERROR
 
         # look up if any rows exist already for the file

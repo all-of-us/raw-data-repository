@@ -1266,7 +1266,7 @@ class GenomicJobController:
 
     def load_raw_awn_data_from_filepath(self, file_path):
         """
-        Loads raw AW1/AW2 data to genomic_aw1_raw/genomic_aw2_raw
+        Loads raw AW1/2/3/4 data to raw table
 
         :param file_path: "bucket/folder/manifest_file.csv"
         :return:

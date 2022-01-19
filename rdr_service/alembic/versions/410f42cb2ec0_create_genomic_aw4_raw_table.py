@@ -32,7 +32,6 @@ def upgrade_rdr():
     sa.Column('file_path', sa.String(length=255), nullable=True),
     sa.Column('ignore_flag', sa.SmallInteger(), nullable=False),
     sa.Column('dev_note', sa.String(length=255), nullable=True),
-    sa.Column('upload_date', sa.DateTime(), nullable=True),
     sa.Column('genome_type', sa.String(length=255), nullable=True),
     sa.Column('biobank_id', sa.String(length=255), nullable=True),
     sa.Column('sample_id', sa.String(length=255), nullable=True),

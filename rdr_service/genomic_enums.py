@@ -107,6 +107,9 @@ class GenomicJob(messages.Enum):
     METRICS_FILE_INGEST = 50
     RECONCILE_INFORMING_LOOP_RESPONSES = 51
 
+    LOAD_AW3_TO_RAW_TABLE = 52
+    LOAD_AW4_TO_RAW_TABLE = 53
+
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
     DAILY_SUMMARY_REPORT_JOB_RUNS = 101
