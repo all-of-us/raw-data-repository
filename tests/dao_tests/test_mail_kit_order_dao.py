@@ -61,7 +61,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            'rdr_service.dao.mail_kit_order_dao.MayoLinkApi',
+            'rdr_service.dao.mail_kit_order_dao.MayoLinkClient',
             **{'return_value.post.return_value': self.mayolink_response}
         )
         self.mock_mayolinkapi = mayolinkapi_patcher.start()
@@ -258,7 +258,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             self.make_supply_posts(test_case)
             run_db_test(expected_data)
 
-    @mock.patch("rdr_service.dao.mail_kit_order_dao.MayoLinkApi")
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.MayoLinkClient")
     def test_service_unavailable(self, mocked_api):
         # pylint: disable=unused-argument
         def raises(*args):

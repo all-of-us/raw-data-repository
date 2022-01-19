@@ -8,7 +8,8 @@ from sqlalchemy.orm import load_only
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 from rdr_service.code_constants import UNMAPPED, UNSET
 from rdr_service import clock, app_util
-from rdr_service.api.mayolink_api import MayoLinkApi, MayoLinkOrder, MayoLinkTest, MayolinkTestPassthroughFields
+from rdr_service.services.mayolink_client import MayoLinkClient, MayoLinkOrder, MayoLinkTest,\
+    MayolinkTestPassthroughFields
 from rdr_service.api_util import (
     DV_BARCODE_URL,
     DV_FHIR_URL,
@@ -56,7 +57,7 @@ class MailKitOrderDao(UpdatableDao):
 
     def send_order(self, resource, pid):
         order, is_version_two = self._filter_order_fields(resource, pid)
-        mayo = MayoLinkApi(credentials_key='version_two' if is_version_two else 'default')
+        mayo = MayoLinkClient(credentials_key='version_two' if is_version_two else 'default')
         response = mayo.post(order)
         return self.to_client_json(response, for_update=True)
 

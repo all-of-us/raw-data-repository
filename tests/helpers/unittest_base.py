@@ -499,6 +499,7 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         stream_handler = logging.StreamHandler(sys.stdout)
         stream_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
         logger.addHandler(stream_handler)
+        self.addCleanup(logger.removeHandler, stream_handler)
 
         # Change this to logging.ERROR when you want to see API server errors.
         logger.setLevel(logging.CRITICAL)

@@ -11,7 +11,7 @@ from rdr_service.lib_fhir.fhirclient_1_0_6.models.address import Address
 from sqlalchemy import or_, cast, Date, and_
 from sqlalchemy.orm import subqueryload, joinedload
 from werkzeug.exceptions import BadRequest, Conflict, PreconditionFailed, ServiceUnavailable
-from rdr_service.api.mayolink_api import MayoLinkApi, MayoLinkOrder, MayolinkQuestion, MayoLinkTest
+from rdr_service.services.mayolink_client import MayoLinkClient, MayoLinkOrder, MayolinkQuestion, MayoLinkTest
 from rdr_service import clock
 from rdr_service.api_util import get_site_id_by_site_value as get_site, format_json_code
 from rdr_service.app_util import get_account_origin_id
@@ -568,7 +568,7 @@ class BiobankOrderDao(UpdatableDao):
         return order
 
     def _make_mayolink_order(self, participant_id, resource):
-        mayo = MayoLinkApi()
+        mayo = MayoLinkClient()
         summary = ParticipantSummaryDao().get(participant_id)
         if not summary:
             raise BadRequest("No summary for participant id: {}".format(participant_id))
