@@ -383,7 +383,9 @@ class GenomicPipelineTest(BaseTestCase):
         sample_source=None,
         ai_an=None,
         block_research=None,
-        block_research_reason=None
+        block_research_reason=None,
+        block_results=None,
+        block_results_reason=None
     ):
         genomic_set_member = GenomicSetMember()
         genomic_set_member.genomicSetId = genomic_set_id
@@ -412,7 +414,8 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_set_member.ai_an = ai_an
         genomic_set_member.blockResearch = block_research
         genomic_set_member.blockResearchReason = block_research_reason
-
+        genomic_set_member.blockResults = block_results
+        genomic_set_member.blockResultsReason = block_results_reason
         member_dao = GenomicSetMemberDao()
         member_dao.insert(genomic_set_member)
 
@@ -509,6 +512,8 @@ class GenomicPipelineTest(BaseTestCase):
                 ai_an=kwargs.get('ai_an'),
                 block_research=kwargs.get('block_research'),
                 block_research_reason=kwargs.get('block_research_reason'),
+                block_results=kwargs.get('block_results'),
+                block_results_reason=kwargs.get('block_results_reason')
             )
 
     def _update_site_states(self):
@@ -1322,7 +1327,7 @@ class GenomicPipelineTest(BaseTestCase):
         native_code = self._setup_fake_race_codes(native=True)
 
         # Setup the biobank order backend
-        for bid in test_biobank_ids:
+        for i, bid in enumerate(test_biobank_ids):
             p = self._make_participant(biobankId=bid)
             self._make_summary(p, sexId=intersex_code if bid == 100004 else female_code,
                                consentForStudyEnrollment=0 if bid == 100006 else 1,
@@ -1332,7 +1337,7 @@ class GenomicPipelineTest(BaseTestCase):
                                samplesToIsolateDNA=0,
                                race=Race.HISPANIC_LATINO_OR_SPANISH,
                                consentCohort=3,
-                               participantOrigin=participant_origins[random.randint(0, 1)])
+                               participantOrigin=participant_origins[0 if i % 2 == 0 else 1])
             # Insert participant races
             race_answer = ParticipantRaceAnswers(
                 participantId=p.participantId,
@@ -2417,15 +2422,19 @@ class GenomicPipelineTest(BaseTestCase):
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
             p.consentForGenomicsRORAuthored = ror_start
-            if p.biobankId == 3:
-                p.participantOrigin = 'careevolution'
             self.summary_dao.update(p)
+
+        # exclude based on block result in GEM A1 query
+        bib_member = list(filter(lambda x: x.biobankId == '3', self.member_dao.get_all()))[0]
+        bib_member.blockResults = 1
+        bib_member.blockResultsReason = 'test_reason'
+        self.member_dao.update(bib_member)
 
         bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
 
         create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_2.csv',
-                                         bucket_name,
-                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
+                                   bucket_name,
+                                   folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1]))
 
         self._update_test_sample_ids()
 

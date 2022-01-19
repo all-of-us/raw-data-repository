@@ -249,13 +249,11 @@ class GenomicQueryClass:
                 (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                 (GenomicSetMember.genomeType == "aou_array") &
-                (GenomicSetMember.ignoreFlag == 0) &
                 (self.aliases['gsm'].id.is_(None)) &
-                (GenomicSetMember.blockResults == 0) &
+                (GenomicSetMember.blockResults != 1) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
-                (ParticipantSummary.participantOrigin != 'careevolution')
+                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
             ).group_by(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
