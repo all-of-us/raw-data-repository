@@ -55,7 +55,7 @@ class MayoLinkOrder:
     comments: str = ''
 
 
-class MayoLinkApi:
+class MayoLinkClient:
     def __init__(self, credentials_key='default'):
         self.namespace = "http://orders.mayomedicallaboratories.com"
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)

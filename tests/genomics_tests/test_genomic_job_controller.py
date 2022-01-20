@@ -513,7 +513,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 genomicSetId=gen_set.id,
                 biobankId="100153482",
                 sampleId="21042005280",
-                genomeType='aou_array_investigation' if i & 2 != 0 else 'aou_wgs',
+                genomeType='test_investigation_one' if i & 2 != 0 else 'aou_wgs',
                 genomicWorkflowState=GenomicWorkflowState.AW0,
                 ai_an='Y' if i & 2 == 0 else 'N'
             )
@@ -532,27 +532,7 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.UPDATE_MEMBERS_BLOCKLISTS) as controller:
             controller.update_members_blocklists()
 
-        # current config json in base
-        # "block_research": [
-        #     {
-        #         "attribute": "ai_an",
-        #         "value": "Y",
-        #         "reason_string": "aian"
-        #     },
-        #     {
-        #         "attribute": "genomeType",
-        #         "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        #         "reason_string": "sample_swap"
-        #     }
-        # ],
-        # "block_results": [
-        #     {
-        #         "attribute": "genomeType",
-        #         "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        #         "reason_string": "sample_swap"
-        #     }
-        # ]
-
+        # current config json in base_config.json
         created_members = self.member_dao.get_all()
 
         # should be RESEARCH blocked
@@ -569,15 +549,15 @@ class GenomicJobControllerTest(BaseTestCase):
 
         # should be RESEARCH blocked
         self.assertTrue(all(
-            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
-            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'test_sample_swap'
+            for obj in created_members if obj.genomeType == 'test_investigation_one' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW0)
         )
 
         # should be RESULTS blocked
         self.assertTrue(all(
-            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
-            for obj in created_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'test_sample_swap'
+            for obj in created_members if obj.genomeType == 'test_investigation_one' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW0)
         )
 
@@ -604,7 +584,7 @@ class GenomicJobControllerTest(BaseTestCase):
                 genomicSetId=gen_set.id,
                 biobankId="100153482",
                 sampleId="21042005280",
-                genomeType='aou_array_investigation' if i & 2 != 0 else 'aou_wgs',
+                genomeType='test_investigation_one' if i & 2 != 0 else 'aou_wgs',
                 genomicWorkflowState=GenomicWorkflowState.AW1,
                 ai_an='Y' if i & 2 == 0 else 'N'
             )
@@ -628,15 +608,15 @@ class GenomicJobControllerTest(BaseTestCase):
 
         # should be RESEARCH blocked
         self.assertTrue(all(
-            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'sample_swap'
-            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            obj.blockResearch == 1 and obj.blockResearchReason is not None and obj.blockResearchReason == 'test_sample_swap'
+            for obj in modified_members if obj.genomeType == 'test_investigation_one' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW1)
         )
 
         # should be RESULTS blocked
         self.assertTrue(all(
-            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'sample_swap'
-            for obj in modified_members if obj.genomeType == 'aou_array_investigation' and obj.genomicWorkflowState ==
+            obj.blockResults == 1 and obj.blockResultsReason is not None and obj.blockResultsReason == 'test_sample_swap'
+            for obj in modified_members if obj.genomeType == 'test_investigation_one' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW1)
         )
 

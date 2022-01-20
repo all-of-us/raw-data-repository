@@ -49,7 +49,7 @@ class BiobankOrderApiTest(BaseTestCase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            "rdr_service.dao.biobank_order_dao.MayoLinkApi",
+            "rdr_service.dao.biobank_order_dao.MayoLinkClient",
             **{"return_value.post.return_value": self.mayolink_response}
         )
         mayolinkapi_patcher.start()
