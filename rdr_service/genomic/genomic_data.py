@@ -249,13 +249,11 @@ class GenomicQueryClass:
                 (GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.GEM_READY) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
                 (GenomicSetMember.genomeType == "aou_array") &
-                (GenomicSetMember.ignoreFlag == 0) &
                 (self.aliases['gsm'].id.is_(None)) &
-                (GenomicSetMember.blockResults == 0) &
+                (GenomicSetMember.blockResults != 1) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
-                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED) &
-                (ParticipantSummary.participantOrigin != 'careevolution')
+                (ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED)
             ).group_by(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
@@ -399,6 +397,7 @@ class GenomicQueryClass:
                   CASE
                       WHEN native.participant_id IS NULL THEN 0 ELSE 1
                   END AS is_ai_an,
+                  ps.participant_origin,
                   ss.status,
                   ss.test
                 FROM
@@ -486,7 +485,8 @@ class GenomicQueryClass:
             END AS gror_consent,
             CASE
             WHEN native.participant_id IS NULL THEN 0 ELSE 1
-            END AS is_ai_an
+            END AS is_ai_an,
+            ps.participant_origin
         FROM
             participant_summary ps
             JOIN code c ON c.code_id = ps.sex_id
@@ -546,6 +546,7 @@ class GenomicQueryClass:
               CASE
                   WHEN native.participant_id IS NULL THEN 0 ELSE 1
               END AS is_ai_an,
+              ps.participant_origin,
               ss.status,
               ss.test
             FROM
@@ -657,6 +658,7 @@ class GenomicQueryClass:
           CASE
               WHEN native.participant_id IS NULL THEN 0 ELSE 1
           END AS is_ai_an,
+          ps.participant_origin,
           ss.status,
           ss.test
         FROM
@@ -679,7 +681,6 @@ class GenomicQueryClass:
             AND ss.test in ('1ED04', '1ED10', '1SAL2')
             AND ss.rdr_created > :from_date_param
             AND ps.consent_cohort = :cohort_3_param
-            AND ps.participant_origin != 'careevolution'
             AND m.id IS NULL
         """
 
