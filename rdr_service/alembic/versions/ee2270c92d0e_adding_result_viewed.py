@@ -1,7 +1,7 @@
 """adding_result_viewed
 
 Revision ID: ee2270c92d0e
-Revises: e7cf7c2a25f2
+Revises: 8ce9eccbe313
 Create Date: 2022-01-13 11:05:59.431008
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'ee2270c92d0e'
-down_revision = 'e7cf7c2a25f2'
+down_revision = '8ce9eccbe313'
 branch_labels = None
 depends_on = None
 
@@ -52,14 +52,14 @@ def upgrade_rdr():
     )
 
     op.execute(
-        "Insert into genomic_result_viewed(created, modified, participant_id, message_record_id, event_type, "
-        "event_authored_time, module_type, first_viewed, last_viewed) "
-        "Select event_authored_time, event_authored_time, participant_id, message_record_id, event_type, "
-        "event_authored_time, value_string, event_authored_time, event_authored_time "
-        "From message_broker_event_data "
-        "Where true "
-        "And message_broker_event_data.event_type = 'result_viewed'"
-        "And message_broker_event_data.value_string = 'gem'"
+        """Insert into genomic_result_viewed(created, modified, participant_id, message_record_id, event_type,
+        event_authored_time, module_type, first_viewed, last_viewed)
+        Select event_authored_time, event_authored_time, participant_id, message_record_id, event_type,
+        event_authored_time, value_string, event_authored_time, event_authored_time
+        From message_broker_event_data
+        Where true
+        And message_broker_event_data.event_type = 'result_viewed'
+        And message_broker_event_data.value_string = 'gem'"""
     )
     # ### end Alembic commands ###
 
