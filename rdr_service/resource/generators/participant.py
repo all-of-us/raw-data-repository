@@ -1092,7 +1092,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     # Find minimum confirmed date of DNA tests if we have any.
                     if order['isolate_dna']:
                         try:
-                            tmp_ts = min([r['created'] for r in order['samples'] if r['created'] is not None])
+                            tmp_ts = min([r['confirmed'] for r in order['samples'] if r['confirmed'] is not None])
                             act_key = ParticipantEventEnum.BiobankConfirmed
                             act_ts = tmp_ts
                         except ValueError:  # No confirmed timestamps in list.
