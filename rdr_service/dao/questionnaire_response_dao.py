@@ -723,26 +723,41 @@ class QuestionnaireResponseDao(BaseDao):
                     # them as submitted
                     participant_summary.questionnaireOnDnaProgram = QuestionnaireStatus.SUBMITTED
                     participant_summary.questionnaireOnDnaProgramAuthored = authored
-                elif code.value == COPE_VACCINE_MINUTE_1_MODULE_CODE \
-                        and participant_summary.questionnaireOnCopeVaccineMinute1 != QuestionnaireStatus.SUBMITTED:
-                    participant_summary.questionnaireOnCopeVaccineMinute1 = QuestionnaireStatus.SUBMITTED
-                    participant_summary.questionnaireOnCopeVaccineMinute1Authored = authored
-                    module_changed = True
-                elif code.value == COPE_VACCINE_MINUTE_2_MODULE_CODE \
-                        and participant_summary.questionnaireOnCopeVaccineMinute2 != QuestionnaireStatus.SUBMITTED:
-                    participant_summary.questionnaireOnCopeVaccineMinute2 = QuestionnaireStatus.SUBMITTED
-                    participant_summary.questionnaireOnCopeVaccineMinute2Authored = authored
-                    module_changed = True
-                elif code.value == COPE_VACCINE_MINUTE_3_MODULE_CODE \
-                        and participant_summary.questionnaireOnCopeVaccineMinute3 != QuestionnaireStatus.SUBMITTED:
-                    participant_summary.questionnaireOnCopeVaccineMinute3 = QuestionnaireStatus.SUBMITTED
-                    participant_summary.questionnaireOnCopeVaccineMinute3Authored = authored
-                    module_changed = True
-                elif code.value == COPE_VACCINE_MINUTE_4_MODULE_CODE \
-                        and participant_summary.questionnaireOnCopeVaccineMinute4 != QuestionnaireStatus.SUBMITTED:
-                    participant_summary.questionnaireOnCopeVaccineMinute4 = QuestionnaireStatus.SUBMITTED
-                    participant_summary.questionnaireOnCopeVaccineMinute4Authored = authored
-                    module_changed = True
+                # cope vaccines
+                elif code.value in (
+                    COPE_VACCINE_MINUTE_1_MODULE_CODE,
+                    COPE_VACCINE_MINUTE_2_MODULE_CODE,
+                    COPE_VACCINE_MINUTE_3_MODULE_CODE,
+                    COPE_VACCINE_MINUTE_4_MODULE_CODE
+                ):
+                    cope_vaccine_map = {
+                        COPE_VACCINE_MINUTE_1_MODULE_CODE: {
+                            'submitted': 'questionnaireOnCopeVaccineMinute1',
+                            'authored': 'questionnaireOnCopeVaccineMinute1Authored'
+                        },
+                        COPE_VACCINE_MINUTE_2_MODULE_CODE: {
+                            'submitted': 'questionnaireOnCopeVaccineMinute2',
+                            'authored': 'questionnaireOnCopeVaccineMinute2Authored'
+                        },
+                        COPE_VACCINE_MINUTE_3_MODULE_CODE: {
+                            'submitted': 'questionnaireOnCopeVaccineMinute3',
+                            'authored': 'questionnaireOnCopeVaccineMinute3Authored'
+                        },
+                        COPE_VACCINE_MINUTE_4_MODULE_CODE: {
+                            'submitted': 'questionnaireOnCopeVaccineMinute4',
+                            'authored': 'questionnaireOnCopeVaccineMinute4Authored'
+                        }
+                    }
+
+                    module = cope_vaccine_map[code.value]
+                    mod_submitted = module['submitted']
+                    mod_authored = module['authored']
+
+                    if getattr(participant_summary, mod_submitted) \
+                            != QuestionnaireStatus.SUBMITTED:
+                        setattr(participant_summary, mod_submitted, QuestionnaireStatus.SUBMITTED)
+                        setattr(participant_summary, mod_authored, authored)
+                        module_changed = True
 
         if module_changed:
             participant_summary.numCompletedBaselinePPIModules = count_completed_baseline_ppi_modules(
