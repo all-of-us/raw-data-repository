@@ -106,3 +106,13 @@ class MessageBrokenEventDataDao(BaseDao):
                 MessageBrokerEventData.messageRecordId == message_record_id,
                 MessageBrokerEventData.eventType == loop_type
             ).all()
+
+    def get_result_viewed(self, message_record_id):
+        with self.session() as session:
+            return session.query(
+                MessageBrokerEventData
+            ).filter(
+                MessageBrokerEventData.messageRecordId == message_record_id,
+                MessageBrokerEventData.eventType == 'result_viewed'
+            ).all()
+

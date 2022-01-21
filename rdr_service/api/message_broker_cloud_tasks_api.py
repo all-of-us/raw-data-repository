@@ -60,13 +60,19 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
 
             inserted_obj = self.dao.insert(message_event_date)
 
-        self.call_informing_loop_task(inserted_obj)
+        self.call_genomic_ingest_data_task(inserted_obj)
 
         return '{"success": "true"}'
 
-    def call_informing_loop_task(self, obj):
-        if GAE_PROJECT != 'localhost' and 'informing_loop'.lower() \
-                in self.event_type:
+    def call_genomic_ingest_data_task(self, obj):
+        acceptable_event_types = [
+            'informing_loop_started',
+            'informing_loop_decision',
+            'result_viewed'
+        ]
+
+        if self.event_type in acceptable_event_types \
+                and GAE_PROJECT != 'localhost':
 
             payload = {
                 'message_record_id': obj.messageRecordId,
@@ -75,7 +81,7 @@ class StoreMessageBrokerEventDataTaskApi(Resource):
 
             _task = GCPCloudTask()
             _task.execute(
-                'ingest_informing_loop_task',
+                'ingest_from_message_broker_data_task',
                 payload=payload,
                 queue='genomics'
             )

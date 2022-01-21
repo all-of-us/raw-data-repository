@@ -106,6 +106,7 @@ class GenomicJob(messages.Enum):
     UPDATE_MEMBERS_BLOCKLISTS = 49
     METRICS_FILE_INGEST = 50
     RECONCILE_INFORMING_LOOP_RESPONSES = 51
+    INGEST_RESULT_VIEWED = 52
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

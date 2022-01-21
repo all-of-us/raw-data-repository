@@ -311,21 +311,36 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
+class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest informing loop decision from
-    Message Broker Event Data
+    Cloud Task endpoint: Ingest informing loop started/decision
+    and result_viewed from Message Broker Event Data
     """
     def post(self):
-        super(IngestInformingLoopTaskApi, self).post()
+        super(IngestFromMessageBrokerDataApi, self).post()
 
-        logging.info('Ingesting informing loop.')
+        if not self.data.get('event_type') or not self.data.get('message_record_id'):
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
 
-        with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
-                                  ) as controller:
-            controller.ingest_informing_loop_records(
+            return {"success": False}
+
+        event_type = self.data.get('event_type')
+
+        logging.info(f'Ingesting {event_type}')
+
+        ingest_method_map = {
+            'informing_loop': GenomicJob.INGEST_INFORMING_LOOP,
+            'result_viewed': GenomicJob.INGEST_RESULT_VIEWED,
+        }
+
+        job_type = ingest_method_map[
+            list(filter(lambda x: x in event_type, ingest_method_map.keys()))[0]
+        ]
+
+        with GenomicJobController(job_type) as controller:
+            controller.ingest_records_from_message_broker_data(
                 message_record_id=self.data['message_record_id'],
-                loop_type=self.data['event_type']
+                event_type=event_type
             )
 
         self.create_cloud_record()
