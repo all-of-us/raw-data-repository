@@ -257,3 +257,19 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         self.assertEqual(self.esc.registered_time, datetime(2018, 3, 5, 16, 35, 55))
         self.assertEqual(self.esc.participant_time, datetime(2018, 3, 5, 16, 35, 55))
         self.assertEqual(self.esc.participant_plus_ehr_time, datetime(2018, 3, 5, 16, 43, 50))
+
+    def test_no_core_timestamps_for_participant_status(self):
+        """ Test that none of the ehr or core timestamps are populated when EHR Consent is No """
+        activity = get_basic_activity()
+        # Change EHR Consent from Yes to No
+        for item in activity:
+            if item['event'] == p_event.EHRConsentPII:
+                item['answer'] = 'ConsentPermission_No'
+
+        self.esc.run(activity)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.Participant)
+        self.assertEqual(self.esc.registered_time, datetime(2018, 3, 6, 20, 20, 57))
+        self.assertEqual(self.esc.participant_time, datetime(2018, 3, 6, 20, 35, 12))
+        self.assertEqual(self.esc.participant_plus_ehr_time, None)
+        self.assertEqual(self.esc.core_participant_minus_pm_time, None)
+        self.assertEqual(self.esc.core_participant_time, None)
