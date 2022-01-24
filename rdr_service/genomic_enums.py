@@ -107,6 +107,7 @@ class GenomicJob(messages.Enum):
     METRICS_FILE_INGEST = 50
     RECONCILE_INFORMING_LOOP_RESPONSES = 51
     INGEST_RESULT_VIEWED = 52
+    RECONCILE_PDR_DATA = 53
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
