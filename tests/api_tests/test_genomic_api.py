@@ -1734,3 +1734,59 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(user_metrics)
         self.assertEqual(user_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
+
+    @mock.patch('rdr_service.dao.bq_genomics_dao.bq_genomic_set_member_batch_update')
+    @mock.patch('rdr_service.resource.generators.genomics.genomic_set_member_batch_update')
+    def test_genomic_rebuild_task_api(self, bq_batch_mock, batch_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        data = {}
+        call_ids = [1, 2]
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], False)
+        self.assertEqual(bq_batch_mock.call_count, 0)
+        self.assertEqual(batch_mock.call_count, 0)
+
+        data = {
+            'table': 'bad_table',
+            'ids': call_ids
+        }
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], False)
+        self.assertEqual(bq_batch_mock.call_count, 0)
+        self.assertEqual(batch_mock.call_count, 0)
+
+        data = {
+            'table': 'genomic_set_member',
+            'ids': call_ids
+        }
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], True)
+        self.assertEqual(bq_batch_mock.call_count, 1)
+        self.assertEqual(batch_mock.call_count, 1)
+
