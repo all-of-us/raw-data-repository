@@ -2055,11 +2055,11 @@ class GemToGpMigrationClass(GenomicManifestBase):
             # write to table in batches
             if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
-                    _logger.info(f'Inserting batch starting with: {batch[0].participant_id}')
+                    _logger.info(f'Inserting batch starting with: {batch[0]["participant_id"]}')
                     self.gem_gp_dao.insert_bulk(batch)
 
                 else:
-                    _logger.info(f'Would insert batch starting with: {batch[0].participant_id}')
+                    _logger.info(f'Would insert batch starting with: {batch[0]["participant_id"]}')
                 batch = []
 
         # Insert remainder
@@ -2081,11 +2081,11 @@ class GemToGpMigrationClass(GenomicManifestBase):
             # write to table in batches
             if len(batch) % batch_size == 0:
                 if not self.args.dryrun:
-                    _logger.info(f'Inserting batch starting with: {batch[0].participant_id}')
+                    _logger.info(f'Inserting batch starting with: {batch[0]["participant_id"]}')
                     self.il_dao.insert_bulk(batch)
 
                 else:
-                    _logger.info(f'Would insert batch starting with: {batch[0].participant_id}')
+                    _logger.info(f'Would insert batch starting with: {batch[0]["participant_id"]}')
                 batch = []
 
         # Insert remainder
