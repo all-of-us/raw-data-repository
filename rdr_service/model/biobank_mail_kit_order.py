@@ -12,7 +12,7 @@ from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrac
 
 class BiobankMailKitOrder(Base):
     # mapping a user_info.clientID (from config) to a system identifier
-    _ID_SYSTEM = {
+    ID_SYSTEM = {
         'vibrent': "http://vibrenthealth.com",
         'careevolution': "http://carevolution.be",
         'example': "system-test"

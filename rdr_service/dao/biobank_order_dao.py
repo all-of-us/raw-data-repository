@@ -597,8 +597,7 @@ class BiobankOrderDao(UpdatableDao):
         order = MayoLinkOrder(
             collected_datetime_utc=resource.samples[0].collected.date,
             number=kit_id,
-            medical_record_number=str(to_client_biobank_id(summary.biobankId)),
-            last_name=str(to_client_biobank_id(summary.biobankId)),
+            biobank_id=summary.biobankId,
             sex=gender_val,
             address1=summary.streetAddress,
             address2=summary.streetAddress2,

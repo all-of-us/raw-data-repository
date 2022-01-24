@@ -13,6 +13,7 @@ import pytz
 from rdr_service import config
 from rdr_service.api_util import RDR_AND_PTC, open_cloud_file
 from rdr_service.app_util import check_auth
+from rdr_service.model.config_utils import to_client_biobank_id
 
 
 @dataclass
@@ -43,8 +44,7 @@ class MayoLinkTest:
 class MayoLinkOrder:
     collected_datetime_utc: datetime
     number: str
-    medical_record_number: str
-    last_name: str
+    biobank_id: int
     sex: str
     address1: str
     address2: str
@@ -115,15 +115,17 @@ class MayoLinkClient:
         return request
 
     def _dict_from_order(self, order: MayoLinkOrder):
+        biobank_id_display_str = to_client_biobank_id(order.biobank_id)
+
         order_dict = {
             'order': {
                 'collected': str(self._convert_to_central_time(order.collected_datetime_utc)),
                 'account': self.account,
                 'number': order.number,
                 'patient': {
-                    'medical_record_number': order.medical_record_number,
+                    'medical_record_number': biobank_id_display_str,
                     'first_name': '*',
-                    'last_name': order.last_name,
+                    'last_name': biobank_id_display_str,
                     'middle_name': '',
                     'birth_date': '3/3/1933',
                     'sex': order.sex,

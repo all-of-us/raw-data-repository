@@ -93,7 +93,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
-            b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
+            b'<first_name>*</first_name><last_name>Z6789</last_name><middle_name />'
             b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
@@ -132,7 +132,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
-            b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
+            b'<first_name>*</first_name><last_name>Z6789</last_name><middle_name />'
             b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
@@ -172,7 +172,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
-            b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
+            b'<first_name>*</first_name><last_name>Z6789</last_name><middle_name />'
             b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
@@ -216,7 +216,7 @@ class MayolinkClientTest(BaseTestCase):
             b'<account>1122</account><number>12345</number>'
             b'<patient>'
             b'<medical_record_number>Z6789</medical_record_number>'
-            b'<first_name>*</first_name><last_name>Smith</last_name><middle_name />'
+            b'<first_name>*</first_name><last_name>Z6789</last_name><middle_name />'
             b'<birth_date>3/3/1933</birth_date><sex>U</sex>'
             b'<address1>1234 Main</address1><address2>Apt C</address2>'
             b'<city>Test</city><state>TN</state><postal_code>11223</postal_code>'
@@ -258,8 +258,7 @@ class MayolinkClientTest(BaseTestCase):
         return MayoLinkOrder(
             collected_datetime_utc=datetime(2020, 12, 3, 17, 9, tzinfo=pytz.utc),
             number='12345',
-            medical_record_number='Z6789',
-            last_name='Smith',
+            biobank_id=6789,
             sex='U',
             address1='1234 Main',
             address2='Apt C',
