@@ -314,6 +314,7 @@ class GenomicFileProcessed(Base):
 event.listen(GenomicFileProcessed, 'before_insert', model_insert_listener)
 event.listen(GenomicFileProcessed, 'before_update', model_update_listener)
 
+
 class GenomicManifestFile(Base):
     """
     Genomic manifest file model.

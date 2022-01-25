@@ -659,3 +659,69 @@ class GenomicJobControllerTest(BaseTestCase):
             self.assertEqual(len(file_metrics), len(participant_ingested_metrics))
             self.assertTrue(all(obj.run_id == job_run_id for obj in participant_ingested_metrics))
 
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_reconcile_pdr_data(self, mock_cloud_task):
+
+        today = clock.CLOCK.now()
+        from_date = today - datetime.timedelta(hours=6)
+        from_date = from_date.replace(microsecond=0)
+
+        first_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.RECONCILE_PDR_DATA,
+            startTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        with clock.FakeClock(from_date):
+            for i in range(2):
+                gen_member = self.data_generator.create_database_genomic_set_member(
+                    genomicSetId=gen_set.id,
+                    biobankId="100153482",
+                    sampleId="21042005280",
+                    genomeType="aou_wgs",
+                    genomicWorkflowState=GenomicWorkflowState.AW1
+                )
+
+                gen_job_run = self.data_generator.create_database_genomic_job_run(
+                    jobId=GenomicJob.AW1_MANIFEST,
+                    startTime=clock.CLOCK.now(),
+                    runResult=GenomicSubProcessResult.SUCCESS
+                )
+
+                gen_processed_file = self.data_generator.create_database_genomic_file_processed(
+                    runId=gen_job_run.id,
+                    startTime=clock.CLOCK.now(),
+                    filePath=f'test_file_path_{i}',
+                    bucketName='test_bucket',
+                    fileName='test_file_name',
+                )
+
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=gen_member.id,
+                    genomicFileProcessedId=gen_processed_file.id
+                )
+
+                manifest = self.data_generator.create_database_genomic_manifest_file(
+                    manifestTypeId=2,
+                    filePath=f'test_file_path_{i}'
+                )
+
+                self.data_generator.create_database_genomic_manifest_feedback(
+                    inputManifestFileId=manifest.id,
+                    feedbackRecordCount=2
+                )
+
+        with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+            controller.reconcile_pdr_data()
+
+        print(first_job_run)
+        print(mock_cloud_task)
+
+
+

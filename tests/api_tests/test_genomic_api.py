@@ -1741,8 +1741,22 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         from rdr_service.resource import main as resource_main
 
+        # gen_set = self.data_generator.create_database_genomic_set(
+        #     genomicSetName=".",
+        #     genomicSetCriteria=".",
+        #     genomicSetVersion=1
+        # )
+        #
+        # self.data_generator.create_database_genomic_set_member(
+        #     genomicSetId=gen_set.id,
+        #     biobankId="100153482",
+        #     sampleId="21042005280",
+        #     genomeType="aou_array",
+        #     genomicWorkflowState=GenomicWorkflowState.AW0
+        # )
+
         data = {}
-        call_ids = [1, 2]
+        call_ids = [1]
 
         rebuild_task = self.send_post(
             local_path='RebuildGenomicTableRecordsApi',

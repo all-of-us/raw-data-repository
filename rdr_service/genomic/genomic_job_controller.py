@@ -772,7 +772,7 @@ class GenomicJobController:
 
     def reconcile_pdr_data(self):
         last_job_run = self.last_run_time
-        genomic_daos = [
+        reconcile_daos = [
             self.set_dao,
             self.member_dao,
             self.job_run_dao,
@@ -782,7 +782,7 @@ class GenomicJobController:
             self.manifest_feedback_dao
         ]
 
-        for dao in genomic_daos:
+        for dao in reconcile_daos:
             table_name = dao.model_type.__tablename__
             if not hasattr(dao, 'get_last_updated_records'):
                 continue
