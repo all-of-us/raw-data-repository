@@ -1735,25 +1735,25 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(user_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
 
-    @mock.patch('rdr_service.dao.bq_genomics_dao.bq_genomic_set_member_batch_update')
-    @mock.patch('rdr_service.resource.generators.genomics.genomic_set_member_batch_update')
+    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.bq_genomic_set_member_batch_update')
+    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.genomic_set_member_batch_update')
     def test_genomic_rebuild_task_api(self, bq_batch_mock, batch_mock):
 
         from rdr_service.resource import main as resource_main
 
-        # gen_set = self.data_generator.create_database_genomic_set(
-        #     genomicSetName=".",
-        #     genomicSetCriteria=".",
-        #     genomicSetVersion=1
-        # )
-        #
-        # self.data_generator.create_database_genomic_set_member(
-        #     genomicSetId=gen_set.id,
-        #     biobankId="100153482",
-        #     sampleId="21042005280",
-        #     genomeType="aou_array",
-        #     genomicWorkflowState=GenomicWorkflowState.AW0
-        # )
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
 
         data = {}
         call_ids = [1]

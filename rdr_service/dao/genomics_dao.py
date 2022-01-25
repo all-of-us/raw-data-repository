@@ -59,9 +59,9 @@ from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_pre
 
 class GenomicDaoUtils:
 
-    def get_last_updated_records(self, from_date):
+    def get_last_updated_records(self, from_date, end_date=None):
         from_date = from_date.replace(microsecond=0)
-
+        end_date = clock.CLOCK.now() if not end_date else end_date
         if not hasattr(self.model_type, 'created') or \
                 not hasattr(self.model_type, 'modified'):
 
@@ -71,10 +71,8 @@ class GenomicDaoUtils:
             return session.query(
                 self.model_type
             ).filter(
-                or_(
-                    self.model_type.created >= from_date,
-                    self.model_type.modified >= from_date
-                )
+                    self.model_type.modified >= from_date,
+                    self.model_type.modified < end_date
             ).all()
 
 

@@ -3,8 +3,9 @@ import mock
 
 from rdr_service import clock
 from rdr_service.api_util import open_cloud_file
+from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
-    GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao
+    GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
@@ -25,6 +26,7 @@ class GenomicJobControllerTest(BaseTestCase):
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
         self.user_event_metrics_dao = UserEventMetricsDao()
+        self.job_run_dao = GenomicJobRunDao()
 
     def test_incident_with_long_message(self):
         """Make sure the length of incident messages doesn't cause issues when recording them"""
@@ -662,15 +664,8 @@ class GenomicJobControllerTest(BaseTestCase):
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_reconcile_pdr_data(self, mock_cloud_task):
 
-        today = clock.CLOCK.now()
-        from_date = today - datetime.timedelta(hours=6)
-        from_date = from_date.replace(microsecond=0)
-
-        first_job_run = self.data_generator.create_database_genomic_job_run(
-            jobId=GenomicJob.RECONCILE_PDR_DATA,
-            startTime=clock.CLOCK.now(),
-            runResult=GenomicSubProcessResult.SUCCESS
-        )
+        with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+            controller.reconcile_pdr_data()
 
         gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
@@ -678,7 +673,11 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicSetVersion=1
         )
 
-        with clock.FakeClock(from_date):
+        first_run = self.job_run_dao.get(1)
+
+        plus_six = clock.CLOCK.now() + datetime.timedelta(minutes=10)
+        plus_six = plus_six.replace(microsecond=0)
+        with FakeClock(plus_six):
             for i in range(2):
                 gen_member = self.data_generator.create_database_genomic_set_member(
                     genomicSetId=gen_set.id,
@@ -688,14 +687,14 @@ class GenomicJobControllerTest(BaseTestCase):
                     genomicWorkflowState=GenomicWorkflowState.AW1
                 )
 
-                gen_job_run = self.data_generator.create_database_genomic_job_run(
-                    jobId=GenomicJob.AW1_MANIFEST,
-                    startTime=clock.CLOCK.now(),
-                    runResult=GenomicSubProcessResult.SUCCESS
-                )
+                # gen_job_run = self.data_generator.create_database_genomic_job_run(
+                #     jobId=GenomicJob.AW1_MANIFEST,
+                #     startTime=clock.CLOCK.now(),
+                #     runResult=GenomicSubProcessResult.SUCCESS
+                # )
 
                 gen_processed_file = self.data_generator.create_database_genomic_file_processed(
-                    runId=gen_job_run.id,
+                    runId=first_run.id,
                     startTime=clock.CLOCK.now(),
                     filePath=f'test_file_path_{i}',
                     bucketName='test_bucket',
@@ -720,7 +719,24 @@ class GenomicJobControllerTest(BaseTestCase):
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
 
-        print(first_job_run)
+        print(controller.last_run_time)
+
+        plus_six = clock.CLOCK.now() + datetime.timedelta(hours=6)
+        plus_six = plus_six.replace(microsecond=0)
+
+        with FakeClock(plus_six):
+            for i in range(2):
+                self.data_generator.create_database_genomic_set_member(
+                    genomicSetId=gen_set.id,
+                    biobankId="100153482",
+                    sampleId="21042005280",
+                    genomeType="aou_wgs",
+                    genomicWorkflowState=GenomicWorkflowState.AW1
+                )
+
+            with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+                controller.reconcile_pdr_data()
+
         print(mock_cloud_task)
 
 

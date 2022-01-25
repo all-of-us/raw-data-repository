@@ -772,6 +772,7 @@ class GenomicJobController:
 
     def reconcile_pdr_data(self):
         last_job_run = self.last_run_time
+
         reconcile_daos = [
             self.set_dao,
             self.member_dao,
