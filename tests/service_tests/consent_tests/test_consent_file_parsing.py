@@ -677,20 +677,21 @@ class ConsentFileParsingTest(BaseTestCase):
         element = mock.MagicMock(spec=LTFigure)
         self._set_bbox(bbox, element)
 
+        iterable_children = []
         if children:
-            element.__iter__.return_value = children
+            iterable_children = children
         else:
-            char_list = []
             for char_str in text:
                 char_element = mock.MagicMock(spec=LTChar)
                 char_element.get_text.return_value = char_str
-                char_list.append(char_element)
+                iterable_children.append(char_element)
             if text == '':
                 char_element = mock.MagicMock(spec=LTChar)
                 char_element.get_text.return_value = ''
-                char_list.append(char_element)
-            element.__iter__.return_value = char_list
+                iterable_children.append(char_element)
 
+        element.__iter__.return_value = iterable_children
+        element.__len__.return_value = len(iterable_children)
         return element
 
     def _set_bbox(self, bbox, element_mock):

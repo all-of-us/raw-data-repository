@@ -1,6 +1,6 @@
 import mock
 
-from rdr_service.api.mayolink_api import MayoLinkApi, MayoLinkOrder, MayolinkQuestion, MayoLinkTest, \
+from rdr_service.services.mayolink_client import MayoLinkClient, MayoLinkOrder, MayolinkQuestion, MayoLinkTest, \
     MayolinkTestPassthroughFields
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -13,7 +13,7 @@ class MayolinkClientTest(BaseTestCase):
     def setUp(self, *args, **kwargs) -> None:
         super(MayolinkClientTest, self).setUp(*args, **kwargs)
 
-        open_cloud_file_patch = mock.patch('rdr_service.api.mayolink_api.open_cloud_file')
+        open_cloud_file_patch = mock.patch('rdr_service.services.mayolink_client.open_cloud_file')
         self.open_cloud_file_mock = open_cloud_file_patch.start()
         self.addCleanup(open_cloud_file_patch.stop)
 
@@ -34,14 +34,14 @@ class MayolinkClientTest(BaseTestCase):
 
     def test_default_credentials(self):
         """Test that the client uses the default account by default"""
-        mayolink_client = MayoLinkApi()
+        mayolink_client = MayoLinkClient()
         self.assertEqual('test_user', mayolink_client.username)
         self.assertEqual('1234', mayolink_client.pw)
         self.assertEqual(1122, mayolink_client.account)
 
     def test_specific_account_credentials(self):
         """Test that the client switches to the new credentials when specified"""
-        mayolink_client = MayoLinkApi(credentials_key='version_two')
+        mayolink_client = MayoLinkClient(credentials_key='version_two')
         self.assertEqual('v2_user', mayolink_client.username)
         self.assertEqual('9876', mayolink_client.pw)
         self.assertEqual(8765, mayolink_client.account)
@@ -59,20 +59,20 @@ class MayolinkClientTest(BaseTestCase):
             }
         """
 
-        mayolink_client = MayoLinkApi()
+        mayolink_client = MayoLinkClient()
         self.assertEqual('legacy_user', mayolink_client.username)
         self.assertEqual('9283', mayolink_client.pw)
         self.assertEqual(7676, mayolink_client.account)
 
-    @mock.patch('rdr_service.api.mayolink_api.httplib2')
+    @mock.patch('rdr_service.services.mayolink_client.httplib2')
     def test_order_xml_structure(self, http_mock):
         """Make sure the resulting xml lines up with the order object sent using the client interface"""
         order = self._get_default_order()
 
-        client = MayoLinkApi()
+        client = MayoLinkClient()
         request_mock = http_mock.Http.return_value.request
         request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.api.mayolink_api.check_auth'):
+        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
             client.post(order)
 
         sent_xml = request_mock.call_args.kwargs['body']
@@ -96,7 +96,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.api.mayolink_api.httplib2')
+    @mock.patch('rdr_service.services.mayolink_client.httplib2')
     def test_order_test_collection_data(self, http_mock):
         """Test the data structure with a test object provided (following the process used for mailkit orders)"""
         order = self._get_default_order()
@@ -114,10 +114,10 @@ class MayolinkClientTest(BaseTestCase):
             )
         ]
 
-        client = MayoLinkApi()
+        client = MayoLinkClient()
         request_mock = http_mock.Http.return_value.request
         request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.api.mayolink_api.check_auth'):
+        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
             client.post(order)
 
         sent_xml = request_mock.call_args.kwargs['body']
@@ -145,7 +145,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.api.mayolink_api.httplib2')
+    @mock.patch('rdr_service.services.mayolink_client.httplib2')
     def test_passthrough_fields(self, http_mock):
         """Test the data structure with passthrough fields added in"""
         order = self._get_default_order()
@@ -160,10 +160,10 @@ class MayolinkClientTest(BaseTestCase):
             )
         ]
 
-        client = MayoLinkApi()
+        client = MayoLinkClient()
         request_mock = http_mock.Http.return_value.request
         request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.api.mayolink_api.check_auth'):
+        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
             client.post(order)
 
         sent_xml = request_mock.call_args.kwargs['body']
@@ -196,7 +196,7 @@ class MayolinkClientTest(BaseTestCase):
             sent_xml
         )
 
-    @mock.patch('rdr_service.api.mayolink_api.httplib2')
+    @mock.patch('rdr_service.services.mayolink_client.httplib2')
     def test_question_fields(self, http_mock):
         """Test the data structure with questions fields added in"""
         order = self._get_default_order()
@@ -210,10 +210,10 @@ class MayolinkClientTest(BaseTestCase):
             ]
         )]
 
-        client = MayoLinkApi()
+        client = MayoLinkClient()
         request_mock = http_mock.Http.return_value.request
         request_mock.return_value = ({'status': '201'}, b'<result></result>')
-        with mock.patch('rdr_service.api.mayolink_api.check_auth'):
+        with mock.patch('rdr_service.services.mayolink_client.check_auth'):
             client.post(order)
 
         sent_xml = request_mock.call_args.kwargs['body']

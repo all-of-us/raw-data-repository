@@ -153,10 +153,13 @@ def batch_rebuild_user_event_metrics_task(payload):
 # endpoint-specific logic and/or some fancy code to dynamically populate the task.execute() args (or to allow for
 # local rebuilds vs. cloud tasks)
 def dispatch_rebuild_consent_metrics_tasks(id_list, in_seconds=15, quiet=True, batch_size=150,
-                                           project_id=config.GAE_PROJECT, build_locally=False):
+                                           project_id=None, build_locally=False):
     """
     Helper method to handle queuing batch rebuild requests for rebuilding consent metrics resource data
     """
+    if project_id is None:
+        project_id = config.GAE_PROJECT
+
     if not all(isinstance(id, int) for id in id_list):
         raise (ValueError, "Invalid id list; must be a list that contains only integer consent_file ids")
 
