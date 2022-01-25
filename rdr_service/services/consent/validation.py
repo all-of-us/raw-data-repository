@@ -2,14 +2,18 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import StringIO
+import logging
 import pytz
 from typing import Collection, List
+
+from sqlalchemy.orm import Session
 
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.consent_file import ConsentFile as ParsingResult, ConsentSyncStatus, ConsentType,\
     ConsentOtherErrors
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.participant_enums import ParticipantCohort, QuestionnaireStatus
 from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks, dispatch_check_consent_errors_task
@@ -365,6 +369,26 @@ class ConsentValidationController:
         if validation_updates:
             dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
+    def validate_consent_responses(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
+                                   consent_responses: Collection[ConsentResponse]):
+        validator = self._build_validator(summary)
+        validation_method_map = {
+            ConsentType.PRIMARY: validator.get_primary_validation_results,
+            ConsentType.CABOR: validator.get_cabor_validation_results,
+            ConsentType.EHR: validator.get_ehr_validation_results,
+            ConsentType.GROR: validator.get_gror_validation_results,
+            ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results
+        }
+
+        for consent_response in consent_responses:
+            get_validation_results_func = validation_method_map[consent_response.type]
+            validation_results = self._process_validation_results(
+                get_validation_results_func(expected_signing_date=consent_response.response.authored)
+            )
+            for result in validation_results:
+                result.consent_response = consent_response
+            output_strategy.add_all(validation_results)
+
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                       min_authored_date: date = None, max_authored_date: date = None,
                                       types_to_validate: Collection[ConsentType] = None):
@@ -405,13 +429,31 @@ class ConsentValidationController:
         ):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
 
-    def validate_consent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date=None,
-                                 max_consent_date=None):
+    def validate_consent_uploads(self, session: Session, output_strategy: ValidationOutputStrategy,
+                                 min_consent_date=None, max_consent_date=None):
         """
         Find all the expected consents (filtering by dates if provided) and check the files that have been uploaded
         """
         validation_start_time = datetime.utcnow().replace(microsecond=0)
-        for summary in self.consent_dao.get_participants_with_unvalidated_files(session):
+
+        # Retrieve consent response objects that need to be validated
+        participant_id_consent_map = self.consent_dao.get_consent_responses_to_validate(session=session)
+        participant_summaries = self.participant_summary_dao.get_by_ids_with_session(
+            session=session,
+            obj_ids=participant_id_consent_map.keys()
+        )
+        for summary in participant_summaries:
+            self.validate_consent_responses(
+                summary=summary,
+                output_strategy=output_strategy,
+                consent_responses=participant_id_consent_map[summary.participantId]
+            )
+        session.commit()
+
+        # Use the legacy query for the day that the updated check is released (and in case any are missed)
+        summaries_needing_validated = self.consent_dao.get_participants_with_unvalidated_files(session)
+        logging.info(f'{len(summaries_needing_validated)} participants still needed validation')
+        for summary in summaries_needing_validated:
             self.validate_participant_consents(
                 summary=summary,
                 output_strategy=output_strategy,
@@ -528,30 +570,41 @@ class ConsentValidator:
 
         self._central_time = pytz.timezone('America/Chicago')
 
-    def get_primary_validation_results(self) -> List[ParsingResult]:
+    def get_primary_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+
         return self._generate_validation_results(
             consent_files=self.factory.get_primary_consents(),
             consent_type=ConsentType.PRIMARY,
             additional_validation=self._validate_is_va_file,
-            expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentFirstYesAuthored
+            expected_sign_datetime=expected_signing_date
         )
 
-    def get_ehr_validation_results(self) -> List[ParsingResult]:
+    def get_ehr_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForElectronicHealthRecordsAuthored
+
         return self._generate_validation_results(
             consent_files=self.factory.get_ehr_consents(),
             consent_type=ConsentType.EHR,
             additional_validation=self._validate_is_va_file,
-            expected_sign_datetime=self.participant_summary.consentForElectronicHealthRecordsAuthored
+            expected_sign_datetime=expected_signing_date
         )
 
-    def get_cabor_validation_results(self) -> List[ParsingResult]:
+    def get_cabor_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForCABoRAuthored
+
         return self._generate_validation_results(
             consent_files=self.factory.get_cabor_consents(),
             consent_type=ConsentType.CABOR,
-            expected_sign_datetime=self.participant_summary.consentForCABoRAuthored
+            expected_sign_datetime=expected_signing_date
         )
 
-    def get_gror_validation_results(self) -> List[ParsingResult]:
+    def get_gror_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForGenomicsRORAuthored
 
         def check_for_checkmark(consent: files.GrorConsentFile, result):
             if not consent.is_confirmation_selected():
@@ -562,10 +615,13 @@ class ConsentValidator:
             consent_files=self.factory.get_gror_consents(),
             consent_type=ConsentType.GROR,
             additional_validation=check_for_checkmark,
-            expected_sign_datetime=self.participant_summary.consentForGenomicsRORAuthored
+            expected_sign_datetime=expected_signing_date
         )
 
-    def get_primary_update_validation_results(self) -> List[ParsingResult]:
+    def get_primary_update_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        if expected_signing_date is None:
+            expected_signing_date = self.participant_summary.consentForStudyEnrollmentAuthored
+
         def extra_primary_update_checks(consent: files.PrimaryConsentUpdateFile, result):
             errors_detected = []
 
@@ -586,7 +642,7 @@ class ConsentValidator:
             ),
             consent_type=ConsentType.PRIMARY_UPDATE,
             additional_validation=extra_primary_update_checks,
-            expected_sign_datetime=self.participant_summary.consentForStudyEnrollmentAuthored
+            expected_sign_datetime=expected_signing_date
         )
 
     def _check_for_va_version_mismatch(self, consent):
