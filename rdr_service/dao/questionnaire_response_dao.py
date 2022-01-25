@@ -454,6 +454,10 @@ class QuestionnaireResponseDao(BaseDao):
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not
         # exist yet.)
+        #
+        # TODO:  If we later classify ConsentPII payloads that contain updates to participant's own profile data
+        # (name, address, email, etc.) as PROFILE_UPDATE (vs. only classifying secondary contact profile updates via
+        # TheBasics), then this check must allow those ConsentPII responses trigger _update_participant_summary()
         if (questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED and
                questionnaire_response.classificationType == QuestionnaireResponseClassificationType.COMPLETE):
             with self.session() as new_session:
