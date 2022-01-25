@@ -1,5 +1,6 @@
+from collections import defaultdict
 from datetime import datetime
-from typing import Collection
+from typing import Collection, Dict
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import aliased, Session
@@ -8,6 +9,7 @@ from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -36,6 +38,28 @@ class ConsentDao(BaseDao):
                 ParticipantSummary.email.notlike('%@example.com')
             )
         )
+
+    @classmethod
+    def get_consent_responses_to_validate(cls, session) -> Dict[int, Collection[ConsentResponse]]:
+        """
+        Gets all the consent responses that need to be validated.
+        :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
+        """
+        # A ConsentResponse hasn't been validated yet if there aren't any ConsentFiles that link to the response
+        db_results = session.query(ConsentResponse, QuestionnaireResponse.participantId).join(
+            QuestionnaireResponse
+        ).outerjoin(
+            ConsentFile
+        ).filter(
+            ConsentFile.id.is_(None)
+        ).all()
+
+        grouped_results = defaultdict(list)
+        for consent_response, participant_id in db_results:
+            grouped_results[participant_id].append(consent_response)
+
+        return dict(grouped_results)
+
 
     @classmethod
     def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:

@@ -1,5 +1,6 @@
 from protorpc import messages
 from sqlalchemy import Boolean, Column, Date, event, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
 from rdr_service.model.base import Base, model_insert_listener, model_update_listener
 from rdr_service.model.participant import Participant
@@ -57,6 +58,11 @@ class ConsentFile(Base):
 
     other_errors = Column(String(200), nullable=True)
     sync_status = Column(Enum(ConsentSyncStatus))
+
+    consent_response_id = Column(Integer, ForeignKey('consent_response.id'), nullable=True)
+    """Id of a record linking the consent to the QuestionnaireResponse that provided the consent."""
+
+    consent_response = relationship('ConsentResponse')
 
 
 event.listen(ConsentFile, "before_insert", model_insert_listener)

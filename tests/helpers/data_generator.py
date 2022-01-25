@@ -173,6 +173,9 @@ class DataGenerator:
             questionnaire = self.create_database_questionnaire_history()
             kwargs['questionnaireId'] = questionnaire.questionnaireId
             kwargs['questionnaireVersion'] = questionnaire.version
+        if 'participantId' not in kwargs:
+            participant = self.create_database_participant()
+            kwargs['participantId'] = participant.participantId
 
         return QuestionnaireResponse(**kwargs)
 

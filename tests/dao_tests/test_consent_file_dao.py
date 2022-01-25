@@ -3,6 +3,7 @@ from typing import List
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -171,6 +172,27 @@ class ConsentFileDaoTest(BaseTestCase):
                     self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
                 else:
                     self.fail('Unexpected file validation result')
+
+    def test_finding_validations_needed_by_response(self):
+        # Set up a pair of QuestionnaireResponses, one of which needs to be validated
+        response_to_validate = self.data_generator.create_database_questionnaire_response()
+        self.session.add(ConsentResponse(response=response_to_validate))
+
+        ignored_response = self.data_generator.create_database_questionnaire_response()
+        consent_response = ConsentResponse(response=ignored_response)
+        self.data_generator.create_database_consent_file(
+            consent_response=consent_response,
+            participant_id=ignored_response.participantId
+        )
+
+        self.session.commit()
+
+        # Make sure we get the correct response from the DAO
+        pid_consent_response_map = self.consent_dao.get_consent_responses_to_validate(session=self.session)
+        self.assertNotIn(ignored_response.participantId, pid_consent_response_map)
+
+        consent_response = pid_consent_response_map[response_to_validate.participantId][0]
+        self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
 
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))
