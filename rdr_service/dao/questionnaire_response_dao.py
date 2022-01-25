@@ -901,15 +901,23 @@ class QuestionnaireResponseDao(BaseDao):
                 if previous_consent_authored_time is None:  # Brand new consent response
                     is_new_consent = True
                 else:
-                    response_authored_seconds_diff = abs((
-                        questionnaire_response.authored - previous_consent_authored_time
-                    ).total_seconds())
-                    if response_authored_seconds_diff > 300:
-                        # Checking there's at least 5 minutes of difference between authored dates
+                    if cls._authored_times_match(
+                        new_authored_time=questionnaire_response.authored,
+                        current_authored_item=previous_consent_authored_time
+                    ):
                         is_new_consent = True
 
                 if is_new_consent:
                     session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+
+    @classmethod
+    def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):
+        if new_authored_time.tzinfo is None:
+            new_authored_time = new_authored_time.replace(tzinfo=pytz.utc)
+        if current_authored_item.tzinfo is None:
+            current_authored_item = current_authored_item.replace(tzinfo=pytz.utc)
+        difference_in_seconds = abs((new_authored_time - current_authored_item).total_seconds())
+        return difference_in_seconds > 300  # Checking there's at least 5 minutes of difference between authored dates
 
     def _is_digital_health_share_code(self, code_value):
         return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,
