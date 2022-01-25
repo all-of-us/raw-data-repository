@@ -160,7 +160,6 @@ class GenomicOutreachApiV2(BaseApi):
         self.validate_params()
 
     @auth_required(RDR_AND_PTC)
-    @restrict_to_gae_project(PTC_ALLOWED_ENVIRONMENTS)
     def get(self):
         if not request.args.get('participant_id'):
             self._check_global_args(

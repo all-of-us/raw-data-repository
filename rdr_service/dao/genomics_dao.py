@@ -1875,7 +1875,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 )
                 ready_loop = (
                     session.query(
-                        GenomicSetMember.participantId.label('participant_id').label('participant_id'),
+                        GenomicSetMember.participantId.label('participant_id'),
                         literal('informingLoop').label('type')
                     )
                     .join(
