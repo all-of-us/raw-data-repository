@@ -175,7 +175,7 @@ class TheBasicsAnalyzerClass(object):
             answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
         ).filter(
             QuestionnaireResponse.questionnaireResponseId == response_id,
-            QuestionnaireResponse.classificationType != 1   # TODO:  This column name/value list expected to change
+            QuestionnaireResponse.classificationType != 1
         ).order_by(QuestionnaireResponse.authored,
                    QuestionnaireResponse.created
                    ).all()
@@ -394,7 +394,7 @@ class TheBasicsAnalyzerClass(object):
         self.gcp_env.activate_sql_proxy(replica=True)
 
         if self.args.import_results:
-            # TODO Write method to ingest export file and do DB updates, once the QuestionnaireResponse model is updated
+            # TODO DA-2388: Write method to ingest export file and do DB updates
             pass
         else:
             # Write out the header row to an export file, if one was specified
