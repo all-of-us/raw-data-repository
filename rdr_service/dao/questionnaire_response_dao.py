@@ -8,8 +8,8 @@ from dateutil import parser
 from hashlib import md5
 import pytz
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload, subqueryload
-from typing import Dict
+from sqlalchemy.orm import joinedload, Session, subqueryload
+from typing import Dict, List
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
@@ -26,6 +26,7 @@ from rdr_service.code_constants import (
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+    CONSENT_FOR_STUDY_ENROLLMENT_UPDATE_MODULE,
     CONSENT_PERMISSION_YES_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
@@ -74,6 +75,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
+from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
@@ -403,6 +406,44 @@ class QuestionnaireResponseDao(BaseDao):
             session, questionnaire_response.participantId, code_ids
         )
 
+        code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
+        code_dao = CodeDao()
+        # Fetch the codes for all questions and concepts
+        codes = code_dao.get_with_ids(code_ids)
+        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
+        question_map = {question.questionnaireQuestionId: question for question in questions}
+
+        # Create any ConsentResponses needed
+        answered_question_code_values: List[str] = []
+        for answer in questionnaire_response.answers:
+            question = question_map.get(answer.questionId)
+            if question:
+                code = code_map.get(question.codeId)
+                if code:
+                    answered_question_code_values.append(code.value)
+
+        participant_summary_dao = ParticipantSummaryDao()
+        participant_summary = participant_summary_dao.get_by_participant_id(
+            participant_id=questionnaire_response.participantId
+        )
+        question_id_code_value_map = {}
+        for question in questions:
+            code = code_map.get(question.codeId)
+            if code:
+                question_id_code_value_map[question.questionnaireQuestionId] = code.value.lower()
+        module_code_values = []
+        for concept in questionnaire_history.concepts:
+            code = code_map.get(concept.codeId)
+            if code:
+                module_code_values.append(code.value.lower())
+        self.create_consent_responses(
+            questionnaire_response=questionnaire_response,
+            module_code_values=module_code_values,
+            question_id_code_value_map=question_id_code_value_map,
+            participant_summary=participant_summary,
+            session=session
+        )
+
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
@@ -412,7 +453,8 @@ class QuestionnaireResponseDao(BaseDao):
         if questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED:
             with self.session() as new_session:
                 self._update_participant_summary(
-                    new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
+                    new_session, questionnaire_response, code_ids, question_map, questionnaire_history, resource_json,
+                    code_dao, code_map
                 )
 
         super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
@@ -467,7 +509,8 @@ class QuestionnaireResponseDao(BaseDao):
             return 'Feb'
 
     def _update_participant_summary(
-        self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
+        self, session, questionnaire_response, code_ids, question_map, questionnaire_history, resource_json,
+        code_dao, code_map
     ):
         """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
@@ -490,10 +533,6 @@ class QuestionnaireResponseDao(BaseDao):
         if authored and isinstance(authored, datetime) and authored.tzinfo:
             authored = authored.astimezone(pytz.utc).replace(tzinfo=None)
 
-        code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
-
-        code_dao = CodeDao()
-
         something_changed = False
         module_changed = False
         # If no participant summary exists, make sure this is the study enrollment consent.
@@ -512,11 +551,6 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
             something_changed = True
 
-        # Fetch the codes for all questions and concepts
-        codes = code_dao.get_with_ids(code_ids)
-
-        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
-        question_map = {question.questionnaireQuestionId: question for question in questions}
         race_code_ids = []
         gender_code_ids = []
         ehr_consent = False
@@ -807,6 +841,75 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_gender_race_dao.update_gender_answers_with_session(
                     session, participant.participantId, gender_code_ids
                 )
+
+    @classmethod
+    def create_consent_responses(cls, questionnaire_response: QuestionnaireResponse, module_code_values: List[str],
+                                 question_id_code_value_map: Dict[int, str], participant_summary: ParticipantSummary,
+                                 session: Session):
+        """
+        Analyzes the summary, response, and codes to determine if the response is a new consent for the participant
+        """
+        # Currently, responses should only be for 1 survey. If there are more than one it might mean there's
+        # something that should be looked into and this code may not be built correctly to handle that event.
+        if len(module_code_values) != 1:
+            # Printing participant id since we don't have the questionnaire response id yet
+            logging.warning(f'Response from {questionnaire_response.participantId} responded to more than one survey')
+
+        # Check the module codes for any consent types indicated for this this response
+        new_consent_provided = []
+        # Check for Primary response
+        if CONSENT_FOR_STUDY_ENROLLMENT_MODULE.lower() in module_code_values:
+            new_consent_provided.append(ConsentType.PRIMARY)
+
+            # Check for Cabor with Primary response
+            for answer in questionnaire_response.answers:
+                answer_question_code_value = question_id_code_value_map.get(answer.questionId)
+                if answer_question_code_value == CABOR_SIGNATURE_QUESTION_CODE.lower():
+                    new_consent_provided.append(ConsentType.CABOR)
+
+        # Check for EHR response
+        if CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE.lower() in module_code_values:
+            new_consent_provided.append(ConsentType.EHR)
+
+        # Check for GROR response
+        if CONSENT_FOR_GENOMICS_ROR_MODULE.lower() in module_code_values:
+            new_consent_provided.append(ConsentType.GROR)
+
+        # Check for Primary Update response
+        if CONSENT_FOR_STUDY_ENROLLMENT_UPDATE_MODULE.lower() in module_code_values:
+            # Update module
+            new_consent_provided.append(ConsentType.PRIMARY_UPDATE)
+
+        # Now that the consent type for the response is known, check authored dates to see if it's a new
+        # consent response, or if it's potentially just a replay of a previous questionnaire response
+        if not participant_summary:
+            # If the participant summary is missing, this would be a new consent to create one and no dates
+            # would need to be checked
+            for consent_type in new_consent_provided:
+                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+        else:
+            consent_type_authored_time_map = {
+                ConsentType.PRIMARY: participant_summary.consentForStudyEnrollmentAuthored,
+                ConsentType.CABOR: participant_summary.consentForStudyEnrollmentAuthored,
+                ConsentType.EHR: participant_summary.consentForElectronicHealthRecordsAuthored,
+                ConsentType.GROR: participant_summary.consentForGenomicsRORAuthored,
+                ConsentType.PRIMARY_UPDATE: participant_summary.consentForStudyEnrollmentAuthored
+            }
+            for consent_type in new_consent_provided:
+                is_new_consent = False
+                previous_consent_authored_time = consent_type_authored_time_map[consent_type]
+                if previous_consent_authored_time is None:  # Brand new consent response
+                    is_new_consent = True
+                else:
+                    response_authored_seconds_diff = abs((
+                        questionnaire_response.authored - previous_consent_authored_time
+                    ).total_seconds())
+                    if response_authored_seconds_diff > 300:
+                        # Checking there's at least 5 minutes of difference between authored dates
+                        is_new_consent = True
+
+                if is_new_consent:
+                    session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
 
     def _is_digital_health_share_code(self, code_value):
         return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,

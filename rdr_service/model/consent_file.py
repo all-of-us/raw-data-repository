@@ -5,6 +5,7 @@ from rdr_service.model.base import Base, model_insert_listener, model_update_lis
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import Enum, UTCDateTime
 
+
 class ConsentOtherErrors:
     # Potential values populated in the consent_file table other_errors string field
     MISSING_CONSENT_CHECK_MARK = 'missing consent check mark'
