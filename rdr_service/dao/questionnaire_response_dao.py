@@ -834,14 +834,14 @@ class QuestionnaireResponseDao(BaseDao):
         """
         Analyzes the summary, response, and codes to determine if the response is a new consent for the participant
         """
-        # Check authored dates to see if it's a new consent response,
-        # or if it's potentially just a replay of a previous questionnaire response
         if not summary_before_response:
             # If the participant summary is missing, this would be a new consent to create one and no dates
             # would need to be checked
             for consent_type in self.consents_provided:
                 session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
         else:
+            # Check authored dates to see if it's a new consent response,
+            # or if it's potentially just a replay of a previous questionnaire response
             consent_type_authored_time_map = {
                 ConsentType.PRIMARY: summary_before_response.consentForStudyEnrollmentAuthored,
                 ConsentType.CABOR: summary_before_response.consentForStudyEnrollmentAuthored,
@@ -855,7 +855,7 @@ class QuestionnaireResponseDao(BaseDao):
                 if previous_consent_authored_time is None:  # Brand new consent response
                     is_new_consent = True
                 else:
-                    if self._authored_times_match(
+                    if not self._authored_times_match(
                         new_authored_time=questionnaire_response.authored,
                         current_authored_item=previous_consent_authored_time
                     ):
@@ -871,7 +871,7 @@ class QuestionnaireResponseDao(BaseDao):
         if current_authored_item.tzinfo is None:
             current_authored_item = current_authored_item.replace(tzinfo=pytz.utc)
         difference_in_seconds = abs((new_authored_time - current_authored_item).total_seconds())
-        return difference_in_seconds > 300  # Checking there's at least 5 minutes of difference between authored dates
+        return difference_in_seconds < 300  # Allowing 5 minutes of difference between authored dates
 
     def _is_digital_health_share_code(self, code_value):
         return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,
