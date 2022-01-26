@@ -9,7 +9,7 @@ from hashlib import md5
 import pytz
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, Session, subqueryload
-from typing import Dict, List
+from typing import Dict
 from werkzeug.exceptions import BadRequest
 
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
@@ -408,22 +408,6 @@ class QuestionnaireResponseDao(BaseDao):
             session, questionnaire_response.participantId, code_ids
         )
 
-        code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
-        code_dao = CodeDao()
-        # Fetch the codes for all questions and concepts
-        codes = code_dao.get_with_ids(code_ids)
-        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
-        question_map = {question.questionnaireQuestionId: question for question in questions}
-
-        # Create any ConsentResponses needed
-        answered_question_code_values: List[str] = []
-        for answer in questionnaire_response.answers:
-            question = question_map.get(answer.questionId)
-            if question:
-                code = code_map.get(question.codeId)
-                if code:
-                    answered_question_code_values.append(code.value)
-
         participant_summary_dao = ParticipantSummaryDao()
         participant_summary_before_update = participant_summary_dao.get_by_participant_id(
             participant_id=questionnaire_response.participantId
@@ -438,8 +422,7 @@ class QuestionnaireResponseDao(BaseDao):
         if questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED:
             with self.session() as new_session:
                 self._update_participant_summary(
-                    new_session, questionnaire_response, code_ids, question_map, questionnaire_history, resource_json,
-                    code_dao, code_map
+                    new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
                 )
 
         self.create_consent_responses(
@@ -500,8 +483,7 @@ class QuestionnaireResponseDao(BaseDao):
             return 'Feb'
 
     def _update_participant_summary(
-        self, session, questionnaire_response, code_ids, question_map, questionnaire_history, resource_json,
-        code_dao, code_map
+        self, session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
     ):
         """Updates the participant summary based on questions answered and modules completed
     in the questionnaire response.
@@ -524,6 +506,10 @@ class QuestionnaireResponseDao(BaseDao):
         if authored and isinstance(authored, datetime) and authored.tzinfo:
             authored = authored.astimezone(pytz.utc).replace(tzinfo=None)
 
+        code_ids.extend([concept.codeId for concept in questionnaire_history.concepts])
+
+        code_dao = CodeDao()
+
         something_changed = False
         module_changed = False
         # If no participant summary exists, make sure this is the study enrollment consent.
@@ -542,6 +528,11 @@ class QuestionnaireResponseDao(BaseDao):
             participant_summary = ParticipantDao.create_summary_for_participant(participant)
             something_changed = True
 
+        # Fetch the codes for all questions and concepts
+        codes = code_dao.get_with_ids(code_ids)
+
+        code_map = {code.codeId: code for code in codes if code.system == PPI_SYSTEM}
+        question_map = {question.questionnaireQuestionId: question for question in questions}
         race_code_ids = []
         gender_code_ids = []
         ehr_consent = False
