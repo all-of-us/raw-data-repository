@@ -397,8 +397,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.manifest_file_dao.update_record_count(
                 _task_data.manifest_file,
-                rec_count,
-                project_id=project_id
+                rec_count
             )
 
 
