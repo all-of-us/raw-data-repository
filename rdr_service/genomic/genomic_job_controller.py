@@ -21,7 +21,6 @@ from rdr_service.config import (
 )
 from rdr_service.dao.bq_genomics_dao import bq_genomic_job_run_update, bq_genomic_file_processed_update, \
     bq_genomic_manifest_file_update, bq_genomic_manifest_feedback_update, \
-    bq_genomic_gc_validation_metrics_batch_update, bq_genomic_set_member_batch_update, \
     bq_genomic_gc_validation_metrics_update
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
@@ -55,8 +54,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GcDataFileStagingDao, UserEventMetricsDao, GenomicResultViewedDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
-    genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
-    genomic_set_member_batch_update
+    genomic_manifest_file_update, genomic_manifest_feedback_update
 from rdr_service.services.email_service import Email, EmailService
 from rdr_service.services.slack_utils import SlackMessageHandler
 
@@ -386,15 +384,6 @@ class GenomicJobController:
 
                     session.merge(record_to_update[0])
                     completed_members.append(record_to_update[0].id)
-            # BQ Updates
-            if self.job_id == GenomicJob.METRICS_INGESTION:
-                # Metrics
-                bq_genomic_gc_validation_metrics_batch_update(metrics, project_id=self.bq_project_id)
-                genomic_gc_validation_metrics_batch_update(metrics)
-
-            # Members
-            bq_genomic_set_member_batch_update(metrics, project_id=self.bq_project_id)
-            genomic_set_member_batch_update(completed_members)
 
         return self.compile_raw_ingestion_results(
             completed_members,
@@ -759,10 +748,6 @@ class GenomicJobController:
                         metrics_obj = session.merge(metrics_obj)
                         session.commit()
                         inserted_metric_ids.append(metrics_obj.id)
-
-        # Metrics
-        bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
-        genomic_gc_validation_metrics_batch_update(inserted_metric_ids)
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 

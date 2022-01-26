@@ -16,7 +16,7 @@ from werkzeug.exceptions import NotFound
 from rdr_service import clock
 from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
     bq_genomic_set_update, bq_genomic_file_processed_update, \
-    bq_genomic_manifest_file_update, bq_genomic_set_member_batch_update
+    bq_genomic_manifest_file_update
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic.genomic_data import GenomicQueryClass
@@ -26,7 +26,7 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update, \
+    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, \
     genomic_user_event_metrics_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
@@ -2509,8 +2509,6 @@ class GenomicBiobankSamplesCoupler:
                     self.genomic_members_insert(
                         members=processed_members,
                         session=session,
-                        set_id=new_genomic_set.id,
-                        bids=[pm.biobankId for pm in processed_members]
                     )
                     processed_members.clear()
 
@@ -2518,8 +2516,6 @@ class GenomicBiobankSamplesCoupler:
                 self.genomic_members_insert(
                     members=processed_members,
                     session=session,
-                    set_id=new_genomic_set.id,
-                    bids=[pm.biobankId for pm in processed_members]
                 )
 
         return new_genomic_set.id
@@ -2604,9 +2600,7 @@ class GenomicBiobankSamplesCoupler:
                 if count % 1000 == 0:
                     self.genomic_members_insert(
                         members=processed_array_wgs,
-                        session=session,
-                        set_id=new_genomic_set.id,
-                        bids=bids
+                        session=session
                     )
                     processed_array_wgs.clear()
                     bids.clear()
@@ -2614,9 +2608,7 @@ class GenomicBiobankSamplesCoupler:
             if count and processed_array_wgs:
                 self.genomic_members_insert(
                     members=processed_array_wgs,
-                    session=session,
-                    set_id=new_genomic_set.id,
-                    bids=bids
+                    session=session
                 )
 
         # Create & transfer the Biobank Manifest based on the new genomic set
@@ -2684,7 +2676,8 @@ class GenomicBiobankSamplesCoupler:
             local=local
         )
 
-    def genomic_members_insert(self, *, members, session, set_id, bids):
+    @staticmethod
+    def genomic_members_insert(*, members, session):
         """
         Bulk save of member for genomic_set_member as well as PDR
         batch updating of members
@@ -2693,14 +2686,9 @@ class GenomicBiobankSamplesCoupler:
         :param: set_id
         :param: bids
         """
-
         try:
             session.bulk_save_objects(members)
             session.commit()
-            members = self.member_dao.get_members_from_set_id(set_id, bids=bids)
-            member_ids = [m.id for m in members]
-            bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
-            genomic_set_member_batch_update(member_ids)
         except Exception as e:
             raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
