@@ -26,7 +26,6 @@ from rdr_service.code_constants import (
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    CONSENT_FOR_STUDY_ENROLLMENT_UPDATE_MODULE,
     CONSENT_PERMISSION_YES_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
@@ -294,6 +293,9 @@ class QuestionnaireResponseDao(BaseDao):
     def __init__(self):
         super(QuestionnaireResponseDao, self).__init__(QuestionnaireResponse)
 
+        # Need to record what types of consents are provided by the response when walking the answers
+        self.consents_provided = []
+
     def get_id(self, obj):
         return obj.questionnaireResponseId
 
@@ -438,8 +440,6 @@ class QuestionnaireResponseDao(BaseDao):
                 module_code_values.append(code.value.lower())
         self.create_consent_responses(
             questionnaire_response=questionnaire_response,
-            module_code_values=module_code_values,
-            question_id_code_value_map=question_id_code_value_map,
             participant_summary=participant_summary,
             session=session
         )
@@ -597,6 +597,7 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
+                            self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
@@ -612,6 +613,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
+                            self.consents_provided.append(ConsentType.CABOR)
                             if not participant_summary.consentForCABoR:
                                 participant_summary.consentForCABoR = True
                                 participant_summary.consentForCABoRTime = questionnaire_response.created
@@ -619,6 +621,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                     elif code.value == GROR_CONSENT_QUESTION_CODE:
                         if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
+                            self.consents_provided.append(ConsentType.GROR)
                             gror_consent = QuestionnaireStatus.SUBMITTED
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
@@ -644,6 +647,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
+                            self.consents_provided.append(ConsentType.PRIMARY_UPDATE)
                             participant_summary.consentForStudyEnrollmentAuthored = authored
                     elif code.value == CONSENT_COHORT_GROUP_CODE:
                         try:
@@ -707,6 +711,7 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                        self.consents_provided.append(ConsentType.PRIMARY)
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
@@ -842,50 +847,17 @@ class QuestionnaireResponseDao(BaseDao):
                     session, participant.participantId, gender_code_ids
                 )
 
-    @classmethod
-    def create_consent_responses(cls, questionnaire_response: QuestionnaireResponse, module_code_values: List[str],
-                                 question_id_code_value_map: Dict[int, str], participant_summary: ParticipantSummary,
-                                 session: Session):
+    def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session,
+                                 participant_summary: ParticipantSummary):
         """
         Analyzes the summary, response, and codes to determine if the response is a new consent for the participant
         """
-        # Currently, responses should only be for 1 survey. If there are more than one it might mean there's
-        # something that should be looked into and this code may not be built correctly to handle that event.
-        if len(module_code_values) != 1:
-            # Printing participant id since we don't have the questionnaire response id yet
-            logging.warning(f'Response from {questionnaire_response.participantId} responded to more than one survey')
-
-        # Check the module codes for any consent types indicated for this this response
-        new_consent_provided = []
-        # Check for Primary response
-        if CONSENT_FOR_STUDY_ENROLLMENT_MODULE.lower() in module_code_values:
-            new_consent_provided.append(ConsentType.PRIMARY)
-
-            # Check for Cabor with Primary response
-            for answer in questionnaire_response.answers:
-                answer_question_code_value = question_id_code_value_map.get(answer.questionId)
-                if answer_question_code_value == CABOR_SIGNATURE_QUESTION_CODE.lower():
-                    new_consent_provided.append(ConsentType.CABOR)
-
-        # Check for EHR response
-        if CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE.lower() in module_code_values:
-            new_consent_provided.append(ConsentType.EHR)
-
-        # Check for GROR response
-        if CONSENT_FOR_GENOMICS_ROR_MODULE.lower() in module_code_values:
-            new_consent_provided.append(ConsentType.GROR)
-
-        # Check for Primary Update response
-        if CONSENT_FOR_STUDY_ENROLLMENT_UPDATE_MODULE.lower() in module_code_values:
-            # Update module
-            new_consent_provided.append(ConsentType.PRIMARY_UPDATE)
-
-        # Now that the consent type for the response is known, check authored dates to see if it's a new
-        # consent response, or if it's potentially just a replay of a previous questionnaire response
+        # Check authored dates to see if it's a new consent response,
+        # or if it's potentially just a replay of a previous questionnaire response
         if not participant_summary:
             # If the participant summary is missing, this would be a new consent to create one and no dates
             # would need to be checked
-            for consent_type in new_consent_provided:
+            for consent_type in self.consents_provided:
                 session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
         else:
             consent_type_authored_time_map = {
@@ -895,13 +867,13 @@ class QuestionnaireResponseDao(BaseDao):
                 ConsentType.GROR: participant_summary.consentForGenomicsRORAuthored,
                 ConsentType.PRIMARY_UPDATE: participant_summary.consentForStudyEnrollmentAuthored
             }
-            for consent_type in new_consent_provided:
+            for consent_type in self.consents_provided:
                 is_new_consent = False
                 previous_consent_authored_time = consent_type_authored_time_map[consent_type]
                 if previous_consent_authored_time is None:  # Brand new consent response
                     is_new_consent = True
                 else:
-                    if cls._authored_times_match(
+                    if self._authored_times_match(
                         new_authored_time=questionnaire_response.authored,
                         current_authored_item=previous_consent_authored_time
                     ):
