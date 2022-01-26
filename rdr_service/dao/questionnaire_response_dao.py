@@ -425,23 +425,8 @@ class QuestionnaireResponseDao(BaseDao):
                     answered_question_code_values.append(code.value)
 
         participant_summary_dao = ParticipantSummaryDao()
-        participant_summary = participant_summary_dao.get_by_participant_id(
+        participant_summary_before_update = participant_summary_dao.get_by_participant_id(
             participant_id=questionnaire_response.participantId
-        )
-        question_id_code_value_map = {}
-        for question in questions:
-            code = code_map.get(question.codeId)
-            if code:
-                question_id_code_value_map[question.questionnaireQuestionId] = code.value.lower()
-        module_code_values = []
-        for concept in questionnaire_history.concepts:
-            code = code_map.get(concept.codeId)
-            if code:
-                module_code_values.append(code.value.lower())
-        self.create_consent_responses(
-            questionnaire_response=questionnaire_response,
-            participant_summary=participant_summary,
-            session=session
         )
 
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
@@ -456,6 +441,12 @@ class QuestionnaireResponseDao(BaseDao):
                     new_session, questionnaire_response, code_ids, question_map, questionnaire_history, resource_json,
                     code_dao, code_map
                 )
+
+        self.create_consent_responses(
+            questionnaire_response=questionnaire_response,
+            summary_before_response=participant_summary_before_update,
+            session=session
+        )
 
         super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
         # Mark existing answers for the questions in this response given previously by this participant
@@ -848,24 +839,24 @@ class QuestionnaireResponseDao(BaseDao):
                 )
 
     def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session,
-                                 participant_summary: ParticipantSummary):
+                                 summary_before_response: ParticipantSummary):
         """
         Analyzes the summary, response, and codes to determine if the response is a new consent for the participant
         """
         # Check authored dates to see if it's a new consent response,
         # or if it's potentially just a replay of a previous questionnaire response
-        if not participant_summary:
+        if not summary_before_response:
             # If the participant summary is missing, this would be a new consent to create one and no dates
             # would need to be checked
             for consent_type in self.consents_provided:
                 session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
         else:
             consent_type_authored_time_map = {
-                ConsentType.PRIMARY: participant_summary.consentForStudyEnrollmentAuthored,
-                ConsentType.CABOR: participant_summary.consentForStudyEnrollmentAuthored,
-                ConsentType.EHR: participant_summary.consentForElectronicHealthRecordsAuthored,
-                ConsentType.GROR: participant_summary.consentForGenomicsRORAuthored,
-                ConsentType.PRIMARY_UPDATE: participant_summary.consentForStudyEnrollmentAuthored
+                ConsentType.PRIMARY: summary_before_response.consentForStudyEnrollmentAuthored,
+                ConsentType.CABOR: summary_before_response.consentForStudyEnrollmentAuthored,
+                ConsentType.EHR: summary_before_response.consentForElectronicHealthRecordsAuthored,
+                ConsentType.GROR: summary_before_response.consentForGenomicsRORAuthored,
+                ConsentType.PRIMARY_UPDATE: summary_before_response.consentForStudyEnrollmentAuthored
             }
             for consent_type in self.consents_provided:
                 is_new_consent = False
