@@ -664,8 +664,23 @@ class GenomicJobControllerTest(BaseTestCase):
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_reconcile_pdr_data(self, mock_cloud_task):
 
+        # init new job run in __enter__
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
+
+        cloud_task_endpoint = 'rebuild_genomic_table_records_task'
+
+        first_run = self.job_run_dao.get_all()
+
+        self.assertEqual(mock_cloud_task.call_count, 1)
+        call_args = mock_cloud_task.call_args_list
+
+        self.assertEqual(len(call_args), 1)
+        self.assertEqual(call_args[0].args[0]['table'], self.job_run_dao.model_type.__tablename__)
+
+        self.assertTrue(type(call_args[0].args[0]['ids']) is list)
+        self.assertEqual(call_args[0].args[0]['ids'], [obj.id for obj in first_run])
+        self.assertEqual(call_args[0].args[1], cloud_task_endpoint)
 
         gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
@@ -673,11 +688,9 @@ class GenomicJobControllerTest(BaseTestCase):
             genomicSetVersion=1
         )
 
-        first_run = self.job_run_dao.get(1)
-
-        plus_six = clock.CLOCK.now() + datetime.timedelta(minutes=10)
-        plus_six = plus_six.replace(microsecond=0)
-        with FakeClock(plus_six):
+        plus_ten = clock.CLOCK.now() + datetime.timedelta(minutes=10)
+        plus_ten = plus_ten.replace(microsecond=0)
+        with FakeClock(plus_ten):
             for i in range(2):
                 gen_member = self.data_generator.create_database_genomic_set_member(
                     genomicSetId=gen_set.id,
@@ -687,14 +700,8 @@ class GenomicJobControllerTest(BaseTestCase):
                     genomicWorkflowState=GenomicWorkflowState.AW1
                 )
 
-                # gen_job_run = self.data_generator.create_database_genomic_job_run(
-                #     jobId=GenomicJob.AW1_MANIFEST,
-                #     startTime=clock.CLOCK.now(),
-                #     runResult=GenomicSubProcessResult.SUCCESS
-                # )
-
                 gen_processed_file = self.data_generator.create_database_genomic_file_processed(
-                    runId=first_run.id,
+                    runId=first_run[0].id,
                     startTime=clock.CLOCK.now(),
                     filePath=f'test_file_path_{i}',
                     bucketName='test_bucket',
@@ -716,28 +723,30 @@ class GenomicJobControllerTest(BaseTestCase):
                     feedbackRecordCount=2
                 )
 
+        # gets new records that were created with last job run from above
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
 
-        print(controller.last_run_time)
+        affected_tables = [
+            'genomic_set',
+            'genomic_set_member',
+            'genomic_job_run',
+            'genomic_file_processed',
+            'genomic_gc_validation_metrics',
+            'genomic_manifest_file',
+            'genomic_manifest_feedback'
+        ]
 
-        plus_six = clock.CLOCK.now() + datetime.timedelta(hours=6)
-        plus_six = plus_six.replace(microsecond=0)
+        self.assertEqual(mock_cloud_task.call_count, 8)
+        call_args = mock_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 8)
 
-        with FakeClock(plus_six):
-            for i in range(2):
-                self.data_generator.create_database_genomic_set_member(
-                    genomicSetId=gen_set.id,
-                    biobankId="100153482",
-                    sampleId="21042005280",
-                    genomeType="aou_wgs",
-                    genomicWorkflowState=GenomicWorkflowState.AW1
-                )
+        mock_tables = set([obj[0][0]['table'] for obj in call_args])
+        mock_endpoint = [obj[0][1] for obj in call_args]
 
-            with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
-                controller.reconcile_pdr_data()
+        self.assertTrue([mock_tables].sort() == affected_tables.sort())
+        self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
 
-        print(mock_cloud_task)
 
 
 
