@@ -1,9 +1,9 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Collection, Dict
+from typing import Collection, Dict, List
 
 from sqlalchemy import and_, or_
-from sqlalchemy.orm import aliased, Session
+from sqlalchemy.orm import aliased, joinedload, Session
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
@@ -40,23 +40,23 @@ class ConsentDao(BaseDao):
         )
 
     @classmethod
-    def get_consent_responses_to_validate(cls, session) -> Dict[int, Collection[ConsentResponse]]:
+    def get_consent_responses_to_validate(cls, session) -> Dict[int, List[ConsentResponse]]:
         """
         Gets all the consent responses that need to be validated.
         :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
         """
         # A ConsentResponse hasn't been validated yet if there aren't any ConsentFiles that link to the response
-        db_results = session.query(ConsentResponse, QuestionnaireResponse.participantId).join(
-            QuestionnaireResponse
-        ).outerjoin(
+        consent_responses = session.query(ConsentResponse).outerjoin(
             ConsentFile
         ).filter(
             ConsentFile.id.is_(None)
+        ).options(
+            joinedload(ConsentResponse.response)
         ).all()
 
         grouped_results = defaultdict(list)
-        for consent_response, participant_id in db_results:
-            grouped_results[participant_id].append(consent_response)
+        for consent_response in consent_responses:
+            grouped_results[consent_response.response.participantId].append(consent_response)
 
         return dict(grouped_results)
 
