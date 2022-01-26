@@ -4,6 +4,7 @@
 #
 from datetime import datetime, timedelta
 
+from rdr_service.participant_enums import QuestionnaireResponseClassificationType
 from rdr_service.resource.calculators import EnrollmentStatusCalculator
 from rdr_service.resource.constants import ParticipantEventEnum as p_event, PDREnrollmentStatusEnum, ConsentCohortEnum
 from tests.helpers.unittest_base import BaseTestCase
@@ -20,15 +21,20 @@ def get_basic_activity():
          'event': p_event.SignupTime},
         {'timestamp': datetime(2018, 3, 6, 20, 35, 12), 'group': 'QuestionnaireModule', 'group_id': 40,
          'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
+         'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
          'answer_id': 767},
         {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
          'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
+         'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
          'answer_id': 767},
         {'timestamp': datetime(2018, 3, 6, 20, 46, 48), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
          'event': p_event.TheBasics, 'ConsentAnswer': None},
         {'timestamp': datetime(2018, 3, 6, 20, 49, 0), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
          'event': p_event.OverallHealth, 'ConsentAnswer': None},
         {'timestamp': datetime(2018, 3, 6, 20, 51, 6), 'group': 'QuestionnaireModule', 'group_id': 40,
+         'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
          'event': p_event.Lifestyle, 'ConsentAnswer': None},
         {'timestamp': datetime(2018, 3, 28, 20, 18, 59), 'group': 'Biobank', 'group_id': 20,
          'event': p_event.BiobankConfirmed, 'dna_tests': 3, 'basline_tests': 4},
@@ -92,6 +98,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         # Add additional "TheBasics" to activity.
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 20, 47, 21), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
             'event': p_event.TheBasics, 'ConsentAnswer': None}
         )
         self.esc.run(activity)
@@ -130,6 +137,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 20, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.GROR, 'answer': 'CheckDNA_No',
              'answer_id': 767}
         )
@@ -146,6 +154,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
              'answer_id': 767}
         )
@@ -161,11 +170,13 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         activity = get_basic_activity()
         activity.append(
             {'timestamp': datetime(2018, 3, 6, 21, 24, 10), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.GROR, 'answer': 'CheckDNA_Yes',
              'answer_id': 767}
         )
         activity.append(
             {'timestamp': datetime(2018, 3, 7, 15, 11, 19), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.GROR, 'answer': 'CheckDNA_No',
              'answer_id': 767}
         )
@@ -228,6 +239,7 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ Test that a ConsentPII authored prior to the sign-up-time value is used """
         activity = [
             {'timestamp': datetime(2018, 3, 5, 16, 35, 55), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
              'answer_id': 767},
             {'timestamp': datetime(2018, 3, 6, 8, 10, 30), 'group': 'Profile', 'group_id': 1,
@@ -243,9 +255,11 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
         """ Test that a ConsentPII authored prior to the sign-up-time value is used """
         activity = [
             {'timestamp': datetime(2018, 3, 5, 16, 35, 55), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.ConsentPII, 'answer': 'ConsentPermission_Yes',
              'answer_id': 767},
             {'timestamp': datetime(2018, 3, 5, 16, 43, 50), 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.COMPLETE),
              'event': p_event.EHRConsentPII, 'answer': 'ConsentPermission_Yes',
              'answer_id': 767},
             {'timestamp': datetime(2018, 3, 6, 8, 10, 30), 'group': 'Profile', 'group_id': 1,

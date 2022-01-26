@@ -605,7 +605,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                 QuestionnaireResponse.questionnaireResponseId, QuestionnaireResponse.authored,
                 QuestionnaireResponse.created, QuestionnaireResponse.language, QuestionnaireHistory.externalId,
                 QuestionnaireResponse.status, code_id_query, QuestionnaireResponse.nonParticipantAuthor,
-                QuestionnaireHistory.semanticVersion, QuestionnaireHistory.irbMapping). \
+                QuestionnaireResponse.classificationType, QuestionnaireHistory.semanticVersion,
+                QuestionnaireHistory.irbMapping). \
             join(QuestionnaireHistory). \
             filter(QuestionnaireResponse.participantId == p_id,
                    QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE). \
@@ -648,10 +649,15 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     'consent': 1 if module_name in _consent_module_question_map else 0,
                     'non_participant_answer': row.nonParticipantAuthor if row.nonParticipantAuthor else None,
                     'semantic_version': row.semanticVersion,
-                    'irb_mapping': row.irbMapping
+                    'irb_mapping': row.irbMapping,
+                    'classification_type': str(QuestionnaireResponseClassificationType(row.classificationType)),
+                    'classification_type_id': int(QuestionnaireResponseClassificationType(row.classificationType))
                 }
 
-                mod_ca = dict()
+                mod_ca = {
+                    'classification_type': module_data['classification_type'],
+                    'classification_type_id': module_data['classification_type_id']
+                }
                 # check if this is a module with consents.
                 if module_name in _consent_module_question_map:
                     qnans = self.get_module_answers(self.ro_dao, module_name, p_id, row.questionnaireResponseId)
@@ -1490,12 +1496,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         #       are going to do our own query to get the first TheBasics submission after consent. Due to
         #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
         #       'external_id' in the order by clause.
+        # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
+        # TODO: backfill classification_type of existing TheBasics questionnaire_response records.  See:  DA-2388)
         sql = """
             select questionnaire_response_id
             from questionnaire_response qr
                 inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
                 inner join code c on qc.code_id = c.code_id
-            where qr.participant_id = :p_id and c.value = 'TheBasics'
+            where qr.participant_id = :p_id and c.value = 'TheBasics' and qr.classification_type = 0
             order by qr.authored, qr.created, qr.external_id limit 1;
         """
         row = ro_session.execute(sql, {"p_id": p_id}).first()

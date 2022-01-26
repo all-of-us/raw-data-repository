@@ -81,6 +81,9 @@ class BQModuleStatusSchema(BQSchema):
     mod_semantic_version = BQField('mod_semantic_version', BQFieldTypeEnum.STRING,
                                          BQFieldModeEnum.NULLABLE)
     mod_irb_mapping = BQField('mod_irb_mapping', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_classification_type = BQField('mod_classification_type', BQFieldTypeEnum.STRING, BQFieldModeEnum.NULLABLE)
+    mod_classification_type_id = BQField('mod_classification_type_id',
+                                         BQFieldTypeEnum.INTEGER, BQFieldModeEnum.NULLABLE)
 
 
 class BQConsentSchema(BQSchema):

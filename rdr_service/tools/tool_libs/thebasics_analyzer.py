@@ -204,7 +204,7 @@ class TheBasicsAnalyzerClass(object):
             answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
         ).filter(
             QuestionnaireResponse.questionnaireResponseId == response_id,
-            QuestionnaireResponse.isDuplicate != 1   # TODO:  This column name/value list expected to change
+            QuestionnaireResponse.classificationType != 1
         ).order_by(QuestionnaireResponse.authored,
                    QuestionnaireResponse.created
                    ).all()
