@@ -116,6 +116,22 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
         self.assertEqual(bm_count, 3)
 
+    def test_thebasics_profile_update_excluded(self):
+        """ Enrollment status calculations should ignore PROFILE_UPDATE classification TheBasics responses """
+        # get_basic_activity() populates a complete TheBasics with datetime(2018, 3, 6, 20, 46, 48)
+        activity = get_basic_activity()
+        # Add another TheBasics, with the earlier authored timestamp, that is a PROFILE_UPDATE
+        profile_update_earlier_ts = datetime(2017, 3, 6, 20, 46, 30)
+        activity.append(
+            {'timestamp': profile_update_earlier_ts, 'group': 'QuestionnaireModule', 'group_id': 40,
+             'classification_type': str(QuestionnaireResponseClassificationType.PROFILE_UPDATE),
+             'event': p_event.TheBasics, 'ConsentAnswer': None}
+        )
+        self.esc.run(activity)
+        # The PROFILE_UPDATE response should be ignored by the enrollment status calculator
+        for ev in self.esc._baseline_modules.values:
+            self.assertNotEqual(ev.timestamp, profile_update_earlier_ts)
+
     def test_cohort_2(self):
         """ Shift activity dates so we look like a cohort 2 participant. """
         activity = self._shift_timestamps(get_basic_activity(), 180)
