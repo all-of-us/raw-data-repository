@@ -137,8 +137,8 @@ class EnrollmentStatusCalculator:
         if status == PDREnrollmentStatusEnum.CoreParticipantMinusPM and not self.core_participant_minus_pm_time and \
                 self._biobank_samples and self._baseline_modules:
             self.core_participant_minus_pm_time = max([self._biobank_samples.first_ts, self._baseline_modules.last_ts])
-        if not self.core_participant_time and self._biobank_samples and self._baseline_modules and \
-                    self._physical_measurements:
+        if status == PDREnrollmentStatusEnum.CoreParticipant and not self.core_participant_time and \
+                self._biobank_samples and self._baseline_modules and self._physical_measurements:
             self.core_participant_time = \
                 max([self._biobank_samples.first_ts, self._baseline_modules.last_ts,
                         self._physical_measurements.first_ts])

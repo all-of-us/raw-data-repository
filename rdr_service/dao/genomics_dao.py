@@ -40,8 +40,8 @@ from rdr_service.model.genomics import (
     GenomicCloudRequests,
     GenomicMemberReportState,
     GenomicInformingLoop,
-    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics, GenomicAW3Raw,
-    GenomicAW4Raw)
+    GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -755,6 +755,9 @@ class GenomicSetMemberDao(UpdatableDao):
                 blocklist_config_items = member_blocklists_config.get(block_map_type, None)
 
                 for item in blocklist_config_items:
+
+                    if not hasattr(member, item.get('attribute')):
+                        continue
 
                     current_attr_value = getattr(member, item.get('attribute'))
                     evaluate_value = item.get('value')
@@ -1737,6 +1740,7 @@ class GenomicOutreachDaoV2(BaseDao):
         self.allowed_types = ['result', 'informingLoop']
         self.type = self.allowed_types
         self.report_query_state = self.get_report_state_query_config()
+        self.result_viewed_dao = GenomicResultViewedDao()
 
     def get_id(self, obj):
         pass
@@ -1760,36 +1764,45 @@ class GenomicOutreachDaoV2(BaseDao):
             }
             return client_json
 
-        for p in _dict['data']:
-            p_type = p[-1]
-            if 'result' in p_type:
-                p_status, p_module = self._determine_report_state(p[1])
+        for p in _dict.get('data'):
+            if 'result' in p.type:
+                p_status, p_module = self._determine_report_state(p.genomic_report_state)
+                pid = p.participant_id
+                genomic_result_viewed = p.GenomicResultViewed
+                result_viewed = 'no'
+
+                if genomic_result_viewed \
+                    and genomic_result_viewed.participant_id \
+                        and genomic_result_viewed.module_type == p_module:
+                    result_viewed = 'yes'
+
                 report = {
                     "module": p_module.lower(),
-                    "type": 'result',
+                    "type": p.type,
                     "status": p_status,
-                    "participant_id": f'P{p[0]}',
+                    "viewed": result_viewed,
+                    "participant_id": f'P{pid}',
                 }
                 report_statuses.append(report)
-            elif 'informingLoop' in p_type:
+            elif 'informingLoop' in p.type:
                 ready_modules = ['hdr', 'pgx']
                 p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
                 if p_status == 'ready':
                     for module in ready_modules:
                         report = {
                             "module": module,
-                            "type": 'informingLoop',
+                            "type": p.type,
                             "status": p_status,
-                            "participant_id": f'P{p[0]}',
+                            "participant_id": f'P{p.participant_id}',
                         }
                         report_statuses.append(report)
                 elif p_status == 'completed':
                     report = {
                         "module": p.module_type.lower(),
-                        "type": 'informingLoop',
+                        "type": p.type,
                         "status": p_status,
                         "decision": p.decision_value,
-                        "participant_id": f'P{p[0]}',
+                        "participant_id": f'P{p.participant_id}',
                     }
                     report_statuses.append(report)
 
@@ -1811,10 +1824,10 @@ class GenomicOutreachDaoV2(BaseDao):
                 genomic_loop_alias = aliased(GenomicInformingLoop)
                 decision_loop = (
                     session.query(
-                        distinct(GenomicInformingLoop.participant_id),
+                        distinct(GenomicInformingLoop.participant_id).label('participant_id'),
                         GenomicInformingLoop.module_type,
                         GenomicInformingLoop.decision_value,
-                        literal('informingLoop')
+                        literal('informingLoop').label('type')
                     )
                     .join(
                         ParticipantSummary,
@@ -1842,7 +1855,7 @@ class GenomicOutreachDaoV2(BaseDao):
                 ready_loop = (
                     session.query(
                         GenomicSetMember.participantId.label('participant_id'),
-                        literal('informingLoop')
+                        literal('informingLoop').label('type')
                     )
                     .join(
                         ParticipantSummary,
@@ -1884,9 +1897,10 @@ class GenomicOutreachDaoV2(BaseDao):
                 # results
                 result_query = (
                     session.query(
-                        distinct(GenomicMemberReportState.participant_id),
+                        distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
-                        literal('result')
+                        GenomicResultViewed,
+                        literal('result').label('type')
                     )
                     .join(
                         ParticipantSummary,
@@ -1895,8 +1909,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     .join(
                         GenomicSetMember,
                         GenomicSetMember.participantId == GenomicMemberReportState.participant_id
-                    )
-                    .filter(
+                    ).outerjoin(
+                        GenomicResultViewed,
+                        GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
+                    ).filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
@@ -2615,6 +2631,30 @@ class GenomicInformingLoopDao(UpdatableDao):
     def insert_bulk(self, batch):
         with self.session() as session:
             session.bulk_insert_mappings(self.model_type, batch)
+
+
+class GenomicResultViewedDao(UpdatableDao):
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicResultViewedDao, self).__init__(
+            GenomicResultViewed, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        return obj.id
+
+    def from_client_json(self):
+        pass
+
+    def get_result_record_by_pid_module(self, pid, module='gem'):
+        with self.session() as session:
+            return session.query(
+                GenomicResultViewed
+            ).filter(
+                GenomicResultViewed.participant_id == pid,
+                GenomicResultViewed.module_type == module
+            ).one_or_none()
+
 
 class GenomicGcDataFileDao(BaseDao):
     def __init__(self):

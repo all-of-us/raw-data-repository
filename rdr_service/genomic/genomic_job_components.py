@@ -1312,6 +1312,7 @@ class GenomicFileIngester:
             collectionTubeId=f'replated_{member.id}',
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
             replatedMemberId=member.id,
+            participantOrigin=member.participantOrigin,
             blockResearch=1 if block_research_reason else 0,
             blockResearchReason=block_research_reason if block_research_reason else None,
             blockResults=1 if block_results_reason else 0,
@@ -1340,6 +1341,7 @@ class GenomicFileIngester:
             genomeType=GENOME_TYPE_WGS,
             genomicWorkflowState=GenomicWorkflowState.EXTRACT_REQUESTED,
             genomicWorkflowStateStr=GenomicWorkflowState.EXTRACT_REQUESTED.name,
+            participantOrigin=member.participantOrigin,
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
             replatedMemberId=member.id,
@@ -2441,7 +2443,8 @@ class GenomicBiobankSamplesCoupler:
                                                          "valid_ages",
                                                          "sabs",
                                                          "gror",
-                                                         "is_ai_an"])
+                                                         "is_ai_an",
+                                                         "origins"])
 
     def __init__(self, run_id, controller=None):
         self.samples_dao = BiobankStoredSampleDao()
@@ -2465,7 +2468,7 @@ class GenomicBiobankSamplesCoupler:
         """
         samples = self._get_new_biobank_samples(from_date)
 
-        if len(samples) > 0:
+        if samples:
             samples_meta = self.GenomicSampleMeta(*samples)
             return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_3_ID)
 
@@ -2577,6 +2580,7 @@ class GenomicBiobankSamplesCoupler:
                     genomeType=genome_type,
                     genomicWorkflowState=GenomicWorkflowState.LR_PENDING,
                     genomicWorkflowStateStr=GenomicWorkflowState.LR_PENDING.name,
+                    participantOrigin=participant.participantOrigin,
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
@@ -2667,6 +2671,7 @@ class GenomicBiobankSamplesCoupler:
                     genomeType=self._ARRAY_GENOME_TYPE,
                     genomicWorkflowState=GenomicWorkflowState.AW0_READY,
                     genomicWorkflowStateStr=GenomicWorkflowState.AW0_READY.name,
+                    participantOrigin=samples_meta.origins[i],
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
                 )
