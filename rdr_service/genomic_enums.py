@@ -108,8 +108,8 @@ class GenomicJob(messages.Enum):
     RECONCILE_INFORMING_LOOP_RESPONSES = 51
     INGEST_RESULT_VIEWED = 52
 
-    LOAD_AW3_TO_RAW_TABLE = 52
-    LOAD_AW4_TO_RAW_TABLE = 53
+    LOAD_AW3_TO_RAW_TABLE = 53
+    LOAD_AW4_TO_RAW_TABLE = 54
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
