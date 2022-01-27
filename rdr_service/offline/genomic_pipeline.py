@@ -317,6 +317,11 @@ def reconcile_raw_to_aw2_ingested():
         controller.reconcile_raw_to_aw2_ingested()
 
 
+def reconcile_pdr_data():
+    with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+        controller.reconcile_pdr_data()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,

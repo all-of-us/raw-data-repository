@@ -53,7 +53,10 @@ from rdr_service.dao.genomics_dao import (
     GenomicInformingLoopDao,
     GenomicGcDataFileDao,
     GenomicGcDataFileMissingDao,
-    GcDataFileStagingDao, UserEventMetricsDao, GenomicResultViewedDao)
+    GcDataFileStagingDao,
+    GenomicSetDao,
+    UserEventMetricsDao,
+    GenomicResultViewedDao)
 from rdr_service.resource.generators.genomics import genomic_job_run_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update, genomic_gc_validation_metrics_batch_update, \
     genomic_set_member_batch_update
@@ -99,6 +102,7 @@ class GenomicJobController:
         self.manifests_generated = []
 
         # Components
+        self.set_dao = GenomicSetDao()
         self.job_run_dao = GenomicJobRunDao()
         self.file_processed_dao = GenomicFileProcessedDao()
         self.manifest_file_dao = GenomicManifestFileDao()
@@ -763,6 +767,39 @@ class GenomicJobController:
         # Metrics
         bq_genomic_gc_validation_metrics_batch_update(inserted_metric_ids, project_id=self.bq_project_id)
         genomic_gc_validation_metrics_batch_update(inserted_metric_ids)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
+    def reconcile_pdr_data(self):
+        last_job_run = self.last_run_time
+
+        reconcile_daos = [
+            self.set_dao,
+            self.member_dao,
+            self.job_run_dao,
+            self.file_processed_dao,
+            self.metrics_dao,
+            self.manifest_file_dao,
+            self.manifest_feedback_dao
+        ]
+
+        for dao in reconcile_daos:
+            table_name = dao.model_type.__tablename__
+            if not hasattr(dao, 'get_last_updated_records'):
+                continue
+
+            records = dao.get_last_updated_records(from_date=last_job_run)
+            if not records:
+                continue
+
+            batch_ids = [obj.id for obj in records]
+
+            logging.info(f'Sending {table_name} {len(batch_ids)} records for rebuild cloud task.')
+
+            self.execute_cloud_task({
+                'table': table_name,
+                'ids': batch_ids,
+            }, 'rebuild_genomic_table_records_task')
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
@@ -1650,7 +1687,7 @@ class DataQualityJobController:
         validation_incidents = self.incident_dao.get_new_ingestion_incidents()
 
         if not validation_incidents:
-            logging.warning('No records found for validation email notifications')
+            logging.info('No records found for validation email notifications')
             return
 
         recipients, cc_recipients = email_config.get('recipients'), email_config.get('cc_recipients')

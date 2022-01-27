@@ -57,7 +57,24 @@ from rdr_service.resource.generators.genomics import genomic_set_member_update, 
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 
 
-class GenomicSetDao(UpdatableDao):
+class GenomicDaoUtils:
+
+    def get_last_updated_records(self, from_date):
+        from_date = from_date.replace(microsecond=0)
+
+        if not hasattr(self.model_type, 'created') or \
+                not hasattr(self.model_type, 'modified'):
+            return []
+
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.modified >= from_date
+            ).all()
+
+
+class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicSet model """
 
     validate_version_match = False
@@ -169,7 +186,7 @@ class GenomicSetDao(UpdatableDao):
         )
 
 
-class GenomicSetMemberDao(UpdatableDao):
+class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicSetMember model """
 
     validate_version_match = False
@@ -1088,7 +1105,7 @@ class GenomicSetMemberDao(UpdatableDao):
         super(GenomicSetMemberDao, self).update(obj)
 
 
-class GenomicJobRunDao(UpdatableDao):
+class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicJobRun model """
 
     def from_client_json(self):
@@ -1161,7 +1178,7 @@ class GenomicJobRunDao(UpdatableDao):
         return session.execute(query, query_params)
 
 
-class GenomicFileProcessedDao(UpdatableDao):
+class GenomicFileProcessedDao(UpdatableDao, GenomicDaoUtils):
     """ Stub for GenomicFileProcessed model """
 
     def from_client_json(self):
@@ -1286,7 +1303,7 @@ class GenomicFileProcessedDao(UpdatableDao):
         return session.execute(query, query_params)
 
 
-class GenomicGCValidationMetricsDao(UpsertableDao):
+class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
     """ Stub for GenomicGCValidationMetrics model """
 
     def from_client_json(self):
@@ -1995,7 +2012,7 @@ class GenomicOutreachDaoV2(BaseDao):
             self.type = [_type]
 
 
-class GenomicManifestFileDao(BaseDao):
+class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicManifestFileDao, self).__init__(
             GenomicManifestFile, order_by_ending=['id'])
@@ -2046,7 +2063,7 @@ class GenomicManifestFileDao(BaseDao):
             genomic_manifest_file_update(manifest_file_obj.id)
 
 
-class GenomicManifestFeedbackDao(UpdatableDao):
+class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
     validate_version_match = False
 
     def __init__(self):

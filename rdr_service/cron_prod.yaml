@@ -79,4 +79,9 @@ cron:
   timezone: America/New_York
   schedule: every day 08:15
   target: offline
+- description: Genomic Data PDR Reconcile
+  url: /offline/GenomicDataPdrReconcile
+  timezone: America/New_York
+  schedule: every 6 hours
+  target: offline
 
