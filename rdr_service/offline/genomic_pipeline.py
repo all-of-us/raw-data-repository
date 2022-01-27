@@ -142,6 +142,13 @@ def aw3_array_manifest_workflow():
             _genome_type=config.GENOME_TYPE_ARRAY,
         )
 
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 Array Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+
 
 def aw3_wgs_manifest_workflow():
     """
@@ -154,6 +161,13 @@ def aw3_wgs_manifest_workflow():
             GenomicManifestTypes.AW3_WGS,
             _genome_type=config.GENOME_TYPE_WGS,
         )
+
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 Array Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
 def gem_a1_manifest_workflow():
@@ -303,6 +317,11 @@ def reconcile_raw_to_aw2_ingested():
         controller.reconcile_raw_to_aw2_ingested()
 
 
+def reconcile_pdr_data():
+    with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+        controller.reconcile_pdr_data()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
@@ -410,6 +429,8 @@ def load_awn_manifest_into_raw_table(
     jobs = {
         "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
         "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
+        "aw3": GenomicJob.LOAD_AW3_TO_RAW_TABLE,
+        "aw4": GenomicJob.LOAD_AW4_TO_RAW_TABLE,
     }
 
     with GenomicJobController(jobs[manifest_type],

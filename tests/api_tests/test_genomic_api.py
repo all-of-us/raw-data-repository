@@ -1136,6 +1136,24 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         load_raw_awn_data_mock.assert_called_with(test_file_path, "aw2")
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
+    def test_load_aw4_raw_data_task_api(self, load_raw_awn_data_mock):
+
+        # Payload for loading AW2 raw data
+        test_file_path = "test-bucket-name/test_aw4_file.csv"
+        data = {"file_path": test_file_path, "file_type": "aw4"}
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='LoadRawAWNManifestDataAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        load_raw_awn_data_mock.assert_called_with(test_file_path, "aw4")
+
     def test_load_samples_from_raw_data_task_api(self):
 
         data = {'job': 'AW1_MANIFEST',
@@ -1734,3 +1752,73 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(user_metrics)
         self.assertEqual(user_metrics['success'], True)
         self.assertEqual(ingest_mock.call_count, 1)
+
+    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.bq_genomic_set_member_batch_update')
+    @mock.patch('rdr_service.api.genomic_cloud_tasks_api.genomic_set_member_batch_update')
+    def test_genomic_rebuild_task_api(self, bq_batch_mock, batch_mock):
+
+        from rdr_service.resource import main as resource_main
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_array",
+            genomicWorkflowState=GenomicWorkflowState.AW0
+        )
+
+        data = {}
+        call_ids = [1]
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], False)
+        self.assertEqual(bq_batch_mock.call_count, 0)
+        self.assertEqual(batch_mock.call_count, 0)
+
+        data = {
+            'table': 'bad_table',
+            'ids': call_ids
+        }
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], False)
+        self.assertEqual(bq_batch_mock.call_count, 0)
+        self.assertEqual(batch_mock.call_count, 0)
+
+        data = {
+            'table': 'genomic_set_member',
+            'ids': call_ids
+        }
+
+        rebuild_task = self.send_post(
+            local_path='RebuildGenomicTableRecordsApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        self.assertIsNotNone(rebuild_task)
+        self.assertEqual(rebuild_task['success'], True)
+        self.assertEqual(bq_batch_mock.call_count, 1)
+        self.assertEqual(batch_mock.call_count, 1)
+

@@ -200,6 +200,10 @@ class GenomicSetMember(Base):
                                Integer, ForeignKey("genomic_manifest_file.id"),
                                nullable=True)
 
+    aw0ManifestFileId = Column('aw0_manifest_file_id',
+                               Integer, ForeignKey("genomic_manifest_file.id"),
+                               nullable=True)
+
     gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
                                             String(10), nullable=True)
 
@@ -258,7 +262,8 @@ class GenomicJobRun(Base):
               primary_key=True,
               autoincrement=True,
               nullable=False)
-
+    created = Column("created", UTCDateTime, nullable=True)
+    modified = Column("modified", UTCDateTime, nullable=True)
     jobId = Column('job_id', Enum(GenomicJob),
                    default=GenomicJob.UNSET, nullable=False)
     jobIdStr = Column('job_id_str', String(64), default="UNSET")
@@ -274,6 +279,10 @@ class GenomicJobRun(Base):
     resultMessage = Column('result_message', String(150), nullable=True)
 
 
+event.listen(GenomicJobRun, 'before_insert', model_insert_listener)
+event.listen(GenomicJobRun, 'before_update', model_update_listener)
+
+
 class GenomicFileProcessed(Base):
     """Genomic File Processed model.
     This model represents the file(s) processed during a genomics run."""
@@ -282,7 +291,8 @@ class GenomicFileProcessed(Base):
     # Primary Key
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-
+    created = Column("created", UTCDateTime, nullable=True)
+    modified = Column("modified", UTCDateTime, nullable=True)
     runId = Column('run_id', Integer,
                    ForeignKey('genomic_job_run.id'), nullable=False)
     startTime = Column('start_time', DateTime, nullable=False)
@@ -303,6 +313,10 @@ class GenomicFileProcessed(Base):
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
+
+
+event.listen(GenomicFileProcessed, 'before_insert', model_insert_listener)
+event.listen(GenomicFileProcessed, 'before_update', model_update_listener)
 
 
 class GenomicManifestFile(Base):
@@ -473,6 +487,119 @@ class GenomicAW2Raw(Base):
 
 event.listen(GenomicAW2Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW2Raw, 'before_update', model_update_listener)
+
+
+class GenomicAW3Raw(Base):
+    """
+    Raw data from AW3 files
+    """
+    __tablename__ = 'genomic_aw3_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True, index=True)
+
+    # Raw AW3 Data
+    chipwellbarcode = Column(String(255), nullable=True, index=True)
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    research_id = Column(String(255), nullable=True, index=True)
+    biobankidsampleid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    site_id = Column(String(255), nullable=True, index=True)
+    callrate = Column(String(255), nullable=True)
+    sex_concordance = Column(String(255), nullable=True)
+    contamination = Column(String(255), nullable=True)
+    processing_status = Column(String(255), nullable=True)
+    mean_coverage = Column(String(255), nullable=True)
+    sample_source = Column(String(255), nullable=True)
+    pipeline_id = Column(String(255), nullable=True)
+    mapped_reads_pct = Column(String(255), nullable=True)
+    sex_ploidy = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+    blocklisted = Column(String(255), nullable=True, index=True)
+    blocklisted_reason = Column(String(255), nullable=True)
+    red_idat_path = Column(String(255), nullable=True)
+    red_idat_md5_path = Column(String(255), nullable=True)
+    green_idat_path = Column(String(255), nullable=True)
+    green_idat_md5_path = Column(String(255), nullable=True)
+    vcf_path = Column(String(255), nullable=True)
+    vcf_index_path = Column(String(255), nullable=True)
+    vcf_md5_path = Column(String(255), nullable=True)
+    vcf_hf_path = Column(String(255), nullable=True)
+    vcf_hf_index_path = Column(String(255), nullable=True)
+    vcf_hf_md5_path = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    crai_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
+
+
+event.listen(GenomicAW3Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW3Raw, 'before_update', model_update_listener)
+
+
+class GenomicAW4Raw(Base):
+    """
+    Raw data from AW4 files
+    """
+    __tablename__ = 'genomic_aw4_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+
+    # Auto-Timestamps
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column(String(255), nullable=True, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+    dev_note = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True, index=True)
+
+    # Raw AW4 Data
+    biobank_id = Column(String(255), nullable=True, index=True)
+    sample_id = Column(String(255), nullable=True, index=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    site_id = Column(String(255), nullable=True, index=True)
+    red_idat_path = Column(String(255), nullable=True)
+    red_idat_md5_path = Column(String(255), nullable=True)
+    green_idat_path = Column(String(255), nullable=True)
+    green_idat_md5_path = Column(String(255), nullable=True)
+    vcf_path = Column(String(255), nullable=True)
+    vcf_index_path = Column(String(255), nullable=True)
+    vcf_hf_path = Column(String(255), nullable=True)
+    vcf_hf_md5_path = Column(String(255), nullable=True)
+    vcf_hf_index_path = Column(String(255), nullable=True)
+    vcf_raw_path = Column(String(255), nullable=True)
+    vcf_raw_md5_path = Column(String(255), nullable=True)
+    vcf_raw_index_path = Column(String(255), nullable=True)
+    gvcf_path = Column(String(255), nullable=True)
+    gvcf_md5_path = Column(String(255), nullable=True)
+    cram_path = Column(String(255), nullable=True)
+    cram_md5_path = Column(String(255), nullable=True)
+    crai_path = Column(String(255), nullable=True)
+    research_id = Column(String(255), nullable=True, index=True)
+    qc_status = Column(String(255), nullable=True)
+    drc_sex_concordance = Column(String(255), nullable=True)
+    drc_call_rate = Column(String(255), nullable=True)
+    drc_contamination = Column(String(255), nullable=True)
+    drc_mean_coverage = Column(String(255), nullable=True)
+    drc_fp_concordance = Column(String(255), nullable=True)
+    pass_to_research_pipeline = Column(String(255), nullable=True)
+
+
+event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
+event.listen(GenomicAW4Raw, 'before_update', model_update_listener)
 
 
 class GenomicGCValidationMetrics(Base):
