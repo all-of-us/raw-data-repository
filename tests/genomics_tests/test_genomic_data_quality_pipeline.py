@@ -374,9 +374,8 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 report_output = controller.execute_workflow()
 
         expected_report = "```Daily Resolved Summary\n"
-        expected_report += "jobId    filePath    fileName    status\n"
-        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    test_file_name.csv " \
-                           "   RESOLVED"
+        expected_report += "job_id    file_path    status\n"
+        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    RESOLVED"
         expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)
