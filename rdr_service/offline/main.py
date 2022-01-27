@@ -681,6 +681,12 @@ def genomic_delete_old_gp_user_events():
     return '{"success": "true"}'
 
 
+@run_genomic_cron_job('retry_manifest_ingestion_failures')
+def genomic_retry_manifest_ingestion_failures():
+    # genomic_pipeline
+    pass
+
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
@@ -1036,6 +1042,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicDeleteOldGPUserEvents",
         endpoint="genomic_delete_old_gp_user_events",
         view_func=genomic_delete_old_gp_user_events, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicRetryManifestIngestions",
+        endpoint="retry_manifest_ingestion_failures",
+        view_func=genomic_retry_manifest_ingestion_failures,
+        methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 
