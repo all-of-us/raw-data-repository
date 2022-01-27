@@ -43,6 +43,34 @@ DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
 GENDER_IDENTITY_QUESTION_CODE = "Gender_GenderIdentity"
 RACE_QUESTION_CODE = "Race_WhatRaceEthnicity"
 
+# DA-2419: TheBasics possible partial survey content for profile/secondary contact updates.
+BASICS_PROFILE_UPDATE_QUESTION_CODES = [
+    'PersonOneAddress_PersonOneAddressCity',
+    'PersonOneAddress_PersonOneAddressState',
+    'PersonOneAddress_PersonOneAddressZipCode',
+    'SecondaryContactInfo_PersonOneEmail',
+    'SecondaryContactInfo_PersonOneFirstName',
+    'SecondaryContactInfo_PersonOneMiddleInitial',
+    'SecondaryContactInfo_PersonOneLastName',
+    'SecondaryContactInfo_PersonOneAddressOne',
+    'SecondaryContactInfo_PersonOneAddressTwo',
+    'SecondaryContactInfo_PersonOneTelephone',
+    'SecondaryContactInfo_PersonOneRelationship',
+    'SecondaryContactInfo_SecondContactsFirstName',
+    'SecondaryContactInfo_SecondContactsMiddleInitial',
+    'SecondaryContactInfo_SecondContactsLastName',
+    'SecondaryContactInfo_SecondContactsAddressOne',
+    'SecondaryContactInfo_SecondContactsAddressTwo',
+    'SecondContactsAddress_SecondContactCity',
+    'SecondContactsAddress_SecondContactZipCode',
+    'SecondaryContactInfo_SecondContactsEmail',
+    'SecondaryContactInfo_SecondContactsNumber',
+    'SecondContactsAddress_SecondContactState',
+    'SecondaryContactInfo_SecondContactsRelationship',
+    'SocialSecurity_SocialSecurityNumber'
+]
+
+
 # General PMI answer codes
 PMI_SKIP_CODE = "PMI_Skip"
 PMI_PREFER_NOT_TO_ANSWER_CODE = "PMI_PreferNotToAnswer"
