@@ -1136,6 +1136,24 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         load_raw_awn_data_mock.assert_called_with(test_file_path, "aw2")
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
+    def test_load_aw4_raw_data_task_api(self, load_raw_awn_data_mock):
+
+        # Payload for loading AW2 raw data
+        test_file_path = "test-bucket-name/test_aw4_file.csv"
+        data = {"file_path": test_file_path, "file_type": "aw4"}
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='LoadRawAWNManifestDataAPI',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        load_raw_awn_data_mock.assert_called_with(test_file_path, "aw4")
+
     def test_load_samples_from_raw_data_task_api(self):
 
         data = {'job': 'AW1_MANIFEST',
