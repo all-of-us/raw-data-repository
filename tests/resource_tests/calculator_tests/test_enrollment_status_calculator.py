@@ -76,6 +76,16 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
             data.append(ev)
         return data
 
+    def _convert_thebasics_to_profile_update(self, activity):
+        """
+        Modify the classification type of TheBasics event to a PROFILE_UPDATE so participant has no COMPLETE survey
+        """
+        for ev_index in range(len(activity)):
+            if activity[ev_index]['event'] == p_event.TheBasics:
+                activity[ev_index]['classification_type'] = QuestionnaireResponseClassificationType.PROFILE_UPDATE
+
+        return activity
+
     def test_basic_activity(self):
         """ A simple test of the basic activity list. """
         self.esc.run(get_basic_activity())
@@ -116,21 +126,32 @@ class EnrollmentStatusCalculatorTest(BaseTestCase):
 
         self.assertEqual(bm_count, 3)
 
+    def test_no_full_thebasics_survey(self):
+        """ Participants with only a partial/PROFILE_UPDATE TheBasics response cannot reach core statuses """
+        activity = get_basic_activity()
+        # Modify TheBasics event details so classification type is not a COMPLETE/full survey
+        activity = self._convert_thebasics_to_profile_update(activity)
+        self.esc.run(activity)
+        # Confirm participant did not reach core status (not all baseline modules were completed)
+        self.assertEqual(self.esc.status, PDREnrollmentStatusEnum.ParticipantPlusEHR)
+
     def test_thebasics_profile_update_excluded(self):
-        """ Enrollment status calculations should ignore PROFILE_UPDATE classification TheBasics responses """
+        """ Enrollment status calculator should ignore TheBasics PROFILE_UPDATE responses if authored first """
         # get_basic_activity() populates a complete TheBasics with datetime(2018, 3, 6, 20, 46, 48)
+        default_basics_ts = datetime(2018, 3, 6, 20, 46, 48)
         activity = get_basic_activity()
         # Add another TheBasics, with the earlier authored timestamp, that is a PROFILE_UPDATE
-        profile_update_earlier_ts = datetime(2017, 3, 6, 20, 46, 30)
+        profile_update_earlier_ts = datetime(2018, 3, 6, 20, 46, 30)
         activity.append(
             {'timestamp': profile_update_earlier_ts, 'group': 'QuestionnaireModule', 'group_id': 40,
              'classification_type': str(QuestionnaireResponseClassificationType.PROFILE_UPDATE),
              'event': p_event.TheBasics, 'ConsentAnswer': None}
         )
         self.esc.run(activity)
-        # The PROFILE_UPDATE response should be ignored by the enrollment status calculator
         for ev in self.esc._baseline_modules.values:
-            self.assertNotEqual(ev.timestamp, profile_update_earlier_ts)
+            # Confirm the default/later TheBasics timestamp from the COMPLETE response was the one saved
+            if ev.event == p_event.TheBasics:
+                self.assertEqual(ev.timestamp, default_basics_ts)
 
     def test_cohort_2(self):
         """ Shift activity dates so we look like a cohort 2 participant. """
