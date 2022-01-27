@@ -7,8 +7,7 @@ from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord, BQFieldTypeEnum
 from rdr_service.model.bq_questionnaires import PDR_CODE_TO_MODULE_LIST
 from rdr_service.code_constants import PPI_SYSTEM, PMI_SKIP_CODE
-from rdr_service.participant_enums import QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
-    TEST_HPO_NAME
+from rdr_service.participant_enums import QuestionnaireResponseStatus, TEST_HPO_NAME
 
 
 class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
@@ -52,7 +51,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
         # Intended to make filtering module response data by test_participant status more efficient in BigQuery
         _participant_module_responses_sql = """
             select qr.questionnaire_id, qr.questionnaire_response_id, qr.created, qr.authored, qr.language,
-                   qr.participant_id, qh2.external_id, qr.status, qr.classification_type,
+                   qr.participant_id, qh2.external_id, qr.status,
                    CASE
                        WHEN p.is_test_participant = 1  or p.is_ghost_id = 1 or h.name = :test_hpo THEN 1
                        ELSE 0
@@ -120,12 +119,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                 if isinstance(data['status'], int):
                     data['status_id'] = int(QuestionnaireResponseStatus(data['status']))
                     data['status'] = str(QuestionnaireResponseStatus(data['status']))
-
-                # PDR-640: New classifications for survey responses (e.g., TheBasics secondary contacts PROFILE_UPDATE)
-                classification = data['classification_type']
-                if isinstance(classification, int):
-                    data['classification_type_id'] = int(QuestionnaireResponseClassificationType(classification))
-                    data['classification_type'] = str(QuestionnaireResponseClassificationType(classification))
 
                 answers = session.execute(_response_answers_sql, {'qr_id': qr.questionnaire_response_id,
                                                                   'system': PPI_SYSTEM})
