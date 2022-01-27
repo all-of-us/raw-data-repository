@@ -651,11 +651,19 @@ def genomic_members_update_blocklists():
     return '{"success": "true"}'\
 
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_informing_loop_responses')
 def genomic_reconcile_informing_loop_responses():
     genomic_pipeline.reconcile_informing_loop_responses()
     return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('retry_manifest_ingestion_failures')
+def genomic_retry_manifest_ingestion_failures():
+    # genomic_pipeline
+    pass
 
 
 @app_util.auth_required_cron
@@ -990,6 +998,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicReconcileInformingLoopResponses",
         endpoint="reconcile_informing_loop_responses",
         view_func=genomic_reconcile_informing_loop_responses,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicRetryManifestIngestions",
+        endpoint="retry_manifest_ingestion_failures",
+        view_func=genomic_retry_manifest_ingestion_failures,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs
