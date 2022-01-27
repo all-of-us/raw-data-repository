@@ -41,7 +41,7 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed)
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2317,6 +2317,48 @@ class GenomicAW2RawDao(BaseDao):
         if GAE_PROJECT == 'localhost' and os.environ["UNITTEST_FLAG"] == "1":
             with self.session() as session:
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
+
+
+class GenomicAW3RawDao(BaseDao):
+    def __init__(self):
+        super(GenomicAW3RawDao, self).__init__(
+            GenomicAW3Raw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicAW3Raw
+            ).filter(
+                GenomicAW3Raw.file_path == filepath,
+                GenomicAW3Raw.ignore_flag == 0,
+            ).all()
+
+
+class GenomicAW4RawDao(BaseDao):
+    def __init__(self):
+        super(GenomicAW4RawDao, self).__init__(
+            GenomicAW4Raw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_from_filepath(self, filepath):
+        with self.session() as session:
+            return session.query(
+                GenomicAW4Raw
+            ).filter(
+                GenomicAW4Raw.file_path == filepath,
+                GenomicAW4Raw.ignore_flag == 0,
+            ).all()
 
 
 class GenomicIncidentDao(UpdatableDao):
