@@ -21,8 +21,6 @@ from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
 from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_manifest_feedback_update, \
-    bq_genomic_manifest_file_update
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
 from rdr_service.model.config_utils import get_biobank_id_prefix
@@ -52,8 +50,6 @@ from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, 
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
-from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_manifest_feedback_update, \
-    genomic_manifest_file_update, genomic_user_event_metrics_batch_update
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 
 
@@ -691,18 +687,13 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             member.reportConsentRemovalDate = date
             self.update(member)
 
-            # Update member for PDR
-            bq_genomic_set_member_update(member.id)
-            genomic_set_member_update(member.id)
-
         except OperationalError:
             logging.error(f'Error updating member id: {member.id}.')
             return GenomicSubProcessResult.ERROR
 
-    def update_member_job_run_id(self, member_ids, job_run_id, field, project_id=None):
+    def update_member_job_run_id(self, member_ids, job_run_id, field):
         """
         Updates the GenomicSetMember with a job_run_id for an arbitrary workflow
-        :param project_id:
         :param member_ids: the GenomicSetMember object ids to update
         :param job_run_id:
         :param field: the field for the job-run workflow (i.e. reconciliation, cvl, etc.)
@@ -722,10 +713,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 member = self.get(m_id)
                 setattr(member, field, job_run_id)
                 self.update(member)
-
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=project_id)
-                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -804,7 +791,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         field,
         value,
         is_job_run=False,
-        project_id=None
     ):
 
         if is_job_run and field not in self.valid_job_id_fields:
@@ -819,9 +805,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 setattr(member, field, value)
                 self.update(member)
 
-                bq_genomic_set_member_update(member.id, project_id=project_id)
-                genomic_set_member_update(member.id)
-
             return GenomicSubProcessResult.SUCCESS
 
         # pylint: disable=broad-except
@@ -829,22 +812,16 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
-    def update_member_state(self, member, new_state, project_id=None):
+    def update_member_state(self, member, new_state):
         """
         Sets the member's state to a new state
-        :param project_id:
         :param member: GenomicWorkflowState
         :param new_state:
         """
-
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
-
-        # Update member for PDR
-        bq_genomic_set_member_update(member.id, project_id)
-        genomic_set_member_update(member.id)
 
     def get_members_from_date(self, from_days=1):
         from_date = (clock.CLOCK.now() - timedelta(days=from_days)).replace(microsecond=0)
@@ -2054,13 +2031,10 @@ class GenomicManifestFileDao(BaseDao, GenomicDaoUtils):
                 GenomicManifestFile.ignore_flag != 1
             ).first()
 
-    def update_record_count(self, manifest_file_obj, new_rec_count, project_id=None):
+    def update_record_count(self, manifest_file_obj, new_rec_count):
         with self.session() as session:
             manifest_file_obj.recordCount = new_rec_count
             session.merge(manifest_file_obj)
-
-            bq_genomic_manifest_file_update(manifest_file_obj.id, project_id=project_id)
-            genomic_manifest_file_update(manifest_file_obj.id)
 
 
 class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
@@ -2087,10 +2061,9 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
                 GenomicManifestFeedback.ignoreFlag == 0
             ).one_or_none()
 
-    def increment_feedback_count(self, manifest_id, _project_id):
+    def increment_feedback_count(self, manifest_id):
         """
         Update the manifest feedback record's count
-        :param _project_id:
         :param manifest_id:
         :return:
         """
@@ -2102,9 +2075,6 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
 
             with self.session() as session:
                 session.merge(fb)
-
-            bq_genomic_manifest_feedback_update(fb.id, project_id=_project_id)
-            genomic_manifest_feedback_update(fb.id)
         else:
             raise ValueError(f'No feedback record for manifest id {manifest_id}')
 
@@ -2946,8 +2916,6 @@ class UserEventMetricsDao(BaseDao):
         } for i in id_list]
         with self.session() as session:
             session.bulk_update_mappings(UserEventMetrics, update_mappings)
-        # Batch update PDR resource records.
-        genomic_user_event_metrics_batch_update(id_list)
 
     def get_all_event_ids_for_pid_list(self, pid_list, module=None):
         with self.session() as session:

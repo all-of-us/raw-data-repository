@@ -1,6 +1,4 @@
-from rdr_service.dao.bq_genomics_dao import bq_genomic_gc_validation_metrics_update
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
-from rdr_service.resource.generators.genomics import genomic_gc_validation_metrics_update
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'backfill-gvcf'
@@ -57,10 +55,6 @@ class GVcfBackfillTool(ToolBase):
 
         with self.get_session() as session:
             session.merge(metric)
-
-        # Update for BQ/Resource
-        bq_genomic_gc_validation_metrics_update(metric.id, project_id=self.gcp_env.project)
-        genomic_gc_validation_metrics_update(metric.id)
 
 
 def add_additional_arguments(parser):
