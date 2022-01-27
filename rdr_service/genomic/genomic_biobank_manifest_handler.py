@@ -9,14 +9,14 @@ import logging
 import os
 import pytz
 
-from ..genomic_enums import GenomicWorkflowState
-from .genomic_set_file_handler import DataError, timestamp_from_filename
+from rdr_service.genomic_enums import GenomicWorkflowState, GenomicManifestTypes
+from rdr_service.genomic.genomic_set_file_handler import DataError, timestamp_from_filename
 from rdr_service import clock, config
 from rdr_service.api_util import list_blobs, open_cloud_file
 from rdr_service.config import GENOMIC_BIOBANK_MANIFEST_FOLDER_NAME, GENOMIC_BIOBANK_MANIFEST_RESULT_FOLDER_NAME
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicManifestFileDao
 from rdr_service.offline.sql_exporter import SqlExporter
-
+from rdr_service.model.genomics import GenomicManifestFile
 
 _US_CENTRAL = pytz.timezone("US/Central")
 _UTC = pytz.utc
@@ -137,7 +137,7 @@ def create_and_upload_genomic_biobank_manifest_file(
         project=None
     ):
 
-    member_dao = GenomicSetMemberDao()
+    member_dao, manifest_file_dao = GenomicSetMemberDao(), GenomicManifestFileDao()
 
     wf_state_map = {
         'default': int(GenomicWorkflowState.AW0_READY),
@@ -161,6 +161,29 @@ def create_and_upload_genomic_biobank_manifest_file(
     )
 
     exporter.run_export(result_filename, export_sql)
+
+    now_time = datetime.datetime.utcnow()
+    manifest_type = GenomicManifestTypes.AW0
+    members = member_dao.get_members_from_set_id(genomic_set_id)
+
+    new_manifest_obj = GenomicManifestFile(
+        uploadDate=now_time,
+        manifestTypeId=manifest_type,
+        manifestTypeIdStr=manifest_type.name,
+        filePath=f'{bucket_name}/{result_filename}',
+        bucketName=bucket_name,
+        recordCount=len(members),
+        rdrProcessingComplete=1,
+        rdrProcessingCompleteDate=now_time,
+        fileName=result_filename.split('/')[-1]
+    )
+    manifest_file_dao.insert(new_manifest_obj)
+
+    member_dao.batch_update_member_field(
+        [obj.id for obj in members],
+        field='aw0ManifestFileId',
+        value=new_manifest_obj.id,
+    )
 
 
 def _get_output_manifest_file_name(genomic_set_id, timestamp=None, cohort_id=None, saliva=False):

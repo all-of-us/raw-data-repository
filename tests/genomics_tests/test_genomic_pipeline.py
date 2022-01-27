@@ -1433,6 +1433,16 @@ class GenomicPipelineTest(BaseTestCase):
         all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
         self.assertEqual(len(set(all_member_origins)), len(participant_origins))
 
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
+
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
         # 100005 : Excluded, no DNA sample
@@ -1613,6 +1623,16 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(8, len(new_genomic_members))
 
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
+
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
@@ -1706,6 +1726,16 @@ class GenomicPipelineTest(BaseTestCase):
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(8, len(new_genomic_members))
+
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
