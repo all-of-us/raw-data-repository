@@ -63,8 +63,8 @@ class ConsentDao(BaseDao):
     @classmethod
     def get_consent_authored_times_for_participant(cls, session, participant_id) -> Dict[ConsentType, List[datetime]]:
         """
-        Gets all the consent responses for a participant.
-        :return: Dictionary with keys being consent type and values being collections of ConsentResponses for that type
+        Gets all the consent authored times for a participant.
+        :return: Dictionary with keys being consent type and values being lists of authored dates for that type
         """
         consent_responses = session.query(QuestionnaireResponse.authored, ConsentResponse.type).select_from(
             ConsentResponse
