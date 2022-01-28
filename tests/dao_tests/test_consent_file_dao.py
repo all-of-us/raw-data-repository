@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
@@ -193,6 +194,34 @@ class ConsentFileDaoTest(BaseTestCase):
 
         consent_response = pid_consent_response_map[response_to_validate.participantId][0]
         self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
+
+    def test_finding_consent_responses_by_participant(self):
+        # create a few consent responses for a participant
+        participant = self.data_generator.create_database_participant()
+        primary_response = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2020, 1, 7)
+        )
+        reconsent = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2021, 10, 2)
+        )
+        ehr_response = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2020, 4, 26)
+        )
+        self.session.add(ConsentResponse(response=primary_response, type=ConsentType.PRIMARY))
+        self.session.add(ConsentResponse(response=reconsent, type=ConsentType.PRIMARY))
+        self.session.add(ConsentResponse(response=ehr_response, type=ConsentType.EHR))
+        self.session.commit()
+
+        consent_responses = self.consent_dao.get_consent_authored_times_for_participant(
+            participant_id=participant.participantId,
+            session=self.session
+        )
+
+        self.assertEqual([primary_response.authored, reconsent.authored], consent_responses[ConsentType.PRIMARY])
+        self.assertEqual([ehr_response.authored], consent_responses[ConsentType.EHR])
 
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))

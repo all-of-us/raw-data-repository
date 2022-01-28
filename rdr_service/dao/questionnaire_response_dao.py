@@ -64,6 +64,7 @@ from rdr_service.code_constants import (
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
@@ -75,7 +76,6 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
@@ -408,11 +408,6 @@ class QuestionnaireResponseDao(BaseDao):
             session, questionnaire_response.participantId, code_ids
         )
 
-        participant_summary_dao = ParticipantSummaryDao()
-        participant_summary_before_update = participant_summary_dao.get_by_participant_id(
-            participant_id=questionnaire_response.participantId
-        )
-
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
@@ -427,7 +422,6 @@ class QuestionnaireResponseDao(BaseDao):
 
         self.create_consent_responses(
             questionnaire_response=questionnaire_response,
-            summary_before_response=participant_summary_before_update,
             session=session
         )
 
@@ -829,40 +823,39 @@ class QuestionnaireResponseDao(BaseDao):
                     session, participant.participantId, gender_code_ids
                 )
 
-    def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session,
-                                 summary_before_response: ParticipantSummary):
+    def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session):
         """
-        Analyzes the summary, response, and codes to determine if the response is a new consent for the participant
+        Analyzes the current ConsentResponses for a participant, and the response that was just received
+        to determine if the new response is a new consent for the participant.
         """
-        if not summary_before_response:
-            # If the participant summary is missing, this would be a new consent to create one and no dates
-            # would need to be checked
-            for consent_type in self.consents_provided:
-                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
-        else:
-            # Check authored dates to see if it's a new consent response,
-            # or if it's potentially just a replay of a previous questionnaire response
-            consent_type_authored_time_map = {
-                ConsentType.PRIMARY: summary_before_response.consentForStudyEnrollmentAuthored,
-                ConsentType.CABOR: summary_before_response.consentForStudyEnrollmentAuthored,
-                ConsentType.EHR: summary_before_response.consentForElectronicHealthRecordsAuthored,
-                ConsentType.GROR: summary_before_response.consentForGenomicsRORAuthored,
-                ConsentType.PRIMARY_UPDATE: summary_before_response.consentForStudyEnrollmentAuthored
-            }
-            for consent_type in self.consents_provided:
-                is_new_consent = False
-                previous_consent_authored_time = consent_type_authored_time_map[consent_type]
-                if previous_consent_authored_time is None:  # Brand new consent response
-                    is_new_consent = True
-                else:
+        if len(self.consents_provided) == 0:
+            # If the new response doesn't give any consent at all, then there's no reason for a check
+            return
+
+        # Load previously received consent authored dates for the participant
+        previous_consent_dates = ConsentDao.get_consent_authored_times_for_participant(
+            session=session,
+            participant_id=questionnaire_response.participantId
+        )
+
+        # Check authored dates to see if it's a new consent response,
+        # or if it's potentially just a replay of a previous questionnaire response
+        for consent_type in self.consents_provided:
+            is_new_consent = False
+            previous_authored_times = previous_consent_dates.get(consent_type)
+            if not previous_authored_times:  # Brand new consent response
+                is_new_consent = True
+            else:
+                for previous_consent_authored_time in previous_authored_times:
                     if not self._authored_times_match(
                         new_authored_time=questionnaire_response.authored,
                         current_authored_item=previous_consent_authored_time
                     ):
                         is_new_consent = True
+                        break
 
-                if is_new_consent:
-                    session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+            if is_new_consent:
+                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
 
     @classmethod
     def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):

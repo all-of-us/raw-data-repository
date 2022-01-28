@@ -60,6 +60,27 @@ class ConsentDao(BaseDao):
 
         return dict(grouped_results)
 
+    @classmethod
+    def get_consent_authored_times_for_participant(cls, session, participant_id) -> Dict[ConsentType, List[datetime]]:
+        """
+        Gets all the consent responses for a participant.
+        :return: Dictionary with keys being consent type and values being collections of ConsentResponses for that type
+        """
+        consent_responses = session.query(QuestionnaireResponse.authored, ConsentResponse.type).select_from(
+            ConsentResponse
+        ).join(
+            QuestionnaireResponse
+        ).filter(
+            QuestionnaireResponse.participantId == participant_id
+        )
+        consent_responses = consent_responses.all()
+
+        grouped_results = defaultdict(list)
+        for authored_time, consent_type in consent_responses:
+            grouped_results[consent_type].append(authored_time)
+
+        return dict(grouped_results)
+
 
     @classmethod
     def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:
