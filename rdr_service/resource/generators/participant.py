@@ -1005,6 +1005,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     if bss.biobank_order_id == row.biobank_order_id:
                         bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=None))
                         stored_count += 1
+            # PDR-400: There are about 20 participants that have less ordered samples than stored samples.
+            elif len(bss_results) > 0 and len(bos_results) < len(bss_results):
+                for bss in bss_results:
+                    if bss.biobank_order_id == row.biobank_order_id:
+                        bbo_samples.append(_make_sample_dict_from_row(bss=bss, bos=bos_results[0]))
+                        stored_count += 1
             else:
                 for ordered_sample in bos_results:
                     # Look for a matching stored sample result based on the biobank order id and test type
