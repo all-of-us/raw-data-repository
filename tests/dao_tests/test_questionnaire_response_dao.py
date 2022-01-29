@@ -4,7 +4,7 @@ import mock
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from rdr_service import config
+from rdr_service import config, singletons
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
@@ -641,7 +641,10 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
     def test_loading_basics_profile_update_codes(self):
         """ Verify QuestionnaireResponseDao() object initialized with a list of TheBasics profile update loads """
         # Adds the profile update codes to the unittest db Code table and saves a list of the codeIds to the test object
+        # Force reload of cached code data after test setup / code creation
         self.setup_basics_profile_update_codes_list()
+        singletons.invalidate(singletons.CODE_CACHE_INDEX)
+        singletons.invalidate(singletons.BASICS_PROFILE_UPDATE_CODES_CACHE_INDEX)
         qr_dao = QuestionnaireResponseDao()
         # assertCountEqual compares iterables for item equivalence, not just count/length
         self.assertCountEqual(self.basics_profile_update_codes, qr_dao.thebasics_profile_update_codes)

@@ -299,16 +299,20 @@ class QuestionnaireResponseDao(BaseDao):
                                                              cache_ttl_seconds=86400
                                                              )
 
-    def _load_thebasics_profile_update_codes(self):
+    @staticmethod
+    def _load_thebasics_profile_update_codes():
         """
         Invoked when the singleton cache needs to load the list of TheBasics profile update codes
         :return:  List of code id values for the profile update / secondary contact questions
         """
-        with self.session() as session:
-            profile_codes = session.query(Code.codeId
-                                          ).filter(Code.value.in_(BASICS_PROFILE_UPDATE_QUESTION_CODES)).all()
-            results = [c.codeId for c in profile_codes] if profile_codes else []
-            return results
+        results = []
+        code_dao = CodeDao()
+        for code_value in BASICS_PROFILE_UPDATE_QUESTION_CODES:
+            code = code_dao.get_code(PPI_SYSTEM, code_value)
+            if code:
+                results.append(code.codeId)
+
+        return results
 
     def get_id(self, obj):
         return obj.questionnaireResponseId
@@ -369,15 +373,19 @@ class QuestionnaireResponseDao(BaseDao):
                         logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
 
     @staticmethod
-    def _get_module_from_questionnaire_history(questionnaire_history):
-        """ Extract the module code value from a questionnaire_history result JSON data (resource field) """
-
+    def _get_module_name(questionnaire_history: QuestionnaireHistory):
+        """ Use the questionnaire_history to determine the module name """
         # Unittest/lower environments may not have expected questionnaire_history content, so allow for missing data
         result = None
-        history_data = json.loads(questionnaire_history.resource) if questionnaire_history.resource else {}
-        if 'group' in history_data.keys() and 'concept' in history_data['group'].keys():
-            concepts = history_data['group']['concept']
-            result = concepts[0]['code'] if len(concepts) else None
+        if isinstance(questionnaire_history, QuestionnaireHistory):
+            concepts = questionnaire_history.concepts
+            if concepts:
+                concept_code = concepts[0].codeId
+                code_obj = CodeDao().get(concept_code)
+                result = code_obj.value if code_obj else None
+        else:
+            logging.debug(f'Unexpected questionnaire_history parameter type {type(questionnaire_history)}')
+
         return result
 
     @staticmethod
@@ -408,7 +416,7 @@ class QuestionnaireResponseDao(BaseDao):
         except (AttributeError, ValueError, TypeError, LookupError):
             logging.error('Code error encountered when validating the response', exc_info=True)
 
-        module = self._get_module_from_questionnaire_history(questionnaire_history)
+        module = self._get_module_name(questionnaire_history)
         questionnaire_response.created = clock.CLOCK.now()
         questionnaire_response.classificationType = QuestionnaireResponseClassificationType.COMPLETE  # Default
         if not questionnaire_response.authored:
