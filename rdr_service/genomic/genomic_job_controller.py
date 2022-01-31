@@ -107,6 +107,7 @@ class GenomicJobController:
         self.result_viewed_dao = GenomicResultViewedDao()
         self.missing_files_dao = GenomicGcDataFileMissingDao()
         self.message_broker_event_dao = MessageBrokenEventDataDao()
+        self.event_dao = UserEventMetricsDao()
         self.ingester = None
         self.file_mover = None
         self.reconciler = None
@@ -750,7 +751,8 @@ class GenomicJobController:
             self.file_processed_dao,
             self.metrics_dao,
             self.manifest_file_dao,
-            self.manifest_feedback_dao
+            self.manifest_feedback_dao,
+            self.event_dao
         ]
 
         for dao in reconcile_daos:
@@ -1216,13 +1218,11 @@ class GenomicJobController:
         to the latest participant states in genomic_informing_loop
         Currently only support GEM since no HDR or PGx.
         """
+
         # TODO: handle multiple modules (HDR, PGx)
         module = 'gem'
-        event_dao = UserEventMetricsDao()
-        informing_loop_dao = GenomicInformingLoopDao()
-
         # Get unreconciled user_event_metrics records
-        latest_events = event_dao.get_latest_events()
+        latest_events = self.event_dao.get_latest_events()
 
         # compare to latest state by participant in genomic_informing_loop
         if latest_events:
@@ -1241,7 +1241,7 @@ class GenomicJobController:
                     "slack": True
                 }
 
-                latest_state = informing_loop_dao.get_latest_state_for_pid(event.participant_id)
+                latest_state = self.informing_loop_dao.get_latest_state_for_pid(event.participant_id)
                 if latest_state:
                     # Parse informing loop state
                     latest_state = [x for x in latest_state[0] if x]
@@ -1260,7 +1260,7 @@ class GenomicJobController:
                     self.create_incident(**incident_params)
 
             if update_pids:
-                event_dao.update_reconcile_job_pids(pid_list=update_pids,
+                self.event_dao.update_reconcile_job_pids(pid_list=update_pids,
                                                     job_run_id=self.job_run.id,
                                                     module=module)
 

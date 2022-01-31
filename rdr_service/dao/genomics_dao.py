@@ -2866,7 +2866,7 @@ class GemToGpMigrationDao(BaseDao):
             session.bulk_insert_mappings(self.model_type, batch)
 
 
-class UserEventMetricsDao(BaseDao):
+class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(UserEventMetricsDao, self).__init__(
             UserEventMetrics, order_by_ending=['id'])
