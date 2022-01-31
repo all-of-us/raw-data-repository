@@ -1,3 +1,4 @@
+from datetime import datetime
 import http.client
 import json
 
@@ -61,7 +62,7 @@ class MailKitOrderDaoTestBase(BaseTestCase):
         }
 
         mayolinkapi_patcher = mock.patch(
-            'rdr_service.dao.mail_kit_order_dao.MayoLinkApi',
+            'rdr_service.dao.mail_kit_order_dao.MayoLinkClient',
             **{'return_value.post.return_value': self.mayolink_response}
         )
         self.mock_mayolinkapi = mayolinkapi_patcher.start()
@@ -258,15 +259,19 @@ class MailKitOrderDaoTestBase(BaseTestCase):
             self.make_supply_posts(test_case)
             run_db_test(expected_data)
 
-    @mock.patch("rdr_service.dao.mail_kit_order_dao.MayoLinkApi")
+    @mock.patch("rdr_service.dao.mail_kit_order_dao.MayoLinkClient")
     def test_service_unavailable(self, mocked_api):
-        # pylint: disable=unused-argument
-        def raises(*args):
+        def raises(*_):
             raise ServiceUnavailable()
 
         with self.assertRaises(ServiceUnavailable):
             mocked_api.return_value.post.side_effect = raises
-            self.dao.send_order(self.post_delivery, self.participant.participantId)
+            self.dao.send_order(
+                portal_order_id=1234,
+                participant_id=self.participant.participantId,
+                collected_time_utc=datetime.utcnow(),
+                report_notes='testing api failure'
+            )
 
     def build_expected_resource_type_data(self, resource_type):
         """Helper function to build the data we are expecting from the test-data file."""

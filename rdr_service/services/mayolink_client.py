@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import httplib2
 import logging
@@ -7,9 +8,12 @@ from werkzeug.exceptions import ServiceUnavailable
 import xml.etree.ElementTree as ET
 import xmltodict
 
+import pytz
+
 from rdr_service import config
 from rdr_service.api_util import RDR_AND_PTC, open_cloud_file
 from rdr_service.app_util import check_auth
+from rdr_service.model.config_utils import to_client_biobank_id
 
 
 @dataclass
@@ -38,10 +42,9 @@ class MayoLinkTest:
 
 @dataclass
 class MayoLinkOrder:
-    collected: str
+    collected_datetime_utc: datetime
     number: str
-    medical_record_number: str
-    last_name: str
+    biobank_id: int
     sex: str
     address1: str
     address2: str
@@ -55,7 +58,7 @@ class MayoLinkOrder:
     comments: str = ''
 
 
-class MayoLinkApi:
+class MayoLinkClient:
     def __init__(self, credentials_key='default'):
         self.namespace = "http://orders.mayomedicallaboratories.com"
         self.endpoint = config.getSetting(config.MAYOLINK_ENDPOINT)
@@ -112,15 +115,17 @@ class MayoLinkApi:
         return request
 
     def _dict_from_order(self, order: MayoLinkOrder):
+        biobank_id_display_str = to_client_biobank_id(order.biobank_id)
+
         order_dict = {
             'order': {
-                'collected': order.collected,
+                'collected': str(self._convert_to_central_time(order.collected_datetime_utc)),
                 'account': self.account,
                 'number': order.number,
                 'patient': {
-                    'medical_record_number': order.medical_record_number,
+                    'medical_record_number': biobank_id_display_str,
                     'first_name': '*',
-                    'last_name': order.last_name,
+                    'last_name': biobank_id_display_str,
                     'middle_name': '',
                     'birth_date': '3/3/1933',
                     'sex': order.sex,
@@ -190,3 +195,11 @@ class MayoLinkApi:
             return root
         elif dict_tree is not None:
             root.text = str(dict_tree)
+
+    @classmethod
+    def _convert_to_central_time(cls, timestamp: datetime):
+        # Set the timezone as UTC if it's a naive datetime
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=pytz.utc)
+
+        return timestamp.astimezone(pytz.timezone('US/Central'))

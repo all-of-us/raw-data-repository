@@ -311,21 +311,36 @@ class IngestDataFilesTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
-class IngestInformingLoopTaskApi(BaseGenomicTaskApi):
+class IngestFromMessageBrokerDataApi(BaseGenomicTaskApi):
     """
-    Cloud Task endpoint: Ingest informing loop decision from
-    Message Broker Event Data
+    Cloud Task endpoint: Ingest informing loop started/decision
+    and result_viewed from Message Broker Event Data
     """
     def post(self):
-        super(IngestInformingLoopTaskApi, self).post()
+        super(IngestFromMessageBrokerDataApi, self).post()
 
-        logging.info('Ingesting informing loop.')
+        if not self.data.get('event_type') or not self.data.get('message_record_id'):
+            logging.warning('Event type and message record id is required for ingestion from Message broker')
 
-        with GenomicJobController(GenomicJob.INGEST_INFORMING_LOOP,
-                                  ) as controller:
-            controller.ingest_informing_loop_records(
+            return {"success": False}
+
+        event_type = self.data.get('event_type')
+
+        logging.info(f'Ingesting {event_type}')
+
+        ingest_method_map = {
+            'informing_loop': GenomicJob.INGEST_INFORMING_LOOP,
+            'result_viewed': GenomicJob.INGEST_RESULT_VIEWED,
+        }
+
+        job_type = ingest_method_map[
+            list(filter(lambda x: x in event_type, ingest_method_map.keys()))[0]
+        ]
+
+        with GenomicJobController(job_type) as controller:
+            controller.ingest_records_from_message_broker_data(
                 message_record_id=self.data['message_record_id'],
-                loop_type=self.data['event_type']
+                event_type=event_type
             )
 
         self.create_cloud_record()
@@ -450,39 +465,46 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
     def post(self):
         super(RebuildGenomicTableRecordsApi, self).post()
 
-        table = self.data['table']
-        batch = self.data['ids']
+        table = self.data.get('table')
+        batch = self.data.get('ids')
+
+        if not table or not batch:
+            logging.warning('Table and batch are both required in rebuild genomics payload')
+            return {"success": False}
 
         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
 
-        if table == 'genomic_set':
-            bq_genomic_set_batch_update(batch)
-            genomic_set_batch_update(batch)
-        elif table == 'genomic_set_member':
-            bq_genomic_set_member_batch_update(batch)
-            genomic_set_member_batch_update(batch)
-        elif table == 'genomic_job_run':
-            bq_genomic_job_run_batch_update(batch)
-            genomic_job_run_batch_update(batch)
-        elif table == 'genomic_file_processed':
-            bq_genomic_file_processed_batch_update(batch)
-            genomic_file_processed_batch_update(batch)
-        elif table == 'genomic_gc_validation_metrics':
-            bq_genomic_gc_validation_metrics_batch_update(batch)
-            genomic_gc_validation_metrics_batch_update(batch)
-        elif table == 'genomic_manifest_file':
-            bq_genomic_manifest_file_batch_update(batch)
-            genomic_manifest_file_batch_update(batch)
-        elif table == 'genomic_manifest_feedback':
-            bq_genomic_manifest_feedback_batch_update(batch)
-            genomic_manifest_feedback_batch_update(batch)
+        rebuild_map = {
+            'genomic_set': [bq_genomic_set_batch_update, genomic_set_batch_update],
+            'genomic_set_member': [bq_genomic_set_member_batch_update, genomic_set_member_batch_update],
+            'genomic_job_run': [bq_genomic_job_run_batch_update, genomic_job_run_batch_update],
+            'genomic_file_processed': [bq_genomic_file_processed_batch_update, genomic_file_processed_batch_update],
+            'genomic_gc_validation_metrics': [
+                bq_genomic_gc_validation_metrics_batch_update,
+                genomic_gc_validation_metrics_batch_update
+            ],
+            'genomic_manifest_file': [bq_genomic_manifest_file_batch_update, genomic_manifest_file_batch_update],
+            'genomic_manifest_feedback': [
+                bq_genomic_manifest_feedback_batch_update,
+                genomic_manifest_feedback_batch_update
+            ]
+        }
 
-        logging.info('Rebuild complete.')
+        try:
+            for method in rebuild_map[table]:
+                method(batch)
 
-        self.create_cloud_record()
+            logging.info('Rebuild complete.')
 
-        logging.info('Complete.')
-        return {"success": True}
+            self.create_cloud_record()
+            logging.info('Complete.')
+
+            return {"success": True}
+
+        except KeyError:
+            logging.warning(f'Table {table} is invalid for genomic rebuild task')
+
+            return {"success": False}
 
 
 class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):

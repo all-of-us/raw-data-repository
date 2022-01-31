@@ -93,6 +93,7 @@
     "missing_files_clean_up_workflow": 1,
     "missing_files_resolve_workflow": 1,
     "reconcile_gc_data_file_to_table_workflow": 1,
+    "reconcile_pdr_data": 1,
     "reconcile_raw_to_aw1_ingested_workflow": 1,
     "reconcile_raw_to_aw2_ingested_workflow": 1,
     "members_state_resolved_workflow": 1,
@@ -126,15 +127,15 @@
       },
       {
         "attribute": "genomeType",
-        "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        "reason_string": "sample_swap"
+        "value": ["test_investigation_one", "test_investigation_two"],
+        "reason_string": "test_sample_swap"
       }
     ],
     "block_results": [
       {
         "attribute": "genomeType",
-        "value": ["aou_array_investigation", "aou_wgs_investigation"],
-        "reason_string": "sample_swap"
+        "value": ["test_investigation_one", "test_investigation_two"],
+        "reason_string": "test_sample_swap"
       }
     ]
   },

@@ -326,7 +326,10 @@ class ConsentValidationTesting(BaseTestCase):
 
         # Verify that both records that provide new validation information were stored
         consent_dao_mock.batch_update_consent_files.assert_called_with([new_primary_result, new_gror_result], mock.ANY)
-        mock_consent_metrics_rebuild.assert_called_once_with([new_primary_result.id, new_gror_result.id])
+        mock_consent_metrics_rebuild.assert_called_once_with(
+            [new_primary_result.id, new_gror_result.id],
+            project_id=None
+        )
 
     def test_primary_update_agreement_check(self):
         self.participant_summary.consentForStudyEnrollmentAuthored = datetime.combine(

@@ -1,6 +1,5 @@
 from datetime import date
 import mock
-from typing import List
 
 from rdr_service import config
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
@@ -207,16 +206,27 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                     'participant_id': '4567',
                     'file_exists': '1',
                     'file_path': 'bucket/valid_file.pdf',
-                    'sync_status': 'READY_FOR_SYNC'
+                    'sync_status': '2'
                 },
                 {
                     'id': 2,
                     'participant_id': '1234',
                     'file_exists': '0',
                     'file_path': '',
-                    'sync_status': 'NEEDS_CORRECTING'
+                    'sync_status': '1'
                 }
             ]
+
+            # Set up mock so we can check the file changes correctly
+            first_file_mock = mock.MagicMock()
+            second_file_mock = mock.MagicMock()
+
+            def get_file(obj_id, **_):
+                if obj_id == 1:
+                    return first_file_mock
+                else:
+                    return second_file_mock
+            self.consent_dao_mock.get_with_session.side_effect = get_file
 
             # Check without max_date
             self._run_consents_tool(
@@ -225,28 +235,21 @@ class ConsentsTest(ToolTestMixin, BaseTestCase):
                     'file': 'data.csv',
                 }
             )
-            uploaded_records: List[ConsentFile] = self.consent_dao_mock.batch_update_consent_files.call_args.args[0]
-            self.assertTrue(any([
-                (
-                    record.participant_id == '4567'
-                    and record.file_exists == '1'
-                    and record.file_path == 'bucket/valid_file.pdf'
-                    and record.sync_status == 'READY_FOR_SYNC'
-                )
-                for record in uploaded_records
-            ]))
-            self.assertTrue(any([
-                (
-                    record.participant_id == '1234'
-                    and record.file_exists == '0'
-                    and record.file_path == ''
-                    and record.sync_status == 'NEEDS_CORRECTING'
-                )
-                for record in uploaded_records
-            ]))
+
+            # Make sure each file got the right updates
+            self.assertEqual(4567, first_file_mock.participant_id)
+            self.assertTrue(first_file_mock.file_exists)
+            self.assertEqual('bucket/valid_file.pdf', first_file_mock.file_path)
+            self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, first_file_mock.sync_status)
+
+            self.assertEqual(1234, second_file_mock.participant_id)
+            self.assertFalse(second_file_mock.file_exists)
+            self.assertIsNone(second_file_mock.file_path)
+            self.assertEqual(ConsentSyncStatus.NEEDS_CORRECTING, second_file_mock.sync_status)
+
             # Confirm the consent metrics resource data rebuild tasks were dispatched for updated records
             dispatch_consent_metrics_rebuild_mock.assert_called_once()
             dispatch_rebuild_ids = dispatch_consent_metrics_rebuild_mock.call_args_list[0].args[0]
-            uploaded_ids = [r.id for r in uploaded_records]
+            uploaded_ids = [1, 2]
             self.assertCountEqual(dispatch_rebuild_ids, uploaded_ids)
 
