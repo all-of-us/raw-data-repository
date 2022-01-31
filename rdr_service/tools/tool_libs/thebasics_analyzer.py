@@ -77,11 +77,12 @@ class TheBasicsAnalyzerClass(object):
         with open(self.args.export_to, 'a') as f:
             tsv_writer = csv.writer(f, delimiter='\t')
             for rec in pid_results:
-                row_values = [pid, rec['questionnaire_response_id'], rec['authored'].strftime("%Y-%m-%d %H:%M:%S"),
-                               rec['external_id'], rec['payload_type'], rec['duplicate_of'], rec['reason'] ]
+                row_values = [pid, rec['questionnaire_response_id'],
+                              rec['authored'].strftime("%Y-%m-%d %H:%M:%S") if rec['authored'] else None,
+                               rec['external_id'], rec['payload_type'], rec['duplicate_of'], rec['reason']]
                 tsv_writer.writerow(row_values)
-            # blank row between each pid's results
-            tsv_writer.writerow(['' for _ in EXPORT_FIELDS])
+            # if blank row wanted between each pid's results:
+            # tsv_writer.writerow(['' for _ in EXPORT_FIELDS])
         return
 
     def generate_response_diff(self, curr_response, prior_response=None):
@@ -90,6 +91,10 @@ class TheBasicsAnalyzerClass(object):
         :param curr_response:  A dict of question code keys and answer values
         :param prior_response: A dict of question code keys and answer values
         """
+        diff_details = list()
+        prior_response_keys = prior_response.keys() if prior_response else []
+        curr_response_keys = curr_response.keys()
+        key_set = set().union(prior_response_keys, curr_response_keys)
         #  Diff Tuple contains (<diff symbol>, <question code/field name>[, <answer value>])
         #  Diff symbols:
         #         +   Field did not exist in prior response; new/added in the current response
@@ -99,12 +104,6 @@ class TheBasicsAnalyzerClass(object):
         #
         #  The answer value is included in the diff for new (+) or changed (!) answers; omitted if unchanged (=)
         #  If the prior_response is None (first payload), all content will be displayed as a new (+) answer
-
-        diff_details = list()
-        prior_response_keys = prior_response.keys() if prior_response else []
-        curr_response_keys = curr_response.keys()
-        key_set = set().union(prior_response_keys, curr_response_keys)
-
         for key in sorted(key_set):
             if key in prior_response_keys and key not in curr_response_keys:
                 diff_details.append(('-', key))
@@ -113,11 +112,11 @@ class TheBasicsAnalyzerClass(object):
                 # Redact answers to free text fields (PII) unless they were skipped, or redaction is disabled
                 if key in curr_response_keys and key not in prior_response_keys:
                     answer_output = answer if (answer.lower() == 'pmi_skip' or key not in REDACTED_FIELDS
-                                               or self.args.no_redact) else 'redacted'
+                                               or self.args.no_redact) else '<redacted>'
                     diff_details.append(('+', key, answer_output))
                 elif prior_response[key] != curr_response[key]:
                     answer_output = answer if (answer.lower() == 'pmi_skip' or key not in REDACTED_FIELDS
-                                               or self.args.no_redact) else 'redacted'
+                                               or self.args.no_redact) else '<redacted>'
                     diff_details.append(('!', key, answer_output))
                 else:
                     diff_details.append(('=', key))
@@ -175,7 +174,7 @@ class TheBasicsAnalyzerClass(object):
             answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
         ).filter(
             QuestionnaireResponse.questionnaireResponseId == response_id,
-            QuestionnaireResponse.classificationType != 1
+            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         ).order_by(QuestionnaireResponse.authored,
                    QuestionnaireResponse.created
                    ).all()
@@ -247,7 +246,7 @@ class TheBasicsAnalyzerClass(object):
         Inspect the entire TheBasics response history for a participant
         It will use the QuestionnaireResponseAnswer data for all the received payloads for this participant to
         look for any that should be marked with a specific QuestionnaireResponseClassificationType value, such as
-        DUPLICATE or NO_ANSWER_VALUES.  Requires looking at adjacent responses to find subset/superset DUPLICATE cases
+        DUPLICATE or NO_ANSWER_VALUES.  Requires comparing adjacent responses to find subset/superset DUPLICATE cases
         :param pid:   Participant ID
         :param response_list:  List of dicts with summary details about each of the participant's TheBasics responses
         """
@@ -256,6 +255,7 @@ class TheBasicsAnalyzerClass(object):
             return
 
         last_response_answer_set, last_authored, last_response_type = (None, None, None)
+        last_position = 0
         answer_hashes = [r['answer_hash'] for r in response_list]
         has_completed_survey = False  # Track if/when a COMPLETE survey response is detected
 
@@ -269,11 +269,11 @@ class TheBasicsAnalyzerClass(object):
                 curr_response['reason'] = 'Same authored ts as last payload (indeterminate order)'
 
             if curr_response_type == QuestionnaireResponseClassificationType.COMPLETE:
-                # Check of this is not the first COMPLETE survey response processed
+                # Notable if more than one COMPLETED survey is encountered, or if the first COMPLETE survey was
+                # not the first response in the participant's history.  Does not impact classification
                 if has_completed_survey:
                     response_list[curr_position]['reason'] = ' '.join([response_list[curr_position]['reason'],
                                                                        'Multiple complete survey payloads'])
-                # Flag if this first completed survey follows some previously inspected partial payload
                 elif curr_position > 0:
                     response_list[curr_position]['reason'] = ' '.join([response_list[curr_position]['reason'],
                                                                        'Partial received before first complete survey'])
@@ -286,8 +286,8 @@ class TheBasicsAnalyzerClass(object):
             if not answers:
                 response_list[curr_position]['payload_type'] = QuestionnaireResponseClassificationType.NO_ANSWER_VALUES
                 curr_response_answer_set = None
-            # Sets are used here to enable check for subset/superset relationships between responses
             else:
+                # Sets are used here to enable check for subset/superset relationships between response data
                 curr_response_answer_set = set(answers.items())
                 if last_response_answer_set is not None:
                     # index() will find the first location in the answer_hashes list containing the current response's
@@ -299,23 +299,25 @@ class TheBasicsAnalyzerClass(object):
                         # Mark this partial payload as a duplicate of the response whose answer hash it matches
                         # TODO:  Determine what to do with COMPLETE payload dups, with/without matching authored?
                         dup_rsp_id = response_list[matching_hash_idx].get('questionnaire_response_id')
-                        # Update the original list/hash entry for the response being processed
+                        # Flag the current response as a duplicate
                         response_list[curr_position]['payload_type'] = QuestionnaireResponseClassificationType.DUPLICATE
                         response_list[curr_position]['duplicate_of'] = dup_rsp_id
                         response_list[curr_position]['reason'] = ' '.join([response_list[curr_position]['reason'],
                                                                            'Duplicate answer hash'])
 
                     # Check for the cascading response signature where last/subset is made a dup of current/superset
-                    elif curr_response_answer_set and curr_response_answer_set.issuperset(last_response_answer_set):
-                        response_list[curr_position-1]['payload_type'] = \
+                    elif (curr_response_answer_set and curr_response_answer_set.issuperset(last_response_answer_set)
+                          and last_position > 0):
+                        response_list[last_position]['payload_type'] = \
                             QuestionnaireResponseClassificationType.DUPLICATE
-                        response_list[curr_position-1]['duplicate_of'] = curr_rsp_id
-                        response_list[curr_position-1]['reason'] = ' '.join([response_list[curr_position-1]['reason'],
+                        response_list[last_position]['duplicate_of'] = curr_rsp_id
+                        response_list[last_position]['reason'] = ' '.join([response_list[curr_position-1]['reason'],
                                                                              'Subset of a cascading superset response'])
 
             last_authored = response_list[curr_position]['authored']
             last_response_type = response_list[curr_position]['payload_type']
             last_response_answer_set = curr_response_answer_set
+            last_position = curr_position
 
         if not has_completed_survey:
             # Flag the last entry with a note that participant has no full survey
@@ -326,7 +328,6 @@ class TheBasicsAnalyzerClass(object):
             print(f'\n===============Results for P{pid}====================\n')
             self.output_response_history(pid, response_list)
 
-        # Updated content for response_list returned
         if self.args.export_to:
             self.add_results_to_tsv(pid, response_list)
 
@@ -343,9 +344,7 @@ class TheBasicsAnalyzerClass(object):
         if not len(responses):
             raise (ValueError, f'P{pid}: TheBasics response list was empty')
 
-        # Each's pid's results will be saved as a list of dicts (one dict per TheBasics response payload with summary
-        # details of a specific questionnaire_response_id's paylaod)
-
+        # Each's pid's responses (one dict per TheBasics response payload) will be gathered into a list of dicts
         result_details = list()
 
         # Track if this participant has something other than completed surveys in their history
@@ -377,9 +376,9 @@ class TheBasicsAnalyzerClass(object):
             })
             has_partial = has_partial or not full_survey
 
-        # Participants with just a single, full survey TheBasics response won't need additional inspection
+        # Participants with just a single, full survey TheBasics response won't need additional inspection (unless
+        # verbose mode was requested). Inspection can flag duplicates including cascading subset/superset response cases
         if has_partial or len(result_details) > 1 or self.args.verbose:
-            # Inspection can flag duplicates and update contents of the result_details list items/dicts
             self.inspect_responses(pid, result_details)
 
     def run(self):
