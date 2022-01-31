@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from flask import Flask
 import requests
 import unittest
@@ -56,7 +56,7 @@ class AppUtilTest(BaseTestCase):
         response = lambda: None  # Dummy object; functions can have arbitrary attrs set on them.
         setattr(response, "headers", {})
 
-        with clock.FakeClock(datetime.datetime(1994, 11, 6, 8, 49, 37)):
+        with clock.FakeClock(datetime(1994, 11, 6, 8, 49, 37)):
             app_util.add_headers(response)
 
         self.assertEqual(response.headers["Date"], "Sun, 06 Nov 1994 08:49:37 GMT")
@@ -411,6 +411,28 @@ class AppUtilTest(BaseTestCase):
 
         # Make sure that the batch processes the remaining items when the context closes
         self.assertEqual([4, 2, 6, 10], processed_objects)
+
+    def test_date_comparison(self):
+        """Run checks on the function used for checking timestamp equality"""
+        # The same timestamp
+        self.assertTrue(app_util.is_datetime_equal(datetime(1994, 11, 6, 8, 49, 37), datetime(1994, 11, 6, 8, 49, 37)))
+
+        # Different of a few hours
+        self.assertFalse(app_util.is_datetime_equal(datetime(2021, 10, 6, 13, 57), datetime(2021, 10, 6, 8, 57)))
+
+        # Difference of a few minutes, not allowing for a match when they're off by a number of seconds
+        self.assertFalse(app_util.is_datetime_equal(datetime(2021, 10, 6, 13, 57), datetime(2021, 10, 6, 13, 54)))
+
+        # Difference of a few minutes, allowing for a difference between them but not enough for a match
+        self.assertFalse(app_util.is_datetime_equal(
+            datetime(2021, 10, 6, 13, 57), datetime(2021, 10, 6, 13, 54), difference_allowed_seconds=120
+        ))
+
+        # Difference of a 3 minutes, allowing for a difference of 5 minutes
+        self.assertTrue(app_util.is_datetime_equal(
+            datetime(2021, 10, 6, 13, 57), datetime(2021, 10, 6, 13, 54), difference_allowed_seconds=300
+        ))
+
 
 
 if __name__ == "__main__":
