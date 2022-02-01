@@ -6439,6 +6439,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         # Run reconcile job
+
         genomic_pipeline.reconcile_informing_loop_responses()
 
         # Test data ingested correctly
@@ -6451,5 +6452,16 @@ class GenomicPipelineTest(BaseTestCase):
         updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
+
+        old_event = event_dao.get(1)
+
+        old_event.created = old_event.created - datetime.timedelta(days=8)
+        with event_dao.session() as session:
+            session.merge(old_event)
+
+        genomic_pipeline.delete_old_gp_user_events()
+
+        all_events = event_dao.get_all()
+        self.assertEqual(17, len(all_events))
 
 

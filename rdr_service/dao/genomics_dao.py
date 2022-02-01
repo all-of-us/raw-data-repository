@@ -12,7 +12,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.expression import literal, distinct
+from sqlalchemy.sql.expression import literal, distinct, delete
 
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -2907,6 +2907,20 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 UserEventMetrics.reconcile_job_run_id.is_(None),
                 event_metrics_alias.created_at.is_(None)
             ).all()
+
+    def delete_old_events(self, days=7):
+        """
+        Remove records older than arbitrary days
+        :param days: int
+        """
+        cutoff_date = clock.CLOCK.now() - timedelta(days=days)
+
+        with self.session() as session:
+            stmt = delete(UserEventMetrics).where(
+                (UserEventMetrics.created < cutoff_date) &
+                (UserEventMetrics.reconcile_job_run_id.isnot(None))
+            )
+            session.execute(stmt)
 
     def update_reconcile_job_pids(self, pid_list, job_run_id, module):
         id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]

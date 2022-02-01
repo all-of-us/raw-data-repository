@@ -1264,6 +1264,9 @@ class GenomicJobController:
                                                     job_run_id=self.job_run.id,
                                                     module=module)
 
+    def delete_old_gp_user_event_metrics(self, days=7):
+        self.event_dao.delete_old_events(days=days)
+
     def run_general_ingestion_workflow(self):
         """
         Ingests A single genomic file

@@ -110,6 +110,7 @@ class GenomicJob(messages.Enum):
     LOAD_AW3_TO_RAW_TABLE = 53
     LOAD_AW4_TO_RAW_TABLE = 54
     RECONCILE_PDR_DATA = 55
+    DELETE_OLD_GP_USER_EVENT_METRICS = 56
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
