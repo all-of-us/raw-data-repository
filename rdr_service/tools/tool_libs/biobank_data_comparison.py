@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from dateutil.parser import parse
 from protorpc import messages
-from typing import Collection, Dict, List, Optional
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -29,16 +29,21 @@ class DifferenceType(messages.Enum):
 
 
 @dataclass
-class DifferenceFound:
+class SamplePair:
     report_data: Optional[BiobankStoredSample]
     api_data: Optional[BiobankSpecimen]
+
+
+@dataclass
+class DifferenceFound:
+    sample_pair: SamplePair
     type: int
 
 
 class BiobankSampleComparator:
-    def __init__(self, api_data: Optional[BiobankSpecimen], report_data: Optional[BiobankStoredSample]):
-        self.api_data = api_data
-        self.report_data = report_data
+    def __init__(self, sample_pair: SamplePair):
+        self.api_data = sample_pair.api_data
+        self.report_data = sample_pair.report_data
 
     def get_differences(self) -> List[DifferenceFound]:
         discrepancies_found: List[DifferenceFound] = []
@@ -46,47 +51,47 @@ class BiobankSampleComparator:
         if self.report_data is None:
             discrepancies_found.append(DifferenceFound(
                 type=DifferenceType.MISSING_FROM_SIR,
-                report_data=self.report_data, api_data=self.api_data
+                sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
             ))
         elif self.api_data is None:
             discrepancies_found.append(DifferenceFound(
                 type=DifferenceType.MISSING_FROM_API_DATA,
-                report_data=self.report_data, api_data=self.api_data
+                sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
             ))
         else:
             if self.report_data.biobankId != self.api_data.biobankId:
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.BIOBANK_ID,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 ))
             if self.report_data.test != self.api_data.testCode:
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.TEST_CODE,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 ))
             if self.report_data.biobankOrderIdentifier != self.api_data.orderId:
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.ORDER_ID,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 ))
             if not is_datetime_equal(
                 self.report_data.confirmed, self.api_data.confirmedDate, difference_allowed_seconds=3600
             ):
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.CONFIRMED_DATE,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 ))
             if not is_datetime_equal(
                 self.report_data.disposed, self.api_data.disposalDate, difference_allowed_seconds=3600
             ):
                 discrepancies_found.append((DifferenceFound(
                     type=DifferenceType.DISPOSAL_DATE,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 )))
             if not self.status_field_match():
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.STATUS,
-                    report_data=self.report_data, api_data=self.api_data
+                    sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 ))
 
         return discrepancies_found
@@ -139,6 +144,9 @@ class BiobankSampleComparator:
         else:
             return False
 
+        # TODO: samples that are 1SAL2 and disposed on the API but still with a status of 1 on the SIR...
+        #       these wouldn't get updated on the SIR when the biobank gets it 6weeks later
+
 
 class BiobankDataCheckTool(ToolBase):
     def run(self):
@@ -149,47 +157,25 @@ class BiobankDataCheckTool(ToolBase):
         end_date = parse(self.args.end)
 
         with self.get_session() as session:
-            stored_samples = self._get_stored_samples(session=session, start_date=start_date, end_date=end_date)
-            specimens_dict = self._get_corresponding_api_data(session=session, stored_samples=stored_samples)
-            discrepancies_found: List[DifferenceFound] = []
-            for sample in stored_samples:
-                specimen = specimens_dict.get(sample.biobankStoredSampleId)
-                discrepancies_found.extend(self.check_specimen_against_sample(specimen=specimen, sample=sample))
-
-            specimen_without_inventory = self._get_specimen_without_inventory_counterpart(
+            stored_samples = self._get_report_samples(session=session, start_date=start_date, end_date=end_date)
+            api_samples = self._get_api_samples(session=session, start_date=start_date, end_date=end_date)
+            sample_pairs = self._get_sample_pairs(
+                # Match up the samples by their id, loading any from the database that might
+                # have been missed in the date range
                 session=session,
-                start_date=start_date,
-                end_date=end_date
+                report_samples=stored_samples,
+                api_samples=api_samples
             )
-            discrepancies_found.extend([
-                DifferenceFound(api_data=specimen, report_data=None, type=DifferenceType.MISSING_FROM_SIR)
-                for specimen in specimen_without_inventory
-            ])
 
-        for difference in discrepancies_found:
-            specimen = difference.api_data
-            sample = difference.report_data
-            if difference.type == DifferenceType.STATUS:
-                print(f'{specimen.rlimsId} STATUS -- '
-                      f'API: "{specimen.status}, {specimen.disposalReason}" '
-                      f'SIR: "{str(sample.status)}"')
-            elif difference.type == DifferenceType.DISPOSAL_DATE:
-                if difference.report_data.status == SampleStatus.RECEIVED and difference.api_data.status == 'Disposed':
-                    ...
-                else:
-                    print(f'{specimen.rlimsId} DISPOSAL DATE -- API: {specimen.disposalDate} SIR: {sample.disposed}')
-            elif difference.type == DifferenceType.CONFIRMED_DATE:
-                print(f'{specimen.rlimsId} CONFIRMED DATE -- API: {specimen.confirmedDate} SIR: {sample.confirmed}')
-            else:
-                sample_id = sample.biobankStoredSampleId if sample else specimen.rlimsId
-                print(f'{sample_id} -- {str(difference.type)}')
-
-        # TODO: samples that are 1SAL2 and disposed on the API but still with a status of 1 on the SIR...
-        #       these wouldn't get updated on the SIR when the biobank gets it 6weeks later
+            differences_found: List[DifferenceFound] = []
+            for pair in sample_pairs:
+                comparator = BiobankSampleComparator(pair)
+                differences_found.extend(comparator.get_differences())
 
     @classmethod
-    def _get_stored_samples(cls, session: Session, start_date: datetime, end_date: datetime) \
-            -> Collection[BiobankStoredSample]:
+    def _get_report_samples(cls, session: Session, start_date: datetime, end_date: datetime) \
+            -> List[BiobankStoredSample]:
+        """Get the sample data received from the Sample Inventory Reports"""
         return list(
             session.query(BiobankStoredSample).filter(
                 BiobankStoredSample.rdrCreated.between(start_date, end_date)
@@ -197,39 +183,89 @@ class BiobankDataCheckTool(ToolBase):
         )
 
     @classmethod
-    def _get_specimen_without_inventory_counterpart(cls, session: Session, start_date: datetime, end_date: datetime) \
-            -> Collection[BiobankSpecimen]:
+    def _get_api_samples(cls, session: Session, start_date: datetime, end_date: datetime) -> List[BiobankSpecimen]:
+        """Get the sample data received from the Specimen API"""
         return list(
-            session.query(BiobankSpecimen).outerjoin(
-                BiobankStoredSample,
-                BiobankStoredSample.biobankStoredSampleId == BiobankSpecimen.rlimsId
-            ).filter(
-                BiobankSpecimen.created.between(start_date, end_date),
-                BiobankStoredSample.biobankStoredSampleId.is_(None)
+            session.query(BiobankSpecimen).filter(
+                BiobankSpecimen.created.between(start_date, end_date)
             )
         )
 
     @classmethod
-    def _get_corresponding_api_data(cls, session: Session, stored_samples: Collection[BiobankStoredSample])\
-            -> Dict[str, BiobankSpecimen]:
+    def _get_sample_pairs(cls, report_samples: List[BiobankStoredSample], api_samples: List[BiobankSpecimen],
+                          session: Session) -> List[SamplePair]:
         """
-        Get the corresponding parent specimen for each stored sample given.
-        Return the specimens in a dict that uses the provided rlimsid for a specimen as the key, and the
-        matching specimen object as the value.
+        Creates SamplePairs for all the provided samples.
+        If a sample is found in one but not the other, then the database will be checked to see if the counterpart
+        might have just been outside the date range.
         """
-        stored_sample_ids = [specimen.biobankStoredSampleId for specimen in stored_samples]
-        specimen_dict = {sample_id: None for sample_id in stored_sample_ids}
+        sample_pairs = []
 
-        # Fill in the dictionary with the stored samples we can retrieve from the database
-        stored_samples: Collection[BiobankSpecimen] = session.query(
-            BiobankSpecimen
-        ).filter(
-            BiobankSpecimen.rlimsId.in_(stored_sample_ids)
+        # Create SamplePairs for all the api samples found in the report data
+        report_samples_id_map = {sample.biobankStoredSampleId: sample for sample in report_samples}
+        for api_sample in api_samples:
+            report_sample = None
+            if api_sample.rlimsId in report_samples_id_map:
+                report_sample = report_samples_id_map[api_sample.rlimsId]
+                del report_samples_id_map[api_sample.rlimsId]
+            sample_pairs.append(
+                SamplePair(api_data=api_sample, report_data=report_sample)
+            )
+
+        # Any samples still left in the report map didn't have counter parts in the api data
+        for report_sample in report_samples_id_map.values():
+            sample_pairs.append(
+                SamplePair(api_data=None, report_data=report_sample)
+            )
+
+        # Check the database to see if any samples from the report match something from the api
+        pairs_missing_api_data_map = {
+            pair.report_data.biobankStoredSampleId: pair
+            for pair in sample_pairs if pair.api_data is None
+        }
+        sample_ids = pairs_missing_api_data_map.keys()
+        db_api_data: List[BiobankSpecimen] = session.query(BiobankSpecimen).filter(
+            BiobankSpecimen.rlimsId.in_(sample_ids)
+        ).all()
+        for api_sample in db_api_data:
+            pair = pairs_missing_api_data_map[api_sample.rlimsId]
+            pair.api_data = api_sample
+
+        # ... and check the inverse, making sure any api samples that fell within the time range didn't get missed
+        # because of a date difference
+        pairs_missing_report_data_map = {
+            pair.api_data.rlimsId: pair
+            for pair in sample_pairs if pair.report_data is None
+        }
+        sample_ids = pairs_missing_report_data_map.keys()
+        db_report_data: List[BiobankStoredSample] = session.query(BiobankStoredSample).filter(
+            BiobankStoredSample.biobankStoredSampleId.in_(sample_ids)
         )
-        for specimen in stored_samples:
-            specimen_dict[specimen.rlimsId] = specimen
+        for report_sample in db_report_data:
+            pair = pairs_missing_report_data_map[report_sample.biobankStoredSampleId]
+            pair.report_data = report_sample
 
-        return specimen_dict
+        return sample_pairs
+
+    @classmethod
+    def _print_differences_found(cls, differences: List[DifferenceFound]):
+        for diff in differences:
+            specimen = diff.sample_pair.api_data
+            sample = diff.sample_pair.report_data
+            if diff.type == DifferenceType.STATUS:
+                print(f'{specimen.rlimsId} STATUS -- '
+                      f'API: "{specimen.status}, {specimen.disposalReason}" '
+                      f'SIR: "{str(sample.status)}"')
+            elif diff.type == DifferenceType.DISPOSAL_DATE:
+                if sample.status == SampleStatus.RECEIVED and specimen.status == 'Disposed':
+                    ...
+                else:
+                    print(f'{specimen.rlimsId} DISPOSAL DATE -- API: {specimen.disposalDate} SIR: {sample.disposed}')
+            elif diff.type == DifferenceType.CONFIRMED_DATE:
+                print(f'{specimen.rlimsId} CONFIRMED DATE -- API: {specimen.confirmedDate} SIR: {sample.confirmed}')
+            else:
+                sample_id = sample.biobankStoredSampleId if sample else specimen.rlimsId
+                print(f'{sample_id} -- {str(diff.type)}')
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

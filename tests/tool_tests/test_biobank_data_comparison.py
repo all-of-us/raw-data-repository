@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from rdr_service.model.biobank_order import BiobankSpecimen
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
-from rdr_service.tools.tool_libs.biobank_data_comparison import BiobankSampleComparator, DifferenceType
+from rdr_service.tools.tool_libs.biobank_data_comparison import BiobankSampleComparator, DifferenceType, SamplePair
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -37,7 +37,7 @@ class BiobankDataComparisonTest(BaseTestCase):
             disposed=disposed_time,
             status=SampleStatus.CONSUMED
         )
-        self.comparator = BiobankSampleComparator(api_data=self.api_data, report_data=self.report_data)
+        self.comparator = BiobankSampleComparator(SamplePair(api_data=self.api_data, report_data=self.report_data))
 
     def test_no_difference_in_defaults(self):
         """No discrepancies should be found in the default data"""
@@ -85,13 +85,13 @@ class BiobankDataComparisonTest(BaseTestCase):
         self.assertEqual(DifferenceType.DISPOSAL_DATE, differences[0].type)
 
     def test_missing_from_report(self):
-        comparator = BiobankSampleComparator(report_data=None, api_data=self.api_data)
+        comparator = BiobankSampleComparator(SamplePair(report_data=None, api_data=self.api_data))
         differences = comparator.get_differences()
         self.assertEqual(1, len(differences))
         self.assertEqual(DifferenceType.MISSING_FROM_SIR, differences[0].type)
 
     def test_missing_from_api(self):
-        comparator = BiobankSampleComparator(report_data=self.report_data, api_data=None)
+        comparator = BiobankSampleComparator(SamplePair(report_data=self.report_data, api_data=None))
         differences = comparator.get_differences()
         self.assertEqual(1, len(differences))
         self.assertEqual(DifferenceType.MISSING_FROM_API_DATA, differences[0].type)
