@@ -461,4 +461,4 @@ def genomic_user_event_metrics_batch_update(_pk_ids):
     gen = GenomicUserEventMetricsSchemaGenerator()
     w_dao = ResourceDataDao()
     for _pk in _pk_ids:
-        genomic_gc_validation_metrics_update(_pk, gen=gen, w_dao=w_dao)
+        genomic_user_event_metrics_update(_pk, gen=gen, w_dao=w_dao)
