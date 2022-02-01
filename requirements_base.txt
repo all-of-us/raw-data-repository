@@ -65,7 +65,7 @@ mccabe==0.6.1             # via pylint
 mock==4.0.3               # via -r requirements.in
 msgpack==1.0.0            # via locust
 netaddr==0.7.19           # via -r requirements.in
-numpy==1.22.0             
+numpy==1.22.1 
 oauth2client==4.1.3       # via -r requirements.in
 oauthlib[signedtoken]==3.1.0  # via jira, requests-oauthlib
 packaging==20.4           # via sphinx
