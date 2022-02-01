@@ -4,7 +4,7 @@
 # Install the python library requirements
 #
 sudo apt-get update
-sudo apt-get install python3.7-venv python3-pip libpython3.7-dev libmysqlclient-dev
+sudo apt-get install python3.8-venv python3-pip libpython3.8-dev libmysqlclient-dev
 python3.8 -m venv venv
 source venv/bin/activate
 export PYTHONPATH=`pwd`
