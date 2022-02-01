@@ -8,7 +8,7 @@
 init-hook="from pylint.config import find_pylintrc; \
     import os; \
     import sys; \
-    sys.path = [x for x in sys.path if 'python3.7' in x]; \
+#    sys.path = [x for x in sys.path if 'python3.7' in x]; \
 #    sdk_bin_dir = [p for p in set(os.environ['PATH'].split(os.pathsep)) if os.path.exists(os.path.join(p, 'gcloud'))][0]; \
 #    ae_dir = os.path.join(sdk_bin_dir, '..', 'platform', 'google_appengine'); \
 #    sys.path.insert(0, ae_dir); \
