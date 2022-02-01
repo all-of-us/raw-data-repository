@@ -448,7 +448,7 @@ def is_datetime_equal(first: datetime, second: datetime, difference_allowed_seco
     :param first: First date.
     :param second: Second date.
     :param difference_allowed_seconds: The number of seconds that the two dates can be different before they're
-        determined to be different. Defaults to 0.
+        determined to not be a match. Defaults to 0.
     :return: False if they're more than the specified number of seconds apart.
     """
     if first is None and second is None:

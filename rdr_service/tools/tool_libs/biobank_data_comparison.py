@@ -1,10 +1,10 @@
-import argparse
 from dataclasses import dataclass
 from datetime import datetime
-from dateutil.parser import parse
 from protorpc import messages
 from typing import List, Optional
 
+import argparse
+from dateutil.parser import parse
 from sqlalchemy.orm import Session
 
 from rdr_service.app_util import is_datetime_equal
@@ -88,7 +88,7 @@ class BiobankSampleComparator:
                     type=DifferenceType.DISPOSAL_DATE,
                     sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
                 )))
-            if not self.status_field_match():
+            if not self.does_status_field_match():
                 discrepancies_found.append(DifferenceFound(
                     type=DifferenceType.STATUS,
                     sample_pair=SamplePair(report_data=self.report_data, api_data=self.api_data)
@@ -96,7 +96,7 @@ class BiobankSampleComparator:
 
         return discrepancies_found
 
-    def status_field_match(self):
+    def does_status_field_match(self):
         report_status = self.report_data.status
         api_status = self.api_data.status
         api_disposal_reason = self.api_data.disposalReason
@@ -171,6 +171,8 @@ class BiobankDataCheckTool(ToolBase):
             for pair in sample_pairs:
                 comparator = BiobankSampleComparator(pair)
                 differences_found.extend(comparator.get_differences())
+
+        self._print_differences_found(differences=differences_found)
 
     @classmethod
     def _get_report_samples(cls, session: Session, start_date: datetime, end_date: datetime) \
