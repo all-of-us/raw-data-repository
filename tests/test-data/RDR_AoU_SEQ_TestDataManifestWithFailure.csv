@@ -1,3 +1,3 @@
-Biobank ID,Sample ID,BiobankidSampleid,LIMS ID,Mean Coverage,Genome Coverage,AoU HDR Coverage,Contamination,Sample_Source,Mapped_Reads_pct,Sex Concordance,Sex Ploidy,Aligned Q30 Bases,Array Concordance,Processing Status,Notes
-T2,1002,2_1992,10002,2,2,2,3,Whole Blood,88,True,XY,1000000000004,True,Pass,This sample passed
-T3,1003,3_1993,10003,2,2,2,3,Whole Blood,88,True,XY,1000000000004,True,Abandoned,This sample was abandoned
+Biobank ID,Sample ID,BiobankidSampleid,LIMS ID,Mean Coverage,Genome Coverage,AoU HDR Coverage,Contamination,Sample_Source,Mapped_Reads_pct,Sex Concordance,Sex Ploidy,Aligned Q30 Bases,Array Concordance,Processing Status,Notes,Genome Type
+T2,1002,2_1992,10002,2,2,2,3,Whole Blood,88,True,XY,1000000000004,True,Pass,This sample passed,aou_wgs
+T3,1003,3_1993,10003,2,2,2,3,Whole Blood,88,True,XY,1000000000004,True,Abandoned,This sample was abandoned,aou_wgs
