@@ -1579,6 +1579,7 @@ class GenomicFileValidator:
                 "arrayconcordance",
                 "processingstatus",
                 "notes",
+                "genometype"
             ),
             GENOME_TYPE_ARRAY: (
                 "biobankid",
@@ -1593,6 +1594,7 @@ class GenomicFileValidator:
                 "processingstatus",
                 "notes",
                 "pipelineid",
+                "genometype"
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
