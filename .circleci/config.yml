@@ -33,7 +33,7 @@ commands:
           command: ci/full_static_analysis.sh
       - run:
           name: Safety Check
-          command: source venv/bin/activate && safety check
+          command: source venv/bin/activate && safety check --ignore=44715
       - run:
           name: Check Licenses
           command : |
