@@ -42,6 +42,8 @@ class GoogleSheetsClient:
             'offset_str': offset
         } for tab_name, offset in tab_offsets.items()} if tab_offsets else {}
 
+        self._spreadsheets_batch_update_requests = []
+
     def _build_service(self):
         service_key_info = gcp_get_iam_service_key_info(self.service_key_id)
         api_credentials = ServiceAccountCredentials.from_json_keyfile_name(service_key_info['key_path'])
@@ -247,12 +249,18 @@ class GoogleSheetsClient:
         return list(values_grid[row_index])
 
     @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
-    def upload_values(self):
-        """
-        Upload the local data to the google drive spreadsheet.
-        Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
-        """
-        request = self._build_service().spreadsheets().values().batchUpdate(
+    def _process_batch_update_requests(self, service):
+        request = service.spreadsheets().batchUpdate(
+            spreadsheetId=self._spreadsheet_id,
+            body={
+                'requests': self._spreadsheets_batch_update_requests
+            }
+        )
+        request.execute()
+
+    @backoff.on_exception(backoff.constant, HttpError, max_tries=4, jitter=None, interval=30)
+    def _upload_sheet_values(self, service):
+        request = service.spreadsheets().values().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
             body={
                 'valueInputOption': 'RAW',
@@ -263,6 +271,26 @@ class GoogleSheetsClient:
             }
         )
         request.execute()
+
+    def upload_values(self):
+        """
+        Upload the local data to the google drive spreadsheet.
+        Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
+        """
+        service = self._build_service()
+        self._process_batch_update_requests(service)
+        self._upload_sheet_values(service)
+
+    def add_new_tab(self, tab_name):
+        self._spreadsheets_batch_update_requests.append({
+            'addSheet': {
+                'properties': {
+                    'title': tab_name,
+                    'index': 0
+                }
+            }
+        })
+        self._tabs[tab_name] = self._initialize_empty_tab()
 
     def get_tab_values(self, tab_id=None):
         """
