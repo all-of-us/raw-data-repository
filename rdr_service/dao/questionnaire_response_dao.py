@@ -384,7 +384,7 @@ class QuestionnaireResponseDao(BaseDao):
                 code_obj = CodeDao().get(concept_code)
                 result = code_obj.value if code_obj else None
         else:
-            logging.debug(f'Unexpected questionnaire_history parameter type {type(questionnaire_history)}')
+            logging.error(f'Unexpected questionnaire_history parameter type {type(questionnaire_history)}')
 
         return result
 
