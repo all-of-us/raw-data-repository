@@ -682,6 +682,8 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertEqual(call_args[0].args[0]['ids'], [obj.id for obj in first_run])
         self.assertEqual(call_args[0].args[1], cloud_task_endpoint)
 
+        participant = self.data_generator.create_database_participant()
+
         gen_set = self.data_generator.create_database_genomic_set(
             genomicSetName=".",
             genomicSetCriteria=".",
@@ -723,6 +725,12 @@ class GenomicJobControllerTest(BaseTestCase):
                     feedbackRecordCount=2
                 )
 
+                self.data_generator.create_database_genomic_user_event_metrics(
+                    participant_id=participant.participantId,
+                    event_name='test_event',
+                    run_id=1,
+                )
+
         # gets new records that were created with last job run from above
         with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
             controller.reconcile_pdr_data()
@@ -734,12 +742,13 @@ class GenomicJobControllerTest(BaseTestCase):
             'genomic_file_processed',
             'genomic_gc_validation_metrics',
             'genomic_manifest_file',
-            'genomic_manifest_feedback'
+            'genomic_manifest_feedback',
+            'user_event_metrics'
         ]
 
-        self.assertEqual(mock_cloud_task.call_count, 8)
+        self.assertEqual(mock_cloud_task.call_count, 9)
         call_args = mock_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 8)
+        self.assertEqual(len(call_args), 9)
 
         mock_tables = set([obj[0][0]['table'] for obj in call_args])
         mock_endpoint = [obj[0][1] for obj in call_args]
