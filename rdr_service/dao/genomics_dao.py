@@ -1779,18 +1779,18 @@ class GenomicOutreachDaoV2(BaseDao):
                 }
                 report_statuses.append(report)
             elif 'informingLoop' in p.type:
-                ready_modules = ['hdr', 'pgx']
                 p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
-                if p_status == 'ready':
-                    for module in ready_modules:
-                        report = {
-                            "module": module,
-                            "type": p.type,
-                            "status": p_status,
-                            "participant_id": f'P{p.participant_id}',
-                        }
-                        report_statuses.append(report)
-                elif p_status == 'completed':
+                # ready_modules = ['hdr', 'pgx']
+                # if p_status == 'ready':
+                #     for module in ready_modules:
+                #         report = {
+                #             "module": module,
+                #             "type": 'informingLoop',
+                #             "status": p_status,
+                #             "participant_id": f'P{p[0]}',
+                #         }
+                #         report_statuses.append(report)
+                if p_status == 'completed':
                     report = {
                         "module": p.module_type.lower(),
                         "type": p.type,
@@ -1846,46 +1846,47 @@ class GenomicOutreachDaoV2(BaseDao):
                         GenomicSetMember.ignoreFlag != 1
                     )
                 )
-                ready_loop = (
-                    session.query(
-                        GenomicSetMember.participantId.label('participant_id'),
-                        literal('informingLoop').label('type')
-                    )
-                    .join(
-                        ParticipantSummary,
-                        ParticipantSummary.participantId == GenomicSetMember.participantId
-                    )
-                    .join(
-                        GenomicGCValidationMetrics,
-                        GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
-                    )
-                    .filter(
-                        ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
-                        ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
-                        ParticipantSummary.consentForGenomicsROR == 1,
-                        GenomicGCValidationMetrics.processingStatus == 'Pass',
-                        GenomicSetMember.genomeType == 'aou_wgs',
-                        GenomicSetMember.aw3ManifestJobRunID.isnot(None)
-                    )
-                )
+                # ready_loop = (
+                #     session.query(
+                #         GenomicSetMember.participantId.label('participant_id'),
+                #         literal('informingLoop')
+                #     )
+                #     .join(
+                #         ParticipantSummary,
+                #         ParticipantSummary.participantId == GenomicSetMember.participantId
+                #     )
+                #     .join(
+                #         GenomicGCValidationMetrics,
+                #         GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                #     )
+                #     .filter(
+                #         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                #         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                #         ParticipantSummary.consentForGenomicsROR == 1,
+                #         GenomicGCValidationMetrics.processingStatus == 'Pass',
+                #         GenomicSetMember.genomeType == 'aou_wgs',
+                #         GenomicSetMember.aw3ManifestJobRunID.isnot(None)
+                #     )
+                # )
                 if pid:
                     decision_loop = decision_loop.filter(
                         ParticipantSummary.participantId == pid
                     )
-                    ready_loop = ready_loop.filter(
-                        ParticipantSummary.participantId == pid
-                    )
+                    # ready_loop = ready_loop.filter(
+                    #     ParticipantSummary.participantId == pid
+                    # )
                 if start_date:
                     decision_loop = decision_loop.filter(
                         GenomicInformingLoop.event_authored_time > start_date,
                         GenomicInformingLoop.event_authored_time < end_date
                     )
-                    ready_loop = ready_loop.filter(
-                        GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
-                        GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
-                    )
+                    # ready_loop = ready_loop.filter(
+                    #     GenomicSetMember.genomicWorkflowStateModifiedTime > start_date,
+                    #     GenomicSetMember.genomicWorkflowStateModifiedTime < end_date
+                    # )
 
-                informing_loops = decision_loop.all() + ready_loop.all()
+                # informing_loops = decision_loop.all() + ready_loop.all()
+                informing_loops = decision_loop.all()
 
             if 'result' in self.type:
                 # results
@@ -2865,7 +2866,7 @@ class GemToGpMigrationDao(BaseDao):
             session.bulk_insert_mappings(self.model_type, batch)
 
 
-class UserEventMetricsDao(BaseDao):
+class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(UserEventMetricsDao, self).__init__(
             UserEventMetrics, order_by_ending=['id'])
