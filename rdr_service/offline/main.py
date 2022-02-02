@@ -662,7 +662,7 @@ def genomic_reconcile_informing_loop_responses():
 @run_genomic_cron_job('reconcile_pdr_data')
 def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
-    return '{"success": "true"}'\
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
