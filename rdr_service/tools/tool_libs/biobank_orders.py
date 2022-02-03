@@ -23,7 +23,7 @@ class BiobankOrdersTool(ToolBase):
 
     def _load_mail_kit(self, barcode: str, session: Session) -> Optional[BiobankMailKitOrder]:
         mail_kit_orders = MailKitOrderDao.get_with_barcode(barcode=barcode, session=session)
-        if len(mail_kit_orders) == 0:
+        if not mail_kit_orders:
             logger.error(f'Unable to find order with barcode "{barcode}"')
             return None
         elif len(mail_kit_orders) > 1:
