@@ -1829,7 +1829,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                        and_(
+                            GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
+                            GenomicSetMember.genomeType == 'aou_array'
+                        )
                     ).outerjoin(
                         genomic_loop_alias,
                         and_(
@@ -1903,7 +1906,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        GenomicSetMember.participantId == GenomicMemberReportState.participant_id
+                        and_(
+                            GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
+                            GenomicSetMember.genomeType == 'aou_array'
+                        )
                     ).outerjoin(
                         GenomicResultViewed,
                         GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
