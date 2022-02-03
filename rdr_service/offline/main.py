@@ -613,7 +613,7 @@ def genomic_missing_files_clean_up():
 @run_genomic_cron_job('missing_files_resolve_workflow')
 def genomic_missing_files_resolve():
     genomic_pipeline.genomic_missing_files_resolve()
-    return '{"success": "true"}'\
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
