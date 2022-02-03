@@ -22,7 +22,7 @@ class BiobankOrderService:
         with mailkit_dao.session() as session:
             kits_with_barcode = MailKitOrderDao.get_with_barcode(session=session, barcode=mailkit_order.barcode)
             if any([kit.id != mailkit_order.id for kit in kits_with_barcode]):
-                raise Conflict(f"Barcode for order exists on another order")
+                raise Conflict('Barcode for order exists on another order')
 
     @classmethod
     def post_mailkit_order_delivery(cls, mailkit_order: BiobankMailKitOrder, collected_time_utc: datetime,
@@ -42,7 +42,7 @@ class BiobankOrderService:
             if summary is not None:  # Later code handles the error if it's missing
                 raise_if_withdrawn(summary)
 
-            logging.info(f"Sending salivary order to biobank for participant: {summary.participantId}")
+            logging.info(f'Sending salivary order to biobank for participant: {summary.participantId}')
             mayolink_response = mailkit_dao.send_order(
                 participant_id=summary.participantId,
                 portal_order_id=mailkit_order.order_id,
