@@ -304,16 +304,19 @@ class TheBasicsAnalyzerClass(object):
                 curr_response_answer_set = set(answers.items())
                 if last_response_answer_set is not None:
                     # index() will find the first location in the answer_hashes list containing the current response's
-                    # answer hash.  If it doesn't match the current response's position, the current response is a
-                    # duplicate of an earlier one
+                    # answer hash.  If it doesn't match the current response's position, the current response is
+                    # a duplicate (in answer content) of the earlier response.  Set classification based on whether
+                    # authored timestamp changed
                     matching_hash_idx = answer_hashes.index(curr_response['answer_hash'])
-                    if (matching_hash_idx != curr_position and
-                          curr_response_type != QuestionnaireResponseClassificationType.COMPLETE):
-                        # Mark this partial payload as a duplicate of the response whose answer hash it matches
-                        # TODO:  Determine what to do with COMPLETE payload dups, with/without matching authored?
+                    if matching_hash_idx != curr_position:
+                        if curr_authored == response_list[matching_hash_idx].get('authored'):
+                            reclassification = QuestionnaireResponseClassificationType.DUPLICATE
+                        else:
+                            reclassification = QuestionnaireResponseClassificationType.AUTHORED_TIME_UPDATED
+
                         dup_rsp_id = response_list[matching_hash_idx].get('questionnaire_response_id')
-                        # Flag the current response as a duplicate
-                        response_list[curr_position]['payload_type'] = QuestionnaireResponseClassificationType.DUPLICATE
+                        # Update the current response's classification
+                        response_list[curr_position]['payload_type'] = reclassification
                         response_list[curr_position]['duplicate_of'] = dup_rsp_id
                         response_list[curr_position]['reason'] = ' '.join([response_list[curr_position]['reason'],
                                                                            'Duplicate answer hash'])
