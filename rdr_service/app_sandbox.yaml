@@ -5,3 +5,7 @@ instance_class: F4
 # Have 0 idle instances to reduce unneeded costs
 automatic_scaling:
   min_idle_instances: 0
+
+# Serverless VPC Access connector details
+vpc_access_connector:
+  name: 'projects/<PROJECT_ID>/locations/<REGION>/connectors/<CONNECTOR_NAME>'

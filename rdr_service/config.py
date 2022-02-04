@@ -17,17 +17,9 @@ from rdr_service import clock, singletons
 from rdr_service.provider import Provider
 
 
-# Get project name and credentials
-if os.getenv('GAE_ENV', '').startswith('standard'):
-    # Production in the standard environment
-    import google.auth
-    GAE_CREDENTIALS, GAE_PROJECT = google.auth.default()
-    GAE_VERSION_ID = os.environ.get('GAE_VERSION')
-else:
-    GAE_CREDENTIALS = 'local@localhost.net'
-    GAE_PROJECT = 'localhost'
-    GAE_VERSION_ID = 'develop'
-
+GAE_CREDENTIALS = singletons.GAE_CREDENTIALS
+GAE_PROJECT = singletons.GAE_PROJECT
+GAE_VERSION_ID = singletons.GAE_VERSION_ID
 
 _NO_DEFAULT = "_NO_DEFAULT"
 
