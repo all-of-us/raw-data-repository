@@ -988,8 +988,7 @@ class UserEventMetrics(Base):
 
     __tablename__ = 'user_event_metrics'
 
-    id = Column(Integer,
-                primary_key=True, autoincrement=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     created = Column(DateTime)
     modified = Column(DateTime)
     participant_id = Column(Integer, ForeignKey("participant.participant_id"), nullable=False, index=True)
@@ -1007,3 +1006,44 @@ class UserEventMetrics(Base):
 event.listen(UserEventMetrics, 'before_insert', model_insert_listener)
 event.listen(UserEventMetrics, 'before_update', model_update_listener)
 
+
+class GenomicSampleSwap(Base):
+    """
+    Used for storing sample swap types
+    """
+
+    __tablename__ = 'genomic_sample_swap'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    name = Column(String(255))
+    explanation = Column(String(1024), nullable=True)
+    open_investigation = Column(SmallInteger, nullable=False, default=0)
+    open_investigation_date = Column(DateTime, nullable=True)
+    closed_investigation = Column(SmallInteger, nullable=False, default=0)
+    closed_investigation_date = Column(DateTime, nullable=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicSampleSwap, 'before_insert', model_insert_listener)
+event.listen(GenomicSampleSwap, 'before_update', model_update_listener)
+
+
+class GenomicSampleSwapMember(Base):
+    """
+    Used for storing sample swap records in relation to genomic_sample_swap
+    """
+
+    __tablename__ = 'genomic_sample_swap_member'
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime)
+    modified = Column(DateTime)
+    genomic_sample_swap = Column(Integer, ForeignKey("genomic_sample_swap.id"), nullable=False, index=True)
+    genomic_set_member_id = Column(Integer, ForeignKey("genomic_set_member.id"), nullable=False, index=True)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicSampleSwapMember, 'before_insert', model_insert_listener)
+event.listen(GenomicSampleSwapMember, 'before_update', model_update_listener)

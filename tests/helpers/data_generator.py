@@ -25,7 +25,7 @@ from rdr_service.model.genomics import (
     GenomicManifestFeedback,
     GenomicGcDataFileMissing,
     UserEventMetrics,
-    GenomicResultViewed)
+    GenomicResultViewed, GenomicSampleSwap, GenomicSampleSwapMember)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
@@ -763,6 +763,24 @@ class DataGenerator:
         result_viewed = self._genomic_result_viewed(**kwargs)
         self._commit_to_database(result_viewed)
         return result_viewed
+
+    @staticmethod
+    def _genomic_sample_swap(**kwargs):
+        return GenomicSampleSwap(**kwargs)
+
+    def create_genomic_sample_swap(self, **kwargs):
+        sample_swap = self._genomic_sample_swap(**kwargs)
+        self._commit_to_database(sample_swap)
+        return sample_swap
+
+    @staticmethod
+    def _genomic_sample_swap_member(**kwargs):
+        return GenomicSampleSwapMember(**kwargs)
+
+    def create_genomic_sample_swap_member(self, **kwargs):
+        sample_swap_member = self._genomic_sample_swap_member(**kwargs)
+        self._commit_to_database(sample_swap_member)
+        return sample_swap_member
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):
