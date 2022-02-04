@@ -137,7 +137,7 @@ class BiobankMailKitOrder(Base):
     )
     """The shipment status of the biobank order"""
 
-    barcode = Column("barcode", String(80), nullable=True)
+    barcode = Column("barcode", String(80), nullable=True, index=True)
     """Barcode from Genotech for tracking purposes."""
 
     #
