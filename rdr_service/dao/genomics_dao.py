@@ -51,11 +51,12 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
+from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 
 
 class GenomicDaoUtils:
 
-    def get_last_updated_records(self, from_date):
+    def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
 
         if not hasattr(self.model_type, 'created') or \
@@ -63,11 +64,15 @@ class GenomicDaoUtils:
             return []
 
         with self.session() as session:
-            return session.query(
-                self.model_type
-            ).filter(
+            if _ids:
+                records = session.query(self.model_type.id)
+            else:
+                records = session.query(self.model_type)
+
+            records = records.filter(
                 self.model_type.modified >= from_date
-            ).all()
+            )
+            return records.all()
 
 
 class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
@@ -2937,6 +2942,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
         } for i in id_list]
         with self.session() as session:
             session.bulk_update_mappings(UserEventMetrics, update_mappings)
+        # Batch update PDR resource records.
+        genomic_user_event_metrics_batch_update(id_list)
 
     def get_all_event_ids_for_pid_list(self, pid_list, module=None):
         with self.session() as session:

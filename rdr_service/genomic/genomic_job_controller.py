@@ -751,8 +751,7 @@ class GenomicJobController:
             self.file_processed_dao,
             self.metrics_dao,
             self.manifest_file_dao,
-            self.manifest_feedback_dao,
-            self.event_dao
+            self.manifest_feedback_dao
         ]
 
         for dao in reconcile_daos:
@@ -760,11 +759,11 @@ class GenomicJobController:
             if not hasattr(dao, 'get_last_updated_records'):
                 continue
 
-            records = dao.get_last_updated_records(from_date=last_job_run)
-            if not records:
+            record_ids = dao.get_last_updated_records(from_date=last_job_run)
+            if not record_ids:
                 continue
 
-            batch_ids = [obj.id for obj in records]
+            batch_ids = [obj.id for obj in record_ids]
 
             logging.info(f'Sending {table_name} {len(batch_ids)} records for rebuild cloud task.')
 
