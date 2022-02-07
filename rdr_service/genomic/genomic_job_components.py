@@ -15,6 +15,7 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service import clock
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -84,6 +85,7 @@ from rdr_service.config import (
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
+    GENOMIC_INVESTIGATION_GENOME_TYPES
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -111,6 +113,8 @@ class GenomicFileIngester:
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
         self.sub_folder_name = sub_folder
+        self.investigation_set_id = None
+        self.participant_dao = None
 
         # Sub Components
         self.file_validator = GenomicFileValidator(
@@ -127,6 +131,7 @@ class GenomicFileIngester:
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
+        self.set_dao = None
 
     def generate_file_processing_queue(self):
         """
@@ -513,6 +518,14 @@ class GenomicFileIngester:
                 int(row_copy['parentsampleid'])
             )
 
+            # Create new set member record if the sample
+            # has the investigation genome type
+            if row_copy['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
+                self.create_investigation_member_record_from_aw1(row_copy)
+
+                # Move to next row in file
+                continue
+
             if control_sample_parent:
                 logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
 
@@ -529,7 +542,7 @@ class GenomicFileIngester:
                 if not cntrl_sample_member:
                     # Insert new GenomicSetMember record if none exists
                     # for this control sample, genome type, and gc site
-                    member = self.create_new_member_from_aw1_control_sample(row_copy)
+                    self.create_new_member_from_aw1_control_sample(row_copy)
 
                 # Skip rest of iteration and go to next row
                 continue
@@ -593,6 +606,50 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
         return GenomicSubProcessResult.SUCCESS
+
+    def create_investigation_member_record_from_aw1(self, aw1_data):
+        # Create genomic_set
+        if not self.investigation_set_id:
+            new_set = self.create_new_genomic_set()
+            self.investigation_set_id = new_set.id
+
+        self.participant_dao = ParticipantDao()
+
+        # Get IDs
+        biobank_id = aw1_data['biobankid']
+
+        # Strip biobank prefix if it's there
+        if aw1_data[0] in [get_biobank_id_prefix(), 'T']:
+            biobank_id = aw1_data[1:]
+
+        participant_id = self.participant_dao.get_by_biobank_id(biobank_id)
+
+        # Create new genomic_set_member
+        new_member = GenomicSetMember(
+            genomicSetId=self.investigation_set_id,
+            biobankId=biobank_id,
+            participantId=participant_id,
+            blockResearch=1,
+            blockResearchReason="In AW1 with investigation genome type.",
+            blockResults=1,
+            blockResultsReason="In AW1 with investigation genome type.",
+        )
+
+        member_changed, member = self._process_aw1_attribute_data(aw1_data, new_member)
+        if member_changed:
+            self.member_dao.update(member)
+
+    def create_new_genomic_set(self):
+        new_set = GenomicSet(
+            genomicSetName=f"investigation_{self.job_run_id}",
+            genomicSetCriteria="investigation genome type",
+            genomicSetVersion=1,
+        )
+
+        self.set_dao = GenomicSetDao()
+        with self.set_dao.session() as session:
+            session.add(new_set)
+        return new_set
 
     def load_raw_awn_file(self):
         """

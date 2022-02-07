@@ -358,6 +358,14 @@ class ParticipantDao(UpdatableDao):
         else:
             return UNSET_HPO_ID
 
+    def get_by_biobank_id(self, biobank_id):
+        with self.session() as session:
+            return session.query(
+                Participant
+            ).filter(
+                Participant.biobankId == biobank_id
+            ).one_or_none()
+
     def validate_participant_reference(self, session, obj):
         """Raises BadRequest if an object has a missing or invalid participantId reference,
     or if the participant has a withdrawal status of NO_USE."""
