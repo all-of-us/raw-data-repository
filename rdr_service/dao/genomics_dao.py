@@ -39,7 +39,7 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw)
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicSampleSwapMember)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -1767,13 +1767,8 @@ class GenomicOutreachDaoV2(BaseDao):
             if 'result' in p.type:
                 p_status, p_module = self._determine_report_state(p.genomic_report_state)
                 pid = p.participant_id
-                genomic_result_viewed = p.GenomicResultViewed
-                result_viewed = 'no'
-
-                if genomic_result_viewed \
-                    and genomic_result_viewed.participant_id \
-                        and genomic_result_viewed.module_type == p_module:
-                    result_viewed = 'yes'
+                # currently at participant and module level only
+                result_viewed = 'yes' if p.result_viewed_participant_id and p.result_viewed_module == p_module else 'no'
 
                 report = {
                     "module": p_module.lower(),
@@ -1782,6 +1777,9 @@ class GenomicOutreachDaoV2(BaseDao):
                     "viewed": result_viewed,
                     "participant_id": f'P{pid}',
                 }
+
+                if p.sample_swap_id:
+                    report['sample_swap'] = "True"
                 report_statuses.append(report)
             elif 'informingLoop' in p.type:
                 p_status = 'completed' if hasattr(p, 'decision_value') else 'ready'
@@ -1902,7 +1900,9 @@ class GenomicOutreachDaoV2(BaseDao):
                     session.query(
                         distinct(GenomicMemberReportState.participant_id).label('participant_id'),
                         GenomicMemberReportState.genomic_report_state,
-                        GenomicResultViewed,
+                        GenomicResultViewed.participant_id.label('result_viewed_participant_id'),
+                        GenomicResultViewed.module_type.label('result_viewed_module'),
+                        GenomicSampleSwapMember.id.label('sample_swap_id'),
                         literal('result').label('type')
                     )
                     .join(
@@ -1918,7 +1918,15 @@ class GenomicOutreachDaoV2(BaseDao):
                     ).outerjoin(
                         GenomicResultViewed,
                         GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
-                    ).filter(
+                    ).outerjoin(
+                        GenomicSampleSwapMember,
+                        and_(
+                            GenomicSampleSwapMember.genomic_set_member_id ==
+                            GenomicMemberReportState.genomic_set_member_id,
+                            GenomicSampleSwapMember.ignore_flag != 1
+                        )
+                    )
+                    .filter(
                         ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                         ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                         GenomicMemberReportState.genomic_report_state.in_(self.report_query_state),
@@ -2969,3 +2977,4 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
             else:
                 return query.all()
+

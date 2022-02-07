@@ -472,6 +472,24 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
         }
         self.assertEqual(expected, resp)
 
+        # check for filter out P in pid
+        with clock.FakeClock(fake_now):
+            resp = self.send_get(f'GenomicOutreachV2?participant_id=P{first_participant.participantId}')
+
+        expected = {
+            'data': [
+                {
+                    'module': 'gem',
+                    'type': 'result',
+                    'status': 'ready',
+                    "viewed": 'no',
+                    'participant_id': f'P{first_participant.participantId}'
+                }
+            ],
+            'timestamp': fake_now.replace(microsecond=0, tzinfo=pytz.UTC).isoformat()
+        }
+        self.assertEqual(expected, resp)
+
         with clock.FakeClock(fake_now):
             resp = self.send_get(f'GenomicOutreachV2?participant_id={second_participant.participantId}')
 
@@ -1117,6 +1135,92 @@ class GenomicOutreachApiV2Test(GenomicApiTestBase):
             member = list(filter(lambda x: x.participantId == pid, current_members))[0]
             self.assertIsNotNone(member)
             self.assertTrue(member.genomeType == 'aou_array')
+
+    def test_getting_sample_swap_result(self):
+        self.num_participants = 4
+        fake_date_one = parser.parse('2020-05-30T08:00:01-05:00')
+        fake_date_two = parser.parse('2020-05-31T08:00:01-05:00')
+        fake_now = clock.CLOCK.now().replace(microsecond=0)
+        module = 'gem'
+        report_state = GenomicReportState.GEM_RPT_READY
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        pids_for_swap_records = []
+        for num in range(self.num_participants):
+            participant = self.data_generator.create_database_participant()
+
+            self.data_generator.create_database_participant_summary(
+                participant=participant,
+                consentForGenomicsRORAuthored=fake_date_one,
+                consentForStudyEnrollmentAuthored=fake_date_one
+            )
+
+            gen_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=participant.participantId,
+                genomicWorkflowStateModifiedTime=fake_date_two
+            )
+            if num % 2 == 0:
+                pids_for_swap_records.append(participant.participantId)
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=gen_member.id,
+                participant_id=participant.participantId,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+        og_sample_swap = self.data_generator.create_genomic_sample_swap(
+            name="og_sample_swap",
+            open_investigation=1,
+            open_investigation_date=fake_now
+        )
+
+        # create two extra genomic_set_member records, insert into sample swap records
+        for pid in pids_for_swap_records:
+            swap_member = self.data_generator.create_database_genomic_set_member(
+                genomicSetId=gen_set.id,
+                biobankId="100153482",
+                sampleId="21042005280",
+                genomeType="aou_array",
+                genomicWorkflowState=GenomicWorkflowState.GEM_RPT_READY,
+                participantId=pid,
+                genomicWorkflowStateModifiedTime=fake_date_two
+            )
+
+            self.data_generator.create_database_genomic_member_report_state(
+                genomic_set_member_id=swap_member.id,
+                participant_id=pid,
+                module=module,
+                genomic_report_state=report_state
+            )
+
+            self.data_generator.create_genomic_sample_swap_member(
+                genomic_sample_swap=og_sample_swap.id,
+                genomic_set_member_id=swap_member.id
+            )
+
+            with clock.FakeClock(fake_now):
+                resp = self.send_get(
+                    f'GenomicOutreachV2?participant_id={pid}'
+                )
+
+            pid_response = resp['data']
+
+            self.assertEqual(len(pid_response), 2)
+            self.assertTrue(all(
+                int(obj['participant_id'].split('P')[1]) == pid for obj in pid_response)
+            )
+            self.assertTrue(any('sample_swap' in obj.keys() for obj in pid_response))
 
 
 class GenomicCloudTasksApiTest(BaseTestCase):
