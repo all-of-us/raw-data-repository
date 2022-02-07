@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 import logging
 import re
-from typing import Optional
+from typing import List
 
 import pytz
 from sqlalchemy.orm import load_only, Session
@@ -399,5 +399,6 @@ class MailKitOrderDao(UpdatableDao):
         else:
             return OrderShipmentTrackingStatus.UNSET
 
-    def get_with_barcode(self, barcode, session: Session) -> Optional[BiobankMailKitOrder]:
-        return session.query(BiobankMailKitOrder).filter(BiobankMailKitOrder.barcode == barcode).one_or_none()
+    @classmethod
+    def get_with_barcode(cls, barcode, session: Session) -> List[BiobankMailKitOrder]:
+        return session.query(BiobankMailKitOrder).filter(BiobankMailKitOrder.barcode == barcode).all()

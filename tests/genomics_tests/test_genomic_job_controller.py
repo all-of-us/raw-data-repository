@@ -743,12 +743,11 @@ class GenomicJobControllerTest(BaseTestCase):
             'genomic_gc_validation_metrics',
             'genomic_manifest_file',
             'genomic_manifest_feedback',
-            'user_event_metrics'
         ]
 
-        self.assertEqual(mock_cloud_task.call_count, 9)
+        self.assertEqual(mock_cloud_task.call_count, 8)
         call_args = mock_cloud_task.call_args_list
-        self.assertEqual(len(call_args), 9)
+        self.assertEqual(len(call_args), 8)
 
         mock_tables = set([obj[0][0]['table'] for obj in call_args])
         mock_endpoint = [obj[0][1] for obj in call_args]
