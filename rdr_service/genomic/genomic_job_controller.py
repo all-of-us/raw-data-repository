@@ -751,8 +751,7 @@ class GenomicJobController:
             self.file_processed_dao,
             self.metrics_dao,
             self.manifest_file_dao,
-            self.manifest_feedback_dao,
-            self.event_dao
+            self.manifest_feedback_dao
         ]
 
         for dao in reconcile_daos:
@@ -760,11 +759,11 @@ class GenomicJobController:
             if not hasattr(dao, 'get_last_updated_records'):
                 continue
 
-            records = dao.get_last_updated_records(from_date=last_job_run)
-            if not records:
+            record_ids = dao.get_last_updated_records(from_date=last_job_run)
+            if not record_ids:
                 continue
 
-            batch_ids = [obj.id for obj in records]
+            batch_ids = [obj.id for obj in record_ids]
 
             logging.info(f'Sending {table_name} {len(batch_ids)} records for rebuild cloud task.')
 
@@ -1264,6 +1263,9 @@ class GenomicJobController:
                                                     job_run_id=self.job_run.id,
                                                     module=module)
 
+    def delete_old_gp_user_event_metrics(self, days=7):
+        self.event_dao.delete_old_events(days=days)
+
     def run_general_ingestion_workflow(self):
         """
         Ingests A single genomic file
@@ -1382,6 +1384,8 @@ class GenomicJobController:
 
         for member in members:
             self.member_dao.update_member_blocklists(member)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
 
     @staticmethod
     def update_member_file_record(manifest_type):

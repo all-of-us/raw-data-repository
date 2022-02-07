@@ -12,7 +12,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
-from sqlalchemy.sql.expression import literal, distinct
+from sqlalchemy.sql.expression import literal, distinct, delete
 
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -51,11 +51,12 @@ from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
+from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 
 
 class GenomicDaoUtils:
 
-    def get_last_updated_records(self, from_date):
+    def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
 
         if not hasattr(self.model_type, 'created') or \
@@ -63,11 +64,15 @@ class GenomicDaoUtils:
             return []
 
         with self.session() as session:
-            return session.query(
-                self.model_type
-            ).filter(
+            if _ids:
+                records = session.query(self.model_type.id)
+            else:
+                records = session.query(self.model_type)
+
+            records = records.filter(
                 self.model_type.modified >= from_date
-            ).all()
+            )
+            return records.all()
 
 
 class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
@@ -1829,7 +1834,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        GenomicSetMember.participantId == GenomicInformingLoop.participant_id
+                        and_(
+                            GenomicSetMember.participantId == GenomicInformingLoop.participant_id,
+                            GenomicSetMember.genomeType == 'aou_array'
+                        )
                     ).outerjoin(
                         genomic_loop_alias,
                         and_(
@@ -1903,7 +1911,10 @@ class GenomicOutreachDaoV2(BaseDao):
                     )
                     .join(
                         GenomicSetMember,
-                        GenomicSetMember.participantId == GenomicMemberReportState.participant_id
+                        and_(
+                            GenomicSetMember.participantId == GenomicMemberReportState.participant_id,
+                            GenomicSetMember.genomeType == 'aou_array'
+                        )
                     ).outerjoin(
                         GenomicResultViewed,
                         GenomicResultViewed.participant_id == GenomicMemberReportState.participant_id
@@ -2908,6 +2919,20 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 event_metrics_alias.created_at.is_(None)
             ).all()
 
+    def delete_old_events(self, days=7):
+        """
+        Remove records older than arbitrary days
+        :param days: int
+        """
+        cutoff_date = clock.CLOCK.now() - timedelta(days=days)
+
+        with self.session() as session:
+            stmt = delete(UserEventMetrics).where(
+                (UserEventMetrics.created < cutoff_date) &
+                (UserEventMetrics.reconcile_job_run_id.isnot(None))
+            )
+            session.execute(stmt)
+
     def update_reconcile_job_pids(self, pid_list, job_run_id, module):
         id_list = [i[0] for i in list(self.get_all_event_ids_for_pid_list(pid_list, module))]
 
@@ -2917,6 +2942,8 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
         } for i in id_list]
         with self.session() as session:
             session.bulk_update_mappings(UserEventMetrics, update_mappings)
+        # Batch update PDR resource records.
+        genomic_user_event_metrics_batch_update(id_list)
 
     def get_all_event_ids_for_pid_list(self, pid_list, module=None):
         with self.session() as session:
