@@ -2508,7 +2508,7 @@ def run():
             process = get_process_for_run(args, gcp_env)
             exit_code = process.run()
         except Exception as e:
-            _logger.info('Error has occured, {}. For help use "genomic --help".').format(e.message)
+            _logger.info(f'Error has occured, {e}. For help use "genomic --help".')
             exit_code = 1
 
         return exit_code

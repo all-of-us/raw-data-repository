@@ -2421,7 +2421,7 @@ class GenomicBiobankSamplesCoupler:
                 f'Saliva Participant Workflow: No participants to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_c2_genomic_participants(self):
+    def create_c2_genomic_participants(self, local=False):
         """
         Creates Cohort 2 Participants in the genomic system.
         Validation is handled in the query.
@@ -2436,7 +2436,7 @@ class GenomicBiobankSamplesCoupler:
 
         if len(samples) > 0:
             samples_meta = self.GenomicSampleMeta(*samples)
-            return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_2_ID)
+            return self.process_samples_into_manifest(samples_meta, cohort=self.COHORT_2_ID, local=local)
 
         else:
             logging.info(f'Cohort 2 Participant Workflow: No participants to process.')
@@ -2735,14 +2735,13 @@ class GenomicBiobankSamplesCoupler:
 
         for sample in sample_results:
             preferred_sample = sample
-
             previously_found_sample = preferred_samples.get(sample.participant_id, None)
             if previously_found_sample is not None:
                 preferred_sample = self._determine_best_sample(previously_found_sample, sample)
 
             preferred_samples[sample.participant_id] = preferred_sample
 
-        return list(preferred_samples.values())
+        return [x for x in preferred_samples.values() if x is not None]
 
     @staticmethod
     def _determine_best_sample(sample_one, sample_two):
@@ -2791,9 +2790,9 @@ class GenomicBiobankSamplesCoupler:
         with self.samples_dao.session() as session:
             result = session.execute(_c2_participant_sql, params).fetchall()
 
-        result = self._prioritize_samples_by_participant(result)
+        result2 = self._prioritize_samples_by_participant(result)
 
-        return list(zip(*result))[:-2]
+        return list(zip(*result2))[:-2]
 
     def _get_remaining_c1_samples(self):
         """
