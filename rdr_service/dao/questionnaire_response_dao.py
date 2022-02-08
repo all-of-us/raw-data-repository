@@ -8,7 +8,7 @@ from dateutil import parser
 from hashlib import md5
 import pytz
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload, subqueryload
+from sqlalchemy.orm import joinedload, Session, subqueryload
 from typing import Dict
 from werkzeug.exceptions import BadRequest
 
@@ -67,6 +67,7 @@ from rdr_service.code_constants import (
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
@@ -77,6 +78,7 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
+from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
@@ -299,6 +301,9 @@ class QuestionnaireResponseDao(BaseDao):
                                                              cache_ttl_seconds=86400
                                                              )
 
+        # Need to record what types of consents are provided by the response when walking the answers
+        self.consents_provided = []
+
     @staticmethod
     def _load_thebasics_profile_update_codes():
         """
@@ -473,6 +478,11 @@ class QuestionnaireResponseDao(BaseDao):
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
                 )
 
+        self.create_consent_responses(
+            questionnaire_response=questionnaire_response,
+            session=session
+        )
+
         super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
         # Mark existing answers for the questions in this response given previously by this participant
         # as ended.
@@ -621,6 +631,7 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
+                            self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
@@ -636,6 +647,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
+                            self.consents_provided.append(ConsentType.CABOR)
                             if not participant_summary.consentForCABoR:
                                 participant_summary.consentForCABoR = True
                                 participant_summary.consentForCABoRTime = questionnaire_response.created
@@ -643,6 +655,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                     elif code.value == GROR_CONSENT_QUESTION_CODE:
                         if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
+                            self.consents_provided.append(ConsentType.GROR)
                             gror_consent = QuestionnaireStatus.SUBMITTED
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
@@ -668,6 +681,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
+                            self.consents_provided.append(ConsentType.PRIMARY_UPDATE)
                             participant_summary.consentForStudyEnrollmentAuthored = authored
                     elif code.value == CONSENT_COHORT_GROUP_CODE:
                         try:
@@ -731,6 +745,7 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                        self.consents_provided.append(ConsentType.PRIMARY)
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
@@ -865,6 +880,46 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_gender_race_dao.update_gender_answers_with_session(
                     session, participant.participantId, gender_code_ids
                 )
+
+    def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session):
+        """
+        Analyzes the current ConsentResponses for a participant, and the response that was just received
+        to determine if the new response is a new consent for the participant.
+        """
+        if len(self.consents_provided) == 0:
+            # If the new response doesn't give any consent at all, then there's no reason for a check
+            return
+
+        # Load previously received consent authored dates for the participant
+        previous_consent_dates = ConsentDao.get_consent_authored_times_for_participant(
+            session=session,
+            participant_id=questionnaire_response.participantId
+        )
+
+        # Check authored dates to see if it's a new consent response,
+        # or if it's potentially just a replay of a previous questionnaire response
+        for consent_type in self.consents_provided:
+            is_new_consent = True
+            previous_authored_times = previous_consent_dates.get(consent_type)
+            for previous_consent_authored_time in (previous_authored_times or []):
+                if self._authored_times_match(
+                    new_authored_time=questionnaire_response.authored,
+                    current_authored_item=previous_consent_authored_time
+                ):
+                    is_new_consent = False
+                    break
+
+            if is_new_consent:
+                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+
+    @classmethod
+    def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):
+        if new_authored_time.tzinfo is None:
+            new_authored_time = new_authored_time.replace(tzinfo=pytz.utc)
+        if current_authored_item.tzinfo is None:
+            current_authored_item = current_authored_item.replace(tzinfo=pytz.utc)
+        difference_in_seconds = abs((new_authored_time - current_authored_item).total_seconds())
+        return difference_in_seconds < 300  # Allowing 5 minutes of difference between authored dates
 
     def _is_digital_health_share_code(self, code_value):
         return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,

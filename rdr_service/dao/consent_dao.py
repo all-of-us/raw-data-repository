@@ -1,13 +1,15 @@
+from collections import defaultdict
 from datetime import datetime
-from typing import Collection
+from typing import Collection, Dict, List
 
 from sqlalchemy import and_, or_
-from sqlalchemy.orm import aliased, Session
+from sqlalchemy.orm import aliased, joinedload, Session
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.code import Code
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant
@@ -36,6 +38,49 @@ class ConsentDao(BaseDao):
                 ParticipantSummary.email.notlike('%@example.com')
             )
         )
+
+    @classmethod
+    def get_consent_responses_to_validate(cls, session) -> Dict[int, List[ConsentResponse]]:
+        """
+        Gets all the consent responses that need to be validated.
+        :return: Dictionary with keys being participant ids and values being collections of ConsentResponses
+        """
+        # A ConsentResponse hasn't been validated yet if there aren't any ConsentFiles that link to the response
+        consent_responses = session.query(ConsentResponse).outerjoin(
+            ConsentFile
+        ).filter(
+            ConsentFile.id.is_(None)
+        ).options(
+            joinedload(ConsentResponse.response)
+        ).all()
+
+        grouped_results = defaultdict(list)
+        for consent_response in consent_responses:
+            grouped_results[consent_response.response.participantId].append(consent_response)
+
+        return dict(grouped_results)
+
+    @classmethod
+    def get_consent_authored_times_for_participant(cls, session, participant_id) -> Dict[ConsentType, List[datetime]]:
+        """
+        Gets all the consent authored times for a participant.
+        :return: Dictionary with keys being consent type and values being lists of authored dates for that type
+        """
+        consent_responses = session.query(QuestionnaireResponse.authored, ConsentResponse.type).select_from(
+            ConsentResponse
+        ).join(
+            QuestionnaireResponse
+        ).filter(
+            QuestionnaireResponse.participantId == participant_id
+        )
+        consent_responses = consent_responses.all()
+
+        grouped_results = defaultdict(list)
+        for authored_time, consent_type in consent_responses:
+            grouped_results[consent_type].append(authored_time)
+
+        return dict(grouped_results)
+
 
     @classmethod
     def get_participants_with_unvalidated_files(cls, session) -> Collection[ParticipantSummary]:

@@ -17,6 +17,7 @@ from rdr_service.dao.participant_summary_dao import ParticipantGenderAnswersDao,
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseAnswerDao, QuestionnaireResponseDao
 from rdr_service.model.code import Code
+from rdr_service.model.consent_response import ConsentResponse, ConsentType
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension
 from rdr_service.model.participant_summary import ParticipantSummary, WithdrawalStatus
@@ -1363,6 +1364,50 @@ class QuestionnaireResponseApiTest(BaseTestCase, PDRGeneratorTestMixin):
             QuestionnaireResponse.questionnaireResponseId == response['id']
         ).one()
         self.assertEqual(resource['identifier']['value'], response_obj.externalId)
+
+    def test_new_primary_consent_response(self):
+        """Test that new consents for enrollment save a ConsentResponse"""
+        participant = self.data_generator.create_database_participant()
+        self.send_consent(participant.participantId, authored=datetime.datetime.now())
+
+        consent_response = self.session.query(ConsentResponse).one()
+        self.assertEqual(ConsentType.PRIMARY, consent_response.type)
+        self.assertEqual(participant.participantId, consent_response.response.participantId)
+
+    def test_primary_reconsent_response(self):
+        """Test that a re-signing of the consent for enrollment saves a ConsentResponse"""
+        consent_authored = datetime.datetime(2022, 1, 17, 13, 4)
+        previous_response = self.data_generator.create_database_questionnaire_response(
+            authored=consent_authored
+        )
+        self.session.add(ConsentResponse(response=previous_response, type=ConsentType.PRIMARY))
+        self.session.commit()
+
+        self.send_consent(
+            previous_response.participantId,
+            authored=consent_authored + datetime.timedelta(days=500)
+        )
+
+        consent_responses = self.session.query(ConsentResponse).all()
+        self.assertEqual(2, len(consent_responses))
+        self.assertEqual(consent_authored, consent_responses[0].response.authored)
+        self.assertEqual(consent_authored + datetime.timedelta(days=500), consent_responses[1].response.authored)
+
+    def test_primary_consent_replay(self):
+        """Test that another payload for the same consent for enrollment does not save a ConsentResponse"""
+        consent_authored = datetime.datetime(2022, 1, 17, 13, 4)
+        previous_response = self.data_generator.create_database_questionnaire_response(
+            authored=consent_authored
+        )
+        self.session.add(ConsentResponse(response=previous_response, type=ConsentType.PRIMARY))
+        self.session.commit()
+
+        self.send_consent(
+            previous_response.participantId,
+            authored=consent_authored + datetime.timedelta(seconds=20)
+        )
+
+        self.session.query(ConsentResponse).one()  # Raises an error if another object was created
 
     def test_receiving_long_identifier_fails_gracefully(self):
         """If the identifier is unexpectedly long, we should be able to skip it and still store the response"""
