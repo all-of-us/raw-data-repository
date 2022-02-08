@@ -1521,6 +1521,33 @@ CREATE TABLE cdm.pid_rid_mapping (
 );
 INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id, external_id FROM cdm.src_clean;
 
+
+-- ---------------------------------------------------------------------
+-- Insert into questionnaire_response_additional_info
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS cdm.questionnaire_response_additional_info;
+CREATE TABLE cdm.questionnaire_response_additional_info (
+    questionnaire_response_id       bigint,
+    type                            varchar(255),
+    value                           varchar(255)
+);
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, non_participant_author as value
+from rdr.questionnaire_response
+where non_participant_author is not null;
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+questionnaire_response_id, 'LANGUAGE' as type, language as value
+from rdr.questionnaire_response
+where language is not null;
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+qr.questionnaire_response_id, 'CODE' as type, c.value as value
+from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c
+where qr.questionnaire_id=qc.questionnaire_id
+and qc.code_id=c.code_id;
+
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
 -- -------------------------------------------------------------------
