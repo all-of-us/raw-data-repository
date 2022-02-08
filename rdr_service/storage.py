@@ -240,7 +240,7 @@ class GoogleCloudStorageFile(ContextDecorator):
     def __iter__(self):
         return self.iter_lines()
 
-    def iter_chunks(self, chunk_size=1024):
+    def iter_chunks(self, chunk_size=10000000):
         i = 0
         while True:
             try:

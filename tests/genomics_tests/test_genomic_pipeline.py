@@ -742,10 +742,16 @@ class GenomicPipelineTest(BaseTestCase):
         self._create_stored_samples([(1, 1001), (2, 1002), (3, 1003), (4, 1004)])
 
         with clock.FakeClock(test_date):
-            test_file_name_seq = create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifest_for_aw5.csv',
-                                                                  bucket_name, folder=subfolder)
-            test_file_name_gen = create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_for_aw5.csv',
-                                                                  bucket_name, folder=subfolder)
+            test_file_name_seq = create_ingestion_test_file(
+                'RDR_AoU_SEQ_TestDataManifest_for_aw5.csv',
+                bucket_name,
+                folder=subfolder
+            )
+            test_file_name_gen = create_ingestion_test_file(
+                'RDR_AoU_GEN_TestDataManifest_for_aw5.csv',
+                bucket_name,
+                folder=subfolder
+            )
 
         task_data_seq = {
             "job": GenomicJob.METRICS_INGESTION,
@@ -1433,6 +1439,16 @@ class GenomicPipelineTest(BaseTestCase):
         all_member_origins = [obj.participantOrigin for obj in new_genomic_members]
         self.assertEqual(len(set(all_member_origins)), len(participant_origins))
 
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
+
         # Test GenomicMember's data
         # 100001 : Excluded, created before last run,
         # 100005 : Excluded, no DNA sample
@@ -1613,6 +1629,16 @@ class GenomicPipelineTest(BaseTestCase):
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(8, len(new_genomic_members))
 
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
+
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
         for member in new_genomic_members:
@@ -1706,6 +1732,16 @@ class GenomicPipelineTest(BaseTestCase):
         # Should be a aou_wgs and aou_array for each pid
         new_genomic_members = self.member_dao.get_all()
         self.assertEqual(8, len(new_genomic_members))
+
+        new_manifest_created = self.manifest_file_dao.get_all()
+        self.assertIsNotNone(new_manifest_created)
+        self.assertEqual(len(new_manifest_created), 1)
+
+        new_manifest_created = new_manifest_created[0]
+        self.assertEqual(new_manifest_created.recordCount, len(new_genomic_members))
+        self.assertEqual(new_manifest_created.manifestTypeId, GenomicManifestTypes.AW0)
+
+        self.assertTrue(all(obj.aw0ManifestFileId == new_manifest_created.id for obj in new_genomic_members))
 
         # Test member data
         member_genome_types = {_member.biobankId: list() for _member in new_genomic_members}
@@ -4911,9 +4947,11 @@ class GenomicPipelineTest(BaseTestCase):
         aw2_bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
         aw2_subfolder = config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
 
-        create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_3.csv',
-                                         aw2_bucket_name,
-                                         folder=aw2_subfolder)
+        create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest_3.csv',
+            aw2_bucket_name,
+            folder=aw2_subfolder
+        )
 
         self._update_test_sample_ids()
 
@@ -5068,9 +5106,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Continue test for AW2F remainder
         # AW2 data
-        new_aw2 = create_ingestion_test_file('RDR_AoU_GEN_TestDataManifest_4.csv',
-                                                   aw2_bucket_name,
-                                                   folder=aw2_subfolder)
+        new_aw2 = create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest_4.csv',
+            aw2_bucket_name,
+            folder=aw2_subfolder
+        )
 
         # Ingest AW2 for samples 3 & 4
         # Set up file/JSON
@@ -5413,6 +5453,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Processing Status"], aw2_raw_records[index].processing_status)
                 self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
                 self.assertEqual(row["Pipeline ID"], aw2_raw_records[index].pipeline_id)
+                self.assertEqual(row["Genome Type"], aw2_raw_records[index].genome_type)
                 index += 1
 
         self.assertEqual(index, len(aw2_raw_records))
@@ -5474,6 +5515,7 @@ class GenomicPipelineTest(BaseTestCase):
                 self.assertEqual(row["Notes"], aw2_raw_records[index].notes)
                 self.assertEqual(row["Sample Source"], aw2_raw_records[index].sample_source)
                 self.assertEqual(row["Mapped Reads pct"], aw2_raw_records[index].mapped_reads_pct)
+                self.assertEqual(row["Genome Type"], aw2_raw_records[index].genome_type)
                 index += 1
 
         self.assertEqual(index, len(aw2_raw_records))
@@ -6397,6 +6439,7 @@ class GenomicPipelineTest(BaseTestCase):
         )
 
         # Run reconcile job
+
         genomic_pipeline.reconcile_informing_loop_responses()
 
         # Test data ingested correctly
@@ -6409,5 +6452,16 @@ class GenomicPipelineTest(BaseTestCase):
         updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
+
+        old_event = event_dao.get(1)
+
+        old_event.created = old_event.created - datetime.timedelta(days=8)
+        with event_dao.session() as session:
+            session.merge(old_event)
+
+        genomic_pipeline.delete_old_gp_user_events()
+
+        all_events = event_dao.get_all()
+        self.assertEqual(17, len(all_events))
 
 

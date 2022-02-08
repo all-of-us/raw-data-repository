@@ -12,6 +12,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from typing import Dict
 from werkzeug.exceptions import BadRequest
 
+from rdr_service import singletons
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
@@ -60,7 +61,9 @@ from rdr_service.code_constants import (
     APPLE_HEALTH_KIT_SHARING_MODULE,
     APPLE_HEALTH_KIT_STOP_SHARING_MODULE,
     FITBIT_SHARING_MODULE,
-    FITBIT_STOP_SHARING_MODULE
+    FITBIT_STOP_SHARING_MODULE,
+    THE_BASICS_PPI_MODULE,
+    BASICS_PROFILE_UPDATE_QUESTION_CODES
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
@@ -76,7 +79,7 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
-    QuestionnaireResponseExtension
+    QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
 from rdr_service.participant_enums import (
     QuestionnaireDefinitionStatus,
@@ -290,6 +293,26 @@ class ResponseValidator:
 class QuestionnaireResponseDao(BaseDao):
     def __init__(self):
         super(QuestionnaireResponseDao, self).__init__(QuestionnaireResponse)
+        # DA-2419:  For classifying TheBasics payloads as they are received.  Cache TTL set to 24 hours
+        self.thebasics_profile_update_codes = singletons.get(singletons.BASICS_PROFILE_UPDATE_CODES_CACHE_INDEX,
+                                                             lambda: self._load_thebasics_profile_update_codes(),
+                                                             cache_ttl_seconds=86400
+                                                             )
+
+    @staticmethod
+    def _load_thebasics_profile_update_codes():
+        """
+        Invoked when the singleton cache needs to load the list of TheBasics profile update codes
+        :return:  List of code id values for the profile update / secondary contact questions
+        """
+        results = []
+        code_dao = CodeDao()
+        for code_value in BASICS_PROFILE_UPDATE_QUESTION_CODES:
+            code = code_dao.get_code(PPI_SYSTEM, code_value)
+            if code:
+                results.append(code.codeId)
+
+        return results
 
     def get_id(self, obj):
         return obj.questionnaireResponseId
@@ -350,6 +373,22 @@ class QuestionnaireResponseDao(BaseDao):
                         logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
 
     @staticmethod
+    def _get_module_name(questionnaire_history: QuestionnaireHistory):
+        """ Use the questionnaire_history to determine the module name """
+        # Unittest/lower environments may not have expected questionnaire_history content, so allow for missing data
+        result = None
+        if isinstance(questionnaire_history, QuestionnaireHistory):
+            concepts = questionnaire_history.concepts
+            if concepts:
+                concept_code = concepts[0].codeId
+                code_obj = CodeDao().get(concept_code)
+                result = code_obj.value if code_obj else None
+        else:
+            logging.error(f'Unexpected questionnaire_history parameter type {type(questionnaire_history)}')
+
+        return result
+
+    @staticmethod
     def _imply_street_address_2_from_street_address_1(code_ids):
         code_dao = CodeDao()
         street_address_1_code = code_dao.get_code(PPI_SYSTEM, STREET_ADDRESS_QUESTION_CODE)
@@ -377,7 +416,9 @@ class QuestionnaireResponseDao(BaseDao):
         except (AttributeError, ValueError, TypeError, LookupError):
             logging.error('Code error encountered when validating the response', exc_info=True)
 
+        module = self._get_module_name(questionnaire_history)
         questionnaire_response.created = clock.CLOCK.now()
+        questionnaire_response.classificationType = QuestionnaireResponseClassificationType.COMPLETE  # Default
         if not questionnaire_response.authored:
             questionnaire_response.authored = questionnaire_response.created
 
@@ -403,13 +444,30 @@ class QuestionnaireResponseDao(BaseDao):
             session, questionnaire_response.participantId, code_ids
         )
 
+        # DA-2419: participant_summary update will not be triggered by a TheBasics response if it only contains
+        # profile update data (not a full survey). PTSC may eventually start marking TheBasics profile update
+        # payloads with in-progress FHIR status;  for now, must inspect the response content/code ids to determine
+        if (module == THE_BASICS_PPI_MODULE and
+                    (questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS or
+                     all(c in self.thebasics_profile_update_codes for c in code_ids))
+        ):
+            questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PROFILE_UPDATE
+        # in-progress status can also denote other partial/incomplete payloads, such as incomplete COPE survey responses
+        elif questionnaire_response.status == QuestionnaireResponseStatus.IN_PROGRESS:
+            questionnaire_response.classificationType = QuestionnaireResponseClassificationType.PARTIAL
+
         # IMPORTANT: update the participant summary first to grab an exclusive lock on the participant
         # row. If you instead do this after the insert of the questionnaire response, MySQL will get a
         # shared lock on the participant row due the foreign key, and potentially deadlock later trying
         # to get the exclusive lock if another thread is updating the participant. See DA-269.
         # (We need to lock both participant and participant summary because the summary row may not
         # exist yet.)
-        if questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED:
+        #
+        # TODO:  If we later classify ConsentPII payloads that contain updates to participant's own profile data
+        # (name, address, email, etc.) as PROFILE_UPDATE (vs. only classifying secondary contact profile updates via
+        # TheBasics), then this check must allow those ConsentPII responses trigger _update_participant_summary()
+        if (questionnaire_response.status == QuestionnaireResponseStatus.COMPLETED and
+               questionnaire_response.classificationType == QuestionnaireResponseClassificationType.COMPLETE):
             with self.session() as new_session:
                 self._update_participant_summary(
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
@@ -1163,8 +1221,7 @@ class QuestionnaireResponseAnswerDao(BaseDao):
         return obj.questionnaireResponseAnswerId
 
     def get_current_answers_for_concepts(self, session, participant_id, code_ids):
-        """Return any answers the participant has previously given to questions with the specified
-    code IDs."""
+        """ Return any answers the participant has previously given to questions with the specified code IDs."""
         if not code_ids:
             return []
         return (

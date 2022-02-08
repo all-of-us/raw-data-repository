@@ -14,9 +14,6 @@ import sqlalchemy
 from werkzeug.exceptions import NotFound
 
 from rdr_service import clock
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_gc_validation_metrics_update, \
-    bq_genomic_set_update, bq_genomic_file_processed_update, \
-    bq_genomic_manifest_file_update, bq_genomic_set_member_batch_update
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic.genomic_data import GenomicQueryClass
@@ -25,9 +22,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
-from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_gc_validation_metrics_update, \
-    genomic_set_update, genomic_file_processed_update, genomic_manifest_file_update, genomic_set_member_batch_update, \
-    genomic_user_event_metrics_batch_update
+from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
 from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
@@ -172,10 +167,6 @@ class GenomicFileIngester:
                     upload_date=file_data[1],
                     manifest_file_id=_manifest_file_id)
 
-                # For BQ/PDR
-                bq_genomic_file_processed_update(new_file_record.id, project_id=self.controller.bq_project_id)
-                genomic_file_processed_update(new_file_record.id)
-
                 self.file_queue.append(new_file_record)
 
     def _get_new_file_names_and_upload_dates_from_bucket(self):
@@ -233,10 +224,6 @@ class GenomicFileIngester:
                         GenomicSubProcessStatus.COMPLETED,
                         ingestion_result
                     )
-
-                    # For BQ/PDR
-                    bq_genomic_file_processed_update(file_ingested.id, self.controller.bq_project_id)
-                    genomic_file_processed_update(file_ingested.id)
 
                 except IndexError:
                     logging.info('No files left in file queue.')
@@ -545,10 +532,6 @@ class GenomicFileIngester:
                     # for this control sample, genome type, and gc site
                     member = self.create_new_member_from_aw1_control_sample(row_copy)
 
-                    # Update member for PDR
-                    bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                    genomic_set_member_update(member.id)
-
                 # Skip rest of iteration and go to next row
                 continue
 
@@ -609,9 +592,6 @@ class GenomicFileIngester:
             member_changed, member = self._process_aw1_attribute_data(row_copy, member)
             if member_changed:
                 self.member_dao.update(member)
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -755,13 +735,7 @@ class GenomicFileIngester:
         else:
             metric_id = None
 
-        upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
-
-        # Update GC Metrics for PDR
-        if upserted_obj:
-            bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
-            genomic_gc_validation_metrics_update(upserted_obj.id)
-
+        self.metrics_dao.upsert_gc_validation_metrics_from_dict(row, metric_id)
         self.update_member_for_aw2(member)
 
         # Update member in DB
@@ -773,8 +747,7 @@ class GenomicFileIngester:
             # Get the genomic_manifest_file
             manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
             if manifest_file is not None:
-                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
-                                                           _project_id=self.controller.bq_project_id)
+                self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
 
         return GenomicSubProcessResult.SUCCESS
 
@@ -788,9 +761,6 @@ class GenomicFileIngester:
 
         with self.manifest_dao.session() as s:
             s.merge(manifest_file)
-
-        bq_genomic_manifest_file_update(manifest_file.id, project_id=self.controller.bq_project_id)
-        genomic_manifest_file_update(manifest_file.id)
 
     def prep_aw2_row_attributes(self, row: dict, member: GenomicSetMember):
         """
@@ -906,9 +876,6 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
@@ -938,10 +905,6 @@ class GenomicFileIngester:
                 member.colorMetricsJobRunID = self.job_run_id
 
                 self.member_dao.update(member)
-
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
         except (RuntimeError, KeyError):
@@ -984,16 +947,9 @@ class GenomicFileIngester:
                         metrics.drcMeanCoverage = row_copy['drcmeancoverage']
                         metrics.drcFpConcordance = row_copy['drcfpconcordance']
 
-                    metrics_obj = self.metrics_dao.upsert(metrics)
-
-                    bq_genomic_gc_validation_metrics_update(metrics_obj.id, project_id=self.controller.bq_project_id)
-                    genomic_gc_validation_metrics_update(metrics_obj.id)
+                    self.metrics_dao.upsert(metrics)
 
                 self.member_dao.update(member)
-
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1249,21 +1205,14 @@ class GenomicFileIngester:
                             # Insert a new member
                             self.insert_member_for_replating(member, row_copy['contamination_category'])
 
-                upserted_obj = self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
-
-                # Update GC Metrics for PDR
-                if upserted_obj:
-                    bq_genomic_gc_validation_metrics_update(upserted_obj.id, project_id=self.controller.bq_project_id)
-                    genomic_gc_validation_metrics_update(upserted_obj.id)
-
+                self.metrics_dao.upsert_gc_validation_metrics_from_dict(row_copy, metric_id)
                 self.update_member_for_aw2(member)
 
                 # For feedback manifest loop
                 # Get the genomic_manifest_file
                 manifest_file = self.file_processed_dao.get(member.aw1FileProcessedId)
                 if manifest_file is not None and existing_metrics_obj is None:
-                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId,
-                                                               _project_id=self.controller.bq_project_id)
+                    self.feedback_dao.increment_feedback_count(manifest_file.genomicManifestFileId)
             else:
                 bid = row_copy['biobankid']
                 if bid[0] in [get_biobank_id_prefix(), 'T']:
@@ -1389,10 +1338,6 @@ class GenomicFileIngester:
 
                 self.member_dao.update(member)
 
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
-
             return GenomicSubProcessResult.SUCCESS
 
         except (RuntimeError, KeyError):
@@ -1422,13 +1367,7 @@ class GenomicFileIngester:
                                     f'{member.id}, skipping...')
                     continue
 
-                updated_obj = self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy,
-                                                                                                    metric_id)
-
-                # Update GC Metrics for PDR
-                if updated_obj:
-                    bq_genomic_gc_validation_metrics_update(updated_obj.id, project_id=self.controller.bq_project_id)
-                    genomic_gc_validation_metrics_update(updated_obj.id)
+                self.metrics_dao.update_gc_validation_metrics_deleted_flags_from_dict(row_copy, metric_id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1476,10 +1415,6 @@ class GenomicFileIngester:
                     member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
                 self.member_dao.update(member)
-
-                # Update member for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.controller.bq_project_id)
-                genomic_set_member_update(member.id)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1649,6 +1584,7 @@ class GenomicFileValidator:
                 "arrayconcordance",
                 "processingstatus",
                 "notes",
+                "genometype"
             ),
             GENOME_TYPE_ARRAY: (
                 "biobankid",
@@ -1663,6 +1599,7 @@ class GenomicFileValidator:
                 "processingstatus",
                 "notes",
                 "pipelineid",
+                "genometype"
             ),
         }
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
@@ -2275,14 +2212,8 @@ class GenomicReconciler:
 
     def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
         # Only upsert the metric if changed
-        inserted_metrics_obj = self.metrics_dao.upsert(_obj)
+        self.metrics_dao.upsert(_obj)
         logging.info(f'id {_obj.id} updated with attributes')
-
-        # Update GC Metrics for PDR
-        if inserted_metrics_obj:
-            bq_genomic_gc_validation_metrics_update(inserted_metrics_obj.id,
-                                                    project_id=self.controller.bq_project_id)
-            genomic_gc_validation_metrics_update(inserted_metrics_obj.id)
 
         member = self.member_dao.get(_obj.genomicSetMemberId)
         next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal=self.ready_signal)
@@ -2305,7 +2236,7 @@ class GenomicReconciler:
 
         # Update Member
         if next_state is not None and next_state != member.genomicWorkflowState:
-            self.member_dao.update_member_state(member, next_state, project_id=self.controller.bq_project_id)
+            self.member_dao.update_member_state(member, next_state)
 
     def process_missing_data(self, metric, missing_data_files):
         file = self.file_dao.get(metric.genomicFileProcessedId)
@@ -2592,8 +2523,6 @@ class GenomicBiobankSamplesCoupler:
                     self.genomic_members_insert(
                         members=processed_members,
                         session=session,
-                        set_id=new_genomic_set.id,
-                        bids=[pm.biobankId for pm in processed_members]
                     )
                     processed_members.clear()
 
@@ -2601,8 +2530,6 @@ class GenomicBiobankSamplesCoupler:
                 self.genomic_members_insert(
                     members=processed_members,
                     session=session,
-                    set_id=new_genomic_set.id,
-                    bids=[pm.biobankId for pm in processed_members]
                 )
 
         return new_genomic_set.id
@@ -2687,9 +2614,7 @@ class GenomicBiobankSamplesCoupler:
                 if count % 1000 == 0:
                     self.genomic_members_insert(
                         members=processed_array_wgs,
-                        session=session,
-                        set_id=new_genomic_set.id,
-                        bids=bids
+                        session=session
                     )
                     processed_array_wgs.clear()
                     bids.clear()
@@ -2697,9 +2622,7 @@ class GenomicBiobankSamplesCoupler:
             if count and processed_array_wgs:
                 self.genomic_members_insert(
                     members=processed_array_wgs,
-                    session=session,
-                    set_id=new_genomic_set.id,
-                    bids=bids
+                    session=session
                 )
 
         # Create & transfer the Biobank Manifest based on the new genomic set
@@ -2767,23 +2690,17 @@ class GenomicBiobankSamplesCoupler:
             local=local
         )
 
-    def genomic_members_insert(self, *, members, session, set_id, bids):
+    @staticmethod
+    def genomic_members_insert(*, members, session):
         """
-        Bulk save of member for genomic_set_member as well as PDR
+        Bulk save of member for genomic_set_member
         batch updating of members
         :param: members
         :param: session
-        :param: set_id
-        :param: bids
         """
-
         try:
             session.bulk_save_objects(members)
             session.commit()
-            members = self.member_dao.get_members_from_set_id(set_id, bids=bids)
-            member_ids = [m.id for m in members]
-            bq_genomic_set_member_batch_update(member_ids, project_id=self.controller.bq_project_id)
-            genomic_set_member_batch_update(member_ids)
         except Exception as e:
             raise Exception("Error occurred on genomic member insert: {0}".format(e))
 
@@ -3015,10 +2932,6 @@ class GenomicBiobankSamplesCoupler:
         }
         new_set_obj = GenomicSet(**attributes)
         inserted_set = self.set_dao.insert(new_set_obj)
-
-        # Insert new set for PDR
-        bq_genomic_set_update(inserted_set.id, project_id=self.controller.bq_project_id)
-        genomic_set_update(inserted_set.id)
 
         return inserted_set
 

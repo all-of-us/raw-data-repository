@@ -20,7 +20,7 @@ from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetr
 from rdr_service.offline import genomic_pipeline
 from rdr_service.resource.generators.genomics import genomic_set_batch_update, genomic_set_member_batch_update, \
     genomic_job_run_batch_update, genomic_file_processed_batch_update, genomic_gc_validation_metrics_batch_update, \
-    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update
+    genomic_manifest_file_batch_update, genomic_manifest_feedback_batch_update, genomic_user_event_metrics_batch_update
 from rdr_service.services.system_utils import JSONObject
 
 
@@ -465,39 +465,47 @@ class RebuildGenomicTableRecordsApi(BaseGenomicTaskApi):
     def post(self):
         super(RebuildGenomicTableRecordsApi, self).post()
 
-        table = self.data['table']
-        batch = self.data['ids']
+        table = self.data.get('table')
+        batch = self.data.get('ids')
+
+        if not table or not batch:
+            logging.warning('Table and batch are both required in rebuild genomics payload')
+            return {"success": False}
 
         logging.info(f'Rebuilding {len(batch)} records for table {table}.')
 
-        if table == 'genomic_set':
-            bq_genomic_set_batch_update(batch)
-            genomic_set_batch_update(batch)
-        elif table == 'genomic_set_member':
-            bq_genomic_set_member_batch_update(batch)
-            genomic_set_member_batch_update(batch)
-        elif table == 'genomic_job_run':
-            bq_genomic_job_run_batch_update(batch)
-            genomic_job_run_batch_update(batch)
-        elif table == 'genomic_file_processed':
-            bq_genomic_file_processed_batch_update(batch)
-            genomic_file_processed_batch_update(batch)
-        elif table == 'genomic_gc_validation_metrics':
-            bq_genomic_gc_validation_metrics_batch_update(batch)
-            genomic_gc_validation_metrics_batch_update(batch)
-        elif table == 'genomic_manifest_file':
-            bq_genomic_manifest_file_batch_update(batch)
-            genomic_manifest_file_batch_update(batch)
-        elif table == 'genomic_manifest_feedback':
-            bq_genomic_manifest_feedback_batch_update(batch)
-            genomic_manifest_feedback_batch_update(batch)
+        rebuild_map = {
+            'genomic_set': [bq_genomic_set_batch_update, genomic_set_batch_update],
+            'genomic_set_member': [bq_genomic_set_member_batch_update, genomic_set_member_batch_update],
+            'genomic_job_run': [bq_genomic_job_run_batch_update, genomic_job_run_batch_update],
+            'genomic_file_processed': [bq_genomic_file_processed_batch_update, genomic_file_processed_batch_update],
+            'genomic_gc_validation_metrics': [
+                bq_genomic_gc_validation_metrics_batch_update,
+                genomic_gc_validation_metrics_batch_update
+            ],
+            'genomic_manifest_file': [bq_genomic_manifest_file_batch_update, genomic_manifest_file_batch_update],
+            'genomic_manifest_feedback': [
+                bq_genomic_manifest_feedback_batch_update,
+                genomic_manifest_feedback_batch_update
+            ],
+            'user_event_metrics': [genomic_user_event_metrics_batch_update]
+        }
 
-        logging.info('Rebuild complete.')
+        try:
+            for method in rebuild_map[table]:
+                method(batch)
 
-        self.create_cloud_record()
+            logging.info('Rebuild complete.')
 
-        logging.info('Complete.')
-        return {"success": True}
+            self.create_cloud_record()
+            logging.info('Complete.')
+
+            return {"success": True}
+
+        except KeyError:
+            logging.warning(f'Table {table} is invalid for genomic rebuild task')
+
+            return {"success": False}
 
 
 class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
@@ -510,7 +518,6 @@ class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
         field = self.data.get('field')
         value = self.data.get('value')
         is_job_run = self.data.get('is_job_run')
-        project_id = self.data.get('project_id')
 
         if not member_ids:
             logging.warning('List of member ids are required.')
@@ -524,8 +531,7 @@ class GenomicSetMemberUpdateApi(BaseGenomicTaskApi):
             member_ids,
             field,
             value,
-            is_job_run,
-            project_id
+            is_job_run
         )
 
         logging.info('Complete.')

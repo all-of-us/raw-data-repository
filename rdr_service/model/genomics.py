@@ -200,6 +200,10 @@ class GenomicSetMember(Base):
                                Integer, ForeignKey("genomic_manifest_file.id"),
                                nullable=True)
 
+    aw0ManifestFileId = Column('aw0_manifest_file_id',
+                               Integer, ForeignKey("genomic_manifest_file.id"),
+                               nullable=True)
+
     gemMetricsAncestryLoopResponse = Column('gem_metrics_ancestry_loop_response',
                                             String(10), nullable=True)
 
@@ -258,7 +262,8 @@ class GenomicJobRun(Base):
               primary_key=True,
               autoincrement=True,
               nullable=False)
-
+    created = Column("created", UTCDateTime, nullable=True)
+    modified = Column("modified", UTCDateTime, nullable=True)
     jobId = Column('job_id', Enum(GenomicJob),
                    default=GenomicJob.UNSET, nullable=False)
     jobIdStr = Column('job_id_str', String(64), default="UNSET")
@@ -274,6 +279,10 @@ class GenomicJobRun(Base):
     resultMessage = Column('result_message', String(150), nullable=True)
 
 
+event.listen(GenomicJobRun, 'before_insert', model_insert_listener)
+event.listen(GenomicJobRun, 'before_update', model_update_listener)
+
+
 class GenomicFileProcessed(Base):
     """Genomic File Processed model.
     This model represents the file(s) processed during a genomics run."""
@@ -282,7 +291,8 @@ class GenomicFileProcessed(Base):
     # Primary Key
     id = Column('id', Integer,
                 primary_key=True, autoincrement=True, nullable=False)
-
+    created = Column("created", UTCDateTime, nullable=True)
+    modified = Column("modified", UTCDateTime, nullable=True)
     runId = Column('run_id', Integer,
                    ForeignKey('genomic_job_run.id'), nullable=False)
     startTime = Column('start_time', DateTime, nullable=False)
@@ -303,6 +313,10 @@ class GenomicFileProcessed(Base):
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
+
+
+event.listen(GenomicFileProcessed, 'before_insert', model_insert_listener)
+event.listen(GenomicFileProcessed, 'before_update', model_update_listener)
 
 
 class GenomicManifestFile(Base):

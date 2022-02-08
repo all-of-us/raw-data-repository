@@ -4,7 +4,7 @@ import mock
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from rdr_service import config
+from rdr_service import config, singletons
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.code_constants import (
@@ -20,7 +20,8 @@ from rdr_service.code_constants import (
     PMI_SKIP_CODE,
     PPI_SYSTEM,
     PRIMARY_CONSENT_UPDATE_QUESTION_CODE,
-    THE_BASICS_PPI_MODULE, COPE_VACCINE_MINUTE_4_MODULE_CODE
+    THE_BASICS_PPI_MODULE, COPE_VACCINE_MINUTE_4_MODULE_CODE,
+    BASICS_PROFILE_UPDATE_QUESTION_CODES
 )
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.concepts import Concept
@@ -201,6 +202,16 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         self.vaccine_4_survey_module_code = self.data_generator.create_database_code(
             value=COPE_VACCINE_MINUTE_4_MODULE_CODE
         )
+
+    def setup_basics_profile_update_codes_list(self):
+        self.basics_profile_update_codes = list()
+        for code_value in BASICS_PROFILE_UPDATE_QUESTION_CODES:
+            code = self.data_generator.create_database_code(
+                value=code_value,
+                codeType=3
+            )
+            self.basics_profile_update_codes.append(code.codeId)
+
 
     def check_response(self, expected_qr):
         qr = self.questionnaire_response_dao.get_with_children(expected_qr.questionnaireResponseId)
@@ -626,6 +637,29 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             wasEhrDataAvailable=False
         )
         self.assertEqual(expected_ps.asdict(), self.participant_summary_dao.get(1).asdict())
+
+    def test_loading_basics_profile_update_codes(self):
+        """ Verify QuestionnaireResponseDao() object initialized with a list of TheBasics profile update loads """
+        # Adds the profile update codes to the unittest db Code table and saves a list of the codeIds to the test object
+        # Force reload of cached code data after test setup / code creation
+        self.setup_basics_profile_update_codes_list()
+        singletons.invalidate(singletons.CODE_CACHE_INDEX)
+        singletons.invalidate(singletons.BASICS_PROFILE_UPDATE_CODES_CACHE_INDEX)
+        qr_dao = QuestionnaireResponseDao()
+        # assertCountEqual compares iterables for item equivalence, not just count/length
+        self.assertCountEqual(self.basics_profile_update_codes, qr_dao.thebasics_profile_update_codes)
+
+    @mock.patch.object(QuestionnaireResponseDao, '_load_thebasics_profile_update_codes')
+    def test_caching_basics_profile_update_codes(self, load_mock):
+        """ Confirm subsequent QuestionnaireResponseDao() instantiations retrieve profile update codes from cache """
+        load_mock.return_value = [1, 2, 3]
+        qr_dao_1 = QuestionnaireResponseDao()
+        qr_dao_2 = QuestionnaireResponseDao()
+        # Verify the cache miss lambda load function executed once (for the first DAO object instantiation), but both
+        # DAO objects have the expected code list values (second instantiation retrieved its list from app cache)
+        self.assertEqual(load_mock.call_count, 1)
+        self.assertCountEqual(qr_dao_1.thebasics_profile_update_codes, load_mock.return_value)
+        self.assertCountEqual(qr_dao_2.thebasics_profile_update_codes, load_mock.return_value)
 
     def assertResponseDictEquals(self, expected_response: dict, actual_response: dict):
         expected_resource_json = json.loads(expected_response['resource'])

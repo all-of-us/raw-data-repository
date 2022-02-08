@@ -613,7 +613,7 @@ def genomic_missing_files_clean_up():
 @run_genomic_cron_job('missing_files_resolve_workflow')
 def genomic_missing_files_resolve():
     genomic_pipeline.genomic_missing_files_resolve()
-    return '{"success": "true"}'\
+    return '{"success": "true"}'
 
 
 @app_util.auth_required_cron
@@ -648,7 +648,7 @@ def genomic_members_state_resolved():
 @run_genomic_cron_job('members_update_blocklists')
 def genomic_members_update_blocklists():
     genomic_pipeline.update_members_blocklists()
-    return '{"success": "true"}'\
+    return '{"success": "true"}'
 
 
 
@@ -665,6 +665,18 @@ def genomic_retry_manifest_ingestion_failures():
     # genomic_pipeline
     pass
 
+@app_util.auth_required_cron
+@run_genomic_cron_job('reconcile_pdr_data')
+def genomic_reconcile_pdr_data():
+    genomic_pipeline.reconcile_pdr_data()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('genomic_delete_old_gp_user_events')
+def genomic_delete_old_gp_user_events():
+    genomic_pipeline.delete_old_gp_user_events(days=7)
+    return '{"success": "true"}'
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
@@ -1005,6 +1017,16 @@ def _build_pipeline_app():
         endpoint="retry_manifest_ingestion_failures",
         view_func=genomic_retry_manifest_ingestion_failures,
         methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDataPdrReconcile",
+        endpoint="genomic_data_pdr_reconcile",
+        view_func=genomic_reconcile_pdr_data, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicDeleteOldGPUserEvents",
+        endpoint="genomic_delete_old_gp_user_events",
+        view_func=genomic_delete_old_gp_user_events, methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 

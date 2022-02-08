@@ -302,6 +302,11 @@ def reconcile_informing_loop_responses():
         controller.reconcile_informing_loop_responses()
 
 
+def delete_old_gp_user_events(days=7):
+    with GenomicJobController(GenomicJob.DELETE_OLD_GP_USER_EVENT_METRICS) as controller:
+        controller.delete_old_gp_user_event_metrics(days=days)
+
+
 def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()
@@ -315,6 +320,11 @@ def reconcile_raw_to_aw1_ingested():
 def reconcile_raw_to_aw2_ingested():
     with GenomicJobController(GenomicJob.RECONCILE_RAW_AW2_INGESTED) as controller:
         controller.reconcile_raw_to_aw2_ingested()
+
+
+def reconcile_pdr_data():
+    with GenomicJobController(GenomicJob.RECONCILE_PDR_DATA) as controller:
+        controller.reconcile_pdr_data()
 
 
 def create_aw2f_manifest(feedback_record):
@@ -411,8 +421,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.manifest_file_dao.update_record_count(
                 _task_data.manifest_file,
-                rec_count,
-                project_id=project_id
+                rec_count
             )
 
 

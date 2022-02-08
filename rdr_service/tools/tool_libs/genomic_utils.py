@@ -20,8 +20,6 @@ from rdr_service import clock, config
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.code_constants import GENOME_TYPE, GC_SITE_IDs, AW1_BUCKETS, AW2_BUCKETS
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
-from rdr_service.dao.bq_genomics_dao import bq_genomic_set_member_update, bq_genomic_set_update, \
-    bq_genomic_job_run_update, bq_genomic_gc_validation_metrics_update, bq_genomic_file_processed_update
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicSetDao, GenomicJobRunDao, \
     GenomicGCValidationMetricsDao, GenomicFileProcessedDao, GenomicManifestFileDao, \
     GenomicAW1RawDao, GenomicAW2RawDao, GenomicManifestFeedbackDao, GemToGpMigrationDao, GenomicInformingLoopDao
@@ -33,8 +31,6 @@ from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.genomics import GenomicSetMember, GenomicSet, GenomicGCValidationMetrics, GenomicFileProcessed, \
     GenomicManifestFeedback
 from rdr_service.offline import genomic_pipeline
-from rdr_service.resource.generators.genomics import genomic_set_member_update, genomic_set_update, \
-    genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.storage import GoogleCloudStorageProvider, LocalFilesystemStorageProvider
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -464,10 +460,6 @@ class ControlSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
-                    # Update state for PDR
-                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
-                    genomic_set_update(inserted_set.id)
-
                     for _sample_id in lines:
                         _logger.warning(f'Inserting {_sample_id}')
 
@@ -479,11 +471,8 @@ class ControlSampleClass(GenomicManifestBase):
                             participantId=0,
                         )
 
-                        inserted_member = session.merge(member_to_insert)
+                        session.merge(member_to_insert)
                         session.commit()
-
-                        bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
-                        genomic_set_member_update(inserted_member.id)
 
             else:
                 for _sample_id in lines:
@@ -529,10 +518,6 @@ class ManualSampleClass(GenomicManifestBase):
                     inserted_set = session.merge(new_genomic_set)
                     session.flush()
 
-                    # Update state for PDR
-                    bq_genomic_set_update(inserted_set.id, project_id=self.gcp_env.project)
-                    genomic_set_update(inserted_set.id)
-
                     for line in csvreader:
                         _pid = line[0]
                         _bid = line[1]
@@ -558,11 +543,8 @@ class ManualSampleClass(GenomicManifestBase):
                                 gcSiteId=_siteId,
                             )
 
-                            inserted_member = session.merge(member_to_insert)
+                            session.merge(member_to_insert)
                             session.flush()
-
-                            bq_genomic_set_member_update(inserted_member.id, project_id=self.gcp_env.project)
-                            genomic_set_member_update(inserted_member.id)
 
                     session.commit()
 
@@ -622,10 +604,6 @@ class JobRunResult(GenomicManifestBase):
             job_run.runResult = new_result
 
             self.dao.update(job_run)
-
-            # Update run for PDR
-            bq_genomic_job_run_update(job_run.id, project_id=self.gcp_env.project)
-            genomic_job_run_update(job_run.id)
 
         return 0
 
@@ -709,10 +687,6 @@ class UpdateGenomicMembersState(GenomicManifestBase):
             _logger.warning(f"    {member.genomicWorkflowState} -> {state}")
 
             self.counter += 1
-
-        # Update state for PDR
-        bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
-        genomic_set_member_update(member.id)
 
 
 class ChangeCollectionTube(GenomicManifestBase):
@@ -881,10 +855,6 @@ class ChangeCollectionTube(GenomicManifestBase):
                 member.collectionTubeId = new_tube_id
                 session.merge(member)
 
-                # Update new_tube_id for PDR
-                bq_genomic_set_member_update(member.id, project_id=self.gcp_env.project)
-                genomic_set_member_update(member.id)
-
             self.counter += 1
 
 
@@ -969,10 +939,6 @@ class UpdateGcMetricsClass(GenomicManifestBase):
         # Only update the metric if this is not a dryrun
         if not self.args.dryrun:
             self.dao.update(metric)
-
-            # Update for BQ/Resource
-            bq_genomic_gc_validation_metrics_update(metric.id, project_id=self.gcp_env.project)
-            genomic_gc_validation_metrics_update(metric.id)
 
         _logger.warning(f'{self.msg} gc_metric ID {metric.id}')
 
@@ -1358,10 +1324,6 @@ class FileUploadDateClass(GenomicManifestBase):
                     # Set upload_date
                     file.uploadDate = _blob.updated
                     self.dao.update(file)
-
-                    # For BQ/PDR
-                    bq_genomic_file_processed_update(file.id, project_id=self.gcp_env.project)
-                    genomic_file_processed_update(file.id)
 
                     counter += 1
 

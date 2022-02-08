@@ -8,8 +8,9 @@ from marshmallow import validate
 
 from rdr_service.participant_enums import QuestionnaireStatus, ParticipantCohort, Race, GenderIdentity, \
     PhysicalMeasurementsStatus, OrderStatus, EnrollmentStatusV2, EhrStatus, WithdrawalStatus, WithdrawalReason, \
-    SuspensionStatus, QuestionnaireResponseStatus, DeceasedStatus, ParticipantCohortPilotFlag, \
-    WithdrawalAIANCeremonyStatus, BiobankOrderStatus, SampleCollectionMethod
+    SuspensionStatus, QuestionnaireResponseStatus, QuestionnaireResponseClassificationType, \
+    DeceasedStatus, ParticipantCohortPilotFlag, WithdrawalAIANCeremonyStatus, BiobankOrderStatus, \
+    SampleCollectionMethod
 from rdr_service.resource import Schema, fields
 from rdr_service.resource.constants import SchemaID
 
@@ -74,6 +75,8 @@ class ModuleStatusSchema(Schema):
     non_participant_answer = fields.String(validate=validate.Length(max=60))
     semantic_version = fields.String(validate=validate.Length(max=100))
     irb_mapping = fields.String(validate=validate.Length(max=500))
+    classification_type = fields.EnumString(enum=QuestionnaireResponseClassificationType)
+    classification_type_id = fields.EnumInteger(enum=QuestionnaireResponseClassificationType)
 
     class Meta:
         schema_id = SchemaID.participant_modules
@@ -410,17 +413,18 @@ class ParticipantSchema(Schema):
     latest_ehr_receipt_time = fields.DateTime()
     ehr_receipts = fields.Nested(EhrReceiptSchema, many=True)
 
-    ubr_sex = fields.Boolean()
-    ubr_sexual_orientation = fields.Boolean()
-    ubr_gender_identity = fields.Boolean()
-    ubr_ethnicity = fields.Boolean()
-    ubr_geography = fields.Boolean()
-    ubr_education = fields.Boolean()
-    ubr_income = fields.Boolean()
-    ubr_sexual_gender_minority = fields.Boolean()
-    ubr_age_at_consent = fields.Boolean()
-    ubr_disability = fields.Boolean()
-    ubr_overall = fields.Boolean()
+    # Previously defined Boolean fields converted to UInt8 to support 0/1/2 values
+    ubr_sex = fields.UInt8()
+    ubr_sexual_orientation = fields.UInt8()
+    ubr_gender_identity = fields.UInt8()
+    ubr_ethnicity = fields.UInt8()
+    ubr_geography = fields.UInt8()
+    ubr_education = fields.UInt8()
+    ubr_income = fields.UInt8()
+    ubr_sexual_gender_minority = fields.UInt8()
+    ubr_age_at_consent = fields.UInt8()
+    ubr_disability = fields.UInt8()
+    ubr_overall = fields.UInt8()
 
     class Meta:
         schema_id = SchemaID.participant

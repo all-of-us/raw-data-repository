@@ -180,7 +180,13 @@ def import_participant(
     answer_map[EMAIL_QUESTION_CODE] = _string_answer(email)
     answer_map[ZIPCODE_QUESTION_CODE] = _string_answer(row["zip_code"])
     answer_map[DATE_OF_BIRTH_QUESTION_CODE] = _date_answer(row["date_of_birth"])
-    answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row["gender_identity"])
+    # DA-2419: Allow for data files that mimic secondary contact Basics payloads (do not have a gender_identity value)
+    gender_identity = row.get("gender_identity")
+    if gender_identity:
+        answer_map[GENDER_IDENTITY_QUESTION_CODE] = _code_answer(row["gender_identity"])
+    secondary_contact_email = row.get("secondary_contact_email")
+    if secondary_contact_email:
+        answer_map['SecondaryContactInfo_PersonOneEmail'] = _string_answer(secondary_contact_email)
     participant_response = client.request_json("Participant", "POST", participant_resource)
     participant_id = participant_response["participantId"]
     if not reader:
