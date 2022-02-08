@@ -1,4 +1,4 @@
-last_name,first_name,email,zip_code,date_of_birth,gender_identity
+last_name,first_name,email,zip_code,date_of_birth,gender_identity,secondary_contact_email
 UofACATS,Participant 1,participant1@example.com,20001,1980-11-01,GenderIdentity_Woman
 BannerSCampus,Participant 2,participant2@example.com,20001,1980-11-01,GenderIdentity_Woman
 GeisingerHS,Participant 3,participant3@example.com,20001,1980-11-01,GenderIdentity_Woman
@@ -11,3 +11,4 @@ WaverlyFP,Participant 9,participant9@example.com,20001,1980-11-01,GenderIdentity
 Knoxville,Participant 10,participant10@example.com,20001,1980-11-01,GenderIdentity_Woman
 Doe,John,johndoe@example.com,,1980-11-01,PMI_Skip
 Doe,Jane,janedoe@example.com,20001,1980-11-01,GenderIdentity_Man
+Doe,Jack,jackdoe@example.com,,1999-01-01,,jilldoe@example.com

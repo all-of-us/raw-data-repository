@@ -1,18 +1,15 @@
-import logging
-
-import dateutil
+from dateutil.parser import parse
 from flask import request
 from werkzeug.exceptions import BadRequest, Conflict, MethodNotAllowed
 
 from rdr_service.api.base_api import UpdatableApi
-from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL
+from rdr_service.api_util import PTC, PTC_AND_HEALTHPRO, DV_FHIR_URL, DV_ORDER_URL
 from rdr_service.app_util import ObjDict, auth_required, get_oauth_id, get_account_origin_id
 from rdr_service.dao.mail_kit_order_dao import MailKitOrderDao
-from rdr_service.dao.participant_dao import raise_if_withdrawn
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.fhir_utils import SimpleFhirR4Reader
 from rdr_service.model.utils import from_client_participant_id
 from rdr_service.participant_enums import OrderShipmentTrackingStatus
+from rdr_service.services.biobank_order import BiobankOrderService
 
 
 class MailKitOrderApi(UpdatableApi):
@@ -84,7 +81,7 @@ class MailKitOrderApi(UpdatableApi):
             patient_id_obj = patient.identifier
             participant_id_int = from_client_participant_id(patient_id_obj.value)
             bo_id = fhir.basedOn[0].identifier.value
-            _id = self.dao.get_id(
+            portal_order_id = self.dao.get_id(
                 ObjDict({"participantId": participant_id_int, "order_id": int(bo_id)})
             )
             tracking_status = fhir.extension.get(
@@ -95,11 +92,11 @@ class MailKitOrderApi(UpdatableApi):
         except Exception as e:
             raise BadRequest(e)
 
-        if not _id:
+        if not portal_order_id:
             raise Conflict(
                 "Existing SupplyRequest for order required for SupplyDelivery"
             )
-        dvo = self.dao.get(_id)
+        dvo = self.dao.get(portal_order_id)
         if not dvo:
             raise Conflict(
                 "Existing SupplyRequest for order required for SupplyDelivery"
@@ -112,20 +109,13 @@ class MailKitOrderApi(UpdatableApi):
             and self._to_mayo(fhir)
             and not dvo.biobankOrderId
         ):
-            with self.dao.session() as session:
-                summary_dao = ParticipantSummaryDao()
-                summary = summary_dao.get_for_update(session, participant_id_int)
-                if summary is not None:  # Later code handles the error if it's missing
-                    raise_if_withdrawn(summary)
-
-                # Send to mayolink and create internal biobank order
-                response = self.dao.send_order(resource, participant_id_int)
-                merged_resource = merge_dicts(response, resource)
-                merged_resource["id"] = _id
-                merged_resource["orderOrigin"] = get_account_origin_id()
-                logging.info(f"Sending salivary order to biobank for participant: {participant_id_int}")
-                self.dao.insert_biobank_order(participant_id_int, merged_resource, session=session)
-                self.dao.insert_mayolink_create_order_history(participant_id_int, merged_resource, resource, response)
+            BiobankOrderService.post_mailkit_order_delivery(
+                mailkit_order=dvo,
+                collected_time_utc=parse(fhir.occurrenceDateTime),
+                order_origin_client_id=get_account_origin_id(),
+                report_notes=fhir.extension.get(url=DV_ORDER_URL).valueString,
+                request_json=resource
+            )
 
         response = super(MailKitOrderApi, self)\
             .put(
@@ -217,14 +207,14 @@ class MailKitOrderApi(UpdatableApi):
             fhir = SimpleFhirR4Reader(resource)
             participant_id = fhir.patient.identifier.value
             p_id = from_client_participant_id(participant_id)
-            update_time = dateutil.parser.parse(fhir.occurrenceDateTime)
+            update_time = parse(fhir.occurrenceDateTime)
             carrier_name = fhir.extension.get(
                 url=DV_FHIR_URL + "carrier"
             ).valueString
 
             eta = None
             if hasattr(fhir["extension"], DV_FHIR_URL + "expected-delivery-date"):
-                eta = dateutil.parser.parse(
+                eta = parse(
                     fhir.extension.get(
                         url=DV_FHIR_URL + "expected-delivery-date"
                     ).valueDateTime
@@ -269,27 +259,6 @@ class MailKitOrderApi(UpdatableApi):
             bo_id, participant_id=p_id, skip_etag=True, resource=resource
         )
         return response
-
-
-def merge_dicts(dict_a, dict_b):
-    """Recursively merge dictionary b into dictionary a.
-  """
-
-    def _merge_dicts_(a, b):
-        for key in set(a.keys()).union(list(b.keys())):
-            if key in a and key in b:
-                if isinstance(a[key], dict) and isinstance(b[key], dict):
-                    yield (key, dict(_merge_dicts_(a[key], b[key])))
-                elif b[key] is not None:
-                    yield (key, b[key])
-                else:
-                    yield (key, a[key])
-            elif key in a:
-                yield (key, a[key])
-            elif b[key] is not None:
-                yield (key, b[key])
-
-    return dict(_merge_dicts_(dict_a, dict_b))
 
 
 def _make_response(self, obj):

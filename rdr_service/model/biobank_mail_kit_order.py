@@ -12,7 +12,7 @@ from rdr_service.participant_enums import OrderShipmentStatus, OrderShipmentTrac
 
 class BiobankMailKitOrder(Base):
     # mapping a user_info.clientID (from config) to a system identifier
-    _ID_SYSTEM = {
+    ID_SYSTEM = {
         'vibrent': "http://vibrenthealth.com",
         'careevolution': "http://carevolution.be",
         'example': "system-test"
@@ -137,7 +137,7 @@ class BiobankMailKitOrder(Base):
     )
     """The shipment status of the biobank order"""
 
-    barcode = Column("barcode", String(80), nullable=True)
+    barcode = Column("barcode", String(80), nullable=True, index=True)
     """Barcode from Genotech for tracking purposes."""
 
     #

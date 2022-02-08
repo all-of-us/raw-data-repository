@@ -15,12 +15,10 @@ class GenomicDataQualityJobControllerTest(BaseTestCase):
     def setUp(self, with_data=True, with_consent_codes=False) -> None:
         super().setUp()
 
-    @mock.patch('rdr_service.genomic.genomic_job_controller.genomic_job_run_update')
-    @mock.patch('rdr_service.genomic.genomic_job_controller.bq_genomic_job_run_update')
     @mock.patch('rdr_service.dao.genomics_dao.GenomicJobRunDao.insert_run_record')
     @mock.patch('rdr_service.dao.genomics_dao.GenomicJobRunDao.update_run_record')
-    def test_data_quality_job_controller_creation(self, job_update_mock, job_insert_mock,
-                                                  bq_update_mock, resource_update_mock):
+    def test_data_quality_job_controller_creation(self, job_update_mock, job_insert_mock):
+
         new_run = mock.Mock()
         new_run.id = 1
         job_insert_mock.return_value = new_run
@@ -33,9 +31,6 @@ class GenomicDataQualityJobControllerTest(BaseTestCase):
         job_update_mock.assert_called_with(new_run.id,
                                            GenomicSubProcessResult.UNSET,
                                            GenomicSubProcessStatus.COMPLETED)
-
-        bq_update_mock.assert_called()
-        resource_update_mock.assert_called()
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.DataQualityJobController.get_report')
     def test_controller_job_registry(self, report_job_mock):
@@ -374,9 +369,8 @@ class GenomicDataQualityReportTest(BaseTestCase):
                 report_output = controller.execute_workflow()
 
         expected_report = "```Daily Resolved Summary\n"
-        expected_report += "jobId    filePath    fileName    status\n"
-        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    test_file_name.csv " \
-                           "   RESOLVED"
+        expected_report += "job_id    file_path    status\n"
+        expected_report += "METRICS_INGESTION    test_bucket/test_subfolder/test_file_name.csv    RESOLVED"
         expected_report += "\n```"
 
         self.assertEqual(expected_report, report_output)

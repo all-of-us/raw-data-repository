@@ -12,7 +12,7 @@ from rdr_service.code_constants import (
     DVEHRSHARING_CONSENT_CODE_NO, CONSENT_GROR_NO_CODE, CONSENT_GROR_NOT_SURE, CONSENT_GROR_YES_CODE
 )
 from rdr_service import config
-from rdr_service.participant_enums import PhysicalMeasurementsStatus
+from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireResponseClassificationType
 from rdr_service.resource.constants import PDREnrollmentStatusEnum
 from rdr_service.resource.constants import ParticipantEventEnum, COHORT_1_CUTOFF, \
     COHORT_2_CUTOFF, ConsentCohortEnum
@@ -348,8 +348,11 @@ class EnrollmentStatusCalculator:
         # Find the baseline module events.
         for ev in events:
             for mod_ev in self._module_enums:
-                # Make sure we are saving a distinct list of baseline module events.
-                if ev.event == mod_ev and module_type_stored(mod_ev) is False:
+                # Make sure we are saving a distinct list of baseline module events that have a COMPLETE classification
+                if (ev.event == mod_ev
+                    and ev.classification_type == str(QuestionnaireResponseClassificationType.COMPLETE)
+                    and module_type_stored(mod_ev) is False
+                ):
                     if ev.timestamp < info.first_ts:
                         info.first_ts = ev.timestamp
                     if ev.timestamp > info.last_ts:
