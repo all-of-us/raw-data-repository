@@ -169,6 +169,7 @@ DATA_OPS_SERVICE_ACCOUNTS_TO_MANAGE = "data_ops_service_accounts_to_manage"
 CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
 
 DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
+BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
