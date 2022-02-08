@@ -353,7 +353,8 @@ class BQPDRModuleView(BQView):
            CAST(nt.mod_authored AS DATETIME) as mod_authored, CAST(nt.mod_created AS DATETIME) as mod_created,
            nt.mod_language, nt.mod_status, nt.mod_status_id, nt.mod_response_status, nt.mod_response_status_id,
            nt.mod_external_id, nt.mod_questionnaire_response_id, nt.mod_consent, nt.mod_consent_value,
-           nt.mod_consent_value_id, nt.mod_consent_expired, nt.mod_non_participant_answer
+           nt.mod_consent_value_id, nt.mod_consent_expired, nt.mod_non_participant_answer,
+           nt.mod_classification_type, nt.mod_classification_type_id
       FROM (
         SELECT *,
             ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY modified desc, test_participant desc) AS rn
