@@ -7,7 +7,8 @@ from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
-from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult
+from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
+    GenomicSubProcessStatus
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember
@@ -580,6 +581,11 @@ class GenomicJobControllerTest(BaseTestCase):
         with self.member_dao.session() as session:
             session.query(GenomicSetMember).delete()
 
+        run_result = self.job_run_dao.get(1)
+
+        self.assertEqual(run_result.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(run_result.runResult, GenomicSubProcessResult.SUCCESS)
+
         # for modified data query and MATCHES criteria
         for i in range(4):
             self.data_generator.create_database_genomic_set_member(
@@ -621,6 +627,11 @@ class GenomicJobControllerTest(BaseTestCase):
             for obj in modified_members if obj.genomeType == 'test_investigation_one' and obj.genomicWorkflowState ==
             GenomicWorkflowState.AW1)
         )
+
+        run_result = self.job_run_dao.get(2)
+
+        self.assertEqual(run_result.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(run_result.runResult, GenomicSubProcessResult.SUCCESS)
 
     def test_ingest_user_metrics_file(self):
         test_file = 'Genomic-Metrics-File-User-Events-Test.csv'

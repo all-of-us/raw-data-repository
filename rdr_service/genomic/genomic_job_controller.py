@@ -1385,6 +1385,8 @@ class GenomicJobController:
         for member in members:
             self.member_dao.update_member_blocklists(member)
 
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     @staticmethod
     def update_member_file_record(manifest_type):
         file_attr = None
