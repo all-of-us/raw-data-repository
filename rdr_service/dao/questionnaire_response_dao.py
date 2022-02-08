@@ -841,18 +841,15 @@ class QuestionnaireResponseDao(BaseDao):
         # Check authored dates to see if it's a new consent response,
         # or if it's potentially just a replay of a previous questionnaire response
         for consent_type in self.consents_provided:
-            is_new_consent = False
+            is_new_consent = True
             previous_authored_times = previous_consent_dates.get(consent_type)
-            if not previous_authored_times:  # Brand new consent response
-                is_new_consent = True
-            else:
-                for previous_consent_authored_time in previous_authored_times:
-                    if not self._authored_times_match(
-                        new_authored_time=questionnaire_response.authored,
-                        current_authored_item=previous_consent_authored_time
-                    ):
-                        is_new_consent = True
-                        break
+            for previous_consent_authored_time in previous_authored_times:
+                if self._authored_times_match(
+                    new_authored_time=questionnaire_response.authored,
+                    current_authored_item=previous_consent_authored_time
+                ):
+                    is_new_consent = False
+                    break
 
             if is_new_consent:
                 session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
