@@ -440,3 +440,20 @@ class BatchManager:
         if len(self._collected_objects) == self._batch_size:
             self._callback(self._collected_objects)
             self._collected_objects = []
+
+
+def is_datetime_equal(first: datetime, second: datetime, difference_allowed_seconds: int = 0) -> bool:
+    """
+    Compares two datetimes to determine whether they're equivalent or not.
+    :param first: First date.
+    :param second: Second date.
+    :param difference_allowed_seconds: The number of seconds that the two dates can be different before they're
+        determined to not be a match. Defaults to 0.
+    :return: False if they're more than the specified number of seconds apart.
+    """
+    if first is None and second is None:
+        return True
+    elif first is None or second is None:
+        return False
+    else:
+        return abs((first - second).total_seconds()) <= difference_allowed_seconds
