@@ -301,6 +301,9 @@ class QuestionnaireResponseDao(BaseDao):
                                                              cache_ttl_seconds=86400
                                                              )
 
+        # Need to record what types of consents are provided by the response when walking the answers
+        self.consents_provided = []
+
     def _load_thebasics_profile_update_codes(self):
         """
         Invoked when the singleton cache needs to load the list of TheBasics profile update codes
@@ -311,9 +314,6 @@ class QuestionnaireResponseDao(BaseDao):
                                           ).filter(Code.value.in_(BASICS_PROFILE_UPDATE_QUESTION_CODES)).all()
             results = [c.codeId for c in profile_codes] if profile_codes else []
             return results
-
-        # Need to record what types of consents are provided by the response when walking the answers
-        self.consents_provided = []
 
     def get_id(self, obj):
         return obj.questionnaireResponseId
@@ -893,7 +893,7 @@ class QuestionnaireResponseDao(BaseDao):
         for consent_type in self.consents_provided:
             is_new_consent = True
             previous_authored_times = previous_consent_dates.get(consent_type)
-            for previous_consent_authored_time in previous_authored_times:
+            for previous_consent_authored_time in (previous_authored_times or []):
                 if self._authored_times_match(
                     new_authored_time=questionnaire_response.authored,
                     current_authored_item=previous_consent_authored_time
