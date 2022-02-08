@@ -275,7 +275,7 @@ class GoogleSheetsClient:
     def upload_values(self):
         """
         Upload the local data to the google drive spreadsheet.
-        Note: any changes made to the target spreadsheet since the last call to `download_values` will be overwritten.
+        Note: Changes made to the target spreadsheet since the last call to `download_values` may be overwritten.
         """
         service = self._build_service()
         self._process_batch_update_requests(service)

@@ -184,8 +184,10 @@ class BiobankDataCheckTool(ToolBase):
         self.spreadsheet_id: Optional[str] = None
 
     def run_process(self):
+        # Use default gcp context to interact with the database and find differences
         super(BiobankDataCheckTool, self).run_process()
 
+        # Switch over to a new gcp context using a SA to upload the comparison results to Drive
         with self.initialize_process_context(
             service_account='configurator@all-of-us-rdr-prod.iam.gserviceaccount.com'
         ) as upload_env:
