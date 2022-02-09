@@ -91,6 +91,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                (GenomicGCValidationMetrics.vcfTbiReceived == 1) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
                 (GenomicSetMember.ignoreFlag != 1)
             )),
