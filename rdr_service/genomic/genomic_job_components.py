@@ -619,25 +619,28 @@ class GenomicFileIngester:
         biobank_id = aw1_data['biobankid']
 
         # Strip biobank prefix if it's there
-        if aw1_data[0] in [get_biobank_id_prefix(), 'T']:
-            biobank_id = aw1_data[1:]
+        if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
+            biobank_id = biobank_id[1:]
 
-        participant_id = self.participant_dao.get_by_biobank_id(biobank_id)
+        participant = self.participant_dao.get_by_biobank_id(biobank_id)
 
         # Create new genomic_set_member
         new_member = GenomicSetMember(
             genomicSetId=self.investigation_set_id,
             biobankId=biobank_id,
-            participantId=participant_id,
+            participantId=participant.participantId,
+            reconcileGCManifestJobRunId=self.job_run_id,
+            genomeType=aw1_data['genometype'],
             blockResearch=1,
-            blockResearchReason="In AW1 with investigation genome type.",
+            blockResearchReason="Created from AW1 with investigation genome type.",
             blockResults=1,
-            blockResultsReason="In AW1 with investigation genome type.",
+            blockResultsReason="Created from AW1 with investigation genome type.",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name,
         )
 
-        member_changed, member = self._process_aw1_attribute_data(aw1_data, new_member)
-        if member_changed:
-            self.member_dao.update(member)
+        _, member = self._process_aw1_attribute_data(aw1_data, new_member)
+        self.member_dao.insert(member)
 
     def create_new_genomic_set(self):
         new_set = GenomicSet(
