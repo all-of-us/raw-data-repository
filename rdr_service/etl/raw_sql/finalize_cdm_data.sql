@@ -1533,20 +1533,22 @@ CREATE TABLE cdm.questionnaire_response_additional_info (
 );
 
 INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
-questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, non_participant_author as value
-from rdr.questionnaire_response
-where non_participant_author is not null;
+qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value
+from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;
 
 INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
-questionnaire_response_id, 'LANGUAGE' as type, language as value
-from rdr.questionnaire_response
-where language is not null;
+qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value
+from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;
 
 INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
 qr.questionnaire_response_id, 'CODE' as type, c.value as value
-from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c
+from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c,
+     (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
 where qr.questionnaire_id=qc.questionnaire_id
-and qc.code_id=c.code_id;
+and qc.code_id=c.code_id
+and qr.questionnaire_response_id=qri.questionnaire_response_id;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
