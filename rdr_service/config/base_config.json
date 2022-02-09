@@ -63,8 +63,8 @@
   "ehr_status_bigquery_view_participant": [],
   "ehr_status_bigquery_view_organization": [],
   "gc_name_to_id_mapping": {
-    "baylor_array": "jh",
-    "baylor_wgs": "bcm",
+    "baylor_aou_array": "jh",
+    "baylor_aou_wgs": "bcm",
     "broad": "bi",
     "northwest": "uw",
     "rdr": "rdr"
@@ -148,5 +148,8 @@
     "aw4_wgs_manifest": 1,
     "aw5_array_manifest": 1,
     "aw5_wgs_manifest": 1
+  },
+  "genomic_skip_missing_file_types": {
+    "aou_wgs": ["test.file"]
   }
 }

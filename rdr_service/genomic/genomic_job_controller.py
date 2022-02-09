@@ -925,7 +925,7 @@ class GenomicJobController:
             # Set reconciler's bucket and filter queries on gc_site_id for each bucket
             for bucket_name in self.bucket_name_list:
                 self.reconciler.bucket_name = bucket_name
-                site_id_mapping = config.getSettingJson("gc_name_to_id_mapping")
+                site_id_mapping = config.getSettingJson(config.GENOMIC_GC_ID_MAPPING)
 
                 gc_site_id = 'rdr'
 
@@ -940,8 +940,10 @@ class GenomicJobController:
                     gc_site_id = site_id_mapping['northwest']
 
                 # Run the reconciliation by GC
-                self.job_result = self.reconciler.reconcile_metrics_to_data_files(genome_type,
-                                                                                  _gc_site_id=gc_site_id)
+                self.job_result = self.reconciler.reconcile_metrics_to_data_files(
+                    genome_type,
+                    _gc_site_id=gc_site_id
+                )
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR

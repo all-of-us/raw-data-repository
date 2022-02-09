@@ -1089,7 +1089,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-                    controller.run_reconciliation_to_data(genome_type='array')
+                    controller.run_reconciliation_to_data(genome_type='aou_array')
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
@@ -1104,7 +1104,7 @@ class GenomicProcessRunner(GenomicManifestBase):
                                           bq_project_id=self.gcp_env.project) as controller:
 
                     controller.bucket_name_list = server_config[config.GENOMIC_CENTER_DATA_BUCKET_NAME]
-                    controller.run_reconciliation_to_data(genome_type='wgs')
+                    controller.run_reconciliation_to_data(genome_type='aou_wgs')
 
             except Exception as e:   # pylint: disable=broad-except
                 _logger.error(e)
