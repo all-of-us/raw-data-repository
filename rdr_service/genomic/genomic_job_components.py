@@ -2252,6 +2252,9 @@ class GenomicReconciler:
         missing_files_config = missing_files_config.get(genome_type)
 
         if missing_files_config:
+            missing_files_config = list(missing_files_config) if not type(missing_files_config) \
+                                                                     is list else missing_files_config
+
             missing_data_files = [
                 x for x in list(missing_data_files) if x not in missing_files_config
             ]

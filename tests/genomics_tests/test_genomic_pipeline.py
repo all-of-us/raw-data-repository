@@ -1209,11 +1209,10 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, missing_file.resolved)
 
         processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
-        self.assertEqual(True, any([i for i in incident if "Grn.idat.md5sum" in i.message]))
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue(incident.slack_notification == 1)
+        self.assertTrue("Grn.idat.md5sum" in incident.message)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -1303,11 +1302,85 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, missing_file.resolved)
 
         processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
-        self.assertEqual(True, any([i for i in incident if "cram.crai" in i.message]))
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue(incident.slack_notification == 1)
+        self.assertTrue("cram.crai" in incident.message)
+
+        run_obj = self.job_run_dao.get(2)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_reconciliation_wgs_data_config_missing_files_incident_creation(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
+                                         bucket_name,
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test the reconciliation process
+        sequencing_test_files = (
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_v2.cram',
+            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+        )
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        missing_file_config = {
+            "aou_wgs": ["hard-filtered.vcf.gz"]
+        }
+        config.override_setting(
+            config.GENOMIC_SKIP_MISSING_FILETYPES,
+            missing_file_config
+        )
+
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
+
+        # should be 2 missing file records => ('hard-filtered.vcf.gz', 'cram.crai')
+        missing_files = self.missing_file_dao.get_all()
+        self.assertTrue(all(obj.gc_site_id == 'rdr' for obj in missing_files))
+        self.assertTrue(all(obj.file_type in ("hard-filtered.vcf.gz", "cram.crai") for obj in missing_files))
+
+        processed_file = self.file_processed_dao.get(1)
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+
+        # should only be 1 missing file in incident => ('cram.crai')
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue("cram.crai" in incident.message)
+        self.assertFalse("hard-filtered.vcf.gz" in incident.message)
 
         run_obj = self.job_run_dao.get(2)
 
