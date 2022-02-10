@@ -3066,6 +3066,7 @@ class ManifestDefinitionProvider:
         self,
         job_run_id=None,
         bucket_name=None,
+        genome_type=None,
         **kwargs
     ):
         # Attributes
@@ -3073,7 +3074,8 @@ class ManifestDefinitionProvider:
         self.bucket_name = bucket_name
         self.kwargs = kwargs
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest')
+            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
+            genome_type=genome_type
         )
         self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
@@ -3302,6 +3304,7 @@ class ManifestCompiler:
         self.def_provider = ManifestDefinitionProvider(
             job_run_id=self.run_id,
             bucket_name=self.bucket_name,
+            genome_type=genome_type,
             kwargs=kwargs
         )
 

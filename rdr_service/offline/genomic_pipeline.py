@@ -170,6 +170,46 @@ def aw3_wgs_manifest_workflow():
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
+def aw3_array_investigation_workflow():
+    """
+    Entrypoint for AW3 Array Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_ARRAY_INVESTIGATION_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_ARRAY,
+            _genome_type="aou_array_investigation",
+        )
+
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 Array Investigation Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+
+
+def aw3_wgs_investigation_workflow():
+    """
+    Entrypoint for AW3 WGS Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_WGS_INVESTIGATION_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_WGS,
+            _genome_type="aou_wgs_investigation",
+        )
+
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 WGS Investigation Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+
+
 def gem_a1_manifest_workflow():
     """
     Entrypoint for GEM A1 Workflow
