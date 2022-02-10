@@ -148,8 +148,5 @@
     "aw4_wgs_manifest": 1,
     "aw5_array_manifest": 1,
     "aw5_wgs_manifest": 1
-  },
-  "genomic_pipeline_ids": {
-    "aou_array": ["cidr_egt_1"]
   }
 }

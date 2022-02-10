@@ -1219,6 +1219,146 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+    def test_reconciliation_array_data_with_pipeline_config(self):
+
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(3, arr_override=True, array_participants=[1, 2, 3],
+                                                genome_center='rdr',
+                                                genomic_workflow_state=GenomicWorkflowState.AW1)
+
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_BAYLOR
+        create_ingestion_test_file(
+            'RDR_AoU_GEN_TestDataManifest_2.csv',
+            bucket_name,
+            folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[1])
+        )
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (1, 1001),
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # rdr sample files
+        array_test_files_jh = (
+            f'test_data_folder/10001_R01C01.vcf.gz',
+            f'test_data_folder/10001_R01C01.vcf.gz.tbi',
+            f'test_data_folder/10001_R01C01.vcf.gz.md5sum',
+            f'test_data_folder/10001_R01C01_Red.idat',
+            f'test_data_folder/10001_R01C01_Grn.idat',
+            f'test_data_folder/10001_R01C01_Red.idat.md5sum',
+            f'test_data_folder/10001_R01C01_Grn.idat.md5sum',
+            f'test_data_folder/10002_R01C02.vcf.gz',
+            f'test_data_folder/10002_R01C02.vcf.gz.tbi',
+            f'test_data_folder/10002_R01C02.vcf.gz.md5sum',
+            f'test_data_folder/10002_R01C02_Red.idat',
+            f'test_data_folder/10002_R01C02_Grn.idat',
+            f'test_data_folder/10002_R01C02_Red.idat.md5sum',
+            f'test_data_folder/10002_R01C02_Grn.idat.md5sum',
+            f'test_data_folder/10003_R01C03.vcf.gz',
+            f'test_data_folder/10003_R01C03.vcf.gz.tbi',
+            f'test_data_folder/10003_R01C03.vcf.gz.md5sum',
+            f'test_data_folder/10003_R01C03_Red.idat',
+            f'test_data_folder/10003_R01C03_Grn.idat',
+            f'test_data_folder/10003_R01C03_Red.idat.md5sum',
+            f'test_data_folder/10003_R01C03_Grn.idat.md5sum',
+        )
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in array_test_files_jh:
+                # Set file type
+                file_type = f.split('/')[-1].split("_")[-1] if "idat" in f.lower() else '.'.join(f.split('.')[1:])
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Genotyping_sample_raw_data',
+                    'file_name': f,
+                    'file_type': file_type,
+                    'identifier_type': 'chipwellbarcode',
+                    'identifier_value': "_".join(f.split('/')[1].split('_')[0:2]).split('.')[0],
+                }
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        pipeline_id_config = {
+            "aou_array": ["test_pipeline_id"]
+        }
+
+        config.override_setting(config.GENOMIC_PIPELINE_IDS, pipeline_id_config)
+
+        # all data files for each metric record are present
+        all_metrics = self.metrics_dao.get_all()
+        for metric in all_metrics:
+            if metric.id < len(all_metrics):
+                metric.pipelineId = 'test_pipeline_id'
+                self.metrics_dao.upsert(metric)
+
+        genomic_pipeline.reconcile_metrics_vs_array_data()  # run_id = 2
+
+        all_metrics = self.metrics_dao.get_all()
+
+        # reconcile should only happen for pipelineId == 'test_pipeline_id'
+        for metric in all_metrics:
+            if metric.pipelineId == 'test_pipeline_id':
+                self.assertEqual(1, metric.vcfReceived)
+                self.assertEqual(1, metric.vcfTbiReceived)
+                self.assertEqual(1, metric.vcfMd5Received)
+                self.assertEqual(1, metric.idatRedReceived)
+                self.assertEqual(1, metric.idatGreenReceived)
+                self.assertEqual(1, metric.idatRedMd5Received)
+                self.assertEqual(1, metric.idatGreenMd5Received)
+            else:
+                self.assertEqual(0, metric.vcfReceived)
+                self.assertEqual(0, metric.vcfTbiReceived)
+                self.assertEqual(0, metric.vcfMd5Received)
+                self.assertEqual(0, metric.idatRedReceived)
+                self.assertEqual(0, metric.idatGreenReceived)
+                self.assertEqual(0, metric.idatRedMd5Received)
+                self.assertEqual(0, metric.idatGreenMd5Received)
+
+        run_obj = self.job_run_dao.get(2)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        # clear current set metric records
+        with self.metrics_dao.session() as session:
+            session.query(GenomicGCValidationMetrics).delete()
+
+        # clear current config
+        config.override_setting(config.GENOMIC_PIPELINE_IDS, {})
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()
+
+        all_metrics = self.metrics_dao.get_all()
+        for metric in all_metrics:
+            if metric.id < (len(all_metrics) * 2):
+                metric.pipelineId = 'test_pipeline_id'
+                self.metrics_dao.upsert(metric)
+
+        genomic_pipeline.reconcile_metrics_vs_array_data()
+
+        all_metrics = self.metrics_dao.get_all()
+
+        # reconcile should only happen for all regardless of pipelineId
+        for metric in all_metrics:
+            self.assertEqual(1, metric.vcfReceived)
+            self.assertEqual(1, metric.vcfTbiReceived)
+            self.assertEqual(1, metric.vcfMd5Received)
+            self.assertEqual(1, metric.idatRedReceived)
+            self.assertEqual(1, metric.idatGreenReceived)
+            self.assertEqual(1, metric.idatRedMd5Received)
+            self.assertEqual(1, metric.idatGreenMd5Received)
+
+        run_obj = self.job_run_dao.get(4)
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
     def test_aw2_wgs_reconciliation_vs_wgs_data(self):
 
         # Create the fake ingested data
