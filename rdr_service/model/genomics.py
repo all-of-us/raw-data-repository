@@ -313,6 +313,7 @@ class GenomicFileProcessed(Base):
                         Enum(GenomicSubProcessResult),
                         default=GenomicSubProcessResult.UNSET)
     uploadDate = Column('upload_date', UTCDateTime, nullable=True)
+    fileRetries = Column('file_retries', SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicFileProcessed, 'before_insert', model_insert_listener)
