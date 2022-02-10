@@ -113,7 +113,7 @@ def reconcile_metrics_vs_array_data(provider=None):
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_data(
-            genome_type='array'
+            genome_type=config.GENOME_TYPE_ARRAY,
         )
 
 
@@ -126,7 +126,7 @@ def reconcile_metrics_vs_wgs_data(provider=None):
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_data(
-            genome_type='wgs'
+            genome_type=config.GENOME_TYPE_WGS
         )
 
 
