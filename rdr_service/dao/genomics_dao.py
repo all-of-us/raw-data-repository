@@ -1406,8 +1406,11 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
         :param: _gc_site_id: 'uw', 'bcm', 'jh', 'bi', etc.
         :return: list of returned GenomicGCValidationMetrics objects
         """
+        pipeline_id_config = config.getSettingJson(config.GENOMIC_PIPELINE_IDS, {})
+        array_pipeline_id_config = pipeline_id_config.get('aou_array')
+
         with self.session() as session:
-            return (
+            records = (
                 session.query(GenomicGCValidationMetrics)
                 .join(
                     (GenomicSetMember,
@@ -1435,8 +1438,15 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                     (GenomicGCValidationMetrics.vcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.vcfMd5Received == 0)
                 )
-                .all()
             )
+
+            if array_pipeline_id_config:
+                records = records.filter(
+                    GenomicGCValidationMetrics.pipelineId.isnot(None),
+                    GenomicGCValidationMetrics.pipelineId.in_(array_pipeline_id_config)
+                )
+
+            return records.all()
 
     def get_with_missing_wgs_files(self, _gc_site_id):
         """
