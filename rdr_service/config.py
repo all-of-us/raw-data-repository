@@ -142,6 +142,7 @@ PUBSUB_NOTIFICATION_BUCKETS_PROD = [
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
     "aou-rdr-sandbox-mock-data",
 ]
+GENOMIC_INVESTIGATION_GENOME_TYPES = ['aou_array_investigation', 'aou_wgs_investigation']
 
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'

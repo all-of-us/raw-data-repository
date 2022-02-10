@@ -15,6 +15,7 @@ from werkzeug.exceptions import NotFound
 
 from rdr_service import clock
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
@@ -85,6 +86,7 @@ from rdr_service.config import (
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
+    GENOMIC_INVESTIGATION_GENOME_TYPES
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -112,6 +114,8 @@ class GenomicFileIngester:
         self.bucket_name = bucket
         self.archive_folder_name = archive_folder
         self.sub_folder_name = sub_folder
+        self.investigation_set_id = None
+        self.participant_dao = None
 
         # Sub Components
         self.file_validator = GenomicFileValidator(
@@ -128,6 +132,7 @@ class GenomicFileIngester:
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
+        self.set_dao = None
 
     def generate_file_processing_queue(self):
         """
@@ -514,6 +519,14 @@ class GenomicFileIngester:
                 int(row_copy['parentsampleid'])
             )
 
+            # Create new set member record if the sample
+            # has the investigation genome type
+            if row_copy['genometype'] in GENOMIC_INVESTIGATION_GENOME_TYPES:
+                self.create_investigation_member_record_from_aw1(row_copy)
+
+                # Move to next row in file
+                continue
+
             if control_sample_parent:
                 logging.warning(f"Control sample found: {row_copy['parentsampleid']}")
 
@@ -530,7 +543,7 @@ class GenomicFileIngester:
                 if not cntrl_sample_member:
                     # Insert new GenomicSetMember record if none exists
                     # for this control sample, genome type, and gc site
-                    member = self.create_new_member_from_aw1_control_sample(row_copy)
+                    self.create_new_member_from_aw1_control_sample(row_copy)
 
                 # Skip rest of iteration and go to next row
                 continue
@@ -594,6 +607,53 @@ class GenomicFileIngester:
                 self.member_dao.update(member)
 
         return GenomicSubProcessResult.SUCCESS
+
+    def create_investigation_member_record_from_aw1(self, aw1_data):
+        # Create genomic_set
+        if not self.investigation_set_id:
+            new_set = self.create_new_genomic_set()
+            self.investigation_set_id = new_set.id
+
+        self.participant_dao = ParticipantDao()
+
+        # Get IDs
+        biobank_id = aw1_data['biobankid']
+
+        # Strip biobank prefix if it's there
+        if biobank_id[0] in [get_biobank_id_prefix(), 'T']:
+            biobank_id = biobank_id[1:]
+
+        participant = self.participant_dao.get_by_biobank_id(biobank_id)
+
+        # Create new genomic_set_member
+        new_member = GenomicSetMember(
+            genomicSetId=self.investigation_set_id,
+            biobankId=biobank_id,
+            participantId=participant.participantId,
+            reconcileGCManifestJobRunId=self.job_run_id,
+            genomeType=aw1_data['genometype'],
+            blockResearch=1,
+            blockResearchReason="Created from AW1 with investigation genome type.",
+            blockResults=1,
+            blockResultsReason="Created from AW1 with investigation genome type.",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            genomicWorkflowStateStr=GenomicWorkflowState.AW1.name,
+        )
+
+        _, member = self._process_aw1_attribute_data(aw1_data, new_member)
+        self.member_dao.insert(member)
+
+    def create_new_genomic_set(self):
+        new_set = GenomicSet(
+            genomicSetName=f"investigation_{self.job_run_id}",
+            genomicSetCriteria="investigation genome type",
+            genomicSetVersion=1,
+        )
+
+        self.set_dao = GenomicSetDao()
+        with self.set_dao.session() as session:
+            session.add(new_set)
+        return new_set
 
     def load_raw_awn_file(self):
         """
@@ -838,6 +898,7 @@ class GenomicFileIngester:
         # Only update the state if it was AW1
         if member.genomicWorkflowState == GenomicWorkflowState.AW1:
             member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW2.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         self.member_dao.update(member)
