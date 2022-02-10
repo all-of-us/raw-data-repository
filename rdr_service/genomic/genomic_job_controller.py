@@ -1138,7 +1138,11 @@ class GenomicJobController:
                     _genome_type
                 )
 
-            if result['code'] == GenomicSubProcessResult.SUCCESS \
+            if result.get('code') == GenomicSubProcessResult.NO_FILES:
+                self.job_result = result.get('code')
+                return
+
+            elif result.get('code') == GenomicSubProcessResult.SUCCESS \
                     and self.manifests_generated:
 
                 now_time = datetime.utcnow()
@@ -1195,7 +1199,8 @@ class GenomicJobController:
                         }, 'genomic_set_member_update_task')
 
                     self.subprocess_results.add(result["code"])
-            self.job_result = self._aggregate_run_results()
+
+            self.job_result = result.get('code')
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
