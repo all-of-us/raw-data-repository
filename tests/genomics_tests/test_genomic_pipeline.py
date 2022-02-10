@@ -4435,7 +4435,7 @@ class GenomicPipelineTest(BaseTestCase):
         # Test run record result is success if no records
         run_obj = self.job_run_dao.get(1)
 
-        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+        self.assertEqual(GenomicSubProcessResult.NO_FILES, run_obj.runResult)
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
