@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import List
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -171,6 +173,55 @@ class ConsentFileDaoTest(BaseTestCase):
                     self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
                 else:
                     self.fail('Unexpected file validation result')
+
+    def test_finding_validations_needed_by_response(self):
+        # Set up a pair of QuestionnaireResponses, one of which needs to be validated
+        response_to_validate = self.data_generator.create_database_questionnaire_response()
+        self.session.add(ConsentResponse(response=response_to_validate))
+
+        ignored_response = self.data_generator.create_database_questionnaire_response()
+        consent_response = ConsentResponse(response=ignored_response)
+        self.data_generator.create_database_consent_file(
+            consent_response=consent_response,
+            participant_id=ignored_response.participantId
+        )
+
+        self.session.commit()
+
+        # Make sure we get the correct response from the DAO
+        pid_consent_response_map = self.consent_dao.get_consent_responses_to_validate(session=self.session)
+        self.assertNotIn(ignored_response.participantId, pid_consent_response_map)
+
+        consent_response = pid_consent_response_map[response_to_validate.participantId][0]
+        self.assertEqual(response_to_validate.questionnaireResponseId, consent_response.questionnaire_response_id)
+
+    def test_finding_consent_responses_by_participant(self):
+        # create a few consent responses for a participant
+        participant = self.data_generator.create_database_participant()
+        primary_response = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2020, 1, 7)
+        )
+        reconsent = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2021, 10, 2)
+        )
+        ehr_response = self.data_generator.create_database_questionnaire_response(
+            participantId=participant.participantId,
+            authored=datetime(2020, 4, 26)
+        )
+        self.session.add(ConsentResponse(response=primary_response, type=ConsentType.PRIMARY))
+        self.session.add(ConsentResponse(response=reconsent, type=ConsentType.PRIMARY))
+        self.session.add(ConsentResponse(response=ehr_response, type=ConsentType.EHR))
+        self.session.commit()
+
+        consent_responses = self.consent_dao.get_consent_authored_times_for_participant(
+            participant_id=participant.participantId,
+            session=self.session
+        )
+
+        self.assertEqual([primary_response.authored, reconsent.authored], consent_responses[ConsentType.PRIMARY])
+        self.assertEqual([ehr_response.authored], consent_responses[ConsentType.EHR])
 
     def assertListsMatch(self, expected_list, actual_list, id_attribute):
         self.assertEqual(len(expected_list), len(actual_list))
