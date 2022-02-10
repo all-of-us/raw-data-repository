@@ -187,14 +187,15 @@ class ParticipantUBRCalculator:
     def ubr_disability(answers: dict):
         """
         Calculate the disability UBR value.
-        :param answers: Dict with keys and answer codes for 'Employment_EmploymentStatus', 'Disability_Blind',
+        :param answers: Dict with keys and answer codes for 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" survey.
         :return: UBRValueEnum
         """
         if answers:
-            if answers.get('Employment_EmploymentStatus', None) == 'EmploymentStatus_UnableToWork' or \
-                    answers.get('Disability_Blind', None) == 'Blind_Yes' or \
+            # PDR-658:  The Employment_EmploymentStatus/EmploymentStatus_UnableToWork answer check was removed from the
+            # UBR Disability calculations per program decision
+            if answers.get('Disability_Blind', None) == 'Blind_Yes' or \
                     answers.get('Disability_WalkingClimbing', None) == 'WalkingClimbing_Yes' or \
                     answers.get('Disability_DressingBathing', None) == 'DressingBathing_Yes' or \
                     answers.get('Disability_ErrandsAlone', None) == 'ErrandsAlone_Yes' or \
@@ -203,9 +204,8 @@ class ParticipantUBRCalculator:
                 return UBRValueEnum.UBR
         # Check and see if all question answers are either Null or PMI_Skip.
         null_skip = True
-        for k in ['Employment_EmploymentStatus', 'Disability_Blind',
-                        'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
-                        'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
+        for k in [ 'Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
+                   'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
             if answers.get(k, None) not in (None, 'PMI_Skip'):
                 null_skip = False
                 break
