@@ -125,6 +125,12 @@ class GenomicJob(messages.Enum):
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
 
+    # Investigation Workflows
+    AW3_ARRAY_INVESTIGATION_WORKFLOW = 2001
+    AW3_WGS_INVESTIGATION_WORKFLOW = 2002
+    AW4_ARRAY_INVESTIGATION_WORKFLOW = 2003
+    AW4_WGS_INVESTIGATION_WORKFLOW = 2004
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """

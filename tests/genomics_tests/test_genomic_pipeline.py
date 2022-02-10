@@ -3318,6 +3318,24 @@ class GenomicPipelineTest(BaseTestCase):
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
+        # Set up 'investigation' test
+        member.genomeType = 'aou_array_investigation'
+        member.blockResearch = 1
+        self.member_dao.update(member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
+
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
 
@@ -3953,13 +3971,32 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.assertEqual("aou_wgs", raw_records[0].genome_type)
 
-        self.clear_table_after_test('genomic_aw3_raw')
-        self.clear_table_after_test('genomic_job_run')
-
         # Test run record is success
         run_obj = self.job_run_dao.get(4)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+
+        # Set up 'investigation' test
+        member.genomeType = 'aou_wgs_investigation'
+        member.blockResearch = 1
+        self.member_dao.update(member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_wgs_blocklist_populated(self):
         block_research_reason = 'Sample Swap'

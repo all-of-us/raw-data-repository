@@ -85,6 +85,8 @@
     "aw2f_remainder_workflow": 1,
     "aw3_array_manifest_workflow": 1,
     "aw3_wgs_manifest_workflow": 1,
+    "genomic_aw3_array_investigation_workflow": 1,
+    "genomic_aw3_wgs_investigation_workflow": 1,
     "array_reconciliation_workflow": 1,
     "daily_ingestion_summary": 1,
     "daily_incident_summary": 1,

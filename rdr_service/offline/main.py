@@ -586,12 +586,21 @@ def genomic_aw3_array_workflow():
 @app_util.auth_required_cron
 @run_genomic_cron_job('aw3_wgs_manifest_workflow')
 def genomic_aw3_wgs_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.aw3_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('genomic_aw3_array_investigation_workflow')
+def genomic_aw3_array_investigation_workflow():
+    genomic_pipeline.aw3_array_investigation_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
+def genomic_aw3_wgs_investigation_workflow():
+    genomic_pipeline.aw3_wgs_investigation_workflow()
     return '{"success": "true"}'
 
 
@@ -950,6 +959,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3ArrayInvestigationWorkflow",
+        endpoint="genomic_aw3_array_investigation_workflow",
+        view_func=genomic_aw3_array_investigation_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3WGSInvestigationWorkflow",
+        endpoint="genomic_aw3_wgs_investigation_workflow",
+        view_func=genomic_aw3_wgs_investigation_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(

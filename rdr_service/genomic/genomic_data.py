@@ -14,8 +14,10 @@ from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, Qu
 
 class GenomicQueryClass:
 
-    def __init__(self, input_manifest=None):
+    def __init__(self, input_manifest=None, genome_type=None):
         self.input_manifest = input_manifest
+
+        self.genome_type = genome_type
 
         # Table aliases for tables requiring multiple JOINs
         self.aliases = {
@@ -82,7 +84,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == self.genome_type) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -146,7 +148,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == config.GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == self.genome_type) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
