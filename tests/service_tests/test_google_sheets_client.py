@@ -462,3 +462,22 @@ class GoogleSheetsApiTest(GoogleSheetsTestBase):
 
         # Make sure more than one attempt was made (that a BadGateway was raised)
         self.assertEqual(4, attempt_count)
+
+    def test_new_tab_created(self):
+        """Test that new tabs can be generated on the spreadsheet"""
+
+        with GoogleSheetsClient('', '') as sheet:
+            new_tab_name = 'new_tab_test'
+            sheet.add_new_tab(new_tab_name)
+            sheet.update_cell(0, 0, 'this is on the new tab!', tab_id=new_tab_name)
+
+        # Check that the metadata updates generated a new tab on the spreadsheet
+        batch_update_requests = self.mock_spreadsheets_return.batchUpdate.call_args.kwargs.get('body').get('requests')
+        new_sheet_request = batch_update_requests[0]
+        self.assertEqual(new_tab_name, new_sheet_request['addSheet']['properties']['title'])
+
+        # Make sure the new tab data uploads
+        tabs_uploaded = self._get_uploaded_sheet_data()
+        new_tab_data = tabs_uploaded[2]  # New tab data is listed after the default tabs
+        self.assertEqual(f"'{new_tab_name}'!A1", new_tab_data['range'])
+        self.assertEqual([['this is on the new tab!']], new_tab_data['values'])

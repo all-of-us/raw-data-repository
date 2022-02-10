@@ -8,12 +8,15 @@ from dateutil.parser import parse
 from sqlalchemy.orm import Session
 
 from rdr_service.app_util import is_datetime_equal
+from rdr_service.config import BIOBANK_DATA_COMPARISON_DOCUMENT_ID
 from rdr_service.model.biobank_order import BiobankSpecimen
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample, SampleStatus
+from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.services.google_sheets_client import GoogleSheetsClient
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 
-tool_cmd = 'api-check'
+tool_cmd = 'biobank-api-check'
 tool_desc = 'Run a comparison of the API data to the Sample Inventory Report data.'
 
 
@@ -38,6 +41,30 @@ class SamplePair:
 class DifferenceFound:
     sample_pair: SamplePair
     type: int
+
+    def get_report_and_api_values(self):
+        report_data = self.sample_pair.report_data
+        api_data = self.sample_pair.api_data
+        if self.type == DifferenceType.MISSING_FROM_SIR or self.type == DifferenceType.MISSING_FROM_API_DATA:
+            return '', ''
+        elif self.type == DifferenceType.DISPOSAL_DATE:
+            return report_data.disposed, api_data.disposalDate
+        elif self.type == DifferenceType.CONFIRMED_DATE:
+            return report_data.confirmed, api_data.confirmedDate
+        elif self.type == DifferenceType.BIOBANK_ID:
+            return (
+                to_client_biobank_id(report_data.biobankId),
+                to_client_biobank_id(api_data.biobankId)
+            )
+        elif self.type == DifferenceType.TEST_CODE:
+            return report_data.test, api_data.testCode
+        elif self.type == DifferenceType.ORDER_ID:
+            return report_data.biobankOrderIdentifier, api_data.orderId
+        elif self.type == DifferenceType.STATUS:
+            api_status = api_data.status
+            if api_data.disposalReason:
+                api_status += f', {api_data.disposalReason}'
+            return report_data.status, api_status
 
 
 class BiobankSampleComparator:
@@ -149,16 +176,34 @@ class BiobankSampleComparator:
 
 
 class BiobankDataCheckTool(ToolBase):
+    def __init__(self, *args, **kwargs):
+        super(BiobankDataCheckTool, self).__init__(*args, **kwargs)
+        self.differences_found: List[DifferenceFound] = []
+        self.start_date: Optional[datetime] = None
+        self.end_date: Optional[datetime] = None
+        self.spreadsheet_id: Optional[str] = None
+
+    def run_process(self):
+        # Use default gcp context to interact with the database and find differences
+        super(BiobankDataCheckTool, self).run_process()
+
+        # Switch over to a new gcp context using a SA to upload the comparison results to Drive
+        with self.initialize_process_context(
+            service_account='configurator@all-of-us-rdr-prod.iam.gserviceaccount.com'
+        ) as upload_env:
+            self.gcp_env = upload_env
+            self._upload_differences_found()
+
     def run(self):
         super(BiobankDataCheckTool, self).run()
 
         # Parse supplied date range
-        start_date = parse(self.args.start)
-        end_date = parse(self.args.end)
+        self.start_date = parse(self.args.start)
+        self.end_date = parse(self.args.end)
 
         with self.get_session() as session:
-            stored_samples = self._get_report_samples(session=session, start_date=start_date, end_date=end_date)
-            api_samples = self._get_api_samples(session=session, start_date=start_date, end_date=end_date)
+            stored_samples = self._get_report_samples(session=session)
+            api_samples = self._get_api_samples(session=session)
             sample_pairs = self._get_sample_pairs(
                 # Match up the samples by their id, loading any from the database that might
                 # have been missed in the date range
@@ -167,29 +212,30 @@ class BiobankDataCheckTool(ToolBase):
                 api_samples=api_samples
             )
 
-            differences_found: List[DifferenceFound] = []
             for pair in sample_pairs:
                 comparator = BiobankSampleComparator(pair)
-                differences_found.extend(comparator.get_differences())
+                self.differences_found.extend(comparator.get_differences())
 
-        self._print_differences_found(differences=differences_found)
+        self._print_differences_found()
 
-    @classmethod
-    def _get_report_samples(cls, session: Session, start_date: datetime, end_date: datetime) \
-            -> List[BiobankStoredSample]:
+        # Need to use the current google context to get the spreadsheet id from the server config
+        # (the service account used for interacting with the spreadsheet doesn't have access to the config)
+        server_config = self.get_server_config()
+        self.spreadsheet_id = server_config[BIOBANK_DATA_COMPARISON_DOCUMENT_ID]
+
+    def _get_report_samples(self, session: Session) -> List[BiobankStoredSample]:
         """Get the sample data received from the Sample Inventory Reports"""
         return list(
             session.query(BiobankStoredSample).filter(
-                BiobankStoredSample.rdrCreated.between(start_date, end_date)
+                BiobankStoredSample.rdrCreated.between(self.start_date, self.end_date)
             )
         )
 
-    @classmethod
-    def _get_api_samples(cls, session: Session, start_date: datetime, end_date: datetime) -> List[BiobankSpecimen]:
+    def _get_api_samples(self, session: Session) -> List[BiobankSpecimen]:
         """Get the sample data received from the Specimen API"""
         return list(
             session.query(BiobankSpecimen).filter(
-                BiobankSpecimen.created.between(start_date, end_date)
+                BiobankSpecimen.created.between(self.start_date, self.end_date)
             )
         )
 
@@ -249,9 +295,8 @@ class BiobankDataCheckTool(ToolBase):
 
         return sample_pairs
 
-    @classmethod
-    def _print_differences_found(cls, differences: List[DifferenceFound]):
-        for diff in differences:
+    def _print_differences_found(self):
+        for diff in self.differences_found:
             specimen = diff.sample_pair.api_data
             sample = diff.sample_pair.report_data
             if diff.type == DifferenceType.STATUS:
@@ -268,6 +313,34 @@ class BiobankDataCheckTool(ToolBase):
             else:
                 sample_id = sample.biobankStoredSampleId if sample else specimen.rlimsId
                 print(f'{sample_id} -- {str(diff.type)}')
+
+    def _upload_differences_found(self):
+        with GoogleSheetsClient(
+            spreadsheet_id=self.spreadsheet_id,
+            service_key_id=self.gcp_env.service_key_id
+        ) as client:
+            new_tab_name = f'{self.start_date.date()} to {self.end_date.date()}'
+            client.add_new_tab(new_tab_name)
+            client.set_current_tab(new_tab_name)
+
+            # write headers
+            client.update_cell(0, 0, 'sample id')
+            client.update_cell(0, 1, 'difference found')
+            client.update_cell(0, 2, 'data found from SIR')
+            client.update_cell(0, 3, 'data found from API')
+
+            for index, diff in enumerate(self.differences_found):
+                report_sample = diff.sample_pair.report_data
+                api_sample = diff.sample_pair.api_data
+                sample_id = report_sample.biobankStoredSampleId if report_sample else api_sample.rlimsId
+
+                report_value, api_value = diff.get_report_and_api_values()
+
+                row_to_update = index + 1
+                client.update_cell(row=row_to_update, col=0, value=sample_id)
+                client.update_cell(row=row_to_update, col=1, value=str(diff.type))
+                client.update_cell(row=row_to_update, col=2, value=str(report_value))
+                client.update_cell(row=row_to_update, col=3, value=str(api_value))
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

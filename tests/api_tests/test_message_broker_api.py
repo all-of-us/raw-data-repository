@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+from datetime import timedelta
 import http.client
 import mock
-from datetime import timedelta
 
 from rdr_service import clock
 from rdr_service.model.utils import to_client_participant_id
@@ -12,8 +13,9 @@ from rdr_service.dao.message_broker_dest_auth_info_dao import MessageBrokerDestA
 from rdr_service.dao.message_broker_dao import MessageBrokerDao, MessageBrokenEventDataDao
 
 
-class MockedTokenResponse(object):
-    status_code = 200
+@dataclass
+class MockedTokenResponse:
+    status_code: int = 200
 
     @staticmethod
     def json():
@@ -314,4 +316,28 @@ class MessageBrokerApiTest(BaseTestCase):
             self.assertEqual(result.valueString, 'gem')
             self.assertEqual(result.fieldName, 'result_type')
 
+    @mock.patch('rdr_service.message_broker.message_broker.requests')
+    def test_token_refresh_retry(self, requests_mock):
+        """
+        The PTSC token refresh endpoint will sometimes fail to let us refresh the auth token
+        (but then works again soon after). Test that we retry if it fails.
+        """
+        first_request = True
 
+        def generate_response(*_, **__):
+            nonlocal first_request
+            if first_request:
+                first_request = False
+                return MockedTokenResponse(status_code=401)
+            else:
+                return MockedTokenResponse(status_code=200)
+        requests_mock.post.side_effect = generate_response
+
+        message = MessageBrokerRecord(messageDest='vibrent')
+        message_broker = MessageBrokerFactory.create(message)
+
+        # create a auth info record with expired token
+        expired_at = clock.CLOCK.now()
+        self._create_auth_info_record('vibrent', 'current_token', expired_at)
+
+        self.assertEqual('new_token', message_broker.get_access_token())

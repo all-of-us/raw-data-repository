@@ -766,6 +766,3 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue([mock_tables].sort() == affected_tables.sort())
         self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
 
-
-
-
