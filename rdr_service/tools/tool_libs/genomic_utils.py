@@ -395,11 +395,12 @@ class GenerateManifestClass(GenomicManifestBase):
 
         # Handle Genomic States for manifests
         if update:
-            member_dao = GenomicSetMemberDao()
-            new_members = member_dao.get_members_from_set_id(set_id)
-
-            for member in new_members:
-                self.update_member_genomic_state(member, 'manifest-generated')
+            pass
+        #     member_dao = GenomicSetMemberDao()
+        #     new_members = member_dao.get_members_from_set_id(set_id)
+        #
+        #     for member in new_members:
+        #         self.update_member_genomic_state(member, 'manifest-generated')
 
         local_path = f'{self.lsp.DEFAULT_STORAGE_ROOT}/{bucket_name}/{_filename}'
         print()

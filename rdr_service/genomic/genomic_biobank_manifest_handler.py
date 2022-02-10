@@ -179,11 +179,11 @@ def create_and_upload_genomic_biobank_manifest_file(
     )
     manifest_file_dao.insert(new_manifest_obj)
 
-    member_dao.batch_update_member_field(
-        [obj.id for obj in members],
-        field='aw0ManifestFileId',
-        value=new_manifest_obj.id,
-    )
+    # member_dao.batch_update_member_field(
+    #     [obj.id for obj in members],
+    #     field='aw0ManifestFileId',
+    #     value=new_manifest_obj.id,
+    # )
 
 
 def _get_output_manifest_file_name(genomic_set_id, timestamp=None, cohort_id=None, saliva=False):
