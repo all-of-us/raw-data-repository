@@ -1,8 +1,12 @@
-from werkzeug.exceptions import BadRequest, BadGateway
-import requests
-from rdr_service import clock
+import logging
 from datetime import timedelta
 
+import backoff
+import requests
+from werkzeug.exceptions import BadRequest, BadGateway, HTTPException
+
+from rdr_service import clock
+from rdr_service.model.message_broker import MessageBrokerDestAuthInfo
 from rdr_service.model.utils import to_client_participant_id
 from rdr_service.dao.database_utils import format_datetime
 from rdr_service.dao.message_broker_metadata_dao import MessageBrokerMetadataDao
@@ -31,22 +35,29 @@ class BaseMessageBroker:
         if auth_info.accessToken and auth_info.expiredAt > secs_later:
             return auth_info.accessToken
         else:
-            token_endpoint = auth_info.tokenEndpoint
-            payload = f'grant_type=client_credentials&client_id={auth_info.key}&client_secret={auth_info.secret}'
-            response = requests.post(token_endpoint, data=payload,
-                                     headers={"Content-type": "application/x-www-form-urlencoded"})
+            return self._request_new_token(auth_info=auth_info)
 
-            if response.status_code in (200, 201):
-                r_json = response.json()
-                auth_info.accessToken = r_json['access_token']
-                now = clock.CLOCK.now()
-                expired_at = now + timedelta(seconds=r_json['expires_in'])
-                auth_info.expiredAt = expired_at
-                self.dest_auth_dao.update(auth_info)
-                return r_json['access_token']
-            else:
-                raise BadGateway(f'can not get access token for dest: {self.message.messageDest}, '
-                                 f'response error: {str(response.status_code)}')
+    @backoff.on_exception(backoff.constant, HTTPException, max_tries=3)
+    def _request_new_token(self, auth_info: MessageBrokerDestAuthInfo):
+        token_endpoint = auth_info.tokenEndpoint
+        payload = f'grant_type=client_credentials&client_id={auth_info.key}&client_secret={auth_info.secret}'
+        response = requests.post(token_endpoint, data=payload,
+                                 headers={"Content-type": "application/x-www-form-urlencoded"})
+
+        if response.status_code in (200, 201):
+            r_json = response.json()
+            auth_info.accessToken = r_json['access_token']
+            now = clock.CLOCK.now()
+            expired_at = now + timedelta(seconds=r_json['expires_in'])
+            auth_info.expiredAt = expired_at
+            self.dest_auth_dao.update(auth_info)
+            return r_json['access_token']
+        else:
+            logging.warning(
+                f'received {response.status_code} from message broker auth endpoint for {self.message.messageDest}'
+            )
+            raise BadGateway(f'can not get access token for dest: {self.message.messageDest}, '
+                             f'response error: {str(response.status_code)}')
 
     def _get_message_dest_url(self):
         dest_url = self.message_metadata_dao.get_dest_url(self.message.eventType, self.message.messageDest)
