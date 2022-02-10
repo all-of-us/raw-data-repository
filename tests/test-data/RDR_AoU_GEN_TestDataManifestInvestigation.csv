@@ -1,0 +1,3 @@
+Biobank ID,Sample ID,Biobankid Sampleid,LIMS ID,Chipwellbarcode,Call Rate,Sex Concordance,Contamination,Sample Source,Processing Status,Notes,Pipeline ID,Genome Type
+T1,1001,T1_1001,10001,10001_R01C01,0.3456789012,True,0.01,Whole Blood,Pass,This sample passed,cidr_egt_1,aou_array_investigation
+T2,1002,T2_1002,10002,10002_R01C02,0.3456789012,True,0.01,Whole Blood,Pass,This sample passed,cidr_egt_1,aou_array_investigation

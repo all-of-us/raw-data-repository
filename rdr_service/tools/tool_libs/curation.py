@@ -47,7 +47,8 @@ class CurationExportClass(ToolBase):
     tables = ['pid_rid_mapping', 'care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
               'location', 'measurement', 'observation_period', 'payer_plan_period', 'visit_detail',
-              'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp']
+              'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp',
+              'questionnaire_response_additional_info']
 
     # Observation takes a while and ends up timing the client out. The server will continue to process and the client
     # will print out a message describing how to continue to track it, but for now it crashes the script so it has

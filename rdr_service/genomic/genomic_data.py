@@ -91,6 +91,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                (GenomicGCValidationMetrics.vcfTbiReceived == 1) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
                 (GenomicSetMember.ignoreFlag != 1)
             )),
@@ -418,6 +419,7 @@ class GenomicQueryClass:
                     LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
                 WHERE TRUE
                     AND ss.test in ('1ED04', '1ED10', '1SAL2')
+                    AND ss.status IS NOT NULL
                     AND ps.consent_cohort = :cohort_param
                     AND ps.participant_origin != 'careevolution'
                     AND m.id IS NULL
