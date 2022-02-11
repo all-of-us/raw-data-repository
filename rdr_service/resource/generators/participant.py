@@ -779,6 +779,9 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         """
         qr_id = self.find_questionnaire_response_id(
             ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+        if not qr_id:
+            return {}
+
         qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, qr_id=qr_id, return_responses=False)
         if not qnans or len(qnans) == 0:
             return {}
@@ -1548,6 +1551,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
         qr_id = self.find_questionnaire_response_id(
             ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+        if not qr_id:
+            return data
 
         qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=qr_id)
 
