@@ -25,7 +25,7 @@ queue:
 - name: resource-rebuild
   target: resource
   rate: 50/s
-  max_concurrent_requests: 10
+  max_concurrent_requests: 35
   retry_parameters:
     task_retry_limit: 5
 
