@@ -1,4 +1,5 @@
 import datetime
+import enum
 import json
 import logging
 import re
@@ -49,6 +50,13 @@ from rdr_service.resource.calculators import EnrollmentStatusCalculator, Partici
 from rdr_service.resource.constants import SchemaID, ActivityGroupEnum, ParticipantEventEnum, ConsentCohortEnum, \
     PDREnrollmentStatusEnum
 from rdr_service.resource.schemas.participant import StreetAddressTypeEnum
+
+
+class ModuleLookupEnum(enum.Enum):
+    """ Used to order and limit the number of module responses returned from a lookup """
+    ALL = 0
+    FIRST = 1
+    LAST = 2
 
 
 _consent_module_question_map = {
@@ -769,7 +777,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         :param ro_session: Readonly DAO session object
         :return: dict
         """
-        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, return_responses=False)
+        qr_id = self.find_questionnaire_response_id(
+            ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+        if not qr_id:
+            return {}
+
+        qnans = self.get_module_answers(self.ro_dao, 'TheBasics', p_id, qr_id=qr_id, return_responses=False)
         if not qnans or len(qnans) == 0:
             return {}
 
@@ -1467,6 +1480,41 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         return True
 
+    def find_questionnaire_response_id(self, ro_session, p_id, module,
+                        classification_type: QuestionnaireResponseClassificationType, lookup_type: ModuleLookupEnum):
+        """
+        Find the requested questionnaire response id(s) for the given arguments.
+        :param ro_session: Read only sql alchemy session
+        :param p_id: Participant ID
+        :param module: Survey Module ID, IE: "TheBasics"
+        :param classification_type: QuestionnaireResponseClassificationType
+        :param lookup_type:
+        :return: questionnaire_response_id, list of questionnaire_response_ids or None
+        """
+        #       Due to the existence of responses with duplicate 'authored' and 'created' timestamps, we
+        #       also include 'external_id' in the order by clause.
+        sql = """
+            select qr.questionnaire_response_id
+            from questionnaire_response qr
+                inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
+                inner join code c on qc.code_id = c.code_id
+            where qr.participant_id = :p_id and c.value = :module and qr.classification_type = :class_type
+            order by qr.authored, qr.created, qr.external_id"""
+
+        args = { 'p_id': p_id, 'module': module, 'class_type': int(classification_type) }
+        results = ro_session.execute(sql, args)
+        # Create distinct list of questionnaire_response_ids and preserve order
+        qr_ids = list(dict.fromkeys([r.questionnaire_response_id for r in results]))
+
+        if not qr_ids:
+            return None
+        if lookup_type == ModuleLookupEnum.FIRST:
+            return qr_ids[0]
+        elif lookup_type == ModuleLookupEnum.LAST:
+            return qr_ids[-1]
+
+        return qr_ids
+
     def _calculate_ubr(self, p_id, summary, ro_session):
         """
         Calculate the UBR values for this participant
@@ -1499,24 +1547,14 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
 
         #### TheBasics UBR calculations.
         # Note: Due to PDR-484 we can't rely on the summary having a record for each valid submission so we
-        #       are going to do our own query to get the first TheBasics submission after consent. Due to
-        #       the existence of responses with duplicate 'authored' and 'created' timestamps, we also include
-        #       'external_id' in the order by clause.
+        #       are going to do our own query to get the first TheBasics submission after consent.
         # As of RDR 1.113.1, can filter on new classification_type to filter on full (COMPLETE) TheBasics surveys
-        # TODO: backfill classification_type of existing TheBasics questionnaire_response records.  See:  DA-2388)
-        sql = """
-            select questionnaire_response_id
-            from questionnaire_response qr
-                inner join questionnaire_concept qc on qr.questionnaire_id = qc.questionnaire_id
-                inner join code c on qc.code_id = c.code_id
-            where qr.participant_id = :p_id and c.value = 'TheBasics' and qr.classification_type = 0
-            order by qr.authored, qr.created, qr.external_id limit 1;
-        """
-        row = ro_session.execute(sql, {"p_id": p_id}).first()
-        if not row:
+        qr_id = self.find_questionnaire_response_id(
+            ro_session, p_id, "TheBasics", QuestionnaireResponseClassificationType.COMPLETE, ModuleLookupEnum.FIRST)
+        if not qr_id:
             return data
 
-        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=row.questionnaire_response_id)
+        qnan = self.get_module_answers(self.ro_dao, 'TheBasics', p_id=p_id, qr_id=qr_id)
 
         # ubr_sex
         data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
