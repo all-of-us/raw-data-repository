@@ -367,6 +367,11 @@ def reconcile_pdr_data():
         controller.reconcile_pdr_data()
 
 
+def retry_manifest_ingestions():
+    with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
+        controller.retry_manifest_ingestions()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
@@ -440,7 +445,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
-
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:
