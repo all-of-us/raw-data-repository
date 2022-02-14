@@ -725,7 +725,7 @@ class GenomicQueryClass:
     def dq_report_ingestions_summary(from_date):
         query_sql = """
                 # AW1 Ingestions
-                SELECT count(distinct raw.id) record_count
+                SELECT count(distinct raw.id) as record_count
                     , count(distinct m.id) as ingested_count
                     , count(distinct i.id) as incident_count
                     , "aw1" as file_type
@@ -740,20 +740,20 @@ class GenomicQueryClass:
                             ) = "GEN"
                         THEN "aou_array"
                       END AS genome_type
-                    , raw.file_path
+                    ,raw.file_path
                 FROM genomic_aw1_raw raw
                     LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
                     LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
                     LEFT JOIN genomic_set_member m ON m.aw1_file_processed_id = f.id
                     LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
                 WHERE TRUE
-                    AND raw.created >=  :from_date
+                    AND raw.created >= :from_date
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
                 UNION
                 # AW2 Ingestions
-                SELECT count(distinct raw.id) record_count
+                SELECT count(distinct raw.id) as record_count
                     , count(distinct m.id) as ingested_count
                     , count(distinct i.id) as incident_count
                     , "aw2" as file_type

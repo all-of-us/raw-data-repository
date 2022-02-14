@@ -662,8 +662,9 @@ def genomic_reconcile_informing_loop_responses():
 @app_util.auth_required_cron
 @run_genomic_cron_job('retry_manifest_ingestion_failures')
 def genomic_retry_manifest_ingestion_failures():
-    # genomic_pipeline
-    pass
+    genomic_pipeline.retry_manifest_ingestions()
+    return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_pdr_data')
@@ -677,6 +678,7 @@ def genomic_reconcile_pdr_data():
 def genomic_delete_old_gp_user_events():
     genomic_pipeline.delete_old_gp_user_events(days=7)
     return '{"success": "true"}'
+
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')

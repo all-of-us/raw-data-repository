@@ -8,10 +8,10 @@ from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidati
     GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
-    GenomicSubProcessStatus
+    GenomicSubProcessStatus, GenomicManifestTypes
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
-from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember
+from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -766,3 +766,165 @@ class GenomicJobControllerTest(BaseTestCase):
         self.assertTrue([mock_tables].sort() == affected_tables.sort())
         self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
 
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_retry_manifest_ingestions_if_deltas(self, mock_cloud_task):
+
+        bucket_name = "test-bucket"
+        aw1_file_name = "AW1_wgs_sample_manifests/RDR_AoU_SEQ_PKG-2104-026571.csv"
+        aw1_manifest_path = f"{bucket_name}/{aw1_file_name}"
+
+        aw2_file_name = "AW2_wgs_data_manifests/RDR_AoU_SEQ_DataManifest_04092021.csv"
+        aw2_manifest_path = f"{bucket_name}/{aw2_file_name}"
+
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        # Create AW1 job_run
+        aw1_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.AW1_MANIFEST,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        # Create AW2 job_run
+        aw2_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.METRICS_INGESTION,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS
+        )
+
+        # should have no data
+        with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
+            controller.retry_manifest_ingestions()
+
+        job_run = self.job_run_dao.get(3)
+        self.assertEqual(job_run.jobId, GenomicJob.RETRY_MANIFEST_INGESTIONS)
+        self.assertEqual(job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(job_run.runResult, GenomicSubProcessResult.NO_FILES)
+
+        self.assertEqual(mock_cloud_task.call_count, 0)
+        self.assertFalse(mock_cloud_task.call_count)
+
+        # Create genomic_aw1_raw record
+        self.data_generator.create_database_genomic_aw1_raw(
+            file_path=aw1_manifest_path,
+            package_id="PKG-2104-026571",
+            biobank_id="A10001",
+        )
+
+        # Create genomic_aw2_raw record
+        self.data_generator.create_database_genomic_aw2_raw(
+            file_path=aw2_manifest_path,
+            biobank_id="A10001",
+            sample_id="100001",
+            biobankidsampleid="A10001_100001",
+        )
+
+        # Create AW1 genomic_manifest_file record
+        aw1_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.AW1,
+            filePath=aw1_manifest_path,
+            fileName=aw1_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        # Create AW2 genomic_manifest_file record
+        aw2_manifest_file = self.data_generator.create_database_genomic_manifest_file(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            uploadDate=clock.CLOCK.now(),
+            manifestTypeId=GenomicManifestTypes.AW2,
+            filePath=aw2_manifest_path,
+            fileName=aw2_file_name,
+            bucketName=bucket_name,
+            recordCount=1,
+            rdrProcessingComplete=1,
+            rdrProcessingCompleteDate=clock.CLOCK.now(),
+        )
+
+        # Create AW1 file_processed
+        aw1_file_processed = self.data_generator.create_database_genomic_file_processed(
+            runId=aw1_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=aw1_manifest_file.id,
+            filePath=f"/{aw1_manifest_path}",
+            bucketName=bucket_name,
+            fileName=aw1_file_name,
+        )
+
+        # Create AW2 file_processed
+        aw2_file_processed = self.data_generator.create_database_genomic_file_processed(
+            runId=aw2_job_run.id,
+            startTime=clock.CLOCK.now(),
+            genomicManifestFileId=aw2_manifest_file.id,
+            filePath=f"/{aw2_manifest_path}",
+            bucketName=bucket_name,
+            fileName=aw2_file_name,
+        )
+
+        # genomic_set_member for AW1
+        gen_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=gen_set.id,
+            biobankId="100153482",
+            sampleId="21042005280",
+            genomeType="aou_wgs",
+            genomicWorkflowState=GenomicWorkflowState.AW1,
+            aw1FileProcessedId=aw1_file_processed.id
+        )
+
+        # genomic_gc_validation_metrics for AW1
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=gen_member.id,
+            genomicFileProcessedId=aw2_file_processed.id
+        )
+
+        # one AW1/AW2 with no deltas
+        with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
+            controller.retry_manifest_ingestions()
+
+        job_run = self.job_run_dao.get(4)
+        self.assertEqual(job_run.jobId, GenomicJob.RETRY_MANIFEST_INGESTIONS)
+        self.assertEqual(job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(job_run.runResult, GenomicSubProcessResult.NO_FILES)
+
+        self.assertEqual(mock_cloud_task.call_count, 0)
+        self.assertFalse(mock_cloud_task.call_count)
+
+        # empty tables resulting in deltas and cloud task calls
+        with self.member_dao.session() as session:
+            session.query(GenomicGCValidationMetrics).delete()
+            session.query(GenomicSetMember).delete()
+
+        with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
+            controller.retry_manifest_ingestions()
+
+        job_run = self.job_run_dao.get(5)
+        self.assertEqual(job_run.jobId, GenomicJob.RETRY_MANIFEST_INGESTIONS)
+        self.assertEqual(job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        # one AW1/AW2 with deltas
+        self.assertEqual(mock_cloud_task.call_count, 2)
+        self.assertTrue(mock_cloud_task.call_count)
+
+        call_args = mock_cloud_task.call_args_list
+        self.assertEqual(len(call_args), 2)
+
+        cloud_task_endpoint = ['ingest_aw1_manifest_task', 'ingest_aw2_manifest_task']
+        mock_endpoint = [obj[0][1] for obj in call_args]
+        self.assertTrue(all(obj for obj in mock_endpoint if obj == cloud_task_endpoint))
+
+        mock_buckets = set([obj[0][0]['bucket_name'] for obj in call_args])
+        self.assertTrue(len(mock_buckets), 1)
+        self.assertTrue(list(mock_buckets)[0] == bucket_name)
