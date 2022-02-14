@@ -165,6 +165,9 @@ class UpdateResultStrategy(ReplacementStoringStrategy):
         for participant_id, consent_type_dict in self.results.items():
             for consent_type, result_list in consent_type_dict.items():
                 previous_type_list: Collection[ParsingResult] = organized_previous_results[participant_id][consent_type]
+                # Set the last_checked time for all the matching validation results
+                for previous_result in previous_type_list:
+                    previous_result.last_checked = datetime.utcnow()
 
                 ready_for_sync = self._find_file_ready_for_sync(result_list)
                 if ready_for_sync:
@@ -185,8 +188,7 @@ class UpdateResultStrategy(ReplacementStoringStrategy):
         self.session.commit()
 
         if results_to_build:
-            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build],
-                                                   project_id=self.project_id)
+            dispatch_rebuild_consent_metrics_tasks([r.id for r in results_to_build], project_id=self.project_id)
 
     @classmethod
     def _update_record(cls, new_result: ParsingResult, existing_result: ParsingResult):
@@ -321,53 +323,26 @@ class ConsentValidationController:
 
     def check_for_corrections(self, session):
         """Load all of the current consent issues and see if they have been resolved yet"""
-        files_needing_correction = self.consent_dao.get_files_needing_correction(session)
+        checks_needed = self.consent_dao.get_next_revalidate_batch(session)
 
-        # Organize the corrections needed into a dict where the key is the participant id
-        # and the value is another dictionary. That secondary dictionary is keyed by consent type
-        # and the values in it are lists of corrections needed for that participant and consent type
-        organized_results = self._organize_results(files_needing_correction)
+        with UpdateResultStrategy(session=session, consent_dao=self.consent_dao) as storage_strategy:
+            for participant_id, consent_type in checks_needed:
+                participant_summary: ParticipantSummary = self.participant_summary_dao.get_with_session(
+                    obj_id=participant_id,
+                    session=session
+                )
+                validator = self._build_validator(participant_summary)
 
-        validation_updates: List[ParsingResult] = []
-        for participant_id, corrections_needed in organized_results.items():
-            participant_summary: ParticipantSummary = self.participant_summary_dao.get(participant_id)
-            validator = self._build_validator(participant_summary)
-
-            for consent_type, previous_file_records in corrections_needed.items():
-                new_validation_results = []
                 if consent_type == ConsentType.PRIMARY:
-                    new_validation_results = validator.get_primary_validation_results()
+                    storage_strategy.add_all(validator.get_primary_validation_results())
                 elif consent_type == ConsentType.CABOR:
-                    new_validation_results = validator.get_cabor_validation_results()
+                    storage_strategy.add_all(validator.get_cabor_validation_results())
                 elif consent_type == ConsentType.EHR:
-                    new_validation_results = validator.get_ehr_validation_results()
+                    storage_strategy.add_all(validator.get_ehr_validation_results())
                 elif consent_type == ConsentType.GROR:
-                    new_validation_results = validator.get_gror_validation_results()
+                    storage_strategy.add_all(validator.get_gror_validation_results())
                 elif consent_type == ConsentType.PRIMARY_UPDATE:
-                    new_validation_results = validator.get_primary_update_validation_results()
-
-                file_ready_for_sync = self._find_file_ready_for_sync(new_validation_results)
-                if file_ready_for_sync is not None:
-                    # If there is a file ready to sync, then mark all previous invalid files as obsolete
-                    for previous_validation_result in previous_file_records:
-                        previous_validation_result.sync_status = ConsentSyncStatus.OBSOLETE
-                        validation_updates.append(previous_validation_result)
-                    validation_updates.append(file_ready_for_sync)
-                else:
-                    # Add any new validation results to the list for updating
-                    # (ignoring records for files already validated)
-                    for new_result in new_validation_results:
-                        matching_previous_result = self._find_matching_validation_result(
-                            new_result=new_result,
-                            previous_results=previous_file_records
-                        )
-                        if matching_previous_result is None:
-                            validation_updates.append(new_result)
-
-        self.consent_dao.batch_update_consent_files(validation_updates, session)
-        session.commit()
-        if validation_updates:
-            dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
+                    storage_strategy.add_all(validator.get_primary_update_validation_results())
 
     def validate_consent_responses(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
                                    consent_responses: Collection[ConsentResponse]):

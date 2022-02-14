@@ -3,7 +3,7 @@ from typing import List
 
 from rdr_service.code_constants import PRIMARY_CONSENT_UPDATE_QUESTION_CODE
 from rdr_service.dao.consent_dao import ConsentDao
-from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
+from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType
 from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.helpers.unittest_base import BaseTestCase
@@ -93,86 +93,6 @@ class ConsentFileDaoTest(BaseTestCase):
         with self.consent_dao.session() as session:
             results = self.consent_dao.get_participants_with_unvalidated_files(session)
         self.assertEqual([], results)
-
-    def test_getting_files_to_correct(self):
-        """Test that all the consent files that need correcting are loaded"""
-        # Create files that are ready to sync
-        self.data_generator.create_database_consent_file(
-            type=ConsentType.PRIMARY,
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
-        )
-        self.data_generator.create_database_consent_file(
-            type=ConsentType.CABOR,
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
-        )
-        self.data_generator.create_database_consent_file(
-            type=ConsentType.EHR,
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
-        )
-        self.data_generator.create_database_consent_file(
-            type=ConsentType.GROR,
-            sync_status=ConsentSyncStatus.READY_FOR_SYNC
-        )
-        # Create files that need correcting
-        not_ready_primary = self.data_generator.create_database_consent_file(
-            type=ConsentType.PRIMARY,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING
-        )
-        not_ready_cabor = self.data_generator.create_database_consent_file(
-            type=ConsentType.CABOR,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING
-        )
-        not_ready_ehr = self.data_generator.create_database_consent_file(
-            type=ConsentType.EHR,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING
-        )
-        not_ready_gror = self.data_generator.create_database_consent_file(
-            type=ConsentType.GROR,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING
-        )
-
-        with self.consent_dao.session() as session:
-            result_list = self.consent_dao.get_files_needing_correction(session)
-        self.assertListsMatch(
-            expected_list=[
-                not_ready_primary, not_ready_cabor, not_ready_ehr, not_ready_gror
-            ],
-            actual_list=result_list,
-            id_attribute='id'
-        )
-
-    def test_batch_update_of_results(self):
-        """Make sure that any new or existing validation result records can be updated by the dao"""
-
-        self.data_generator.create_database_consent_file(
-            type=ConsentType.EHR,
-            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
-            file_path='/not_ready_ehr'
-        )
-        with self.consent_dao.session() as session:
-            to_update = self.consent_dao.get_files_needing_correction(session)
-            updates_to_send = [
-                ConsentFile(
-                    type=ConsentType.EHR,
-                    sync_status=ConsentSyncStatus.READY_FOR_SYNC,
-                    file_path='/ready_ehr'
-                )
-            ]
-            for result in to_update:
-                result.sync_status = ConsentSyncStatus.OBSOLETE
-                updates_to_send.append(result)
-
-            self.consent_dao.batch_update_consent_files(updates_to_send, session)
-            session.commit()
-            results = self.consent_dao.get_all()
-            self.assertEqual(2, len(results))
-            for result in results:
-                if result.file_path == '/ready_ehr':
-                    self.assertEqual(ConsentSyncStatus.READY_FOR_SYNC, result.sync_status)
-                elif result.file_path == '/not_ready_ehr':
-                    self.assertEqual(ConsentSyncStatus.OBSOLETE, result.sync_status)
-                else:
-                    self.fail('Unexpected file validation result')
 
     def test_finding_validations_needed_by_response(self):
         # Set up a pair of QuestionnaireResponses, one of which needs to be validated
@@ -272,3 +192,52 @@ class ConsentFileDaoTest(BaseTestCase):
             )
 
         return summary
+
+    def test_loading_batch_for_revalidation(self):
+        # Set up some files that need correcting, setting dates for when they were last validated (or not in some cases)
+        self.data_generator.create_database_consent_file(
+            last_checked=datetime(2021, 3, 2),
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.PRIMARY,
+            participant_id=self.data_generator.create_database_participant(participantId=1).participantId
+        )
+        self.data_generator.create_database_consent_file(
+            last_checked=datetime(2019, 4, 17),
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.EHR,
+            participant_id=self.data_generator.create_database_participant(participantId=2).participantId
+        )
+        self.data_generator.create_database_consent_file(
+            last_checked=None,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.GROR,
+            participant_id=self.data_generator.create_database_participant(participantId=3).participantId
+        )
+        self.data_generator.create_database_consent_file(
+            last_checked=datetime(2021, 1, 9),
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.EHR,
+            participant_id=self.data_generator.create_database_participant(participantId=4).participantId
+        )
+        self.data_generator.create_database_consent_file(
+            last_checked=None,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.PRIMARY,
+            participant_id=self.data_generator.create_database_participant(participantId=5).participantId
+        )
+        self.data_generator.create_database_consent_file(
+            last_checked=datetime(2022, 3, 2),
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            type=ConsentType.PRIMARY,
+            participant_id=self.data_generator.create_database_participant(participantId=6).participantId
+        )
+
+        # Make sure the dao returns any files that haven't been checked yet,
+        # and then the ones that haven't been checked recently
+        result = ConsentDao.get_next_revalidate_batch(limit=4, session=self.session)
+        self.assertEqual([
+            (3, ConsentType.GROR),      # file not yet re-checked
+            (5, ConsentType.PRIMARY),   # file not yet re-checked
+            (2, ConsentType.EHR),       # file that was checked the longest ago
+            (4, ConsentType.EHR),
+        ], list(result))
