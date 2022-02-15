@@ -171,7 +171,7 @@ class ConsentDao(BaseDao):
         return query.all()
 
     @classmethod
-    def get_next_revalidate_batch(cls, session, limit=500) -> Collection[ConsentFile]:
+    def get_next_revalidate_batch(cls, session, limit=1000) -> Collection[ConsentFile]:
         query = (
             session.query(ConsentFile.participant_id, ConsentFile.type)
             .filter(
