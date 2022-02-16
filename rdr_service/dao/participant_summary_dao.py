@@ -446,7 +446,9 @@ class ParticipantSummaryDao(UpdatableDao):
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
         self.faker = faker.Faker()
+
         self.hpro_consents = []
+        self.participant_incentives = []
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
@@ -988,8 +990,12 @@ class ParticipantSummaryDao(UpdatableDao):
 
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+
         if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
+        if self.participant_incentives:
+            # result = self.get_hpro_consent_paths(result)
+            pass
 
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 
