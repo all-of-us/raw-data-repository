@@ -760,6 +760,7 @@ class GenomicFileIngester:
         # Only update the member's genomicWorkflowState if it was AW0
         if member.genomicWorkflowState == GenomicWorkflowState.AW0:
             member.genomicWorkflowState = GenomicWorkflowState.AW1
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         # Update member in DB

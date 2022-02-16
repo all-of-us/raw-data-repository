@@ -710,6 +710,7 @@ class GenomicJobController:
                     self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
                 )
                 member.genomicWorkflowState = GenomicWorkflowState.AW1
+                member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
 
                 with self.member_dao.session() as session:
                     session.merge(member)
@@ -817,6 +818,7 @@ class GenomicJobController:
         # Only update the state if it was AW1
         if member.genomicWorkflowState == GenomicWorkflowState.AW1:
             member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW2.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         # Truncate call rate
