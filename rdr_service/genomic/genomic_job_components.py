@@ -982,11 +982,8 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['sampleid']
-                genome_type = GENOME_TYPE_ARRAY \
-                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
 
-                member = self.member_dao.get_member_from_aw3_sample(sample_id,
-                                                                    genome_type)
+                member = self.member_dao.get_member_from_aw3_sample(sample_id)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue

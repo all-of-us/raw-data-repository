@@ -478,21 +478,19 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).first()
         return member
 
-    def get_member_from_aw3_sample(self, sample_id, genome_type):
+    def get_member_from_aw3_sample(self, sample_id):
         """
         Retrieves a genomic set member record matching the sample_id
         The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
-        Needs a genome type.
-        :param genome_type: aou_wgs, aou_array, aou_cvl
         :param sample_id:
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicSetMember.aw3ManifestJobRunID != None,
+                GenomicSetMember.ignoreFlag == 0,
+                GenomicSetMember.aw3ManifestJobRunID.isnot(None)
             ).one_or_none()
         return member
 
