@@ -39,6 +39,7 @@ class ConsentFile(Base):
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     created = Column(UTCDateTime)
     modified = Column(UTCDateTime)
+    last_checked = Column(UTCDateTime)
     participant_id = Column(Integer, ForeignKey(Participant.participantId))
     type = Column(Enum(ConsentType))
 

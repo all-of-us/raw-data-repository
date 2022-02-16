@@ -171,13 +171,16 @@ class ConsentDao(BaseDao):
         return query.all()
 
     @classmethod
-    def get_files_needing_correction(cls, session, min_modified_datetime: datetime = None) -> Collection[ConsentFile]:
-        query = session.query(ConsentFile).filter(
-            ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+    def get_next_revalidate_batch(cls, session, limit=1000) -> Collection[ConsentFile]:
+        query = (
+            session.query(ConsentFile.participant_id, ConsentFile.type)
+            .filter(
+                ConsentFile.sync_status == ConsentSyncStatus.NEEDS_CORRECTING
+            )
+            .order_by(ConsentFile.last_checked, ConsentFile.created)
+            .distinct().limit(limit)
         )
-        if min_modified_datetime:
-            query = query.filter(ConsentFile.modified >= min_modified_datetime)
-        return query.all()
+        return query
 
     @classmethod
     def _batch_update_consent_files_with_session(cls, session, consent_files: Collection[ConsentFile]):

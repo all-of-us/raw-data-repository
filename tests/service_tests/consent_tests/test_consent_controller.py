@@ -50,49 +50,6 @@ class ConsentControllerTest(BaseTestCase):
         )
         self.store_strategy = StoreResultStrategy(session=mock.MagicMock(), consent_dao=self.consent_dao_mock)
 
-    def test_correction_check(self):
-        """
-        The controller should load all files that need correction and update their state if they've been
-        replaced by new files.
-        """
-        self.consent_dao_mock.get_files_needing_correction.return_value = [
-            ConsentFile(id=1, type=ConsentType.GROR, file_path='/invalid_gror_1'),
-            ConsentFile(id=2, type=ConsentType.GROR, file_path='/invalid_gror_2'),
-            ConsentFile(id=3, type=ConsentType.CABOR, file_path='/invalid_cabor_1'),
-            ConsentFile(id=4, type=ConsentType.PRIMARY, file_path='/invalid_primary_1'),
-            ConsentFile(id=5, type=ConsentType.PRIMARY, file_path='/invalid_primary_2')
-        ]
-
-        self.consent_validator_mock.get_primary_validation_results.return_value = [
-            ConsentFile(id=4, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_1'),
-            ConsentFile(id=5, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_primary_2'),
-            ConsentFile(id=6, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_primary_1')
-        ]
-        self.consent_validator_mock.get_cabor_validation_results.return_value = [
-            ConsentFile(id=3, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_cabor_1'),
-            ConsentFile(id=7, sync_status=ConsentSyncStatus.READY_FOR_SYNC, file_path='/valid_cabor_1')
-        ]
-        self.consent_validator_mock.get_gror_validation_results.return_value = [
-            ConsentFile(id=1, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_1'),
-            ConsentFile(id=2, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_2'),
-            ConsentFile(id=8, sync_status=ConsentSyncStatus.NEEDS_CORRECTING, file_path='/invalid_gror_3')
-        ]
-
-        self.consent_controller.check_for_corrections(session=mock.MagicMock())
-        self.assertConsentValidationResultsUpdated(
-            expected_updates=[
-                ConsentFile(id=4, file_path='/invalid_primary_1', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(id=5, file_path='/invalid_primary_2', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(id=6, file_path='/valid_primary_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(id=3, file_path='/invalid_cabor_1', sync_status=ConsentSyncStatus.OBSOLETE),
-                ConsentFile(id=7, file_path='/valid_cabor_1', sync_status=ConsentSyncStatus.READY_FOR_SYNC),
-                ConsentFile(id=8, file_path='/invalid_gror_3', sync_status=ConsentSyncStatus.NEEDS_CORRECTING)
-            ]
-        )
-        # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
-        # values from the expected_updates list
-        self.assertDispatchRebuildConsentMetricsCalled([4, 5, 6, 3, 7, 8])
-
     def test_new_consent_validation(self):
         """The controller should find all recent participant summary consents authored and validate files for them"""
         primary_and_ehr_participant_id = 123
