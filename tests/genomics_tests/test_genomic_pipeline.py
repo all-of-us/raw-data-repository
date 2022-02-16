@@ -807,6 +807,12 @@ class GenomicPipelineTest(BaseTestCase):
             }
         }
 
+        # Test investigation genome types still ingest
+        for member in self.member_dao.get_all():
+            if member.id in (2, 4):
+                member.genomeType += "_investigation"
+                self.member_dao.update(member)
+
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_array)

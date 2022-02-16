@@ -388,20 +388,20 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).first()
         return member
 
-    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id, genome_type):
+    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param sample_id:
-        :param genome_type:
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomeType == genome_type,
-            ).first()
+                GenomicSetMember.ignoreFlag == 0,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            ).one_or_none()
         return member
 
     def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
