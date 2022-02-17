@@ -399,7 +399,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.ignoreFlag == 0,
+                GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
             ).one_or_none()
         return member
