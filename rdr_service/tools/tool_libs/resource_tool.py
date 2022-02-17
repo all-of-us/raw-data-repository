@@ -90,20 +90,20 @@ class CleanPDRDataClass(object):
         :param table_id:  Filter value for the bigquery_sync.table_id column
         """
         # Target dataset for all the BigQuery RDR-to-PDR pipeline data
-        dao = BigQuerySyncDao()
         dataset_id = 'rdr_ops_data_view'
         project_id = PDR_PROJECT_ID_MAP.get(self.gcp_env.project, None)
         if not project_id:
             raise ValueError(f'Unable to map {self.gcp_env.project} to an active BigQuery project')
         else:
+            dao = BigQuerySyncDao()
             with dao.session() as session:
                 # Verify the table_id matches at least some existing records in the bigquery_sync table
                 query = session.query(BigQuerySync.id)\
                     .filter(BigQuerySync.projectId == project_id).filter(BigQuerySync.datasetId == dataset_id)\
                     .filter(BigQuerySync.tableId == table_id)
-
                 if query.first() is None:
                     raise ValueError(f'No records found for bigquery_sync.table_id = {table_id}')
+
                 batch_count = 250
                 batch_total = len(self.pk_id_list)
                 for pk_ids in chunks(self.pk_id_list, batch_count):
