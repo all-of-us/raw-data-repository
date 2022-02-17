@@ -6686,7 +6686,7 @@ class GenomicPipelineTest(BaseTestCase):
             ignore_flag=0,
         )
 
-        # Insert last event for pid 7 (test for no IL response)
+        # Insert last event for pid 7 (test for maybe_later response)
         self.data_generator.create_database_genomic_user_event_metrics(
             created=clock.CLOCK.now(),
             modified=clock.CLOCK.now(),
