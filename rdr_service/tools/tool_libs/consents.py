@@ -1,5 +1,6 @@
 import argparse
 import csv
+import time
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from itertools import islice
@@ -16,7 +17,7 @@ from rdr_service.resource.tasks import dispatch_rebuild_consent_metrics_tasks
 from rdr_service.services.gcp_utils import gcp_make_auth_header
 from rdr_service.model.consent_file import ConsentFile, ConsentSyncStatus, ConsentType
 from rdr_service.offline.sync_consent_files import ConsentSyncGuesser
-from rdr_service.services.consent.validation import ConsentValidationController, ReplacementStoringStrategy,\
+from rdr_service.services.consent.validation import ConsentValidationController,\
     LogResultStrategy, UpdateResultStrategy
 from rdr_service.storage import GoogleCloudStorageProvider
 from rdr_service.tools.tool_libs.tool_base import cli_run, logger, ToolBase
@@ -181,6 +182,8 @@ class ConsentTool(ToolBase):
                         types_to_validate=[consent_type]
                     )
                 participant_ids = list(islice(pid_file, participant_lookup_batch_size))
+
+        time.sleep(3)  # waiting for sql to finish
 
     def upload_records(self):
         data_to_upload = []
