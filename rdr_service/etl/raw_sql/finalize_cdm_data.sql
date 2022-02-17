@@ -121,7 +121,10 @@ SELECT
     src_c.topic_value                   AS topic_value,
     src_c.value_code_id                 AS value_code_id,
     COALESCE(vc3.concept_id, 0)         AS value_source_concept_id,
-    COALESCE(vc4.concept_id, 0)         AS value_concept_id,
+    CASE
+        WHEN src_c.is_invalid = 1 THEN 2000000010
+        ELSE COALESCE(vc4.concept_id, 0)
+    END                                 AS value_concept_id,
     src_c.value_number                  AS value_number,
     src_c.value_boolean                 AS value_boolean,
     CASE
