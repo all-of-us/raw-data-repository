@@ -132,6 +132,18 @@ class UpdateResultStrategy(StoreResultStrategy):
                     if not found_in_previous_results:
                         results_to_build.append(ready_for_sync)
                         self._session.add(ready_for_sync)
+                else:
+                    for result in result_list:
+                        found_in_previous_results = False
+                        for previous_result in previous_type_list:
+                            if previous_result.file_path == result.file_path:
+                                self._update_record(new_result=result, existing_result=previous_result)
+                                results_to_build.append(previous_result)
+                                found_in_previous_results = True
+
+                        if not found_in_previous_results:
+                            results_to_build.append(result)
+                            self._session.add(result)
 
         self._session.commit()
 
