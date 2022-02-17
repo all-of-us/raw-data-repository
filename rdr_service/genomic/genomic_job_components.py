@@ -983,11 +983,8 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['sampleid']
-                genome_type = GENOME_TYPE_ARRAY \
-                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
 
-                member = self.member_dao.get_member_from_aw3_sample(sample_id,
-                                                                    genome_type)
+                member = self.member_dao.get_member_from_aw3_sample(sample_id)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
@@ -1414,8 +1411,7 @@ class GenomicFileIngester:
                 biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
                 sample_id = row_copy['sampleid']
 
-                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
-                                                                                  self.file_validator.genome_type)
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id)
                 if not member:
                     logging.warning(f'Can not find genomic member record for biobank_id: '
                                     f'{biobank_id} and sample_id: {sample_id}, skipping...')

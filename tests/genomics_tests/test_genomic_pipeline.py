@@ -807,6 +807,12 @@ class GenomicPipelineTest(BaseTestCase):
             }
         }
 
+        # Test investigation genome types still ingest
+        for member in self.member_dao.get_all():
+            if member.id in (2, 4):
+                member.genomeType += "_investigation"
+                self.member_dao.update(member)
+
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
@@ -4823,6 +4829,12 @@ class GenomicPipelineTest(BaseTestCase):
             record.genomicSetMemberId = member.id
             self.metrics_dao.upsert(record)
 
+            # Change sample 2 to aou_array_investigation
+            if member.id == 2:
+                member.genomeType = "aou_array_investigation"
+                self.member_dao.update(member)
+
+
         # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
@@ -4896,8 +4908,11 @@ class GenomicPipelineTest(BaseTestCase):
                 i = int(file_row['biobank_id'])-1
                 for field in file_row.keys():
                     self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+                expected_genome_type = "aou_array"
+                if i == 1:
+                    expected_genome_type += "_investigation"
 
-                self.assertEqual("aou_array", raw_records[i].genome_type)
+                self.assertEqual(expected_genome_type, raw_records[i].genome_type)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
@@ -4924,6 +4939,11 @@ class GenomicPipelineTest(BaseTestCase):
             record.id = i + 1
             record.genomicSetMemberId = member.id
             self.metrics_dao.upsert(record)
+
+            # Change sample 2 to aou_array_investigation
+            if member.id == 2:
+                member.genomeType = "aou_wgs_investigation"
+                self.member_dao.update(member)
 
         # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -5000,7 +5020,11 @@ class GenomicPipelineTest(BaseTestCase):
                 for field in file_row.keys():
                     self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
 
-                self.assertEqual("aou_wgs", raw_records[i].genome_type)
+                expected_genome_type = "aou_wgs"
+                if i == 1:
+                    expected_genome_type += "_investigation"
+
+                self.assertEqual(expected_genome_type, raw_records[i].genome_type)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
