@@ -104,8 +104,9 @@ class CleanPDRDataClass(object):
                 if query.first() is None:
                     raise ValueError(f'No records found for bigquery_sync.table_id = {table_id}')
 
-                batch_count = 250
+                batch_count = 500
                 batch_total = len(self.pk_id_list)
+                processed = 0
                 for pk_ids in chunks(self.pk_id_list, batch_count):
                     session.query(BigQuerySync
                                   ).filter(BigQuerySync.projectId == project_id,
@@ -116,9 +117,11 @@ class CleanPDRDataClass(object):
                     # Inject a short delay between chunk-sized delete operations to avoid blocking other table updates
                     session.commit()
                     sleep(0.5)
+                    processed += len(pk_ids)
                     if not self.args.debug:
                         print_progress_bar(
-                        batch_count, batch_total, prefix="{0}/{1}:".format(batch_count, batch_total), suffix="complete"
+                            processed, batch_total, prefix="{0}/{1}:".format(processed, batch_total),
+                            suffix="complete"
                         )
 
 
