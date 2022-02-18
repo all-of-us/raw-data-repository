@@ -6648,7 +6648,7 @@ class GenomicPipelineTest(BaseTestCase):
         event_dao = UserEventMetricsDao()
         event_dao.truncate()  # for test suite
 
-        for pid in range(7):
+        for pid in range(8):
             self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
         # Set up initial job run ID
         self.data_generator.create_database_genomic_job_run(
@@ -6660,7 +6660,8 @@ class GenomicPipelineTest(BaseTestCase):
         events = ['gem.informing_loop.started',
                   'gem.informing_loop.screen8_no',
                   'gem.informing_loop.screen8_yes',
-                  'hdr.informing_loop.started']
+                  'hdr.informing_loop.started',
+                  'gem.informing_loop.screen8_maybe_later']
         for p in range(4):
             for i in range(4):
                 self.data_generator.create_database_genomic_user_event_metrics(
@@ -6681,6 +6682,17 @@ class GenomicPipelineTest(BaseTestCase):
             participant_id=5,
             created_at=datetime.datetime(2021, 12, 29, 00),
             event_name='gem.informing_loop.started',
+            run_id=1,
+            ignore_flag=0,
+        )
+
+        # Insert last event for pid 7 (test for maybe_later response)
+        self.data_generator.create_database_genomic_user_event_metrics(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=7,
+            created_at=datetime.datetime(2021, 12, 29, 00),
+            event_name="gem.informing_loop.screen8_maybe_later",
             run_id=1,
             ignore_flag=0,
         )
@@ -6717,6 +6729,15 @@ class GenomicPipelineTest(BaseTestCase):
             event_authored_time=datetime.datetime(2021, 12, 29, 00)
         )
 
+        self.data_generator.create_database_genomic_informing_loop(
+            message_record_id=100,
+            event_type='informing_loop_decision',
+            module_type='gem',
+            participant_id=7,
+            decision_value='maybe_later',
+            event_authored_time=datetime.datetime(2021, 12, 29, 00)
+        )
+
         # Run reconcile job
 
         genomic_pipeline.reconcile_informing_loop_responses()
@@ -6727,7 +6748,7 @@ class GenomicPipelineTest(BaseTestCase):
                          incident.message)
         self.assertEqual('5', incident.participant_id)
 
-        pid_list = [1, 2, 3, 6]
+        pid_list = [1, 2, 3, 6, 7]
         updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
@@ -6741,7 +6762,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.delete_old_gp_user_events()
 
         all_events = event_dao.get_all()
-        self.assertEqual(17, len(all_events))
+        self.assertEqual(18, len(all_events))
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,
