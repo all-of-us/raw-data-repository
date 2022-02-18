@@ -401,39 +401,20 @@ class ConsentValidationController:
             dispatch_rebuild_consent_metrics_tasks([v.id for v in validation_updates])
 
     def validate_participant_consents(self, summary: ParticipantSummary, output_strategy: ValidationOutputStrategy,
-                                      min_authored_date: date = None,
+                                      min_authored_date: date = None,  # pylint: disable=unused-argument
                                       types_to_validate: Collection[ConsentType] = None):
         validator = self._build_validator(summary)
         print(summary.participantId)
 
-        if self._check_consent_type(ConsentType.PRIMARY, types_to_validate) and self._has_consent(
-            consent_status=summary.consentForStudyEnrollment,
-            authored=summary.consentForStudyEnrollmentFirstYesAuthored,
-            min_authored=min_authored_date
-        ):
+        if self._check_consent_type(ConsentType.PRIMARY, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_validation_results()))
-        if self._check_consent_type(ConsentType.CABOR, types_to_validate) and self._has_consent(
-            consent_status=summary.consentForCABoR,
-            authored=summary.consentForCABoRAuthored,
-            min_authored=min_authored_date
-        ):
+        if self._check_consent_type(ConsentType.CABOR, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_cabor_validation_results()))
-        if self._check_consent_type(ConsentType.EHR, types_to_validate) and self._has_consent(
-            consent_status=summary.consentForElectronicHealthRecords,
-            authored=summary.consentForElectronicHealthRecordsAuthored,
-            min_authored=min_authored_date
-        ):
+        if self._check_consent_type(ConsentType.EHR, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_ehr_validation_results()))
-        if self._check_consent_type(ConsentType.GROR, types_to_validate) and self._has_consent(
-            consent_status=summary.consentForGenomicsROR,
-            authored=summary.consentForGenomicsRORAuthored,
-            min_authored=min_authored_date
-        ):
+        if self._check_consent_type(ConsentType.GROR, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_gror_validation_results()))
-        if self._check_consent_type(ConsentType.PRIMARY_UPDATE, types_to_validate) and self._has_primary_update_consent(
-            summary=summary,
-            min_authored=min_authored_date
-        ):
+        if self._check_consent_type(ConsentType.PRIMARY_UPDATE, types_to_validate):
             output_strategy.add_all(self._process_validation_results(validator.get_primary_update_validation_results()))
 
     def validate_recent_uploads(self, session, output_strategy: ValidationOutputStrategy, min_consent_date,
