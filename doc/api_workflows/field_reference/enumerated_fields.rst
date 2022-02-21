@@ -222,4 +222,6 @@ DeceasedReportDenialReason
 RetentionStatus
 ------------------------------------------------------------
 .. autoclass:: rdr_service.participant_enums.RetentionStatus
+    :members:
+    :undoc-members:
     :exclude-members: name, number
