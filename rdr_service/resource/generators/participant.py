@@ -803,8 +803,8 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                     continue
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
         # get additional gender answers, if any.
-        if qnan.get('GenderIdentity_SexualityCloserDescription'):
-            for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
+        if qnan.get('Gender_CloserGenderDescription'):
+            for val in qnan.get('Gender_CloserGenderDescription').split(','):
                 gl.append({'gender': val, 'gender_id': self._lookup_code_id(val, ro_session)})
         if len(gl) > 0:
             data['genders'] = gl
@@ -813,6 +813,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         if qnan.get('TheBasics_SexualOrientation'):
             for val in qnan.get('TheBasics_SexualOrientation').split(','):
                 so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
+
+        # get additional sexual orientation answers, if any.
+        if qnan.get('GenderIdentity_SexualityCloserDescription'):
+            for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
+                so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
+
         if len(so) > 0:
             data['sexual_orientations'] = so
 
@@ -1562,7 +1568,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(qnan.get('TheBasics_SexualOrientation', None))
         # ubr_gender_identity
         data['ubr_gender_identity'] = ubr.ubr_gender_identity(qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
-            qnan.get('Gender_GenderIdentity', None), qnan.get('GenderIdentity_SexualityCloserDescription', None))
+            qnan.get('Gender_GenderIdentity', None), qnan.get('Gender_CloserGenderDescription', None))
         # ubr_sexual_gender_minority
         data['ubr_sexual_gender_minority'] = \
             ubr.ubr_sexual_gender_minority(data['ubr_sexual_orientation'], data['ubr_gender_identity'])

@@ -60,7 +60,7 @@ class ParticipantUBRCalculator:
         :param birth_sex: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
         :param gender_ident: Comma delimited str of answers codes to Gender_GenderIdentity question in "TheBasics"
                         survey.
-        :param gender_ident_closer: Comma delimited str of answer codes to GenderIdentity_SexualityCloserDescription
+        :param gender_ident_closer: Comma delimited str of answer codes to Gender_CloserGenderDescription
                         question in "TheBasics" survey.
         :return: UBRValueEnum
         """
@@ -88,8 +88,10 @@ class ParticipantUBRCalculator:
             if answer is None or answer == 'PMI_Skip':
                 return UBRValueEnum.NotAnswer_Skip
             if (answer == 'PMI_PreferNotToAnswer' or answer == 'GenderIdentity_PreferNotToAnswer') or \
-                    (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip', None]) or \
-                    (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip', None]):
+                    (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip',
+                                                                      'GenderIdentity_PreferNotToAnswer', None]) or \
+                    (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip',
+                                                                        'GenderIdentity_PreferNotToAnswer', None]):
                 return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
