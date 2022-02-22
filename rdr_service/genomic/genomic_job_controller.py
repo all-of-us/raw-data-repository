@@ -2,7 +2,7 @@
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -710,6 +710,7 @@ class GenomicJobController:
                     self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
                 )
                 member.genomicWorkflowState = GenomicWorkflowState.AW1
+                member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
 
                 with self.member_dao.session() as session:
                     session.merge(member)
@@ -774,6 +775,40 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def retry_manifest_ingestions(self, from_days=1):
+        from_date = clock.CLOCK.now() - timedelta(days=from_days)
+        from_date = from_date.replace(microsecond=0)
+        results_found = False
+
+        ingestion_task_api_map = {
+            GenomicJob.AW1_MANIFEST: 'ingest_aw1_manifest_task',
+            GenomicJob.METRICS_INGESTION: 'ingest_aw2_manifest_task'
+        }
+
+        try:
+            for ingestion_type, cloud_task in ingestion_task_api_map.items():
+                results = self.file_processed_dao.get_ingestion_deltas_from_date(
+                    from_date=from_date,
+                    ingestion_type=ingestion_type)
+
+                for result in results:
+                    if result.raw_record_count > result.ingested_count:
+                        results_found = True
+                        logging.info(f'Sending {result.file_type}: {result.file_path} '
+                                     f'to cloud task ingestion for deltas')
+
+                        self.execute_cloud_task({
+                            'bucket_name': result.file_path.split('/')[0],
+                            'upload_date': datetime.utcnow(),
+                            'file_path': result.file_path
+                        }, cloud_task)
+
+            self.job_result = GenomicSubProcessResult.NO_FILES if not results_found else \
+                GenomicSubProcessResult.SUCCESS
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
         """
@@ -817,6 +852,7 @@ class GenomicJobController:
         # Only update the state if it was AW1
         if member.genomicWorkflowState == GenomicWorkflowState.AW1:
             member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW2.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         # Truncate call rate

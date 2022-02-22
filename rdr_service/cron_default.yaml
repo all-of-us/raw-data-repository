@@ -209,3 +209,8 @@ cron:
   timezone: America/New_York
   schedule: every day 04:00
   target: offline
+- description: Genomic Retry Manifest Ingestion Failures
+  url: /offline/GenomicRetryManifestIngestions
+  timezone: America/New_York
+  schedule: every day 02:00
+  target: offline

@@ -8,7 +8,7 @@ import sqlalchemy
 from datetime import datetime, timedelta
 from dateutil import parser
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import functions
@@ -55,6 +55,16 @@ from rdr_service.resource.generators.genomics import genomic_user_event_metrics_
 
 
 class GenomicDaoUtils:
+
+    ingestion_job_ids = [
+        GenomicJob.METRICS_INGESTION,
+        GenomicJob.AW1_MANIFEST,
+        GenomicJob.AW1F_MANIFEST,
+        GenomicJob.AW4_ARRAY_WORKFLOW,
+        GenomicJob.AW4_WGS_WORKFLOW,
+        GenomicJob.AW5_ARRAY_MANIFEST,
+        GenomicJob.AW5_WGS_MANIFEST
+    ]
 
     def get_last_updated_records(self, from_date, _ids=True):
         from_date = from_date.replace(microsecond=0)
@@ -149,7 +159,7 @@ class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
     :return: sqlalchemy query
     """
         existing_valid_query = (
-            sqlalchemy.select([sqlalchemy.func.count().label("existing_count")])
+            sqlalchemy.select([func.count().label("existing_count")])
                 .select_from(
                 sqlalchemy.join(GenomicSet, GenomicSetMember, GenomicSetMember.genomicSetId == GenomicSet.id))
                 .where(
@@ -388,20 +398,20 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).first()
         return member
 
-    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id, genome_type):
+    def get_member_from_biobank_id_and_sample_id(self, biobank_id, sample_id):
         """
         Retrieves a genomic set member record matching the biobank Id
         :param biobank_id:
         :param sample_id:
-        :param genome_type:
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.biobankId == biobank_id,
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomeType == genome_type,
-            ).first()
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            ).one_or_none()
         return member
 
     def get_member_from_biobank_id_in_state(self, biobank_id, genome_type, states):
@@ -478,21 +488,19 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).first()
         return member
 
-    def get_member_from_aw3_sample(self, sample_id, genome_type):
+    def get_member_from_aw3_sample(self, sample_id):
         """
         Retrieves a genomic set member record matching the sample_id
         The sample_id is supplied in AW1 manifest, not biobank_stored_sample_id
-        Needs a genome type.
-        :param genome_type: aou_wgs, aou_array, aou_cvl
         :param sample_id:
         :return: a GenomicSetMember object
         """
         with self.session() as session:
             member = session.query(GenomicSetMember).filter(
                 GenomicSetMember.sampleId == sample_id,
-                GenomicSetMember.genomeType == genome_type,
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicSetMember.aw3ManifestJobRunID != None,
+                GenomicSetMember.ignoreFlag == 0,
+                GenomicSetMember.aw3ManifestJobRunID.isnot(None)
             ).one_or_none()
         return member
 
@@ -974,12 +982,12 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 functions.concat(biobank_prefix, GenomicSetMember.biobankId).label('biobank_id'),
                 GenomicSetMember.sexAtBirth,
                 GenomicSetMember.genomeType,
-                sqlalchemy.func.IF(GenomicSetMember.nyFlag == 1,
-                                   sqlalchemy.sql.expression.literal("Y"),
-                                   sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
-                sqlalchemy.func.IF(GenomicSetMember.validationStatus == 1,
-                                   sqlalchemy.sql.expression.literal("Y"),
-                                   sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
+                func.IF(GenomicSetMember.nyFlag == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('ny_flag'),
+                func.IF(GenomicSetMember.validationStatus == 1,
+                        sqlalchemy.sql.expression.literal("Y"),
+                        sqlalchemy.sql.expression.literal("N")).label('validation_passed'),
                 GenomicSetMember.ai_an
             ).filter(
                 GenomicSetMember.genomicWorkflowState == genomic_workflow_state
@@ -1220,6 +1228,63 @@ class GenomicFileProcessedDao(UpdatableDao, GenomicDaoUtils):
             ).all()
         return file_list
 
+    def get_ingestion_deltas_from_date(self, *, from_date, ingestion_type):
+        results = []
+
+        if ingestion_type not in [GenomicJob.AW1_MANIFEST,
+                                  GenomicJob.METRICS_INGESTION]:
+            return results
+
+        with self.session() as session:
+            if ingestion_type == GenomicJob.AW1_MANIFEST:
+                results = session.query(
+                    func.count(GenomicAW1Raw.id).label("raw_record_count"),
+                    func.count(GenomicSetMember.id).label("ingested_count"),
+                    GenomicAW1Raw.file_path,
+                    literal('AW1').label('file_type'),
+                ).outerjoin(
+                    GenomicManifestFile,
+                    GenomicManifestFile.filePath == GenomicAW1Raw.file_path
+                ).outerjoin(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                ).outerjoin(
+                    GenomicSetMember,
+                    GenomicSetMember.aw1FileProcessedId == GenomicFileProcessed.id
+                ).filter(
+                    GenomicAW1Raw.created >= from_date,
+                    GenomicAW1Raw.ignore_flag != 1,
+                    GenomicAW1Raw.biobank_id != "",
+                    GenomicAW1Raw.biobank_id.isnot(None)
+                ).group_by(
+                    GenomicAW1Raw.file_path
+                ).distinct()
+            elif ingestion_type == GenomicJob.METRICS_INGESTION:
+                results = session.query(
+                    func.count(GenomicAW2Raw.id).label("raw_record_count"),
+                    func.count(GenomicGCValidationMetrics.id).label("ingested_count"),
+                    GenomicAW2Raw.file_path,
+                    literal('AW2').label('file_type'),
+                ).outerjoin(
+                    GenomicManifestFile,
+                    GenomicManifestFile.filePath == GenomicAW2Raw.file_path
+                ).outerjoin(
+                    GenomicFileProcessed,
+                    GenomicFileProcessed.genomicManifestFileId == GenomicManifestFile.id
+                ).outerjoin(
+                    GenomicGCValidationMetrics,
+                    GenomicGCValidationMetrics.genomicFileProcessedId == GenomicFileProcessed.id
+                ).filter(
+                    GenomicAW2Raw.created >= from_date,
+                    GenomicAW2Raw.ignore_flag != 1,
+                    GenomicAW2Raw.biobank_id != "",
+                    GenomicAW2Raw.biobank_id.isnot(None)
+                ).group_by(
+                    GenomicAW2Raw.file_path
+                ).distinct()
+
+            return results.all()
+
     def insert_file_record(self, run_id,
                            path,
                            bucket_name,
@@ -1427,7 +1492,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                     GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
-                    sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.idatRedReceived == 0) |
@@ -1476,7 +1541,7 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                     GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
-                    sqlalchemy.func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
                     GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
@@ -2370,21 +2435,12 @@ class GenomicAW4RawDao(BaseDao):
             ).all()
 
 
-class GenomicIncidentDao(UpdatableDao):
+class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):
     validate_version_match = False
 
     def __init__(self):
         super(GenomicIncidentDao, self).__init__(
             GenomicIncident, order_by_ending=['id'])
-        self.ingestion_job_ids = [
-            GenomicJob.METRICS_INGESTION,
-            GenomicJob.AW1_MANIFEST,
-            GenomicJob.AW1F_MANIFEST,
-            GenomicJob.AW4_ARRAY_WORKFLOW,
-            GenomicJob.AW4_WGS_WORKFLOW,
-            GenomicJob.AW5_ARRAY_MANIFEST,
-            GenomicJob.AW5_WGS_MANIFEST
-        ]
 
     def get_id(self, obj):
         return obj.id
