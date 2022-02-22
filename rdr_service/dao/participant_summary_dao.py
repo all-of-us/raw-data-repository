@@ -22,7 +22,8 @@ from rdr_service.api_util import (
     format_json_hpo,
     format_json_org,
     format_json_site,
-    parse_json_enum
+    parse_json_enum,
+    format_json_bool
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
@@ -988,14 +989,36 @@ class ParticipantSummaryDao(UpdatableDao):
 
         return result
 
+    def get_participant_incentives(self, result):
+
+        def _convert_obj(obj):
+            obj = obj._asdict()
+
+            bool_fields = ['cancelled']
+            for field in bool_fields:
+                format_json_bool(obj, field_name=field)
+
+            obj['participantId'] = to_client_participant_id(obj['participantId'])
+            for key, val in obj.items():
+                if val is None:
+                    obj[key] = 'UNSET'
+
+            return obj
+
+        participant_id = result['participantId']
+        records = list(filter(lambda obj: obj.participantId == participant_id, self.participant_incentives))
+
+        records = [_convert_obj(obj) for obj in records]
+        return records
+
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
 
         if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
+
         if self.participant_incentives:
-            # result = self.get_hpro_consent_paths(result)
-            pass
+            result['participantIncentives'] = self.get_participant_incentives(result)
 
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 
@@ -1012,13 +1035,14 @@ class ParticipantSummaryDao(UpdatableDao):
         biobank_id = result.get("biobankId")
         if biobank_id:
             result["biobankId"] = to_client_biobank_id(biobank_id)
+
         date_of_birth = result.get("dateOfBirth")
         if date_of_birth:
             result["ageRange"] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
         else:
             result["ageRange"] = UNSET
 
-        if result.get("primaryLanguage") is None:
+        if not result.get("primaryLanguage"):
             result["primaryLanguage"] = UNSET
 
         if "organizationId" in result:

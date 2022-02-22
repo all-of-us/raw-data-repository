@@ -62,6 +62,16 @@ def convert_to_datetime(date):
     return datetime.datetime.combine(date, datetime.datetime.min.time())
 
 
+def format_json_bool(obj, field_name):
+    if field_name not in obj:
+        return
+    bool_map = {
+        0: False,
+        1: True
+    }
+    obj[field_name] = bool_map[obj[field_name]]
+
+
 def format_json_date(obj, field_name, date_format=None):
     """Converts a field of a dictionary from a datetime to a string."""
     if field_name in obj:

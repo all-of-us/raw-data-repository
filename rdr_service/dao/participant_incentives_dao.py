@@ -15,7 +15,18 @@ class ParticipantIncentivesDao(UpdatableDao):
 
         with self.session() as session:
             return session.query(
-                ParticipantIncentives
+                ParticipantIncentives.id.label('incentiveId'),
+                ParticipantIncentives.participantId,
+                ParticipantIncentives.createdBy,
+                ParticipantIncentives.incentiveType,
+                ParticipantIncentives.amount,
+                ParticipantIncentives.occurrence,
+                ParticipantIncentives.giftcardType,
+                ParticipantIncentives.notes,
+                ParticipantIncentives.cancelled,
+                ParticipantIncentives.cancelledBy,
+                ParticipantIncentives.cancelledDate
             ).filter(
-                ParticipantIncentives.participant_id.in_(participant_ids)
-            )
+                ParticipantIncentives.participantId.in_(participant_ids)
+            ).all()
+

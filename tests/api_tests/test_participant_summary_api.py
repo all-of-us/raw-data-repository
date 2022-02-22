@@ -735,6 +735,114 @@ class ParticipantSummaryApiTest(BaseTestCase):
                 self.assertFalse(file_path in entry['resource'].keys())
                 self.assertIsNone(entry['resource'].get(file_path))
 
+    def test_hpro_participant_incentives(self):
+        num_summary, first_pid, second_pid = 3, None, None
+
+        site = self.site_dao.get(1)
+
+        for num in range(num_summary):
+            self.data_generator.create_database_participant_summary(
+                firstName=f"Testy_{num}",
+                lastName=f"Tester_{num}",
+                dateOfBirth=datetime.date(1978, 10, 9),
+            )
+
+        current_summaries = self.ps_dao.get_all()
+
+        incentives_pids = []
+
+        first_pid = current_summaries[0].participantId
+        second_pid = current_summaries[1].participantId
+        third_pid = current_summaries[2].participantId
+
+        for num in range(4):
+            date_given = "2022-02-07 21:15:35"
+            cancelled_date = "2022-02-07 21:15:35"
+            if num != 3:
+                self.data_generator.create_database_participant_incentives(
+                    participantId=first_pid if num % 2 != 0 else second_pid,
+                    createdBy="Test User",
+                    site=site.siteId,
+                    dateGiven=date_given,
+                    occurrence="one_time",
+                    incentiveType="cash",
+                    amount="25",
+                    notes="example_notes"
+                )
+            else:
+                self.data_generator.create_database_participant_incentives(
+                    participantId=first_pid,
+                    createdBy="Test User",
+                    site=site.siteId,
+                    dateGiven=date_given,
+                    incentiveType="cash",
+                    occurrence="one_time",
+                    amount="25",
+                    notes="example_notes",
+                    cancelled=1,
+                    cancelledBy="Test CancelUser",
+                    cancelledDate=cancelled_date
+                )
+
+        self.overwrite_test_user_roles([PTC])
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+        self.assertIsNone(first_summary.get('participantIncentives'))
+
+        second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
+        self.assertIsNone(second_summary.get('participantIncentives'))
+
+        third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
+        self.assertIsNone(third_summary.get('participantIncentives'))
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
+        first_incentives = first_summary.get('participantIncentives')
+        self.assertIsNotNone(first_incentives)
+        self.assertEqual(len(first_incentives), 2)
+        self.assertTrue(all(obj['participantId'] == f'P{first_pid}' for obj in first_incentives))
+        # should be one
+        self.assertTrue(any(obj['cancelled'] is True for obj in first_incentives))
+
+        incentives_pids.append(first_pid)
+
+        second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
+        second_incentives = second_summary.get('participantIncentives')
+        self.assertIsNotNone(second_incentives)
+        self.assertEqual(len(second_incentives), 2)
+        self.assertTrue(all(obj['participantId'] == f'P{second_pid}' for obj in second_incentives))
+        # should be both
+        self.assertTrue(all(obj['cancelled'] is False for obj in second_incentives))
+
+        incentives_pids.append(second_pid)
+
+        third_summary = self.send_get(f"Participant/P{third_pid}/Summary")
+        self.assertIsNone(third_summary.get('participantIncentives'))
+
+        self.overwrite_test_user_roles([PTC])
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+
+        entries = response['entry']
+        resources = [obj.get('resource') for obj in entries]
+
+        self.assertEqual(len(entries), len(current_summaries))
+        self.assertTrue(all(obj.get('participantIncentives') is None for obj in resources))
+
+        self.overwrite_test_user_roles([HEALTHPRO])
+
+        response = self.send_get(f"ParticipantSummary?_sort=lastModified")
+        entries = response['entry']
+        resources = [obj.get('resource') for obj in entries]
+
+        for pid in incentives_pids:
+            per_pid_incentives = list(filter(lambda x: int(x['participantId'].split('P')[1]) == pid, resources))[0]
+            self.assertEqual(len(per_pid_incentives['participantIncentives']), 2)
+
+        self.assertEqual(len(entries), len(current_summaries))
+        self.assertTrue(all(obj.get('participantIncentives') is not None for obj in resources))
+
     def test_pairing_summary(self):
         participant = self.send_post("Participant", {"providerLink": [self.provider_link]})
         participant_id = participant["participantId"]
@@ -3585,6 +3693,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
             mar_participant_id
         ], response_ids)
 
+    #### begin POST to ParticipantSummary API
     def test_response_for_pid_not_found_in_post(self):
         bad_pid = 'P12345'
 
