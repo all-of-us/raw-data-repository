@@ -466,6 +466,29 @@ class BQPDRDVEHRSharingView(BQModuleView):
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
 
+#
+#  GROR
+#
+class BQPDRGRORSchema(_BQModuleSchema):
+    """ GROR Consent Module """
+    _module = 'GROR'
+    # TBD:
+    _force_boolean_fields = (
+        'ResultsConsent_Signature',
+    )
+
+class BQPDRGROR(BQTable):
+    """ GROR BigQuery Table """
+    __tablename__ = 'pdr_mod_gror'
+    __schema__ = BQPDRGRORSchema
+
+class BQPDRGRORView(BQView):
+    """ PDR GROR BiqQuery View """
+    __viewname__ = 'v_pdr_mod_gror'
+    __viewdescr__ = 'PDR GROR Consent Module View'
+    __table__ = BQPDRGROR
+    __pk_id__ = ['participant_id', 'questionnaire_response_id']
+    _show_created = True
 
 #
 # FamilyHistory
@@ -1278,6 +1301,7 @@ PDR_MODULE_LIST = (
     BQPDROverallHealth,
     BQPDREHRConsentPII,
     BQPDRDVEHRSharing,
+    BQPDRGROR,
     BQPDRCOPEMay,
     BQPDRCOPENov,
     BQPDRCOPEDec,
