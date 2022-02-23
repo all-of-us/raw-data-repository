@@ -30,3 +30,8 @@ class ParticipantIncentivesDao(UpdatableDao):
                 ParticipantIncentives.participantId.in_(participant_ids)
             ).all()
 
+    def to_client_json(self, model):
+        pass
+
+    def from_client_json(self):
+        pass

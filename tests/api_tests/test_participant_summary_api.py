@@ -755,9 +755,10 @@ class ParticipantSummaryApiTest(BaseTestCase):
         second_pid = current_summaries[1].participantId
         third_pid = current_summaries[2].participantId
 
+        date_given = "2022-02-07 21:15:35"
+        cancelled_date = "2022-02-07 21:15:35"
+
         for num in range(4):
-            date_given = "2022-02-07 21:15:35"
-            cancelled_date = "2022-02-07 21:15:35"
             if num != 3:
                 self.data_generator.create_database_participant_incentives(
                     participantId=first_pid if num % 2 != 0 else second_pid,
@@ -799,21 +800,29 @@ class ParticipantSummaryApiTest(BaseTestCase):
 
         first_summary = self.send_get(f"Participant/P{first_pid}/Summary")
         first_incentives = first_summary.get('participantIncentives')
+
         self.assertIsNotNone(first_incentives)
         self.assertEqual(len(first_incentives), 2)
         self.assertTrue(all(obj['participantId'] == f'P{first_pid}' for obj in first_incentives))
+
         # should be one
         self.assertTrue(any(obj['cancelled'] is True for obj in first_incentives))
+        self.assertTrue(any(obj['cancelledBy'] == 'Test CancelUser' for obj in first_incentives))
+        self.assertTrue(any(obj['cancelledDate'] == cancelled_date for obj in first_incentives))
 
         incentives_pids.append(first_pid)
 
         second_summary = self.send_get(f"Participant/P{second_pid}/Summary")
         second_incentives = second_summary.get('participantIncentives')
+
         self.assertIsNotNone(second_incentives)
         self.assertEqual(len(second_incentives), 2)
         self.assertTrue(all(obj['participantId'] == f'P{second_pid}' for obj in second_incentives))
+
         # should be both
         self.assertTrue(all(obj['cancelled'] is False for obj in second_incentives))
+        self.assertTrue(all(obj['cancelledBy'] == 'UNSET' for obj in second_incentives))
+        self.assertTrue(all(obj['cancelledDate'] == 'UNSET' for obj in second_incentives))
 
         incentives_pids.append(second_pid)
 
