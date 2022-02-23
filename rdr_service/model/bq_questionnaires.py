@@ -472,7 +472,6 @@ class BQPDRDVEHRSharingView(BQModuleView):
 class BQPDRGRORSchema(_BQModuleSchema):
     """ GROR Consent Module """
     _module = 'GROR'
-    # TBD:
     _force_boolean_fields = (
         'ResultsConsent_Signature',
     )

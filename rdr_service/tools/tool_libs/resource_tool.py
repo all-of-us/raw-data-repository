@@ -361,8 +361,6 @@ class ParticipantResourceClass(object):
 
         return 1
 
-
-
 class CodeResourceClass(object):
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject):
