@@ -2024,13 +2024,17 @@ class GenomicOutreachDaoV2(BaseDao):
             'pgx': {
                 GenomicReportState.PGX_RPT_READY: "ready",
                 GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.PGX_RPT_DELETED: "deleted"
+                GenomicReportState.PGX_RPT_DELETED: "deleted",
+                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.CVL_RPT_DELETED: "deleted"
             },
             'hdr': {
                 GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
                 GenomicReportState.HDR_RPT_POSITIVE: "positive",
                 GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.HDR_RPT_DELETED: "deleted"
+                GenomicReportState.HDR_RPT_DELETED: "deleted",
+                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.CVL_RPT_DELETED: "deleted"
             }
         }
         p_status, p_module = None, None
