@@ -1565,7 +1565,10 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # ubr_sex
         data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
         # ubr_sexual_orientation
-        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(qnan.get('TheBasics_SexualOrientation', None))
+        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(
+            qnan.get('TheBasics_SexualOrientation', None),
+            qnan.get('GenderIdentity_SexualityCloserDescription', None)
+        )
         # ubr_gender_identity
         data['ubr_gender_identity'] = ubr.ubr_gender_identity(qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
             qnan.get('Gender_GenderIdentity', None), qnan.get('Gender_CloserGenderDescription', None))

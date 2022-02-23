@@ -52,25 +52,39 @@ class UBRCalculatorTest(BaseTestCase):
         UBR Calculator Test - Sexual Orientation
         Note: Multiple Value UBR Calculation
         """
-        # Test with Null and PMI_Skip values
-        self.assertEqual(self.ubr.ubr_sexual_orientation(None), UBRValueEnum.NotAnswer_Skip)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
+        # Test with Null and PMI_Skip values for both parent and child questions for sexual_orientation
+        self.assertEqual(self.ubr.ubr_sexual_orientation(None, None), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_Skip', 'PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
+        self.assertEqual(self.ubr.ubr_sexual_orientation(None, 'PMI_Skip'), UBRValueEnum.NotAnswer_Skip)
+
+        # Test UBR values based on answer to child question alone (due to improper branch logic handling by PTSC)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_Skip', 'SexualityCloserDescription_MostlyStraight'),
+                         UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_PreferNotToAnswer', 'SexualityCloserDescription_Queer'),
+                         UBRValueEnum.UBR)
+
+        # TODO:  Confirm we should honor child answers received unexpectedly due to improper branch logic, if we
+        # ordinarily would have stopped at the parent SexualOrientation_Straight answer and assigned RBR based on that
+        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight',
+                                                         'SexualityCloserDescription_DontKnow'), UBRValueEnum.UBR)
 
         # Test UBR value
-        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Bisexual'), UBRValueEnum.UBR)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian'), UBRValueEnum.UBR)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Gay'), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Bisexual', None), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian', None), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Gay', None), UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight', None),
+            UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian', None),
+            UBRValueEnum.UBR)
 
         # Test RBR value
-        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight'), UBRValueEnum.RBR)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_PreferNotToAnswer'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight', None), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_PreferNotToAnswer', None), UBRValueEnum.RBR)
 
         # Bad or unknown value will default to UBR.
-        self.assertEqual(self.ubr.ubr_sexual_orientation('BadValueTest'), UBRValueEnum.UBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('BadValueTest', None), UBRValueEnum.UBR)
 
     def test_ubr_gender_identity(self):
         """

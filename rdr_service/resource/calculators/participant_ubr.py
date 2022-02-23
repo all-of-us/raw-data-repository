@@ -41,16 +41,33 @@ class ParticipantUBRCalculator:
         return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_sexual_orientation(answer: (str, None)):
+    def ubr_sexual_orientation(so_answer: (str, None), so_closer_answer: (str, None)):
         """
         Calculate the sexual orientation UBR value. Value can be a comma delimited list of multiple choice values.
-        :param answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
+        :param so_answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
+        :param so_closer_answer:  Answer code to GenderIdentity_SexualityCloserDescription question in TheBasics survey
+                                  (considered "child" question to TheBasics_SexualOrientation parent question, primarily
+                                  if participant selects SexualOrientation_None as the parent question answer)
         :return: UBRValueEnum
         """
-        if answer is None or answer == 'PMI_Skip':
-            return UBRValueEnum.NotAnswer_Skip
-        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
+
+        # Based on existing data in the RDR, it has been possible for participants to submit surveys where they answered
+        # the child GenderIdentity_SexualityCloserDescription question even if they did not answer the expected
+        # SexualOrientation_None response to the parent TheBasics_SexualOrientation question first.  Until further
+        # notice, the answers to the child question will still be honored (any selected option results in UBR)
+        if so_closer_answer not in [None, 'PMI_Skip']:
             return UBRValueEnum.UBR
+
+        # NotAnswer_Skip UBR/RBR category only applies if *both* parent/child questions were skipped
+        if (so_answer is None or so_answer == 'PMI_Skip')\
+              and (so_closer_answer is None or so_closer_answer == 'PMI_Skip'):
+            return UBRValueEnum.NotAnswer_Skip
+
+        # UBR also determined based on parent TheBasics_SexualOrientation question response alone, if they answered
+        # and selected any option other than 'SexualOrientation_Straight'
+        if so_answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip']:
+            return UBRValueEnum.UBR
+
         return UBRValueEnum.RBR
 
     @staticmethod
@@ -98,8 +115,8 @@ class ParticipantUBRCalculator:
     @staticmethod
     def ubr_sexual_gender_minority(ubr_sexual_orientation, ubr_gender_identity):
         """
-        Calculate the "sexual gender minority" UBR value. If only one of the two args is NullSkip, we convert the
-        arg NullSkip value to RBR so we can ignore it.
+        Calculate the "sexual gender minority" UBR value. If only one of the two args is NotAnswer_Skip, we convert the
+        arg NotAnswer_Skip value to RBR so we can ignore it.
         :param ubr_sexual_orientation: Value returned from self.ubr_sexual_orientation().
         :param ubr_gender_identity: Value returned from self.ubr_gender_identity().
         :return: UBRValueEnum
