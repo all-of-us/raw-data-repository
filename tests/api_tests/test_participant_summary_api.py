@@ -767,7 +767,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                     dateGiven=date_given,
                     occurrence="one_time",
                     incentiveType="cash",
-                    amount="25",
+                    amount=25,
                     notes="example_notes"
                 )
             else:
@@ -778,7 +778,7 @@ class ParticipantSummaryApiTest(BaseTestCase):
                     dateGiven=date_given,
                     incentiveType="cash",
                     occurrence="one_time",
-                    amount="25",
+                    amount=25,
                     notes="example_notes",
                     cancelled=1,
                     cancelledBy="Test CancelUser",

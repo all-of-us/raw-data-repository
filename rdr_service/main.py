@@ -99,7 +99,6 @@ api.add_resource(
 api.add_resource(
     ParticipantIncentivesApi,
     API_PREFIX + "Participant/<participant_id:p_id>/Incentives",
-    API_PREFIX + "ParticipantIncentives",
     endpoint="participant.incentives",
     methods=["POST", "PUT"],
 )

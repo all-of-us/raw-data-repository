@@ -22,8 +22,7 @@ from rdr_service.api_util import (
     format_json_hpo,
     format_json_org,
     format_json_site,
-    parse_json_enum,
-    format_json_bool
+    parse_json_enum
 )
 from rdr_service.app_util import is_care_evo_and_not_prod
 from rdr_service.code_constants import BIOBANK_TESTS, ORIGINATING_SOURCES, PMI_SKIP_CODE, PPI_SYSTEM, UNSET
@@ -33,6 +32,7 @@ from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
 
@@ -446,6 +446,7 @@ class ParticipantSummaryDao(UpdatableDao):
         self.organization_dao = OrganizationDao()
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
+        self.incentive_dao = ParticipantIncentivesDao()
         self.faker = faker.Faker()
 
         self.hpro_consents = []
@@ -990,25 +991,11 @@ class ParticipantSummaryDao(UpdatableDao):
         return result
 
     def get_participant_incentives(self, result):
-
-        def _convert_obj(obj):
-            obj = obj._asdict()
-
-            bool_fields = ['cancelled']
-            for field in bool_fields:
-                format_json_bool(obj, field_name=field)
-
-            obj['participantId'] = to_client_participant_id(obj['participantId'])
-            for key, val in obj.items():
-                if val is None:
-                    obj[key] = 'UNSET'
-
-            return obj
-
         participant_id = result['participantId']
+
         records = list(filter(lambda obj: obj.participantId == participant_id, self.participant_incentives))
 
-        records = [_convert_obj(obj) for obj in records]
+        records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
         return records
 
     def to_client_json(self, model: ParticipantSummary):
