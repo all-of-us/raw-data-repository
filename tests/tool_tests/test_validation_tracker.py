@@ -13,6 +13,9 @@ class TestValidationTracker(BaseTestCase):
         super(TestValidationTracker, self).__init__(*args, **kwargs)
         self.uses_database = False
 
+        self.cope_yes_answer_code_str = code_constants.CONSENT_COPE_YES_CODE.lower()
+        self.cope_no_answer_code_str = code_constants.CONSENT_COPE_NO_CODE.lower()
+
     def test_flags_same_code(self):
         """Make sure the tracker detects that it's code has ben answered again"""
         tracker = CodeRepeatedTracker(question_codes=['test_b'])
@@ -60,7 +63,7 @@ class TestValidationTracker(BaseTestCase):
         tracker.visit_response(response=self._build_response(
             answers={
                 code_constants.COPE_DOSE_RECEIVED_QUESTION: [
-                    response_domain_model.Answer(id=23, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=23, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_NUMBER_DOSES_QUESTION: [
                     response_domain_model.Answer(id=72, value=code_constants.COPE_TWO_DOSE_ANSWER)
@@ -75,12 +78,12 @@ class TestValidationTracker(BaseTestCase):
         with self.assertRaises(InvalidAnswers) as invalid_error:
             tracker.visit_response(response=self._build_response(answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=128, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=128, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=129, value='any')],
                 code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=130, value='any')],
                 code_constants.COPE_SECOND_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=354, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=354, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_SECOND_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=355, value='any')],
                 code_constants.COPE_SECOND_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=356, value='any')]
@@ -93,7 +96,7 @@ class TestValidationTracker(BaseTestCase):
         tracker.visit_response(response=self._build_response(
             answers={
                 code_constants.COPE_DOSE_RECEIVED_QUESTION: [
-                    response_domain_model.Answer(id=23, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=23, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_NUMBER_DOSES_QUESTION: [
                     response_domain_model.Answer(id=72, value=code_constants.COPE_ONE_DOSE_ANSWER)
@@ -108,12 +111,12 @@ class TestValidationTracker(BaseTestCase):
         with self.assertRaises(InvalidAnswers) as invalid_error:
             tracker.visit_response(response=self._build_response(answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=128, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=128, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=129, value='any')],
                 code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=130, value='any')],
                 code_constants.COPE_SECOND_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=354, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=354, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_SECOND_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=355, value='any')],
                 code_constants.COPE_SECOND_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=356, value='any')]
@@ -126,7 +129,7 @@ class TestValidationTracker(BaseTestCase):
         tracker.visit_response(response=self._build_response(
             answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=128, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=128, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=129, value='any')],
                 code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=130, value='any')]
@@ -136,12 +139,12 @@ class TestValidationTracker(BaseTestCase):
         with self.assertRaises(InvalidAnswers) as invalid_error:
             tracker.visit_response(response=self._build_response(answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=233, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=233, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=268, value='any')],
                 code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=297, value='any')],
                 code_constants.COPE_SECOND_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=354, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=354, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_SECOND_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=355, value='any')],
                 code_constants.COPE_SECOND_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=356, value='any')]
@@ -154,14 +157,14 @@ class TestValidationTracker(BaseTestCase):
         tracker.visit_response(response=self._build_response(
             answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=128, value=code_constants.CONSENT_COPE_NO_CODE)
+                    response_domain_model.Answer(id=128, value=self.cope_no_answer_code_str)
                 ]
             }
         ))
 
         tracker.visit_response(response=self._build_response(answers={
             code_constants.COPE_FIRST_DOSE_QUESTION: [
-                response_domain_model.Answer(id=233, value=code_constants.CONSENT_COPE_YES_CODE)
+                response_domain_model.Answer(id=233, value=self.cope_yes_answer_code_str)
             ],
             code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=268, value='any')],
             code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=297, value='any')]
@@ -173,7 +176,7 @@ class TestValidationTracker(BaseTestCase):
         tracker.visit_response(response=self._build_response(
             answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=233, value=code_constants.CONSENT_COPE_YES_CODE)
+                    response_domain_model.Answer(id=233, value=self.cope_yes_answer_code_str)
                 ],
                 code_constants.COPE_FIRST_DOSE_TYPE_QUESTION: [response_domain_model.Answer(id=268, value='any')],
                 code_constants.COPE_FIRST_DOSE_TYPE_OTHER_QUESTION: [response_domain_model.Answer(id=297, value='any')]
@@ -183,7 +186,7 @@ class TestValidationTracker(BaseTestCase):
         with self.assertRaises(InvalidAnswers) as invalid_error:
             tracker.visit_response(response=self._build_response(answers={
                 code_constants.COPE_FIRST_DOSE_QUESTION: [
-                    response_domain_model.Answer(id=128, value=code_constants.CONSENT_COPE_NO_CODE)
+                    response_domain_model.Answer(id=128, value=self.cope_no_answer_code_str)
                 ]
             }))
         self.assertEqual({128}, invalid_error.exception.invalid_answer_ids)
