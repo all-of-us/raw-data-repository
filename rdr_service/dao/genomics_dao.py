@@ -561,7 +561,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 )
             return members_query.all()
 
-    def get_gem_consent_removal_date(self, member):
+    def get_consent_removal_date(self, member):
         """
         Calculates the earliest removal date between GROR or Primary Consent
         :param member

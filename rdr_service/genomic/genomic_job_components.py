@@ -2381,7 +2381,7 @@ class GenomicReconciler:
                 self.member_dao.update_member_state(member, new_state)
 
                 # Handle withdrawal (gror/primary consent) for reportConsentRemovalDate
-                removal_date = self.member_dao.get_gem_consent_removal_date(member)
+                removal_date = self.member_dao.get_consent_removal_date(member)
                 if removal_date:
                     self.member_dao.update_report_consent_removal_date(member, removal_date)
 
