@@ -573,6 +573,8 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                                            ParticipantSummary.consentForStudyEnrollmentAuthored,
                                            ParticipantSummary.consentForGenomicsROR,
                                            ParticipantSummary.consentForGenomicsRORAuthored,
+                                           ParticipantSummary.withdrawalStatus,
+                                           ParticipantSummary.withdrawalAuthored
                                            ).filter(
                 ParticipantSummary.participantId == member.participantId,
             ).first()
@@ -587,6 +589,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         if consent_status.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED and \
             consent_status.consentForStudyEnrollmentAuthored:
             withdraw_dates.append(consent_status.consentForStudyEnrollmentAuthored)
+
+        if consent_status.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN and \
+            consent_status.withdrawalAuthored:
+            withdraw_dates.append(consent_status.withdrawalAuthored)
 
         if withdraw_dates:
             return min([d for d in withdraw_dates if d is not None])
