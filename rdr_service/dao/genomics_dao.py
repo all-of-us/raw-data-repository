@@ -1542,11 +1542,14 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
+                    #GenomicSetMember.sampleId.in_([20297003836, 20281002851, 20207002978, 20281002822]),
                     GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfTbiReceived == 0) |
                     (GenomicGCValidationMetrics.hfVcfMd5Received == 0) |
+                    (GenomicGCValidationMetrics.gvcfReceived == 0) |
+                    (GenomicGCValidationMetrics.gvcfMd5Received == 0) |
                     (GenomicGCValidationMetrics.cramReceived == 0) |
                     (GenomicGCValidationMetrics.cramMd5Received == 0) |
                     (GenomicGCValidationMetrics.craiReceived == 0)
