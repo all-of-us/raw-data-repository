@@ -412,11 +412,11 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param recipients: Destination email address list, if overriding the default config item
         """
 
-        recipients = recipients or config.getSetting(config.PTSC_SERVICE_DESK_EMAIL)
+        recipients = recipients or config.getSettingList(config.PTSC_SERVICE_DESK_EMAIL)
         if recipients is None:
             logging.error(f'No recipient address list available for consent error email generation')
         elif not isinstance(recipients, list):
-            raise ValueError("Consent error report recipients param is not in list format")
+            raise ValueError("Consent error report recipients param is not in expected list format")
         else:
             email_obj = email_service.Email(subject, recipients=recipients,  cc_recipients=None,
                                             from_email=None, plain_text_content=body)
