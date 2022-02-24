@@ -28,7 +28,7 @@ class RdrHtml5Translator(HTML5Translator):
 
 
 class RdrHtmlBuilder(StandaloneHTMLBuilder):
-    name = 'readthedocs'  # Name must match the builder we're trying to override
+    name = 'html'  # Name must match the builder we're trying to override
 
     @property
     def default_translator_class(self):

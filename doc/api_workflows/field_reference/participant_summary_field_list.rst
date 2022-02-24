@@ -8,4 +8,4 @@ Participant Summary Field List
     :exclude-members: stateId, recontactMethodId, languageId, genderIdentityId, sexId, sexualOrientationId, educationId,
                       incomeId, physicalMeasurementsCreatedSiteId, physicalMeasurementsFinalizedSiteId, organizationId,
                       siteId, biospecimenSourceSiteId, biospecimenCollectedSiteId, biospecimenProcessedSiteId,
-                      biospecimenFinalizedSiteId, participant
+                      biospecimenFinalizedSiteId, participant, enrollmentSiteId
