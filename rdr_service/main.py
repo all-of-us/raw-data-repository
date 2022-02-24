@@ -29,6 +29,7 @@ from rdr_service.api.genomic_api import GenomicPiiApi, GenomicOutreachApi, Genom
 from rdr_service.api.import_codebook_api import import_codebook
 from rdr_service.api.metrics_fields_api import MetricsFieldsApi
 from rdr_service.api.participant_api import ParticipantApi, ParticipantResearchIdApi
+from rdr_service.api.participant_incentives import ParticipantIncentivesApi
 from rdr_service.api.participant_summary_api import ParticipantSummaryApi, \
     ParticipantSummaryModifiedApi, ParticipantSummaryCheckLoginApi
 from rdr_service.api.patient_status import PatientStatusApi, PatientStatusHistoryApi
@@ -93,6 +94,13 @@ api.add_resource(
     API_PREFIX + "ParticipantSummary",
     endpoint="participant.summary",
     methods=["GET", "POST"],
+)
+
+api.add_resource(
+    ParticipantIncentivesApi,
+    API_PREFIX + "Participant/<participant_id:p_id>/Incentives",
+    endpoint="participant.incentives",
+    methods=["POST", "PUT"],
 )
 
 # BigQuery version of Participant Summary API

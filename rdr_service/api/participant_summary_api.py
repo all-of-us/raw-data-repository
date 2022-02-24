@@ -9,6 +9,7 @@ from rdr_service.app_util import auth_required, get_validated_user_info, restric
 from rdr_service.dao.base_dao import _MIN_ID, _MAX_ID
 from rdr_service.dao.hpro_consent_dao import HealthProConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.model.hpo import HPO
@@ -30,10 +31,11 @@ class ParticipantSummaryApi(BaseApi):
         super(ParticipantSummaryApi, self).__init__(ParticipantSummaryDao(), get_returns_children=True)
         self.user_info = None
         self.query = None
+        self.site_dao = None
 
         self.participant_dao = ParticipantDao()
         self.hpro_consent_dao = HealthProConsentDao()
-        self.site_dao = None
+        self.incentives_dao = ParticipantIncentivesDao()
 
     @auth_required(PTC_HEALTHPRO_AWARDEE_CURATION)
     def get(self, p_id=None):
@@ -61,7 +63,11 @@ class ParticipantSummaryApi(BaseApi):
             if auth_awardee and user_email != DEV_MAIL:
                 raise Forbidden
             self._filter_by_user_site(participant_id=p_id)
-            self._fetch_hpro_consents(pids=p_id)
+
+            if any(role in ['healthpro'] for role in self.user_info.get('roles')):
+                self._fetch_hpro_consents(pids=p_id)
+                self._fetch_participant_incentives(pids=p_id)
+
             return super(ParticipantSummaryApi, self).get(p_id)
         else:
             if auth_awardee:
@@ -142,7 +148,10 @@ class ParticipantSummaryApi(BaseApi):
         query = self._make_query()
         results = self.dao.query(query)
         participant_ids = [obj.participantId for obj in results.items if hasattr(obj, 'participantId')]
-        self._fetch_hpro_consents(participant_ids)
+
+        if any(role in ['healthpro'] for role in self.user_info.get('roles')) and participant_ids:
+            self._fetch_hpro_consents(participant_ids)
+            self._fetch_participant_incentives(participant_ids)
 
         logging.info("Query complete, bundling results.")
 
@@ -151,13 +160,14 @@ class ParticipantSummaryApi(BaseApi):
 
         return response
 
-    def _fetch_hpro_consents(self, pids=None):
-        if not any(role in ['healthpro'] for role in self.user_info.get('roles')) or not pids:
-            return
+    def _fetch_hpro_consents(self, pids):
         if type(pids) is not list:
             self.dao.hpro_consents = self.hpro_consent_dao.get_by_participant(pids)
         else:
             self.dao.hpro_consents = self.hpro_consent_dao.batch_get_by_participant(pids)
+
+    def _fetch_participant_incentives(self, pids):
+        self.dao.participant_incentives = self.incentives_dao.get_by_participant(pids)
 
     def _filter_by_user_site(self, participant_id=None):
         if not self.user_info.get('site'):
