@@ -414,7 +414,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
         recipients = recipients or config.getSettingList(config.PTSC_SERVICE_DESK_EMAIL)
         if recipients is None:
-            logging.error(f'No recipient address list available for consent error email generation')
+            logging.error('No recipient address list available for consent error email generation')
         elif not isinstance(recipients, list):
             raise ValueError("Consent error report recipients param is not in expected list format")
         else:
