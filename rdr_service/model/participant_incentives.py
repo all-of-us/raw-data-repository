@@ -15,9 +15,9 @@ class ParticipantIncentives(Base):
 
     __tablename__ = 'participant_incentives'
 
-    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column("created", DateTime, nullable=False)
-    modified = Column("modified", DateTime, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=False)
+    modified = Column(DateTime, nullable=False)
     participantId = Column('participant_id', Integer, ForeignKey(Participant.participantId), index=True, nullable=False)
     createdBy = Column('created_by', String(255), nullable=False)
     incentiveType = Column('incentive_type', String(255), nullable=False)
@@ -29,7 +29,7 @@ class ParticipantIncentives(Base):
     notes = Column(String(512), nullable=True)
     cancelled = Column(SmallInteger, nullable=False, default=0)
     cancelledBy = Column('cancelled_by', String(255), nullable=True)
-    cancelledDate = Column(String(255), nullable=True)
+    cancelledDate = Column('cancelled_date', String(255), nullable=True)
 
 
 event.listen(ParticipantIncentives, "before_insert", model_insert_listener)
