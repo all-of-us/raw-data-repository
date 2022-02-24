@@ -25,7 +25,9 @@ class ParticipantIncentivesApi(UpdatableApi):
 
         self.validate_payload_data()
 
-        model = self.dao.from_client_json(request.get_json(force=True))
+        model = self.dao.from_client_json(
+            request.get_json(force=True)
+        )
         model.participantId = p_id
         model.site = self.site_id
 

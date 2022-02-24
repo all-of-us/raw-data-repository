@@ -36,6 +36,11 @@ class ParticipantIncentivesDao(UpdatableDao):
                 resource['cancelled'] = 1
 
             update_incentive.update(resource)
+
+            if resource.get('site'):
+                updated_site = self.site_dao.get_by_google_group(resource['site'])
+                update_incentive['site'] = updated_site.siteId
+
             del update_incentive['incentiveId']
 
             return self.model_type(**update_incentive)
