@@ -23,8 +23,8 @@ from rdr_service.code_constants import (
     THE_BASICS_PPI_MODULE, COPE_VACCINE_MINUTE_4_MODULE_CODE,
     BASICS_PROFILE_UPDATE_QUESTION_CODES
 )
-from rdr_service.dao.code_dao import CodeDao
 from rdr_service.concepts import Concept
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -33,11 +33,13 @@ from rdr_service.dao.questionnaire_response_dao import (
     QuestionnaireResponseDao,
     _raise_if_gcloud_file_missing,
 )
+from rdr_service.domain_model.response import Answer
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
 from tests import test_data
@@ -1589,12 +1591,12 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
 
         responses = participant_responses_map[participant_id]
         self.assertEqual({
-            't_1': 'one',
-            't_2': 'two'
+            't_1': [Answer(id=mock.ANY, value='one')],
+            't_2': [Answer(id=mock.ANY, value='two')]
         }, responses.in_authored_order[0].answered_codes)
         self.assertEqual({
-            't_1': 'nine',
-            't_2': 'ten'
+            't_1': [Answer(id=mock.ANY, value='nine')],
+            't_2': [Answer(id=mock.ANY, value='ten')]
         }, responses.in_authored_order[1].answered_codes)
 
     def _generate_response(self, questionnaire, answers, participant_id=None, authored_date=None, created_date=None):
@@ -1603,7 +1605,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             questionnaireVersion=questionnaire.version,
             participantId=participant_id,
             authored=authored_date,
-            created=created_date
+            created=created_date,
+            status=QuestionnaireResponseStatus.COMPLETED
         )
         for index, answer in enumerate(answers):
             self.data_generator.create_database_questionnaire_response_answer(

@@ -1278,7 +1278,10 @@ class QuestionnaireResponseDao(BaseDao):
 
         if not include_ignored_answers:
             query = query.filter(
-                QuestionnaireResponseAnswer.ignore.is_(False)
+                or_(
+                    QuestionnaireResponseAnswer.ignore.is_(False),
+                    QuestionnaireResponseAnswer.ignore.is_(None)
+                )
             )
 
         participant_response_map = {}  # dict with participant ids as keys and ParticipantResponse objects as values
