@@ -1224,8 +1224,13 @@ class QuestionnaireResponseDao(BaseDao):
         cls,
         survey_codes: List[str],
         session: Session,
-        participant_ids: List[int]
+        participant_ids: List[int],
+        include_ignored_answers=False,
+        sent_statuses=None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
+
+        if sent_statuses is None:
+            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
 
         # Build query for all the questions answered by the given participants for the given survey codes
         question_code = aliased(Code)
@@ -1233,7 +1238,7 @@ class QuestionnaireResponseDao(BaseDao):
         survey_code = aliased(Code)
         query = (
             session.query(
-                question_code.value,
+                question_code.value,  # TODO: need to make sure this gets converted to lower case
                 QuestionnaireResponse.participantId,
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.authored,
@@ -1248,7 +1253,9 @@ class QuestionnaireResponseDao(BaseDao):
                     QuestionnaireResponseAnswer.valueString,
                     QuestionnaireResponseAnswer.valueSystem,
                     QuestionnaireResponseAnswer.valueUri
-                )
+                ),
+                QuestionnaireResponseAnswer.questionnaireResponseAnswerId,
+                QuestionnaireResponse.status
             )
             .select_from(QuestionnaireResponseAnswer)
             .join(QuestionnaireQuestion)
@@ -1264,13 +1271,19 @@ class QuestionnaireResponseDao(BaseDao):
             .outerjoin(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
             .filter(
                 survey_code.value.in_(survey_codes),
-                QuestionnaireResponse.participantId.in_(participant_ids)
+                QuestionnaireResponse.participantId.in_(participant_ids),
+                QuestionnaireResponse.status.in_(sent_statuses)
             )
         )
 
+        if not include_ignored_answers:
+            query = query.filter(
+                QuestionnaireResponseAnswer.ignore.is_(False)
+            )
+
         participant_response_map = {}  # dict with participant ids as keys and ParticipantResponse objects as values
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_str\
-                    in query.all():
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_str, \
+                answer_id, status in query.all():
             # Get the collection of responses for the participant
             response_collection_for_participant = participant_response_map.get(participant_id)
             if response_collection_for_participant is None:
@@ -1283,11 +1296,15 @@ class QuestionnaireResponseDao(BaseDao):
                 response = response_domain_model.Response(
                     id=response_id,
                     survey_code=survey_code_str,
-                    authored_datetime=authored_datetime
+                    authored_datetime=authored_datetime,
+                    status=status
                 )
                 response_collection_for_participant.responses[response_id] = response
 
-            response.answered_codes[question_code_str] = answer_str
+            response.answered_codes[question_code_str].append(response_domain_model.Answer(
+                id=answer_id,
+                value=answer_str
+            ))
 
         return participant_response_map
 
