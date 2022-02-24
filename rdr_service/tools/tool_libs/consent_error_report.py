@@ -55,17 +55,13 @@ class ConsentErrorReportTool(object):
 
         self._connect_to_rdr_replica()
 
-        # TODO: Temporary check/exception condition until use of SendGrid to generate emails for PTSC approved
-        # if self.gcp_env.project == 'all-of-us-rdr-prod' and not self.args.to_file:
-        #   _logger.error('Production error reports currently must be directed to a file via --to-file')
-        #   return 1
-
         if not self.args.to_file:
             project_config = self.gcp_env.get_app_config()
             if not project_config[config.SENDGRID_KEY]:
                 raise (config.MissingConfigException, 'No API key configured for sendgrid')
-            # This enables use of SendGrid config data if running a tool from a dev server vs. app instance
+            # This enables use of SendGrid email service when running this tool from a dev server vs. app instance
             config.override_setting(config.SENDGRID_KEY, project_config[config.SENDGRID_KEY])
+            config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, project_config[config.PTSC_SERVICE_DESK_EMAIL])
 
         report = ConsentErrorReportGenerator()
         report.create_error_reports(errors_created_since=self.args.errors_since,
