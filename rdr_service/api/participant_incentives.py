@@ -41,7 +41,21 @@ class ParticipantIncentivesApi(UpdatableApi):
         if not participant:
             raise NotFound(f"Participant with ID {p_id} not found")
 
+        resource = request.get_json(force=True)
+
         self.validate_payload_data()
+
+        model = self.dao.from_client_json(
+            request.get_json(force=True),
+            incentive_id=resource['incentiveId'],
+            cancel=resource.get('cancel')
+        )
+
+        model.id = resource['incentiveId']
+        self._do_update(model)
+
+        log_api_request(log=request.log_record)
+        return self._make_response(model)
 
     @staticmethod
     def _get_required_keys(required_type=None):
@@ -67,18 +81,20 @@ class ParticipantIncentivesApi(UpdatableApi):
         resource = request.get_json(force=True)
         required_type = None
 
-        if 'cancel' in resource:
+        if resource.get('site'):
+            valid_site = self.site_dao.get_by_google_group(resource['site'])
+
+            if not valid_site:
+                raise BadRequest(f"Site for group {resource['site']} is invalid")
+
+            self.site_id = valid_site.siteId
+
+        if resource.get('cancel'):
             required_type = 'cancel'
 
         req_keys = self._get_required_keys(required_type)
 
         if not all(k in list(resource.keys()) for k in req_keys):
-            raise BadRequest(f"Missing required key/values in request, required: {','.join(req_keys)}")
+            raise BadRequest(f"Missing required key/values in request, required: {' | '.join(req_keys)}")
 
-        valid_site = self.site_dao.get_by_google_group(resource['site'])
-
-        if not valid_site:
-            raise BadRequest(f"Site for group {resource['site']} is invalid")
-
-        self.site_id = valid_site.siteId
 

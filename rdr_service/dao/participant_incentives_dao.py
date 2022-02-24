@@ -1,3 +1,5 @@
+from werkzeug.exceptions import BadRequest
+
 from rdr_service.api_util import format_json_bool
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service.dao.site_dao import SiteDao
@@ -14,16 +16,31 @@ class ParticipantIncentivesDao(UpdatableDao):
         self.site_dao = SiteDao()
 
     def get_id(self, obj):
-        pass
+        return obj.id
 
     def to_client_json(self, model):
         obj = self.get_by_incentive_id(model.id)
         obj = self.convert_json_obj(obj)
         return obj
 
-    def from_client_json(self, resource):
-        incentive = self.model_type(**resource)
-        return incentive
+    def from_client_json(self, resource, incentive_id=None, cancel=False):
+        if incentive_id:
+            update_incentive = self.get_by_incentive_id(resource['incentiveId'])
+            if not update_incentive:
+                raise BadRequest(f"Incentive with id {resource['incentiveId']} was not found")
+
+            update_incentive = update_incentive._asdict()
+
+            if cancel:
+                del resource['cancel']
+                resource['cancelled'] = 1
+
+            update_incentive.update(resource)
+            del update_incentive['incentiveId']
+
+            return self.model_type(**update_incentive)
+
+        return self.model_type(**resource)
 
     def get_by_participant(self, participant_ids):
         if type(participant_ids) is not list:
