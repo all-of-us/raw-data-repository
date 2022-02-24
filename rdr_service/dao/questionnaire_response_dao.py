@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import logging
 import os
@@ -7,7 +8,7 @@ from datetime import datetime
 from dateutil import parser
 from hashlib import md5
 import pytz
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
@@ -1226,8 +1227,21 @@ class QuestionnaireResponseDao(BaseDao):
         session: Session,
         participant_ids: List[int],
         include_ignored_answers=False,
-        sent_statuses=None
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
+        """
+        Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
+        and survey codes.
+
+        :param survey_codes: Survey module code strings to get responses for
+        :param session: Session to use for connecting to the database
+        :param participant_ids: Participant ids to get responses for
+        :param include_ignored_answers: Include response answers that have been ignored
+        :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
+            (defaults to QuestionnaireResponseStatus.COMPLETED)
+        :return: A dictionary keyed by participant ids with the value being the collection of responses for
+            that participant
+        """
 
         if sent_statuses is None:
             sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
@@ -1238,15 +1252,15 @@ class QuestionnaireResponseDao(BaseDao):
         survey_code = aliased(Code)
         query = (
             session.query(
-                question_code.value,  # TODO: need to make sure this gets converted to lower case
+                func.lower(question_code.value),
                 QuestionnaireResponse.participantId,
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.authored,
                 survey_code.value,
                 func.coalesce(
-                    answer_code.value,
-                    QuestionnaireResponseAnswer.valueBoolean,
                     QuestionnaireResponseAnswer.valueDate,
+                    func.lower(answer_code.value),
+                    QuestionnaireResponseAnswer.valueBoolean,
                     QuestionnaireResponseAnswer.valueDateTime,
                     QuestionnaireResponseAnswer.valueDecimal,
                     QuestionnaireResponseAnswer.valueInteger,
@@ -1284,18 +1298,17 @@ class QuestionnaireResponseDao(BaseDao):
                 )
             )
 
-        participant_response_map = {}  # dict with participant ids as keys and ParticipantResponse objects as values
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_str, \
+        # build dict with participant ids as keys and ParticipantResponse objects as values
+        participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_value, \
                 answer_id, status in query.all():
             # Get the collection of responses for the participant
-            response_collection_for_participant = participant_response_map.get(participant_id)
-            if response_collection_for_participant is None:
-                response_collection_for_participant = response_domain_model.ParticipantResponses()
-                participant_response_map[participant_id] = response_collection_for_participant
+            response_collection_for_participant = participant_response_map[participant_id]
 
             # Get the response that this particular answer is for so we can store the answer
             response = response_collection_for_participant.responses.get(response_id)
             if not response:
+                # This is the first time seeing an answer for this response, so create the Response structure for it
                 response = response_domain_model.Response(
                     id=response_id,
                     survey_code=survey_code_str,
@@ -1304,12 +1317,14 @@ class QuestionnaireResponseDao(BaseDao):
                 )
                 response_collection_for_participant.responses[response_id] = response
 
-            response.answered_codes[question_code_str].append(response_domain_model.Answer(
-                id=answer_id,
-                value=answer_str
-            ))
+            response.answered_codes[question_code_str].append(
+                response_domain_model.Answer(
+                    id=answer_id,
+                    value=answer_value
+                )
+            )
 
-        return participant_response_map
+        return dict(participant_response_map)
 
 
 def _validate_consent_pdfs(resource):

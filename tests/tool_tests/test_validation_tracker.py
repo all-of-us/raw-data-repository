@@ -14,6 +14,7 @@ class TestValidationTracker(BaseTestCase):
         self.uses_database = False
 
     def test_flags_same_code(self):
+        """Make sure the tracker detects that it's code has ben answered again"""
         tracker = CodeRepeatedTracker(question_codes=['test_b'])
 
         tracker.visit_response(response=self._build_response(answers={
@@ -32,7 +33,7 @@ class TestValidationTracker(BaseTestCase):
         self.assertEqual({321, 743}, invalid_error.exception.invalid_answer_ids)
 
     def test_flags_other_codes_in_group(self):
-        tracker = CodeRepeatedTracker(question_codes=['test_b', 'test_b_x'])
+        tracker = CodeRepeatedTracker(question_codes=['test_b', 'test_b_x', 'test_b_c'])
 
         tracker.visit_response(response=self._build_response(answers={
             'test_b': [response_domain_model.Answer(id=72, value='any')]
@@ -40,10 +41,18 @@ class TestValidationTracker(BaseTestCase):
 
         with self.assertRaises(InvalidAnswers) as invalid_error:
             tracker.visit_response(response=self._build_response(answers={
-                'test_b': [response_domain_model.Answer(id=321, value='any')],
+                'test_b_c': [response_domain_model.Answer(id=321, value='any')],
                 'test_b_x': [response_domain_model.Answer(id=743, value='any')]
             }))
         self.assertEqual({321, 743}, invalid_error.exception.invalid_answer_ids)
+
+    def test_does_not_flag_in_same_response(self):
+        tracker = CodeRepeatedTracker(question_codes=['test_b', 'test_b_x'])
+
+        tracker.visit_response(response=self._build_response(answers={
+            'test_b': [response_domain_model.Answer(id=321, value='any')],
+            'test_b_x': [response_domain_model.Answer(id=743, value='any')]
+        }))
 
     def test_two_dose_answer_shows_later_dose_answers_as_invalid(self):
         tracker = DosesReceivedTracker()

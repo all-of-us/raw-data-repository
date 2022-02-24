@@ -18,7 +18,7 @@ class _CopeUtils:
         if answer is None:
             return False
 
-        return answer.value == code_constants.CONSENT_COPE_YES_CODE
+        return answer.value == code_constants.CONSENT_COPE_YES_CODE.lower()
 
 
 class InvalidAnswers(Exception):
@@ -28,18 +28,27 @@ class InvalidAnswers(Exception):
 
 
 class CodeRepeatedTracker:
+    """
+    Monitors answers across visited responses. Will dectect any answers for the given question codes and then flag
+    any subsequent answers as invalid for the set of question codes.
+    """
+
     def __init__(self, question_codes):
         self._codes = question_codes
-        self.has_previously_responded_to_code_group = False
+        self.previous_answer_found = False
 
     def visit_response(self, response: Response):
         invalid_ids_found = set()
+        answer_found = False
         for code in self._codes:
             if response.has_answer_for(code):
-                if self.has_previously_responded_to_code_group:
+                if self.previous_answer_found:
                     invalid_ids_found.update({answer.id for answer in response.get_answers_for(code)})
                 else:
-                    self.has_previously_responded_to_code_group = True
+                    answer_found = True
+
+        if answer_found:
+            self.previous_answer_found = True
 
         if invalid_ids_found:
             raise InvalidAnswers(
@@ -50,11 +59,11 @@ class CodeRepeatedTracker:
 
 class DosesReceivedTracker:
     """
-    This is all needed in one rule check because of how the number of doses question affects first and second dose
-    questions later.
+    The Feb COPE survey asked a question of 'did you get the vaccine' and another of 'how many doses' and the Minute
+    surveys ask about the first and second doses in separate questions.
 
-    Feb COPE survey asks if the vaccine was taken and how many doses, answers to this could potentially invalidate
-    subsequent answers for the first and second doses in the COPE Minute surveys.
+    This class tracks the mapping between the Feb and Minutes surveys, detecting when we already know a participant
+    has responded with information on each of the doses and flagging any subsequent responses for that dose.
     """
     def __init__(self):
         self.first_dose_tracker = _MinuteSurveyDoseTracking(
@@ -146,7 +155,7 @@ class _MinuteSurveyDoseTracking:
                 raise Exception('No answer on dose type, is this ok?')
 
             if dose_type_other_answer and not dose_type_answer:
-                raise Exception('bad')
+                raise Exception('investigate this')
         else:
             if dose_type_answer:
                 raise Exception('Got a response on the type of dose, but not that they took it')
@@ -182,13 +191,11 @@ class CopeFilterTool(ToolBase):
                     {
                         QuestionnaireResponseAnswer.ignore: True,
                         QuestionnaireResponseAnswer.ignore_reason:
-                            'previously received answer providing cope information (DA-2438)'
+                            'previously received COPE answer providing covid vaccine information (DA-2438)'
                     },
                     syncronize_session=False
                 )
                 session.commit()
-
-        print('aoeuaoe')
 
     @classmethod
     def _get_all_consented_participant_ids(cls, session):

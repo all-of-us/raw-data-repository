@@ -1564,7 +1564,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             survey_code='test_survey',
             question_codes=[
                 't_1',
-                't_2'
+                'T_2'
             ]
         )
         participant_id = self.data_generator.create_database_participant().participantId
