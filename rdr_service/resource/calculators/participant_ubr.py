@@ -57,7 +57,7 @@ class ParticipantUBRCalculator:
         if answer is None or answer == 'PMI_Skip':
             return UBRValueEnum.NotAnswer_Skip
 
-        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip']:
+        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.UBR
 
         return UBRValueEnum.RBR
