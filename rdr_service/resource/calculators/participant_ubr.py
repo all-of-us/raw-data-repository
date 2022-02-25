@@ -41,10 +41,10 @@ class ParticipantUBRCalculator:
         return UBRValueEnum.RBR
 
     @staticmethod
-    def ubr_sexual_orientation(so_answer: (str, None)):
+    def ubr_sexual_orientation(answer: (str, None)):
         """
         Calculate the sexual orientation UBR value. Value can be a comma delimited list of multiple choice values.
-        :param so_answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
+        :param answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
         :return: UBRValueEnum
         """
         # NOTE:
@@ -54,10 +54,10 @@ class ParticipantUBRCalculator:
         # question first.  This is not  consistent with the documented survey branching logic.  Therefore, UBR/RBR
         # calculations are still based only on the response to the TheBasics_SexualOrientation question alone
 
-        if so_answer is None or so_answer == 'PMI_Skip':
+        if answer is None or answer == 'PMI_Skip':
             return UBRValueEnum.NotAnswer_Skip
 
-        if so_answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip']:
+        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer', 'PMI_Skip']:
             return UBRValueEnum.UBR
 
         return UBRValueEnum.RBR
