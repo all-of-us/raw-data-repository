@@ -814,8 +814,12 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
             for val in qnan.get('TheBasics_SexualOrientation').split(','):
                 so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
 
-        # get additional sexual orientation answers, if any.
-        if qnan.get('GenderIdentity_SexualityCloserDescription'):
+        # get additional sexual orientation answers, but only if the answer to the parent question was "None of these
+        # describe me"/'SexualOrientation_None'.   Any other answer means survey should not have branched to the
+        # "additional options" menu ('GenderIdentity_SexualityCloserDescription' answer codes).  Decision was made to
+        # ignore these unexpected "additional options" selections in PDR data.
+        if (len(so) == 1 and so[0]['sexual_orientation'] == 'SexualOrientation_None'
+               and qnan.get('GenderIdentity_SexualityCloserDescription')):
             for val in qnan.get('GenderIdentity_SexualityCloserDescription').split(','):
                 so.append({'sexual_orientation': val, 'sexual_orientation_id': self._lookup_code_id(val, ro_session)})
 
@@ -1565,10 +1569,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
         # ubr_sex
         data['ubr_sex'] = ubr.ubr_sex(qnan.get('BiologicalSexAtBirth_SexAtBirth', None))
         # ubr_sexual_orientation
-        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(
-            qnan.get('TheBasics_SexualOrientation', None),
-            qnan.get('GenderIdentity_SexualityCloserDescription', None)
-        )
+        data['ubr_sexual_orientation'] = ubr.ubr_sexual_orientation(qnan.get('TheBasics_SexualOrientation', None))
         # ubr_gender_identity
         data['ubr_gender_identity'] = ubr.ubr_gender_identity(qnan.get('BiologicalSexAtBirth_SexAtBirth', None),
             qnan.get('Gender_GenderIdentity', None), qnan.get('Gender_CloserGenderDescription', None))
