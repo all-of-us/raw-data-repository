@@ -179,6 +179,8 @@ RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
 
+PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
+
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}
 

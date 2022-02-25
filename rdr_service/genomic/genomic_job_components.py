@@ -2364,14 +2364,13 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.NO_FILES
 
-    def reconcile_gem_report_states(self, _last_run_time=None):
+    def update_report_states_for_consent_removal(self, workflow_states):
         """
-        Scans GEM report states for changes
-        :param _last_run_time: the time when the current job last ran
+        Updates report states if gror or primary consent is not yes
+        :param workflow_states: list of GenomicWorkflowStates
         """
-
-        # Get unconsented members to update (consent > last run time of job_id)
-        unconsented_gror_members = self.member_dao.get_unconsented_gror_since_date(_last_run_time)
+        # Get unconsented members to update
+        unconsented_gror_members = self.member_dao.get_unconsented_gror_or_primary(workflow_states)
 
         # update each member with the new state and withdrawal time
         for member in unconsented_gror_members:
@@ -2382,11 +2381,18 @@ class GenomicReconciler:
                 self.member_dao.update_member_state(member, new_state)
 
                 # Handle withdrawal (gror/primary consent) for reportConsentRemovalDate
-                removal_date = self.member_dao.get_gem_consent_removal_date(member)
-                self.member_dao.update_report_consent_removal_date(member, removal_date)
+                removal_date = self.member_dao.get_consent_removal_date(member)
+                if removal_date:
+                    self.member_dao.update_report_consent_removal_date(member, removal_date)
 
+    def update_report_state_for_reconsent(self, last_run_time):
+        """
+        This code is not currently executed, the reconsent has been deferred.
+        :param last_run_time:
+        :return:
+        """
         # Get reconsented members to update (consent > last run time of job_id)
-        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(_last_run_time)
+        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(last_run_time)
 
         # update each member with the new state
         for member in reconsented_gror_members:

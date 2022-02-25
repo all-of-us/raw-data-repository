@@ -7,6 +7,9 @@ import logging
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, date
 
+from re import findall as re_findall
+
+from rdr_service import config
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.resource import generators, schemas
 from rdr_service.model.consent_file import ConsentType, ConsentSyncStatus, ConsentFile, ConsentOtherErrors
@@ -14,8 +17,7 @@ from rdr_service.model.participant import Participant, ParticipantHistory
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
-# TODO:  Enable if/when SendGrid is approved for sending consent error reports to PTSC/Jira handler
-# from rdr_service.services import email_service
+from rdr_service.services import email_service
 
 # Note:  Determination was made to treat a calculated age > 124 years at time of consent as an invalid DOB
 # Currently must be 18 to consent to the AoU study.   These values could change in the future
@@ -400,21 +402,30 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         return error_dict
 
     @staticmethod
-    def send_consent_error_email(subject, body):
+    def send_consent_error_email(subject, body, recipients=None):
         """
         Send an email to the generic address that will trigger creation of a PTSC Service Desk ticket from the
-        email content.  NOTE:  Currently disabled/not implemented pending review of use of Sendgrid for emails
-        containing participant_id values
+        email content.
+        :param subject:  A string in the expected format (agreed upon w/PTSC) summarizing the error condition
+        :param body: Text/string (multi-line/multi-paragraph format agreed upon w/PTSC ) with details of each instance
+                     of the detected error condition
+        :param recipients: Destination email address list, if overriding the default config item
         """
 
-        # TODO:  Update config to add to/from email addresses for these reports, retrieve values from config
-        # email_obj = email_service.Email(subject, list([recipient_email]),  from_email, body)
-        # email_service.EmailService.send_email(email_obj)
+        recipients = recipients or config.getSettingList(config.PTSC_SERVICE_DESK_EMAIL)
+        if recipients is None:
+            logging.error('No recipient address list available for consent error email generation')
+        elif not isinstance(recipients, list):
+            raise ValueError("Consent error report recipients param is not in expected list format")
+        else:
+            email_obj = email_service.Email(subject, recipients=recipients,  cc_recipients=None,
+                                            from_email=None, plain_text_content=body)
+            email_service.EmailService.send_email(email_obj)
 
-        # Temporary:  Log a warning while email code is disabled/not implemented.
-        error_count = body.count('Error Detected')
-        msg = '\n'.join([f'{subject} error detected for {error_count} consent file(s)',
-                         'Please manually generate the error report using consent-error-report tool'])
+        # Construct string w/pids from the body text and log indication that PTSC ticket should've been created
+        participants = ','.join(re_findall(r"Participant\s+(P\d+)\s*", body))
+        msg = '\n'.join([f'{subject} error detected for pids {participants}',
+                         'Please confirm successful PTSC SD ticket creation'])
         logging.warning(msg)
 
     def get_error_records(self, ids=None, created_since=None, origin=None):
@@ -424,6 +435,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         error conditions (not part of the consent PDF validation, file may have passed validation as READY_TO_SYNC)
         :param ids:  List of ConsentFile table primary key ids.  Overrides created_since filter
         :param created_since:  Datetime value to filter on recently created consent errors
+        :param origin:  Participant origin string (e.g., 'vibrent' or 'careevolution')
         """
         results = None
         error_status_filter = [ConsentSyncStatus.NEEDS_CORRECTING, ]
@@ -453,10 +465,11 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
         return results
 
-    def send_error_reports(self, output_file=None):
+    def send_error_reports(self, output_file=None, recipients=None):
         """
         Loop through the results from create_error_reports() and send related emails or output all data to a file
         :param output_file:  File pathname for output, in lieu of sending emails.
+        :param recipients:  List of email addresses to send report to, if overriding default config item
         """
 
         # PTSC wants tickets identified by error type detected.  Each error type is a key in the error_list dict where
@@ -490,13 +503,14 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                 report_lines.extend(['\n\nSubject: ', subject_line, '\n\n', body])
             # A separate email/ticket is generated for each detected error type (per PTSC request)
             else:
-                self.send_consent_error_email(subject_line, body.rstrip())
+                self.send_consent_error_email(subject_line, body.rstrip(), recipients)
 
         if output_file:
             with open(output_file, 'w') as f:
                 f.writelines(report_lines)
 
     def create_error_reports(self, id_list=None, errors_created_since=None, to_file=None,
+                             recipients=None,
                              participant_origin='vibrent'):
         """
         Generate relevant consent error report content, currently only for PTSC.  May be called as part of the daily
@@ -507,6 +521,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param participant_origin:  Filter value for participant_origin.  Default is 'vibrent'
         :param to_file: File pathname if error reports are to be routed to output file instead of emailed.  This can
                         be used when running the consent-error-report locally as a dry run.
+        :param recipients: List of email address to send reports to, if overriding default config item
         """
         error_records = list()
         if not isinstance(errors_created_since, datetime) and not isinstance(id_list, list):
@@ -593,4 +608,4 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
                     self.error_list[err_key].append(error_details)
 
-        self.send_error_reports(output_file=to_file)
+        self.send_error_reports(output_file=to_file, recipients=recipients)

@@ -7,10 +7,10 @@ import mock
 from datetime import datetime, date
 from tests.helpers.unittest_base import BaseTestCase
 
+from rdr_service import config
 from rdr_service.dao.resource_dao import ResourceDataDao
 from rdr_service.model.consent_file import ConsentSyncStatus, ConsentType, ConsentOtherErrors
 import rdr_service.resource.generators
-# Note:  This generator doesn't have its own
 
 class ConsentMetricGeneratorTest(BaseTestCase):
 
@@ -572,3 +572,56 @@ class ConsentMetricGeneratorTest(BaseTestCase):
         resource_data = self.consent_metric_resource_generator.make_resource(consent_file_rec.id).get_data()
         # Confirm the consent_metric PDR data generator flagged the test participant
         self.assertTrue(resource_data.get('test_participant'))
+
+    @mock.patch('rdr_service.services.email_service.EmailService.send_email')
+    def test_consent_error_report_email_generation(self, email_mock):
+        # Override config settings for test purposes
+        test_key = 'test_key'
+        test_recipients = ['test_recipient@unittest.com',]
+        config.override_setting(config.SENDGRID_KEY, [test_key])
+        config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, test_recipients)
+
+        participant = self._create_participant_with_all_consents_authored(
+            dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
+        )
+        # Create consent_file record with missing check error,  status NEEDS_CORRECTING
+        rec_create_time = datetime.utcnow().replace(microsecond=0)
+        self.data_generator.create_database_consent_file(
+            type=ConsentType.GROR,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            participant_id=participant.participantId,
+            signing_date=participant.consentForStudyEnrollmentFirstYesAuthored.date(),
+            expected_sign_date=date(year=2020, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1,
+            other_errors=ConsentOtherErrors.MISSING_CONSENT_CHECK_MARK
+        )
+        # Create consent_file record with consent version error,  status NEEDS_CORRECTING
+        self.data_generator.create_database_consent_file(
+            type=ConsentType.PRIMARY,
+            sync_status=ConsentSyncStatus.NEEDS_CORRECTING,
+            participant_id=participant.participantId,
+            expected_sign_date=date(year=2018, month=1, day=1),
+            file_exists=1,
+            is_signature_valid=1,
+            is_signing_date_valid=1,
+            other_errors=ConsentOtherErrors.VETERAN_CONSENT_FOR_NON_VETERAN
+        )
+        self.consent_error_report_generator.create_error_reports(errors_created_since=rec_create_time)
+        # Two email reports should be sent, one for each error type (order of emails indeterminate)
+        self.assertEqual(email_mock.call_count, 2)
+        call_args = email_mock.call_args_list
+        subject_lines = []
+        for call_arg in call_args:
+            subject_lines.append(call_arg.args[0].subject)
+            # Verify the to/from email addresses
+            self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
+            self.assertEqual(test_recipients, call_arg.args[0].recipients)
+            self.assertIn('DRC Consent Validation Issue', call_arg.args[0].subject)
+
+        # Verify the expected subject lines were generated
+        self.assertIn('DRC Consent Validation Issue | GROR | Checkbox not checked', subject_lines)
+        self.assertIn('DRC Consent Validation Issue | PRIMARY | VA consent version for non-VA participant',
+                      subject_lines)
+

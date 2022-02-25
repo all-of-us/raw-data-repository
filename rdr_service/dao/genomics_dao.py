@@ -561,7 +561,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 )
             return members_query.all()
 
-    def get_gem_consent_removal_date(self, member):
+    def get_consent_removal_date(self, member):
         """
         Calculates the earliest removal date between GROR or Primary Consent
         :param member
@@ -573,6 +573,8 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                                            ParticipantSummary.consentForStudyEnrollmentAuthored,
                                            ParticipantSummary.consentForGenomicsROR,
                                            ParticipantSummary.consentForGenomicsRORAuthored,
+                                           ParticipantSummary.withdrawalStatus,
+                                           ParticipantSummary.withdrawalAuthored
                                            ).filter(
                 ParticipantSummary.participantId == member.participantId,
             ).first()
@@ -580,13 +582,22 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         # Calculate gem consent removal date
         # Earliest date between GROR or Primary if both,
         withdraw_dates = []
-        if consent_status.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED:
+        if consent_status.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED and \
+            consent_status.consentForGenomicsRORAuthored:
             withdraw_dates.append(consent_status.consentForGenomicsRORAuthored)
 
-        if consent_status.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED:
+        if consent_status.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED and \
+            consent_status.consentForStudyEnrollmentAuthored:
             withdraw_dates.append(consent_status.consentForStudyEnrollmentAuthored)
 
-        return min([d for d in withdraw_dates if d is not None])
+        if consent_status.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN and \
+            consent_status.withdrawalAuthored:
+            withdraw_dates.append(consent_status.withdrawalAuthored)
+
+        if withdraw_dates:
+            return min([d for d in withdraw_dates if d is not None])
+
+        return False
 
     def get_collection_tube_max_set_id(self):
         """
@@ -867,11 +878,11 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).all()
         return members
 
-    def get_unconsented_gror_since_date(self, _date):
+    def get_unconsented_gror_or_primary(self, workflow_states):
         """
-        Get the genomic set members with GROR updated to No Consent since date
-        :param _date:
-        :return: GenomicSetMember list
+        Get the genomic set members with GROR updated to No Consent
+        Or removed primary consent in a list of workflow_states
+        :return: GenomicSetMember query results
         """
         with self.session() as session:
             members = session.query(GenomicSetMember).join(
@@ -879,22 +890,13 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                  GenomicSetMember.participantId == ParticipantSummary.participantId)
             ).filter(
                 GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
-                GenomicSetMember.genomicWorkflowState.in_((
-                    GenomicWorkflowState.GEM_RPT_READY,
-                    GenomicWorkflowState.A1,
-                    GenomicWorkflowState.A2
-                )) &
+                GenomicSetMember.genomicWorkflowState.in_(workflow_states) &
                 (
-                    (
-                        (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForGenomicsRORAuthored > _date)
-                    ) |
-
-                    (
-                        (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED) &
-                        (ParticipantSummary.consentForStudyEnrollmentAuthored > _date) &
-                        (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NO_USE)
-                    )
+                    (ParticipantSummary.consentForGenomicsROR != QuestionnaireStatus.SUBMITTED)
+                    |
+                    (ParticipantSummary.consentForStudyEnrollment != QuestionnaireStatus.SUBMITTED)
+                    |
+                    (ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN)
                 )
             ).all()
         return members
@@ -1072,7 +1074,9 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         gem_wf_states = (
             GenomicWorkflowState.GEM_RPT_READY,
             GenomicWorkflowState.GEM_RPT_PENDING_DELETE,
-            GenomicWorkflowState.GEM_RPT_DELETED
+            GenomicWorkflowState.GEM_RPT_DELETED,
+            GenomicWorkflowState.CVL_RPT_PENDING_DELETE,
+            GenomicWorkflowState.CVL_RPT_DELETED,
         )
         if member.genomicWorkflowState and member.genomicWorkflowState in gem_wf_states:
             state = self.report_state_dao.get_report_state_from_wf_state(member.genomicWorkflowState)
@@ -1088,6 +1092,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 self.report_state_dao.insert(report_obj)
             else:
                 report.genomic_report_state = state
+                report.genomic_report_state_str = state.name
                 self.report_state_dao.update(report)
 
     def update(self, obj):
@@ -2025,13 +2030,17 @@ class GenomicOutreachDaoV2(BaseDao):
             'pgx': {
                 GenomicReportState.PGX_RPT_READY: "ready",
                 GenomicReportState.PGX_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.PGX_RPT_DELETED: "deleted"
+                GenomicReportState.PGX_RPT_DELETED: "deleted",
+                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.CVL_RPT_DELETED: "deleted"
             },
             'hdr': {
                 GenomicReportState.HDR_RPT_UNINFORMATIVE: "uninformative",
                 GenomicReportState.HDR_RPT_POSITIVE: "positive",
                 GenomicReportState.HDR_RPT_PENDING_DELETE: "pending_delete",
-                GenomicReportState.HDR_RPT_DELETED: "deleted"
+                GenomicReportState.HDR_RPT_DELETED: "deleted",
+                GenomicReportState.CVL_RPT_PENDING_DELETE: "pending_delete",
+                GenomicReportState.CVL_RPT_DELETED: "deleted"
             }
         }
         p_status, p_module = None, None

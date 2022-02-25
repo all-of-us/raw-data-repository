@@ -537,6 +537,13 @@ def genomic_gem_a2_workflow():
 @run_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
     genomic_pipeline.gem_a3_manifest_workflow()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('update_report_state_for_consent_removal')
+def update_report_state_for_consent_removal():
+    genomic_pipeline.update_report_state_for_consent_removal()
     return '{"success": "true"}'
 
 
@@ -936,6 +943,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicGemA3Workflow",
         endpoint="genomic_gem_a3_workflow",
         view_func=genomic_gem_a3_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicUpdateReportStateForConsentRemoval",
+        endpoint="update_report_state_for_consent_removal",
+        view_func=update_report_state_for_consent_removal,
         methods=["GET"]
     )
     offline_app.add_url_rule(

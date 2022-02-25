@@ -202,6 +202,9 @@ class CVLReadyState(GenomicStateBase):
         if signal == 'manifest-generated':
             return GenomicWorkflowState.W1
 
+        if signal == 'unconsented':
+            return GenomicWorkflowState.CVL_RPT_PENDING_DELETE
+
         return GenomicWorkflowState.CVL_READY
 
 

@@ -12,13 +12,12 @@ from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import (
     GAE_PROJECT,
-    GENOMIC_GC_METRICS_BUCKET_NAME,
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException,
-    RDR_SLACK_WEBHOOKS
-)
+    RDR_SLACK_WEBHOOKS,
+    GENOME_TYPE_WGS)
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
@@ -63,7 +62,7 @@ class GenomicJobController:
     def __init__(
         self,
         job_id,
-        bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
+        bucket_name=None,
         sub_folder_name=None,
         sub_folder_tuple=None,
         archive_folder_name=None,
@@ -1243,16 +1242,30 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def reconcile_report_states(self, _genome_type):
+    def reconcile_report_states(self, _genome_type=None):
         """
-        Wrapper for the Reconciler reconcile_gem_report_states
+        Wrapper for the Reconciler reconcile_report_states_for_consent_removal
         and reconcile_rhp_report_states
         :param _genome_type: array or wgs
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
+
         if _genome_type == GENOME_TYPE_ARRAY:
-            self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
+            workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
+                               GenomicWorkflowState.A1,
+                               GenomicWorkflowState.A2]
+
+        elif _genome_type == GENOME_TYPE_WGS:
+            workflow_states = [GenomicWorkflowState.CVL_READY]
+
+        else:
+            workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
+                               GenomicWorkflowState.A1,
+                               GenomicWorkflowState.A2,
+                               GenomicWorkflowState.CVL_READY]
+
+        self.reconciler.update_report_states_for_consent_removal(workflow_states)
 
     def reconcile_informing_loop_responses(self):
         """

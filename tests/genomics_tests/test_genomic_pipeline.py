@@ -71,7 +71,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
-    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
 from rdr_service.services.email_service import Email
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -309,6 +309,8 @@ class GenomicPipelineTest(BaseTestCase):
             sampleStatus1SAL2=SampleStatus.RECEIVED,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1),
+            consentForStudyEnrollmentAuthored=datetime.datetime(2019, 1, 1),
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
@@ -2681,11 +2683,14 @@ class GenomicPipelineTest(BaseTestCase):
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
-        # Set starting RoR authored
+        # Set starting RoR and Primary authored
         ps_list = self.summary_dao.get_all()
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
             p.consentForGenomicsRORAuthored = ror_start
+            if p.participantId == 2:
+                p.consentForStudyEnrollmentAuthored = ror_start
+                p.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             self.summary_dao.update(p)
 
         # exclude based on block result in GEM A1 query
@@ -2849,21 +2854,21 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertIsNone(report_state)
 
-        # Do Reconsent ROR
-        reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
-        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
-        summary1.consentForGenomicsRORAuthored = reconsent_time
-        self.summary_dao.update(summary1)
-        # Run A1 Again
-        with clock.FakeClock(reconsent_time):
-            genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
-        a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
-        # Test record was included again
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-            rows = list(csv_reader)
-            self.assertEqual(1, len(rows))
-            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+        # Do Reconsent ROR | DEFERRING This until a later sprint
+        # reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
+        # summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
+        # summary1.consentForGenomicsRORAuthored = reconsent_time
+        # self.summary_dao.update(summary1)
+        # # Run A1 Again
+        # with clock.FakeClock(reconsent_time):
+        #     genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
+        # a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
+        # # Test record was included again
+        # with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
+        #     csv_reader = csv.DictReader(csv_file)
+        #     rows = list(csv_reader)
+        #     self.assertEqual(1, len(rows))
+        #     self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
 
     def test_gem_a1_block_results(self):
         # Need GC Manifest for source query : run_id = 1
@@ -3008,7 +3013,8 @@ class GenomicPipelineTest(BaseTestCase):
         fake_now = datetime.datetime.utcnow()
         out_time = fake_now.strftime("%Y-%m-%d-%H-%M-%S")
         with clock.FakeClock(fake_now):
-            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
+            genomic_pipeline.update_report_state_for_consent_removal()  # run_id 2
+            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 3
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
@@ -3022,8 +3028,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the members' job run ID
         # Picked up by job
         test_member_3 = self.member_dao.get(3)
+        report_state_3 = self.report_state_dao.get_from_member_id(3)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
         self.assertEqual('GEM_RPT_DELETED', test_member_3.genomicWorkflowStateStr)
+        self.assertEqual(GenomicReportState.GEM_RPT_DELETED, report_state_3.genomic_report_state)
+        self.assertEqual("GEM_RPT_DELETED", report_state_3.genomic_report_state_str)
 
         # picked up by job
         test_member_2 = self.member_dao.get(2)
@@ -3068,11 +3077,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
-        self.assertEqual(2, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{sub_folder}/AoU_GEM_A3_manifest_{out_time}.csv', file_record.fileName)
 
         # Test the job result
-        run_obj = self.job_run_dao.get(2)
+        run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_gem_a1_limit(self):
