@@ -251,6 +251,15 @@ def gem_metrics_ingest():
         controller.run_general_ingestion_workflow()
 
 
+def update_report_state_for_consent_removal():
+    """
+    Comprehensive update for report states without gRoR or Primary Consent
+    :return:
+    """
+    with GenomicJobController(GenomicJob.UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL) as controller:
+        controller.reconcile_report_states()
+
+
 def create_cvl_reconciliation_report():
     """
     Entrypoint for CVL reconciliation workflow

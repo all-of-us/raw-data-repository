@@ -124,6 +124,11 @@ cron:
   timezone: America/New_York
   schedule: every sunday 12:00
   target: offline
+- description: Genomic Update Report State for Consent Removal
+  url: /offline/GenomicUpdateReportStateForConsentRemoval
+  timezone: America/New_York
+  schedule: every saturday 05:00
+  target: offline
 - description: Genomic CVL W1 Workflow (Manual)
   url: /offline/GenomicCvlW1Workflow
   timezone: America/New_York

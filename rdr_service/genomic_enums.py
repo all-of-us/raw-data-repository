@@ -112,6 +112,7 @@ class GenomicJob(messages.Enum):
     RECONCILE_PDR_DATA = 55
     DELETE_OLD_GP_USER_EVENT_METRICS = 56
     RETRY_MANIFEST_INGESTIONS = 57
+    UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL = 58
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -185,6 +186,9 @@ class GenomicWorkflowState(messages.Enum):
     # Replating
     EXTRACT_REQUESTED = 38
 
+    CVL_RPT_PENDING_DELETE = 39
+    CVL_RPT_DELETED = 40
+
 
 class GenomicReportState(messages.Enum):
 
@@ -205,6 +209,10 @@ class GenomicReportState(messages.Enum):
     HDR_RPT_POSITIVE = 8
     HDR_RPT_PENDING_DELETE = 9
     HDR_RPT_DELETED = 10
+
+    # CVL Generic Reporting States
+    CVL_RPT_PENDING_DELETE = 11
+    CVL_RPT_DELETED = 12
 
 
 class GenomicSubProcessStatus(messages.Enum):
