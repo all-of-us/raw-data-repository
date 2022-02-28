@@ -23,8 +23,8 @@ from rdr_service.code_constants import (
     THE_BASICS_PPI_MODULE, COPE_VACCINE_MINUTE_4_MODULE_CODE,
     BASICS_PROFILE_UPDATE_QUESTION_CODES
 )
-from rdr_service.dao.code_dao import CodeDao
 from rdr_service.concepts import Concept
+from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_dao import QuestionnaireDao
@@ -33,11 +33,13 @@ from rdr_service.dao.questionnaire_response_dao import (
     QuestionnaireResponseDao,
     _raise_if_gcloud_file_missing,
 )
+from rdr_service.domain_model.response import Answer
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireQuestion
-from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
+from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer, \
+    QuestionnaireResponseStatus
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.participant_enums import GenderIdentity, QuestionnaireStatus, WithdrawalStatus, ParticipantCohort
 from tests import test_data
@@ -1555,6 +1557,81 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         qr = self._get_questionnaire_response_with_consents("/Participant/one.pdf", "/Participant/two.pdf")
         self.questionnaire_response_dao.insert(qr)
         self.assertEqual(mock_gcloud_check.call_count, 2)
+
+    def test_loading_response_collections(self):
+        # Create a questionnaire, and some responses that have different answers to the questions
+        questionnaire = self._generate_questionnaire(
+            survey_code='test_survey',
+            question_codes=[
+                't_1',
+                'T_2'
+            ]
+        )
+        participant_id = self.data_generator.create_database_participant().participantId
+        self._generate_response(
+            questionnaire,
+            ['one', 'two'],
+            participant_id=participant_id,
+            authored_date=datetime.datetime(2021, 10, 1),
+            created_date=datetime.datetime(2021, 10, 1)
+        )
+        self._generate_response(
+            questionnaire,
+            ['nine', 'ten'],
+            participant_id=participant_id,
+            authored_date=datetime.datetime(2022, 3, 5),
+            created_date=datetime.datetime(2022, 3, 5)
+        )
+
+        participant_responses_map = QuestionnaireResponseDao.get_responses_to_surveys(
+            survey_codes=['test_survey'],
+            participant_ids=[participant_id],
+            session=self.session
+        )
+
+        responses = participant_responses_map[participant_id]
+        self.assertEqual({
+            't_1': [Answer(id=mock.ANY, value='one')],
+            't_2': [Answer(id=mock.ANY, value='two')]
+        }, responses.in_authored_order[0].answered_codes)
+        self.assertEqual({
+            't_1': [Answer(id=mock.ANY, value='nine')],
+            't_2': [Answer(id=mock.ANY, value='ten')]
+        }, responses.in_authored_order[1].answered_codes)
+
+    def _generate_response(self, questionnaire, answers, participant_id=None, authored_date=None, created_date=None):
+        response = self.data_generator.create_database_questionnaire_response(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            participantId=participant_id,
+            authored=authored_date,
+            created=created_date,
+            status=QuestionnaireResponseStatus.COMPLETED
+        )
+        for index, answer in enumerate(answers):
+            self.data_generator.create_database_questionnaire_response_answer(
+                questionnaireResponseId=response.questionnaireResponseId,
+                questionId=questionnaire.questions[index].questionnaireQuestionId,
+                valueString=answer
+            )
+        return response
+
+    def _generate_questionnaire(self, survey_code, question_codes):
+        questionnaire = self.data_generator.create_database_questionnaire_history()
+        for code_str in question_codes:
+            self.data_generator.create_database_questionnaire_question(
+                questionnaireId=questionnaire.questionnaireId,
+                questionnaireVersion=questionnaire.version,
+                code=self.data_generator.create_database_code(value=code_str)
+            )
+
+        self.data_generator.create_database_questionnaire_concept(
+            questionnaireId=questionnaire.questionnaireId,
+            questionnaireVersion=questionnaire.version,
+            codeId=self.data_generator.create_database_code(value=survey_code).codeId
+        )
+
+        return questionnaire
 
 
 class QuestionnaireResponseDaoCloudCheckTest(BaseTestCase):
