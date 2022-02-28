@@ -474,6 +474,7 @@ class BQPDRGRORSchema(_BQModuleSchema):
     _module = 'GROR'
     _force_boolean_fields = (
         'ResultsConsent_Signature',
+        'HelpMeWithConsent_Name'
     )
 
 class BQPDRGROR(BQTable):
