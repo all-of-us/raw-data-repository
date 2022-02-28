@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import logging
 import os
@@ -7,13 +8,15 @@ from datetime import datetime
 from dateutil import parser
 from hashlib import md5
 import pytz
-from sqlalchemy import or_
-from sqlalchemy.orm import joinedload, Session, subqueryload
-from typing import Dict
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
+from rdr_service.domain_model import response as response_domain_model
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -79,7 +82,7 @@ from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_F
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_response import ConsentResponse, ConsentType
-from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
@@ -1216,6 +1219,112 @@ class QuestionnaireResponseDao(BaseDao):
                 system, code = system_and_code
                 answer.valueCodeId = code_id_map.get(system, code)
             qr.answers.append(answer)
+
+    @classmethod
+    def get_responses_to_surveys(
+        cls,
+        survey_codes: List[str],
+        session: Session,
+        participant_ids: List[int],
+        include_ignored_answers=False,
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None
+    ) -> Dict[int, response_domain_model.ParticipantResponses]:
+        """
+        Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
+        and survey codes.
+
+        :param survey_codes: Survey module code strings to get responses for
+        :param session: Session to use for connecting to the database
+        :param participant_ids: Participant ids to get responses for
+        :param include_ignored_answers: Include response answers that have been ignored
+        :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
+            (defaults to QuestionnaireResponseStatus.COMPLETED)
+        :return: A dictionary keyed by participant ids with the value being the collection of responses for
+            that participant
+        """
+
+        if sent_statuses is None:
+            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
+
+        # Build query for all the questions answered by the given participants for the given survey codes
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
+        survey_code = aliased(Code)
+        query = (
+            session.query(
+                func.lower(question_code.value),
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.questionnaireResponseId,
+                QuestionnaireResponse.authored,
+                survey_code.value,
+                func.coalesce(
+                    QuestionnaireResponseAnswer.valueDate,
+                    func.lower(answer_code.value),
+                    QuestionnaireResponseAnswer.valueBoolean,
+                    QuestionnaireResponseAnswer.valueDateTime,
+                    QuestionnaireResponseAnswer.valueDecimal,
+                    QuestionnaireResponseAnswer.valueInteger,
+                    QuestionnaireResponseAnswer.valueString,
+                    QuestionnaireResponseAnswer.valueSystem,
+                    QuestionnaireResponseAnswer.valueUri
+                ),
+                QuestionnaireResponseAnswer.questionnaireResponseAnswerId,
+                QuestionnaireResponse.status
+            )
+            .select_from(QuestionnaireResponseAnswer)
+            .join(QuestionnaireQuestion)
+            .join(QuestionnaireResponse)
+            .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+                )
+            ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
+            .outerjoin(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+            .filter(
+                survey_code.value.in_(survey_codes),
+                QuestionnaireResponse.participantId.in_(participant_ids),
+                QuestionnaireResponse.status.in_(sent_statuses)
+            )
+        )
+
+        if not include_ignored_answers:
+            query = query.filter(
+                or_(
+                    QuestionnaireResponseAnswer.ignore.is_(False),
+                    QuestionnaireResponseAnswer.ignore.is_(None)
+                )
+            )
+
+        # build dict with participant ids as keys and ParticipantResponse objects as values
+        participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_value, \
+                answer_id, status in query.all():
+            # Get the collection of responses for the participant
+            response_collection_for_participant = participant_response_map[participant_id]
+
+            # Get the response that this particular answer is for so we can store the answer
+            response = response_collection_for_participant.responses.get(response_id)
+            if not response:
+                # This is the first time seeing an answer for this response, so create the Response structure for it
+                response = response_domain_model.Response(
+                    id=response_id,
+                    survey_code=survey_code_str,
+                    authored_datetime=authored_datetime,
+                    status=status
+                )
+                response_collection_for_participant.responses[response_id] = response
+
+            response.answered_codes[question_code_str].append(
+                response_domain_model.Answer(
+                    id=answer_id,
+                    value=answer_value
+                )
+            )
+
+        return dict(participant_response_map)
 
 
 def _validate_consent_pdfs(resource):
