@@ -125,6 +125,25 @@ CONSENT_COPE_YES_CODE = "COPE_A_44"
 CONSENT_COPE_NO_CODE = "COPE_A_13"
 CONSENT_COPE_DEFERRED_CODE = "COPE_A_231"
 
+COPE_DOSE_RECEIVED_QUESTION = 'cdc_covid_xx'
+COPE_NUMBER_DOSES_QUESTION = 'cdc_covid_xx_a'
+COPE_ONE_DOSE_ANSWER = 'cope_a_332'
+COPE_TWO_DOSE_ANSWER = 'cope_a_333'
+COPE_DOSE_TYPE_QUESTION = 'cdc_covid_xx_b'
+COPE_FIRST_DOSE_QUESTION = 'cdc_covid_xx_firstdose'
+COPE_FIRST_DOSE_DATE_QUESTION = 'cdc_covid_xx_a_date1'
+COPE_FIRST_DOSE_TYPE_QUESTION = 'cdc_covid_xx_b_firstdose'
+COPE_FIRST_DOSE_TYPE_OTHER_QUESTION = 'cdc_covid_xx_b_firstdose_other'
+COPE_FIRST_DOSE_SYMPTOM_QUESTION = 'cdc_covid_xx_symptom'
+COPE_FIRST_DOSE_SYMPTOM_OTHER_QUESTION = 'cdc_covid_xx_symptom_cope_350'
+COPE_SECOND_DOSE_QUESTION = 'cdc_covid_xx_seconddose'
+COPE_SECOND_DOSE_DATE_QUESTION = 'cdc_covid_xx_a_date2'
+COPE_SECOND_DOSE_TYPE_QUESTION = 'cdc_covid_xx_b_seconddose'
+COPE_SECOND_DOSE_TYPE_OTHER_QUESTION = 'cdc_covid_xx_b_seconddose_other'
+COPE_SECOND_DOSE_SYMPTOM_QUESTION = 'cdc_covid_xx_symptom_seconddose'
+COPE_SECOND_DOSE_SYMPTOM_OTHER_QUESTION = 'cdc_covid_xx_symptom_seconddose_cope_350'
+
+
 # COPE Minute Survey Codes
 COPE_VACCINE_MINUTE_1_MODULE_CODE = "cope_vaccine1"
 COPE_VACCINE_MINUTE_2_MODULE_CODE = "cope_vaccine2"

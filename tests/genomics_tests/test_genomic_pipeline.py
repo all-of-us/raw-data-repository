@@ -71,7 +71,7 @@ from rdr_service.participant_enums import (
 )
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicJob, GenomicWorkflowState, \
     GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, GenomicContaminationCategory, \
-    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus
+    GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
 from rdr_service.services.email_service import Email
 
 from tests.helpers.unittest_base import BaseTestCase
@@ -309,6 +309,8 @@ class GenomicPipelineTest(BaseTestCase):
             sampleStatus1SAL2=SampleStatus.RECEIVED,
             samplesToIsolateDNA=SampleStatus.RECEIVED,
             consentForStudyEnrollmentTime=datetime.datetime(2019, 1, 1),
+            consentForStudyEnrollmentAuthored=datetime.datetime(2019, 1, 1),
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
         )
         kwargs = dict(valid_kwargs, **override_kwargs)
@@ -807,6 +809,12 @@ class GenomicPipelineTest(BaseTestCase):
             }
         }
 
+        # Test investigation genome types still ingest
+        for member in self.member_dao.get_all():
+            if member.id in (2, 4):
+                member.genomeType += "_investigation"
+                self.member_dao.update(member)
+
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_wgs)
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data_aw5_array)
@@ -1209,11 +1217,10 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, missing_file.resolved)
 
         processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
-        self.assertEqual(True, any([i for i in incident if "Grn.idat.md5sum" in i.message]))
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue(incident.slack_notification == 1)
+        self.assertTrue("Grn.idat.md5sum" in incident.message)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -1443,11 +1450,85 @@ class GenomicPipelineTest(BaseTestCase):
         self.assertEqual(0, missing_file.resolved)
 
         processed_file = self.file_processed_dao.get(1)
-        incident = self.incident_dao.get_by_source_file_id(processed_file.id)
-        self.assertEqual(True, any([i for i in incident if i.code == 'MISSING_FILES']))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification]))
-        self.assertEqual(True, any([i for i in incident if i.slack_notification_date]))
-        self.assertEqual(True, any([i for i in incident if "cram.crai" in i.message]))
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue(incident.slack_notification == 1)
+        self.assertTrue("cram.crai" in incident.message)
+
+        run_obj = self.job_run_dao.get(2)
+
+        self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+    def test_reconciliation_wgs_data_config_missing_files_incident_creation(self):
+        # Create the fake ingested data
+        self._create_fake_datasets_for_gc_tests(3, genome_center='rdr', genomic_workflow_state=GenomicWorkflowState.AW1)
+        bucket_name = _FAKE_GENOMIC_CENTER_BUCKET_A
+        create_ingestion_test_file('RDR_AoU_SEQ_TestDataManifestWithFailure.csv',
+                                         bucket_name,
+                                         folder=config.getSetting(config.GENOMIC_AW2_SUBFOLDERS[0]))
+
+        self._update_test_sample_ids()
+
+        self._create_stored_samples([
+            (2, 1002),
+            (3, 1003)
+        ])
+
+        genomic_pipeline.ingest_genomic_centers_metrics_files()  # run_id = 1
+
+        # Test the reconciliation process
+        sequencing_test_files = (
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.tbi',
+            'test_data_folder/RDR_2_1002_10002_1.hard-filtered.vcf.gz.md5sum',
+            'test_data_folder/RDR_2_1002_10002_v2.cram',
+            'test_data_folder/RDR_2_1002_10002_v2.cram.md5sum',
+        )
+
+        test_date = datetime.datetime(2021, 7, 12, 0, 0, 0, 0)
+
+        # create test records in GenomicGcDataFile
+        with clock.FakeClock(test_date):
+            for f in sequencing_test_files:
+                if "cram" in f:
+                    file_prefix = "CRAMs_CRAIs"
+                else:
+                    file_prefix = "SS_VCF_CLINICAL"
+
+                test_file_dict = {
+                    'file_path': f'{bucket_name}/{f}',
+                    'gc_site_id': 'rdr',
+                    'bucket_name': bucket_name,
+                    'file_prefix': f'Wgs_sample_raw_data/{file_prefix}',
+                    'file_name': f,
+                    'file_type': '.'.join(f.split('.')[1:]),
+                    'identifier_type': 'sample_id',
+                    'identifier_value': '1002',
+                }
+
+                self.data_generator.create_database_gc_data_file_record(**test_file_dict)
+
+        missing_file_config = {
+            "aou_wgs": ["hard-filtered.vcf.gz"]
+        }
+        config.override_setting(
+            config.GENOMIC_SKIP_MISSING_FILETYPES,
+            missing_file_config
+        )
+
+        genomic_pipeline.reconcile_metrics_vs_wgs_data()  # run_id = 2
+
+        # should be 2 missing file records => ('hard-filtered.vcf.gz', 'cram.crai')
+        missing_files = self.missing_file_dao.get_all()
+        self.assertTrue(all(obj.gc_site_id == 'rdr' for obj in missing_files))
+        self.assertTrue(all(obj.file_type in ("hard-filtered.vcf.gz", "cram.crai") for obj in missing_files))
+
+        processed_file = self.file_processed_dao.get(1)
+        incident = self.incident_dao.get_by_source_file_id(processed_file.id)[0]
+
+        # should only be 1 missing file in incident => ('cram.crai')
+        self.assertTrue(incident.code == 'MISSING_FILES')
+        self.assertTrue("cram.crai" in incident.message)
+        self.assertFalse("hard-filtered.vcf.gz" in incident.message)
 
         run_obj = self.job_run_dao.get(2)
 
@@ -2602,11 +2683,14 @@ class GenomicPipelineTest(BaseTestCase):
                                                 genome_center='jh',
                                                 genomic_workflow_state=GenomicWorkflowState.AW1)
 
-        # Set starting RoR authored
+        # Set starting RoR and Primary authored
         ps_list = self.summary_dao.get_all()
         ror_start = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)
         for p in ps_list:
             p.consentForGenomicsRORAuthored = ror_start
+            if p.participantId == 2:
+                p.consentForStudyEnrollmentAuthored = ror_start
+                p.consentForStudyEnrollment = QuestionnaireStatus.SUBMITTED
             self.summary_dao.update(p)
 
         # exclude based on block result in GEM A1 query
@@ -2770,21 +2854,21 @@ class GenomicPipelineTest(BaseTestCase):
             else:
                 self.assertIsNone(report_state)
 
-        # Do Reconsent ROR
-        reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
-        summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
-        summary1.consentForGenomicsRORAuthored = reconsent_time
-        self.summary_dao.update(summary1)
-        # Run A1 Again
-        with clock.FakeClock(reconsent_time):
-            genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
-        a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
-        # Test record was included again
-        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-            rows = list(csv_reader)
-            self.assertEqual(1, len(rows))
-            self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
+        # Do Reconsent ROR | DEFERRING This until a later sprint
+        # reconsent_time = datetime.datetime(2020, 4, 3, 0, 0, 0, 0)
+        # summary1.consentForGenomicsROR = QuestionnaireStatus.SUBMITTED
+        # summary1.consentForGenomicsRORAuthored = reconsent_time
+        # self.summary_dao.update(summary1)
+        # # Run A1 Again
+        # with clock.FakeClock(reconsent_time):
+        #     genomic_pipeline.gem_a1_manifest_workflow()  # run_id 7
+        # a1f = reconsent_time.strftime("%Y-%m-%d-%H-%M-%S")
+        # # Test record was included again
+        # with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_GEM_A1_manifest_{a1f}.csv')) as csv_file:
+        #     csv_reader = csv.DictReader(csv_file)
+        #     rows = list(csv_reader)
+        #     self.assertEqual(1, len(rows))
+        #     self.assertEqual(test_member_1.biobankId, rows[0]['biobank_id'])
 
     def test_gem_a1_block_results(self):
         # Need GC Manifest for source query : run_id = 1
@@ -2929,7 +3013,8 @@ class GenomicPipelineTest(BaseTestCase):
         fake_now = datetime.datetime.utcnow()
         out_time = fake_now.strftime("%Y-%m-%d-%H-%M-%S")
         with clock.FakeClock(fake_now):
-            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 2
+            genomic_pipeline.update_report_state_for_consent_removal()  # run_id 2
+            genomic_pipeline.gem_a3_manifest_workflow()  # run_id 3
 
         self.assertTrue(cloud_task.called)
         cloud_task_args = cloud_task.call_args.args[0]
@@ -2943,8 +3028,11 @@ class GenomicPipelineTest(BaseTestCase):
         # Test the members' job run ID
         # Picked up by job
         test_member_3 = self.member_dao.get(3)
+        report_state_3 = self.report_state_dao.get_from_member_id(3)
         self.assertEqual(GenomicWorkflowState.GEM_RPT_DELETED, test_member_3.genomicWorkflowState)
         self.assertEqual('GEM_RPT_DELETED', test_member_3.genomicWorkflowStateStr)
+        self.assertEqual(GenomicReportState.GEM_RPT_DELETED, report_state_3.genomic_report_state)
+        self.assertEqual("GEM_RPT_DELETED", report_state_3.genomic_report_state_str)
 
         # picked up by job
         test_member_2 = self.member_dao.get(2)
@@ -2989,11 +3077,11 @@ class GenomicPipelineTest(BaseTestCase):
 
         # Array
         file_record = self.file_processed_dao.get(1)  # remember, GC Metrics is #1
-        self.assertEqual(2, file_record.runId)
+        self.assertEqual(3, file_record.runId)
         self.assertEqual(f'{sub_folder}/AoU_GEM_A3_manifest_{out_time}.csv', file_record.fileName)
 
         # Test the job result
-        run_obj = self.job_run_dao.get(2)
+        run_obj = self.job_run_dao.get(3)
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
 
     def test_gem_a1_limit(self):
@@ -3462,6 +3550,24 @@ class GenomicPipelineTest(BaseTestCase):
         run_obj = self.job_run_dao.get(4)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+        # Set up 'investigation' test
+        member.genomeType = 'aou_array_investigation'
+        member.blockResearch = 1
+        self.member_dao.update(member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_array_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_GEN_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
 
         self.clear_table_after_test('genomic_aw3_raw')
         self.clear_table_after_test('genomic_job_run')
@@ -4098,13 +4204,32 @@ class GenomicPipelineTest(BaseTestCase):
 
                 self.assertEqual("aou_wgs", raw_records[0].genome_type)
 
-        self.clear_table_after_test('genomic_aw3_raw')
-        self.clear_table_after_test('genomic_job_run')
-
         # Test run record is success
         run_obj = self.job_run_dao.get(4)
 
         self.assertEqual(GenomicSubProcessResult.SUCCESS, run_obj.runResult)
+
+
+        # Set up 'investigation' test
+        member.genomeType = 'aou_wgs_investigation'
+        member.blockResearch = 1
+        self.member_dao.update(member)
+
+        fake_dt = datetime.datetime(2020, 8, 4, 0, 0, 0, 0)
+        with clock.FakeClock(fake_dt):
+            genomic_pipeline.aw3_wgs_investigation_workflow()
+
+        aw3_dtf = fake_dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        # Check file WAS created
+        with open_cloud_file(os.path.normpath(f'{bucket_name}/{sub_folder}/AoU_DRCV_SEQ_{aw3_dtf}.csv')) as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            rows = list(csv_reader)
+            self.assertEqual(1, len(rows))
+            self.assertEqual("True", rows[0]['blocklisted'])
+
+        self.clear_table_after_test('genomic_aw3_raw')
+        self.clear_table_after_test('genomic_job_run')
 
     def test_aw3_wgs_blocklist_populated(self):
         block_research_reason = 'Sample Swap'
@@ -4713,6 +4838,12 @@ class GenomicPipelineTest(BaseTestCase):
             record.genomicSetMemberId = member.id
             self.metrics_dao.upsert(record)
 
+            # Change sample 2 to aou_array_investigation
+            if member.id == 2:
+                member.genomeType = "aou_array_investigation"
+                self.member_dao.update(member)
+
+
         # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
         sub_folder = config.getSetting(config.DRC_BROAD_AW4_SUBFOLDERS[0])
@@ -4786,8 +4917,11 @@ class GenomicPipelineTest(BaseTestCase):
                 i = int(file_row['biobank_id'])-1
                 for field in file_row.keys():
                     self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
+                expected_genome_type = "aou_array"
+                if i == 1:
+                    expected_genome_type += "_investigation"
 
-                self.assertEqual("aou_array", raw_records[i].genome_type)
+                self.assertEqual(expected_genome_type, raw_records[i].genome_type)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
@@ -4814,6 +4948,11 @@ class GenomicPipelineTest(BaseTestCase):
             record.id = i + 1
             record.genomicSetMemberId = member.id
             self.metrics_dao.upsert(record)
+
+            # Change sample 2 to aou_array_investigation
+            if member.id == 2:
+                member.genomeType = "aou_wgs_investigation"
+                self.member_dao.update(member)
 
         # Set up test AW4 manifest
         bucket_name = config.getSetting(config.DRC_BROAD_BUCKET_NAME)
@@ -4890,7 +5029,11 @@ class GenomicPipelineTest(BaseTestCase):
                 for field in file_row.keys():
                     self.assertEqual(file_row[field], getattr(raw_records[i], field.lower()))
 
-                self.assertEqual("aou_wgs", raw_records[i].genome_type)
+                expected_genome_type = "aou_wgs"
+                if i == 1:
+                    expected_genome_type += "_investigation"
+
+                self.assertEqual(expected_genome_type, raw_records[i].genome_type)
 
         # Test the job result
         run_obj = self.job_run_dao.get(2)
@@ -6514,7 +6657,7 @@ class GenomicPipelineTest(BaseTestCase):
         event_dao = UserEventMetricsDao()
         event_dao.truncate()  # for test suite
 
-        for pid in range(7):
+        for pid in range(8):
             self.data_generator.create_database_participant(participantId=1+pid, biobankId=1+pid)
         # Set up initial job run ID
         self.data_generator.create_database_genomic_job_run(
@@ -6526,7 +6669,8 @@ class GenomicPipelineTest(BaseTestCase):
         events = ['gem.informing_loop.started',
                   'gem.informing_loop.screen8_no',
                   'gem.informing_loop.screen8_yes',
-                  'hdr.informing_loop.started']
+                  'hdr.informing_loop.started',
+                  'gem.informing_loop.screen8_maybe_later']
         for p in range(4):
             for i in range(4):
                 self.data_generator.create_database_genomic_user_event_metrics(
@@ -6547,6 +6691,17 @@ class GenomicPipelineTest(BaseTestCase):
             participant_id=5,
             created_at=datetime.datetime(2021, 12, 29, 00),
             event_name='gem.informing_loop.started',
+            run_id=1,
+            ignore_flag=0,
+        )
+
+        # Insert last event for pid 7 (test for maybe_later response)
+        self.data_generator.create_database_genomic_user_event_metrics(
+            created=clock.CLOCK.now(),
+            modified=clock.CLOCK.now(),
+            participant_id=7,
+            created_at=datetime.datetime(2021, 12, 29, 00),
+            event_name="gem.informing_loop.screen8_maybe_later",
             run_id=1,
             ignore_flag=0,
         )
@@ -6583,6 +6738,15 @@ class GenomicPipelineTest(BaseTestCase):
             event_authored_time=datetime.datetime(2021, 12, 29, 00)
         )
 
+        self.data_generator.create_database_genomic_informing_loop(
+            message_record_id=100,
+            event_type='informing_loop_decision',
+            module_type='gem',
+            participant_id=7,
+            decision_value='maybe_later',
+            event_authored_time=datetime.datetime(2021, 12, 29, 00)
+        )
+
         # Run reconcile job
 
         genomic_pipeline.reconcile_informing_loop_responses()
@@ -6593,7 +6757,7 @@ class GenomicPipelineTest(BaseTestCase):
                          incident.message)
         self.assertEqual('5', incident.participant_id)
 
-        pid_list = [1, 2, 3, 6]
+        pid_list = [1, 2, 3, 6, 7]
         updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
@@ -6607,7 +6771,7 @@ class GenomicPipelineTest(BaseTestCase):
         genomic_pipeline.delete_old_gp_user_events()
 
         all_events = event_dao.get_all()
-        self.assertEqual(17, len(all_events))
+        self.assertEqual(18, len(all_events))
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,

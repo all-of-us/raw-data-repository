@@ -61,9 +61,9 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian'), UBRValueEnum.UBR)
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Gay'), UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight'),UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian'),UBRValueEnum.UBR)
 
         # Test RBR value
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight'), UBRValueEnum.RBR)

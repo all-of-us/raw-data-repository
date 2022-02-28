@@ -2,7 +2,7 @@
 This module tracks and validates the status of Genomics Pipeline Subprocesses.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -12,13 +12,12 @@ from rdr_service.api_util import list_blobs
 from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.config import (
     GAE_PROJECT,
-    GENOMIC_GC_METRICS_BUCKET_NAME,
     getSetting,
     getSettingList,
     GENOME_TYPE_ARRAY,
     MissingConfigException,
-    RDR_SLACK_WEBHOOKS
-)
+    RDR_SLACK_WEBHOOKS,
+    GENOME_TYPE_WGS)
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic.genomic_data_quality_components import ReportingComponent
 from rdr_service.genomic.genomic_mappings import raw_aw1_to_genomic_set_member_fields, \
@@ -63,7 +62,7 @@ class GenomicJobController:
     def __init__(
         self,
         job_id,
-        bucket_name=GENOMIC_GC_METRICS_BUCKET_NAME,
+        bucket_name=None,
         sub_folder_name=None,
         sub_folder_tuple=None,
         archive_folder_name=None,
@@ -710,6 +709,7 @@ class GenomicJobController:
                     self.file_processed_dao.get_max_file_processed_for_filepath(record.file_path).id
                 )
                 member.genomicWorkflowState = GenomicWorkflowState.AW1
+                member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
 
                 with self.member_dao.session() as session:
                     session.merge(member)
@@ -774,6 +774,40 @@ class GenomicJobController:
 
         self.job_result = GenomicSubProcessResult.SUCCESS
 
+    def retry_manifest_ingestions(self, from_days=1):
+        from_date = clock.CLOCK.now() - timedelta(days=from_days)
+        from_date = from_date.replace(microsecond=0)
+        results_found = False
+
+        ingestion_task_api_map = {
+            GenomicJob.AW1_MANIFEST: 'ingest_aw1_manifest_task',
+            GenomicJob.METRICS_INGESTION: 'ingest_aw2_manifest_task'
+        }
+
+        try:
+            for ingestion_type, cloud_task in ingestion_task_api_map.items():
+                results = self.file_processed_dao.get_ingestion_deltas_from_date(
+                    from_date=from_date,
+                    ingestion_type=ingestion_type)
+
+                for result in results:
+                    if result.raw_record_count > result.ingested_count:
+                        results_found = True
+                        logging.info(f'Sending {result.file_type}: {result.file_path} '
+                                     f'to cloud task ingestion for deltas')
+
+                        self.execute_cloud_task({
+                            'bucket_name': result.file_path.split('/')[0],
+                            'upload_date': datetime.utcnow(),
+                            'file_path': result.file_path
+                        }, cloud_task)
+
+            self.job_result = GenomicSubProcessResult.NO_FILES if not results_found else \
+                GenomicSubProcessResult.SUCCESS
+
+        except RuntimeError:
+            self.job_result = GenomicSubProcessResult.ERROR
+
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
         """
@@ -817,6 +851,7 @@ class GenomicJobController:
         # Only update the state if it was AW1
         if member.genomicWorkflowState == GenomicWorkflowState.AW1:
             member.genomicWorkflowState = GenomicWorkflowState.AW2
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW2.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         # Truncate call rate
@@ -925,7 +960,7 @@ class GenomicJobController:
             # Set reconciler's bucket and filter queries on gc_site_id for each bucket
             for bucket_name in self.bucket_name_list:
                 self.reconciler.bucket_name = bucket_name
-                site_id_mapping = config.getSettingJson("gc_name_to_id_mapping")
+                site_id_mapping = config.getSettingJson(config.GENOMIC_GC_ID_MAPPING)
 
                 gc_site_id = 'rdr'
 
@@ -940,8 +975,10 @@ class GenomicJobController:
                     gc_site_id = site_id_mapping['northwest']
 
                 # Run the reconciliation by GC
-                self.job_result = self.reconciler.reconcile_metrics_to_data_files(genome_type,
-                                                                                  _gc_site_id=gc_site_id)
+                self.job_result = self.reconciler.reconcile_metrics_to_data_files(
+                    genome_type,
+                    _gc_site_id=gc_site_id
+                )
 
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
@@ -1205,16 +1242,30 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def reconcile_report_states(self, _genome_type):
+    def reconcile_report_states(self, _genome_type=None):
         """
-        Wrapper for the Reconciler reconcile_gem_report_states
+        Wrapper for the Reconciler reconcile_report_states_for_consent_removal
         and reconcile_rhp_report_states
         :param _genome_type: array or wgs
         """
 
         self.reconciler = GenomicReconciler(self.job_run.id, self.job_id, controller=self)
+
         if _genome_type == GENOME_TYPE_ARRAY:
-            self.reconciler.reconcile_gem_report_states(_last_run_time=self.last_run_time)
+            workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
+                               GenomicWorkflowState.A1,
+                               GenomicWorkflowState.A2]
+
+        elif _genome_type == GENOME_TYPE_WGS:
+            workflow_states = [GenomicWorkflowState.CVL_READY]
+
+        else:
+            workflow_states = [GenomicWorkflowState.GEM_RPT_READY,
+                               GenomicWorkflowState.A1,
+                               GenomicWorkflowState.A2,
+                               GenomicWorkflowState.CVL_READY]
+
+        self.reconciler.update_report_states_for_consent_removal(workflow_states)
 
     def reconcile_informing_loop_responses(self):
         """

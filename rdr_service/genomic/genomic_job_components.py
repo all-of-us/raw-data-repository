@@ -13,7 +13,7 @@ from dateutil.parser import parse
 import sqlalchemy
 from werkzeug.exceptions import NotFound
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
@@ -760,6 +760,7 @@ class GenomicFileIngester:
         # Only update the member's genomicWorkflowState if it was AW0
         if member.genomicWorkflowState == GenomicWorkflowState.AW0:
             member.genomicWorkflowState = GenomicWorkflowState.AW1
+            member.genomicWorkflowStateStr = GenomicWorkflowState.AW1.name
             member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
 
         # Update member in DB
@@ -982,11 +983,8 @@ class GenomicFileIngester:
                 row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
                                      for key in row], row.values()))
                 sample_id = row_copy['sampleid']
-                genome_type = GENOME_TYPE_ARRAY \
-                    if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW else GENOME_TYPE_WGS
 
-                member = self.member_dao.get_member_from_aw3_sample(sample_id,
-                                                                    genome_type)
+                member = self.member_dao.get_member_from_aw3_sample(sample_id)
                 if member is None:
                     logging.warning(f'Invalid sample ID: {sample_id}')
                     continue
@@ -1413,8 +1411,7 @@ class GenomicFileIngester:
                 biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
                 sample_id = row_copy['sampleid']
 
-                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id,
-                                                                                  self.file_validator.genome_type)
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id)
                 if not member:
                     logging.warning(f'Can not find genomic member record for biobank_id: '
                                     f'{biobank_id} and sample_id: {sample_id}, skipping...')
@@ -2209,7 +2206,7 @@ class GenomicReconciler:
         self.controller = controller
 
     def reconcile_metrics_to_data_files(self, genome_type, _gc_site_id):
-        if genome_type == "wgs":
+        if genome_type == "aou_wgs":
             logging.info("Running WGS reconciliation to Data Files...")
             metrics = self.metrics_dao.get_with_missing_wgs_files(_gc_site_id)
             identifier = 'sampleId'
@@ -2217,7 +2214,7 @@ class GenomicReconciler:
             file_types = genomic_mappings.wgs_file_types_attributes
             self.ready_signal = 'cvl-ready'
 
-        elif genome_type == "array":
+        elif genome_type == "aou_array":
             logging.info("Running Array reconciliation to Data Files...")
             metrics = self.metrics_dao.get_with_missing_array_files(_gc_site_id)
             identifier = 'chipwellbarcode'
@@ -2267,11 +2264,16 @@ class GenomicReconciler:
 
             if metric_touched or missing_data_files:
                 logging.info(f'Updating metric record {_obj.id}')
-                self.update_reconciled_metric(_obj, missing_data_files, _gc_site_id)
+                self.update_reconciled_metric(
+                    _obj,
+                    missing_data_files,
+                    _gc_site_id,
+                    genome_type
+                )
 
         return GenomicSubProcessResult.SUCCESS
 
-    def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id):
+    def update_reconciled_metric(self, _obj, missing_data_files, _gc_site_id, genome_type):
         # Only upsert the metric if changed
         self.metrics_dao.upsert(_obj)
         logging.info(f'id {_obj.id} updated with attributes')
@@ -2282,7 +2284,6 @@ class GenomicReconciler:
         # Handle for missing data files
         if missing_data_files:
             next_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState, signal='missing')
-            incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
             for file_type in missing_data_files:
                 missing_file_object = GenomicGcDataFileMissing(
                     gc_site_id=_gc_site_id,
@@ -2292,35 +2293,52 @@ class GenomicReconciler:
                 )
                 self.data_file_missing_dao.insert(missing_file_object)
 
+            incident = self.controller.incident_dao.get_by_source_file_id(_obj.genomicFileProcessedId)
             if not incident or (incident and not any([i for i in incident if i.code == 'MISSING_FILES'])):
-                self.process_missing_data(_obj, missing_data_files)
+                self.process_missing_data(
+                    _obj,
+                    missing_data_files,
+                    genome_type
+                )
 
         # Update Member
-        if next_state is not None and next_state != member.genomicWorkflowState:
+        if next_state and next_state != member.genomicWorkflowState:
             self.member_dao.update_member_state(member, next_state)
 
-    def process_missing_data(self, metric, missing_data_files):
-        file = self.file_dao.get(metric.genomicFileProcessedId)
-        member = self.member_dao.get(metric.genomicSetMemberId)
-        description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
-        description += f"\nGenomic Job Run ID: {self.run_id}"
+    def process_missing_data(self, metric, missing_data_files, genome_type):
+        missing_files_config = config.getSettingJson(config.GENOMIC_SKIP_MISSING_FILETYPES, {})
+        missing_files_config = missing_files_config.get(genome_type)
 
-        file_list = '\n'.join([mf for mf in missing_data_files])
-        description = f"\nManifest File: {file.fileName}"
-        description += "\nMissing Data File(s):"
-        description += f"\n{file_list}"
+        if missing_files_config:
+            missing_files_config = list(missing_files_config) if not type(missing_files_config) \
+                                                                     is list else missing_files_config
 
-        self.controller.create_incident(
-            source_job_run_id=self.run_id,
-            source_file_processed_id=file.id,
-            code=GenomicIncidentCode.MISSING_FILES.name,
-            message=description,
-            genomic_set_member_id=member.id,
-            biobank_id=member.biobankId,
-            sample_id=member.sampleId if member.sampleId else "",
-            collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
-            slack=True
-        )
+            missing_data_files = [
+                x for x in list(missing_data_files) if x not in missing_files_config
+            ]
+
+        if missing_data_files:
+            file = self.file_dao.get(metric.genomicFileProcessedId)
+            member = self.member_dao.get(metric.genomicSetMemberId)
+
+            description = f"{self.job_id.name}: The following AW2 manifests are missing data files."
+            description += f"\nGenomic Job Run ID: {self.run_id}"
+            file_list = '\n'.join([mf for mf in missing_data_files])
+            description += f"\nManifest File: {file.fileName}"
+            description += "\nMissing Data File(s):"
+            description += f"\n{file_list}"
+
+            self.controller.create_incident(
+                source_job_run_id=self.run_id,
+                source_file_processed_id=file.id,
+                code=GenomicIncidentCode.MISSING_FILES.name,
+                message=description,
+                genomic_set_member_id=member.id,
+                biobank_id=member.biobankId,
+                sample_id=member.sampleId if member.sampleId else "",
+                collection_tube_id=member.collectionTubeId if member.collectionTubeId else "",
+                slack=True
+            )
 
     def generate_cvl_reconciliation_report(self):
         """
@@ -2346,14 +2364,13 @@ class GenomicReconciler:
 
         return GenomicSubProcessResult.NO_FILES
 
-    def reconcile_gem_report_states(self, _last_run_time=None):
+    def update_report_states_for_consent_removal(self, workflow_states):
         """
-        Scans GEM report states for changes
-        :param _last_run_time: the time when the current job last ran
+        Updates report states if gror or primary consent is not yes
+        :param workflow_states: list of GenomicWorkflowStates
         """
-
-        # Get unconsented members to update (consent > last run time of job_id)
-        unconsented_gror_members = self.member_dao.get_unconsented_gror_since_date(_last_run_time)
+        # Get unconsented members to update
+        unconsented_gror_members = self.member_dao.get_unconsented_gror_or_primary(workflow_states)
 
         # update each member with the new state and withdrawal time
         for member in unconsented_gror_members:
@@ -2364,11 +2381,18 @@ class GenomicReconciler:
                 self.member_dao.update_member_state(member, new_state)
 
                 # Handle withdrawal (gror/primary consent) for reportConsentRemovalDate
-                removal_date = self.member_dao.get_gem_consent_removal_date(member)
-                self.member_dao.update_report_consent_removal_date(member, removal_date)
+                removal_date = self.member_dao.get_consent_removal_date(member)
+                if removal_date:
+                    self.member_dao.update_report_consent_removal_date(member, removal_date)
 
+    def update_report_state_for_reconsent(self, last_run_time):
+        """
+        This code is not currently executed, the reconsent has been deferred.
+        :param last_run_time:
+        :return:
+        """
         # Get reconsented members to update (consent > last run time of job_id)
-        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(_last_run_time)
+        reconsented_gror_members = self.member_dao.get_reconsented_gror_since_date(last_run_time)
 
         # update each member with the new state
         for member in reconsented_gror_members:
@@ -2468,7 +2492,7 @@ class GenomicBiobankSamplesCoupler:
             logging.info(f'New Participant Workflow: No new samples to process.')
             return GenomicSubProcessResult.NO_FILES
 
-    def create_saliva_genomic_participants(self, local=False, config=None):
+    def create_saliva_genomic_participants(self, local=False, _config=None):
         """
         This method determines which samples to enter into
         the genomic system that are saliva only, via the
@@ -2477,7 +2501,7 @@ class GenomicBiobankSamplesCoupler:
         :param: config : options for ror consent type and denoting if sample was generated in-home or in-clinic
         :return: result
         """
-        participants = self._get_remaining_saliva_participants(config)
+        participants = self._get_remaining_saliva_participants(_config)
 
         if len(participants) > 0:
             return self.create_matrix_and_process_samples(participants, cohort=None, local=local, saliva=True)
@@ -2963,9 +2987,9 @@ class GenomicBiobankSamplesCoupler:
 
         return result
 
-    def _get_remaining_saliva_participants(self, config):
+    def _get_remaining_saliva_participants(self, _config):
 
-        _saliva_sql = self.query.remaining_saliva_participants(config)
+        _saliva_sql = self.query.remaining_saliva_participants(_config)
 
         params = {
             "sample_status_param": SampleStatus.RECEIVED.__int__(),
@@ -3045,6 +3069,7 @@ class ManifestDefinitionProvider:
         self,
         job_run_id=None,
         bucket_name=None,
+        genome_type=None,
         **kwargs
     ):
         # Attributes
@@ -3052,7 +3077,8 @@ class ManifestDefinitionProvider:
         self.bucket_name = bucket_name
         self.kwargs = kwargs
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest')
+            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
+            genome_type=genome_type
         )
         self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
@@ -3281,6 +3307,7 @@ class ManifestCompiler:
         self.def_provider = ManifestDefinitionProvider(
             job_run_id=self.run_id,
             bucket_name=self.bucket_name,
+            genome_type=genome_type,
             kwargs=kwargs
         )
 

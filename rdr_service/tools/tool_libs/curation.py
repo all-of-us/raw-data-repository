@@ -297,6 +297,7 @@ class CurationExportClass(ToolBase):
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
             SrcClean.value_ppi_code: answer_code.value,
             SrcClean.topic_value: answer_code.topic,
+            SrcClean.is_invalid: QuestionnaireResponseAnswer.ignore.is_(True),
             SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
             SrcClean.value_number: cls._null_if_answer_ignored(else_value=case([(
                 # Only set value number if the question code is not one of the zip codes to re-map

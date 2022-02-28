@@ -123,10 +123,10 @@ class IngestAW1ManifestTaskApi(BaseGenomicTaskApi):
             # Set up file/JSON
             task_data = {
                 "job": job,
-                "bucket": self.data["bucket_name"],
+                "bucket": self.data.get('bucket_name'),
                 "file_data": {
                     "create_feedback_record": create_fb,
-                    "upload_date": self.data["upload_date"],
+                    "upload_date": self.data.get("upload_date"),
                     "manifest_type": manifest_type,
                     "file_path": file_path,
                 }
@@ -155,10 +155,10 @@ class IngestAW2ManifestTaskApi(BaseGenomicTaskApi):
             # Set up file/JSON
             task_data = {
                 "job": GenomicJob.METRICS_INGESTION,
-                "bucket": self.data["bucket_name"],
+                "bucket": self.data.get('bucket_name'),
                 "file_data": {
                     "create_feedback_record": False,
-                    "upload_date": self.data["upload_date"],
+                    "upload_date": self.data.get("upload_date"),
                     "manifest_type": GenomicManifestTypes.AW2,
                     "file_path": file_path,
                 }

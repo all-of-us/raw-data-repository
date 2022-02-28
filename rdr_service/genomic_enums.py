@@ -111,6 +111,8 @@ class GenomicJob(messages.Enum):
     LOAD_AW4_TO_RAW_TABLE = 54
     RECONCILE_PDR_DATA = 55
     DELETE_OLD_GP_USER_EVENT_METRICS = 56
+    RETRY_MANIFEST_INGESTIONS = 57
+    UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL = 58
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -124,6 +126,12 @@ class GenomicJob(messages.Enum):
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
+
+    # Investigation Workflows
+    AW3_ARRAY_INVESTIGATION_WORKFLOW = 2001
+    AW3_WGS_INVESTIGATION_WORKFLOW = 2002
+    AW4_ARRAY_INVESTIGATION_WORKFLOW = 2003
+    AW4_WGS_INVESTIGATION_WORKFLOW = 2004
 
 
 class GenomicWorkflowState(messages.Enum):
@@ -178,6 +186,9 @@ class GenomicWorkflowState(messages.Enum):
     # Replating
     EXTRACT_REQUESTED = 38
 
+    CVL_RPT_PENDING_DELETE = 39
+    CVL_RPT_DELETED = 40
+
 
 class GenomicReportState(messages.Enum):
 
@@ -198,6 +209,10 @@ class GenomicReportState(messages.Enum):
     HDR_RPT_POSITIVE = 8
     HDR_RPT_PENDING_DELETE = 9
     HDR_RPT_DELETED = 10
+
+    # CVL Generic Reporting States
+    CVL_RPT_PENDING_DELETE = 11
+    CVL_RPT_DELETED = 12
 
 
 class GenomicSubProcessStatus(messages.Enum):
