@@ -417,13 +417,11 @@ class GenomicQueryClass:
                               AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
                     ) native ON native.participant_id = p.participant_id
                     LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                            AND m.genomic_workflow_state <> 33
                     LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
                 WHERE TRUE
                     AND ss.test in ('1ED04', '1ED10', '1SAL2')
                     AND ss.status IS NOT NULL
                     AND ps.consent_cohort = :cohort_param
-                    AND ps.participant_origin != 'careevolution'
                     AND m.id IS NULL
             """
 
