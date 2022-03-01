@@ -406,8 +406,11 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
 
-    def test_ignored_answers_are_nulled(self):
-        """Any answers that have the ignore field set to True should give null answers in the result"""
+    def test_ignored_answers_are_marked_invalid(self):
+        """
+        Any answers that have the ignore field set to True should give the skip code
+        (to be marked invalid in the finalization step)
+        """
         questionnaire_response = self._setup_questionnaire_response(
             self.participant,
             self.questionnaire,
@@ -440,7 +443,7 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
                         answer.value_number,
                         answer.value_date,
                         answer.value_boolean,
-                        answer.value_code_id,
-                        answer.value_ppi_code
+                        answer.value_code_id
                     ]
                 ]))
+                self.assertEqual(PMI_SKIP_CODE, answer.value_ppi_code)
