@@ -20,7 +20,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicMemberReportStateDao,
     GenomicGcDataFileDao, GenomicResultViewedDao
 )
-from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicJob, GenomicReportState, GenomicWorkflowState, GenomicManifestTypes
 from rdr_service.model.participant import Participant
 from rdr_service.model.genomics import (
     GenomicSet,
@@ -1401,6 +1401,37 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertEqual(call_json['job'], GenomicJob.AW5_WGS_MANIFEST)
         self.assertIsNotNone(call_json['file_data'])
 
+    @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
+    def test_ingest_cvl_w2sc_task_api(self, ingest_mock):
+        cvl_w2sc_file_path = "cvl_samples_secondary_validation/test_cvl_w2sc_file.csv"
+
+        data = {
+            "file_path": cvl_w2sc_file_path,
+            "bucket_name": cvl_w2sc_file_path.split('/')[0],
+            "upload_date": '2020-09-13T20:52:12+00:00',
+            "file_type": "w2sc"
+        }
+
+        from rdr_service.resource import main as resource_main
+
+        self.send_post(
+            local_path='IngestCVLManifestTaskApi',
+            request_data=data,
+            prefix="/resource/task/",
+            test_client=resource_main.app.test_client(),
+        )
+
+        call_json = ingest_mock.call_args[0][0]
+
+        self.assertEqual(ingest_mock.called, True)
+        self.assertEqual(call_json['bucket'], data['bucket_name'])
+        self.assertEqual(call_json['job'], GenomicJob.CVL_W2SC_WORKFLOW)
+        self.assertIsNotNone(call_json['file_data'])
+        self.assertEqual(
+            call_json['file_data']['manifest_type'],
+            GenomicManifestTypes.CVL_W2SC
+        )
+
     def test_ingest_data_files_task_api(self):
 
         data = {
@@ -1781,7 +1812,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         )
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.ingest_metrics_file')
-    def test_ingest_user_metrcs_api(self, ingest_mock):
+    def test_ingest_user_metrics_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main
 
