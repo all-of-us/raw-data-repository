@@ -12,7 +12,7 @@ from typing import Type
 
 from rdr_service.clock import CLOCK
 from rdr_service import config
-from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE,\
+from rdr_service.code_constants import PPI_SYSTEM, CONSENT_FOR_STUDY_ENROLLMENT_MODULE, PMI_SKIP_CODE, \
     EMPLOYMENT_ZIPCODE_QUESTION_CODE, STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.etl.model.src_clean import QuestionnaireAnswersByModule, SrcClean
@@ -295,7 +295,12 @@ class CurationExportClass(ToolBase):
             SrcClean.date_of_survey: coalesce(QuestionnaireResponse.authored, QuestionnaireResponse.created),
             SrcClean.question_ppi_code: question_code.value,
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
-            SrcClean.value_ppi_code: answer_code.value,
+            SrcClean.value_ppi_code: case(
+                [
+                    (QuestionnaireResponseAnswer.ignore.is_(True), PMI_SKIP_CODE)
+                ],
+                else_=answer_code.value
+            ),
             SrcClean.topic_value: answer_code.topic,
             SrcClean.is_invalid: QuestionnaireResponseAnswer.ignore.is_(True),
             SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
