@@ -114,21 +114,25 @@ class JiraTicketHandler:
             raise ValueError('Invalid JIRA ticket ID value.')
         return self._jira_connection.issue(ticket_id)
 
-    def create_ticket(self, summary, descr, issue_type="Task", board_id=_JIRA_BOARD_ID):
+    def create_ticket(self, summary, descr, issue_type="Task", board_id=_JIRA_BOARD_ID, components=None):
         """
         Create a new ticket in a Jira project.
         :param summary: Ticket summary to search for.
         :param descr: Summary description for ticket.
         :param issue_type: Type of ticket to create.
         :param board_id: Jira board id, IE: PD.
+        :param components: Components to add to the ticket, defaults to not adding any components
         """
+        if components is None:
+            components = []
+
         if not summary:
             raise ValueError('Jira ticket summary may not be empty')
         if not descr:
             raise ValueError('Jira ticket description may not be empty')
 
         ticket = self._jira_connection.create_issue(
-            project=board_id, summary=summary, description=descr, issuetype={"name": issue_type}
+            project=board_id, summary=summary, description=descr, issuetype={"name": issue_type}, components=components
         )
 
         # pylint: disable=W0511

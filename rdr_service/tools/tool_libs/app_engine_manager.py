@@ -205,7 +205,7 @@ class DeployAppClass(ToolBase):
             if os.path.exists(c):
                 os.remove(c)
 
-    def create_jira_ticket(self, summary, descr=None, board_id=None):
+    def create_jira_ticket(self, summary, descr=None, board_id=None, components=None):
         """
         Create a Jira ticket.
         """
@@ -252,7 +252,7 @@ class DeployAppClass(ToolBase):
         if not board_id:
             board_id = self.jira_board
 
-        ticket = self._jira_handler.create_ticket(summary, descr, board_id=board_id)
+        ticket = self._jira_handler.create_ticket(summary, descr, board_id=board_id, components=components)
         return ticket
 
     def add_jira_comment(self, comment):
@@ -277,7 +277,10 @@ class DeployAppClass(ToolBase):
         else:
             # Determine if this is a CircleCI deploy.
             if self.gcp_env.project == 'all-of-us-rdr-staging':
-                ticket = self.create_jira_ticket(summary)
+                ticket = self.create_jira_ticket(
+                    summary,
+                    components=[{'id': '10074'}]  # "Change Management" component
+                )
                 if not ticket:
                     _logger.error('Failed to create JIRA ticket')
                 else:
