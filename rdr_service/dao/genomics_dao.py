@@ -1542,7 +1542,6 @@ class GenomicGCValidationMetricsDao(UpsertableDao, GenomicDaoUtils):
                     GenomicSetMember.gcSiteId == _gc_site_id,
                     GenomicGCValidationMetrics.genomicFileProcessedId.isnot(None),
                     func.lower(GenomicGCValidationMetrics.processingStatus) == "pass",
-                    #GenomicSetMember.sampleId.in_([20297003836, 20281002851, 20207002978, 20281002822]),
                     GenomicGcDataFileMissing.id.is_(None),
                     GenomicGCValidationMetrics.ignoreFlag == 0,
                     (GenomicGCValidationMetrics.hfVcfReceived == 0) |
