@@ -1425,6 +1425,11 @@ class GenomicFileIngester:
                     sample_id
                 )
 
+                if not member:
+                    logging.warning(f'Can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
+                    continue
+
                 member.cvlW2scManifestJobRunID = self.job_run_id
                 if member.genomicWorkflowState != GenomicWorkflowState.CVL_W2SC:
                     member.genomicWorkflowState = GenomicWorkflowState.CVL_W2SC
