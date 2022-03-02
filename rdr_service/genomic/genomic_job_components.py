@@ -1694,9 +1694,10 @@ class GenomicFileValidator:
                 "genometype"
             ),
         }
+
+        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.DRC_BROAD = 'drc_broad'
-        self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.AW1_MANIFEST_SCHEMA = (
             "packageid",
