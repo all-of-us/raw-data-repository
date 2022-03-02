@@ -12,6 +12,7 @@ import math
 import os
 import sys
 
+from time import sleep
 from werkzeug.exceptions import NotFound
 
 from rdr_service.model.genomics import UserEventMetrics
@@ -30,6 +31,7 @@ from rdr_service.dao.bq_hpo_dao import bq_hpo_update, bq_hpo_update_by_id
 from rdr_service.dao.bq_organization_dao import bq_organization_update, bq_organization_update_by_id
 from rdr_service.dao.bq_site_dao import bq_site_update, bq_site_update_by_id
 from rdr_service.dao.resource_dao import ResourceDataDao
+from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant import Participant
@@ -48,8 +50,15 @@ _logger = logging.getLogger("rdr_logger")
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "resource"
-tool_desc = "Tools for updating resource records in RDR"
+tool_desc = "Tools for updating and cleaning PDR resource records in RDR"
 
+# TODO:  May want to use the BQTable __project_map__ instead? But that may fail if using localhost for dev testing
+PDR_PROJECT_ID_MAP = {
+    'all-of-us-rdr-sandbox': 'all-of-us-rdr-sandbox',
+    'all-of-us-rdr-stable': 'aou-pdr-data-stable',
+    'all-of-us-rdr-prod': 'aou-pdr-data-prod',
+    'localhost': 'localhost'
+}
 
 GENOMIC_DB_TABLES = ('genomic_set', 'genomic_set_member', 'genomic_job_run', 'genomic_gc_validation_metrics',
                      'genomic_file_processed', 'genomic_manifest_file', 'genomic_manifest_feedback')
@@ -63,6 +72,95 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+class CleanPDRDataClass(object):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, pk_id_list: None):
+        self.args = args
+        self.gcp_env = gcp_env
+        if args.id:
+            self.pk_id_list = [args.id, ]
+        else:
+            self.pk_id_list = pk_id_list
+
+    def delete_pk_ids_from_bigquery_sync(self, table_id):
+        """
+        Delete the requested records from the bigquery_sync table.  Note, that to restore an unintentional delete,
+        a rebuild can be performed of the associated pdr_mod_* data, but (for example) you may first need to find the
+        participants who are associated with the deleted data and rebuild *all* of their module response data.
+        :param table_id:  Filter value for the bigquery_sync.table_id column
+        """
+        # Target dataset for all the BigQuery RDR-to-PDR pipeline data
+        dataset_id = 'rdr_ops_data_view'
+        project_id = PDR_PROJECT_ID_MAP.get(self.gcp_env.project, None)
+        if not project_id:
+            raise ValueError(f'Unable to map {self.gcp_env.project} to an active BigQuery project')
+        else:
+            dao = BigQuerySyncDao()
+            with dao.session() as session:
+                # Verify the table_id matches at least some existing records in the bigquery_sync table
+                query = session.query(BigQuerySync.id)\
+                    .filter(BigQuerySync.projectId == project_id).filter(BigQuerySync.datasetId == dataset_id)\
+                    .filter(BigQuerySync.tableId == table_id)
+                if query.first() is None:
+                    raise ValueError(f'No records found for bigquery_sync.table_id = {table_id}')
+
+                batch_count = 500
+                batch_total = len(self.pk_id_list)
+                processed = 0
+                for pk_ids in chunks(self.pk_id_list, batch_count):
+                    session.query(BigQuerySync
+                                  ).filter(BigQuerySync.projectId == project_id,
+                                           BigQuerySync.datasetId == dataset_id,
+                                           BigQuerySync.tableId == table_id
+                                  ).filter(BigQuerySync.pk_id.in_(pk_ids)
+                                  ).delete(synchronize_session=False)
+                    # Inject a short delay between chunk-sized delete operations to avoid blocking other table updates
+                    session.commit()
+                    sleep(0.5)
+                    processed += len(pk_ids)
+                    if not self.args.debug:
+                        print_progress_bar(
+                            processed, batch_total, prefix="{0}/{1}:".format(processed, batch_total),
+                            suffix="complete"
+                        )
+
+
+    def delete_resource_pk_ids_from_resource_data(self, resource_type_id):
+        """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
+        _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
+
+    def run(self):
+        """
+        Main program process
+        :return: Exit code value
+        """
+        clr = self.gcp_env.terminal_colors
+        if not self.pk_id_list:
+            _logger.error('Nothing to do')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nClean PDR Data pipeline records:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Project        : {0}'.format(clr.fmt(self.gcp_env.project)))
+        if self.args.from_file:
+            _logger.info('  PK_IDs File             : {0}'.format(clr.fmt(self.args.from_file)))
+
+        _logger.info('  Total PK_IDs            : {0}'.format(clr.fmt(len(self.pk_id_list))))
+        _logger.info('=' * 90)
+        _logger.info('')
+
+        if self.args.bq_table_id:
+            self.delete_pk_ids_from_bigquery_sync(self.args.bq_table_id)
+
+        # Can delete from both tables on the same run as long as the bigquery_sync.pk_id matches the
+        # resource_data.resource_pk_id for the resource_type_id specified.
+        if self.args.resource_type_id:
+            self.delete_resource_pk_ids_from_resource_data(self.resource_type_id)
+
 
 class ParticipantResourceClass(object):
     def __init__(self, args, gcp_env: GCPEnvConfigObject, pid_list: None):
@@ -262,8 +360,6 @@ class ParticipantResourceClass(object):
                 _logger.error(f'Participant ID {self.args.pid} not found.')
 
         return 1
-
-
 
 class CodeResourceClass(object):
 
@@ -1333,15 +1429,29 @@ def run():
     update_argument(consent_metrics_parser, dest='id', help="rebuild metrics for a specific consent_file id record")
 
     # Rebuild Color user event metrics resources
-    consent_metrics_parser = subparser.add_parser('user-event-metrics', parents=[batch_parser,
+    user_event_metrics_parser = subparser.add_parser('user-event-metrics', parents=[batch_parser,
                                                                               from_file_parser,
                                                                               all_ids_parser,
                                                                               id_parser])
-    update_argument(consent_metrics_parser, dest='from_file',
+    update_argument(user_event_metrics_parser, dest='from_file',
                     help="rebuild user event metrics data for specific ids read from a file")
-    update_argument(consent_metrics_parser, dest='all_ids',
+    update_argument(user_event_metrics_parser, dest='all_ids',
                     help="rebuild user event metrics records for all ids")
-    update_argument(consent_metrics_parser, dest='id', help="rebuild user event metrics for a specific id record")
+    update_argument(user_event_metrics_parser, dest='id', help="rebuild user event metrics for a specific id record")
+
+    # Perform cleanup of PDR data records orphaned because of related RDR data table backfills/cleanup
+    clean_pdr_data_parser = subparser.add_parser('clean-pdr-data', parents=[from_file_parser, id_parser])
+    update_argument(clean_pdr_data_parser, dest='id',
+                    help="The id (pk_id for bigquery_sync, resource_pk_id for resource_data) of a record to delete"
+                    )
+    update_argument(clean_pdr_data_parser, dest='from_file',
+                    help="file with PDR data record pk_ids (bigquery_sync) or resource_pk_ids (resource_data) to delete"
+                    )
+
+    clean_pdr_data_parser.add_argument('--bq-table-id', type=str, default=None,
+                                   help='table_id value whose bigquery_sync records should be cleaned')
+    clean_pdr_data_parser.add_argument('--resource-type-id', type=int, default=None,
+                                   help='resource_type_id whose resource_data records should be cleaned')
 
     args = parser.parse_args()
 
@@ -1397,6 +1507,9 @@ def run():
             process = UserEventMetricsClass(args, gcp_env, ids)
             exit_code = process.run()
 
+        elif args.resource == 'clean-pdr-data':
+            process = CleanPDRDataClass(args, gcp_env, ids)
+            exit_code = process.run()
         else:
             _logger.info('Please select an option to run. For help use "[resource] --help".')
             exit_code = 1

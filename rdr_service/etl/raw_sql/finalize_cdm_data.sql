@@ -121,7 +121,10 @@ SELECT
     src_c.topic_value                   AS topic_value,
     src_c.value_code_id                 AS value_code_id,
     COALESCE(vc3.concept_id, 0)         AS value_source_concept_id,
-    COALESCE(vc4.concept_id, 0)         AS value_concept_id,
+    CASE
+        WHEN src_c.is_invalid = 1 THEN 2000000010
+        ELSE COALESCE(vc4.concept_id, 0)
+    END                                 AS value_concept_id,
     src_c.value_number                  AS value_number,
     src_c.value_boolean                 AS value_boolean,
     CASE
@@ -1520,6 +1523,35 @@ CREATE TABLE cdm.pid_rid_mapping (
     external_id                 bigint
 );
 INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id, external_id FROM cdm.src_clean;
+
+
+-- ---------------------------------------------------------------------
+-- Insert into questionnaire_response_additional_info
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS cdm.questionnaire_response_additional_info;
+CREATE TABLE cdm.questionnaire_response_additional_info (
+    questionnaire_response_id       bigint,
+    type                            varchar(255),
+    value                           varchar(255)
+);
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value
+from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+where qr.non_participant_author is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+qr.questionnaire_response_id, 'LANGUAGE' as type, qr.language as value
+from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+where qr.language is not null and qr.questionnaire_response_id=qri.questionnaire_response_id;
+
+INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
+qr.questionnaire_response_id, 'CODE' as type, c.value as value
+from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c,
+     (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
+where qr.questionnaire_id=qc.questionnaire_id
+and qc.code_id=c.code_id
+and qr.questionnaire_response_id=qri.questionnaire_response_id;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables

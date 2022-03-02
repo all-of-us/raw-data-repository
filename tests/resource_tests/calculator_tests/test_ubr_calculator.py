@@ -61,9 +61,9 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian'), UBRValueEnum.UBR)
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Gay'), UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Lesbian,SexualOrientation_Straight'),UBRValueEnum.UBR)
         self.assertEqual(
-            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian'), UBRValueEnum.UBR)
+            self.ubr.ubr_sexual_orientation('SexualOrientation_Straight,SexualOrientation_Lesbian'),UBRValueEnum.UBR)
 
         # Test RBR value
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight'), UBRValueEnum.RBR)
@@ -299,6 +299,11 @@ class UBRCalculatorTest(BaseTestCase):
 
         # Bad or unknown value will default to NullSkip
         self.assertEqual(self.ubr.ubr_disability({'ABC': 123}), UBRValueEnum.NotAnswer_Skip)
+
+        # PDR-658:  Test that EmploymentStatus_UnableToWork no longer results in a UBR result
+        values = self.disability_answers
+        values['Employment_EmploymentStatus'] = 'EmploymentStatus_UnableToWork'
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.RBR)
 
     def test_ubr_age_at_consent(self):
         """

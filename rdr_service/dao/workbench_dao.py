@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest
 from dateutil.parser import parse
 import pytz
 from sqlalchemy import desc, or_, and_, func, distinct, case
-from sqlalchemy.orm import subqueryload, joinedload, aliased
+from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
 from datetime import timedelta
@@ -306,7 +306,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
     @staticmethod
     def remove_workspace_by_workspace_id_with_session(session, workspace_id):
         workspace = session.query(WorkbenchWorkspaceApproved) \
-            .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser)) \
             .filter(WorkbenchWorkspaceApproved.workspaceSourceId == workspace_id).first()
         if workspace:
             session.delete(workspace)
@@ -341,8 +340,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                               subquery.c.id.label('current_id'),
                               subquery.c.status.label('current_status'))
                     .distinct()
-                    .options(joinedload(WorkbenchWorkspaceSnapshot.workbenchWorkspaceUser),
-                             joinedload(WorkbenchResearcherHistory.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUserHistory.researcherId == WorkbenchResearcherHistory.id,
                             WorkbenchWorkspaceSnapshot.id == subquery.c.active_id,
                             subquery.c.active_id == WorkbenchWorkspaceUserHistory.workspaceId)
@@ -518,8 +515,6 @@ class WorkbenchWorkspaceDao(UpdatableDao):
             query = (
                 session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher, WorkbenchWorkspaceUser.role,
                               snapshot_subquery.c.snapshot_id)
-                    .options(joinedload(WorkbenchWorkspaceApproved.workbenchWorkspaceUser),
-                             joinedload(WorkbenchResearcher.workbenchInstitutionalAffiliations))
                     .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
                             WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
                             WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
@@ -548,6 +543,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     query = query.filter(getattr(WorkbenchWorkspaceApproved, purpose) == 1)
 
             items = query.all()
+
             for workspace, researcher, role, snapshot_id in items:
                 affiliations = []
                 researcher_has_verified_institution = False
@@ -574,7 +570,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     if workspace_user.isCreator is True:
                         creator_user_id = workspace_user.userId
                 # if has creator, calculate by creator; if no creator, calculate by owners
-                if creator_user_id == researcher.userSourceId and researcher_has_verified_institution:
+                if researcher_has_verified_institution and creator_user_id == researcher.userSourceId:
                     workspace_has_verified_institution = True
                 elif creator_user_id is None and researcher.userSourceId in owner_user_ids and \
                     researcher_has_verified_institution:
@@ -587,7 +583,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     'affiliations': affiliations
                 }
                 hit_search = False
-                if role == WorkbenchWorkspaceUserRole('OWNER') and owner_name:
+                if owner_name and role == WorkbenchWorkspaceUserRole('OWNER'):
                     if owner_name in user.get('userName').lower():
                         hit_search = True
                 elif role == WorkbenchWorkspaceUserRole('OWNER'):

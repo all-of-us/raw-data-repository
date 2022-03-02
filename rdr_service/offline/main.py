@@ -537,6 +537,13 @@ def genomic_gem_a2_workflow():
 @run_genomic_cron_job('a3_manifest_workflow')
 def genomic_gem_a3_workflow():
     genomic_pipeline.gem_a3_manifest_workflow()
+    return '{"success": "true"}'\
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('update_report_state_for_consent_removal')
+def update_report_state_for_consent_removal():
+    genomic_pipeline.update_report_state_for_consent_removal()
     return '{"success": "true"}'
 
 
@@ -586,12 +593,21 @@ def genomic_aw3_array_workflow():
 @app_util.auth_required_cron
 @run_genomic_cron_job('aw3_wgs_manifest_workflow')
 def genomic_aw3_wgs_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
     genomic_pipeline.aw3_wgs_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('genomic_aw3_array_investigation_workflow')
+def genomic_aw3_array_investigation_workflow():
+    genomic_pipeline.aw3_array_investigation_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('genomic_aw3_wgs_investigation_workflow')
+def genomic_aw3_wgs_investigation_workflow():
+    genomic_pipeline.aw3_wgs_investigation_workflow()
     return '{"success": "true"}'
 
 
@@ -655,6 +671,13 @@ def genomic_members_update_blocklists():
 @run_genomic_cron_job('reconcile_informing_loop_responses')
 def genomic_reconcile_informing_loop_responses():
     genomic_pipeline.reconcile_informing_loop_responses()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('retry_manifest_ingestion_failures')
+def genomic_retry_manifest_ingestion_failures():
+    genomic_pipeline.retry_manifest_ingestions()
     return '{"success": "true"}'
 
 
@@ -923,6 +946,12 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicUpdateReportStateForConsentRemoval",
+        endpoint="update_report_state_for_consent_removal",
+        view_func=update_report_state_for_consent_removal,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicCvlW1Workflow",
         endpoint="genomic_cvl_w1_workflow",
         view_func=genomic_cvl_w1_workflow,
@@ -950,6 +979,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3ArrayInvestigationWorkflow",
+        endpoint="genomic_aw3_array_investigation_workflow",
+        view_func=genomic_aw3_array_investigation_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicAW3WGSInvestigationWorkflow",
+        endpoint="genomic_aw3_wgs_investigation_workflow",
+        view_func=genomic_aw3_wgs_investigation_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
@@ -1015,6 +1056,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicDeleteOldGPUserEvents",
         endpoint="genomic_delete_old_gp_user_events",
         view_func=genomic_delete_old_gp_user_events, methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicRetryManifestIngestions",
+        endpoint="retry_manifest_ingestion_failures",
+        view_func=genomic_retry_manifest_ingestion_failures,
+        methods=["GET"]
     )
     # END Genomic Pipeline Jobs
 

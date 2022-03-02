@@ -32,6 +32,7 @@ from rdr_service.model.hpo import HPO
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerEventData
 from rdr_service.model.organization import Organization
 from rdr_service.model.participant import Participant, ParticipantHistory
+from rdr_service.model.participant_incentives import ParticipantIncentives
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.questionnaire import Questionnaire, QuestionnaireConcept, QuestionnaireHistory,\
@@ -173,6 +174,9 @@ class DataGenerator:
             questionnaire = self.create_database_questionnaire_history()
             kwargs['questionnaireId'] = questionnaire.questionnaireId
             kwargs['questionnaireVersion'] = questionnaire.version
+        if 'participantId' not in kwargs:
+            participant = self.create_database_participant()
+            kwargs['participantId'] = participant.participantId
 
         return QuestionnaireResponse(**kwargs)
 
@@ -754,6 +758,15 @@ class DataGenerator:
         consent = self._hpro_consent_file(**kwargs)
         self._commit_to_database(consent)
         return consent
+
+    @staticmethod
+    def _participant_incentives(**kwargs):
+        return ParticipantIncentives(**kwargs)
+
+    def create_database_participant_incentives(self, **kwargs):
+        incentive = self._participant_incentives(**kwargs)
+        self._commit_to_database(incentive)
+        return incentive
 
     @staticmethod
     def _genomic_result_viewed(**kwargs):

@@ -141,7 +141,7 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
             # Check file name generated when generating report at the start of the month
             with clock.FakeClock(datetime(2021, 3, 1)):
                 self.run_withdrawal_report()
-                open_mock.assert_called_with('report_2021-2_withdrawals.csv', 'w')
+                open_mock.assert_called_with('report_2021-02_withdrawals.csv', 'w')
                 get_query_mock.assert_called_with(start_date=datetime(2021, 1, 27))
 
             # Check file name generated when generating report later in the month
@@ -174,7 +174,7 @@ class BiobankReportToolTest(ToolTestMixin, BaseTestCase):
             ])
             storage_instance_mock.upload_from_file.assert_called_with(
                 source_file='test_file.txt',
-                path='test_bucket_name/reconciliation/report_2020-4_withdrawals.csv'
+                path='test_bucket_name/reconciliation/report_2020-04_withdrawals.csv'
             )
 
     def _assert_participant_in_report_rows(self, participant: Participant, rows, withdrawal_date_str,

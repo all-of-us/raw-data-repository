@@ -11,6 +11,7 @@ from rdr_service.model.base import Base, MetricsBase
 # pylint: disable=unused-import
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.participant import Participant, ParticipantHistory
+from rdr_service.model.participant_incentives import ParticipantIncentives
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.participant_cohort_pilot import ParticipantCohortPilot
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -52,6 +53,7 @@ from rdr_service.model.resource_schema import ResourceSchema
 from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.resource_search_results import ResourceSearchResults
 from rdr_service.model.consent_file import ConsentFile
+from rdr_service.model.consent_response import ConsentResponse
 from rdr_service.model.covid_antibody_study import BiobankCovidAntibodySample, QuestCovidAntibodyTestResult,\
     QuestCovidAntibodyTest
 from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImportRecord

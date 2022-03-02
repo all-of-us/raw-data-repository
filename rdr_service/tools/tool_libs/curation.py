@@ -47,7 +47,8 @@ class CurationExportClass(ToolBase):
     tables = ['pid_rid_mapping', 'care_site', 'condition_era', 'condition_occurrence', 'cost', 'death',
               'device_exposure', 'dose_era', 'drug_era', 'drug_exposure', 'fact_relationship',
               'location', 'measurement', 'observation_period', 'payer_plan_period', 'visit_detail',
-              'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp']
+              'person', 'procedure_occurrence', 'provider', 'visit_occurrence', 'metadata', 'note_nlp',
+              'questionnaire_response_additional_info']
 
     # Observation takes a while and ends up timing the client out. The server will continue to process and the client
     # will print out a message describing how to continue to track it, but for now it crashes the script so it has
@@ -296,6 +297,7 @@ class CurationExportClass(ToolBase):
             SrcClean.question_code_id: QuestionnaireQuestion.codeId,
             SrcClean.value_ppi_code: answer_code.value,
             SrcClean.topic_value: answer_code.topic,
+            SrcClean.is_invalid: QuestionnaireResponseAnswer.ignore.is_(True),
             SrcClean.value_code_id: cls._null_if_answer_ignored(else_value=QuestionnaireResponseAnswer.valueCodeId),
             SrcClean.value_number: cls._null_if_answer_ignored(else_value=case([(
                 # Only set value number if the question code is not one of the zip codes to re-map

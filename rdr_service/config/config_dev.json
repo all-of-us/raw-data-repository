@@ -102,8 +102,8 @@
     "10"
   ],
   "gc_name_to_id_mapping": {
-    "baylor_array": "jh",
-    "baylor_wgs": "bcm",
+    "baylor_aou_array": "jh",
+    "baylor_aou_wgs": "bcm",
     "broad": "bi",
     "northwest": "uw",
     "rdr": "rdr"

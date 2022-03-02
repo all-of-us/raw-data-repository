@@ -124,6 +124,11 @@ cron:
   timezone: America/New_York
   schedule: every sunday 12:00
   target: offline
+- description: Genomic Update Report State for Consent Removal
+  url: /offline/GenomicUpdateReportStateForConsentRemoval
+  timezone: America/New_York
+  schedule: every saturday 05:00
+  target: offline
 - description: Genomic CVL W1 Workflow (Manual)
   url: /offline/GenomicCvlW1Workflow
   timezone: America/New_York
@@ -146,6 +151,16 @@ cron:
   target: offline
 - description: Genomic AW3 WGS Workflow
   url: /offline/GenomicAW3WGSWorkflow
+  timezone: America/New_York
+  schedule: every monday 05:45
+  target: offline
+- description: Genomic AW3 Array Investigation Workflow
+  url: /offline/GenomicAW3ArrayInvestigationWorkflow
+  timezone: America/New_York
+  schedule: every day 06:45
+  target: offline
+- description: Genomic AW3 WGS Investigation Workflow
+  url: /offline/GenomicAW3WGSInvestigationWorkflow
   timezone: America/New_York
   schedule: every monday 05:45
   target: offline
@@ -198,4 +213,9 @@ cron:
   url: /offline/GenomicReconcileInformingLoopResponses
   timezone: America/New_York
   schedule: every day 04:00
+  target: offline
+- description: Genomic Retry Manifest Ingestion Failures
+  url: /offline/GenomicRetryManifestIngestions
+  timezone: America/New_York
+  schedule: every day 02:00
   target: offline

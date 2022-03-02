@@ -63,8 +63,8 @@
   "ehr_status_bigquery_view_participant": [],
   "ehr_status_bigquery_view_organization": [],
   "gc_name_to_id_mapping": {
-    "baylor_array": "jh",
-    "baylor_wgs": "bcm",
+    "baylor_aou_array": "jh",
+    "baylor_aou_wgs": "bcm",
     "broad": "bi",
     "northwest": "uw",
     "rdr": "rdr"
@@ -77,6 +77,7 @@
     "a1_manifest_workflow": 1,
     "a2_manifest_workflow": 1,
     "a3_manifest_workflow": 1,
+    "update_report_state_for_consent_removal": 1,
     "aw0_manifest_workflow": 1,
     "aw1_manifest_workflow": 1,
     "aw1c_manifest_workflow": 0,
@@ -85,6 +86,8 @@
     "aw2f_remainder_workflow": 1,
     "aw3_array_manifest_workflow": 1,
     "aw3_wgs_manifest_workflow": 1,
+    "genomic_aw3_array_investigation_workflow": 1,
+    "genomic_aw3_wgs_investigation_workflow": 1,
     "array_reconciliation_workflow": 1,
     "daily_ingestion_summary": 1,
     "daily_incident_summary": 1,
@@ -94,6 +97,7 @@
     "missing_files_resolve_workflow": 1,
     "reconcile_gc_data_file_to_table_workflow": 1,
     "reconcile_pdr_data": 1,
+    "retry_manifest_ingestion_failures": 1,
     "genomic_delete_old_gp_user_events": 1,
     "reconcile_raw_to_aw1_ingested_workflow": 1,
     "reconcile_raw_to_aw2_ingested_workflow": 1,
@@ -148,5 +152,8 @@
     "aw4_wgs_manifest": 1,
     "aw5_array_manifest": 1,
     "aw5_wgs_manifest": 1
+  },
+  "genomic_skip_missing_file_types": {
+    "aou_wgs": ["test.file"]
   }
 }

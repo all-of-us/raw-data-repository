@@ -47,10 +47,19 @@ class ParticipantUBRCalculator:
         :param answer: Answer code to TheBasics_SexualOrientation question in "TheBasics" survey.
         :return: UBRValueEnum
         """
+        # NOTE:
+        # Analysis of RDR data shows it has been possible for participants to submit surveys where they answered
+        # the child GenderIdentity_SexualityCloserDescription question from the sexual orientation questions even if
+        # they did not answer the expected SexualOrientation_None response to the parent TheBasics_SexualOrientation
+        # question first.  This is not  consistent with the documented survey branching logic.  Therefore, UBR/RBR
+        # calculations are still based only on the response to the TheBasics_SexualOrientation question alone
+
         if answer is None or answer == 'PMI_Skip':
             return UBRValueEnum.NotAnswer_Skip
+
         if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.UBR
+
         return UBRValueEnum.RBR
 
     @staticmethod
@@ -60,7 +69,7 @@ class ParticipantUBRCalculator:
         :param birth_sex: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
         :param gender_ident: Comma delimited str of answers codes to Gender_GenderIdentity question in "TheBasics"
                         survey.
-        :param gender_ident_closer: Comma delimited str of answer codes to GenderIdentity_SexualityCloserDescription
+        :param gender_ident_closer: Comma delimited str of answer codes to Gender_CloserGenderDescription
                         question in "TheBasics" survey.
         :return: UBRValueEnum
         """
@@ -88,16 +97,18 @@ class ParticipantUBRCalculator:
             if answer is None or answer == 'PMI_Skip':
                 return UBRValueEnum.NotAnswer_Skip
             if (answer == 'PMI_PreferNotToAnswer' or answer == 'GenderIdentity_PreferNotToAnswer') or \
-                    (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip', None]) or \
-                    (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip', None]):
+                    (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip',
+                                                                      'GenderIdentity_PreferNotToAnswer', None]) or \
+                    (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip',
+                                                                        'GenderIdentity_PreferNotToAnswer', None]):
                 return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
     @staticmethod
     def ubr_sexual_gender_minority(ubr_sexual_orientation, ubr_gender_identity):
         """
-        Calculate the "sexual gender minority" UBR value. If only one of the two args is NullSkip, we convert the
-        arg NullSkip value to RBR so we can ignore it.
+        Calculate the "sexual gender minority" UBR value. If only one of the two args is NotAnswer_Skip, we convert the
+        arg NotAnswer_Skip value to RBR so we can ignore it.
         :param ubr_sexual_orientation: Value returned from self.ubr_sexual_orientation().
         :param ubr_gender_identity: Value returned from self.ubr_gender_identity().
         :return: UBRValueEnum
@@ -187,14 +198,15 @@ class ParticipantUBRCalculator:
     def ubr_disability(answers: dict):
         """
         Calculate the disability UBR value.
-        :param answers: Dict with keys and answer codes for 'Employment_EmploymentStatus', 'Disability_Blind',
+        :param answers: Dict with keys and answer codes for 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" survey.
         :return: UBRValueEnum
         """
         if answers:
-            if answers.get('Employment_EmploymentStatus', None) == 'EmploymentStatus_UnableToWork' or \
-                    answers.get('Disability_Blind', None) == 'Blind_Yes' or \
+            # PDR-658:  The Employment_EmploymentStatus/EmploymentStatus_UnableToWork answer check was removed from the
+            # UBR Disability calculations per program decision
+            if answers.get('Disability_Blind', None) == 'Blind_Yes' or \
                     answers.get('Disability_WalkingClimbing', None) == 'WalkingClimbing_Yes' or \
                     answers.get('Disability_DressingBathing', None) == 'DressingBathing_Yes' or \
                     answers.get('Disability_ErrandsAlone', None) == 'ErrandsAlone_Yes' or \
@@ -203,9 +215,8 @@ class ParticipantUBRCalculator:
                 return UBRValueEnum.UBR
         # Check and see if all question answers are either Null or PMI_Skip.
         null_skip = True
-        for k in ['Employment_EmploymentStatus', 'Disability_Blind',
-                        'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
-                        'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
+        for k in [ 'Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
+                   'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
             if answers.get(k, None) not in (None, 'PMI_Skip'):
                 null_skip = False
                 break

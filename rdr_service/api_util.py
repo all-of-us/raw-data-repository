@@ -21,6 +21,7 @@ DEV_MAIL = "example@example.com"
 GEM = "gem"
 BIOBANK = 'biobank'
 RDR_AND_PTC = [RDR, PTC]
+RDR_AND_HEALTHPRO = [RDR, HEALTHPRO]
 PTC_AND_GEM = [PTC, GEM]
 WORKBENCH_AND_REDCAP = [WORKBENCH, REDCAP]
 STOREFRONT_AND_REDCAP = [STOREFRONT, REDCAP]
@@ -60,6 +61,16 @@ def parse_date(date_str, date_format=None, date_only=False):
 
 def convert_to_datetime(date):
     return datetime.datetime.combine(date, datetime.datetime.min.time())
+
+
+def format_json_bool(obj, field_name):
+    if field_name not in obj:
+        return
+    bool_map = {
+        0: False,
+        1: True
+    }
+    obj[field_name] = bool_map[obj[field_name]]
 
 
 def format_json_date(obj, field_name, date_format=None):

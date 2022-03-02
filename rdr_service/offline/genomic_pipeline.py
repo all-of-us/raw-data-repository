@@ -113,7 +113,7 @@ def reconcile_metrics_vs_array_data(provider=None):
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_data(
-            genome_type='array'
+            genome_type=config.GENOME_TYPE_ARRAY,
         )
 
 
@@ -126,7 +126,7 @@ def reconcile_metrics_vs_wgs_data(provider=None):
                               storage_provider=provider,
                               bucket_name_list=config.GENOMIC_CENTER_DATA_BUCKET_NAME) as controller:
         controller.run_reconciliation_to_data(
-            genome_type='wgs'
+            genome_type=config.GENOME_TYPE_WGS
         )
 
 
@@ -165,6 +165,46 @@ def aw3_wgs_manifest_workflow():
         for manifest in controller.manifests_generated:
             logging.info(
                 f"Loading AW3 Array Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+
+
+def aw3_array_investigation_workflow():
+    """
+    Entrypoint for AW3 Array Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_ARRAY_INVESTIGATION_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_ARRAY,
+            _genome_type="aou_array_investigation",
+        )
+
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 Array Investigation Raw Data: {manifest['file_path']}")
+
+            # Call pipeline function to load raw
+            load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
+
+
+def aw3_wgs_investigation_workflow():
+    """
+    Entrypoint for AW3 WGS Workflow
+    """
+    with GenomicJobController(GenomicJob.AW3_WGS_INVESTIGATION_WORKFLOW,
+                              bucket_name=config.DRC_BROAD_BUCKET_NAME,
+                              max_num=config.getSetting(config.GENOMIC_MAX_NUM_GENERATE, default=4000)) as controller:
+        controller.generate_manifest(
+            GenomicManifestTypes.AW3_WGS,
+            _genome_type="aou_wgs_investigation",
+        )
+
+        for manifest in controller.manifests_generated:
+            logging.info(
+                f"Loading AW3 WGS Investigation Raw Data: {manifest['file_path']}")
 
             # Call pipeline function to load raw
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
@@ -209,6 +249,15 @@ def gem_metrics_ingest():
     with GenomicJobController(GenomicJob.GEM_METRICS_INGEST,
                               bucket_name=config.GENOMIC_GEM_BUCKET_NAME) as controller:
         controller.run_general_ingestion_workflow()
+
+
+def update_report_state_for_consent_removal():
+    """
+    Comprehensive update for report states without gRoR or Primary Consent
+    :return:
+    """
+    with GenomicJobController(GenomicJob.UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL) as controller:
+        controller.reconcile_report_states()
 
 
 def create_cvl_reconciliation_report():
@@ -327,6 +376,11 @@ def reconcile_pdr_data():
         controller.reconcile_pdr_data()
 
 
+def retry_manifest_ingestions():
+    with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
+        controller.retry_manifest_ingestions()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
@@ -400,7 +454,6 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
 
             controller.bucket_name = _task_data.bucket
             file_name = '/'.join(_task_data.file_data.file_path.split('/')[1:])
-
             controller.ingest_specific_manifest(file_name)
 
         if _task_data.job == GenomicJob.AW1_MANIFEST:

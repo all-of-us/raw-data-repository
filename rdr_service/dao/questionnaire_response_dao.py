@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import logging
 import os
@@ -7,13 +8,15 @@ from datetime import datetime
 from dateutil import parser
 from hashlib import md5
 import pytz
-from sqlalchemy import or_
-from sqlalchemy.orm import joinedload, subqueryload
-from typing import Dict
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
+from rdr_service.domain_model import response as response_domain_model
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
 from rdr_service.participant_enums import QuestionnaireResponseStatus, PARTICIPANT_COHORT_2_START_TIME,\
     PARTICIPANT_COHORT_3_START_TIME
@@ -67,6 +70,7 @@ from rdr_service.code_constants import (
 )
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.dao.consent_dao import ConsentDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import (
     ParticipantGenderAnswersDao,
@@ -77,7 +81,8 @@ from rdr_service.dao.questionnaire_dao import QuestionnaireHistoryDao, Questionn
 from rdr_service.field_mappings import FieldType, QUESTIONNAIRE_MODULE_CODE_TO_FIELD, QUESTION_CODE_TO_FIELD, \
     QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD
 from rdr_service.model.code import Code, CodeType
-from rdr_service.model.questionnaire import  QuestionnaireHistory, QuestionnaireQuestion
+from rdr_service.model.consent_response import ConsentResponse, ConsentType
+from rdr_service.model.questionnaire import QuestionnaireConcept, QuestionnaireHistory, QuestionnaireQuestion
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer,\
     QuestionnaireResponseExtension, QuestionnaireResponseClassificationType
 from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionOption, SurveyQuestionType
@@ -299,16 +304,23 @@ class QuestionnaireResponseDao(BaseDao):
                                                              cache_ttl_seconds=86400
                                                              )
 
-    def _load_thebasics_profile_update_codes(self):
+        # Need to record what types of consents are provided by the response when walking the answers
+        self.consents_provided = []
+
+    @staticmethod
+    def _load_thebasics_profile_update_codes():
         """
         Invoked when the singleton cache needs to load the list of TheBasics profile update codes
         :return:  List of code id values for the profile update / secondary contact questions
         """
-        with self.session() as session:
-            profile_codes = session.query(Code.codeId
-                                          ).filter(Code.value.in_(BASICS_PROFILE_UPDATE_QUESTION_CODES)).all()
-            results = [c.codeId for c in profile_codes] if profile_codes else []
-            return results
+        results = []
+        code_dao = CodeDao()
+        for code_value in BASICS_PROFILE_UPDATE_QUESTION_CODES:
+            code = code_dao.get_code(PPI_SYSTEM, code_value)
+            if code:
+                results.append(code.codeId)
+
+        return results
 
     def get_id(self, obj):
         return obj.questionnaireResponseId
@@ -369,15 +381,19 @@ class QuestionnaireResponseDao(BaseDao):
                         logging.error(f'Questionnaire response contains invalid link ID "{link_id}"')
 
     @staticmethod
-    def _get_module_from_questionnaire_history(questionnaire_history):
-        """ Extract the module code value from a questionnaire_history result JSON data (resource field) """
-
+    def _get_module_name(questionnaire_history: QuestionnaireHistory):
+        """ Use the questionnaire_history to determine the module name """
         # Unittest/lower environments may not have expected questionnaire_history content, so allow for missing data
         result = None
-        history_data = json.loads(questionnaire_history.resource) if questionnaire_history.resource else {}
-        if 'group' in history_data.keys() and 'concept' in history_data['group'].keys():
-            concepts = history_data['group']['concept']
-            result = concepts[0]['code'] if len(concepts) else None
+        if isinstance(questionnaire_history, QuestionnaireHistory):
+            concepts = questionnaire_history.concepts
+            if concepts:
+                concept_code = concepts[0].codeId
+                code_obj = CodeDao().get(concept_code)
+                result = code_obj.value if code_obj else None
+        else:
+            logging.error(f'Unexpected questionnaire_history parameter type {type(questionnaire_history)}')
+
         return result
 
     @staticmethod
@@ -408,7 +424,7 @@ class QuestionnaireResponseDao(BaseDao):
         except (AttributeError, ValueError, TypeError, LookupError):
             logging.error('Code error encountered when validating the response', exc_info=True)
 
-        module = self._get_module_from_questionnaire_history(questionnaire_history)
+        module = self._get_module_name(questionnaire_history)
         questionnaire_response.created = clock.CLOCK.now()
         questionnaire_response.classificationType = QuestionnaireResponseClassificationType.COMPLETE  # Default
         if not questionnaire_response.authored:
@@ -464,6 +480,11 @@ class QuestionnaireResponseDao(BaseDao):
                 self._update_participant_summary(
                     new_session, questionnaire_response, code_ids, questions, questionnaire_history, resource_json
                 )
+
+        self.create_consent_responses(
+            questionnaire_response=questionnaire_response,
+            session=session
+        )
 
         super(QuestionnaireResponseDao, self).insert_with_session(session, questionnaire_response)
         # Mark existing answers for the questions in this response given previously by this participant
@@ -613,6 +634,7 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.ehrConsentExpireAuthored = None
                             participant_summary.ehrConsentExpireTime = None
                         if code and code.value == CONSENT_PERMISSION_YES_CODE:
+                            self.consents_provided.append(ConsentType.EHR)
                             ehr_consent = True
                             if participant_summary.consentForElectronicHealthRecordsFirstYesAuthored is None:
                                 participant_summary.consentForElectronicHealthRecordsFirstYesAuthored = authored
@@ -628,6 +650,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == CABOR_SIGNATURE_QUESTION_CODE:
                         if answer.valueUri or answer.valueString:
                             # TODO: validate the URI? [DA-326]
+                            self.consents_provided.append(ConsentType.CABOR)
                             if not participant_summary.consentForCABoR:
                                 participant_summary.consentForCABoR = True
                                 participant_summary.consentForCABoRTime = questionnaire_response.created
@@ -635,6 +658,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                     elif code.value == GROR_CONSENT_QUESTION_CODE:
                         if code_dao.get(answer.valueCodeId).value == CONSENT_GROR_YES_CODE:
+                            self.consents_provided.append(ConsentType.GROR)
                             gror_consent = QuestionnaireStatus.SUBMITTED
                         elif code_dao.get(answer.valueCodeId).value == CONSENT_GROR_NO_CODE:
                             gror_consent = QuestionnaireStatus.SUBMITTED_NO_CONSENT
@@ -660,6 +684,7 @@ class QuestionnaireResponseDao(BaseDao):
                     elif code.value == PRIMARY_CONSENT_UPDATE_QUESTION_CODE:
                         answer_value = code_dao.get(answer.valueCodeId).value
                         if answer_value == COHORT_1_REVIEW_CONSENT_YES_CODE:
+                            self.consents_provided.append(ConsentType.PRIMARY_UPDATE)
                             participant_summary.consentForStudyEnrollmentAuthored = authored
                     elif code.value == CONSENT_COHORT_GROUP_CODE:
                         try:
@@ -723,6 +748,7 @@ class QuestionnaireResponseDao(BaseDao):
                             )
                         new_status = gror_consent
                     elif code.value == CONSENT_FOR_STUDY_ENROLLMENT_MODULE:
+                        self.consents_provided.append(ConsentType.PRIMARY)
                         participant_summary.semanticVersionForPrimaryConsent = \
                             questionnaire_response.questionnaireSemanticVersion
                         if participant_summary.consentCohort is None or \
@@ -857,6 +883,46 @@ class QuestionnaireResponseDao(BaseDao):
                 participant_gender_race_dao.update_gender_answers_with_session(
                     session, participant.participantId, gender_code_ids
                 )
+
+    def create_consent_responses(self, questionnaire_response: QuestionnaireResponse, session: Session):
+        """
+        Analyzes the current ConsentResponses for a participant, and the response that was just received
+        to determine if the new response is a new consent for the participant.
+        """
+        if len(self.consents_provided) == 0:
+            # If the new response doesn't give any consent at all, then there's no reason for a check
+            return
+
+        # Load previously received consent authored dates for the participant
+        previous_consent_dates = ConsentDao.get_consent_authored_times_for_participant(
+            session=session,
+            participant_id=questionnaire_response.participantId
+        )
+
+        # Check authored dates to see if it's a new consent response,
+        # or if it's potentially just a replay of a previous questionnaire response
+        for consent_type in self.consents_provided:
+            is_new_consent = True
+            previous_authored_times = previous_consent_dates.get(consent_type)
+            for previous_consent_authored_time in (previous_authored_times or []):
+                if self._authored_times_match(
+                    new_authored_time=questionnaire_response.authored,
+                    current_authored_item=previous_consent_authored_time
+                ):
+                    is_new_consent = False
+                    break
+
+            if is_new_consent:
+                session.add(ConsentResponse(response=questionnaire_response, type=consent_type))
+
+    @classmethod
+    def _authored_times_match(cls, new_authored_time: datetime, current_authored_item: datetime):
+        if new_authored_time.tzinfo is None:
+            new_authored_time = new_authored_time.replace(tzinfo=pytz.utc)
+        if current_authored_item.tzinfo is None:
+            current_authored_item = current_authored_item.replace(tzinfo=pytz.utc)
+        difference_in_seconds = abs((new_authored_time - current_authored_item).total_seconds())
+        return difference_in_seconds < 300  # Allowing 5 minutes of difference between authored dates
 
     def _is_digital_health_share_code(self, code_value):
         return code_value.lower() in [APPLE_EHR_SHARING_MODULE, APPLE_EHR_STOP_SHARING_MODULE,
@@ -1153,6 +1219,112 @@ class QuestionnaireResponseDao(BaseDao):
                 system, code = system_and_code
                 answer.valueCodeId = code_id_map.get(system, code)
             qr.answers.append(answer)
+
+    @classmethod
+    def get_responses_to_surveys(
+        cls,
+        survey_codes: List[str],
+        session: Session,
+        participant_ids: List[int],
+        include_ignored_answers=False,
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None
+    ) -> Dict[int, response_domain_model.ParticipantResponses]:
+        """
+        Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
+        and survey codes.
+
+        :param survey_codes: Survey module code strings to get responses for
+        :param session: Session to use for connecting to the database
+        :param participant_ids: Participant ids to get responses for
+        :param include_ignored_answers: Include response answers that have been ignored
+        :param sent_statuses: List of QuestionnaireResponseStatus to use when filtering responses
+            (defaults to QuestionnaireResponseStatus.COMPLETED)
+        :return: A dictionary keyed by participant ids with the value being the collection of responses for
+            that participant
+        """
+
+        if sent_statuses is None:
+            sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
+
+        # Build query for all the questions answered by the given participants for the given survey codes
+        question_code = aliased(Code)
+        answer_code = aliased(Code)
+        survey_code = aliased(Code)
+        query = (
+            session.query(
+                func.lower(question_code.value),
+                QuestionnaireResponse.participantId,
+                QuestionnaireResponse.questionnaireResponseId,
+                QuestionnaireResponse.authored,
+                survey_code.value,
+                func.coalesce(
+                    QuestionnaireResponseAnswer.valueDate,
+                    func.lower(answer_code.value),
+                    QuestionnaireResponseAnswer.valueBoolean,
+                    QuestionnaireResponseAnswer.valueDateTime,
+                    QuestionnaireResponseAnswer.valueDecimal,
+                    QuestionnaireResponseAnswer.valueInteger,
+                    QuestionnaireResponseAnswer.valueString,
+                    QuestionnaireResponseAnswer.valueSystem,
+                    QuestionnaireResponseAnswer.valueUri
+                ),
+                QuestionnaireResponseAnswer.questionnaireResponseAnswerId,
+                QuestionnaireResponse.status
+            )
+            .select_from(QuestionnaireResponseAnswer)
+            .join(QuestionnaireQuestion)
+            .join(QuestionnaireResponse)
+            .join(question_code, question_code.codeId == QuestionnaireQuestion.codeId)
+            .join(
+                QuestionnaireConcept,
+                and_(
+                    QuestionnaireConcept.questionnaireId == QuestionnaireResponse.questionnaireId,
+                    QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
+                )
+            ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
+            .outerjoin(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+            .filter(
+                survey_code.value.in_(survey_codes),
+                QuestionnaireResponse.participantId.in_(participant_ids),
+                QuestionnaireResponse.status.in_(sent_statuses)
+            )
+        )
+
+        if not include_ignored_answers:
+            query = query.filter(
+                or_(
+                    QuestionnaireResponseAnswer.ignore.is_(False),
+                    QuestionnaireResponseAnswer.ignore.is_(None)
+                )
+            )
+
+        # build dict with participant ids as keys and ParticipantResponse objects as values
+        participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_value, \
+                answer_id, status in query.all():
+            # Get the collection of responses for the participant
+            response_collection_for_participant = participant_response_map[participant_id]
+
+            # Get the response that this particular answer is for so we can store the answer
+            response = response_collection_for_participant.responses.get(response_id)
+            if not response:
+                # This is the first time seeing an answer for this response, so create the Response structure for it
+                response = response_domain_model.Response(
+                    id=response_id,
+                    survey_code=survey_code_str,
+                    authored_datetime=authored_datetime,
+                    status=status
+                )
+                response_collection_for_participant.responses[response_id] = response
+
+            response.answered_codes[question_code_str].append(
+                response_domain_model.Answer(
+                    id=answer_id,
+                    value=answer_value
+                )
+            )
+
+        return dict(participant_response_map)
 
 
 def _validate_consent_pdfs(resource):

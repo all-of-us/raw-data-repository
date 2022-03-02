@@ -32,6 +32,7 @@ from rdr_service.dao.database_utils import get_sql_and_params_for_array, replace
 from rdr_service.dao.hpo_dao import HPODao
 from rdr_service.dao.organization_dao import OrganizationDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_incentives_dao import ParticipantIncentivesDao
 from rdr_service.dao.patient_status_dao import PatientStatusDao
 from rdr_service.dao.site_dao import SiteDao
 
@@ -445,8 +446,11 @@ class ParticipantSummaryDao(UpdatableDao):
         self.organization_dao = OrganizationDao()
         self.patient_status_dao = PatientStatusDao()
         self.participant_dao = ParticipantDao()
+        self.incentive_dao = ParticipantIncentivesDao()
         self.faker = faker.Faker()
+
         self.hpro_consents = []
+        self.participant_incentives = []
 
     # pylint: disable=unused-argument
     def from_client_json(self, resource, participant_id, client_id):
@@ -986,10 +990,22 @@ class ParticipantSummaryDao(UpdatableDao):
 
         return result
 
+    def get_participant_incentives(self, result):
+        participant_id = result['participantId']
+
+        records = list(filter(lambda obj: obj.participantId == participant_id, self.participant_incentives))
+
+        records = [self.incentive_dao.convert_json_obj(obj) for obj in records]
+        return records
+
     def to_client_json(self, model: ParticipantSummary):
         result = model.asdict()
+
         if self.hpro_consents:
             result = self.get_hpro_consent_paths(result)
+
+        if self.participant_incentives:
+            result['participantIncentives'] = self.get_participant_incentives(result)
 
         is_the_basics_complete = model.questionnaireOnTheBasics == QuestionnaireStatus.SUBMITTED
 
@@ -1006,13 +1022,14 @@ class ParticipantSummaryDao(UpdatableDao):
         biobank_id = result.get("biobankId")
         if biobank_id:
             result["biobankId"] = to_client_biobank_id(biobank_id)
+
         date_of_birth = result.get("dateOfBirth")
         if date_of_birth:
             result["ageRange"] = get_bucketed_age(date_of_birth, clock.CLOCK.now())
         else:
             result["ageRange"] = UNSET
 
-        if result.get("primaryLanguage") is None:
+        if not result.get("primaryLanguage"):
             result["primaryLanguage"] = UNSET
 
         if "organizationId" in result:

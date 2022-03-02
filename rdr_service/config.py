@@ -90,6 +90,9 @@ GENOMIC_MAX_NUM_INGEST = "genomic_max_num_ingest"
 GENOMIC_DAILY_VALIDATION_EMAILS = "genomic_daily_validation_emails"
 GENOMIC_MEMBER_BLOCKLISTS = "genomic_set_member_blocklists"
 GENOMIC_INGESTIONS = "genomic_ingestions"
+GENOMIC_SKIP_MISSING_FILETYPES = "genomic_skip_missing_file_types"
+GENOMIC_GC_ID_MAPPING = "gc_name_to_id_mapping"
+GENOMIC_PIPELINE_IDS = "genomic_pipeline_ids"
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 DRC_BROAD_AW4_SUBFOLDERS = ("aw4_array_subfolder_name", "aw4_wgs_subfolder_name")
 BIOBANK_AW2F_SUBFOLDER = "aw2f_manifests"
@@ -142,6 +145,7 @@ PUBSUB_NOTIFICATION_BUCKETS_PROD = [
 PUBSUB_NOTIFICATION_BUCKETS_SANDBOX = [
     "aou-rdr-sandbox-mock-data",
 ]
+GENOMIC_INVESTIGATION_GENOME_TYPES = ['aou_array_investigation', 'aou_wgs_investigation']
 
 # Questionnaire Codes
 DNA_PROGRAM_CONSENT_UPDATE_CODE = 'dna_program_consent_update_code'
@@ -169,10 +173,13 @@ DATA_OPS_SERVICE_ACCOUNTS_TO_MANAGE = "data_ops_service_accounts_to_manage"
 CONSENT_SYNC_BUCKETS = "consent_sync_buckets"
 
 DATA_DICTIONARY_DOCUMENT_ID = "data_dictionary_document_id"
+BIOBANK_DATA_COMPARISON_DOCUMENT_ID = "biobank_data_comparison_document_id"
 
 RDR_SLACK_WEBHOOKS = "rdr_slack_webhooks"
 
 DECEASED_REPORT_FILTER_EXCEPTIONS = "deceased_report_filter_exceptions"
+
+PTSC_SERVICE_DESK_EMAIL = "ptsc_service_desk_email"
 
 # Overrides for testing scenarios
 CONFIG_OVERRIDES = {}

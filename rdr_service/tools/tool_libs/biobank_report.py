@@ -109,7 +109,7 @@ class BiobankReportTool(ToolBase):
     @classmethod
     def _get_default_withdrawal_name(cls):
         one_month_ago = clock.CLOCK.now() - timedelta(weeks=4)
-        return f'report_{one_month_ago.year}-{one_month_ago.month}_withdrawals.csv'
+        return f'report_{one_month_ago.year}-{str(one_month_ago.month).zfill(2)}_withdrawals.csv'
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):

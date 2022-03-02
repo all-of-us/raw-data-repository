@@ -14,8 +14,10 @@ from rdr_service.participant_enums import WithdrawalStatus, SuspensionStatus, Qu
 
 class GenomicQueryClass:
 
-    def __init__(self, input_manifest=None):
+    def __init__(self, input_manifest=None, genome_type=None):
         self.input_manifest = input_manifest
+
+        self.genome_type = genome_type
 
         # Table aliases for tables requiring multiple JOINs
         self.aliases = {
@@ -82,7 +84,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == config.GENOME_TYPE_ARRAY) &
+                (GenomicSetMember.genomeType == self.genome_type) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicGCValidationMetrics.idatRedReceived == 1) &
@@ -91,6 +93,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.idatGreenMd5Received == 1) &
                 (GenomicGCValidationMetrics.vcfReceived == 1) &
                 (GenomicGCValidationMetrics.vcfMd5Received == 1) &
+                (GenomicGCValidationMetrics.vcfTbiReceived == 1) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
                 (GenomicSetMember.ignoreFlag != 1)
             )),
@@ -146,7 +149,7 @@ class GenomicQueryClass:
                 (GenomicGCValidationMetrics.processingStatus == 'pass') &
                 (GenomicGCValidationMetrics.ignoreFlag != 1) &
                 (GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE) &
-                (GenomicSetMember.genomeType == config.GENOME_TYPE_WGS) &
+                (GenomicSetMember.genomeType == self.genome_type) &
                 (ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN) &
                 (ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED) &
                 (GenomicSetMember.aw3ManifestJobRunID.is_(None)) &
@@ -414,12 +417,11 @@ class GenomicQueryClass:
                               AND SUBSTRING_INDEX(cr.value, "_", -1) = "AIAN"
                     ) native ON native.participant_id = p.participant_id
                     LEFT JOIN genomic_set_member m ON m.participant_id = ps.participant_id
-                            AND m.genomic_workflow_state <> 33
                     LEFT JOIN biobank_mail_kit_order mk ON mk.participant_id = p.participant_id
                 WHERE TRUE
                     AND ss.test in ('1ED04', '1ED10', '1SAL2')
+                    AND ss.status IS NOT NULL
                     AND ps.consent_cohort = :cohort_param
-                    AND ps.participant_origin != 'careevolution'
                     AND m.id IS NULL
             """
 
@@ -723,7 +725,7 @@ class GenomicQueryClass:
     def dq_report_ingestions_summary(from_date):
         query_sql = """
                 # AW1 Ingestions
-                SELECT count(distinct raw.id) record_count
+                SELECT count(distinct raw.id) as record_count
                     , count(distinct m.id) as ingested_count
                     , count(distinct i.id) as incident_count
                     , "aw1" as file_type
@@ -738,20 +740,20 @@ class GenomicQueryClass:
                             ) = "GEN"
                         THEN "aou_array"
                       END AS genome_type
-                    , raw.file_path
+                    ,raw.file_path
                 FROM genomic_aw1_raw raw
                     LEFT JOIN genomic_manifest_file mf ON mf.file_path = raw.file_path
                     LEFT JOIN genomic_file_processed f ON f.genomic_manifest_file_id = mf.id
                     LEFT JOIN genomic_set_member m ON m.aw1_file_processed_id = f.id
                     LEFT JOIN genomic_incident i ON i.source_file_processed_id = f.id
                 WHERE TRUE
-                    AND raw.created >=  :from_date
+                    AND raw.created >= :from_date
                     AND raw.ignore_flag = 0
                     AND raw.biobank_id <> ""
                 GROUP BY raw.file_path, file_type
                 UNION
                 # AW2 Ingestions
-                SELECT count(distinct raw.id) record_count
+                SELECT count(distinct raw.id) as record_count
                     , count(distinct m.id) as ingested_count
                     , count(distinct i.id) as incident_count
                     , "aw2" as file_type
