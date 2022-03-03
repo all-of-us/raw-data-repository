@@ -483,7 +483,7 @@ class BQPDRGRORSchema(_BQModuleSchema):
     )
     _force_boolean_fields = (
         'ResultsConsent_Signature',
-        # 'HelpMeWithConsent_Name'
+        'HelpMeWithConsent_Name'
     )
 
 class BQPDRGROR(BQTable):
@@ -498,62 +498,6 @@ class BQPDRGRORView(BQView):
     __table__ = BQPDRGROR
     __pk_id__ = ['participant_id', 'questionnaire_response_id']
     _show_created = True
-    # TEMPORARY:  Workaround until the pdr_mod_gror table is dropped/recreated with corrected forced boolean fields
-    # For now, this maps the STRING field to an integer value when populated.   Once the base BQ pdr_mod_gror table
-    # schema is corrected, custom SQL can be deleted for this view.
-    __sql__ = """
-        SELECT id,
-               created,
-               modified,
-               authored,
-               language,
-               participant_id,
-               questionnaire_response_id,
-               questionnaire_id,
-               external_id,
-               status,
-               status_id,
-               DNAQuiz_ResultsRequired,
-               DNAQuiz_DifficultToReceiveCare,
-               DNAQuiz_CheckChangesSoon,
-               DNAQuiz_LawsProtectMe,
-               DNAQuiz_AtRisk,
-               ConsentVideo_HelpMe,
-               ConsentVideo_TellMeWhat,
-               ConsentVideo_HowLong,
-               ConsentVideo_DNAChanges,
-               ConsentVideo_CheckForWhat,
-               ConsentVideo_Risks,
-               ResultsConsent_EmailMeCopy,
-               ResultsConsent_FloridaEmailMeCopy,
-               ResultsConsent_Signature,
-               ResultsConsent_CheckDNA,
-               ResultsConsent_HelpMeWithConsent,
-               CASE
-                  WHEN HelpMeWithConsent_Name IS NULL THEN 0 ELSE 1
-               END AS HelpMeWithConsent_Name,
-               DecideReceiveResults_BetterCareOfMe,
-               DecideReceiveResults_TimeOffWork,
-               DecideReceiveResults_NotUseful,
-               DecideReceiveResults_NotRelated,
-               DecideReceiveResults_HelpProviders,
-               DecideReceiveResults_ConfusedWorried,
-               DecideReceiveResults_RelativesHealth,
-               DecideReceiveResults_MoreExpensiveHealthcare,
-               DecideReceiveResults_HelpSortOut,
-               DecideReceiveResults_HardToGetInsurance,
-               DecideReceiveResults_Increased,
-               resultsconsent_signaturedate,
-               CheckDNA_No,
-               CheckDNA_Yes,
-               CheckDNA_NotSure,
-               ReviewAgain
-        FROM (
-                    SELECT *,
-                       ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY authored DESC) AS rn
-                FROM `{project}`.{dataset}.pdr_mod_gror ) gror
-        WHERE gror.rn = 1
-    """
 
 #
 # FamilyHistory
