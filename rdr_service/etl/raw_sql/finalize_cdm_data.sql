@@ -106,7 +106,8 @@ CREATE TABLE cdm.src_mapped
     value_date                  datetime,
     value_string                varchar(1024),
     questionnaire_response_id   bigint,
-    unit_id                     varchar(50)
+    unit_id                     varchar(50),
+    is_invalid                  tinyint(1)
 );
 
 INSERT INTO cdm.src_mapped
@@ -135,7 +136,8 @@ SELECT
     src_c.value_date                    AS value_date,
     src_c.value_string                  AS value_string,
     src_c.questionnaire_response_id     AS questionnaire_response_id,
-    src_c.unit_id                       AS unit_id
+    src_c.unit_id                       AS unit_id,
+    src_c.is_invalid                    as is_invalid
 FROM cdm.src_clean src_c
 JOIN cdm.src_participant src_p
     ON  src_c.participant_id = src_p.participant_id
@@ -916,6 +918,7 @@ SELECT
              AND src_m.value_string IS NOT NULL     THEN 'observ.str'
         WHEN src_m.value_number IS NOT NULL         THEN 'observ.num'
         WHEN src_m.value_boolean IS NOT NULL        THEN 'observ.bool'
+        WHEN src_m.is_invalid                       THEN 'observ.invalid'
     END                                         AS unit_id
 FROM cdm.src_mapped src_m
 WHERE src_m.question_ppi_code is not null
@@ -1535,6 +1538,9 @@ CREATE TABLE cdm.questionnaire_response_additional_info (
     value                           varchar(255)
 );
 
+-- Preventing locks on questionnaire_response table when reading data
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
 INSERT INTO cdm.questionnaire_response_additional_info SELECT DISTINCT
 qr.questionnaire_response_id, 'NON_PARTICIPANT_AUTHOR_INDICATOR' as type, qr.non_participant_author as value
 from rdr.questionnaire_response qr, (SELECT DISTINCT questionnaire_response_id from cdm.src_clean) as qri
@@ -1552,6 +1558,9 @@ from rdr.questionnaire_response qr,  rdr.questionnaire_concept qc, rdr.code c,
 where qr.questionnaire_id=qc.questionnaire_id
 and qc.code_id=c.code_id
 and qr.questionnaire_response_id=qri.questionnaire_response_id;
+
+-- Reset ISOLATION level to previous setting (assuming here that it was MySql's default)
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 
 -- -------------------------------------------------------------------
 -- Drop Temporary Tables
