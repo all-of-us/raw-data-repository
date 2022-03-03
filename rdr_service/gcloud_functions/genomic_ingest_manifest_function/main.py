@@ -40,7 +40,8 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             "aw1f": "IngestAW1ManifestTaskApi",
             "aw2": "IngestAW2ManifestTaskApi",
             "aw4": "IngestAW4ManifestTaskApi",
-            "aw5": "IngestAW5ManifestTaskApi"
+            "aw5": "IngestAW5ManifestTaskApi",
+            "w2sc": "IngestCVLManifestTaskApi",
         }
 
     def run(self):
@@ -74,6 +75,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         # AW5 files have "AW5" in their file path (bucket name)
         elif 'aw5_' in object_id:
             task_key = "aw5"
+
+        # W2SC files have "W2SC" in their file path (bucket name)
+        elif '_w2sc_' in object_id:
+            task_key = "w2sc"
 
         else:
             _logger.info("No files match ingestion criteria.")
