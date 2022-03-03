@@ -7,7 +7,7 @@ from sqlalchemy import desc, or_, and_, func, distinct, case
 from sqlalchemy.orm import subqueryload, aliased
 from rdr_service.dao.base_dao import UpdatableDao
 from rdr_service import clock
-from datetime import timedelta
+from datetime import datetime, timedelta
 from rdr_service.dao.metadata_dao import MetadataDao, WORKBENCH_LAST_SYNC_KEY
 from rdr_service.model.workbench_workspace import (
     WorkbenchWorkspaceApproved,
@@ -513,15 +513,24 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                     .group_by(WorkbenchWorkspaceSnapshot.workspaceSourceId).subquery()
             )
             query = (
-                session.query(WorkbenchWorkspaceApproved, WorkbenchResearcher, WorkbenchWorkspaceUser.role,
-                              snapshot_subquery.c.snapshot_id)
-                    .filter(WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
-                            WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
-                            WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
-                            WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
-                            or_(WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
-                                WorkbenchWorkspaceApproved.isReviewed == 1))
-                    .order_by(desc(WorkbenchWorkspaceApproved.modifiedTime))
+                session.query(
+                    WorkbenchWorkspaceApproved,
+                    WorkbenchResearcher,
+                    WorkbenchWorkspaceUser.role,
+                    snapshot_subquery.c.snapshot_id
+                ).filter(
+                    WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
+                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
+                    WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                    WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
+                    or_(
+                        WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
+                        WorkbenchWorkspaceApproved.isReviewed == 1
+                    ),
+                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                ).order_by(
+                    desc(WorkbenchWorkspaceApproved.modifiedTime)
+                )
             )
 
             if status is not None:
