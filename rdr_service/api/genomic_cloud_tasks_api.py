@@ -263,6 +263,48 @@ class IngestAW5ManifestTaskApi(BaseGenomicTaskApi):
         return {"success": True}
 
 
+class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
+    """
+    Cloud Task endpoint: Ingest CVL Manifest.
+    """
+    def post(self):
+        super(IngestCVLManifestTaskApi, self).post()
+
+        cvl_manifest_map = {
+            'w2sc': {
+                'job': GenomicJob.CVL_W2SC_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W2SC
+            }
+        }
+
+        for file_path in self.file_paths:
+            logging.info(f'Ingesting CVL Manifest File: {self.data.get("filename")}')
+
+            task_type = self.data.get("file_type")
+            workflow_data = cvl_manifest_map[task_type]
+
+            # Set up file/JSON
+            task_data = {
+                "job": workflow_data.get('job'),
+                "bucket": self.data["bucket_name"],
+                "file_data": {
+                    "create_feedback_record": False,
+                    "upload_date": self.data["upload_date"],
+                    "manifest_type": workflow_data.get('manifest_type'),
+                    "file_path": file_path,
+                }
+            }
+
+            logging.info(f'{task_type.upper()} task data: {task_data}')
+
+            self.execute_manifest_ingestion(task_data, task_type.upper())
+
+        self.create_cloud_record()
+
+        logging.info('Complete.')
+        return {"success": True}
+
+
 class IngestSamplesFromRawTaskAPI(BaseGenomicTaskApi):
     """
     Cloud Task endpoint: Ingest samples based on list

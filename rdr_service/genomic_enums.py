@@ -124,6 +124,9 @@ class GenomicJob(messages.Enum):
     DAILY_SEND_VALIDATION_EMAILS = 106
     DAILY_SUMMARY_VALIDATION_FAILS_RESOLVED = 107
 
+    CVL_W1IL_WORKFLOW = 200
+    CVL_W2SC_WORKFLOW = 201
+
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
 
@@ -189,6 +192,9 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_PENDING_DELETE = 39
     CVL_RPT_DELETED = 40
 
+    CVL_W1IL = 50
+    CVL_W2SC = 51
+
 
 class GenomicReportState(messages.Enum):
 
@@ -250,6 +256,8 @@ class GenomicManifestTypes(messages.Enum):
     AW1F = 14
     AW5_ARRAY = 15
     AW5_WGS = 16
+    CVL_W1IL = 17
+    CVL_W2SC = 18
 
 
 class GenomicContaminationCategory(messages.Enum):

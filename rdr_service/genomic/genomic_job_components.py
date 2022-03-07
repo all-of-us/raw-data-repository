@@ -236,6 +236,16 @@ class GenomicFileIngester:
             return GenomicSubProcessResult.SUCCESS if all(results) \
                 else GenomicSubProcessResult.ERROR
 
+    @staticmethod
+    def _clean_row_keys(row):
+        return dict(zip([key.lower().replace(' ', '').replace('_', '')
+                         for key in row],
+                        row.values()))
+
+    @staticmethod
+    def _clean_alpha_values(value):
+        return value[1:] if value[0].isalpha() else value
+
     def _ingest_genomic_file(self, file_obj):
         """
         Reads a file object from bucket and inserts into DB
@@ -263,7 +273,8 @@ class GenomicFileIngester:
                 GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
-                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest
+                GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
+                GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest
             }
 
             self.file_validator.valid_schema = None
@@ -506,8 +517,8 @@ class GenomicFileIngester:
         _site = self._get_site_from_aw1()
 
         for row in rows:
-            row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                 for key in row], row.values()))
+            row_copy = self._clean_row_keys(row)
+
             row_copy['site_id'] = _site
             # Skip rows if biobank_id is an empty string (row is empty well)
             if row_copy['biobankid'] == "":
@@ -706,8 +717,7 @@ class GenomicFileIngester:
 
         for row in file_data['rows']:
             # Standardize fields to lower, no underscores or spaces
-            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                            for key in row], row.values()))
+            row = self._clean_row_keys(row)
 
             row_obj = self._set_raw_awn_attributes(row, awn_model(), columns)
 
@@ -737,8 +747,7 @@ class GenomicFileIngester:
             row = [r for r in reader if r['BIOBANK_ID'][1:] == str(member.biobankId)][0]
 
             # Alter field names to remove spaces and change to lower case
-            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                            for key in row], row.values()))
+            row = self._clean_row_keys(row)
 
         ingested_before = member.reconcileGCManifestJobRunId is not None
 
@@ -779,8 +788,7 @@ class GenomicFileIngester:
             row = [r for r in reader if r['Biobank ID'] == str(member.biobankId)][0]
 
             # Alter field names to remove spaces and change to lower case
-            row = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                            for key in row], row.values()))
+            row = self._clean_row_keys(row)
 
         # Beging prep aw2 row
         row = self.prep_aw2_row_attributes(row, member)
@@ -980,8 +988,8 @@ class GenomicFileIngester:
         """
         try:
             for row in rows:
-                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                     for key in row], row.values()))
+                row_copy = self._clean_row_keys(row)
+
                 sample_id = row_copy['sampleid']
 
                 member = self.member_dao.get_member_from_aw3_sample(sample_id)
@@ -1230,9 +1238,7 @@ class GenomicFileIngester:
         # iterate over each row from CSV and insert into gc metrics table
         for row in rows:
             # change all key names to lower
-            row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                 for key in row],
-                                row.values()))
+            row_copy = self._clean_row_keys(row)
 
             member = self.member_dao.get_member_from_sample_id(
                 int(row_copy['sampleid']),
@@ -1371,9 +1377,7 @@ class GenomicFileIngester:
         try:
             for row in rows:
                 # change all key names to lower
-                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                     for key in row],
-                                    row.values()))
+                row_copy = self._clean_row_keys(row)
 
                 biobank_id = row_copy['biobankid']
                 member = self.member_dao.get_member_from_biobank_id(biobank_id, GENOME_TYPE_WGS)
@@ -1402,13 +1406,49 @@ class GenomicFileIngester:
         except (RuntimeError, KeyError):
             return GenomicSubProcessResult.ERROR
 
+    def _ingest_cvl_w2sc_manifest(self, rows):
+        """
+        Processes the CVL W2SC manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        try:
+            for row in rows:
+                row_copy = self._clean_row_keys(row)
+
+                biobank_id = row_copy['biobankid']
+                biobank_id = self._clean_alpha_values(biobank_id)
+                sample_id = row_copy['sampleid']
+
+                member = self.member_dao.get_member_from_biobank_id_and_sample_id(
+                    biobank_id,
+                    sample_id
+                )
+
+                if not member:
+                    logging.warning(f'Can not find genomic member record for biobank_id: '
+                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
+                    continue
+
+                member.cvlW2scManifestJobRunID = self.job_run_id
+                if member.genomicWorkflowState != GenomicWorkflowState.CVL_W2SC:
+                    member.genomicWorkflowState = GenomicWorkflowState.CVL_W2SC
+                    member.genomicWorkflowStateStr = GenomicWorkflowState.CVL_W2SC.name
+
+                self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
     def _ingest_aw5_manifest(self, rows):
         try:
             for row in rows:
-                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                     for key in row], row.values()))
+                row_copy = self._clean_row_keys(row)
+
                 biobank_id = row_copy['biobankid']
-                biobank_id = biobank_id[1:] if biobank_id[0].isalpha() else biobank_id
+                biobank_id = self._clean_alpha_values(biobank_id)
                 sample_id = row_copy['sampleid']
 
                 member = self.member_dao.get_member_from_biobank_id_and_sample_id(biobank_id, sample_id)
@@ -1440,8 +1480,8 @@ class GenomicFileIngester:
         """
         try:
             for row in rows:
-                row_copy = dict(zip([key.lower().replace(' ', '').replace('_', '')
-                                     for key in row], row.values()))
+                row_copy = self._clean_row_keys(row)
+
                 collection_tube_id = row_copy['collectiontubeid']
                 member = self.member_dao.get_member_from_collection_tube(collection_tube_id, GENOME_TYPE_WGS)
 
@@ -1660,9 +1700,10 @@ class GenomicFileValidator:
                 "genometype"
             ),
         }
+
+        self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.DRC_BROAD = 'drc_broad'
-        self.VALID_CVL_FACILITIES = ('rdr', 'color', 'uw', 'baylor')
 
         self.AW1_MANIFEST_SCHEMA = (
             "packageid",
@@ -1721,6 +1762,11 @@ class GenomicFileValidator:
             "secondaryvalidation",
             "datesubmitted",
             "testname",
+        )
+
+        self.CVL_W2SC_SCHEMA = (
+            "biobankid",
+            "sampleid",
         )
 
         self.AW4_ARRAY_SCHEMA = (
@@ -1971,6 +2017,19 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def cvl_w2sc_manifest_name_rule():
+            """
+            CVL W2SC (secondary confirmation) manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w2sc' and
+                filename.lower().endswith('csv')
+            )
+
         def gem_a2_manifest_name_rule():
             """GEM A2 manifest name rule: i.e. AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv"""
             return (
@@ -2048,6 +2107,7 @@ class GenomicFileValidator:
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
             GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
+            GenomicJob.CVL_W2SC_WORKFLOW: cvl_w2sc_manifest_name_rule
         }
 
         try:
@@ -2146,6 +2206,8 @@ class GenomicFileValidator:
             if self.job_id == GenomicJob.AW5_ARRAY_MANIFEST:
                 self.genome_type = self.GENOME_TYPE_MAPPINGS['gen']
                 return self.AW5_ARRAY_SCHEMA
+            if self.job_id == GenomicJob.CVL_W2SC_WORKFLOW:
+                return self.CVL_W2SC_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR

@@ -440,7 +440,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW4_ARRAY_WORKFLOW,
         GenomicJob.AW4_WGS_WORKFLOW,
         GenomicJob.AW5_ARRAY_MANIFEST,
-        GenomicJob.AW5_WGS_MANIFEST
+        GenomicJob.AW5_WGS_MANIFEST,
+        GenomicJob.CVL_W2SC_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
