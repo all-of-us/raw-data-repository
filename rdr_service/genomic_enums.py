@@ -260,7 +260,7 @@ class GenomicManifestTypes(messages.Enum):
     AW5_WGS = 16
     CVL_W1IL = 17
     CVL_W2SC = 18
-    CVL_W3SR = 18
+    CVL_W3SR = 19
 
 
 class GenomicContaminationCategory(messages.Enum):

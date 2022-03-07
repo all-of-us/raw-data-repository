@@ -111,7 +111,7 @@ def _build_resource_app():
     # Ingest W2SC manifest
     _api.add_resource(genomic_cloud_tasks_api.IngestCVLManifestTaskApi,
                       TASK_PREFIX + "IngestCVLManifestTaskApi",
-                      endpoint="ingest_w2sc_manifest_task", methods=["POST"])
+                      endpoint="ingest_cvl_manifest_task", methods=["POST"])
 
     # Ingest member samples from raw models
     _api.add_resource(genomic_cloud_tasks_api.IngestSamplesFromRawTaskAPI,

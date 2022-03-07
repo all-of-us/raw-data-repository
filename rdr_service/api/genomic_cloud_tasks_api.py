@@ -270,7 +270,7 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
     def post(self):
         super(IngestCVLManifestTaskApi, self).post()
 
-        cvl_map = {
+        cvl_manifest_map = {
             'w2sc': {
                 'job': GenomicJob.CVL_W2SC_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.CVL_W2SC
@@ -281,7 +281,7 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
             logging.info(f'Ingesting CVL Manifest File: {self.data.get("filename")}')
 
             task_type = self.data.get("file_type")
-            workflow_data = cvl_map[task_type]
+            workflow_data = cvl_manifest_map[task_type]
 
             # Set up file/JSON
             task_data = {
