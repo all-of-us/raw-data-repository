@@ -72,3 +72,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.cvlW2scManifestJobRunID is not None for obj in current_members))
         self.assertTrue(all(obj.cvlW2scManifestJobRunID == w2sc_job_run.id for obj in current_members))
 
+        self.assertTrue(all(obj.genomicWorkflowState is not None for obj in current_members))
+        self.assertTrue(all(obj.genomicWorkflowStateStr is not None for obj in current_members))
+        self.assertTrue(all(obj.genomicWorkflowState == GenomicWorkflowState.CVL_W2SC for obj in current_members))
+        self.assertTrue(all(obj.genomicWorkflowStateStr == GenomicWorkflowState.CVL_W2SC.name for obj in
+                            current_members))

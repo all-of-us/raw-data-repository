@@ -1433,6 +1433,7 @@ class GenomicFileIngester:
                 member.cvlW2scManifestJobRunID = self.job_run_id
                 if member.genomicWorkflowState != GenomicWorkflowState.CVL_W2SC:
                     member.genomicWorkflowState = GenomicWorkflowState.CVL_W2SC
+                    member.genomicWorkflowStateStr = GenomicWorkflowState.CVL_W2SC.name
 
                 self.member_dao.update(member)
 
