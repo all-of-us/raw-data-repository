@@ -472,8 +472,18 @@ class BQPDRDVEHRSharingView(BQModuleView):
 class BQPDRGRORSchema(_BQModuleSchema):
     """ GROR Consent Module """
     _module = 'GROR'
+    # Note:  These code values exist only in stable, and appear to have been deprecated including for similarly named
+    # codes (e.g., HelpWithConsent_Name became HelpMeWithConsent_Name).  Exclude the deprecated fields for consistency
+    # with stable and prod BQ schemas.
+    _excluded_fields = (
+        'ThinkItThrough',
+        'GROR_ResultsConsent',              # This is a topic code, not a question code
+        'ResultsConsent_HelpWithConsent',   # Only have ResultsConsent_HelpMeWithConsent in prod environment
+        'HelpWithConsent_Name'              # Only have HelpMeWithConsent_Name in prod environment
+    )
     _force_boolean_fields = (
         'ResultsConsent_Signature',
+        'HelpMeWithConsent_Name'
     )
 
 class BQPDRGROR(BQTable):

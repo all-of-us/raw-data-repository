@@ -97,7 +97,7 @@ BQ_VIEWS = [
     ('rdr_service.model.bq_questionnaires', 'BQPDRGeneralFeedbackView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPostPMBFeedbackView'),
     ('rdr_service.model.bq_questionnaires', 'BQPDRPPIModuleFeedbackView'),
-    ('rdr_service.module.bq_questionnaires', 'BQPDRGRORView'),
+    ('rdr_service.model.bq_questionnaires', 'BQPDRGRORView'),
 
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherView'),
     ('rdr_service.model.bq_workbench_researcher', 'BQRWBResearcherGenderView'),
