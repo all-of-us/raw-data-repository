@@ -153,7 +153,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.manifestTypeId == GenomicManifestTypes.CVL_W3SR for obj in w3sr_manifests))
         self.assertTrue(all(obj.manifestTypeIdStr == GenomicManifestTypes.CVL_W3SR.name for obj in w3sr_manifests))
 
-        manifest_def_provider = ManifestDefinitionProvider()
+        manifest_def_provider = ManifestDefinitionProvider(kwargs={})
         columns_expected = manifest_def_provider.manifest_columns_config[GenomicManifestTypes.CVL_W3SR]
 
         physical_manifest_count = 0
