@@ -249,6 +249,9 @@ class GenomicSetMember(Base):
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
+    cvlW3srManifestJobRunID = Column('cvl_w3sr_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)

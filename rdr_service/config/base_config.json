@@ -107,7 +107,8 @@
     "wgs_reconciliation_workflow": 1,
     "w1_manifest_workflow": 0,
     "w2_manifest_workflow": 0,
-    "w3_manifest_workflow": 0
+    "w3_manifest_workflow": 0,
+    "cvl_w3sr_manifest_workflow": 0
   },
   "data_bucket_subfolders_prod": {
     "prod-genomics-data-baylor": ["Genotyping_sample_raw_data", "Wgs_sample_raw_data"],

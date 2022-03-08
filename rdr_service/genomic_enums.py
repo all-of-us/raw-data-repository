@@ -126,6 +126,7 @@ class GenomicJob(messages.Enum):
 
     CVL_W1IL_WORKFLOW = 200
     CVL_W2SC_WORKFLOW = 201
+    CVL_W3SR_WORKFLOW = 202
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -194,6 +195,7 @@ class GenomicWorkflowState(messages.Enum):
 
     CVL_W1IL = 50
     CVL_W2SC = 51
+    CVL_W3SR = 52
 
 
 class GenomicReportState(messages.Enum):
@@ -258,6 +260,7 @@ class GenomicManifestTypes(messages.Enum):
     AW5_WGS = 16
     CVL_W1IL = 17
     CVL_W2SC = 18
+    CVL_W3SR = 19
 
 
 class GenomicContaminationCategory(messages.Enum):
