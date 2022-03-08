@@ -3105,8 +3105,7 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.cvlW2scManifestJobRunID.isnot(None),
                 GenomicSetMember.cvlW3srManifestJobRunID.is_(None),
                 GenomicSetMember.gcSiteId.isnot(None),
-                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
-                GenomicSetMember.consentsValid == 1
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS
             )
 
             if site_id:

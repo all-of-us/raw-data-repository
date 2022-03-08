@@ -113,8 +113,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 genomeType="aou_wgs",
                 genomicWorkflowState=GenomicWorkflowState.CVL_W2SC,
                 participantId=summary.participantId,
-                cvlW2scManifestJobRunID=cvl_w2sc_gen_job_run.id,
-                consentsValid=1
+                cvlW2scManifestJobRunID=cvl_w2sc_gen_job_run.id
             )
 
         gc_site_ids = ['bi', 'uw', 'bcm']
