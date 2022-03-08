@@ -62,7 +62,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicAW4RawDao, GenomicAW3RawDao)
+    GenomicAW4RawDao, GenomicAW3RawDao, GenomicQueriesDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -86,7 +86,7 @@ from rdr_service.config import (
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
-    GENOMIC_INVESTIGATION_GENOME_TYPES
+    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -3120,28 +3120,34 @@ class ManifestDefinitionProvider:
     Helper class to produce the definitions for each manifest
     """
     # Metadata for the various manifests
-    ManifestDef = namedtuple('ManifestDef', ["job_run_field",
-                                             "source_data",
-                                             "destination_bucket",
-                                             "output_filename",
-                                             "columns",
-                                             "signal"])
+    ManifestDef = namedtuple('ManifestDef',
+                             ["job_run_field",
+                              "source_data",
+                              "destination_bucket",
+                              "output_filename",
+                              "columns",
+                              "signal",
+                              "query",
+                              "params"])
 
     def __init__(
         self,
         job_run_id=None,
         bucket_name=None,
         genome_type=None,
+        cvl_site_id=None,
         **kwargs
     ):
         # Attributes
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
-        self.kwargs = kwargs
+        self.cvl_site_id = cvl_site_id
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
+            input_manifest=kwargs.get('input_manifest'),
             genome_type=genome_type
         )
+        self.query_dao = GenomicQueriesDao()
+
         self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
                 "genomic_set_name",
@@ -3205,6 +3211,17 @@ class ManifestDefinitionProvider:
                 "package_id",
                 "ai_an",
                 "site_id",
+            ),
+            GenomicManifestTypes.CVL_W3SR: (
+                "biobank_id",
+                "sample_id",
+                "parent_sample_id",
+                "collection_tubeid",
+                "sex_at_birth",
+                "ny_flag",
+                "genome_type",
+                "site_name",
+                "ai_an"
             ),
             GenomicManifestTypes.AW3_WGS: (
                 "biobank_id",
@@ -3275,10 +3292,7 @@ class ManifestDefinitionProvider:
         :param manifest_type:
         :return: query object
         """
-        try:
-            return self.query.genomic_data_config[manifest_type]
-        except KeyError:
-            logging.warning(f"Manifest type {manifest_type} does not resolve query")
+        return self.query.genomic_data_config.get(manifest_type)
 
     def get_def(self, manifest_type):
         """
@@ -3308,6 +3322,16 @@ class ManifestDefinitionProvider:
                 'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
                 'signal': 'manifest-generated'
             },
+            GenomicManifestTypes.CVL_W3SR: {
+                'job_run_field': 'cvlW3srManifestJobRunID',
+                'output_filename': f'{CVL_W3SR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W3SR'
+                                   f'_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_w3sr_records,
+                'params': {
+                    'site_id': self.cvl_site_id
+                }
+            },
             GenomicManifestTypes.AW3_ARRAY: {
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
@@ -3324,13 +3348,16 @@ class ManifestDefinitionProvider:
                 'signal': 'bypass'
             }
         }
+        def_config = def_config[manifest_type]
         return self.ManifestDef(
-            job_run_field=def_config[manifest_type]['job_run_field'],
+            job_run_field=def_config.get('job_run_field'),
             source_data=self._get_source_data_query(manifest_type),
             destination_bucket=f'{self.bucket_name}',
-            output_filename=def_config[manifest_type]['output_filename'],
+            output_filename=def_config.get('output_filename'),
             columns=self.manifest_columns_config[manifest_type],
-            signal=def_config[manifest_type]['signal'],
+            signal=def_config.get('signal'),
+            query=def_config.get('query'),
+            params=def_config.get('params')
         )
 
 
@@ -3370,6 +3397,7 @@ class ManifestCompiler:
             job_run_id=self.run_id,
             bucket_name=self.bucket_name,
             genome_type=genome_type,
+            cvl_site_id=self.controller.cvl_site_id,
             kwargs=kwargs
         )
 
@@ -3461,21 +3489,26 @@ class ManifestCompiler:
             })
 
         for row in source_data:
-            member = self.member_dao.get_member_from_sample_id(row.sample_id, genome_type)
-            if member is None:
-                raise NotFound(f"Cannot find genomic set member with sample ID {row.sample_id}")
+            sample_id = row.sampleId if hasattr(row, 'sampleId') else row.sample_id
+            member = self.member_dao.get_member_from_sample_id(sample_id, genome_type)
+
+            if not member:
+                raise NotFound(f"Cannot find genomic set member with sample ID {sample_id}")
 
             if self.manifest_def.job_run_field:
                 self.controller.member_ids_for_update.append(member.id)
 
             # Handle Genomic States for manifests
             if self.manifest_def.signal != "bypass":
-                new_state = GenomicStateHandler.get_new_state(member.genomicWorkflowState,
-                                                              signal=self.manifest_def.signal)
+                new_state = GenomicStateHandler.get_new_state(
+                    member.genomicWorkflowState,
+                    signal=self.manifest_def.signal
+                )
 
-                if new_state is not None or new_state != member.genomicWorkflowState:
+                if new_state or new_state != member.genomicWorkflowState:
                     self.member_dao.update_member_state(member, new_state)
 
+        # Updates job run field on set member
         if self.controller.member_ids_for_update:
             self.controller.execute_cloud_task({
                 'member_ids': list(set(self.controller.member_ids_for_update)),
@@ -3493,6 +3526,10 @@ class ManifestCompiler:
         Runs the source data query
         :return: result set
         """
+        if self.manifest_def.query:
+            params = self.manifest_def.params or {}
+            return self.manifest_def.query(**params)
+
         with self.member_dao.session() as session:
             return session.execute(self.manifest_def.source_data).fetchall()
 

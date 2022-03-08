@@ -44,7 +44,7 @@ from rdr_service.model.questionnaire_response import QuestionnaireResponse, Ques
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
     WithdrawalStatus,
-    SuspensionStatus)
+    SuspensionStatus, DeceasedStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
     GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
 from rdr_service.model.participant import Participant
@@ -3046,3 +3046,72 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
             else:
                 return query.all()
+
+
+class GenomicQueriesDao(BaseDao):
+    def __init__(self):
+        super(GenomicQueriesDao, self).__init__(
+            GenomicSetMember, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+    @staticmethod
+    def transform_cvl_site_id(site_id=None):
+        # co => bi => cvl workflow
+        site_id_map = {
+            'co': 'bi'
+        }
+        if not site_id or site_id \
+                not in site_id_map.keys():
+            return site_id
+
+        return site_id_map[site_id]
+
+    def get_w3sr_records(self, **kwargs):
+        site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
+
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember.biobankId,
+                GenomicSetMember.sampleId,
+                GenomicSetMember.gcManifestParentSampleId,
+                GenomicSetMember.collectionTubeId,
+                GenomicSetMember.sexAtBirth,
+                func.IF(
+                    GenomicSetMember.nyFlag == 1,
+                    sqlalchemy.sql.expression.literal("Y"),
+                    sqlalchemy.sql.expression.literal("N")
+                ).label('nyFlag'),
+                sqlalchemy.sql.expression.literal("aou_cvl").label('genomeType'),
+                func.IF(
+                    GenomicSetMember.gcSiteId == 'bi',
+                    sqlalchemy.sql.expression.literal("co"),
+                    GenomicSetMember.gcSiteId
+                ).label('nyFlag'),
+                GenomicSetMember.ai_an
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                GenomicSetMember.cvlW2scManifestJobRunID.isnot(None),
+                GenomicSetMember.cvlW3srManifestJobRunID.is_(None),
+                GenomicSetMember.gcSiteId.isnot(None),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                GenomicSetMember.consentsValid == 1
+            )
+
+            if site_id:
+                records = records.filter(
+                    GenomicSetMember.gcSiteId == site_id.lower()
+                )
+
+            return records.distinct().all()
