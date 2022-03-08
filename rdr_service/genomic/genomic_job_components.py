@@ -3142,8 +3142,10 @@ class ManifestDefinitionProvider:
         self.job_run_id = job_run_id
         self.bucket_name = bucket_name
         self.cvl_site_id = cvl_site_id
+        self.kwargs = kwargs
+
         self.query = GenomicQueryClass(
-            input_manifest=kwargs.get('input_manifest'),
+            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
             genome_type=genome_type
         )
         self.query_dao = GenomicQueriesDao()
