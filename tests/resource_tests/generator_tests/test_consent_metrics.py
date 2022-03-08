@@ -577,9 +577,12 @@ class ConsentMetricGeneratorTest(BaseTestCase):
     def test_consent_error_report_email_generation(self, email_mock):
         # Override config settings for test purposes
         test_key = 'test_key'
-        test_recipients = ['test_recipient@unittest.com',]
+        test_email_config = {
+            "recipients": ["test_error_report_recipient@test.com", ],
+            "cc_recipients": ["test_error_report_cc_recipient1@test.com", "test_error_report_cc_recipient2@test.com"]
+        }
         config.override_setting(config.SENDGRID_KEY, [test_key])
-        config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, test_recipients)
+        config.override_setting(config.PTSC_SERVICE_DESK_EMAIL, test_email_config)
 
         participant = self._create_participant_with_all_consents_authored(
             dateOfBirth=datetime.date(datetime.strptime('1999-01-01', '%Y-%m-%d')),
@@ -617,7 +620,8 @@ class ConsentMetricGeneratorTest(BaseTestCase):
             subject_lines.append(call_arg.args[0].subject)
             # Verify the to/from email addresses
             self.assertEqual('no-reply@pmi-ops.org', call_arg.args[0].from_email)
-            self.assertEqual(test_recipients, call_arg.args[0].recipients)
+            self.assertEqual(test_email_config.get('recipients'), call_arg.args[0].recipients)
+            self.assertEqual(test_email_config.get('cc_recipients'), call_arg.args[0].cc_recipients)
             self.assertIn('DRC Consent Validation Issue', call_arg.args[0].subject)
 
         # Verify the expected subject lines were generated

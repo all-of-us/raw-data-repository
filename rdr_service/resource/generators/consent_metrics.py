@@ -402,7 +402,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         return error_dict
 
     @staticmethod
-    def send_consent_error_email(subject, body, recipients=None):
+    def send_consent_error_email(subject, body, recipients=None, cc_list=None):
         """
         Send an email to the generic address that will trigger creation of a PTSC Service Desk ticket from the
         email content.
@@ -410,21 +410,24 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param body: Text/string (multi-line/multi-paragraph format agreed upon w/PTSC ) with details of each instance
                      of the detected error condition
         :param recipients: Destination email address list, if overriding the default config item
+        :param cc_list: List of cc email addresses, if overriding the default config item
         """
-
-        recipients = recipients or config.getSettingList(config.PTSC_SERVICE_DESK_EMAIL)
+        email_config = config.getSettingJson(config.PTSC_SERVICE_DESK_EMAIL, {})
+        recipients = recipients or email_config.get('recipients')
+        cc_list = cc_list or email_config.get('cc_recipients')
         if recipients is None:
             logging.error('No recipient address list available for consent error email generation')
         elif not isinstance(recipients, list):
             raise ValueError("Consent error report recipients param is not in expected list format")
         else:
-            email_obj = email_service.Email(subject, recipients=recipients,  cc_recipients=None,
+            email_obj = email_service.Email(subject, recipients=recipients,  cc_recipients=cc_list,
                                             from_email=None, plain_text_content=body)
             email_service.EmailService.send_email(email_obj)
 
         # Construct string w/pids from the body text and log indication that PTSC ticket should've been created
-        participants = ','.join(re_findall(r"Participant\s+(P\d+)\s*", body))
-        msg = '\n'.join([f'{subject} error detected for pids {participants}',
+        # Use a set to filter duplicate occurrences of a pid in the same email body
+        participants = set(re_findall(r"Participant\s+(P\d+)\s*", body))
+        msg = '\n'.join([f'{subject} error detected for pids {",".join(participants)}',
                          'Please confirm successful PTSC SD ticket creation'])
         logging.warning(msg)
 
@@ -465,11 +468,12 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
         return results
 
-    def send_error_reports(self, output_file=None, recipients=None):
+    def send_error_reports(self, output_file=None, recipients=None, cc_list=None):
         """
         Loop through the results from create_error_reports() and send related emails or output all data to a file
         :param output_file:  File pathname for output, in lieu of sending emails.
         :param recipients:  List of email addresses to send report to, if overriding default config item
+        :param cc_list:  List of cc email addresses, if overriding default config item
         """
 
         # PTSC wants tickets identified by error type detected.  Each error type is a key in the error_list dict where
@@ -503,7 +507,8 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
                 report_lines.extend(['\n\nSubject: ', subject_line, '\n\n', body])
             # A separate email/ticket is generated for each detected error type (per PTSC request)
             else:
-                self.send_consent_error_email(subject_line, body.rstrip(), recipients)
+                self.send_consent_error_email(subject_line, body.rstrip(),
+                                              recipients=recipients, cc_list=cc_list)
 
         if output_file:
             with open(output_file, 'w') as f:
@@ -511,6 +516,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
     def create_error_reports(self, id_list=None, errors_created_since=None, to_file=None,
                              recipients=None,
+                             cc_list=None,
                              participant_origin='vibrent'):
         """
         Generate relevant consent error report content, currently only for PTSC.  May be called as part of the daily
@@ -522,6 +528,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
         :param to_file: File pathname if error reports are to be routed to output file instead of emailed.  This can
                         be used when running the consent-error-report locally as a dry run.
         :param recipients: List of email address to send reports to, if overriding default config item
+        :param cc_list: List of cc email addresses, if overriding default config item
         """
         error_records = list()
         if not isinstance(errors_created_since, datetime) and not isinstance(id_list, list):
@@ -608,4 +615,4 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
                     self.error_list[err_key].append(error_details)
 
-        self.send_error_reports(output_file=to_file, recipients=recipients)
+        self.send_error_reports(output_file=to_file, recipients=recipients, cc_list=cc_list)
