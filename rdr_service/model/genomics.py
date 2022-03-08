@@ -609,6 +609,59 @@ event.listen(GenomicAW4Raw, 'before_insert', model_insert_listener)
 event.listen(GenomicAW4Raw, 'before_update', model_update_listener)
 
 
+class GenomicW2SCRaw(Base):
+    """
+    Raw data from W2SC files
+    """
+    __tablename__ = 'genomic_w2sc_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW2SCRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW2SCRaw, 'before_update', model_update_listener)
+
+
+class GenomicW3SRRaw(Base):
+    """
+    Raw data from W3SR files
+    """
+    __tablename__ = 'genomic_w3sr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    parent_sample_id = Column(String(255), nullable=True)
+    collection_tubeid = Column(String(255), nullable=True)
+    sex_at_birth = Column(String(255), nullable=True)
+    ny_flag = Column(String(255), nullable=True)
+    genome_type = Column(String(255), nullable=True)
+    site_name = Column(String(255), nullable=True)
+    ai_an = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
