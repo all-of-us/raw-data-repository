@@ -109,7 +109,7 @@ class ConsentControllerTest(BaseTestCase):
 
         # Confirm a call to the dispatcher to rebuild the consent metrics resource data, with the ConsentFile.id
         # values from the expected_updates list
-        self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4])
+        self.assertDispatchRebuildConsentMetricsCalled([2, 5, 6, 4], call_count=2)
 
     def test_validating_specific_consents(self):
         """Make sure only the provided consent types are validated when specified"""
