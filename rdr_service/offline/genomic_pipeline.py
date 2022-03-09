@@ -520,7 +520,7 @@ def load_awn_manifest_into_raw_table(
     job_id = jobs.get(manifest_type)
 
     if not job_id:
-        return GenomicSubProcessResult.ERROR
+        return
 
     with GenomicJobController(job_id,
                               bq_project_id=project_id,

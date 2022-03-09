@@ -6868,4 +6868,3 @@ class GenomicPipelineTest(BaseTestCase):
         for member in members:
             self.assertEqual(GenomicWorkflowState.AW2, member.genomicWorkflowState)
             self.assertEqual(GenomicWorkflowState.AW2.name, member.genomicWorkflowStateStr)
-

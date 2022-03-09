@@ -6,7 +6,7 @@ import os
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao
+    GenomicManifestFileDao, GenomicW2SCRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -29,14 +29,14 @@ class GenomicCVLPipelineTest(BaseTestCase):
             genomicSetVersion=1
         )
 
-    def test_w2sc_manifest_ingestion(self):
+    def execute_base_w2sc_ingestion(self):
         test_file = 'RDR_AoU_CVL_W2SC.csv'
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         bucket_name = 'test_cvl_bucket'
         subfolder = 'cvl_subfolder'
 
         # wgs members which should be updated
-        for num in range(1, 3):
+        for num in range(1, 4):
             self.data_generator.create_database_genomic_set_member(
                 genomicSetId=self.gen_set.id,
                 biobankId=f"{num}",
@@ -65,8 +65,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
         # Execute from cloud task
         genomic_pipeline.execute_genomic_manifest_file_pipeline(task_data)
 
+    def test_w2sc_manifest_ingestion(self):
+
+        self.execute_base_w2sc_ingestion()
+
         current_members = self.member_dao.get_all()
-        self.assertEqual(len(current_members), 2)
+        self.assertEqual(len(current_members), 3)
 
         w2sc_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W2SC_WORKFLOW, self.job_run_dao.get_all()))[0]
 
@@ -86,6 +90,26 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.genomicWorkflowState == GenomicWorkflowState.CVL_W2SC for obj in current_members))
         self.assertTrue(all(obj.genomicWorkflowStateStr == GenomicWorkflowState.CVL_W2SC.name for obj in
                             current_members))
+
+    def test_w2sc_manifest_to_raw_ingestion(self):
+
+        self.execute_base_w2sc_ingestion()
+        w2sc_raw_dao = GenomicW2SCRawDao()
+
+        manifest_type = 'w2sc'
+        w2sc_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w2sc_manifest_file.filePath,
+            manifest_type
+        )
+
+        w2sr_raw_records = w2sc_raw_dao.get_all()
+
+        self.assertEqual(len(w2sr_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w2sr_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w2sr_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w2sr_raw_records))
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w3sr_manifest_generation(self, cloud_task):
@@ -221,6 +245,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
             self.assertEqual(len(member_ids), 1)
             self.assertTrue(hasattr(self.member_dao.get(num+1), updated_field))
             self.assertEqual(updated_field, 'cvlW3srManifestJobRunID')
+
+        # check raw records
 
 
 
