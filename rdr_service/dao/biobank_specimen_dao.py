@@ -5,10 +5,11 @@ from rdr_service.model.config_utils import from_client_biobank_id, to_client_bio
 from rdr_service.model.participant import Participant
 from rdr_service.api_util import parse_date
 from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.database_utils import NamedLock
 from rdr_service.dao.object_preloader import LoadingStrategy, ObjectPreloader
 from rdr_service.model.biobank_order import BiobankSpecimen, BiobankSpecimenAttribute, BiobankAliquot,\
     BiobankAliquotDataset, BiobankAliquotDatasetItem
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 
 class RlimsIdLoadingStrategy(LoadingStrategy):
@@ -270,9 +271,9 @@ class BiobankSpecimenDao(BiobankDaoBase):
             for aliquot_json in specimen_json['aliquots']:
                 aliquot_dao.ready_preloader(self.preloader, aliquot_json)
 
-    def exists(self, resource):
+    def exists(self, rlims_id):
         with self.session() as session:
-            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == resource['rlimsID']).count() > 0
+            return session.query(BiobankSpecimen).filter(BiobankSpecimen.rlimsId == rlims_id).count() > 0
 
     @staticmethod
     def get_with_rlims_id(rlims_id, session):
@@ -302,6 +303,14 @@ class BiobankSpecimenDao(BiobankDaoBase):
     def update_with_session(self, session, obj: BiobankSpecimen):
         self._check_participant_exists(session, obj.biobankId)
         return super(BiobankSpecimenDao, self).update_with_session(session, obj)
+
+    def get_mutually_exclusive_lock(self, rlims_id):
+        with self.session() as session:
+            return NamedLock(
+                name=f'rdr.biobank.specimen.{rlims_id}',
+                session=session,
+                lock_failure_exception=ServiceUnavailable(f'unable to update specimen {rlims_id}')
+            )
 
 
 class BiobankSpecimenAttributeDao(BiobankDaoBase):
@@ -519,6 +528,14 @@ class BiobankAliquotDao(BiobankDaoBase):
             return aliquot.id
         else:
             return None
+
+    def get_mutually_exclusive_lock(self, rlims_id):
+        with self.session() as session:
+            return NamedLock(
+                name=f'rdr.biobank.aliquot.{rlims_id}',
+                session=session,
+                lock_failure_exception=ServiceUnavailable(f'unable to update aliquot {rlims_id}')
+            )
 
 
 class BiobankAliquotDatasetDao(BiobankDaoBase):
