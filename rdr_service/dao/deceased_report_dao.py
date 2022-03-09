@@ -1,5 +1,4 @@
 from datetime import date
-import logging
 import pytz
 from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm.exc import DetachedInstanceError
@@ -9,6 +8,7 @@ from rdr_service import config
 from rdr_service.clock import CLOCK
 from rdr_service.dao.api_user_dao import ApiUserDao
 from rdr_service.dao.base_dao import UpdatableDao
+from rdr_service.dao.database_utils import NamedLock
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.codeableconcept import CodeableConcept
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.fhirabstractbase import FHIRValidationError
 from rdr_service.lib_fhir.fhirclient_4_0_0.models.fhirdate import FHIRDate
@@ -550,51 +550,22 @@ class DeceasedReportDao(UpdatableDao):
         return f'rdr.deceased_report.p{participant_id}'
 
     @staticmethod
-    def _release_report_lock(session, participant_id):
-        release_result = session.execute(
-            f"SELECT RELEASE_LOCK('{DeceasedReportDao._deceased_report_lock_name(participant_id)}')"
-        ).scalar()
+    def except_on_active_reports(session, participant_id):
+        has_active_reports_query = session.query(DeceasedReport).filter(
+            DeceasedReport.participantId == participant_id,
+            DeceasedReport.status != DeceasedReportStatus.DENIED
+        )
 
-        if release_result is None:
-            logging.error(f'Deceased report lock did not exist for P{participant_id}!')
-        elif release_result == 0:
-            logging.error(f'Deceased report lock for P{participant_id} was not taken by this thread!')
+        if session.query(has_active_reports_query.exists()).scalar():
+            raise Conflict(f'Participant P{participant_id} already has a preliminary or final deceased report')
 
-    @staticmethod
-    def _can_insert_active_report(session, participant_id, lock_timeout_seconds=30):
-        # Obtain lock for creating a participant's deceased report
-        # If the named lock is free, 1 is returned immediately. If the lock is already taken, then it waits until it's
-        # free before making the check. Documentation gives that 'None' is returned in error cases.
-        lock_result = session.execute(
-            f"SELECT GET_LOCK('{DeceasedReportDao._deceased_report_lock_name(participant_id)}', {lock_timeout_seconds})"
-        ).scalar()
-
-        if lock_result == 1:
-            # If we have the lock, we know we're the only transaction validating the insert.
-            has_active_reports_query = session.query(DeceasedReport).filter(
-                DeceasedReport.participantId == participant_id,
-                DeceasedReport.status != DeceasedReportStatus.DENIED
-            )
-
-            if session.query(has_active_reports_query.exists()).scalar():
-                raise Conflict(f'Participant P{participant_id} already has a preliminary or final deceased report')
-            else:
-                return True
-        else:
-            # If we got an error from the database or the lock was taken for 30 seconds then something's wrong
-            logging.error(f'Database error retrieving named lock for P{participant_id}, '
-                          f'received result: "{lock_result}"')
-            raise InternalServerError('Unable to create deceased report')
-
-    def is_valid(self, report: DeceasedReport):
+    def except_if_invalid(self, report: DeceasedReport):
         if self._is_future_datetime(report.authored):
             raise BadRequest(f'Report issued date can not be a future date, received {report.authored}')
 
         if report.notification == DeceasedNotification.NEXT_KIN_SUPPORT:
             if not report.reporterRelationship:
                 raise BadRequest(f'Missing reporter relationship')
-
-        return True
 
     def insert_with_session(self, session, obj: DeceasedReport):
         # Should auto-approve reports for unpaired participants
@@ -604,11 +575,17 @@ class DeceasedReportDao(UpdatableDao):
             obj.reviewer = obj.author
             obj.reviewed = obj.authored
 
-        if self.is_valid(obj) and self._can_insert_active_report(session, obj.participantId):
+        self.except_if_invalid(obj)
+
+        with NamedLock(
+            name=self._deceased_report_lock_name(obj.participantId),
+            session=session,
+            lock_failure_exception=InternalServerError('Unable to create deceased report')
+        ):
+            self.except_on_active_reports(session, obj.participantId)
+
             self._update_participant_summary(session, obj)
             insert_result = super(DeceasedReportDao, self).insert_with_session(session, obj)
-            self._release_report_lock(session, obj.participantId)
-
             return insert_result
 
     def update_with_session(self, session, obj: DeceasedReport):
