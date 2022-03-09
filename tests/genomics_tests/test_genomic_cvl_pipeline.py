@@ -6,7 +6,7 @@ import os
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao, GenomicW2SCRawDao
+    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
     GenomicSubProcessResult
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -247,6 +247,26 @@ class GenomicCVLPipelineTest(BaseTestCase):
             self.assertEqual(updated_field, 'cvlW3srManifestJobRunID')
 
         # check raw records
+        w3sr_raw_dao = GenomicW3SRRawDao()
 
+        w3sr_raw_records = w3sr_raw_dao.get_all()
+        self.assertEqual(len(cvl_sites), len(w3sr_raw_records))
+        self.assertTrue(all(obj.file_path is not None for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.parent_sample_id is not None for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.collection_tubeid is not None for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.sex_at_birth == 'M' for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.ny_flag == 'N' for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.genome_type == 'aou_cvl' for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.site_name in cvl_sites for obj in w3sr_raw_records))
+        self.assertTrue(all(obj.ai_an == 'N' for obj in w3sr_raw_records))
+
+        w3sr_raw_job_runs = list(filter(lambda x: x.jobId == GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE, self.job_run_dao.get_all()))
+
+        self.assertIsNotNone(w3sr_raw_job_runs)
+        self.assertEqual(len(cvl_sites), len(w3sr_raw_job_runs))
+        self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in w3sr_raw_job_runs))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
 
