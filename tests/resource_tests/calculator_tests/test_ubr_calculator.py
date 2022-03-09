@@ -42,7 +42,7 @@ class UBRCalculatorTest(BaseTestCase):
         # Test RBR value
         self.assertEqual(self.ubr.ubr_sex('SexAtBirth_Male'), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_sex('SexAtBirth_Female'), UBRValueEnum.RBR)
-        self.assertEqual(self.ubr.ubr_sex('PMI_PreferNotToAnswer'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_sex('PMI_PreferNotToAnswer'), UBRValueEnum.NotAnswer_Skip)
 
         # Bad or unknown value will default to RBR
         self.assertEqual(self.ubr.ubr_sex('BadValueTest'), UBRValueEnum.RBR)
@@ -67,7 +67,7 @@ class UBRCalculatorTest(BaseTestCase):
 
         # Test RBR value
         self.assertEqual(self.ubr.ubr_sexual_orientation('SexualOrientation_Straight'), UBRValueEnum.RBR)
-        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_PreferNotToAnswer'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_sexual_orientation('PMI_PreferNotToAnswer'), UBRValueEnum.NotAnswer_Skip)
 
         # Bad or unknown value will default to UBR.
         self.assertEqual(self.ubr.ubr_sexual_orientation('BadValueTest'), UBRValueEnum.UBR)
@@ -114,9 +114,9 @@ class UBRCalculatorTest(BaseTestCase):
 
         # Test RBR values
         self.assertEqual(self.ubr.ubr_gender_identity(
-                'SexAtBirth_Intersex', 'PMI_PreferNotToAnswer', None), UBRValueEnum.RBR)
+                'SexAtBirth_Intersex', 'PMI_PreferNotToAnswer', None), UBRValueEnum.NotAnswer_Skip)
         self.assertEqual(self.ubr.ubr_gender_identity(
-            'SexAtBirth_Male', 'GenderIdentity_PreferNotToAnswer', None), UBRValueEnum.RBR)
+            'SexAtBirth_Male', 'GenderIdentity_PreferNotToAnswer', None), UBRValueEnum.NotAnswer_Skip)
         self.assertEqual(self.ubr.ubr_gender_identity(
                 'SexAtBirth_Female', 'GenderIdentity_Woman', 'PMI_Skip'), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_gender_identity(
@@ -181,7 +181,7 @@ class UBRCalculatorTest(BaseTestCase):
 
         # Test RBR value
         self.assertEqual(self.ubr.ubr_ethnicity('WhatRaceEthnicity_White'), UBRValueEnum.RBR)
-        self.assertEqual(self.ubr.ubr_ethnicity('PMI_PreferNotToAnswer'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_ethnicity('PMI_PreferNotToAnswer'), UBRValueEnum.NotAnswer_Skip)
 
         # Bad or unknown value will default to UBR
         self.assertEqual(self.ubr.ubr_ethnicity('ABC-123'), UBRValueEnum.UBR)
@@ -268,7 +268,7 @@ class UBRCalculatorTest(BaseTestCase):
         self.assertEqual(self.ubr.ubr_income('AnnualIncome_100k150k'), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_income('AnnualIncome_150k200k'), UBRValueEnum.RBR)
         self.assertEqual(self.ubr.ubr_income('AnnualIncome_more200k'), UBRValueEnum.RBR)
-        self.assertEqual(self.ubr.ubr_income('PMI_PreferNotToAnswer'), UBRValueEnum.RBR)
+        self.assertEqual(self.ubr.ubr_income('PMI_PreferNotToAnswer'), UBRValueEnum.NotAnswer_Skip)
 
         # Bad or unknown value will default to RBR
         self.assertEqual(self.ubr.ubr_income('BadValueTest'), UBRValueEnum.RBR)
@@ -285,6 +285,13 @@ class UBRCalculatorTest(BaseTestCase):
         for k in self.disability_answers.keys():
             values[k] = 'PMI_Skip'
         self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+
+        # Test with "Prefer Not To Answer" values.
+        values = self.disability_answers
+        values['Disability_Deaf'] = 'Deaf_PreferNotToAnswer'
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.NotAnswer_Skip)
+        values['Disability_ErrandsAlone'] = 'ErrandsAlone_Yes'
+        self.assertEqual(self.ubr.ubr_disability(values), UBRValueEnum.UBR)
 
         # Test UBR value
         values = self.disability_answers

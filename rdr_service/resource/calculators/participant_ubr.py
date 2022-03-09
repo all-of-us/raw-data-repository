@@ -18,7 +18,8 @@ class UBRValueEnum(IntEnum):
 
     RBR = 0
     UBR = 1
-    NotAnswer_Skip = 2  # PMI_PreferNotToAnswer or PMI_Skip value.
+    # NotAnswer_Skip: Answer is Null (only if a TheBasics has been submitted), PMI_PreferNotToAnswer or PMI_Skip value.
+    NotAnswer_Skip = 2
 
 
 class ParticipantUBRCalculator:
@@ -34,7 +35,7 @@ class ParticipantUBRCalculator:
         :param answer: Answer code to BiologicalSexAtBirth_SexAtBirth question in "TheBasics" survey.
         :return: UBRValueEnum
         """
-        if answer is None or answer == 'PMI_Skip':
+        if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.NotAnswer_Skip
         if answer in ('SexAtBirth_SexAtBirthNoneOfThese', 'SexAtBirth_Intersex'):
             return UBRValueEnum.UBR
@@ -53,14 +54,12 @@ class ParticipantUBRCalculator:
         # they did not answer the expected SexualOrientation_None response to the parent TheBasics_SexualOrientation
         # question first.  This is not  consistent with the documented survey branching logic.  Therefore, UBR/RBR
         # calculations are still based only on the response to the TheBasics_SexualOrientation question alone
-
-        if answer is None or answer == 'PMI_Skip':
+        if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.NotAnswer_Skip
 
-        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
-            return UBRValueEnum.UBR
-
-        return UBRValueEnum.RBR
+        if answer == 'SexualOrientation_Straight':
+            return UBRValueEnum.RBR
+        return UBRValueEnum.UBR
 
     @staticmethod
     def ubr_gender_identity(birth_sex, gender_ident, gender_ident_closer):
@@ -93,14 +92,13 @@ class ParticipantUBRCalculator:
 
         # Note: assume ubr by default and check for exclusion criteria.
         if len(answers) == 1:
-            answer = answers[0]
-            if answer is None or answer == 'PMI_Skip':
+            answer = answers[0]  # Get the one answer in the list object.
+            if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer', 'GenderIdentity_PreferNotToAnswer']:
                 return UBRValueEnum.NotAnswer_Skip
-            if (answer == 'PMI_PreferNotToAnswer' or answer == 'GenderIdentity_PreferNotToAnswer') or \
-                    (answer == 'GenderIdentity_Man' and birth_sex in ['SexAtBirth_Male', 'PMI_Skip',
-                                                                      'GenderIdentity_PreferNotToAnswer', None]) or \
-                    (answer == 'GenderIdentity_Woman' and birth_sex in ['SexAtBirth_Female', 'PMI_Skip',
-                                                                        'GenderIdentity_PreferNotToAnswer', None]):
+            if (answer == 'GenderIdentity_Man' and
+                        birth_sex in ['SexAtBirth_Male', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]) or \
+                    (answer == 'GenderIdentity_Woman' and
+                        birth_sex in ['SexAtBirth_Female', 'PMI_Skip', 'PMI_PreferNotToAnswer', None]):
                 return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
@@ -132,13 +130,14 @@ class ParticipantUBRCalculator:
         """
         if answers is None:
             return UBRValueEnum.NotAnswer_Skip
+
         # Note: assume UBR by default and check for exclusion criteria.
         answers = answers.split(',')
         if len(answers) == 1:
             answer = answers[0]
-            if answer == 'PMI_Skip':
+            if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
                 return UBRValueEnum.NotAnswer_Skip
-            if answer in ('WhatRaceEthnicity_White', 'PMI_PreferNotToAnswer'):
+            if answer == 'WhatRaceEthnicity_White':
                 return UBRValueEnum.RBR
         return UBRValueEnum.UBR
 
@@ -169,7 +168,7 @@ class ParticipantUBRCalculator:
         :param answer: Answer code to EducationLevel_HighestGrade question in "TheBasics" survey.
         :return: UBRValueEnum
         """
-        if answer is None or answer == 'PMI_Skip':
+        if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.NotAnswer_Skip
         if answer in (
                 'HighestGrade_NeverAttended',
@@ -186,7 +185,7 @@ class ParticipantUBRCalculator:
         :param answer: Answer code to Income_AnnualIncome question in "TheBasics" survey.
         :return: UBRValueEnum
         """
-        if answer is None or answer == 'PMI_Skip':
+        if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.NotAnswer_Skip
         if answer in (
                 'AnnualIncome_less10k',
@@ -201,6 +200,9 @@ class ParticipantUBRCalculator:
         :param answers: Dict with keys and answer codes for 'Disability_Blind',
                         'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
                         'Disability_Deaf' and 'Disability_DifficultyConcentrating' from "TheBasics" survey.
+        # List of "Prefer Not To Answer" answer values for each question:
+         'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer', 'DressingBathing_PreferNotToAnswer',
+         'ErrandsAlone_PreferNotToAnswer', 'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer'
         :return: UBRValueEnum
         """
         if answers:
@@ -213,11 +215,14 @@ class ParticipantUBRCalculator:
                     answers.get('Disability_Deaf', None) == 'Deaf_Yes' or \
                     answers.get('Disability_DifficultyConcentrating', None) == 'DifficultyConcentrating_Yes':
                 return UBRValueEnum.UBR
-        # Check and see if all question answers are either Null or PMI_Skip.
+        # Check and see if all question answers are either Null, 'Prefer Not To Answer' or PMI_Skip.
         null_skip = True
-        for k in [ 'Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
+        for k in ['Disability_Blind', 'Disability_WalkingClimbing', 'Disability_DressingBathing',
                    'Disability_ErrandsAlone', 'Disability_Deaf' and 'Disability_DifficultyConcentrating']:
-            if answers.get(k, None) not in (None, 'PMI_Skip'):
+            if answers.get(k, None) not in \
+                    [None, 'PMI_Skip', 'Blind_PreferNotToAnswer', 'WalkingClimbing_PreferNotToAnswer',
+                     'DressingBathing_PreferNotToAnswer', 'ErrandsAlone_PreferNotToAnswer',
+                     'Deaf_PreferNotToAnswer', 'DifficultyConcentrating_PreferNotToAnswer']:
                 null_skip = False
                 break
         if null_skip is True:
@@ -232,14 +237,15 @@ class ParticipantUBRCalculator:
         :param answer: Answer to the PIIBirthInformation_BirthDate question in the ConsentPII survey.
         :return: UBRValueEnum
         """
-        if answer is None or answer == 'PMI_Skip':
+        if answer in [None, 'PMI_Skip']:
             return UBRValueEnum.NotAnswer_Skip
         if not consent_time:
             return UBRValueEnum.RBR
         # Convert date string to date object if needed.
         if isinstance(answer, str):
             answer = parse(answer)
-
+        # When calculating 'Age At Consent', ensure that leap years are accounted for. A date subtraction
+        # function that is "leap year" aware must be used.
         rd = relativedelta(consent_time, answer)
         if not 18 <= rd.years < 65:
             return UBRValueEnum.UBR
