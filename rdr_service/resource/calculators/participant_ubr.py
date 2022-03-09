@@ -57,10 +57,9 @@ class ParticipantUBRCalculator:
         if answer in [None, 'PMI_Skip', 'PMI_PreferNotToAnswer']:
             return UBRValueEnum.NotAnswer_Skip
 
-        if answer not in ['SexualOrientation_Straight', 'PMI_PreferNotToAnswer']:
-            return UBRValueEnum.UBR
-
-        return UBRValueEnum.RBR
+        if answer == 'SexualOrientation_Straight':
+            return UBRValueEnum.RBR
+        return UBRValueEnum.UBR
 
     @staticmethod
     def ubr_gender_identity(birth_sex, gender_ident, gender_ident_closer):
