@@ -39,7 +39,7 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw)
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -83,6 +83,19 @@ class GenomicDaoUtils:
                 self.model_type.modified >= from_date
             )
             return records.all()
+
+    def get_from_filepath(self, filepath):
+
+        if not hasattr(self.model_type, 'created'):
+            return []
+
+        with self.session() as session:
+            return session.query(
+                self.model_type
+            ).filter(
+                self.model_type.file_path == filepath,
+                self.model_type.ignore_flag == 0,
+            ).all()
 
 
 class GenomicSetDao(UpdatableDao, GenomicDaoUtils):
@@ -2267,7 +2280,7 @@ class GenomicManifestFeedbackDao(UpdatableDao, GenomicDaoUtils):
             return feedback_records.all()
 
 
-class GenomicAW1RawDao(BaseDao):
+class GenomicAW1RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW1RawDao, self).__init__(
             GenomicAW1Raw, order_by_ending=['id'])
@@ -2277,14 +2290,6 @@ class GenomicAW1RawDao(BaseDao):
 
     def from_client_json(self):
         pass
-
-    def get_from_filepath(self, filepath):
-        with self.session() as session:
-            return session.query(
-                GenomicAW1Raw
-            ).filter(
-                GenomicAW1Raw.file_path == filepath
-            ).all()
 
     def get_record_count_from_filepath(self, filepath):
         with self.session() as session:
@@ -2336,7 +2341,7 @@ class GenomicAW1RawDao(BaseDao):
             ).delete()
 
 
-class GenomicAW2RawDao(BaseDao):
+class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW2RawDao, self).__init__(
             GenomicAW2Raw, order_by_ending=['id'])
@@ -2346,14 +2351,6 @@ class GenomicAW2RawDao(BaseDao):
 
     def from_client_json(self):
         pass
-
-    def get_from_filepath(self, filepath):
-        with self.session() as session:
-            return session.query(
-                GenomicAW2Raw
-            ).filter(
-                GenomicAW2Raw.file_path == filepath
-            ).all()
 
     def get_record_count_from_filepath(self, filepath):
         with self.session() as session:
@@ -2404,7 +2401,7 @@ class GenomicAW2RawDao(BaseDao):
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 
-class GenomicAW3RawDao(BaseDao):
+class GenomicAW3RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW3RawDao, self).__init__(
             GenomicAW3Raw, order_by_ending=['id'])
@@ -2415,17 +2412,8 @@ class GenomicAW3RawDao(BaseDao):
     def from_client_json(self):
         pass
 
-    def get_from_filepath(self, filepath):
-        with self.session() as session:
-            return session.query(
-                GenomicAW3Raw
-            ).filter(
-                GenomicAW3Raw.file_path == filepath,
-                GenomicAW3Raw.ignore_flag == 0,
-            ).all()
 
-
-class GenomicAW4RawDao(BaseDao):
+class GenomicAW4RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW4RawDao, self).__init__(
             GenomicAW4Raw, order_by_ending=['id'])
@@ -2436,14 +2424,29 @@ class GenomicAW4RawDao(BaseDao):
     def from_client_json(self):
         pass
 
-    def get_from_filepath(self, filepath):
-        with self.session() as session:
-            return session.query(
-                GenomicAW4Raw
-            ).filter(
-                GenomicAW4Raw.file_path == filepath,
-                GenomicAW4Raw.ignore_flag == 0,
-            ).all()
+
+class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW2SCRawDao, self).__init__(
+            GenomicW2SCRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
+class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW3SRRawDao, self).__init__(
+            GenomicW3SRRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
 
 
 class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):

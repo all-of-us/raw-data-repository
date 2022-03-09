@@ -186,6 +186,13 @@ def cvl_w3sr_manifest_workflow():
                 _genome_type=config.GENOME_TYPE_WGS,
             )
 
+            for manifest in controller.manifests_generated:
+                logging.info(
+                    f"Loading W3SR Investigation Raw Data: {manifest['file_path']}")
+
+                # Call pipeline function to load raw
+                load_awn_manifest_into_raw_table(manifest['file_path'], "w3sr")
+
 
 def aw3_array_investigation_workflow():
     """
@@ -507,9 +514,15 @@ def load_awn_manifest_into_raw_table(
         "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
         "aw3": GenomicJob.LOAD_AW3_TO_RAW_TABLE,
         "aw4": GenomicJob.LOAD_AW4_TO_RAW_TABLE,
+        "w2sc": GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
+        "w3sr": GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE
     }
+    job_id = jobs.get(manifest_type)
 
-    with GenomicJobController(jobs[manifest_type],
+    if not job_id:
+        return GenomicSubProcessResult.ERROR
+
+    with GenomicJobController(job_id,
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
         controller.load_raw_awn_data_from_filepath(file_path)
