@@ -380,41 +380,6 @@ class GenomicFileIngester:
             'gcManifestFailureDescription': 'failuremodedesc',
         }
 
-    @staticmethod
-    def get_aw1_raw_column_mappings():
-        return {
-            "package_id": "packageid",
-            "biobankid_sample_id": "biobankidsampleid",
-            "box_storageunit_id": "boxstorageunitid",
-            "box_id_plate_id": "boxid/plateid",
-            "well_position": "wellposition",
-            "sample_id": "sampleid",
-            "parent_sample_id": "parentsampleid",
-            "collection_tube_id": "collectiontubeid",
-            "matrix_id": "matrixid",
-            "collection_date": "collectiondate",
-            "biobank_id": "biobankid",
-            "sex_at_birth": "sexatbirth",
-            "age": "age",
-            "ny_state": "nystate(y/n)",
-            "sample_type": "sampletype",
-            "treatments": "treatments",
-            "quantity": "quantity(ul)",
-            "total_concentration": "totalconcentration(ng/ul)",
-            "total_dna": "totaldna(ng)",
-            "visit_description": "visitdescription",
-            "sample_source": "samplesource",
-            "study": "study",
-            "tracking_number": "trackingnumber",
-            "contact": "contact",
-            "email": "email",
-            "study_pi": "studypi",
-            "site_name": "sitename",
-            "test_name": "genometype",
-            "failure_mode": "failuremode",
-            "failure_mode_desc": "failuremodedesc",
-        }
-
     def _ingest_aw1_manifest(self, rows):
         """
         AW1 ingestion method: Updates the GenomicSetMember with AW1 data
