@@ -1,13 +1,9 @@
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import pytz
-from mock import patch
-from werkzeug.exceptions import InternalServerError
 
 from rdr_service import config
 from rdr_service.api_util import HEALTHPRO, PTC
-from rdr_service.dao import database_factory
-from rdr_service.dao.deceased_report_dao import DeceasedReportDao
 from rdr_service.model.api_user import ApiUser
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.participant_summary import ParticipantSummary
@@ -383,41 +379,6 @@ class DeceasedReportApiTest(DeceasedReportTestBase):
         # Try creating another deceased report and check for Conflict status code
         report_json = self.build_deceased_report_json()
         self.post_report(report_json, participant_id=report.participantId, expected_status=409)
-
-    @patch('rdr_service.dao.deceased_report_dao.logging')
-    def test_concurrent_reports_not_allowed(self, mock_logging):
-        """Make sure two simultaneous requests for creating deceased reports can't both complete"""
-
-        # We need to ensure only one pending or active report can exist for a participant.
-        # To do that, we first check that there are no other pending or active reports, and then we insert one.
-        # Without a proper strategy, two separate processes can both get past the check
-        # and then both be allowed to insert.
-
-        # There's an implementation for obtaining a lock when inserting a report for a participant. If a session
-        # checks that it can move forward with inserting a report, then until that session closes
-
-        participant = self.data_generator.create_database_participant()
-        another_participant = self.data_generator.create_database_participant()
-        self.assertTrue(
-            DeceasedReportDao._can_insert_active_report(self.session, participant.participantId),
-            "The first session to check to see if it can insert should be allowed"
-        )
-
-        with database_factory.get_database().session() as new_session:
-            # Using a separate connection/transaction on the database
-            self.assertTrue(
-                DeceasedReportDao._can_insert_active_report(new_session, another_participant.participantId),
-                "A separate transaction should be allowed to concurrently make a report for another participant"
-            )
-
-        with database_factory.get_database().session() as new_session:
-            # Using a separate connection/transaction on the database
-            with self.assertRaises(InternalServerError):
-                DeceasedReportDao._can_insert_active_report(new_session, participant.participantId, 1)
-
-        mock_logging.error.assert_called_with(
-            f'Database error retrieving named lock for P{participant.participantId}, received result: "0"'
-        )
 
     def test_approving_report(self):
         report = self.create_pending_deceased_report(

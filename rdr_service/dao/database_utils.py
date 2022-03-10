@@ -1,8 +1,10 @@
 """Helpers for querying the SQL database."""
-import re
+import logging
 from datetime import datetime
+import re
 
 import pytz
+from sqlalchemy.orm import Session
 
 from rdr_service.dao.database_factory import get_database
 
@@ -62,3 +64,51 @@ def replace_null_safe_equals(sql):
     if _is_sqlite():
         return re.sub(_NULL_SAFE_PATTERN, r"is", sql)
     return sql
+
+
+class NamedLock:
+    """
+    Retrieve an explicit and mutually exclusive database lock to ensure a specific piece of code is the only instance
+    of that code running at the time that the lock is held.
+    """
+
+    def __init__(self, name: str, session: Session, lock_timeout_seconds=30, lock_failure_exception=None):
+        self._name = name
+        self._session = session
+        self._lock_timout_seconds = lock_timeout_seconds
+        self.is_locked = False
+        self._lock_failure_exception = lock_failure_exception
+
+    def __enter__(self):
+        self.obtain_lock()
+        return self
+
+    def __exit__(self, *_, **__):
+        self.release_lock()
+
+    def obtain_lock(self):
+        """
+        Execute the database command to obtain the lock.
+        This will wait until either the lock is successfully obtained, or the timeout occurs.
+        """
+        lock_result = self._session.execute(f"SELECT GET_LOCK('{self._name}', {self._lock_timout_seconds})").scalar()
+
+        if lock_result == 1:
+            self.is_locked = True
+        else:
+            logging.error(f'Database error retrieving named lock for {self._name}, received result: "{lock_result}"')
+            if self._lock_failure_exception is not None:
+                raise self._lock_failure_exception
+            else:
+                raise Exception('Unable to obtain database lock.')
+
+    def release_lock(self):
+        if self.is_locked:
+            release_result = self._session.execute(f"SELECT RELEASE_LOCK('{self._name}')").scalar()
+
+            if release_result is None:
+                logging.error(f'Database lock did not exist for {self._name}!')
+            elif release_result == 0:
+                logging.error(f'Database lock for {self._name} was not taken by this connection, did not release!')
+            else:
+                self.is_locked = False
