@@ -423,7 +423,7 @@ class ConsentValidationController:
                 output_strategy=output_strategy,
                 consent_responses=participant_id_consent_map[summary.participantId]
             )
-        session.commit()
+        output_strategy.process_results()
 
         # Use the legacy query for the day that the updated check is released (and in case any are missed)
         summaries_needing_validated = self.consent_dao.get_participants_with_unvalidated_files(session)

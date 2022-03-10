@@ -185,7 +185,6 @@ def cvl_w3sr_manifest_workflow():
                 GenomicManifestTypes.CVL_W3SR,
                 _genome_type=config.GENOME_TYPE_WGS,
             )
-
             for manifest in controller.manifests_generated:
                 logging.info(
                     f"Loading W3SR Investigation Raw Data: {manifest['file_path']}")

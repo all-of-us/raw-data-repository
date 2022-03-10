@@ -482,7 +482,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
         if offset < 0:
             raise BadRequest("invalid parameter: page")
 
-        results = []
+        workspace_dict = {}
         now = clock.CLOCK.now()
         sequest_hours_ago = now - timedelta(hours=sequest_hour)
         with self.session() as session:
@@ -516,7 +516,7 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 session.query(
                     WorkbenchWorkspaceApproved,
                     WorkbenchResearcher,
-                    WorkbenchWorkspaceUser.role,
+                    WorkbenchWorkspaceUser,
                     snapshot_subquery.c.snapshot_id
                 ).filter(
                     WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
@@ -533,30 +533,119 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                 )
             )
 
+            match_count_query = (
+                session.query(
+                    distinct(WorkbenchWorkspaceApproved.workspaceSourceId)
+                ).filter(
+                    WorkbenchWorkspaceUser.researcherId == WorkbenchResearcher.id,
+                    WorkbenchWorkspaceApproved.id == WorkbenchWorkspaceUser.workspaceId,
+                    WorkbenchWorkspaceApproved.excludeFromPublicDirectory == 0,
+                    WorkbenchWorkspaceApproved.workspaceSourceId == snapshot_subquery.c.workspace_source_id,
+                    WorkbenchResearcher.id == WorkbenchInstitutionalAffiliations.researcherId,
+                    WorkbenchInstitutionalAffiliations.isVerified == 1,
+                    or_(
+                        WorkbenchWorkspaceApproved.modified < sequest_hours_ago,
+                        WorkbenchWorkspaceApproved.isReviewed == 1
+                    ),
+                    WorkbenchWorkspaceApproved.creationTime > datetime(2020, 5, 20)
+                )
+            )
+
             if status is not None:
                 query = query.filter(WorkbenchWorkspaceApproved.status == status)
+                match_count_query = match_count_query.filter(WorkbenchWorkspaceApproved.status == status)
 
             if workspace_like:
                 query = query.filter(or_(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_like),
                                          func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(workspace_like)))
+                match_count_query = match_count_query.filter(
+                    or_(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_like),
+                        func.lower(WorkbenchWorkspaceApproved.intendToStudy).like(workspace_like)))
             else:
                 if workspace_name_like:
                     query = query.filter(func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
+                    match_count_query = match_count_query.filter(
+                        func.lower(WorkbenchWorkspaceApproved.name).like(workspace_name_like))
 
                 if intend_to_study_like:
                     query = query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy)
                                          .like(intend_to_study_like))
+                    match_count_query = match_count_query.filter(func.lower(WorkbenchWorkspaceApproved.intendToStudy)
+                                                                 .like(intend_to_study_like))
 
             if project_purpose:
                 for purpose in project_purpose:
                     query = query.filter(getattr(WorkbenchWorkspaceApproved, purpose) == 1)
+                    match_count_query = match_count_query.filter(getattr(WorkbenchWorkspaceApproved, purpose) == 1)
 
+            match_number = match_count_query.count()
             items = query.all()
 
-            for workspace, researcher, role, snapshot_id in items:
+            verified_workspace_ids = set()
+            for workspace, researcher, user, snapshot_id in items:
+                if workspace.workspaceSourceId in workspace_dict:
+                    record = workspace_dict[workspace.workspaceSourceId]
+                else:
+                    workspace_dict[workspace.workspaceSourceId] = record = {
+                        'workspaceId': workspace.workspaceSourceId,
+                        'snapshotId': snapshot_id,
+                        'name': workspace.name,
+                        'creationTime': workspace.creationTime,
+                        'modifiedTime': workspace.modifiedTime,
+                        'status': str(WorkbenchWorkspaceStatus(workspace.status)),
+                        'workspaceUsers': [],
+                        'workspaceOwner': [],
+                        "hasVerifiedInstitution": False,
+                        "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
+                        "ethicalLegalSocialImplications": workspace.ethicalLegalSocialImplications,
+                        "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
+                        "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
+                        "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
+                        "otherPurposeDetails": workspace.otherPurposeDetails,
+                        "methodsDevelopment": workspace.methodsDevelopment,
+                        "controlSet": workspace.controlSet,
+                        "ancestry": workspace.ancestry,
+                        "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
+                                                                       if workspace.accessTier else 0)),
+                        "socialBehavioral": workspace.socialBehavioral,
+                        "populationHealth": workspace.populationHealth,
+                        "drugDevelopment": workspace.drugDevelopment,
+                        "commercialPurpose": workspace.commercialPurpose,
+                        "educational": workspace.educational,
+                        "otherPurpose": workspace.otherPurpose,
+                        "scientificApproaches": workspace.scientificApproaches,
+                        "intendToStudy": workspace.intendToStudy,
+                        "findingsFromStudy": workspace.findingsFromStudy,
+                        "focusOnUnderrepresentedPopulations": workspace.focusOnUnderrepresentedPopulations,
+                        "workspaceDemographic": {
+                            "raceEthnicity": [str(WorkbenchWorkspaceRaceEthnicity(value))
+                                              for value in
+                                              workspace.raceEthnicity] if workspace.raceEthnicity else None,
+                            "age": [str(WorkbenchWorkspaceAge(value)) for value in workspace.age]
+                            if workspace.age else None,
+                            "sexAtBirth": str(WorkbenchWorkspaceSexAtBirth(workspace.sexAtBirth))
+                            if workspace.sexAtBirth else None,
+                            "genderIdentity": str(WorkbenchWorkspaceGenderIdentity(workspace.genderIdentity))
+                            if workspace.genderIdentity else None,
+                            "sexualOrientation": str(WorkbenchWorkspaceSexualOrientation(workspace.sexualOrientation))
+                            if workspace.sexualOrientation else None,
+                            "geography": str(WorkbenchWorkspaceGeography(workspace.geography))
+                            if workspace.geography else None,
+                            "disabilityStatus": str(WorkbenchWorkspaceDisabilityStatus(workspace.disabilityStatus))
+                            if workspace.disabilityStatus else None,
+                            "accessToCare": str(WorkbenchWorkspaceAccessToCare(workspace.accessToCare))
+                            if workspace.accessToCare else None,
+                            "educationLevel": str(WorkbenchWorkspaceEducationLevel(workspace.educationLevel))
+                            if workspace.educationLevel else None,
+                            "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
+                            if workspace.incomeLevel else None,
+                            "others": workspace.others
+                        },
+                        "cdrVersion": workspace.cdrVersion
+                    }
+
                 affiliations = []
                 researcher_has_verified_institution = False
-                workspace_has_verified_institution = False
                 if researcher.workbenchInstitutionalAffiliations:
                     for affiliation in researcher.workbenchInstitutionalAffiliations:
                         affiliations.append(
@@ -571,129 +660,63 @@ class WorkbenchWorkspaceDao(UpdatableDao):
                         )
                         if affiliation.isVerified is True:
                             researcher_has_verified_institution = True
-                owner_user_ids = []
-                creator_user_id = None
-                for workspace_user in workspace.workbenchWorkspaceUser:
-                    if workspace_user.role == WorkbenchWorkspaceUserRole.OWNER:
-                        owner_user_ids.append(workspace_user.userId)
-                    if workspace_user.isCreator is True:
-                        creator_user_id = workspace_user.userId
-                # if has creator, calculate by creator; if no creator, calculate by owners
-                if researcher_has_verified_institution and creator_user_id == researcher.userSourceId:
-                    workspace_has_verified_institution = True
-                elif creator_user_id is None and researcher.userSourceId in owner_user_ids and \
-                    researcher_has_verified_institution:
-                    workspace_has_verified_institution = True
 
-                user = {
+                workspace_user = {
                     'userId': researcher.userSourceId,
                     'userName': researcher.givenName + ' ' + researcher.familyName,
                     'degree': [str(WorkbenchResearcherDegree(value)) for value in researcher.degree],
                     'affiliations': affiliations
                 }
+                record['workspaceUsers'].append(workspace_user)
+
+                if user.role == WorkbenchWorkspaceUserRole.OWNER:
+                    record['workspaceOwner'].append(workspace_user)
+
+                if researcher_has_verified_institution and \
+                    (user.role == WorkbenchWorkspaceUserRole.OWNER or user.isCreator is True):
+                    record['hasVerifiedInstitution'] = True
+                    verified_workspace_ids.add(workspace.workspaceSourceId)
+
                 hit_search = False
-                if owner_name and role == WorkbenchWorkspaceUserRole('OWNER'):
-                    if owner_name in user.get('userName').lower():
+                if owner_name and user.role == WorkbenchWorkspaceUserRole('OWNER'):
+                    if owner_name in workspace_user.get('userName').lower():
                         hit_search = True
-                elif role == WorkbenchWorkspaceUserRole('OWNER'):
+                elif user.role == WorkbenchWorkspaceUserRole('OWNER'):
                     if given_name and given_name in researcher.givenName.lower():
                         hit_search = True
                     if family_name and family_name in researcher.familyName.lower():
                         hit_search = True
                 if user_source_id and user_role:
-                    if user_source_id == researcher.userSourceId and role == WorkbenchWorkspaceUserRole('OWNER') \
+                    if user_source_id == researcher.userSourceId \
+                        and user.role == WorkbenchWorkspaceUserRole('OWNER') \
                         and user_role == 'owner':
                         hit_search = True
-                    elif user_source_id == researcher.userSourceId and role != WorkbenchWorkspaceUserRole('OWNER') \
+                    elif user_source_id == researcher.userSourceId \
+                        and user.role != WorkbenchWorkspaceUserRole('OWNER') \
                         and user_role == 'member':
                         hit_search = True
                     elif user_source_id == researcher.userSourceId and user_role == 'all':
                         hit_search = True
 
-                exist = False
-                for result in results:
-                    if result['workspaceId'] == workspace.workspaceSourceId:
-                        result['workspaceUsers'].append(user)
-                        if hit_search:
-                            result['hitSearch'] = True
-                        if user.get('userId') in owner_user_ids:
-                            result['workspaceOwner'].append(user)
-                        if workspace_has_verified_institution:
-                            result['hasVerifiedInstitution'] = True
-                        exist = True
-                        break
-                if exist:
-                    continue
+                if hit_search:
+                    record['hitSearch'] = True
 
-                record = {
-                    'workspaceId': workspace.workspaceSourceId,
-                    'snapshotId': snapshot_id,
-                    'hitSearch': hit_search,
-                    'name': workspace.name,
-                    'creationTime': workspace.creationTime,
-                    'modifiedTime': workspace.modifiedTime,
-                    'status': str(WorkbenchWorkspaceStatus(workspace.status)),
-                    'workspaceUsers': [user] if user else [],
-                    'workspaceOwner': [user] if user.get('userId') in owner_user_ids else [],
-                    'hasVerifiedInstitution': workspace_has_verified_institution,
-                    "excludeFromPublicDirectory": workspace.excludeFromPublicDirectory,
-                    "ethicalLegalSocialImplications": workspace.ethicalLegalSocialImplications,
-                    "reviewRequested": workspace.reviewRequested if workspace.reviewRequested else False,
-                    "diseaseFocusedResearch": workspace.diseaseFocusedResearch,
-                    "diseaseFocusedResearchName": workspace.diseaseFocusedResearchName,
-                    "otherPurposeDetails": workspace.otherPurposeDetails,
-                    "methodsDevelopment": workspace.methodsDevelopment,
-                    "controlSet": workspace.controlSet,
-                    "ancestry": workspace.ancestry,
-                    "accessTier": str(WorkbenchWorkspaceAccessTier(workspace.accessTier
-                                                                   if workspace.accessTier else 0)),
-                    "socialBehavioral": workspace.socialBehavioral,
-                    "populationHealth": workspace.populationHealth,
-                    "drugDevelopment": workspace.drugDevelopment,
-                    "commercialPurpose": workspace.commercialPurpose,
-                    "educational": workspace.educational,
-                    "otherPurpose": workspace.otherPurpose,
-                    "scientificApproaches": workspace.scientificApproaches,
-                    "intendToStudy": workspace.intendToStudy,
-                    "findingsFromStudy": workspace.findingsFromStudy,
-                    "focusOnUnderrepresentedPopulations": workspace.focusOnUnderrepresentedPopulations,
-                    "workspaceDemographic": {
-                        "raceEthnicity": [str(WorkbenchWorkspaceRaceEthnicity(value))
-                                          for value in workspace.raceEthnicity] if workspace.raceEthnicity else None,
-                        "age": [str(WorkbenchWorkspaceAge(value)) for value in workspace.age]
-                        if workspace.age else None,
-                        "sexAtBirth": str(WorkbenchWorkspaceSexAtBirth(workspace.sexAtBirth))
-                        if workspace.sexAtBirth else None,
-                        "genderIdentity": str(WorkbenchWorkspaceGenderIdentity(workspace.genderIdentity))
-                        if workspace.genderIdentity else None,
-                        "sexualOrientation": str(WorkbenchWorkspaceSexualOrientation(workspace.sexualOrientation))
-                        if workspace.sexualOrientation else None,
-                        "geography": str(WorkbenchWorkspaceGeography(workspace.geography))
-                        if workspace.geography else None,
-                        "disabilityStatus": str(WorkbenchWorkspaceDisabilityStatus(workspace.disabilityStatus))
-                        if workspace.disabilityStatus else None,
-                        "accessToCare": str(WorkbenchWorkspaceAccessToCare(workspace.accessToCare))
-                        if workspace.accessToCare else None,
-                        "educationLevel": str(WorkbenchWorkspaceEducationLevel(workspace.educationLevel))
-                        if workspace.educationLevel else None,
-                        "incomeLevel": str(WorkbenchWorkspaceIncomeLevel(workspace.incomeLevel))
-                        if workspace.incomeLevel else None,
-                        "others": workspace.others
-                    },
-                    "cdrVersion": workspace.cdrVersion
-                }
-                results.append(record)
+                # once get enough items for the request page, break the loop
+                if not owner_name and not given_name and not family_name and not (user_source_id or user_role) \
+                    and len(verified_workspace_ids) > page * page_size:
+                    break
 
+        results = workspace_dict.values()
         if owner_name or given_name or family_name or (user_source_id and user_role):
             expected_result = [ws for ws in results if ws.get('hitSearch') is True
                                and ws.get('hasVerifiedInstitution') is True]
+            match_number = len(expected_result)
         else:
             expected_result = [ws for ws in results if ws.get('hasVerifiedInstitution') is True]
 
         for er in expected_result:
             er.pop('hitSearch', None)
 
-        match_number = len(expected_result)
         if offset >= match_number:
             expected_result = []
         else:

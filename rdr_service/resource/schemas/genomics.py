@@ -291,6 +291,7 @@ class GenomicGCValidationMetricsSchema(Schema):
     gvcf_md5_received = fields.Int16()
     gvcf_md5_deleted = fields.Int16()
     drc_call_rate = fields.String(validate=validate.Length(max=128))
+    pipeline_id = fields.String(validate=validate.Length(max=128))
 
     class Meta:
         schema_id = SchemaID.genomic_gc_validation_metrics

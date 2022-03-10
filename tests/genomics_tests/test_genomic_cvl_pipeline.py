@@ -270,3 +270,4 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
 
+
