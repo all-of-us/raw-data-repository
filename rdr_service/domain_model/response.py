@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from rdr_service.model.questionnaire_response import QuestionnaireResponseStatus
 
@@ -14,8 +14,17 @@ class ParticipantResponses:
     @property
     def in_authored_order(self) -> List['Response']:
         if not self._responses_in_order:
+            responses = {}
+            for response in self.responses.values():
+                survey_code = response.survey_code
+                if survey_code in responses:
+                    other_response = responses[survey_code]
+                    if other_response.authored_datetime <= response.authored_datetime:
+                        responses[survey_code] = response
+                else:
+                    responses[response.survey_code] = response
             self._responses_in_order = sorted(
-                self.responses.values(),
+                responses.values(),
                 key=lambda response: response.authored_datetime or False
             )
 
@@ -33,7 +42,7 @@ class Response:
     def has_answer_for(self, question_code_str):
         return question_code_str in self.answered_codes
 
-    def get_answers_for(self, question_code_str) -> List['Answer']:
+    def get_answers_for(self, question_code_str) -> Optional[List['Answer']]:
         if question_code_str not in self.answered_codes:
             return None
 
@@ -44,8 +53,8 @@ class Response:
         if not answers:
             return None
 
-        if len(answers) > 1:
-            raise Exception(f'Too many answers found for question "{question_code_str}"')
+        if len(answers) > 1 and len({answer.value for answer in answers}) > 1:
+            raise Exception(f'Too many answers found for question "{question_code_str}" (responsed id {self.id})')
         else:
             return answers[0]
 

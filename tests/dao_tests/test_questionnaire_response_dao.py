@@ -1560,23 +1560,30 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
 
     def test_loading_response_collections(self):
         # Create a questionnaire, and some responses that have different answers to the questions
-        questionnaire = self._generate_questionnaire(
+        questionnaire1 = self._generate_questionnaire(
             survey_code='test_survey',
             question_codes=[
                 't_1',
                 'T_2'
             ]
         )
+        questionnaire2 = self._generate_questionnaire(
+            survey_code='another_survey',
+            question_codes=[
+                'x_1',
+                'x_2'
+            ]
+        )
         participant_id = self.data_generator.create_database_participant().participantId
         self._generate_response(
-            questionnaire,
+            questionnaire1,
             ['one', 'two'],
             participant_id=participant_id,
             authored_date=datetime.datetime(2021, 10, 1),
             created_date=datetime.datetime(2021, 10, 1)
         )
         self._generate_response(
-            questionnaire,
+            questionnaire2,
             ['nine', 'ten'],
             participant_id=participant_id,
             authored_date=datetime.datetime(2022, 3, 5),
@@ -1584,7 +1591,7 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
         )
 
         participant_responses_map = QuestionnaireResponseDao.get_responses_to_surveys(
-            survey_codes=['test_survey'],
+            survey_codes=['test_survey', 'another_survey'],
             participant_ids=[participant_id],
             session=self.session
         )
@@ -1595,8 +1602,8 @@ class QuestionnaireResponseDaoTest(PDRGeneratorTestMixin, BaseTestCase):
             't_2': [Answer(id=mock.ANY, value='two')]
         }, responses.in_authored_order[0].answered_codes)
         self.assertEqual({
-            't_1': [Answer(id=mock.ANY, value='nine')],
-            't_2': [Answer(id=mock.ANY, value='ten')]
+            'x_1': [Answer(id=mock.ANY, value='nine')],
+            'x_2': [Answer(id=mock.ANY, value='ten')]
         }, responses.in_authored_order[1].answered_codes)
 
     def _generate_response(self, questionnaire, answers, participant_id=None, authored_date=None, created_date=None):
