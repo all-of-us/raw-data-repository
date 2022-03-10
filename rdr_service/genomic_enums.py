@@ -113,6 +113,9 @@ class GenomicJob(messages.Enum):
     DELETE_OLD_GP_USER_EVENT_METRICS = 56
     RETRY_MANIFEST_INGESTIONS = 57
     UPDATE_REPORT_STATES_FOR_CONSENT_REMOVAL = 58
+    LOAD_CVL_W1IL_TO_RAW_TABLE = 59
+    LOAD_CVL_W2SC_TO_RAW_TABLE = 60
+    LOAD_CVL_W3SR_TO_RAW_TABLE = 61
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)

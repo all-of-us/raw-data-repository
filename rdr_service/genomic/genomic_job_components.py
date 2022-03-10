@@ -36,8 +36,7 @@ from rdr_service.model.genomics import (
     GenomicSetMember,
     GenomicGCValidationMetrics,
     GenomicSampleContamination,
-    GenomicAW1Raw,
-    GenomicAW2Raw, GenomicGcDataFileMissing, GenomicAW4Raw, GenomicAW3Raw)
+    GenomicGcDataFileMissing)
 from rdr_service.participant_enums import (
     WithdrawalStatus,
     QuestionnaireStatus,
@@ -62,7 +61,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicAW4RawDao, GenomicAW3RawDao, GenomicQueriesDao)
+    GenomicAW4RawDao, GenomicAW3RawDao, GenomicQueriesDao, GenomicW2SCRawDao, GenomicW3SRRawDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -237,10 +236,18 @@ class GenomicFileIngester:
                 else GenomicSubProcessResult.ERROR
 
     @staticmethod
-    def _clean_row_keys(row):
-        return dict(zip([key.lower().replace(' ', '').replace('_', '')
-                         for key in row],
-                        row.values()))
+    def _clean_row_keys(val):
+
+        def str_clean(str_val):
+            return str_val.lower() \
+                .replace(' ', '') \
+                .replace('_', '')
+
+        if type(val) is str or 'quoted_name' in val.__class__.__name__.lower():
+            return str_clean(val)
+        elif 'dict' in val.__class__.__name__.lower():
+            return dict(zip([str_clean(key)
+                             for key in val], val.values()))
 
     @staticmethod
     def _clean_alpha_values(value):
@@ -371,138 +378,6 @@ class GenomicFileIngester:
             'gcManifestTestName': 'genometype',
             'gcManifestFailureMode': 'failuremode',
             'gcManifestFailureDescription': 'failuremodedesc',
-        }
-
-    @staticmethod
-    def get_aw1_raw_column_mappings():
-        return {
-            "package_id": "packageid",
-            "biobankid_sample_id": "biobankidsampleid",
-            "box_storageunit_id": "boxstorageunitid",
-            "box_id_plate_id": "boxid/plateid",
-            "well_position": "wellposition",
-            "sample_id": "sampleid",
-            "parent_sample_id": "parentsampleid",
-            "collection_tube_id": "collectiontubeid",
-            "matrix_id": "matrixid",
-            "collection_date": "collectiondate",
-            "biobank_id": "biobankid",
-            "sex_at_birth": "sexatbirth",
-            "age": "age",
-            "ny_state": "nystate(y/n)",
-            "sample_type": "sampletype",
-            "treatments": "treatments",
-            "quantity": "quantity(ul)",
-            "total_concentration": "totalconcentration(ng/ul)",
-            "total_dna": "totaldna(ng)",
-            "visit_description": "visitdescription",
-            "sample_source": "samplesource",
-            "study": "study",
-            "tracking_number": "trackingnumber",
-            "contact": "contact",
-            "email": "email",
-            "study_pi": "studypi",
-            "site_name": "sitename",
-            "test_name": "genometype",
-            "failure_mode": "failuremode",
-            "failure_mode_desc": "failuremodedesc",
-        }
-
-    @staticmethod
-    def get_aw2_raw_column_mappings():
-        return {
-            "biobank_id": "biobankid",
-            "sample_id": "sampleid",
-            "biobankidsampleid": "biobankidsampleid",
-            "lims_id": "limsid",
-            "mean_coverage": "meancoverage",
-            "genome_coverage": "genomecoverage",
-            "aouhdr_coverage": "aouhdrcoverage",
-            "contamination": "contamination",
-            "sample_source": "samplesource",
-            "mapped_reads_pct": "mappedreadspct",
-            "sex_concordance": "sexconcordance",
-            "sex_ploidy": "sexploidy",
-            "aligned_q30_bases": "alignedq30bases",
-            "array_concordance": "arrayconcordance",
-            "processing_status": "processingstatus",
-            "notes": "notes",
-            "chipwellbarcode": "chipwellbarcode",
-            "call_rate": "callrate",
-            "pipeline_id": "pipelineid",
-        }
-
-    @staticmethod
-    def get_aw3_raw_column_mappings():
-        return {
-            "chipwellbarcode": "chipwellbarcode",
-            "biobank_id": "biobankid",
-            "sample_id": "sampleid",
-            "research_id": "researchid",
-            "biobankidsampleid": "biobankidsampleid",
-            "sex_at_birth": "sexatbirth",
-            "site_id": "siteid",
-            "callrate": "callrate",
-            "sex_concordance": "sexconcordance",
-            "contamination": "contamination",
-            "processing_status": "processingstatus",
-            "mean_coverage": "meancoverage",
-            "sample_source": "samplesource",
-            "pipeline_id": "pipelineid",
-            "mapped_reads_pct": "mappedreadspct",
-            "sex_ploidy": "sexploidy",
-            "ai_an": "aian",
-            "blocklisted": "blocklisted",
-            "blocklisted_reason": "blocklistedreason",
-            "red_idat_path": "redidatpath",
-            "red_idat_md5_path": "redidatmd5path",
-            "green_idat_path": "greenidatpath",
-            "green_idat_md5_path": "greenidatmd5path",
-            "vcf_path": "vcfpath",
-            "vcf_index_path": "vcfindexpath",
-            "vcf_md5_path": "vcfmd5path",
-            "vcf_hf_path": "vcfhfpath",
-            "vcf_hf_index_path": "vcfhfindexpath",
-            "vcf_hf_md5_path": "vcfhfmd5path",
-            "cram_path": "crampath",
-            "cram_md5_path": "crammd5path",
-            "crai_path": "craipath",
-            "gvcf_path": "gvcfpath",
-            "gvcf_md5_path": "gvcfmd5path",
-        }
-
-    @staticmethod
-    def get_aw4_raw_column_mappings():
-        return {
-            "biobank_id": "biobankid",
-            "sample_id": "sampleid",
-            "sex_at_birth": "sexatbirth",
-            "site_id": "siteid",
-            "red_idat_path": "redidatpath",
-            "red_idat_md5_path": "redidatmd5path",
-            "green_idat_path": "greenidatpath",
-            "green_idat_md5_path": "greenidatmd5path",
-            "vcf_path": "vcfpath",
-            "vcf_index_path": "vcfindexpath",
-            "vcf_hf_path": "vcfhfpath",
-            "vcf_hf_md5_path": "vcfhfmd5path",
-            "vcf_hf_index_path": "vcfhfindexpath",
-            "vcf_raw_path": "vcfrawpath",
-            "vcf_raw_md5_path": "vcfrawmd5path",
-            "vcf_raw_index_path": "vcfrawindexpath",
-            "gvcf_path": "gvcfpath",
-            "gvcf_md5_path": "gvcfmd5path",
-            "cram_path": "crampath",
-            "cram_md5_path": "crammd5path",
-            "crai_path": "craipath",
-            "research_id": "researchid",
-            "qc_status": "qcstatus",
-            "drc_sex_concordance": "drcsexconcordance",
-            "drc_call_rate": "drccallrate",
-            "drc_contamination": "drccontamination",
-            "drc_mean_coverage": "drcmeancoverage",
-            "drc_fp_concordance": "drcfpconcordance",
-            "pass_to_research_pipeline": "passtoresearchpipeline",
         }
 
     def _ingest_aw1_manifest(self, rows):
@@ -668,34 +543,27 @@ class GenomicFileIngester:
 
     def load_raw_awn_file(self):
         """
-        Loads genomic_aw1_raw/genomic_aw2_raw
-        with raw data from aw1/aw2 file
+        Loads raw models with raw data from manifests file
+        Ex: genomic_aw1_raw => aw1_manifest
         :return:
         """
         # Set manifest-specific variables
-        if self.controller.job_id == GenomicJob.LOAD_AW1_TO_RAW_TABLE:
-            dao = GenomicAW1RawDao()
-            awn_model = GenomicAW1Raw
-            columns = self.get_aw1_raw_column_mappings()
+        raw_dao_map = {
+            GenomicJob.LOAD_AW1_TO_RAW_TABLE: GenomicAW1RawDao,
+            GenomicJob.LOAD_AW2_TO_RAW_TABLE: GenomicAW2RawDao,
+            GenomicJob.LOAD_AW3_TO_RAW_TABLE: GenomicAW3RawDao,
+            GenomicJob.LOAD_AW4_TO_RAW_TABLE: GenomicAW4RawDao,
+            GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE: GenomicW2SCRawDao,
+            GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE: GenomicW3SRRawDao,
+        }
 
-        elif self.controller.job_id == GenomicJob.LOAD_AW2_TO_RAW_TABLE:
-            dao = GenomicAW2RawDao()
-            awn_model = GenomicAW2Raw
-            columns = self.get_aw2_raw_column_mappings()
+        raw_dao = raw_dao_map.get(self.controller.job_id)
 
-        elif self.controller.job_id == GenomicJob.LOAD_AW3_TO_RAW_TABLE:
-            dao = GenomicAW3RawDao()
-            awn_model = GenomicAW3Raw
-            columns = self.get_aw3_raw_column_mappings()
-
-        elif self.controller.job_id == GenomicJob.LOAD_AW4_TO_RAW_TABLE:
-            dao = GenomicAW4RawDao()
-            awn_model = GenomicAW4Raw
-            columns = self.get_aw4_raw_column_mappings()
-
-        else:
+        if not raw_dao:
             logging.error("Job ID not valid load raw job.")
             return GenomicSubProcessResult.ERROR
+
+        dao = raw_dao()
 
         # look up if any rows exist already for the file
         records = dao.get_from_filepath(self.target_file)
@@ -710,16 +578,16 @@ class GenomicFileIngester:
         if not isinstance(file_data, dict):
             return file_data
 
+        model_columns = dao.model_type.__table__.columns.keys()
+
         # Processing raw data in batches
         batch_size = 100
         item_count = 0
         batch = list()
 
         for row in file_data['rows']:
-            # Standardize fields to lower, no underscores or spaces
-            row = self._clean_row_keys(row)
-
-            row_obj = self._set_raw_awn_attributes(row, awn_model(), columns)
+            row_obj = self._set_raw_awn_attributes(row, model_columns)
+            row_obj = dao.get_model_obj_from_items(row_obj.items())
 
             batch.append(row_obj)
             item_count += 1
@@ -1201,33 +1069,41 @@ class GenomicFileIngester:
 
         return member
 
-    def _set_raw_awn_attributes(self, awn_data, awn_row_obj, columns):
+    def _set_raw_awn_attributes(self, row_data, model_columns):
         """
-        Loads GenomicAW1Raw and GenomicAW2Raw attributes from awn_data
-        :param awn_data: dict
-        :param awn_row_obj: GenomicAW1Raw/GenomicAW2Raw object
-        :param mapping_function: function that returns column mappings
-        :return: GenomicAW1Raw or GenomicAW2Raw
+        Builds dict from row_data and model_columns
+        :param row_data: dict
+        :param model_columns: Current obj model attribute keys
+        :return: dict object
         """
-        awn_row_obj.file_path = self.target_file
-        awn_row_obj.created = clock.CLOCK.now()
-        awn_row_obj.modified = clock.CLOCK.now()
+        row_obj = {}
+        row = self._clean_row_keys(row_data)
 
-        genome_type = None
-        if awn_data.get('genometype'):
-            genome_type = awn_data.get('genometype')
-        elif awn_data.get('sampleid'):
-            member = self.member_dao.get_member_from_sample_id(
-                awn_data.get('sampleid')
-            )
-            genome_type = member.genomeType if member else None
+        if self.controller.job_id == GenomicJob.LOAD_AW1_TO_RAW_TABLE:
+            # adjusting for biobank fieldnames
+            row = dict(zip([re.sub(r'\([^)]*\)', '', key)for key in row], row.values()))
+            row = dict(zip([key.replace('/', '') for key in row], row.values()))
 
-        awn_row_obj.genome_type = genome_type
+        genome_type = row.get('genometype', "")
 
-        for key in columns.keys():
-            awn_row_obj.__setattr__(key, awn_data.get(columns[key]))
+        if not genome_type and row.get('sampleid'):
+            member = self.member_dao.get_member_from_sample_id(row.get('sampleid'))
+            genome_type = member.genomeType if member else ""
 
-        return awn_row_obj
+        row_obj['genome_type'] = genome_type
+        row_obj['test_name'] = genome_type
+
+        for column in model_columns:
+            clean_column = self._clean_row_keys(column)
+            row_value = row.get(clean_column)
+            if row_value or row_value == "":
+                row_obj[column] = row_value
+
+        row_obj['file_path'] = self.target_file
+        row_obj['created'] = clock.CLOCK.now()
+        row_obj['modified'] = clock.CLOCK.now()
+
+        return row_obj
 
     def _process_gc_metrics_data_for_insert(self, rows):
         """ Since input files vary in column names,
