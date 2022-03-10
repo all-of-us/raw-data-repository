@@ -598,6 +598,13 @@ def genomic_aw3_wgs_workflow():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w3sr_manifest_workflow')
+def genomic_cvl_w3sr_workflow():
+    genomic_pipeline.cvl_w3sr_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('genomic_aw3_array_investigation_workflow')
 def genomic_aw3_array_investigation_workflow():
     genomic_pipeline.aw3_array_investigation_workflow()
@@ -979,6 +986,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicAW3WGSWorkflow",
         endpoint="genomic_aw3_wgs_workflow",
         view_func=genomic_aw3_wgs_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW3SRWorkflow",
+        endpoint="genomic_cvl_w3sr_workflow",
+        view_func=genomic_cvl_w3sr_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(

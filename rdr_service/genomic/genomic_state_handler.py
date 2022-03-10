@@ -233,6 +233,12 @@ class W3State(GenomicStateBase):
             return GenomicWorkflowState.AW1CF_POST
 
 
+class W2SCState(GenomicStateBase):
+    def transition_function(self, signal):
+        if signal == 'manifest-generated':
+            return GenomicWorkflowState.CVL_W3SR
+
+
 class GenomicStateHandler:
     """
     Basic FSM for Genomic States. Returns call to state's transition_function()
@@ -259,13 +265,13 @@ class GenomicStateHandler:
         GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
         # Replating is functionally equivalent to AW0
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
+        GenomicWorkflowState.CVL_W2SC: W2SCState(),
     }
 
     @classmethod
     def get_new_state(cls, current_state, signal):
         _state = cls.states.get(current_state, None)
-
-        if _state is not None:
+        if _state:
             return _state.transition_function(signal)
 
         return

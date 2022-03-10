@@ -92,6 +92,7 @@ class GenomicJobController:
         self.max_num = max_num
         self.member_ids_for_update = []
         self.manifests_generated = []
+        self.cvl_site_id = 'rdr'
 
         # Components
         self.set_dao = GenomicSetDao()
