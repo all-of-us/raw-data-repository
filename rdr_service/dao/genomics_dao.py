@@ -86,7 +86,7 @@ class GenomicDaoUtils:
 
     def get_from_filepath(self, filepath):
 
-        if not hasattr(self.model_type, 'created'):
+        if not hasattr(self.model_type, 'file_path'):
             return []
 
         with self.session() as session:
