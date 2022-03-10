@@ -3094,7 +3094,7 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.gcSiteId == 'bi',
                     sqlalchemy.sql.expression.literal("co"),
                     GenomicSetMember.gcSiteId
-                ).label('nyFlag'),
+                ).label('gcSiteId'),
                 GenomicSetMember.ai_an
             ).join(
                 ParticipantSummary,
