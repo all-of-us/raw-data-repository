@@ -548,42 +548,6 @@ def update_report_state_for_consent_removal():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('w1_manifest_workflow')
-def genomic_cvl_w1_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w1_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('w2_manifest_workflow')
-def genomic_cvl_w2_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.ingest_cvl_w2_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
-@run_genomic_cron_job('w3_manifest_workflow')
-def genomic_cvl_w3_workflow():
-    """Temporarily running this manually for E2E Testing"""
-    now = datetime.utcnow()
-    if now.day == 0o1 and now.month == 0o1:
-        logging.info("skipping the scheduled run.")
-        return '{"success": "true"}'
-    genomic_pipeline.create_cvl_w3_manifest()
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 @run_genomic_cron_job('aw3_array_manifest_workflow')
 def genomic_aw3_array_workflow():
     genomic_pipeline.aw3_array_manifest_workflow()
@@ -956,24 +920,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicUpdateReportStateForConsentRemoval",
         endpoint="update_report_state_for_consent_removal",
         view_func=update_report_state_for_consent_removal,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW1Workflow",
-        endpoint="genomic_cvl_w1_workflow",
-        view_func=genomic_cvl_w1_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW2Workflow",
-        endpoint="genomic_cvl_w2_workflow",
-        view_func=genomic_cvl_w2_workflow,
-        methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCvlW3Workflow",
-        endpoint="genomic_cvl_w3_workflow",
-        view_func=genomic_cvl_w3_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(

@@ -62,7 +62,9 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicAW4RawDao, GenomicAW3RawDao, GenomicQueriesDao)
+    GenomicAW4RawDao,
+    GenomicAW3RawDao,
+    GenomicCVLQueriesDao, GenomicArrayQueriesDao, GenomicAWQueriesDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -76,8 +78,6 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
-    CVL_W1_MANIFEST_SUBFOLDER,
-    CVL_W3_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
@@ -3145,10 +3145,11 @@ class ManifestDefinitionProvider:
         self.kwargs = kwargs
 
         self.query = GenomicQueryClass(
-            input_manifest=self.kwargs['kwargs'].get('input_manifest'),
             genome_type=genome_type
         )
-        self.query_dao = GenomicQueriesDao()
+        self.array_query_dao = GenomicArrayQueriesDao()
+        self.aw_query_dao = GenomicAWQueriesDao()
+        self.cvl_query_dao = GenomicCVLQueriesDao()
 
         self.manifest_columns_config = {
             GenomicManifestTypes.CVL_W1: (
@@ -3288,14 +3289,6 @@ class ManifestDefinitionProvider:
             ),
         }
 
-    def _get_source_data_query(self, manifest_type):
-        """
-        Returns the query to use for manifest's source data
-        :param manifest_type:
-        :return: query object
-        """
-        return self.query.genomic_data_config.get(manifest_type)
-
     def get_def(self, manifest_type):
         """
         Returns the manifest definition based on manifest_type
@@ -3304,32 +3297,24 @@ class ManifestDefinitionProvider:
         """
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         def_config = {
-            GenomicManifestTypes.CVL_W1: {
-                'job_run_field': 'cvlW1ManifestJobRunId',
-                'output_filename': f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
-            },
             GenomicManifestTypes.GEM_A1: {
                 'job_run_field': 'gemA1ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
+                'signal': 'manifest-generated',
+                'query': self.array_query_dao.get_gem_a1_records
             },
             GenomicManifestTypes.GEM_A3: {
                 'job_run_field': 'gemA3ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A3_MANIFEST_SUBFOLDER}/AoU_GEM_A3_manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
-            },
-            GenomicManifestTypes.CVL_W3: {
-                'job_run_field': 'cvlW3ManifestJobRunID',
-                'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
-                'signal': 'manifest-generated'
+                'signal': 'manifest-generated',
+                'query': self.array_query_dao.get_gem_a3_records,
             },
             GenomicManifestTypes.CVL_W3SR: {
                 'job_run_field': 'cvlW3srManifestJobRunID',
                 'output_filename': f'{CVL_W3SR_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W3SR'
                                    f'_{now_formatted}.csv',
                 'signal': 'manifest-generated',
-                'query': self.query_dao.get_w3sr_records,
+                'query': self.cvl_query_dao.get_w3sr_records,
                 'params': {
                     'site_id': self.cvl_site_id
                 }
@@ -3337,23 +3322,29 @@ class ManifestDefinitionProvider:
             GenomicManifestTypes.AW3_ARRAY: {
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_ARRAY_SUBFOLDER}/AoU_DRCV_GEN_{now_formatted}.csv',
-                'signal': 'bypass'
+                'signal': 'bypass',
+                # 'query': self.aw_query_dao.get_aw3_array_records
             },
             GenomicManifestTypes.AW3_WGS: {
                 'job_run_field': 'aw3ManifestJobRunID',
                 'output_filename': f'{GENOMIC_AW3_WGS_SUBFOLDER}/AoU_DRCV_SEQ_{now_formatted}.csv',
-                'signal': 'bypass'
+                'signal': 'bypass',
+                # 'query': self.aw_query_dao.get_aw3_wgs_records
             },
             GenomicManifestTypes.AW2F: {
                 'job_run_field': 'aw2fManifestJobRunID',
                 'output_filename': f'{BIOBANK_AW2F_SUBFOLDER}/GC_AoU_DataType_PKG-YYMM-xxxxxx_contamination.csv',
-                'signal': 'bypass'
+                'signal': 'bypass',
+                'query': self.aw_query_dao.get_aw2f_records,
+                'params': {
+                    'input_manifest': self.kwargs['kwargs'].get('input_manifest')
+                }
             }
         }
         def_config = def_config[manifest_type]
         return self.ManifestDef(
             job_run_field=def_config.get('job_run_field'),
-            source_data=self._get_source_data_query(manifest_type),
+            source_data=self.query.genomic_data_config.get(manifest_type),
             destination_bucket=f'{self.bucket_name}',
             output_filename=def_config.get('output_filename'),
             columns=self.manifest_columns_config[manifest_type],
