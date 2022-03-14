@@ -273,6 +273,10 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
     def test_w3sc_manifest_scheduling(self):
+
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+
         # create initial job run
         initial_job_run = self.data_generator.create_database_genomic_job_run(
             jobId=GenomicJob.CVL_W3SR_WORKFLOW,
@@ -283,8 +287,15 @@ class GenomicCVLPipelineTest(BaseTestCase):
             runStatus=GenomicSubProcessStatus.COMPLETED,
         )
 
-        with self.assertRaises(RuntimeError):
-            genomic_pipeline.cvl_w3sr_manifest_workflow()
+        response = self.send_get(
+            'GenomicCVLW3SRWorkflow',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            headers={'X-Appengine-Cron': True},
+            expected_status=500
+        )
+
+        self.assertTrue(response.status_code == 500)
 
         current_job_runs = self.job_run_dao.get_all()
         # remove initial
@@ -293,9 +304,16 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
         today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
 
-        with self.assertRaises(RuntimeError):
-            with clock.FakeClock(today_plus_seven):
-                genomic_pipeline.cvl_w3sr_manifest_workflow()
+        with clock.FakeClock(today_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
 
         current_job_runs = self.job_run_dao.get_all()
         # remove initial
@@ -305,17 +323,31 @@ class GenomicCVLPipelineTest(BaseTestCase):
         today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
 
         with clock.FakeClock(today_plus_fourteen):
-            genomic_pipeline.cvl_w3sr_manifest_workflow()
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True}
+            )
+
+        self.assertTrue(response['success'] == 'true')
 
         current_job_runs = self.job_run_dao.get_all()
         # remove initial
         current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
 
-        self.assertTrue(len(current_job_runs), config.GENOMIC_CVL_SITES)
+        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
 
         today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
 
-        with self.assertRaises(RuntimeError):
-            with clock.FakeClock(today_plus_fourteen_plus_seven):
-                genomic_pipeline.cvl_w3sr_manifest_workflow()
+        with clock.FakeClock(today_plus_fourteen_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
