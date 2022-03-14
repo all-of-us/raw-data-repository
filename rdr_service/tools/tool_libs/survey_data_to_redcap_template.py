@@ -1,4 +1,5 @@
 import argparse
+import csv
 
 # pylint: disable=superfluous-parens
 # pylint: disable=broad-except
@@ -9,11 +10,11 @@ import json
 
 from collections import OrderedDict
 
-from rdr_service.model import BQ_TABLES
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.code_dao import CodeDao
+from rdr_service.model import BQ_TABLES
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -508,9 +509,12 @@ class SurveyToRedCapConversion(object):
             if self.is_freetext_code(col) and len(answers):
                 # PDR data has already mapped null/skipped free text fields to 0 if no text was entered,
                 # or 1 if text was present
-                if answers[0].isnumeric() and int(answers[0]):
+                if answers[0] == "1":
                     redcap_fields[self.get_redcap_fieldname(col)] = '(redacted)'
+                elif answer[0] == "0":
+                    redcap_fields[self.get_redcap_fieldname(col)] = None
                 else:
+                    # "Should never get here" but in case there was an issue with PDR data generation....
                     redcap_fields[self.get_redcap_fieldname(col)] = answers[0]
             else:
                 for answer in answers:
@@ -521,21 +525,29 @@ class SurveyToRedCapConversion(object):
                     elif parent:
                         # Multi-select option sections (have a parent) get a 1 as their value
                         redcap_fields[self.get_redcap_fieldname(answer, parent)] = 1
-                    # For single-select/radio button questions, map numeric strings to ints?
+                    # For single-select/radio button questions, bring over numeric strings intact?
                     elif answer.isnumeric():
-                        redcap_fields[self.get_redcap_fieldname(col)] = int(answer)
+                        redcap_fields[self.get_redcap_fieldname(col)] = answer
+                    # !!! WORKAROUND !!! See PDR-819.  Treat the 3-char truncated 'PMI' answer (to the
+                    # EmploymentWorkAddress_ZipCode question) the same as 'PMI_Skip'.
                     # REDCap doesn't have a display value when radio button/single select questions are skipped
-                    elif answer != 'PMI_Skip':
+                    elif answer not in ('PMI_Skip', 'PMI'):
                         redcap_fields[self.get_redcap_fieldname(col)] = self.get_code_display_value(answer)
-
 
         for key in redcap_fields:
             print(f'{key}:   {redcap_fields[key]}')
-            if key == 'employmentworkaddress_zipcode' and redcap_fields[key] == 'PMI':
-                print('debug')
 
         print('\n\n')
         self.add_redcap_export_row(module, response_id, redcap_fields)
+
+    def export_redcap_csv(self):
+        """ Write the generated REDCap export rows to a file """
+        with open('basics_redcap_export.csv', 'w', newline='') as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=',')
+            for row in self.redcap_export_rows:
+                csv_writer.writerow(row)
+
+
 
     def execute(self):
         """ Run the survey-to-redcap export conversion tool """
@@ -553,6 +565,8 @@ class SurveyToRedCapConversion(object):
             for rsp_id in response_list:
                 rsp = self.get_module_response_dict(module, rsp_id, session)
                 self.map_response_to_redcap_dict(module, rsp_id, rsp)
+
+        self.export_redcap_csv()
 
         return 0
 
