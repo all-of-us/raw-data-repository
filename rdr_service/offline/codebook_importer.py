@@ -121,7 +121,8 @@ class CodebookImporter:
                 questionType=question_type,
                 validation=item_json['text_validation_type_or_show_slider_number'],
                 validation_min=item_json['text_validation_min'],
-                validation_max=item_json['text_validation_max']
+                validation_max=item_json['text_validation_max'],
+                branching_logic=item_json['branching_logic']
             )
             self._save_database_object(survey_question)
 
