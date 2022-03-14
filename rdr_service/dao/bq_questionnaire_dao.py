@@ -185,9 +185,10 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     elif field['type'] == BQFieldTypeEnum.INTEGER.name:
                         if fld_value != PMI_SKIP_CODE:
                             setattr(bqr, fld_name, 1)
-                    # Truncate zip codes to 3 digits
+                    # Truncate zip codes to 3 digits.  Sanity check that the answer starts with a digit (consistent
+                    # with a 5-digit or Zip+4 format zipcode answer), and is not a code string like PMI_Skip
                     elif fld_name in ('StreetAddress_PIIZIP', 'EmploymentWorkAddress_ZipCode') and \
-                            len(fld_value) > 2:
+                            len(fld_value) > 2 and fld_value[0].isdigit():
                         setattr(bqr, fld_name, fld_value[:3])
                     else:
                         setattr(bqr, fld_name, str(fld_value))
@@ -197,7 +198,6 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                     break
 
         return table, bqrs
-
 
 def bq_questionnaire_update_task(p_id, qr_id):
     """
