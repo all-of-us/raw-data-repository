@@ -495,6 +495,48 @@ class SurveyToRedCapConversion(object):
 
         return {}
 
+    def map_response_to_redcap_dict(self, module, response_id, response_dict):
+        """
+
+        """
+        redcap_fields = OrderedDict()
+        print(f'\n==================\n{response_id}\n==================')
+        for col in self.parent_code_ordered_lists[module]:
+            # PDR data can have comma-separated code strings for answers to multiselect questions
+            answers = list(str(response_dict[col]).split(',')) if response_dict[col] else []
+
+            if self.is_freetext_code(col) and len(answers):
+                # PDR data has already mapped null/skipped free text fields to 0 if no text was entered,
+                # or 1 if text was present
+                if answers[0].isnumeric() and int(answers[0]):
+                    redcap_fields[self.get_redcap_fieldname(col)] = '(redacted)'
+                else:
+                    redcap_fields[self.get_redcap_fieldname(col)] = answers[0]
+            else:
+                for answer in answers:
+                    parent = self.find_parent_question_code(answer)
+                    if answer == 'PMI_PreferNotToAnswer':
+                        key, value = self.redcap_prefer_not_to_answer(col)
+                        redcap_fields[key] = value
+                    elif parent:
+                        # Multi-select option sections (have a parent) get a 1 as their value
+                        redcap_fields[self.get_redcap_fieldname(answer, parent)] = 1
+                    # For single-select/radio button questions, map numeric strings to ints?
+                    elif answer.isnumeric():
+                        redcap_fields[self.get_redcap_fieldname(col)] = int(answer)
+                    # REDCap doesn't have a display value when radio button/single select questions are skipped
+                    elif answer != 'PMI_Skip':
+                        redcap_fields[self.get_redcap_fieldname(col)] = self.get_code_display_value(answer)
+
+
+        for key in redcap_fields:
+            print(f'{key}:   {redcap_fields[key]}')
+            if key == 'employmentworkaddress_zipcode' and redcap_fields[key] == 'PMI':
+                print('debug')
+
+        print('\n\n')
+        self.add_redcap_export_row(module, response_id, redcap_fields)
+
     def execute(self):
         """ Run the survey-to-redcap export conversion tool """
 
@@ -504,44 +546,14 @@ class SurveyToRedCapConversion(object):
         self.set_bq_table(module)
         with dao.session() as session:
             # TODO:  Replace with a call to _get_response_id_list based on parameters passed
-            for rsp_id in [996438929, 224078445, 622747617, 100178505, 100179607, 100275014, 100892279, 101083117,
+            response_list = [996438929, 224078445, 622747617, 100178505, 100179607, 100275014, 100892279, 101083117,
                            101394766, 101657560, 102311593, 102479428, 102699093, 100120910, 100278026, 100393283,
                            100419634, 100428180, 100788745, 100801123, 100802451, 100830407,100868630,
-                           ]:
+                           ]
+            for rsp_id in response_list:
                 rsp = self.get_module_response_dict(module, rsp_id, session)
-                redcap_fields = OrderedDict()
-                print(f'\n==================\n{rsp_id}\n==================')
-                for col in self.parent_code_ordered_lists[module]:
-                    # PDR data can have comma-separated code strings for answers to multiselect questions
-                    answers = list(str(rsp[col]).split(',')) if rsp[col] else []
+                self.map_response_to_redcap_dict(module, rsp_id, rsp)
 
-                    if self.is_freetext_code(col) and len(answers):
-                        # PDR data has already mapped null/skipped free text to 0 and text present to 1
-                        if answers[0].isnumeric() and int(answers[0]):
-                            redcap_fields[self.get_redcap_fieldname(col)] = '(redacted)'
-                        else:
-                            redcap_fields[self.get_redcap_fieldname(col)] =  answers[0]
-
-                    else:
-                        for answer in answers:
-                            parent = self.find_parent_question_code(answer)
-                            if answer == 'PMI_PreferNotToAnswer':
-                                key, value = self.redcap_prefer_not_to_answer(col, parent)
-                                redcap_fields[key] = value
-                            elif parent:
-                                # Multi-select option sections (have a parent) get a 1 as their value
-                                redcap_fields[self.get_redcap_fieldname(answer, parent)] = 1
-                            # For single-select/radio button questions, map numeric strings to ints?
-                            elif answer.isnumeric():
-                                redcap_fields[self.get_redcap_fieldname(col)] =  int(answer)
-                            # REDCap doesn't have a display value when radio button/single select questions are skipped
-                            elif answer != 'PMI_Skip':
-                                redcap_fields[self.get_redcap_fieldname(col)] =  self.get_code_display_value(answer)
-
-                for key in redcap_fields:
-                    print(f'{key}:   {redcap_fields[key]}')
-                print('\n\n')
-                self.add_redcap_export_row(module, rsp_id, redcap_fields)
         return 0
 
 def run():
