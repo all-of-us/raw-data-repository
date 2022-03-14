@@ -157,7 +157,7 @@ cron:
 - description: Genomic CVL W3SR Workflow
   url: /offline/GenomicCVLW3SRWorkflow
   timezone: America/New_York
-  schedule: 1 of jan 12:00
+  schedule: every monday 05:30
   target: offline
 - description: Genomic AW3 Array Investigation Workflow
   url: /offline/GenomicAW3ArrayInvestigationWorkflow
