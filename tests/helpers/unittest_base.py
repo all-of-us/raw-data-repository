@@ -900,6 +900,13 @@ class BaseTestCase(unittest.TestCase, QuestionnaireTestMixin, CodebookTestMixin)
         """
         return textwrap.dedent(multiline_str).strip()
 
+    def mock(self, namespace_to_patch):
+        patcher = mock.patch(namespace_to_patch)
+        mock_instance = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        return mock_instance
+
 
 class InMemorySqlExporter(sql_exporter.SqlExporter):
     """Store rows that would be written to GCS CSV in a StringIO instead.
