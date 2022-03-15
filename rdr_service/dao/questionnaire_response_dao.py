@@ -15,6 +15,7 @@ from sqlalchemy.orm import aliased, joinedload, Session, subqueryload
 from werkzeug.exceptions import BadRequest
 
 from rdr_service import singletons
+from rdr_service.api_util import dispatch_task
 from rdr_service.dao.database_utils import format_datetime, parse_datetime
 from rdr_service.domain_model import response as response_domain_model
 from rdr_service.lib_fhir.fhirclient_1_0_6.models import questionnaireresponse as fhir_questionnaireresponse
@@ -31,6 +32,7 @@ from rdr_service.code_constants import (
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
     CONSENT_PERMISSION_YES_CODE,
+    DATE_OF_BIRTH_QUESTION_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
     DVEHRSHARING_CONSENT_CODE_YES,
     DVEHR_SHARING_QUESTION_CODE,
@@ -608,6 +610,14 @@ class QuestionnaireResponseDao(BaseDao):
                         street_address_submitted = answer.valueString is not None
                     elif code.value == STREET_ADDRESS2_QUESTION_CODE:
                         street_address2_submitted = answer.valueString is not None
+                    elif code.value == DATE_OF_BIRTH_QUESTION_CODE:
+                        dispatch_task(
+                            endpoint='check_date_of_birth',
+                            payload={
+                                'participant_id': participant.participantId,
+                                'date_of_birth': answer.valueDate
+                            }
+                        )
 
                     summary_field = QUESTION_CODE_TO_FIELD.get(code.value)
                     if summary_field:
@@ -700,6 +710,7 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                         except ValueError:
                             logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
+
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
         # So when it hasn't been submitted and there is something set for streetAddress2 we want to clear it out.

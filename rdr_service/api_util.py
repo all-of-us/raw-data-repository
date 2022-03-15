@@ -1,8 +1,12 @@
 """Utilities used by the API definition, and authentication/authorization/roles."""
 import datetime
+import logging
 
 from dateutil.parser import parse
 from werkzeug.exceptions import BadRequest
+
+from rdr_service import config
+from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.storage import get_storage_provider
 from rdr_service.code_constants import UNMAPPED, UNSET
 
@@ -244,3 +248,20 @@ def returns_success(func):
         return '{"success": "true"}'
 
     return wrapper
+
+
+def dispatch_task(endpoint: str, payload: dict, in_seconds=30, quiet=True, project_id=config.GAE_PROJECT):
+    """Queue a task in GAE that will execute with the specified task with the provided json"""
+
+    if project_id == 'localhost':
+        logging.warning(f'Skipping {endpoint} task targeting at localhost')
+    else:
+        task = GCPCloudTask()
+        task.execute(
+            endpoint=endpoint,
+            payload=payload,
+            in_seconds=in_seconds,
+            queue='resource-tasks',
+            quiet=quiet,
+            project_id=project_id
+        )
