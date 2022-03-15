@@ -1133,15 +1133,13 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
         with self.session() as session:
             return session.query(
                 functions.max(GenomicJobRun.startTime)
-            ).filter(GenomicJobRun.jobId == job_id,
-                     GenomicJobRun.runStatus == GenomicSubProcessStatus.COMPLETED,
-                     and_(
-                         or_(
-                             GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS,
-                             GenomicJobRun.runResult == GenomicSubProcessResult.NO_FILES
-                         )
-                     )
-                     ).one()[0]
+            ).filter(
+                GenomicJobRun.jobId == job_id,
+                GenomicJobRun.runStatus == GenomicSubProcessStatus.COMPLETED,
+                GenomicJobRun.runResult.in_([
+                    GenomicSubProcessResult.SUCCESS,
+                    GenomicSubProcessResult.NO_FILES
+                ])).one()[0]
 
     def insert_run_record(self, job_id):
         """
