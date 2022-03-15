@@ -234,3 +234,13 @@ def download_cloud_file(source_path, destination_path):
 def is_cloud_file_exits(path):
     provider = get_storage_provider()
     return provider.exists(path)
+
+
+def returns_success(func):
+    """A decorator for cron or task api that simply returns a json structure with success set to true"""
+
+    def wrapper(*args, **kwargs):
+        func(*args, **kwargs)
+        return '{"success": "true"}'
+
+    return wrapper
