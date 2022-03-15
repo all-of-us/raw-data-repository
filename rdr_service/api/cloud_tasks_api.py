@@ -5,6 +5,7 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
 from rdr_service.api.data_gen_api import generate_samples_task
+from rdr_service.api_util import returns_success, parse_date
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
@@ -20,6 +21,7 @@ from rdr_service.resource.generators.workbench import res_workspace_batch_update
     res_institutional_affiliations_batch_update, res_researcher_batch_update
 from rdr_service.resource.tasks import batch_rebuild_participants_task, batch_rebuild_retention_metrics_task, \
     batch_rebuild_consent_metrics_task, batch_rebuild_user_event_metrics_task, check_consent_errors_task
+from rdr_service.services.participant_data_validation import ParticipantDataValidation
 
 
 def log_task_headers():
@@ -214,6 +216,7 @@ class RebuildRetentionEligibleMetricsApi(Resource):
         batch_rebuild_retention_metrics_task(data)
         return '{"success": "true"}'
 
+
 class RebuildConsentMetricApi(Resource):
     """
     Cloud Task endpoint: Rebuild Consent Validation metrics resource records
@@ -224,6 +227,7 @@ class RebuildConsentMetricApi(Resource):
         data = request.get_json(force=True)
         batch_rebuild_consent_metrics_task(data)
         return '{"success": "true"}'
+
 
 class CheckConsentErrorsApi(Resource):
     """
@@ -236,6 +240,7 @@ class CheckConsentErrorsApi(Resource):
         check_consent_errors_task(data)
         return '{"success": "true"}'
 
+
 class RebuildUserEventMetricsApi(Resource):
     """
     Cloud Task endpoint: Rebuild Color User Event Metrics records Resource records.
@@ -246,3 +251,16 @@ class RebuildUserEventMetricsApi(Resource):
         data = request.get_json(force=True)
         batch_rebuild_user_event_metrics_task(data)
         return '{"success": "true"}'
+
+
+class ValidateDateOfBirthApi(Resource):
+    @task_auth_required
+    @returns_success
+    def post(self):
+        task_data = request.json
+        date_of_birth = parse_date(task_data['date_of_birth'])
+
+        ParticipantDataValidation.analyze_date_of_birth(
+            participant_id=task_data['participant_id'],
+            date_of_birth=date_of_birth
+        )

@@ -159,6 +159,11 @@ def _build_resource_app():
     #
     # End primary Resource API endpoint
     #
+
+    _api.add_resource(cloud_tasks_api.ValidateDateOfBirthApi,
+                      TASK_PREFIX + 'ValidateDateOfBirth',
+                      endpoint='check_date_of_birth', methods=['POST'])
+
     _app.add_url_rule('/_ah/start', endpoint='start', view_func=flask_start, methods=["GET"])
     _app.add_url_rule('/_ah/stop', endpoint='stop', view_func=flask_stop, methods=["GET"])
 
