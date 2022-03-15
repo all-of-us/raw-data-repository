@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
+from collections import defaultdict
+from enum import auto, Enum
 from typing import Dict, Sequence
 
 from rdr_service.domain_model import response as response_domain_model
@@ -81,7 +82,7 @@ class Question:
 class _Comparison(Enum):
     """Comparison enum to allow for multiple types of equality checks"""
 
-    IS = 1
+    IS = auto()
 
 
 class InAnySurvey(_Condition):
@@ -163,3 +164,128 @@ class ResponseRequirements:
             errors.extend(conditional.get_errors(response, question_code=question_code))
 
         return errors
+
+
+class ParserState(Enum):
+    READING_QUESTION = auto()
+    READING_CHECKBOX = auto()
+    READING_ANSWER = auto()
+    READING_CONDITIONAL = auto()
+
+
+class _BranchingLogicParser:
+    def __init__(self):
+        self.state = None
+        self.parsed_conditions = defaultdict(list)
+        self.current_datum = None
+        self.expected_next_chars = []
+        self.concat_operation = None
+
+    def start_reading_question_code(self):
+        if self.state is not None:
+            raise Exception('unexpected question code')
+        else:
+            self.state = ParserState.READING_QUESTION
+            self.current_datum = {
+                'question_code_chars': []
+            }
+
+    def start_reading_answer_code(self):
+        if self.state != ParserState.READING_QUESTION:
+            raise Exception('unexpected transition to answer')
+        else:
+            self.state = ParserState.READING_ANSWER
+            self.current_datum['equals_answer_chars'] = []
+            self.expected_next_chars = [' ', '=', ' ', "'"]
+
+    def start_reading_checkbox_constraint(self):
+        if self.state != ParserState.READING_QUESTION:
+            raise Exception('unexpected transition to checkbox parsing')
+
+        self.state = ParserState.READING_CHECKBOX
+        self.current_datum['option_checked'] = []
+
+    def finalize_equality(self):
+        if self.state != ParserState.READING_ANSWER:
+            raise Exception('unexpected end of answer')
+
+        self.state = ParserState.READING_CONDITIONAL
+        question_code = ''.join(self.current_datum['question_code_chars'])
+        answer_code = ''.join(self.current_datum['equals_answer_chars'])
+        self.parsed_conditions[question_code].append(f'equals {answer_code}')
+
+        self.current_datum = []
+        self._expect_conditional()
+
+    def finalize_checkbox_constraint(self):
+        if self.state != ParserState.READING_CHECKBOX:
+            raise Exception('unexpected end of paren')
+
+        self.state = ParserState.READING_CONDITIONAL
+        question_code = ''.join(self.current_datum['question_code_chars'])
+        answer_code = ''.join(self.current_datum['option_checked'])
+        self.parsed_conditions[question_code].append(f'has {answer_code} checked')
+
+        self.current_datum = []
+        self.expected_next_chars = [']', ' ', '=', ' ', "'", '1', "'"]
+        self._expect_conditional()
+
+    def _expect_conditional(self):
+        if self.concat_operation is None:
+            self.expected_next_chars.extend([' '])
+        elif self.concat_operation == 'and':
+            self.expected_next_chars.extend([' ', 'a', 'n', 'd', ' '])
+        elif self.concat_operation == 'or':
+            self.expected_next_chars.extend([' ', 'o', 'r', ' '])
+
+    def start_anding(self):
+        self._set_concat_operation('and')
+        self.expected_next_chars = ['n', 'd', ' ']
+
+    def start_oring(self):
+        self._set_concat_operation('or')
+        self.expected_next_chars = ['r', ' ']
+
+    def _set_concat_operation(self, operation):
+        if self.concat_operation is not None and self.concat_operation != operation:
+            raise Exception('concat operation already encountered, unable to parse switch')
+
+        self.concat_operation = operation
+
+    def take_char(self, char):
+        if self.expected_next_chars:
+            expected = self.expected_next_chars.pop(0)
+            if expected != char:
+                raise Exception(f'unexpected {char}')
+        else:
+            if char == '[':
+                self.start_reading_question_code()
+            elif char == ']':
+                self.start_reading_answer_code()
+            elif char == "'":
+                self.finalize_equality()
+            elif char == '(':
+                self.start_reading_checkbox_constraint()
+            elif char == ')':
+                self.finalize_checkbox_constraint()
+            else:
+                if self.state == ParserState.READING_QUESTION:
+                    self.current_datum['question_code_chars'].append(char)
+                elif self.state == ParserState.READING_ANSWER:
+                    self.current_datum['equals_answer_chars'].append(char)
+                elif self.state == ParserState.READING_CHECKBOX:
+                    self.current_datum['option_checked'].append(char)
+                elif self.state == ParserState.READING_CONDITIONAL:
+                    if char == 'a':
+                        self.start_anding()
+                    elif char == 'o':
+                        self.start_oring()
+                else:
+                    raise Exception(f'unsure what to do with {char}')
+
+
+def build_from_branch_logic(branching_logic_str):
+    parser = _BranchingLogicParser()
+    for char in branching_logic_str:
+        parser.take_char(char)
+    print('bob')
