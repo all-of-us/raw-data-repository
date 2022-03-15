@@ -3,6 +3,7 @@ import logging
 
 from dateutil.relativedelta import relativedelta
 
+from rdr_service import config
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.slack_utils import SlackMessageHandler
@@ -67,10 +68,19 @@ class ParticipantDataValidation:
 
     @classmethod
     def _send_notification(cls):
-        handler = SlackMessageHandler(webhook_url='aoeu')
+        validation_webhook = cls._get_slack_webhook_url()
+        if validation_webhook is None:
+            logging.warning('Webhook not found. Skipping slack notification for validation error.')
+
+        handler = SlackMessageHandler(webhook_url=validation_webhook)
         handler.send_message_to_webhook(message_data={
             'text': 'Invalid date of birth detected'
         })
 
+    @classmethod
+    def _get_slack_webhook_url(cls):
+        webhook_config = config.getSettingJson(config.RDR_SLACK_WEBHOOKS, None)
+        if webhook_config is None:
+            return None
 
-
+        return webhook_config.get('rdr_validation_webhook')

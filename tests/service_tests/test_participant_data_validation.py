@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import mock
 
+from rdr_service import config
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.services.participant_data_validation import ParticipantDataValidation
 from tests.helpers.unittest_base import BaseTestCase
@@ -21,6 +22,10 @@ class ParticipantDataValidationTest(BaseTestCase):
         self.slack_client_instance = mock_slack_client_class.return_value
 
         self.logging_mock = self.mock('rdr_service.services.participant_data_validation.logging')
+
+        self.temporarily_override_config_setting(config.RDR_SLACK_WEBHOOKS, {
+            'rdr_validation_webhook': 'aoeu1234'
+        })
 
     def test_valid_date_of_birth_gives_no_errors(self):
         self._set_consent_datetime(datetime.utcnow())
