@@ -63,8 +63,8 @@ class CanOnlyBeAnsweredIf(_Requirement):
 
 class Question:
     """
-    Condition builder class to help a bit with readability when defining conditions.
-    Creates a expected Condition instances that target a specific question.
+    Condition-builder class to help a bit with readability when defining conditions.
+    Creates expected Condition instances that target a specific question.
     """
 
     def __init__(self, question_code):
@@ -79,7 +79,7 @@ class Question:
 
 
 class _Comparison(Enum):
-    """Comparison enum to allow for multiple equality checks"""
+    """Comparison enum to allow for multiple types of equality checks"""
 
     IS = 1
 
