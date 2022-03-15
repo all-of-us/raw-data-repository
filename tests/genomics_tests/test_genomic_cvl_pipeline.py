@@ -29,8 +29,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             genomicSetVersion=1
         )
 
-    def execute_base_w2sc_ingestion(self):
-        test_file = 'RDR_AoU_CVL_W2SC.csv'
+    def execute_base_cvl_ingestion(self, **kwargs):
         test_date = datetime.datetime(2020, 10, 13, 0, 0, 0, 0)
         bucket_name = 'test_cvl_bucket'
         subfolder = 'cvl_subfolder'
@@ -46,18 +45,18 @@ class GenomicCVLPipelineTest(BaseTestCase):
             )
 
         test_file_name = create_ingestion_test_file(
-            test_file,
+            kwargs.get('test_file'),
             bucket_name,
             folder=subfolder
         )
 
         task_data = {
-            "job": GenomicJob.CVL_W2SC_WORKFLOW,
+            "job": kwargs.get('job_id'),
             "bucket": 'test_cvl_bucket',
             "file_data": {
                 "create_feedback_record": False,
                 "upload_date": test_date.isoformat(),
-                "manifest_type": GenomicManifestTypes.CVL_W2SC,
+                "manifest_type": kwargs.get('manifest_type'),
                 "file_path": f"{bucket_name}/{subfolder}/{test_file_name}"
             }
         }
@@ -67,7 +66,11 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
     def test_w2sc_manifest_ingestion(self):
 
-        self.execute_base_w2sc_ingestion()
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W2SC.csv',
+            job_id=GenomicJob.CVL_W2SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W2SC
+        )
 
         current_members = self.member_dao.get_all()
         self.assertEqual(len(current_members), 3)
@@ -93,7 +96,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
     def test_w2sc_manifest_to_raw_ingestion(self):
 
-        self.execute_base_w2sc_ingestion()
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W2SC.csv',
+            job_id=GenomicJob.CVL_W2SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W2SC
+        )
+
         w2sc_raw_dao = GenomicW2SCRawDao()
 
         manifest_type = 'w2sc'
@@ -269,5 +277,35 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in w3sr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
+    def test_w4wr_manifest_ingestion(self):
 
+        self.execute_base_cvl_ingestion(
+            test_file='',
+            job_id=GenomicJob.CVL_W4WR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W4WR
+        )
 
+    # def test_w4wr_manifest_to_raw_ingestion(self):
+    #
+    #     self.execute_base_cvl_ingestion(
+    #         test_file='RDR_AoU_CVL_W2SC.csv',
+    #         job_id=GenomicJob.CVL_W4WR_WORKFLOW,
+    #         manifest_type=GenomicManifestTypes.CVL_W4WR
+    #     )
+    #
+    #     w4wr_raw_dao = GenomicW4WRRawDao()
+    #
+    #     manifest_type = 'w4wr'
+    #     w4wr_manifest_file = self.manifest_file_dao.get(1)
+    #
+    #     genomic_pipeline.load_awn_manifest_into_raw_table(
+    #         w4wr_manifest_file.filePath,
+    #         manifest_type
+    #     )
+    #
+    #     w4wr_raw_records = w4wr_raw_dao.get_all()
+    #
+    #     self.assertEqual(len(w4wr_raw_records), 3)
+    #     self.assertTrue(all(obj.file_path is not None for obj in w4wr_raw_records))
+    #     self.assertTrue(all(obj.biobank_id is not None for obj in w4wr_raw_records))
+    #     self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))

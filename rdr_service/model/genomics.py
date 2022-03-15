@@ -252,6 +252,9 @@ class GenomicSetMember(Base):
     cvlW3srManifestJobRunID = Column('cvl_w3sr_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
+    cvlW4wrManifestJobRunID = Column('cvl_w4wr_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
 
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
@@ -662,6 +665,31 @@ event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
 
 
+class GenomicW4WRRaw(Base):
+    """
+    Raw data from W4WR files
+    """
+    __tablename__ = 'genomic_w4wr_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    health_related_data_file_name = Column(String(255), nullable=True)
+    clinical_analysis_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW4WRRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW4WRRaw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
@@ -795,6 +823,25 @@ class GenomicGCValidationMetrics(Base):
 
 event.listen(GenomicGCValidationMetrics, 'before_insert', model_insert_listener)
 event.listen(GenomicGCValidationMetrics, 'before_update', model_update_listener)
+
+
+class GenomicCVLAnalysis(Base):
+    """
+    Used for storage in GHR3 of health related analysis
+    """
+
+    __tablename__ = 'genomic_cvl_analysis'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
+    clinical_analysis_type = Column(String(128), nullable=False)
+    health_related_data_file_name = Column(String(512), nullable=False)
+
+
+event.listen(GenomicCVLAnalysis, 'before_insert', model_insert_listener)
+event.listen(GenomicCVLAnalysis, 'before_update', model_update_listener)
 
 
 class GenomicSampleContamination(Base):

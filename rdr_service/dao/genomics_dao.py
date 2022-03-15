@@ -1,6 +1,7 @@
 import collections
 import logging
 import os
+from abc import ABC
 
 import pytz
 import sqlalchemy
@@ -39,7 +40,7 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw)
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2401,52 +2402,34 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 
-class GenomicAW3RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW3RawDao(BaseDao, GenomicDaoUtils, ABC):
     def __init__(self):
         super(GenomicAW3RawDao, self).__init__(
             GenomicAW3Raw, order_by_ending=['id'])
 
-    def get_id(self, obj):
-        pass
 
-    def from_client_json(self):
-        pass
-
-
-class GenomicAW4RawDao(BaseDao, GenomicDaoUtils):
+class GenomicAW4RawDao(BaseDao, GenomicDaoUtils, ABC):
     def __init__(self):
         super(GenomicAW4RawDao, self).__init__(
             GenomicAW4Raw, order_by_ending=['id'])
 
-    def get_id(self, obj):
-        pass
 
-    def from_client_json(self):
-        pass
-
-
-class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils, ABC):
     def __init__(self):
         super(GenomicW2SCRawDao, self).__init__(
             GenomicW2SCRaw, order_by_ending=['id'])
 
-    def get_id(self, obj):
-        pass
 
-    def from_client_json(self):
-        pass
-
-
-class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
+class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils, ABC):
     def __init__(self):
         super(GenomicW3SRRawDao, self).__init__(
             GenomicW3SRRaw, order_by_ending=['id'])
 
-    def get_id(self, obj):
-        pass
 
-    def from_client_json(self):
-        pass
+class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils, ABC):
+    def __init__(self):
+        super(GenomicW4WRRawDao, self).__init__(
+            GenomicW4WRRaw, order_by_ending=['id'])
 
 
 class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):
