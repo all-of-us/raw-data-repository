@@ -253,8 +253,8 @@ def returns_success(func):
 def dispatch_task(endpoint: str, payload: dict, in_seconds=30, quiet=True, project_id=config.GAE_PROJECT):
     """Queue a task in GAE that will execute with the specified task with the provided json"""
 
-    if project_id == 'localhost':
-        logging.warning(f'Skipping {endpoint} task targeting at localhost')
+    if project_id == 'localhost' and False:
+        logging.warning(f'Skipping {endpoint} task targeting localhost')
     else:
         task = GCPCloudTask()
         task.execute(

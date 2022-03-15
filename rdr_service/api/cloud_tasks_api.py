@@ -5,7 +5,7 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
 from rdr_service.api.data_gen_api import generate_samples_task
-from rdr_service.api_util import returns_success, parse_date
+from rdr_service.api_util import parse_date, returns_success
 from rdr_service.app_util import task_auth_required
 from rdr_service.dao.bq_code_dao import rebuild_bq_codebook_task
 from rdr_service.dao.bq_participant_summary_dao import bq_participant_summary_update_task
