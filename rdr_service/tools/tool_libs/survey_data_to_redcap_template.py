@@ -25,6 +25,8 @@ tool_desc = "Extracts module response data into a REDCap-conformant format for R
 
 class SurveyToRedCapConversion(object):
 
+    # TODO:  Investigate dynamically generating templates for this and other surveys
+    #  based on analyzing question types and branching logic details ingested from REDCap
     DEFAULT_REDCAP_TEMPLATE_RECORD = {
         "TheBasics":  OrderedDict([
             ('thebasics_birthplace', None),
@@ -224,7 +226,7 @@ class SurveyToRedCapConversion(object):
 
     parent_code_ordered_lists = {
         # This lays out the questions codes in the order they are listed in the REDCap template
-        # referred to in DA-250.  That template follows a topic-based grouping/ordering
+        # referred to in DA-2500.  That template follows a topic-based grouping/ordering
         #
         # NOTE:  Some codes/responses exist in RDR which may not be represented in the REDCap template (e.g.,
         # 'WhatTribeAffiliation_FreeText'.  Including here so we can catch those inconsistencies in the REDCap data
@@ -275,11 +277,13 @@ class SurveyToRedCapConversion(object):
         ]
     }
 
-    # Static class variables / lists that will be populated as values are discovered, so they can act as a class cache
+    # Static class variables / dicts that will be populated as values are discovered, so they can act as a class cache
     code_display_values = {}
     pdr_table_mod_classes = {}
 
-    # For branching logic option menus, associate the codes for that option list to the "parent" question code
+    # For branching logic option menus, associate codes from the same option menu (shared prefixes) to the "parent"
+    # question code.  The values (parent question codes) from this dict can also be used when generating "Prefer Not To
+    # Answer" field names for a given topic's option menu (e.g., gender_genderidentity___pmi_prefernottoanswer)
     prefix_to_parent_code_map = {
         "WhatRaceEthnicity_": "Race_WhatRaceEthnicity",
         "AIANSpecific_": "AIAN_AIANSpecific",
@@ -363,7 +367,7 @@ class SurveyToRedCapConversion(object):
         Return the display string from the code table for the given code value.  Used for exporting responses to
         radio button questions
         """
-        # Check the class cache first
+        # Check the class cache first for codes that were already discovered/stored
         if code in self.code_display_values.keys():
             return self.code_display_values[code]
 
@@ -450,16 +454,14 @@ class SurveyToRedCapConversion(object):
                 row.append(self.DEFAULT_REDCAP_TEMPLATE_RECORD[module][field_name])
             else:
                 row.append(None)
-            # Capture the cumulative number of records in the export data (in case we need to backfill for leftover/
-            # non-conformant fields
+            # Capture the current row length (number of records/columns added so far)
             row_length = len(row)
 
         # Add a row to the export rows for any new non-conformant fields and backfill previously processed records
         for field_name in generated_redcap_dict.keys():
-            # First column in the row is the field name, rest need to be backfilled with None
+            # First column in the row is the field name, then need to backfill the already-generated records/columns
             backfill_values = [None] * (row_length - 1)
-
-            backfill_values[-1] = generated_redcap_dict[field_name]
+            backfill_values[-1] = generated_redcap_dict[field_name]  # Overwrite last col with this response's value
             self.redcap_export_rows.append([field_name, ] + backfill_values)
 
         return
@@ -519,13 +521,17 @@ class SurveyToRedCapConversion(object):
             else:
                 for answer in answers:
                     parent = self.find_parent_question_code(answer)
+                    # Special handling for since various topic sections have their own pmi_prefernottoanswer field in
+                    # REDCap data dictionary
                     if answer == 'PMI_PreferNotToAnswer':
                         key, value = self.redcap_prefer_not_to_answer(col)
                         redcap_fields[key] = value
                     elif parent:
-                        # Multi-select option sections (have a parent) get a 1 as their value
+                        # Multi-select option sections (have a parent question) get a 1 as their "checkbox" value
                         redcap_fields[self.get_redcap_fieldname(answer, parent)] = 1
-                    # For single-select/radio button questions, bring over numeric strings intact?
+
+                    # Single-select/radio buttons have the display value of the answer code as their REDCap fieldname
+                    # value.  If it's numeric, bring over the number string.  Else get the display value of the code
                     elif answer.isnumeric():
                         redcap_fields[self.get_redcap_fieldname(col)] = answer
                     # !!! WORKAROUND !!! See PDR-819.  Treat the 3-char truncated 'PMI' answer (to the
@@ -546,8 +552,6 @@ class SurveyToRedCapConversion(object):
             csv_writer = csv.writer(csv_file, delimiter=',')
             for row in self.redcap_export_rows:
                 csv_writer.writerow(row)
-
-
 
     def execute(self):
         """ Run the survey-to-redcap export conversion tool """
