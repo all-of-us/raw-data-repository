@@ -208,8 +208,11 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 manifest_columns = csv_reader.fieldnames
                 self.assertTrue(list(columns_expected) == manifest_columns)
 
+                prefix = config.getSetting(config.BIOBANK_ID_PREFIX)
+
                 for row in csv_rows:
                     self.assertIsNotNone(row['biobank_id'])
+                    self.assertTrue(prefix in row['biobank_id'])
                     self.assertIsNotNone(row['sample_id'])
                     self.assertIsNotNone(row['parent_sample_id'])
                     self.assertIsNotNone(row['collection_tubeid'])
@@ -224,7 +227,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                         bi_member = list(filter(lambda x: x.gcSiteId == 'bi', current_members))[0]
                         self.assertIsNotNone(bi_member)
 
-                        self.assertEqual(row['biobank_id'], bi_member.biobankId)
+                        self.assertEqual(row['biobank_id'], f'{prefix}{bi_member.biobankId}')
                         self.assertEqual(row['site_name'], 'co')
 
         # check num of manifests generated cp to bucket
@@ -281,6 +284,86 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertEqual(len(cvl_sites), len(w3sr_raw_job_runs))
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in w3sr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
+
+    def test_w3sc_manifest_scheduling(self):
+
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+
+        # create initial job run
+        initial_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
+            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS,
+            runStatus=GenomicSubProcessStatus.COMPLETED,
+        )
+
+        response = self.send_get(
+            'GenomicCVLW3SRWorkflow',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            headers={'X-Appengine-Cron': True},
+            expected_status=500
+        )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
+
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
+
+        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
+
+        with clock.FakeClock(today_plus_fourteen):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True}
+            )
+
+        self.assertTrue(response['success'] == 'true')
+
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+
+        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
+
+        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
+
+        with clock.FakeClock(today_plus_fourteen_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
+
+        self.assertTrue(response.status_code == 500)
 
     def test_w4wr_manifest_ingestion(self):
 
@@ -354,3 +437,4 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w4wr_raw_records))
+

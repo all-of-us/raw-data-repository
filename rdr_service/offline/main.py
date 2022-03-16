@@ -33,7 +33,7 @@ from rdr_service.offline.bigquery_sync import sync_bigquery_handler, \
 from rdr_service.offline.import_deceased_reports import DeceasedReportImporter
 from rdr_service.offline.import_hpo_lite_pairing import HpoLitePairingImporter
 from rdr_service.offline.enrollment_check import check_enrollment
-from rdr_service.offline.genomic_pipeline import run_genomic_cron_job
+from rdr_service.offline.genomic_pipeline import run_genomic_cron_job, interval_run_schedule
 from rdr_service.offline.participant_counts_over_time import calculate_participant_metrics
 from rdr_service.offline.retention_eligible_import import calculate_retention_eligible_metrics
 from rdr_service.offline.participant_maint import skew_duplicate_last_modified
@@ -540,6 +540,7 @@ def genomic_gem_a3_workflow():
     return '{"success": "true"}'\
 
 
+
 @app_util.auth_required_cron
 @run_genomic_cron_job('update_report_state_for_consent_removal')
 def update_report_state_for_consent_removal():
@@ -599,6 +600,7 @@ def genomic_aw3_wgs_workflow():
 
 @app_util.auth_required_cron
 @run_genomic_cron_job('cvl_w3sr_manifest_workflow')
+@interval_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'skip_week')
 def genomic_cvl_w3sr_workflow():
     genomic_pipeline.cvl_w3sr_manifest_workflow()
     return '{"success": "true"}'

@@ -13,7 +13,8 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
 
     @staticmethod
     def _get_mock_dictionary_item(code_value, description, field_type, answers='',
-                                  validation='', validation_min='', validation_max=''):
+                                  validation='', validation_min='', validation_max='',
+                                  branching_logic=''):
         return {
             "field_name": code_value,
             "form_name": "survey",
@@ -26,7 +27,7 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
             "text_validation_min": validation_min,
             "text_validation_max": validation_max,
             "identifier": "",
-            "branching_logic": "",
+            "branching_logic": branching_logic,
             "required_field": "",
             "custom_alignment": "",
             "question_number": "",
@@ -98,7 +99,8 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
                 'radio',
                 'This is a single-select, multiple choice question',
                 'radio',
-                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.'
+                answers='A1, Choice One | A2, Choice Two | A3, Choice Three | A4, Etc.',
+                branching_logic="question_1[test_1] = 'TEST_ANS' and [question_2(OPTION_1)] = '1'"
             )
         ], project_info={
             'project_id': test_survey_project_id,
@@ -144,6 +146,10 @@ class CodesManagementTest(ToolTestMixin, BaseTestCase):
                         'value': expected_option_data['value'],
                         'type': CodeType.ANSWER
                     })
+                self.assertEqual(
+                    "question_1[test_1] = 'TEST_ANS' and [question_2(OPTION_1)] = '1'",
+                    survey_question.branching_logic
+                )
 
     def test_detection_of_module_code(self):
         self.run_code_import([
