@@ -19,7 +19,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
-from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus
+from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicSubProcessStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -1131,14 +1131,15 @@ class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
 
     def get_last_successful_runtime(self, job_id):
         with self.session() as session:
-            return self._get_last_runtime_with_session(session, job_id)
-
-    @staticmethod
-    def _get_last_runtime_with_session(session, job_id):
-        return session.query(functions.max(GenomicJobRun.startTime)) \
-            .filter(GenomicJobRun.jobId == job_id,
-                    GenomicJobRun.runResult == GenomicSubProcessResult.SUCCESS) \
-            .one()[0]
+            return session.query(
+                functions.max(GenomicJobRun.startTime)
+            ).filter(
+                GenomicJobRun.jobId == job_id,
+                GenomicJobRun.runStatus == GenomicSubProcessStatus.COMPLETED,
+                GenomicJobRun.runResult.in_([
+                    GenomicSubProcessResult.SUCCESS,
+                    GenomicSubProcessResult.NO_FILES
+                ])).one()[0]
 
     def insert_run_record(self, job_id):
         """
@@ -3079,7 +3080,10 @@ class GenomicQueriesDao(BaseDao):
 
         with self.session() as session:
             records = session.query(
-                GenomicSetMember.biobankId,
+                func.concat(
+                    get_biobank_id_prefix(),
+                    GenomicSetMember.biobankId
+                ),
                 GenomicSetMember.sampleId,
                 GenomicSetMember.gcManifestParentSampleId,
                 GenomicSetMember.collectionTubeId,

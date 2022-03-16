@@ -1,4 +1,6 @@
 import logging
+from rdr_service.dao.genomics_dao import GenomicJobRunDao
+from rdr_service import clock
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -9,8 +11,26 @@ def run_genomic_cron_job(val):
     def inner_decorator(f):
         def wrapped(*args, **kwargs):
             if not config.getSettingJson(config.GENOMIC_CRON_JOBS).get(val):
-                logging.info(f'Cron job for {val} is currently disabled')
-                raise RuntimeError
+                RuntimeError(f'Cron job for {val} is currently disabled')
+            return f(*args, **kwargs)
+        return wrapped
+    return inner_decorator
+
+
+def interval_run_schedule(job_id, run_type):
+    def inner_decorator(f):
+        def wrapped(*args, **kwargs):
+            interval_run_map = {
+                'skip_week': 14
+            }
+            today = clock.CLOCK.now()
+            day_interval = interval_run_map.get(run_type)
+
+            job_run_dao = GenomicJobRunDao()
+            last_run = job_run_dao.get_last_successful_runtime(job_id)
+
+            if last_run and ((today.date() - last_run.date()).days < day_interval):
+                raise RuntimeError(f'Cron job for {job_id.name} is currently disabled for this time')
             return f(*args, **kwargs)
         return wrapped
     return inner_decorator
