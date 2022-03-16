@@ -186,6 +186,44 @@ class TestValidation(BaseTestCase):
             response_validation.check_for_errors(response_to_b)
         )
 
+    def test_conditional_from_branching_logic(self):
+        """Check that we can build a condition based on Redcap's branching logic string"""
+        # conditional = Condition.from_branching_logic(
+        #     """[question_a] = 'ans_1' and [question_b(option_4)] = '1' and [question_amount] > 3"""
+        # )
+        # self.assertEqual(
+        #     'question_a answer is ans_1 '
+        #     'and question_b has option_4 selected '
+        #     'and question_amount answer greater than 3',
+        #     str(conditional)
+        # )
+
+        # another = Condition.from_branching_logic(
+        #     """[cdc_covid_xx_b_firstdose] = 'cope_a_336' or ([cdc_covid_xx_b_firstdose] = 'cope_a_335' or
+        #     [cdc_covid_xx_b_firstdose] = 'cope_a_330' or [cdc_covid_xx_b_firstdose] = 'cope_a_331' or
+        #     [cdc_covid_xx_b_firstdose] = 'COPE_A_52' or [cdc_covid_xx_b_firstdose] = 'COPE_A_204') and
+        #     ([cdc_covid_xx_b_seconddose] = 'cope_a_335' or [cdc_covid_xx_b_seconddose] = 'cope_a_330' or
+        #     [cdc_covid_xx_b_seconddose] = 'cope_a_331' or [cdc_covid_xx_b_seconddose] = 'COPE_A_52' or
+        #     [cdc_covid_xx_b_seconddose] = 'COPE_A_204')"""
+        # )
+        #
+        # """ [cdc_covid_xx_b_firstdose] = 'cope_a_336'
+        #     or (
+        #         [cdc_covid_xx_b_firstdose] = 'cope_a_335'
+        #         or [cdc_covid_xx_b_firstdose] = 'cope_a_330'
+        #         or [cdc_covid_xx_b_firstdose] = 'cope_a_331'
+        #         or [cdc_covid_xx_b_firstdose] = 'COPE_A_52'
+        #         or [cdc_covid_xx_b_firstdose] = 'COPE_A_204'
+        #     )
+        #     and (
+        #         [cdc_covid_xx_b_seconddose] = 'cope_a_335'
+        #         or [cdc_covid_xx_b_seconddose] = 'cope_a_330'
+        #         or [cdc_covid_xx_b_seconddose] = 'cope_a_331'
+        #         or [cdc_covid_xx_b_seconddose] = 'COPE_A_52'
+        #         or [cdc_covid_xx_b_seconddose] = 'COPE_A_204'
+        #     )"""
+        print('bob')
+
     @classmethod
     def _build_response(cls, answers: Dict[str, List[Tuple[int, str]]]):
         return Response(
