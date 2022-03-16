@@ -183,10 +183,9 @@ class _HasAnsweredQuestionWith(Condition):
 
     def __str__(self):
         if self.comparison == _Comparison.GREATER_THAN:
-            comparison_str = 'greater than'
+            return f"[{self.question_code}] > {self.expected_answer_value}"
         else:
-            comparison_str = 'is'
-        return f'{self.question_code} answer {comparison_str} {self.expected_answer_value}'
+            return f"[{self.question_code}] = '{self.expected_answer_value}'"
 
 
 class _HasSelectedOption(Condition):
@@ -204,7 +203,7 @@ class _HasSelectedOption(Condition):
         self._passes = answers and self.expected_selection in [answer.value for answer in answers]
 
     def __str__(self):
-        return f'{self.question_code} has {self.expected_selection} selected'
+        return f"[{self.question_code}({self.expected_selection})] = '1'"
 
 
 @dataclass
@@ -301,9 +300,8 @@ class _BranchingLogicParser:
         )
 
         self.current_datum = None
-        self.expected_next_chars = [']', ' ', '=', ' ', "'", '1', "'"]
+        self.expected_next_chars = [']', ' ', '=', ' ', "'", '1', "'", " "]
         self.state = _ParserState.READING_CONDITIONAL
-        self.expected_next_chars = [' ']
 
     def start_reading_condition_group(self, char):
         if self.state is not None:
