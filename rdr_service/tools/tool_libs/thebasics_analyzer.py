@@ -185,8 +185,8 @@ class TheBasicsAnalyzerClass(object):
         ).outerjoin(
             answer, QuestionnaireResponseAnswer.valueCodeId == answer.codeId
         ).filter(
-            QuestionnaireResponse.questionnaireResponseId == response_id,
-            QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
+            QuestionnaireResponse.questionnaireResponseId == response_id
+            # QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE
         ).order_by(QuestionnaireResponse.authored,
                    QuestionnaireResponse.created
                    ).all()
@@ -223,6 +223,7 @@ class TheBasicsAnalyzerClass(object):
             dup_of = rsp.get('duplicate_of', None)
             reason = rsp.get('reason', '')
             ans_hash = rsp.get('answer_hash')
+            curr_classification = rsp.get('current_classification')
 
             curr_answers = response_list[idx].get('answers', None)
             print('\n'.join([f'{"Participant":52}:\tP{pid}',
@@ -230,6 +231,7 @@ class TheBasicsAnalyzerClass(object):
                              f'{"Authored":52}:\t{authored}',
                              f'{"External id":52}:\t{ext_id}',
                              f'{"Answer hash":52}:\t{ans_hash}',
+                             f'{"Current classification":52}\t{curr_classification}',
                              f'{"Payload inspection result":52}:\t{payload}',
                              f'{"Duplicate of":52}:\t{int(dup_of) if dup_of else None}',
                              f'{"Reason":52}:\t{reason}']))
@@ -309,10 +311,12 @@ class TheBasicsAnalyzerClass(object):
                     # authored timestamp changed
                     matching_hash_idx = answer_hashes.index(curr_response['answer_hash'])
                     if matching_hash_idx != curr_position:
-                        if curr_authored == response_list[matching_hash_idx].get('authored'):
+                        if curr_authored == response_list[matching_hash_idx].get('authored') :
                             reclassification = QuestionnaireResponseClassificationType.DUPLICATE
-                        else:
+                        elif curr_response_type == QuestionnaireResponseClassificationType.COMPLETE:
                             reclassification = QuestionnaireResponseClassificationType.AUTHORED_TIME_UPDATED
+                        else:
+                            reclassification = QuestionnaireResponseClassificationType.DUPLICATE
 
                         dup_rsp_id = response_list[matching_hash_idx].get('questionnaire_response_id')
                         # Update the current response's classification
@@ -478,6 +482,7 @@ class TheBasicsAnalyzerClass(object):
                         QuestionnaireResponse
                     ).filter(
                         QuestionnaireResponse.participantId == pid,
+                        # QuestionnaireResponse.classificationType != QuestionnaireResponseClassificationType.DUPLICATE,
                         QuestionnaireResponse.questionnaireId.in_(basics_ids)
                     ).order_by(
                         QuestionnaireResponse.authored,

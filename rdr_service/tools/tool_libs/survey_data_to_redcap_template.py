@@ -54,7 +54,7 @@ class SurveyToRedCapConversion(object):
             ('asian_asianspecific___asianspecific_hmong', 0),
             ('asian_asianspecific___asianspecific_japanese', 0),
             ('asian_asianspecific___asianspecific_korean', 0),
-            ('asian_asianspecific___asianspecific_pakastani', 0),
+            ('asian_asianspecific___asianspecific_pakistani', 0),
             ('asian_asianspecific___asianspecific_vietnamese', 0),
             ('asian_asianspecific___asianspecific_noneofthesedescribeme', 0),
             ('noneofthesedescribeme_asianfreetext', None),
@@ -385,6 +385,7 @@ class SurveyToRedCapConversion(object):
     def is_freetext_code(self, code):
         """
         Use the _force_boolean_fields list from the PDR (BQ) Module Schema to identify freetext codes
+        TODO:  Use survey_* tables to find text fields/codes
         """
         if not self.bq_table:
             raise ValueError('The instance does not have a bq_table attribute set')
@@ -563,9 +564,9 @@ class SurveyToRedCapConversion(object):
         with dao.session() as session:
             # TODO:  Replace with a call to _get_response_id_list based on parameters passed
             response_list = [996438929, 224078445, 622747617, 100178505, 100179607, 100275014, 100892279, 101083117,
-                           101394766, 101657560, 102311593, 102479428, 102699093, 100120910, 100278026, 100393283,
-                           100419634, 100428180, 100788745, 100801123, 100802451, 100830407,100868630,
-                           ]
+                             101394766, 101657560, 102311593, 102479428, 102699093, 100120910, 100278026, 100393283,
+                             100419634, 100428180, 100788745, 100801123, 100802451, 100830407,100868630,
+                             ]
             for rsp_id in response_list:
                 rsp = self.get_module_response_dict(module, rsp_id, session)
                 self.map_response_to_redcap_dict(module, rsp_id, rsp)
