@@ -116,6 +116,7 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W1IL_TO_RAW_TABLE = 59
     LOAD_CVL_W2SC_TO_RAW_TABLE = 60
     LOAD_CVL_W3SR_TO_RAW_TABLE = 61
+    LOAD_CVL_W4WR_TO_RAW_TABLE = 62
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -202,15 +203,19 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_PENDING_DELETE = 39
     CVL_RPT_DELETED = 40
 
-    CVL_W1IL = 50
-    CVL_W2SC = 51
-    CVL_W2W = 52
-    CVL_W3SR = 53
-    CVL_W3SS = 54
-    CVL_W3NS = 55
-    CVL_W3SC = 56
-    CVL_W4WR = 57
-    CVL_W5NF = 58
+
+class ResultsWorkflowState(messages.Enum):
+
+    UNSET = 0
+    CVL_W1IL = 1
+    CVL_W2SC = 2
+    CVL_W2W = 3
+    CVL_W3SR = 4
+    CVL_W3SS = 5
+    CVL_W3NS = 6
+    CVL_W3SC = 7
+    CVL_W4WR = 8
+    CVL_W5NF = 9
 
 
 class GenomicReportState(messages.Enum):

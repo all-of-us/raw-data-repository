@@ -6,9 +6,9 @@ import os
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao
-from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicWorkflowState, GenomicSubProcessStatus, \
-    GenomicSubProcessResult
+    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao
+from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicSubProcessStatus, \
+    GenomicSubProcessResult, ResultsWorkflowState
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -41,7 +41,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 biobankId=f"{num}",
                 sampleId=f"100{num}",
                 genomeType="aou_wgs",
-                genomicWorkflowState=GenomicWorkflowState.AW1
+                resultsWorkflowState=kwargs.get('current_results_workflow_state')
             )
 
         test_file_name = create_ingestion_test_file(
@@ -69,7 +69,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.execute_base_cvl_ingestion(
             test_file='RDR_AoU_CVL_W2SC.csv',
             job_id=GenomicJob.CVL_W2SC_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W2SC
+            manifest_type=GenomicManifestTypes.CVL_W2SC,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL
         )
 
         current_members = self.member_dao.get_all()
@@ -88,10 +89,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.cvlW2scManifestJobRunID is not None for obj in current_members))
         self.assertTrue(all(obj.cvlW2scManifestJobRunID == w2sc_job_run.id for obj in current_members))
 
-        self.assertTrue(all(obj.genomicWorkflowState is not None for obj in current_members))
-        self.assertTrue(all(obj.genomicWorkflowStateStr is not None for obj in current_members))
-        self.assertTrue(all(obj.genomicWorkflowState == GenomicWorkflowState.CVL_W2SC for obj in current_members))
-        self.assertTrue(all(obj.genomicWorkflowStateStr == GenomicWorkflowState.CVL_W2SC.name for obj in
+        self.assertTrue(all(obj.resultsWorkflowState is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateModifiedTime is not None for obj in current_members))
+
+        self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W2SC for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W2SC.name for obj in
                             current_members))
 
     def test_w2sc_manifest_to_raw_ingestion(self):
@@ -99,7 +102,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.execute_base_cvl_ingestion(
             test_file='RDR_AoU_CVL_W2SC.csv',
             job_id=GenomicJob.CVL_W2SC_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W2SC
+            manifest_type=GenomicManifestTypes.CVL_W2SC,
+            results_workflow_state=ResultsWorkflowState.CVL_W1IL
         )
 
         w2sc_raw_dao = GenomicW2SCRawDao()
@@ -143,7 +147,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 ai_an='N',
                 nyFlag=0,
                 genomeType="aou_wgs",
-                genomicWorkflowState=GenomicWorkflowState.CVL_W2SC,
+                resultsWorkflowState=ResultsWorkflowState.CVL_W2SC,
                 participantId=summary.participantId,
                 cvlW2scManifestJobRunID=cvl_w2sc_gen_job_run.id
             )
@@ -165,11 +169,12 @@ class GenomicCVLPipelineTest(BaseTestCase):
         with clock.FakeClock(fake_date):
             genomic_pipeline.cvl_w3sr_manifest_workflow()
 
-        # check members have workflow state updated correctly
+        # check members have results workflow state updated correctly
         current_members = self.member_dao.get_all()
-        self.assertTrue(all(obj.genomicWorkflowState == GenomicWorkflowState.CVL_W3SR for obj in current_members))
-        self.assertTrue(all(obj.genomicWorkflowStateStr == GenomicWorkflowState.CVL_W3SR.name for obj in
+        self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W3SR for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W3SR.name for obj in
                             current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateModifiedTime is not None for obj in current_members))
 
         bucket_name = config.getSetting(config.BIOBANK_SAMPLES_BUCKET_NAME)
         sub_folder = config.CVL_W3SR_MANIFEST_SUBFOLDER
@@ -280,32 +285,72 @@ class GenomicCVLPipelineTest(BaseTestCase):
     def test_w4wr_manifest_ingestion(self):
 
         self.execute_base_cvl_ingestion(
-            test_file='',
+            test_file='RDR_AoU_CVL_W4WR_HDRV1.csv',
+            job_id=GenomicJob.CVL_W4WR_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W4WR,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL
+        )
+
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w4wr_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W4WR_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w4wr_job_run)
+        self.assertEqual(w4wr_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w4wr_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w4wr_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w4wr_file_processed.runId, w4wr_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW4wrManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW4wrManifestJobRunID == w4wr_job_run.id for obj in current_members))
+
+        self.assertTrue(all(obj.resultsWorkflowState is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateModifiedTime is not None for obj in current_members))
+
+        self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W4WR for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W4WR.name for obj in
+                            current_members))
+
+        # check cvl analysis records
+        cvl_analysis_dao = GenomicCVLAnalysisDao()
+        current_analysis_results = cvl_analysis_dao.get_all()
+        member_ids = [obj.id for obj in current_members]
+
+        self.assertEqual(len(current_analysis_results), len(current_members))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in current_analysis_results))
+        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
+        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
+
+        self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
+        self.assertTrue(all('HDRV1' in obj.health_related_data_file_name for obj in current_analysis_results))
+
+    def test_w4wr_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W4WR_HDRV1.csv',
             job_id=GenomicJob.CVL_W4WR_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W4WR
         )
 
-    # def test_w4wr_manifest_to_raw_ingestion(self):
-    #
-    #     self.execute_base_cvl_ingestion(
-    #         test_file='RDR_AoU_CVL_W2SC.csv',
-    #         job_id=GenomicJob.CVL_W4WR_WORKFLOW,
-    #         manifest_type=GenomicManifestTypes.CVL_W4WR
-    #     )
-    #
-    #     w4wr_raw_dao = GenomicW4WRRawDao()
-    #
-    #     manifest_type = 'w4wr'
-    #     w4wr_manifest_file = self.manifest_file_dao.get(1)
-    #
-    #     genomic_pipeline.load_awn_manifest_into_raw_table(
-    #         w4wr_manifest_file.filePath,
-    #         manifest_type
-    #     )
-    #
-    #     w4wr_raw_records = w4wr_raw_dao.get_all()
-    #
-    #     self.assertEqual(len(w4wr_raw_records), 3)
-    #     self.assertTrue(all(obj.file_path is not None for obj in w4wr_raw_records))
-    #     self.assertTrue(all(obj.biobank_id is not None for obj in w4wr_raw_records))
-    #     self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))
+        w4wr_raw_dao = GenomicW4WRRawDao()
+
+        manifest_type = 'w4wr'
+        w4wr_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w4wr_manifest_file.filePath,
+            manifest_type
+        )
+
+        w4wr_raw_records = w4wr_raw_dao.get_all()
+
+        self.assertEqual(len(w4wr_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w4wr_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w4wr_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))
+        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w4wr_raw_records))
+        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w4wr_raw_records))

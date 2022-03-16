@@ -10,7 +10,8 @@ from rdr_service.model.utils import Enum, MultiEnum, UTCDateTime, UTCDateTime6
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
-    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState
+    GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
+    ResultsWorkflowState
 
 
 class GenomicSet(Base):
@@ -245,6 +246,13 @@ class GenomicSetMember(Base):
     blockResults = Column('block_results', SmallInteger, nullable=False, default=0)
     blockResultsReason = Column('block_results_reason', String(255), nullable=True)
     participantOrigin = Column("participant_origin", String(80), nullable=True)
+
+    resultsWorkflowState = Column('results_workflow_state',
+                                  Enum(ResultsWorkflowState),
+                                  default=ResultsWorkflowState.UNSET)
+    resultsWorkflowStateStr = Column('results_workflow_state_str', String(64), default="UNSET")
+
+    resultsWorkflowStateModifiedTime = Column("results_workflow_state_modified_time", DateTime, nullable=True)
 
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
