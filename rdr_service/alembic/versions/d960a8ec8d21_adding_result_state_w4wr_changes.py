@@ -63,7 +63,8 @@ def upgrade_rdr():
     )
     op.create_index(op.f('ix_genomic_cvl_analysis_genomic_set_member_id'), 'genomic_cvl_analysis', ['genomic_set_member_id'], unique=False)
     op.add_column('genomic_set_member', sa.Column('cvl_w4wr_manifest_job_run_id', sa.Integer(), nullable=True))
-    op.add_column('genomic_set_member', sa.Column('results_workflow_state', rdr_service.model.utils.Enum(ResultsWorkflowState), nullable=True))
+    op.add_column('genomic_set_member', sa.Column('results_workflow_state', rdr_service.model.utils.Enum(
+        ResultsWorkflowState), nullable=True))
     op.add_column('genomic_set_member', sa.Column('results_workflow_state_modified_time', sa.DateTime(), nullable=True))
     op.add_column('genomic_set_member', sa.Column('results_workflow_state_str', sa.String(length=64), nullable=True))
     op.create_foreign_key(None, 'genomic_set_member', 'genomic_job_run', ['cvl_w4wr_manifest_job_run_id'], ['id'])
