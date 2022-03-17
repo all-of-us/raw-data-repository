@@ -7,5 +7,5 @@ automatic_scaling:
   min_idle_instances: 0
 
 # Serverless VPC Access connector details
-vpc_access_connector:
-  name: 'projects/<PROJECT_ID>/locations/<REGION>/connectors/<CONNECTOR_NAME>'
+#vpc_access_connector:
+#  name: 'projects/all-of-us-rdr-sandbox/locations/us-central1/connectors/rdr-sandbox-redis'

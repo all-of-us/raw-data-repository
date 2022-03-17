@@ -5,6 +5,9 @@
 env_variables:
   RDR_CONFIG_PROVIDER: "rdr_service.config.GoogleCloudDatastoreConfigProvider"
   RDR_STORAGE_PROVIDER: "rdr_service.storage.GoogleCloudStorageProvider"
+  REDISHOST: '10.105.0.4'
+  REDISPORT: '6378'
+#  GAE_USE_SOCKETS_HTTPLIB : 'anyvalue'
 
 runtime: python37
 
@@ -22,3 +25,6 @@ handlers:
   secure: always
 - url: /_ah/warmup
   script: auto
+
+vpc_access_connector:
+  name: 'projects/all-of-us-rdr-sandbox/locations/us-central1/connectors/rdr-sandbox-redis'

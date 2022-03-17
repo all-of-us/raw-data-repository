@@ -32,8 +32,9 @@ REFRESH_STATUS_CHECK_LIST = [
 
 REDIS_NAME_PREFIX = 'update_cache_index_'
 REDIS_ENVS = [RdrEnvironment.SANDBOX.value, RdrEnvironment.STABLE.value, RdrEnvironment.PROD.value]
-REDIS_HOST = '10.105.0.4'
-REDIS_PORT = 6378
+REDIS_HOST = os.environ.get('REDISHOST')
+REDIS_PORT = int(os.environ.get('REDISPORT', 6378))
+
 REDIS_AUTH = 'bdfc8a34-3800-4ae0-9c2d-58eafb9948be'
 
 _DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -61,8 +62,9 @@ def _get(cache_index, cache_ttl_seconds=None):
         # check if value has been updated in other instances, if yes, return None to trigger refresh local cache value
         logging.warning('get cache_index:' + str(cache_index))
         logging.warning('get GAE_PROJECT:' + str(GAE_PROJECT))
-        if cache_index in REFRESH_STATUS_CHECK_LIST and GAE_PROJECT in REDIS_ENVS:
-            logging.info(f"reading updated time in Redis for cache index {str(cache_index)}")
+        if REDIS_HOST and cache_index in REFRESH_STATUS_CHECK_LIST and GAE_PROJECT in REDIS_ENVS:
+            logging.info(f"reading updated time in Redis {str(REDIS_HOST)}:{str(REDIS_PORT)} "
+                         f"for cache index {str(cache_index)}")
             redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
             last_updated_time_str = redis_client.get(REDIS_NAME_PREFIX + str(cache_index))
             if last_updated_time_str and cache_ttl_seconds and existing_pair[1]:
@@ -106,7 +108,7 @@ def invalidate(cache_index):
         # set lasted update time to Redis, so other instances can know and refresh their caches
         logging.warning('invalidate cache_index:' + str(cache_index))
         logging.warning('invalidate GAE_PROJECT:' + str(GAE_PROJECT))
-        if cache_index in REFRESH_STATUS_CHECK_LIST and GAE_PROJECT in REDIS_ENVS:
+        if REDIS_HOST and cache_index in REFRESH_STATUS_CHECK_LIST and GAE_PROJECT in REDIS_ENVS:
             logging.info(f"setting updated time in Redis for cache index {str(cache_index)}")
             redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
             updated_time_str = _format_datetime(CLOCK.now())
