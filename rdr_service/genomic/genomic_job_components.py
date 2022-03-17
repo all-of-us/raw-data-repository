@@ -1330,7 +1330,7 @@ class GenomicFileIngester:
                     run_attr='cvlW3scManifestJobRunID',
                     signal='sample-failed'
                 )
-                if not row_copy and member:
+                if not (row_copy and member):
                     continue
 
                 member.cvlSecondaryConfFailure = row_copy['cvlsecondaryconffailure']
@@ -1355,7 +1355,7 @@ class GenomicFileIngester:
                     row=row,
                     run_attr='cvlW4wrManifestJobRunID',
                 )
-                if not row_copy and member:
+                if not (row_copy and member):
                     continue
 
                 if not analysis_cols_mapping:
