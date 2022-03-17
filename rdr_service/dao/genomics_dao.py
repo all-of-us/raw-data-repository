@@ -41,7 +41,7 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicCVLAnalysis)
+    GenomicCVLAnalysis, GenomicW3SCRaw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2431,6 +2431,12 @@ class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils, ABC):
     def __init__(self):
         super(GenomicW2SCRawDao, self).__init__(
             GenomicW2SCRaw, order_by_ending=['id'])
+
+
+class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils, ABC):
+    def __init__(self):
+        super(GenomicW3SCRawDao, self).__init__(
+            GenomicW3SCRaw, order_by_ending=['id'])
 
 
 class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils, ABC):

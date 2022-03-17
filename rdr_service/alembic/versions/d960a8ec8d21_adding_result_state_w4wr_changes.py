@@ -8,7 +8,7 @@ Create Date: 2022-03-15 16:54:49.550713
 from alembic import op
 import sqlalchemy as sa
 import rdr_service.model.utils
-
+from rdr_service.genomic_enums import ResultsWorkflowState
 
 from rdr_service.participant_enums import PhysicalMeasurementsStatus, QuestionnaireStatus, OrderStatus
 from rdr_service.participant_enums import WithdrawalStatus, WithdrawalReason, SuspensionStatus, QuestionnaireDefinitionStatus

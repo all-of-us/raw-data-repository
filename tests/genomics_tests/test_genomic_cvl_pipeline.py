@@ -6,7 +6,8 @@ import os
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
-    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao
+    GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
+    GenomicW3SCRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicSubProcessStatus, \
     GenomicSubProcessResult, ResultsWorkflowState
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -285,7 +286,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in w3sr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
-    def test_w3sc_manifest_scheduling(self):
+    def test_cvl_skip_week_manifest_generation(self):
 
         from rdr_service.offline.main import app, OFFLINE_PREFIX
         offline_test_client = app.test_client()
@@ -438,3 +439,63 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w4wr_raw_records))
 
+    def test_w3sc_manifest_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3SC.csv',
+            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SC,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL
+        )
+
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w3sc_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3SC_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w3sc_job_run)
+        self.assertEqual(w3sc_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w3sc_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w3sc_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w3sc_file_processed.runId, w3sc_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW3scManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW3scManifestJobRunID == w3sc_job_run.id for obj in current_members))
+
+        self.assertTrue(all(obj.cvlSecondaryConfFailure is not None for obj in current_members))
+
+        self.assertTrue(all(obj.resultsWorkflowState is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr is not None for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateModifiedTime is not None for obj in current_members))
+
+        # self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W4WR for obj in current_members))
+        # self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W4WR.name for obj in
+        #                     current_members))
+
+    def test_w3sc_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3SC.csv',
+            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SC,
+        )
+
+        w3sc_raw_dao = GenomicW3SCRawDao()
+
+        manifest_type = 'w3sc'
+        w3sc_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w3sc_manifest_file.filePath,
+            manifest_type
+        )
+
+        w3sc_raw_records = w3sc_raw_dao.get_all()
+
+        self.assertEqual(len(w3sc_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.cvl_secondary_conf_failure is not None for obj in w3sc_raw_records))

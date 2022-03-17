@@ -2,7 +2,7 @@ import logging
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
-    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao
+    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -487,6 +487,7 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST,
         GenomicJob.CVL_W2SC_WORKFLOW,
+        GenomicJob.CVL_W3SC_WORKFLOW,
         GenomicJob.CVL_W4WR_WORKFLOW
     )
 
@@ -551,6 +552,10 @@ def load_awn_manifest_into_raw_table(
         "w2sc": {
             'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
             'dao': GenomicW2SCRawDao
+        },
+        "w3sc": {
+            'job_id': GenomicJob.LOAD_CVL_W3SC_TO_RAW_TABLE,
+            'dao': GenomicW3SCRawDao
         },
         "w3sr": {
             'job_id': GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE,
