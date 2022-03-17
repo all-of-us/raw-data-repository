@@ -42,6 +42,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             "aw4": "IngestAW4ManifestTaskApi",
             "aw5": "IngestAW5ManifestTaskApi",
             "w2sc": "IngestCVLManifestTaskApi",
+            "w3sc": "IngestCVLManifestTaskApi",
             "w4wr": "IngestCVLManifestTaskApi",
         }
 
