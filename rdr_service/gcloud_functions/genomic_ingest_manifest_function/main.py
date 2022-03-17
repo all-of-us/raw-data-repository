@@ -81,7 +81,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w2sc_' in object_id:
             task_key = "w2sc"
 
-        # W2SC files have "W2SC" in their file path (bucket name)
+        # W3SC files have "W3SC" in their file path (bucket name)
         elif '_w3sc_' in object_id:
             task_key = "w3sc"
 
