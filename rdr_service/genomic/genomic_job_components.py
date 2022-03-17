@@ -1330,6 +1330,8 @@ class GenomicFileIngester:
                     run_attr='cvlW3scManifestJobRunID',
                     signal='sample-failed'
                 )
+                if not row_copy and member:
+                    continue
 
                 member.cvlSecondaryConfFailure = row_copy['cvlsecondaryconffailure']
                 self.member_dao.update(member)
@@ -1353,6 +1355,8 @@ class GenomicFileIngester:
                     row=row,
                     run_attr='cvlW4wrManifestJobRunID',
                 )
+                if not row_copy and member:
+                    continue
 
                 if not analysis_cols_mapping:
                     for column in analysis_columns:
