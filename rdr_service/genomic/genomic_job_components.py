@@ -1328,6 +1328,7 @@ class GenomicFileIngester:
                 row_copy, member = self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW3scManifestJobRunID',
+                    signal='sample-failed'
                 )
 
                 member.cvlSecondaryConfFailure = row_copy['cvlsecondaryconffailure']

@@ -445,7 +445,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             test_file='RDR_AoU_CVL_W3SC.csv',
             job_id=GenomicJob.CVL_W3SC_WORKFLOW,
             manifest_type=GenomicManifestTypes.CVL_W3SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR
         )
 
         current_members = self.member_dao.get_all()
@@ -470,9 +470,9 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.resultsWorkflowStateStr is not None for obj in current_members))
         self.assertTrue(all(obj.resultsWorkflowStateModifiedTime is not None for obj in current_members))
 
-        # self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W4WR for obj in current_members))
-        # self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W4WR.name for obj in
-        #                     current_members))
+        self.assertTrue(all(obj.resultsWorkflowState == ResultsWorkflowState.CVL_W3SC for obj in current_members))
+        self.assertTrue(all(obj.resultsWorkflowStateStr == ResultsWorkflowState.CVL_W3SC.name for obj in
+                            current_members))
 
     def test_w3sc_manifest_to_raw_ingestion(self):
 
