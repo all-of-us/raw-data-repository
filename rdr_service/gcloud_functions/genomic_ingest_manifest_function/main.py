@@ -81,6 +81,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w2sc_' in object_id:
             task_key = "w2sc"
 
+        # W2SC files have "W2SC" in their file path (bucket name)
+        elif '_w3sc_' in object_id:
+            task_key = "w3sc"
+
         # W4WR files have "W2SC" in their file path (bucket name)
         elif '_w4wr_' in object_id:
             task_key = "w4wr"
@@ -109,7 +113,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
-            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w4wr']
+            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3sc', 'w4wr']
 
             # Load into raw table
             if task_key in raw_manifest_keys:

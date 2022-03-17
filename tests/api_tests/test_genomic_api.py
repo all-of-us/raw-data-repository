@@ -1165,7 +1165,7 @@ class GenomicCloudTasksApiTest(BaseTestCase):
 
         from rdr_service.resource import main as resource_main
 
-        raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w4wr']
+        raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3sc', 'w4wr']
 
         for key in raw_manifest_keys:
             test_file_path = f"test-bucket-name/test_{key}_file.csv"
