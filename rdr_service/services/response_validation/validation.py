@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import auto, Enum
-from typing import Dict, Sequence
+from typing import Dict, Optional, Sequence
 
 from rdr_service.domain_model import response as response_domain_model
 
@@ -45,7 +45,7 @@ class Condition(ABC):
     def from_branching_logic(cls, branching_logic):
         parser = _BranchingLogicParser()
         for char in branching_logic:
-            parser.take_char(char)
+            parser.process_char(char)
         return parser.get_resulting_conditional()
 
 
@@ -225,12 +225,7 @@ class ResponseRequirements:
 
 
 class _ParserState(Enum):
-    READING_QUESTION = auto()
-    READING_CHECKBOX = auto()
-    READING_ANSWER = auto()
     READING_CONDITIONAL = auto()
-    READING_COMPARISON = auto()
-    READING_SUB_CONDITION = auto()
 
 
 class _ParserBoolOperation(Enum):
@@ -238,197 +233,228 @@ class _ParserBoolOperation(Enum):
     OR = auto()
 
 
-class _BranchingLogicParser:
+class _BaseParser(ABC):
     def __init__(self):
-        self.state = None
-        self.parsed_conditions = []
-        self.current_datum = None
-        self.expected_next_chars = []
-        self.comparison_operation = None
+        self._next_expected_chars = []
 
-    def start_reading_question_code(self):
-        if self.state is not None:
-            raise Exception('unexpected question code')
+    def process_char(self, char):
+        if self._next_expected_chars:
+            expected = self._next_expected_chars.pop(0)
+            if expected != char:
+                raise Exception(f'unexpected "{char}", was expecting "{expected}"')
         else:
-            self.state = _ParserState.READING_QUESTION
-            self.current_datum = {
-                'question_code_chars': []
-            }
+            self._process_char(char)
 
-    def finish_reading_question_code(self):
-        if self.state != _ParserState.READING_QUESTION:
-            raise Exception('unexpected end to question code')
+    @abstractmethod
+    def _process_char(self, char):
+        ...
+
+
+class _ConstraintParserState:
+    READING_QUESTION_CODE = auto()
+    READING_CHECKBOX_OPTION = auto()
+    READING_COMPARISON = auto()
+    READING_ANSWER = auto()
+
+
+class _ConstraintParser(_BaseParser):
+    """
+    Parses an equation defining what an answer to a question should be and returns
+    the resulting Condition to the parent parser.
+    """
+    def __init__(self, parent_parser: '_BranchingLogicParser'):
+        super(_ConstraintParser, self).__init__()
+        self._state = _ConstraintParserState.READING_QUESTION_CODE
+        self._parent = parent_parser
+
+        self._question_code_chars = []
+        self._expected_option_selection_chars = []
+        self._answer_chars = []
+        self._comparison_operation = None
+
+    def _process_char(self, char):
+        if char == ']':
+            self._finish_reading_question_code()
+        elif char == '(':
+            self._start_reading_checkbox_constraint()
+        elif self._state == _ConstraintParserState.READING_QUESTION_CODE:
+            self._question_code_chars.append(char)
+        elif self._state == _ConstraintParserState.READING_CHECKBOX_OPTION:
+            if char == ')':
+                self._finish_checkbox_constraint()
+            else:
+                self._expected_option_selection_chars.append(char)
+        elif self._state == _ConstraintParserState.READING_COMPARISON:
+            self._read_comparison(char)
+        elif self._state == _ConstraintParserState.READING_ANSWER:
+            if char in ["'", " "]:
+                self.finish_constraint()
+            else:
+                self._answer_chars.append(char)
         else:
-            self.state = _ParserState.READING_COMPARISON
-            self.current_datum['answer_chars'] = []
-            self.expected_next_chars = [' ']
+            raise Exception(f'unsure what to do with "{char}" in {self._state}')
 
-    def start_reading_checkbox_constraint(self):
-        if self.state != _ParserState.READING_QUESTION:
-            raise Exception('unexpected transition to checkbox parsing')
+    def _finish_reading_question_code(self):
+        if self._state != _ConstraintParserState.READING_QUESTION_CODE:
+            raise Exception(f'unexpected end of reading question code in {self._state}')
 
-        self.state = _ParserState.READING_CHECKBOX
-        self.current_datum['option_checked'] = []
+        self._state = _ConstraintParserState.READING_COMPARISON
+        self._next_expected_chars = [' ']
 
-    def finalize_requirement(self):
-        if self.state != _ParserState.READING_ANSWER:
-            raise Exception('unexpected end of requirement')
+    def _start_reading_checkbox_constraint(self):
+        if self._state != _ConstraintParserState.READING_QUESTION_CODE:
+            raise Exception(f'unexpected transition to checkbox parsing in {self._state}')
 
-        self.state = _ParserState.READING_CONDITIONAL
-        question_code = ''.join(self.current_datum['question_code_chars'])
-        answer_code = ''.join(self.current_datum['answer_chars'])
+        self._state = _ConstraintParserState.READING_CHECKBOX_OPTION
 
-        if self.comparison_operation == '>':
+    def _read_comparison(self, comparison_char):
+        if comparison_char == '=':
+            self._next_expected_chars = [' ', "'"]
+        elif comparison_char == '>':
+            self._next_expected_chars = [' ']
+        else:
+            raise Exception(f'unrecognized comparison char "{comparison_char}"')
+
+        self._state = _ConstraintParserState.READING_ANSWER
+        self._comparison_operation = comparison_char
+
+    def _finish_checkbox_constraint(self):
+        if self._state != _ConstraintParserState.READING_CHECKBOX_OPTION:
+            raise Exception(f'unexpected end of reading checkbox in {self._state}')
+
+        self._state = None
+        question_code = ''.join(self._question_code_chars)
+        option_code = ''.join(self._expected_option_selection_chars)
+        self._parent.child_parsing_complete(
+            new_condition=Question(question_code).has_option_selected(option_code),
+            next_expected_chars=[']', ' ', '=', ' ', "'", '1', "'"]
+        )
+
+    def finish_constraint(self):
+        if self._state != _ConstraintParserState.READING_ANSWER:
+            raise Exception('unexpected end of constraint')
+
+        self._state = None
+        question_code = ''.join(self._question_code_chars)
+        answer_code = ''.join(self._answer_chars)
+
+        if self._comparison_operation == '>':
             condition = Question(question_code).answer_greater_than(int(answer_code))
         else:
             condition = Question(question_code).is_answered_with(answer_code)
 
-        self.parsed_conditions.append(condition)
-
-        self.current_datum = None
-        self.expected_next_chars = [' ']
-
-    def finalize_checkbox_constraint(self):
-        if self.state != _ParserState.READING_CHECKBOX:
-            raise Exception('unexpected end of paren')
-
-        self.state = _ParserState.READING_CONDITIONAL
-        question_code = ''.join(self.current_datum['question_code_chars'])
-        answer_code = ''.join(self.current_datum['option_checked'])
-        self.parsed_conditions.append(
-            Question(question_code).has_option_selected(answer_code)
+        self._parent.child_parsing_complete(
+            new_condition=condition
         )
 
+
+class _BranchingLogicParser(_BaseParser):
+    def __init__(self, parent: '_BranchingLogicParser' = None):
+        super(_BranchingLogicParser, self).__init__()
+        self._state = None
+        self.parsed_tokens = []
         self.current_datum = None
-        self.expected_next_chars = [']', ' ', '=', ' ', "'", '1', "'", " "]
-        self.state = _ParserState.READING_CONDITIONAL
+        self.comparison_operation = None
 
-    def start_reading_condition_group(self, char):
-        if self.state is not None:
-            raise Exception('unexpected transition to reading a condition group')
+        self._child_parser: Optional[_BaseParser] = None
+        self._parent = parent
 
-        if self.current_datum and 'paren_count' in self.current_datum:
-            # currently in a group, pass the char and add to count
-            self.current_datum['paren_count'] += 1
-            self.pass_char_to_sub_parser(char)
+    def _start_reading_constraint(self):
+        self._child_parser = _ConstraintParser(self)
+
+    def start_new_nesting_level(self):
+        if self._state is not None:
+            raise Exception('unexpected transition to reading a new nesting level')
+
+        self._child_parser = _BranchingLogicParser(self)
+
+    def finish_nesting_level(self):
+        if self._state is not None:
+            raise Exception(f'unexpected end to nesting level in {self._state}')
+        if not self._parent:
+            raise Exception(f'unexpected end of nesting level at the root parser')
+
+        self._parent.child_parsing_complete(
+            new_condition=self.get_resulting_conditional()
+        )
+
+    def finish_and_operation(self):
+        self.parsed_tokens.append(_ParserBoolOperation.AND)
+        self._next_expected_chars = ['n', 'd', ' ']
+        self._state = None
+
+    def finish_or_operation(self):
+        self.parsed_tokens.append(_ParserBoolOperation.OR)
+        self._next_expected_chars = ['r', ' ']
+        self._state = None
+
+    def _process_char(self, char):
+        # Handle the end of a nesting level when reading a constraint
+        if (
+            char == ')'
+            and self._parent
+            and self._child_parser
+            and isinstance(self._child_parser, _ConstraintParser)
+            and self._child_parser._state != _ConstraintParserState.READING_CHECKBOX_OPTION
+        ):
+            self._child_parser.finish_constraint()
+            self.finish_nesting_level()
+        elif self._child_parser:
+            self._child_parser.process_char(char)
         else:
-            self.state = _ParserState.READING_SUB_CONDITION
-            self.current_datum = {
-                'paren_count': 1,
-                'parser': _BranchingLogicParser()
-            }
-
-    def pass_char_to_sub_parser(self, char):
-        self.current_datum['parser'].take_char(char)
-
-    def finalize_condition_group(self, char):
-        if self.state != _ParserState.READING_SUB_CONDITION:
-            raise Exception('unexpected end to condition group')
-
-        self.current_datum['paren_count'] -= 1
-        if self.current_datum['paren_count'] > 0:
-            # still in subparser land, keep passing chars
-            self.pass_char_to_sub_parser(char)
-        else:
-            self.state = _ParserState.READING_CONDITIONAL
-            self.parsed_conditions.append(
-                self.current_datum['parser'].get_resulting_conditional()
-            )
-            self.current_datum = None
-            self.expected_next_chars = [' ']
-
-    def start_anding(self):
-        self.parsed_conditions.append(_ParserBoolOperation.AND)
-        self.expected_next_chars = ['n', 'd', ' ']
-        self.state = None
-
-    def start_oring(self):
-        self.parsed_conditions.append(_ParserBoolOperation.OR)
-        self.expected_next_chars = ['r', ' ']
-        self.state = None
-
-    def read_comparison(self, comparison_char):
-        if comparison_char == '=':
-            self.expected_next_chars = [' ', "'"]
-        elif comparison_char == '>':
-            self.expected_next_chars = [' ']
-        else:
-            raise Exception(f'unrecognized comparison char "{comparison_char}"')
-
-        self.state = _ParserState.READING_ANSWER
-        self.comparison_operation = comparison_char
-
-    def take_char(self, char):
-        if self.expected_next_chars:
-            expected = self.expected_next_chars.pop(0)
-            if expected != char:
-                raise Exception(f'unexpected {char}')
-        elif self.state == _ParserState.READING_SUB_CONDITION:
-            if char == '(':
-                self.start_reading_condition_group(char)
-            elif char == ')':
-                self.finalize_condition_group(char)
-            else:
-                self.pass_char_to_sub_parser(char)
-        else:
-            if char == '[':
-                self.start_reading_question_code()
-            elif char == ']':
-                self.finish_reading_question_code()
-            elif char == "'":
-                self.finalize_requirement()
+            if char == ' ' and self._state is None:
+                self._state = _ParserState.READING_CONDITIONAL
+            elif char == '[':
+                self._start_reading_constraint()
             elif char == '(':
-                if self.state == _ParserState.READING_QUESTION:
-                    self.start_reading_checkbox_constraint()
-                else:
-                    self.start_reading_condition_group(char)
+                self.start_new_nesting_level()
             elif char == ')':
-                if self.state == _ParserState.READING_CHECKBOX:
-                    self.finalize_checkbox_constraint()
-                else:
-                    self.finalize_condition_group(char)
+                self.finish_nesting_level()
+            elif char == 'a' and self._state in [None, _ParserState.READING_CONDITIONAL]:
+                self.finish_and_operation()
+            elif char == 'o' and self._state in [None, _ParserState.READING_CONDITIONAL]:
+                self.finish_or_operation()
             else:
-                if self.state == _ParserState.READING_QUESTION:
-                    self.current_datum['question_code_chars'].append(char)
-                elif self.state == _ParserState.READING_ANSWER:
-                    if char == ' ':
-                        self.finalize_requirement()
-                    else:
-                        self.current_datum['answer_chars'].append(char)
-                elif self.state == _ParserState.READING_CHECKBOX:
-                    self.current_datum['option_checked'].append(char)
-                elif self.state == _ParserState.READING_COMPARISON:
-                    self.read_comparison(char)
-                elif self.state == _ParserState.READING_CONDITIONAL:
-                    if char == 'a':
-                        self.start_anding()
-                    elif char == 'o':
-                        self.start_oring()
-                else:
-                    raise Exception(f'unsure what to do with {char}')
+                raise Exception(f'unsure what to do with "{char}" in state {self._state}')
+
+    def child_parsing_complete(self, new_condition: Condition, next_expected_chars=None):
+        if next_expected_chars is None:
+            next_expected_chars = []
+
+        self.parsed_tokens.append(new_condition)
+        self._next_expected_chars = next_expected_chars
+        self._child_parser = None
+        self._state = None
 
     def get_resulting_conditional(self):
-        if self.current_datum:
-            if isinstance(self.current_datum, _BranchingLogicParser):
-                self.parsed_conditions.append(self.current_datum.get_resulting_conditional())
-            else:
-                self.finalize_requirement()
+        if self._child_parser:
+            if isinstance(self._child_parser, _BranchingLogicParser):
+                raise Exception('Unexpected end of parsing: unfinished nesting levels')
+            elif isinstance(self._child_parser, _ConstraintParser):
+                self._child_parser.finish_constraint()
 
-        all_bools = [
-            operation for operation in self.parsed_conditions
+        # Simply return the operation if there's only one
+        if len(self.parsed_tokens) == 1:
+            return self.parsed_tokens[0]
+
+        # Gather all the boolean operations to see if it's simply just an AND or an OR
+        all_boolean_operations = [
+            operation for operation in self.parsed_tokens
             if isinstance(operation, _ParserBoolOperation)
         ]
-        all_conditions = [condition for condition in self.parsed_conditions if isinstance(condition, Condition)]
+        all_conditions = [condition for condition in self.parsed_tokens if isinstance(condition, Condition)]
 
-        if all([op == _ParserBoolOperation.OR for op in all_bools]):
+        if all([op == _ParserBoolOperation.OR for op in all_boolean_operations]):
             return Or(all_conditions)
-        elif all([op == _ParserBoolOperation.AND for op in all_bools]):
+        elif all([op == _ParserBoolOperation.AND for op in all_boolean_operations]):
             return And(all_conditions)
         else:
+            # There's a mix of ANDs and ORs, so we'll need to OR each subgroup
+            # and then AND all the subgroups to eachother
             sub_groups = [[]]
             last_bool_operation = None
 
-            for token in self.parsed_conditions:
+            for token in self.parsed_tokens:
                 if isinstance(token, _ParserBoolOperation):
                     last_bool_operation = token
                 else:
@@ -438,8 +464,9 @@ class _BranchingLogicParser:
                         sub_groups.append([token])
 
             def process_sub_group(sub_group):
-                # if the subgroup is already just 1 Or, we don't need to wrap it in another or
-                if len(sub_group) == 1 and isinstance(sub_group[0], Or):
+                # if the subgroup is already just 1 condition, then it was surrounded by ANDs
+                # and there's nothing it needs to be ORed with
+                if len(sub_group) == 1:
                     return sub_group[0]
                 else:
                     return Or(sub_group)

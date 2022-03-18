@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 from rdr_service.model.questionnaire_response import QuestionnaireResponseStatus
 from rdr_service.domain_model.response import Answer, Response
 from rdr_service.services.response_validation.validation import And, CanOnlyBeAnsweredIf, ResponseRequirements, \
-    InAnySurvey, Or, Question, ValidationError
+    InAnySurvey, Or, Question, ValidationError, Condition
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -186,44 +186,6 @@ class TestValidation(BaseTestCase):
             response_validation.check_for_errors(response_to_b)
         )
 
-    def test_conditional_from_branching_logic(self):
-        """Check that we can build a condition based on Redcap's branching logic string"""
-        # conditional = Condition.from_branching_logic(
-        #     """[question_a] = 'ans_1' and [question_b(option_4)] = '1' and [question_amount] > 3"""
-        # )
-        # self.assertEqual(
-        #     'question_a answer is ans_1 '
-        #     'and question_b has option_4 selected '
-        #     'and question_amount answer greater than 3',
-        #     str(conditional)
-        # )
-
-        # another = Condition.from_branching_logic(
-        #     """[cdc_covid_xx_b_firstdose] = 'cope_a_336' or ([cdc_covid_xx_b_firstdose] = 'cope_a_335' or
-        #     [cdc_covid_xx_b_firstdose] = 'cope_a_330' or [cdc_covid_xx_b_firstdose] = 'cope_a_331' or
-        #     [cdc_covid_xx_b_firstdose] = 'COPE_A_52' or [cdc_covid_xx_b_firstdose] = 'COPE_A_204') and
-        #     ([cdc_covid_xx_b_seconddose] = 'cope_a_335' or [cdc_covid_xx_b_seconddose] = 'cope_a_330' or
-        #     [cdc_covid_xx_b_seconddose] = 'cope_a_331' or [cdc_covid_xx_b_seconddose] = 'COPE_A_52' or
-        #     [cdc_covid_xx_b_seconddose] = 'COPE_A_204')"""
-        # )
-        #
-        # """ [cdc_covid_xx_b_firstdose] = 'cope_a_336'
-        #     or (
-        #         [cdc_covid_xx_b_firstdose] = 'cope_a_335'
-        #         or [cdc_covid_xx_b_firstdose] = 'cope_a_330'
-        #         or [cdc_covid_xx_b_firstdose] = 'cope_a_331'
-        #         or [cdc_covid_xx_b_firstdose] = 'COPE_A_52'
-        #         or [cdc_covid_xx_b_firstdose] = 'COPE_A_204'
-        #     )
-        #     and (
-        #         [cdc_covid_xx_b_seconddose] = 'cope_a_335'
-        #         or [cdc_covid_xx_b_seconddose] = 'cope_a_330'
-        #         or [cdc_covid_xx_b_seconddose] = 'cope_a_331'
-        #         or [cdc_covid_xx_b_seconddose] = 'COPE_A_52'
-        #         or [cdc_covid_xx_b_seconddose] = 'COPE_A_204'
-        #     )"""
-        print('bob')
-
     @classmethod
     def _build_response(cls, answers: Dict[str, List[Tuple[int, str]]]):
         return Response(
@@ -236,3 +198,39 @@ class TestValidation(BaseTestCase):
                 for question_code, answer_list in answers.items()
             }
         )
+
+
+class TestConditionalFromBranchingLogic(BaseTestCase):
+    def __init__(self, *args, **kwargs):
+        super(TestConditionalFromBranchingLogic, self).__init__(*args, **kwargs)
+        self.uses_database = False
+
+    def test_code_option_selection(self):
+        branching_logic = "[a] = 'a1'"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(branching_logic, str(result))
+
+    def test_answer_greater_than(self):
+        branching_logic = "[a] > 7"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(branching_logic, str(result))
+
+    def test_checkbox_constraint(self):
+        branching_logic = "[a(option_1)] = '1'"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(branching_logic, str(result))
+
+    def test_simple_top_level_conditional(self):
+        branching_logic = "[a] = 'a1' and [b] > 0"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(f'({branching_logic})', str(result))
+
+    def test_complex_top_level_conditional(self):
+        branching_logic = "[a] = 'a1' and [b] > 0 or [c] = 'a2'"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(f"([a] = 'a1' and ([b] > 0 or [c] = 'a2'))", str(result))
+
+    def test_nested_conditional(self):
+        branching_logic = "[a] = 'a1' and ([b] > 0 or [c(option_1)] = '1' and [d] > 5)"
+        result = Condition.from_branching_logic(branching_logic)
+        self.assertEqual(f"([a] = 'a1' and (([b] > 0 or [c(option_1)] = '1') and [d] > 5))", str(result))
