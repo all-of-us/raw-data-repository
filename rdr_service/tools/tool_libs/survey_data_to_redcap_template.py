@@ -306,13 +306,14 @@ class SurveyToRedCapConversion(object):
 
     }
 
-    def __init__(self, args, gcp_env: GCPEnvConfigObject, module='TheBasics'):
+    def __init__(self, args, gcp_env: GCPEnvConfigObject, module='sdoh'):
         """
         :param args: command line arguments.
         :param gcp_env: gcp environment information, see: gcp_initialize().
         """
         self.args = args
         self.gcp_env = gcp_env
+        self.module = module
         self.set_bq_table(module)
         self.question_code_map = OrderedDict()
         self.option_code_display_strings = dict()
@@ -550,7 +551,7 @@ class SurveyToRedCapConversion(object):
 
         return None
 
-    def map_response_to_redcap_dict(self, module, response_id, response_dict):
+    def map_response_to_redcap_dict(self, response_id, response_dict):
         """
 
         """
@@ -572,14 +573,16 @@ class SurveyToRedCapConversion(object):
                     redcap_fields[self.get_redcap_fieldname(col)] = answers[0]
             elif survey_code_type == SurveyQuestionType.RADIO:
                 if len(answers) > 1:
+                    # Intentionally generate an "unsplit" string with all the answers.  This will hopefully be flagged
+                    # by REDCap validation process
+                    redcap_fields[col.lower()] = ','.join(answers)
                     _logger.error(f'Multiple selections found for radio button question {col} (response {response_id}')
                 elif len(answers):
                     # Default to the display value associated with an option answer code
                     if answers[0] == PMI_SKIP_CODE:
                         redcap_fields[col.lower()] = None
                     else:
-                        display = self.option_code_display_strings[answers[0]]
-                        redcap_fields[col.lower()] = display or answers[0]
+                        redcap_fields[col.lower()] = answers[0]
                 else:
                     redcap_fields[col.lower()] = None
 
@@ -592,11 +595,12 @@ class SurveyToRedCapConversion(object):
             print(f'{key}:   {redcap_fields[key]}')
 
         print('\n\n')
-        self.add_redcap_export_row(module, response_id, redcap_fields)
+        self.add_redcap_export_row(response_id, redcap_fields)
 
     def export_redcap_csv(self):
         """ Write the generated REDCap export rows to a file """
-        with open('basics_redcap_export.csv', 'w', newline='') as csv_file:
+        file_name = f'{self.module}_redcap_export.csv'
+        with open(file_name, 'w', newline='') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=',')
             for row in self.redcap_export_rows:
                 csv_writer.writerow(row)
@@ -606,16 +610,15 @@ class SurveyToRedCapConversion(object):
 
         self.gcp_env.activate_sql_proxy(replica=True)
         dao = BigQuerySyncDao()
-        module = 'sdoh'
-        self.set_bq_table(module)
-        self.create_survey_code_maps(module)
+        self.set_bq_table(self.module)
+        self.create_survey_code_maps(self.module)
         with dao.session() as session:
             # TODO:  Replace with a call to _get_response_id_list based on parameters passed
             response_list = self._generate_response_id_list()
             for rsp_id in response_list:
-                rsp = self.get_module_response_dict(module, rsp_id, session)
+                rsp = self.get_module_response_dict(self.module, rsp_id, session)
                 if rsp:
-                    self.map_response_to_redcap_dict(module, rsp_id, rsp)
+                    self.map_response_to_redcap_dict(rsp_id, rsp)
 
         self.export_redcap_csv()
 
@@ -638,7 +641,7 @@ def run():
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = SurveyToRedCapConversion(args, gcp_env)
+        process = SurveyToRedCapConversion(args, gcp_env, 'sdoh')
         exit_code = process.execute()
         return exit_code
 
