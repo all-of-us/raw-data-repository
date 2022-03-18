@@ -27,284 +27,10 @@ tool_desc = "Extracts module response data into a REDCap-conformant format for R
 
 class SurveyToRedCapConversion(object):
 
-    # TODO:  Investigate dynamically generating templates for this and other surveys
-    #  based on analyzing question types and branching logic details ingested from REDCap
-    DEFAULT_REDCAP_TEMPLATE_RECORD = {
-        "TheBasics":  OrderedDict([
-            ('thebasics_birthplace', None),
-            ('thebasics_countryborntextbox', None),
-            ('race_whatraceethnicity___whatraceethnicity_aian', 0),
-            ('race_whatraceethnicity___whatraceethnicity_asian', 0),
-            ('race_whatraceethnicity___whatraceethnicity_black', 0),
-            ('race_whatraceethnicity___whatraceethnicity_hispanic', 0),
-            ('race_whatraceethnicity___whatraceethnicity_mena', 0),
-            ('race_whatraceethnicity___whatraceethnicity_nhpi', 0),
-            ('race_whatraceethnicity___whatraceethnicity_white', 0),
-            ('race_whatraceethnicity___whatraceethnicity_raceethnicitynoneofthese', 0),
-            ('race_whatraceethnicity___pmi_prefernottoanswer', 0),
-            ('whatraceethnicity_raceethnicitynoneofthese', None),
-            ('aian_aianspecific___aianspecific_americanindian', 0),
-            ('aian_aianspecific___aianspecific_alaskanative', 0),
-            ('aian_aianspecific___aianspecific_centralsouthamericanindian', 0),
-            ('aian_aianspecific___aianspecific_aiannoneofthesedescribeme', 0),
-            ('aian_tribe', None),
-            ('aiannoneofthesedescribeme_aianfreetext', None),
-            ('asian_asianspecific___asianspecific_asianspecificindian', 0),
-            ('asian_asianspecific___asianspecific_cambodian', 0),
-            ('asian_asianspecific___asianspecific_chinese', 0),
-            ('asian_asianspecific___asianspecific_filipino', 0),
-            ('asian_asianspecific___asianspecific_hmong', 0),
-            ('asian_asianspecific___asianspecific_japanese', 0),
-            ('asian_asianspecific___asianspecific_korean', 0),
-            ('asian_asianspecific___asianspecific_pakistani', 0),
-            ('asian_asianspecific___asianspecific_vietnamese', 0),
-            ('asian_asianspecific___asianspecific_noneofthesedescribeme', 0),
-            ('noneofthesedescribeme_asianfreetext', None),
-            ('black_blackspecific___blackspecific_africanamerican', 0),
-            ('black_blackspecific___blackspecific_barbadian', 0),
-            ('black_blackspecific___blackspecific_caribbean', 0),
-            ('black_blackspecific___blackspecific_ethiopian', 0),
-            ('black_blackspecific___blackspecific_ghanaian', 0),
-            ('black_blackspecific___blackspecific_haitian', 0),
-            ('black_blackspecific___blackspecific_jamaican', 0),
-            ('black_blackspecific___blackspecific_liberian', 0),
-            ('black_blackspecific___blackspecific_nigerian', 0),
-            ('black_blackspecific___blackspecific_somali', 0),
-            ('black_blackspecific___blackspecific_southafrican', 0),
-            ('black_blackspecific___blackspecific_blacknoneofthesedescribeme', 0),
-            ('blacknoneofthesedescribeme_blackfreetext', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_colombian', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_cuban', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_dominican', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_ecuadorian', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_honduran', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_mexican', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_puertorican', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_salvadoran', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_spanish', 0),
-            ('hispanic_hispanicspecific___hispanicspecific_hispanicnoneofthesedescribeme', 0),
-            ('hispanicnoneofthesedescribeme_hispanicfreetext', None),
-            ('mena_menaspecific___menaspecific_afghan', 0),
-            ('mena_menaspecific___menaspecific_algerian', 0),
-            ('mena_menaspecific___menaspecific_egypt', 0),
-            ('mena_menaspecific___menaspecific_iranian', 0),
-            ('mena_menaspecific___menaspecific_iraqi', 0),
-            ('mena_menaspecific___menaspecific_israeli', 0),
-            ('mena_menaspecific___menaspecific_lebanese', 0),
-            ('mena_menaspecific___menaspecific_moroccan', 0),
-            ('mena_menaspecific___menaspecific_syrian', 0),
-            ('mena_menaspecific___menaspecific_tunisian', 0),
-            ('mena_menaspecific___menaspecific_menanoneofthesedescribeme', 0),
-            ('menanoneofthesedescribeme_menafreetext', None),
-            ('nhpi_nhpispecific___nhpispecific_chamorro', 0),
-            ('nhpi_nhpispecific___nhpispecific_chuukese', 0),
-            ('nhpi_nhpispecific___nhpispecific_fijian', 0),
-            ('nhpi_nhpispecific___nhpispecific_marshallese', 0),
-            ('nhpi_nhpispecific___nhpispecific_nativehawaiian', 0),
-            ('nhpi_nhpispecific___nhpispecific_palauan', 0),
-            ('nhpi_nhpispecific___nhpispecific_samoan', 0),
-            ('nhpi_nhpispecific___nhpispecific_tahitian', 0),
-            ('nhpi_nhpispecific___nhpispecific_tongan', 0),
-            ('nhpi_nhpispecific___nhpispecific_nhpinoneofthesedescribeme', 0),
-            ('nhpinoneofthesedescribeme_nhpifreetext', None),
-            ('white_whitespecific___whitespecific_dutch', 0),
-            ('white_whitespecific___whitespecific_english', 0),
-            ('white_whitespecific___whitespecific_european', 0),
-            ('white_whitespecific___whitespecific_french', 0),
-            ('white_whitespecific___whitespecific_german', 0),
-            ('white_whitespecific___whitespecific_irish', 0),
-            ('white_whitespecific___whitespecific_italian', 0),
-            ('white_whitespecific___whitespecific_norwegian', 0),
-            ('white_whitespecific___whitespecific_polish', 0),
-            ('white_whitespecific___whitespecific_scottish', 0),
-            ('white_whitespecific___whitespecific_spanish', 0),
-            ('white_whitespecific___whitespecific_whitenoneofthesedescribeme', 0),
-            ('whitenoneofthesedescribeme_whitefreetext', None),
-            ('gender_genderidentity___genderidentity_man', 0),
-            ('gender_genderidentity___genderidentity_woman', 0),
-            ('gender_genderidentity___genderidentity_nonbinary', 0),
-            ('gender_genderidentity___genderidentity_transgender', 0),
-            ('gender_genderidentity___genderidentity_additionaloptions', 0),
-            ('gender_genderidentity___pmi_prefernottoanswer', 0),
-            ('gender_closergenderdescription___closergenderdescription_transman', 0),
-            ('gender_closergenderdescription___closergenderdescription_transwoman', 0),
-            ('gender_closergenderdescription___closergenderdescription_genderqueer', 0),
-            ('gender_closergenderdescription___closergenderdescription_genderfluid', 0),
-            ('gender_closergenderdescription___closergenderdescription_gendervariant', 0),
-            ('gender_closergenderdescription___sexualitycloserdescription_twospirit', 0),
-            ('gender_closergenderdescription___closergenderdescription_unsure', 0),
-            ('gender_closergenderdescription___closergenderdescription_specifiedgender', 0),
-            ('specifiedgender_specifiedgendertextbox', None),
-            ('biologicalsexatbirth_sexatbirth', None),
-            ('sexatbirthnoneofthese_sexatbirthtextbox', None),
-            ('thebasics_sexualorientation___sexualorientation_gay', 0),
-            ('thebasics_sexualorientation___sexualorientation_lesbian', 0),
-            ('thebasics_sexualorientation___sexualorientation_straight', 0),
-            ('thebasics_sexualorientation___sexualorientation_bisexual', 0),
-            ('thebasics_sexualorientation___sexualorientation_none', 0),
-            ('thebasics_sexualorientation___pmi_prefernottoanswer', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_queer', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_polyomnisapiopansexual', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_asexual', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_twospirit', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_notfiguredout', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_mostlystraight', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_nosexuality', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_nolabels', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_dontknow', 0),
-            ('genderidentity_sexualitycloserdescription___sexualitycloserdescription_somethingelse', 0),
-            ('somethingelse_sexualitysomethingelsetextbox', None),
-            ('educationlevel_highestgrade', None),
-            ('activeduty_activedutyservestatus', None),
-            ('activeduty_avtivedutyservestatus', None),
-            ('maritalstatus_currentmaritalstatus', None),
-            ('livingsituation_howmanypeople', None),
-            ('livingsituation_peopleunder18', None),
-            ('insurance_healthinsurance', None),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_purchased', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_employerorunion', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_medicare', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_medicaid', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_military', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_va', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_indian', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_otherhealthplan', 0),
-            ('healthinsurance_insurancetypeupdate___insurancetypeupdate_none', 0),
-            ('otherhealthplan_freetext', None),
-            ('disability_deaf', None),
-            ('disability_blind', None),
-            ('disability_difficultyconcentrating', None),
-            ('disability_walkingclimbing', None),
-            ('disability_dressingbathing', None),
-            ('disability_errandsalone', None),
-            ('employment_employmentstatus___employmentstatus_employedforwages', 0),
-            ('employment_employmentstatus___employmentstatus_selfemployed', 0),
-            ('employment_employmentstatus___employmentstatus_outofworkoneormore', 0),
-            ('employment_employmentstatus___employmentstatus_outofworklessthanone', 0),
-            ('employment_employmentstatus___employmentstatus_homemaker', 0),
-            ('employment_employmentstatus___employmentstatus_student', 0),
-            ('employment_employmentstatus___employmentstatus_retired', 0),
-            ('employment_employmentstatus___employmentstatus_unabletowork', 0),
-            ('employment_employmentstatus___pmi_prefernottoanswer', 0),
-            ('employment_employmentworkaddress', None),
-            ('employmentworkaddress_addresslineone', None),
-            ('employmentworkaddress_addresslinetwo', None),
-            ('employmentworkaddress_city', None),
-            ('employmentworkaddress_state', None),
-            ('employmentworkaddress_zipcode', None),
-            ('employmentworkaddress_country', None),
-            ('income_annualincome', None),
-            ('homeown_currenthomeown', None),
-            ('livingsituation_currentliving', None),
-            ('livingsituation_livingsituationfreetext', None),
-            ('livingsituation_howmanylivingyears', None),
-            ('livingsituation_stablehouseconcern', None),
-            ('socialsecurity_socialsecuritynumber', None),
-            ('socialsecurity_socialsecuritynumber_text', None),
-            ('secondarycontactinfo_persononefirstname', None),
-            ('secondarycontactinfo_persononemiddleinitial', None),
-            ('secondarycontactinfo_persononelastname', None),
-            ('secondarycontactinfo_persononeaddressone', None),
-            ('secondarycontactinfo_persononeaddresstwo', None),
-            ('persononeaddress_persononeaddresscity', None),
-            ('persononeaddress_persononeaddressstate', None),
-            ('persononeaddress_persononeaddresszipcode', None),
-            ('secondarycontactinfo_persononeemail', None),
-            ('secondarycontactinfo_persononetelephone', None),
-            ('secondarycontactinfo_persononerelationship', None),
-            ('secondarycontactinfo_secondcontactsfirstname', None),
-            ('secondarycontactinfo_secondcontactsmiddleinitial', None),
-            ('secondarycontactinfo_secondcontactslastname', None),
-            ('secondarycontactinfo_secondcontactsaddressone', None),
-            ('secondarycontactinfo_secondcontactsaddresstwo', None),
-            ('secondcontactsaddress_secondcontactcity', None),
-            ('secondcontactsaddress_secondcontactstate', None),
-            ('secondcontactsaddress_secondcontactzipcode', None),
-            ('secondarycontactinfo_secondcontactsemail', None),
-            ('secondarycontactinfo_secondcontactsnumber', None),
-            ('secondarycontactinfo_secondcontactsrelationship', None),
-        ])
-    }
-
-    parent_code_ordered_lists = {
-        # This lays out the questions codes in the order they are listed in the REDCap template
-        # referred to in DA-2500.  That template follows a topic-based grouping/ordering
-        #
-        # NOTE:  Some codes/responses exist in RDR which may not be represented in the REDCap template (e.g.,
-        # 'WhatTribeAffiliation_FreeText'.  Including here so we can catch those inconsistencies in the REDCap data
-        # dictionary
-        'TheBasics': [
-            'TheBasics_Birthplace', 'TheBasics_CountryBornTextBox',
-            'Race_WhatRaceEthnicity',
-            'AIAN_AIANSpecific', 'AIANNoneOfTheseDescribeMe_AIANFreeText','AIAN_Tribe', 'WhatTribeAffiliation_FreeText',
-            'Asian_AsianSpecific', 'NoneOfTheseDescribeMe_AsianFreeText',
-            'Black_BlackSpecific', 'BlackNoneOfTheseDescribeMe_BlackFreeText',
-            'Hispanic_HispanicSpecific', 'HispanicNoneOfTheseDescribeMe_HispanicFreeText',
-            'MENA_MENASpecific', 'MENANoneOfTheseDescribeMe_MENAFreeText',
-            'NHPI_NHPISpecific', 'NHPINoneOfTheseDescribeMe_NHPIFreeText',
-            'White_WhiteSpecific', 'WhiteNoneOfTheseDescribeMe_WhiteFreeText',
-            'RaceEthnicityNoneOfThese_RaceEthnicityFreeTextBox',
-            'Gender_GenderIdentity', 'Gender_CloserGenderDescription', 'SpecifiedGender_SpecifiedGenderTextBox',
-            'BiologicalSexAtBirth_SexAtBirth', 'SexAtBirthNoneOfThese_SexAtBirthTextBox',
-            'TheBasics_SexualOrientation', 'GenderIdentity_SexualityCloserDescription',
-            'SomethingElse_SexualitySomethingElseTextBox',
-            'EducationLevel_HighestGrade',
-            'ActiveDuty_AvtiveDutyServeStatus',   # NOTE:  REDCap has proper spelling ActiveDutyServeStatus
-            'MaritalStatus_CurrentMaritalStatus',
-            'LivingSituation_HowManyPeople',
-            'LivingSituation_PeopleUnder18',
-            'Insurance_HealthInsurance', 'HealthInsurance_HealthInsuranceType', 'HealthInsurance_InsuranceTypeUpdate',
-            'OtherHealthPlan_FreeText',
-            'Disability_Deaf', 'Disability_Blind', 'Disability_DifficultyConcentrating',
-            'Disability_WalkingClimbing', 'Disability_DressingBathing', 'Disability_ErrandsAlone',
-            'Employment_EmploymentStatus', 'Employment_EmploymentWorkAddress',
-            'EmploymentWorkAddress_AddressLineOne', 'EmploymentWorkAddress_AddressLineTwo',
-            'EmploymentWorkAddress_City', 'EmploymentWorkAddress_State',
-            'EmploymentWorkAddress_ZipCode', 'EmploymentWorkAddress_Country',
-            'Income_AnnualIncome', 'HomeOwn_CurrentHomeOwn',
-            'LivingSituation_CurrentLiving', 'LivingSituation_LivingSituationFreeText',
-            'LivingSituation_HowManyLivingYears', 'LivingSituation_StableHouseConcern',
-            'SocialSecurity_SocialSecurityNumber', 'SocialSecurity_PreferNotToAnswer',
-            'SecondaryContactInfo_PersonOneFirstName', 'SecondaryContactInfo_PersonOneMiddleInitial',
-            'SecondaryContactInfo_PersonOneLastName', 'SecondaryContactInfo_PersonOneAddressOne',
-            'SecondaryContactInfo_PersonOneAddressTwo', 'PersonOneAddress_PersonOneAddressCity',
-            'PersonOneAddress_PersonOneAddressState', 'PersonOneAddress_PersonOneAddressZipCode',
-            'SecondaryContactInfo_PersonOneEmail', 'SecondaryContactInfo_PersonOneTelephone',
-            'SecondaryContactInfo_PersonOneRelationship', 'SecondaryContactInfo_SecondContactsFirstName',
-            'SecondaryContactInfo_SecondContactsMiddleInitial', 'SecondaryContactInfo_SecondContactsLastName',
-            'SecondaryContactInfo_SecondContactsAddressOne', 'SecondaryContactInfo_SecondContactsAddressTwo',
-            'SecondContactsAddress_SecondContactCity', 'SecondContactsAddress_SecondContactState',
-            'SecondContactsAddress_SecondContactZipCode', 'SecondaryContactInfo_SecondContactsEmail',
-            'SecondaryContactInfo_SecondContactsNumber', 'SecondaryContactInfo_SecondContactsRelationship'
-        ]
-    }
 
     # Static class variables / dicts that will be populated as values are discovered, so they can act as a class cache
     code_display_values = {}
     pdr_table_mod_classes = {}
-
-    # For branching logic option menus, associate codes from the same option menu (shared prefixes) to the "parent"
-    # question code.  The values (parent question codes) from this dict can also be used when generating "Prefer Not To
-    # Answer" field names for a given topic's option menu (e.g., gender_genderidentity___pmi_prefernottoanswer)
-    prefix_to_parent_code_map = {
-        "WhatRaceEthnicity_": "Race_WhatRaceEthnicity",
-        "AIANSpecific_": "AIAN_AIANSpecific",
-        "AsianSpecific_": "Asian_AsianSpecific",
-        "BlackSpecific_": "Black_BlackSpecific",
-        "HispanicSpecific_": "Hispanic_HispanicSpecific",
-        "MENASpecific_": "MENA_MENASpecific",
-        "NHPISpecific_": "NHPI_NHPISpecific",
-        "WhiteSpecific_": "White_WhiteSpecific",
-        "GenderIdentity_": "Gender_GenderIdentity",
-        "CloserGenderDescription_": "Gender_CloserGenderDescription",
-        "SexualOrientation_": "TheBasics_SexualOrientation",
-        "SexualityCloserDescription_": "GenderIdentity_SexualityCloserDescription",
-        "InsuranceType_": "Insurance_InsuranceType",
-        "HealthInsuranceType_": "HealthInsurance_HealthInsuranceType",
-        "InsuranceTypeUpdate_": "HealthInsurance_InsuranceTypeUpdate",
-        "EmploymentStatus_": "Employment_EmploymentStatus",
-
-    }
 
     def __init__(self, args, gcp_env: GCPEnvConfigObject, module='sdoh'):
         """
@@ -415,7 +141,6 @@ class SurveyToRedCapConversion(object):
                 for code in field_details['option_codes']:
                     self.redcap_export_rows.append([self.get_redcap_fieldname(code, parent=field_name), ])
 
-        print('debug')
 
     def get_code_display_value(self, code):
         """
@@ -437,16 +162,6 @@ class SurveyToRedCapConversion(object):
         _logger.warning(f'Display value requested for Unknown code {code}')
         return None
 
-    def is_freetext_code(self, code):
-        """
-        Use the _force_boolean_fields list from the PDR (BQ) Module Schema to identify freetext codes
-        TODO:  Use survey_* tables to find text fields/codes
-        """
-        if not self.bq_table:
-            raise ValueError('The instance does not have a bq_table attribute set')
-
-        return code in self.bq_table.__schema__._force_boolean_fields
-
     def get_redcap_fieldname(self, code, parent=None):
         """
         Based on the code string and parent code string, generate a REDCap field name
@@ -463,6 +178,9 @@ class SurveyToRedCapConversion(object):
         else:
             return "".join([parent.lower(), f'___{code.lower()}'])
 
+    # TODO:  Unused for SDOH but leaving in in case/until we try another module where a checkbox option list includes
+    # a "prefer not to answer" option.   May still need to generate the right REDCap field name based on the option
+    # menu's parent question code
     def redcap_prefer_not_to_answer(self, question_code):
         """
         The PMI_PreferNotToAnswer answer code is associated with multiple surveys and survey questions.
@@ -476,20 +194,11 @@ class SurveyToRedCapConversion(object):
 
         :return:  key, value where key is the REDCap field name and value is based on the question code type
         """
-
-        answer_code = 'PMI_PreferNotToAnswer'
-        # If the question code is one of the parent codes to an option code menu, map the field
-        if question_code in self.prefix_to_parent_code_map.values():
-            return "___".join([question_code.lower(), answer_code.lower()]), 1
-        else:
-            return question_code.lower(), self.get_code_display_value(answer_code)
+        pass
 
     def add_redcap_export_row(self, response_id, generated_redcap_dict):
         """
-        Iterate over the generated REDCap field/value dict and add the data to the export.  If no values were
-        found in the PDR response data for a given REDCap field, then the default value for that field will be
-        extracted from the DEFAULT_REDCAP_TEMPLATE_RECORD for that module/REDCap field name
-        :param module:  The module name (e.g., 'TheBasics')
+        Iterate over the generated REDCap field/value dict and add the data to the export.
         :param response_id: questionnaire_response_id (biquery_sync pk_id) of the survey response
         :param generated_redcap_dict: The resulting key/value pairs from the transformed PDR response data
         """
@@ -519,18 +228,6 @@ class SurveyToRedCapConversion(object):
 
         return
 
-    def find_parent_question_code(self, code):
-        """
-        Find parent question code for a given code.
-        TODO:  Convert the search of the hardcoded prefix_to_parent_code_map to use the survey_question_option and
-        survey_question data in the RDR instead.  Must have imported the module codebook(s) from REDCap first
-        """
-        for prefix in self.prefix_to_parent_code_map.keys():
-            if code.startswith(prefix):
-                return self.prefix_to_parent_code_map[prefix]
-
-        return None
-
     def get_module_response_dict(self, module, response_id, ro_session):
         """
         Get a PDR module data record (prepped for BigQuery/PostgreSQL) for the specified questionnaire_response_id
@@ -556,7 +253,7 @@ class SurveyToRedCapConversion(object):
 
         """
         redcap_fields = OrderedDict()
-        print(f'\n==================\n{response_id}\n==================')
+        # print(f'\n==================\n{response_id}\n==================')
         for col in self.question_code_map:
             survey_code_type = self.question_code_map[col]['question_type']
             # PDR data can have comma-separated code strings for answers to multiselect questions
@@ -594,12 +291,13 @@ class SurveyToRedCapConversion(object):
         for key in redcap_fields:
             print(f'{key}:   {redcap_fields[key]}')
 
-        print('\n\n')
+        # print('\n\n')
         self.add_redcap_export_row(response_id, redcap_fields)
 
     def export_redcap_csv(self):
         """ Write the generated REDCap export rows to a file """
         file_name = f'{self.module}_redcap_export.csv'
+        print(f'Outputting results to {file_name}...')
         with open(file_name, 'w', newline='') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=',')
             for row in self.redcap_export_rows:
