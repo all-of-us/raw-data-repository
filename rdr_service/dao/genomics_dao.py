@@ -2415,34 +2415,64 @@ class GenomicAW2RawDao(BaseDao, GenomicDaoUtils):
                 session.execute("DELETE FROM genomic_aw2_raw WHERE TRUE")
 
 
-class GenomicAW3RawDao(BaseDao, GenomicDaoUtils, ABC):
+class GenomicAW3RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW3RawDao, self).__init__(
             GenomicAW3Raw, order_by_ending=['id'])
 
+    def get_id(self, obj):
+        pass
 
-class GenomicAW4RawDao(BaseDao, GenomicDaoUtils, ABC):
+    def from_client_json(self):
+        pass
+
+
+class GenomicAW4RawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicAW4RawDao, self).__init__(
             GenomicAW4Raw, order_by_ending=['id'])
 
+    def get_id(self, obj):
+        pass
 
-class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils, ABC):
+    def from_client_json(self):
+        pass
+
+
+class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW2SCRawDao, self).__init__(
             GenomicW2SCRaw, order_by_ending=['id'])
 
+    def get_id(self, obj):
+        pass
 
-class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils, ABC):
+    def from_client_json(self):
+        pass
+
+
+class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW3SRRawDao, self).__init__(
             GenomicW3SRRaw, order_by_ending=['id'])
 
+    def get_id(self, obj):
+        pass
 
-class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils, ABC):
+    def from_client_json(self):
+        pass
+
+
+class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW4WRRawDao, self).__init__(
             GenomicW4WRRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
 
 
 class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):
