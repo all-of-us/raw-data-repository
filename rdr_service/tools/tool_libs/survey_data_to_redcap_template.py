@@ -288,8 +288,8 @@ class SurveyToRedCapConversion(object):
                     field_name = "___".join([col, option.lower()])
                     redcap_fields[field_name] = int(option in answers)
 
-        for key in redcap_fields:
-            print(f'{key}:   {redcap_fields[key]}')
+        # for key in redcap_fields:
+        #    print(f'{key}:   {redcap_fields[key]}')
 
         # print('\n\n')
         self.add_redcap_export_row(response_id, redcap_fields)
@@ -339,7 +339,7 @@ def run():
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
-        process = SurveyToRedCapConversion(args, gcp_env, 'sdoh')
+        process = SurveyToRedCapConversion(args, gcp_env, module='sdoh')
         exit_code = process.execute()
         return exit_code
 
