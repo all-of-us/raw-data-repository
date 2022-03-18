@@ -10,11 +10,13 @@ import json
 
 from collections import OrderedDict
 
+from rdr_service.code_constants import PMI_SKIP_CODE
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.model import BQ_TABLES
+from rdr_service.model.survey import SurveyQuestionType
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -312,25 +314,27 @@ class SurveyToRedCapConversion(object):
         self.args = args
         self.gcp_env = gcp_env
         self.set_bq_table(module)
-        # Build the two dimensional array that can turned into a CSV suitable for REDCap import.  Initialize to
-        # a list of rows where the first element is the REDCap field name
-        self.redcap_export_rows = [['record_id', ]]
-        for field_name in self.DEFAULT_REDCAP_TEMPLATE_RECORD[module]:
-            self.redcap_export_rows.append([field_name, ])
-
-    def _get_question_type(self, code):
-        """
-        Find the SurveyQuestionType for a question code value
-        TODO:  If the module has had its codebook synced from REDCap, use  the RDR survey_question table details to
-        determine SurveyQuestionType (e.g., RADIO, CHECKBOX, etc.)
-        """
-        pass
+        self.question_code_map = OrderedDict()
+        self.option_code_display_strings = dict()
+        self.redcap_export_rows = list()
 
     def _generate_response_id_list(self, num_records=20, min_authored=None, max_authored=None):
         """
         Select a sample of questionnaire_response_id values for analysis
         """
-        pass
+        sql = """
+               select bqs.pk_id from bigquery_sync bqs
+               join questionnaire_response qr on qr.questionnaire_response_id = bqs.pk_id
+               where table_id = :table and qr.classification_type = :classification
+               limit :records
+        """
+        if min_authored or max_authored:
+            pass
+
+        with CodeDao().session() as session:
+            results = session.execute(sql, {'table': self.bq_table.get_name().lower(), 'classification': 0,
+                                            'records': num_records})
+            return [r.pk_id for r in results]
 
     def get_pdr_bq_table_id(self):
         """ Return the table_id string associated with the module in the RDR bigquery_sync table generated records """
@@ -361,6 +365,56 @@ class SurveyToRedCapConversion(object):
                 return
 
         raise ValueError(f'A PDR BQ_TABLES table definition for module {module} was not found')
+
+    def create_survey_code_maps(self, module):
+        """
+
+        """
+        sql = """
+            select
+            sq.id question_id, sq.code_id question_code, cq.value question_code_value, cq.display question_display,
+            sq.question_type, sqo.code_id option_code, co.value option_code_value,
+            sqo.question_id option_question_id, co.display as option_display
+            from survey s
+            join survey_question sq on s.id = sq.survey_id
+            join code cq on sq.code_id = cq.code_id
+            left join survey_question_option sqo on sq.id = sqo.question_id
+            left join code co on sqo.code_id = co.code_id
+            where s.id = (
+                select id from survey s
+                join code cs on s.code_id = cs.code_id
+                where cs.value = :module and s.replaced_time is null
+                order by import_time desc
+                limit 1
+                )
+            order by sq.id, sqo.id;
+        """
+
+        with CodeDao().session() as session:
+            results = session.execute(sql, {'module': module})
+            last_question_code_value = None
+            for row in results:
+                if row.question_code_value == last_question_code_value:
+                    self.question_code_map[last_question_code_value]['option_codes'].append(row.option_code_value)
+                    self.option_code_display_strings[row.option_code_value] = row.option_display
+                else:
+                    self.question_code_map[row.question_code_value] = {
+                        'question_type': SurveyQuestionType(row.question_type),
+                        'option_codes': [row.option_code_value, ] if row.option_code_value else None
+                    }
+                    if row.option_code_value:
+                        self.option_code_display_strings[row.option_code_value] = row.option_display
+                last_question_code_value = row.question_code_value
+
+        self.redcap_export_rows.append(['record_id', ])
+        for field_name, field_details in self.question_code_map.items():
+            if field_details['question_type'] in (SurveyQuestionType.TEXT, SurveyQuestionType.RADIO):
+                self.redcap_export_rows.append([self.get_redcap_fieldname(field_name, parent=None), ])
+            elif field_details['question_type'] == SurveyQuestionType.CHECKBOX:
+                for code in field_details['option_codes']:
+                    self.redcap_export_rows.append([self.get_redcap_fieldname(code, parent=field_name), ])
+
+        print('debug')
 
     def get_code_display_value(self, code):
         """
@@ -429,7 +483,7 @@ class SurveyToRedCapConversion(object):
         else:
             return question_code.lower(), self.get_code_display_value(answer_code)
 
-    def add_redcap_export_row(self, module, response_id, generated_redcap_dict):
+    def add_redcap_export_row(self, response_id, generated_redcap_dict):
         """
         Iterate over the generated REDCap field/value dict and add the data to the export.  If no values were
         found in the PDR response data for a given REDCap field, then the default value for that field will be
@@ -438,9 +492,6 @@ class SurveyToRedCapConversion(object):
         :param response_id: questionnaire_response_id (biquery_sync pk_id) of the survey response
         :param generated_redcap_dict: The resulting key/value pairs from the transformed PDR response data
         """
-
-        if module not in self.DEFAULT_REDCAP_TEMPLATE_RECORD.keys():
-            raise ValueError(f'No default REDCap template definition exists for module {module}')
 
         for row in self.redcap_export_rows:
             field_name = row[0]
@@ -451,15 +502,15 @@ class SurveyToRedCapConversion(object):
                 # Delete recognized keys from the generated REDCap data dict after processing.  Any dict entries left
                 # after finishing this for loop is a "non-conformant" field name not in the REDCap data dictionary
                 del generated_redcap_dict[field_name]
-            elif field_name in self.DEFAULT_REDCAP_TEMPLATE_RECORD[module].keys():
-                row.append(self.DEFAULT_REDCAP_TEMPLATE_RECORD[module][field_name])
             else:
+                _logger.error(f'Missing field {field_name} in generated row data')
                 row.append(None)
             # Capture the current row length (number of records/columns added so far)
             row_length = len(row)
 
         # Add a row to the export rows for any new non-conformant fields and backfill previously processed records
         for field_name in generated_redcap_dict.keys():
+            _logger.error(f'Extra field name {field_name} in generated row data')
             # First column in the row is the field name, then need to backfill the already-generated records/columns
             backfill_values = [None] * (row_length - 1)
             backfill_values[-1] = generated_redcap_dict[field_name]  # Overwrite last col with this response's value
@@ -487,17 +538,17 @@ class SurveyToRedCapConversion(object):
         """
         if not module or not response_id:
             print('Need module name and a questionnaire_response_id')
-            return {}
+            return None
         elif ro_session:
             table_id = self.get_pdr_bq_table_id()
             results = ro_session.execute(('select resource from bigquery_sync '
                                           f'where table_id="{table_id}" and pk_id = {response_id}')).first()
-            rsp = json.loads(results.resource)
+            rsp = json.loads(results.resource) if results else None
             return rsp
         else:
             pass
 
-        return {}
+        return None
 
     def map_response_to_redcap_dict(self, module, response_id, response_dict):
         """
@@ -505,41 +556,37 @@ class SurveyToRedCapConversion(object):
         """
         redcap_fields = OrderedDict()
         print(f'\n==================\n{response_id}\n==================')
-        for col in self.parent_code_ordered_lists[module]:
+        for col in self.question_code_map:
+            survey_code_type = self.question_code_map[col]['question_type']
             # PDR data can have comma-separated code strings for answers to multiselect questions
             answers = list(str(response_dict[col]).split(',')) if response_dict[col] else []
-
-            if self.is_freetext_code(col) and len(answers):
+            if survey_code_type == SurveyQuestionType.TEXT:
                 # PDR data has already mapped null/skipped free text fields to 0 if no text was entered,
                 # or 1 if text was present
-                if answers[0] == "1":
-                    redcap_fields[self.get_redcap_fieldname(col)] = '(redacted)'
-                elif answer[0] == "0":
+                if not len(answers) or answers[0] == "0":
                     redcap_fields[self.get_redcap_fieldname(col)] = None
+                elif answers[0] == "1":
+                    redcap_fields[self.get_redcap_fieldname(col)] = '(redacted)'
                 else:
                     # "Should never get here" but in case there was an issue with PDR data generation....
                     redcap_fields[self.get_redcap_fieldname(col)] = answers[0]
-            else:
-                for answer in answers:
-                    parent = self.find_parent_question_code(answer)
-                    # Special handling for since various topic sections have their own pmi_prefernottoanswer field in
-                    # REDCap data dictionary
-                    if answer == 'PMI_PreferNotToAnswer':
-                        key, value = self.redcap_prefer_not_to_answer(col)
-                        redcap_fields[key] = value
-                    elif parent:
-                        # Multi-select option sections (have a parent question) get a 1 as their "checkbox" value
-                        redcap_fields[self.get_redcap_fieldname(answer, parent)] = 1
+            elif survey_code_type == SurveyQuestionType.RADIO:
+                if len(answers) > 1:
+                    _logger.error(f'Multiple selections found for radio button question {col} (response {response_id}')
+                elif len(answers):
+                    # Default to the display value associated with an option answer code
+                    if answers[0] == PMI_SKIP_CODE:
+                        redcap_fields[col.lower()] = None
+                    else:
+                        display = self.option_code_display_strings[answers[0]]
+                        redcap_fields[col.lower()] = display or answers[0]
+                else:
+                    redcap_fields[col.lower()] = None
 
-                    # Single-select/radio buttons have the display value of the answer code as their REDCap fieldname
-                    # value.  If it's numeric, bring over the number string.  Else get the display value of the code
-                    elif answer.isnumeric():
-                        redcap_fields[self.get_redcap_fieldname(col)] = answer
-                    # !!! WORKAROUND !!! See PDR-819.  Treat the 3-char truncated 'PMI' answer (to the
-                    # EmploymentWorkAddress_ZipCode question) the same as 'PMI_Skip'.
-                    # REDCap doesn't have a display value when radio button/single select questions are skipped
-                    elif answer not in ('PMI_Skip', 'PMI'):
-                        redcap_fields[self.get_redcap_fieldname(col)] = self.get_code_display_value(answer)
+            elif survey_code_type == SurveyQuestionType.CHECKBOX:
+                for option in self.question_code_map[col]['option_codes']:
+                    field_name = "___".join([col, option.lower()])
+                    redcap_fields[field_name] = int(option in answers)
 
         for key in redcap_fields:
             print(f'{key}:   {redcap_fields[key]}')
@@ -559,17 +606,16 @@ class SurveyToRedCapConversion(object):
 
         self.gcp_env.activate_sql_proxy(replica=True)
         dao = BigQuerySyncDao()
-        module = 'TheBasics'
+        module = 'sdoh'
         self.set_bq_table(module)
+        self.create_survey_code_maps(module)
         with dao.session() as session:
             # TODO:  Replace with a call to _get_response_id_list based on parameters passed
-            response_list = [996438929, 224078445, 622747617, 100178505, 100179607, 100275014, 100892279, 101083117,
-                             101394766, 101657560, 102311593, 102479428, 102699093, 100120910, 100278026, 100393283,
-                             100419634, 100428180, 100788745, 100801123, 100802451, 100830407,100868630,
-                             ]
+            response_list = self._generate_response_id_list()
             for rsp_id in response_list:
                 rsp = self.get_module_response_dict(module, rsp_id, session)
-                self.map_response_to_redcap_dict(module, rsp_id, rsp)
+                if rsp:
+                    self.map_response_to_redcap_dict(module, rsp_id, rsp)
 
         self.export_redcap_csv()
 
