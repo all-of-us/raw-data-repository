@@ -846,6 +846,7 @@ class GenomicCVLAnalysis(Base):
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
     clinical_analysis_type = Column(String(128), nullable=False)
     health_related_data_file_name = Column(String(512), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicCVLAnalysis, 'before_insert', model_insert_listener)
