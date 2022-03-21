@@ -228,9 +228,9 @@ class TestConditionalFromBranchingLogic(BaseTestCase):
     def test_complex_top_level_conditional(self):
         branching_logic = "[a] = 'a1' and [b] > 0 or [c] = 'a2'"
         result = Condition.from_branching_logic(branching_logic)
-        self.assertEqual(f"([a] = 'a1' and ([b] > 0 or [c] = 'a2'))", str(result))
+        self.assertEqual("([a] = 'a1' and ([b] > 0 or [c] = 'a2'))", str(result))
 
     def test_nested_conditional(self):
         branching_logic = "[a] = 'a1' and ([b] > 0 or [c(option_1)] = '1' and [d] > 5)"
         result = Condition.from_branching_logic(branching_logic)
-        self.assertEqual(f"([a] = 'a1' and (([b] > 0 or [c(option_1)] = '1') and [d] > 5))", str(result))
+        self.assertEqual("([a] = 'a1' and (([b] > 0 or [c(option_1)] = '1') and [d] > 5))", str(result))

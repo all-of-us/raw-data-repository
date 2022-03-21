@@ -372,7 +372,7 @@ class _BranchingLogicParser(_BaseParser):
         if self._state is not None:
             raise Exception(f'unexpected end to nesting level in {self._state}')
         if not self._parent:
-            raise Exception(f'unexpected end of nesting level at the root parser')
+            raise Exception('unexpected end of nesting level at the root parser')
 
         self._parent.child_parsing_complete(
             new_condition=self.get_resulting_conditional()
