@@ -1,7 +1,6 @@
 import collections
 import logging
 import os
-from abc import ABC
 
 import pytz
 import sqlalchemy
@@ -3077,10 +3076,16 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.all()
 
 
-class GenomicCVLAnalysisDao(BaseDao, ABC):
+class GenomicCVLAnalysisDao(BaseDao):
     def __init__(self):
         super(GenomicCVLAnalysisDao, self).__init__(
             GenomicCVLAnalysis, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
 
 
 class GenomicQueriesDao(BaseDao):

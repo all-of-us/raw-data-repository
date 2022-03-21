@@ -259,7 +259,7 @@ class GenomicFileIngester:
         """
         Reads a file object from bucket and inserts into DB
         :param: file_obj: A genomic file object
-        :return: A GenomicSubProcessRes3ultCode
+        :return: A GenomicSubProcessResultCode
         """
         self.file_obj = file_obj
         data_to_ingest = self._retrieve_data_from_path(self.file_obj.filePath)
