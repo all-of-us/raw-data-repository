@@ -144,7 +144,6 @@ class ParticipantSummary(Base):
     language = None  # placeholder for docs, API sets on model using corresponding ID field
     '*Deprecated*'
 
-
     dateOfBirth = Column("date_of_birth", Date)
     """The day the participant was born."""
 
