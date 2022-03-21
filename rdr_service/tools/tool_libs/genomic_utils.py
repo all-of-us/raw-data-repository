@@ -407,7 +407,8 @@ class GenerateManifestClass(GenomicManifestBase):
         _logger.info(f'Manifest Exported to local file:')
         _logger.warning(f'  {local_path}')
 
-    def update_member_genomic_state(self, member, _signal):
+    @staticmethod
+    def update_member_genomic_state(member, _signal):
         """
         Updates a genomic member's genomic state after the manifest has been generated.
         :param member:
@@ -418,8 +419,7 @@ class GenerateManifestClass(GenomicManifestBase):
                                                       signal=_signal)
 
         if new_state is not None or new_state != member.genomicWorkflowState:
-            member_dao.update_member_state(member, new_state,
-                                           project_id=self.gcp_env.project)
+            member_dao.update_member_workflow_state(member, new_state)
 
 
 class ControlSampleClass(GenomicManifestBase):

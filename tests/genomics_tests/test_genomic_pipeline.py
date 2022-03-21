@@ -3253,7 +3253,7 @@ class GenomicPipelineTest(BaseTestCase):
 
         members = self.member_dao.get_all()
         for m in members:
-            self.member_dao.update_member_state(m, GenomicWorkflowState.W1)
+            self.member_dao.update_member_workflow_state(m, GenomicWorkflowState.W1)
 
         # Run Workflow
         fake_now = datetime.datetime(2020, 7, 11, 0, 0, 0, 0)

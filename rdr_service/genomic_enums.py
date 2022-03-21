@@ -116,6 +116,8 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W1IL_TO_RAW_TABLE = 59
     LOAD_CVL_W2SC_TO_RAW_TABLE = 60
     LOAD_CVL_W3SR_TO_RAW_TABLE = 61
+    LOAD_CVL_W3SC_TO_RAW_TABLE = 62
+    LOAD_CVL_W4WR_TO_RAW_TABLE = 63
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -129,7 +131,13 @@ class GenomicJob(messages.Enum):
 
     CVL_W1IL_WORKFLOW = 200
     CVL_W2SC_WORKFLOW = 201
-    CVL_W3SR_WORKFLOW = 202
+    CVL_W2W_WORKFLOW = 202
+    CVL_W3SR_WORKFLOW = 203
+    CVL_W3SS_WORKFLOW = 204
+    CVL_W3NS_WORKFLOW = 205
+    CVL_W3SC_WORKFLOW = 206
+    CVL_W4WR_WORKFLOW = 207
+    CVL_W5NF_WORKFLOW = 208
 
     # Gem to GP Migration Job
     GEM_GP_MIGRATION_EXPORT = 1001
@@ -196,9 +204,19 @@ class GenomicWorkflowState(messages.Enum):
     CVL_RPT_PENDING_DELETE = 39
     CVL_RPT_DELETED = 40
 
-    CVL_W1IL = 50
-    CVL_W2SC = 51
-    CVL_W3SR = 52
+
+class ResultsWorkflowState(messages.Enum):
+
+    UNSET = 0
+    CVL_W1IL = 1
+    CVL_W2SC = 2
+    CVL_W2W = 3
+    CVL_W3SR = 4
+    CVL_W3SS = 5
+    CVL_W3NS = 6
+    CVL_W3SC = 7
+    CVL_W4WR = 8
+    CVL_W5NF = 9
 
 
 class GenomicReportState(messages.Enum):
@@ -263,7 +281,13 @@ class GenomicManifestTypes(messages.Enum):
     AW5_WGS = 16
     CVL_W1IL = 17
     CVL_W2SC = 18
-    CVL_W3SR = 19
+    CVL_W2W = 19
+    CVL_W3SR = 20
+    CVL_W3SS = 21
+    CVL_W3NS = 22
+    CVL_W3SC = 23
+    CVL_W4WR = 24
+    CVL_W5NF = 25
 
 
 class GenomicContaminationCategory(messages.Enum):
