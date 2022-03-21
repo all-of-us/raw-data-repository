@@ -4,8 +4,8 @@ from sqlalchemy import MetaData
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sphinx.pycode import ModuleAnalyzer
 
-from rdr_service.model.base import Base
 from rdr_service.model.code import Code
+from rdr_service.model.database import get_class_for_table_name
 from rdr_service.model.hpo import HPO
 from rdr_service.model.organization import Organization
 from rdr_service.model.questionnaire import QuestionnaireConcept
@@ -145,9 +145,7 @@ class DataDictionaryUpdater:
         if self._is_alembic_generated_history_table(table_name):
             table_name = table_name[:-8]  # Trim "_history" from the table name for finding the corresponding ORM model
 
-        for model in Base._decl_class_registry.values():
-            if getattr(model, '__tablename__', '') == table_name:
-                return model
+        return get_class_for_table_name(table_name)
 
     @classmethod
     def _get_column_definition_from_model(cls, model, column_name):
