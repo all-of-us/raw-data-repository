@@ -1653,7 +1653,6 @@ class GenomicFileValidator:
         }
 
         self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
-        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.DRC_BROAD = 'drc_broad'
 
@@ -1999,8 +1998,9 @@ class GenomicFileValidator:
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl' and
                 filename_components[3] == 'w4wr' and
-                filename_components[4] in self.CVL_ANALYSIS_TYPES and
-                filename.lower().endswith('csv')
+                filename_components[4] in
+                [k.lower() for k in ResultsModuleType.to_dict().keys()]
+                and filename.lower().endswith('csv')
             )
 
         def gem_a2_manifest_name_rule():
