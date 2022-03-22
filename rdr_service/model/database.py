@@ -186,7 +186,7 @@ class AutoHistoryRevisionGenerator:
                                     schema_class=schema_class
                                 )
                             ):
-                                container.ops.extend(alembic_ops.DropColumnOp(
+                                container.ops.append(alembic_ops.DropColumnOp(
                                     table_name=f'{table_name}_history',
                                     column_name=child_op.column_name
                                 ))
@@ -229,7 +229,6 @@ class AutoHistoryRevisionGenerator:
         )
         if excluded_columns:
             result += f"""
-
                 ALTER TABLE {table_name}_history
                 {drop_column_statements};
             """
@@ -250,7 +249,7 @@ class AutoHistoryRevisionGenerator:
 
     @classmethod
     def _get_excluded_column_names(cls, schema_class, default=None):
-        return getattr(schema_class, 'exclude_from_history_column_names', default)
+        return getattr(schema_class, 'exclude_column_names_from_history', default)
 
     @classmethod
     def _append_trigger_reset_ops(cls, op_container, schema_class):
@@ -271,11 +270,13 @@ class AutoHistoryRevisionGenerator:
 
         return alembic_ops.ExecuteSQLOp(f"""
             CREATE TRIGGER {table_name}__ai AFTER INSERT ON {table_name} FOR EACH ROW
-                INSERT INTO {table_name}_history SELECT 'insert', NULL, NOW(6), {', '.join(history_column_names)}
+                INSERT INTO {table_name}_history (revision_action, revision_dt, {', '.join(history_column_names)})
+                SELECT 'insert', NOW(6), {', '.join(history_column_names)}
                 FROM {table_name} AS d WHERE d.id = NEW.id;
 
             CREATE TRIGGER {table_name}__au AFTER UPDATE ON {table_name} FOR EACH ROW
-                INSERT INTO {table_name}_history SELECT 'update', NULL, NOW(6), {', '.join(history_column_names)}
+                INSERT INTO {table_name}_history (revision_action, revision_dt, {', '.join(history_column_names)})
+                SELECT 'update', NOW(6), {', '.join(history_column_names)}
                 FROM {table_name} AS d
                 WHERE d.id = NEW.id
                     AND (
@@ -283,7 +284,8 @@ class AutoHistoryRevisionGenerator:
                     );
 
             CREATE TRIGGER {table_name}__bd BEFORE DELETE ON {table_name} FOR EACH ROW
-                INSERT INTO {table_name}_history SELECT 'delete', NULL, NOW(6), {', '.join(history_column_names)}
+                INSERT INTO {table_name}_history (revision_action, revision_dt, {', '.join(history_column_names)})
+                SELECT 'delete', NOW(6), {', '.join(history_column_names)}
                 FROM {table_name} AS d WHERE d.id = OLD.id;
         """)
 
