@@ -205,7 +205,6 @@ class GenomicWorkflowState(messages.Enum):
 
 
 class ResultsWorkflowState(messages.Enum):
-
     UNSET = 0
     CVL_W1IL = 1
     CVL_W2SC = 2
@@ -216,6 +215,12 @@ class ResultsWorkflowState(messages.Enum):
     CVL_W3SC = 7
     CVL_W4WR = 8
     CVL_W5NF = 9
+
+
+class ResultsModuleType(messages.Enum):
+    UNSET = 0
+    HDRV1 = 1
+    PGXV1 = 2
 
 
 class GenomicReportState(messages.Enum):

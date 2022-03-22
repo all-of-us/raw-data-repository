@@ -17,6 +17,7 @@ from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
+from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -62,7 +63,7 @@ from rdr_service.dao.genomics_dao import (
     GenomicIncidentDao,
     UserEventMetricsDao,
     GenomicQueriesDao,
-    GenomicCVLAnalysisDao)
+    GenomicCVLAnalysisDao, GenomicResultWorkflowStateDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -133,6 +134,7 @@ class GenomicFileIngester:
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
         self.cvl_analysis_dao = GenomicCVLAnalysisDao()
+        self.results_workflow_dao = GenomicResultWorkflowStateDao()
         self.set_dao = None
 
     def generate_file_processing_queue(self):
@@ -1293,14 +1295,22 @@ class GenomicFileIngester:
                     continue
 
                 member.cvlW2scManifestJobRunID = self.job_run_id
+                self.member_dao.update(member)
+
+                # result workflow state
+                result_state_obj = self.results_workflow_dao.get_by_member_id(
+                    member.id,
+                    module_type=ResultsModuleType.HDRV1
+                )
                 new_results_state = GenomicStateHandler.get_new_state(
-                    member.resultsWorkflowState,
+                    result_state_obj.results_workflow_state,
                     signal='secondary-confirmation'
                 )
-                if member.resultsWorkflowState != new_results_state:
-                    self.controller.member_dao.update_member_results_state(member, new_results_state)
-
-                self.member_dao.update(member)
+                if result_state_obj.results_workflow_state != new_results_state:
+                    self.results_workflow_dao.update_workflow_state_record(
+                        result_state_obj,
+                        new_results_state
+                    )
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1315,6 +1325,22 @@ class GenomicFileIngester:
         """
         analysis_columns = self.cvl_analysis_dao.model_type.__table__.columns.keys()
         analysis_cols_mapping = {}
+        results_attr_mapping = {
+            'hdrv1': {
+                'module': ResultsModuleType.HDRV1,
+                'run_id': 'cvlW4wrHdrManifestJobRunID'
+            },
+            'pgx': {
+                'module': ResultsModuleType.PGXV1,
+                'run_id': 'cvlW4wrPgxManifestJobRunID'
+            }
+        }
+        results_attributes = None
+        for result_type in results_attr_mapping.keys():
+            if result_type.lower() in self.file_obj.fileName.lower():
+                results_attributes = results_attr_mapping.get(result_type.lower())
+                break
+
         try:
             for row in rows:
                 row_copy = self._clean_row_keys(row)
@@ -1324,22 +1350,31 @@ class GenomicFileIngester:
                     biobank_id,
                     sample_id
                 )
-
                 if not member:
                     logging.warning(f'Can not find genomic member record for biobank_id: '
                                     f'{biobank_id} and sample_id: {sample_id}, skipping...')
                     continue
 
-                member.cvlW4wrManifestJobRunID = self.job_run_id
-                new_results_state = GenomicStateHandler.get_new_state(
-                    member.resultsWorkflowState,
-                    signal=None
-                )
-                if member.resultsWorkflowState != new_results_state:
-                    self.controller.member_dao.update_member_results_state(member, new_results_state)
-
+                # member
+                setattr(member, results_attributes['run_id'], self.job_run_id)
                 self.member_dao.update(member)
 
+                # result workflow state
+                result_state_obj = self.results_workflow_dao.get_by_member_id(
+                    member.id,
+                    module_type=results_attributes['module']
+                )
+                new_results_state = GenomicStateHandler.get_new_state(
+                    result_state_obj.results_workflow_state,
+                    signal=None
+                )
+                if result_state_obj.results_workflow_state != new_results_state:
+                    self.results_workflow_dao.update_workflow_state_record(
+                        result_state_obj,
+                        new_results_state
+                    )
+
+                # cvl analysis
                 if not analysis_cols_mapping:
                     for column in analysis_columns:
                         col_matched = row_copy.get(self._clean_row_keys(column))
@@ -3327,6 +3362,7 @@ class ManifestCompiler:
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.results_workflow_dao = GenomicResultWorkflowStateDao()
 
     def generate_and_transfer_manifest(self, manifest_type, genome_type, version=None, **kwargs):
         """
@@ -3450,12 +3486,7 @@ class ManifestCompiler:
                 if new_wf_state or new_wf_state != member.genomicWorkflowState:
                     self.member_dao.update_member_workflow_state(member, new_wf_state)
 
-                new_results_state = GenomicStateHandler.get_new_state(
-                    member.resultsWorkflowState,
-                    signal=self.manifest_def.signal
-                )
-                if new_results_state or new_results_state != member.resultsWorkflowState:
-                    self.member_dao.update_member_results_state(member, new_results_state)
+                # TODO Handle result workflow insert/update for manifest generation
 
         # Updates job run field on set member
         if self.controller.member_ids_for_update:
