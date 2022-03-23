@@ -25,7 +25,7 @@ from rdr_service.model.genomics import (
     GenomicManifestFeedback,
     GenomicGcDataFileMissing,
     UserEventMetrics,
-    GenomicResultViewed)
+    GenomicResultViewed, GenomicResultWorkflowState)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
@@ -776,6 +776,15 @@ class DataGenerator:
         result_viewed = self._genomic_result_viewed(**kwargs)
         self._commit_to_database(result_viewed)
         return result_viewed
+
+    def create_database_genomic_result_workflow_state(self, **kwargs):
+        m = self._genomic_result_workflow_state(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_result_workflow_state(**kwargs):
+        return GenomicResultWorkflowState(**kwargs)
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

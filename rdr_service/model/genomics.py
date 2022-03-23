@@ -11,7 +11,7 @@ from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicValidationFlag, GenomicJob, \
     GenomicWorkflowState, GenomicSubProcessStatus, GenomicSubProcessResult, GenomicManifestTypes, \
     GenomicContaminationCategory, GenomicQcStatus, GenomicIncidentCode, GenomicIncidentStatus, GenomicReportState, \
-    ResultsWorkflowState
+    ResultsWorkflowState, ResultsModuleType
 
 
 class GenomicSet(Base):
@@ -247,14 +247,17 @@ class GenomicSetMember(Base):
     blockResultsReason = Column('block_results_reason', String(255), nullable=True)
     participantOrigin = Column("participant_origin", String(80), nullable=True)
 
-    resultsWorkflowState = Column('results_workflow_state',
-                                  Enum(ResultsWorkflowState),
-                                  default=ResultsWorkflowState.UNSET)
-    resultsWorkflowStateStr = Column('results_workflow_state_str', String(64), default="UNSET")
-
-    resultsWorkflowStateModifiedTime = Column("results_workflow_state_modified_time", DateTime, nullable=True)
-
     cvlSecondaryConfFailure = Column('cvl_secondary_conf_failure', String(255), nullable=True)
+
+    # PGX / HDR Run IDs
+    cvlW4wrPgxManifestJobRunID = Column('cvl_w4wr_pgx_manifest_job_run_id',
+                                        Integer, ForeignKey("genomic_job_run.id"),
+                                        nullable=True)
+    cvlW4wrHdrManifestJobRunID = Column('cvl_w4wr_hdr_manifest_job_run_id',
+                                        Integer, ForeignKey("genomic_job_run.id"),
+                                        nullable=True)
+
+    # Only HDR Run IDs
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
@@ -271,6 +274,28 @@ class GenomicSetMember(Base):
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
+
+
+class GenomicResultWorkflowState(Base):
+    """
+    Used for storing results workflow state
+    """
+
+    __tablename__ = 'genomic_result_workflow_state'
+
+    id = Column('id', Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(DateTime, nullable=True)
+    modified = Column(DateTime, nullable=True)
+    genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
+    results_workflow_state = Column(Enum(ResultsWorkflowState), default=ResultsWorkflowState.UNSET)
+    results_workflow_state_str = Column(String(64), default="UNSET")
+    results_module = Column(Enum(ResultsModuleType), default=ResultsModuleType.UNSET, nullable=False)
+    results_module_str = Column(String(64), default="UNSET")
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
+
+
+event.listen(GenomicResultWorkflowState, "before_insert", model_insert_listener)
+event.listen(GenomicResultWorkflowState, "before_update", model_update_listener)
 
 
 class GenomicJobRun(Base):
@@ -676,7 +701,6 @@ class GenomicW3SRRaw(Base):
 event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
 
-
 class GenomicW3SCRaw(Base):
     """
     Raw data from W3SR files
@@ -699,7 +723,6 @@ class GenomicW3SCRaw(Base):
 
 event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
-
 
 class GenomicW4WRRaw(Base):
     """
@@ -874,6 +897,7 @@ class GenomicCVLAnalysis(Base):
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
     clinical_analysis_type = Column(String(128), nullable=False)
     health_related_data_file_name = Column(String(512), nullable=False)
+    ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
 event.listen(GenomicCVLAnalysis, 'before_insert', model_insert_listener)

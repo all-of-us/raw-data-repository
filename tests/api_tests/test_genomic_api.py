@@ -1164,7 +1164,6 @@ class GenomicCloudTasksApiTest(BaseTestCase):
     def test_load_manifests_raw_data_task_api(self, load_raw_awn_data_mock):
 
         from rdr_service.resource import main as resource_main
-
         raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3sc', 'w4wr']
 
         for key in raw_manifest_keys:
