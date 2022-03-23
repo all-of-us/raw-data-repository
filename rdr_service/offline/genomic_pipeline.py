@@ -78,42 +78,6 @@ def genomic_centers_manifest_workflow():
         controller.run_genomic_centers_manifest_workflow()
 
 
-def ingest_aw1c_manifest():
-    """
-    Entrypoint for CVL AW1C Manifest Ingestion workflow
-    """
-    with GenomicJobController(GenomicJob.AW1C_INGEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER) as controller:
-        controller.run_aw1c_workflow()
-
-
-def ingest_aw1cf_manifest_workflow():
-    """
-    Entrypoint for CVL Failure Manifest (AW1CF) Ingestion
-    """
-    with GenomicJobController(GenomicJob.AW1CF_INGEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
-                              ) as controller:
-        controller.run_aw1cf_manifest_workflow()
-
-
-def aw1cf_alerts_workflow():
-    """
-        Entrypoint for Accessioning Alerts:
-            CVL Failure Manifest (AW1CF)
-        """
-    with GenomicJobController(GenomicJob.AW1CF_ALERTS,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
-                              ) as controller:
-        controller.process_failure_manifests_for_alerts()
-
-
 def ingest_genomic_centers_metrics_files(provider=None):
     """
     Entrypoint for GC Metrics File Ingestion subprocess of genomic_pipeline.
@@ -312,36 +276,6 @@ def create_cvl_reconciliation_report():
     """
     with GenomicJobController(GenomicJob.CVL_RECONCILIATION_REPORT) as controller:
         controller.run_cvl_reconciliation_report()
-
-
-def create_cvl_w1_manifest():
-    """
-    Entrypoint for CVL Manifest workflow
-    Sources from list of biobank_ids from CVL reconciliation report
-    """
-    with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.CVL_W1, _genome_type=config.GENOME_TYPE_WGS)
-
-
-def ingest_cvl_w2_manifest():
-    """
-    Entrypoint for CVL W2 Manifest Ingestion workflow
-    Sources from list of biobank_ids from CVL reconciliation report
-    """
-    with GenomicJobController(GenomicJob.W2_INGEST,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,
-                              sub_folder_name=config.CVL_W2_MANIFEST_SUBFOLDER) as controller:
-        controller.run_general_ingestion_workflow()
-
-
-def create_cvl_w3_manifest():
-    """
-    Entrypoint for CVL W3 Manifest workflow
-    """
-    with GenomicJobController(GenomicJob.W3_MANIFEST,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
-        controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
 
 
 def scan_and_complete_feedback_records():

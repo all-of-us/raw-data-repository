@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Collection
 
-from rdr_service.clock import FakeClock
 from rdr_service.code_constants import CONSENT_FOR_STUDY_ENROLLMENT_MODULE, EMPLOYMENT_ZIPCODE_QUESTION_CODE, PMI_SKIP_CODE,\
     STREET_ADDRESS_QUESTION_CODE, STREET_ADDRESS2_QUESTION_CODE, ZIPCODE_QUESTION_CODE
 from rdr_service.etl.model.src_clean import SrcClean
@@ -14,6 +13,7 @@ from tests.helpers.tool_test_mixin import ToolTestMixin
 
 TIME = datetime(2000, 1, 10)
 
+
 class CurationEtlTest(ToolTestMixin, BaseTestCase):
     def setUp(self):
         super(CurationEtlTest, self).setUp(with_consent_codes=True)
@@ -21,8 +21,10 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def _setup_data(self):
         self.participant = self.data_generator.create_database_participant()
-        self.data_generator.create_database_participant_summary(participant=self.participant,
-                                                                dateOfBirth=datetime(1982, 1, 9))
+        self.data_generator.create_database_participant_summary(
+            participant=self.participant,
+            dateOfBirth=datetime(1982, 1, 9),
+            consentForStudyEnrollmentFirstYesAuthored=datetime(2000, 1, 10))
 
         self.module_code = self.data_generator.create_database_code(value='src_clean_test')
 
@@ -391,18 +393,16 @@ class CurationEtlTest(ToolTestMixin, BaseTestCase):
 
     def test_exclude_participants_age_under_18(self):
         """
-        Curation team request to exclude participants that were under 18 at the time of ETL run.
+        Curation team request to exclude participants that were under 18 at the time of study consent.
         """
         self._create_consent_questionnaire()
-        with FakeClock(TIME):
-            self.run_cdm_data_generation()
+        self.run_cdm_data_generation()
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(4, len(src_clean_answers))
 
         dob = datetime(1982, 1, 11)
         self.data_generator.create_database_participant_summary(participant=self.participant, dateOfBirth=dob)
-        with FakeClock(TIME):
-            self.run_cdm_data_generation()
+        self.run_cdm_data_generation()
         src_clean_answers = self.session.query(SrcClean).all()
         self.assertEqual(0, len(src_clean_answers))
 
