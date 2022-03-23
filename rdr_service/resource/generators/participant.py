@@ -1356,6 +1356,7 @@ class ParticipantSummaryGenerator(generators.BaseGenerator):
                      INNER JOIN questionnaire q
                                 ON qq.questionnaire_id = q.questionnaire_id
             WHERE qr.questionnaire_response_id = :qr_id
+                  and (qra.ignore is null or qra.ignore = 0)
             -- Order by question and the calculated answer so duplicates can be caught when results are processed
             ORDER BY qra.question_id, answer
         """

@@ -1525,7 +1525,9 @@ CREATE TABLE cdm.pid_rid_mapping (
     research_id                 bigint,
     external_id                 bigint
 );
-INSERT INTO cdm.pid_rid_mapping SELECT DISTINCT participant_id, research_id, external_id FROM cdm.src_clean;
+INSERT INTO cdm.pid_rid_mapping
+SELECT DISTINCT sc.participant_id, sc.research_id, sc.external_id
+FROM cdm.src_clean sc join cdm.person p on sc.participant_id=p.person_id;
 
 
 -- ---------------------------------------------------------------------
