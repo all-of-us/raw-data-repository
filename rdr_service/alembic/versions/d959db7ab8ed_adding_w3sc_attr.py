@@ -1,7 +1,7 @@
 """adding_w3sc_attr
 
 Revision ID: d959db7ab8ed
-Revises: d960a8ec8d21, f69e4a978a1f, 78ab5fe99ad1
+Revises: b72225f3b628
 Create Date: 2022-03-17 13:21:12.824976
 
 """
@@ -21,7 +21,7 @@ from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSch
 
 # revision identifiers, used by Alembic.
 revision = 'd959db7ab8ed'
-down_revision = ('d960a8ec8d21', 'f69e4a978a1f', '78ab5fe99ad1')
+down_revision = 'b72225f3b628'
 branch_labels = None
 depends_on = None
 
@@ -32,7 +32,6 @@ def upgrade(engine_name):
 
 def downgrade(engine_name):
     globals()["downgrade_%s" % engine_name]()
-
 
 
 def upgrade_rdr():
