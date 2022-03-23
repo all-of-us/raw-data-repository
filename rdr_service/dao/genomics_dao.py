@@ -40,7 +40,7 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicCVLAnalysis, GenomicResultWorkflowState)
+    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -859,6 +859,17 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+        self.update(member)
+
+    def update_member_results_state(self, member, new_state):
+        """
+        Sets the member's state to a new state
+        :param member:  ResultsWorkflowState
+        :param new_state:
+        """
+        member.resultsWorkflowState = new_state
+        member.resultsWorkflowStateStr = new_state.name
+        member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
     def get_members_from_date(self, from_days=1):
@@ -2431,6 +2442,18 @@ class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW2SCRawDao, self).__init__(
             GenomicW2SCRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
+class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW3SCRawDao, self).__init__(
+            GenomicW3SCRaw, order_by_ending=['id'])
 
     def get_id(self, obj):
         pass

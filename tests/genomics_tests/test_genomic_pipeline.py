@@ -3117,7 +3117,8 @@ class GenomicPipelineTest(BaseTestCase):
         members = self.member_dao.get_all()
         a1_members = [x for x in members if x.genomicWorkflowState == GenomicWorkflowState.A1]
         self.assertEqual(1, len(a1_members))
-        config.override_setting(config.A1_LIMIT, [1000])# reset for full testing
+        config.override_setting(config.A1_LIMIT, [1000])  # reset for full testing
+
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_aw3_array_manifest_generation(self, cloud_task):

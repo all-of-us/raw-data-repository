@@ -153,7 +153,6 @@ workflows:
               only:
                 - circleci-deploy
                 - devel
-#                - master
 
   release_workflow:
     jobs:
