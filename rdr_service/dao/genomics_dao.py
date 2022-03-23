@@ -1,7 +1,6 @@
 import collections
 import logging
 import os
-from abc import ABC
 
 import pytz
 import sqlalchemy
@@ -2451,7 +2450,7 @@ class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
-class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils, ABC):
+class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW3SCRawDao, self).__init__(
             GenomicW3SCRaw, order_by_ending=['id'])
