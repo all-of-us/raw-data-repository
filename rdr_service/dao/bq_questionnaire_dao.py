@@ -89,6 +89,7 @@ class BQPDRQuestionnaireResponseGenerator(BigQueryGenerator):
                      INNER JOIN questionnaire_question qq
                                 ON qra.question_id = qq.questionnaire_question_id
             WHERE qr.questionnaire_response_id = :qr_id
+                  and (qra.ignore is null or qra.ignore = 0)
         """
 
         if not self.ro_dao:

@@ -1,6 +1,8 @@
 import logging
-from rdr_service.dao.genomics_dao import GenomicJobRunDao
+
 from rdr_service import clock
+from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
+    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -74,42 +76,6 @@ def genomic_centers_manifest_workflow():
                               sub_folder_tuple=config.GENOMIC_AW1_SUBFOLDERS
                               ) as controller:
         controller.run_genomic_centers_manifest_workflow()
-
-
-def ingest_aw1c_manifest():
-    """
-    Entrypoint for CVL AW1C Manifest Ingestion workflow
-    """
-    with GenomicJobController(GenomicJob.AW1C_INGEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_name=config.GENOMIC_CVL_AW1C_MANIFEST_SUBFOLDER) as controller:
-        controller.run_aw1c_workflow()
-
-
-def ingest_aw1cf_manifest_workflow():
-    """
-    Entrypoint for CVL Failure Manifest (AW1CF) Ingestion
-    """
-    with GenomicJobController(GenomicJob.AW1CF_INGEST,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
-                              ) as controller:
-        controller.run_aw1cf_manifest_workflow()
-
-
-def aw1cf_alerts_workflow():
-    """
-        Entrypoint for Accessioning Alerts:
-            CVL Failure Manifest (AW1CF)
-        """
-    with GenomicJobController(GenomicJob.AW1CF_ALERTS,
-                              bucket_name=None,
-                              bucket_name_list=config.GENOMIC_CENTER_BUCKET_NAME,
-                              sub_folder_tuple=config.GENOMIC_CVL_AW1CF_MANIFEST_SUBFOLDER
-                              ) as controller:
-        controller.process_failure_manifests_for_alerts()
 
 
 def ingest_genomic_centers_metrics_files(provider=None):
@@ -312,36 +278,6 @@ def create_cvl_reconciliation_report():
         controller.run_cvl_reconciliation_report()
 
 
-def create_cvl_w1_manifest():
-    """
-    Entrypoint for CVL Manifest workflow
-    Sources from list of biobank_ids from CVL reconciliation report
-    """
-    with GenomicJobController(GenomicJob.CREATE_CVL_W1_MANIFESTS,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME) as controller:
-        controller.generate_manifest(GenomicManifestTypes.CVL_W1, _genome_type=config.GENOME_TYPE_WGS)
-
-
-def ingest_cvl_w2_manifest():
-    """
-    Entrypoint for CVL W2 Manifest Ingestion workflow
-    Sources from list of biobank_ids from CVL reconciliation report
-    """
-    with GenomicJobController(GenomicJob.W2_INGEST,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,
-                              sub_folder_name=config.CVL_W2_MANIFEST_SUBFOLDER) as controller:
-        controller.run_general_ingestion_workflow()
-
-
-def create_cvl_w3_manifest():
-    """
-    Entrypoint for CVL W3 Manifest workflow
-    """
-    with GenomicJobController(GenomicJob.W3_MANIFEST,
-                              bucket_name=config.GENOMIC_CVL_BUCKET_NAME,) as controller:
-        controller.generate_manifest(GenomicManifestTypes.CVL_W3, _genome_type=config.GENOME_TYPE_CVL)
-
-
 def scan_and_complete_feedback_records():
     """
     Entrypoint for AW2F Manifest workflow
@@ -484,7 +420,9 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.AW4_WGS_WORKFLOW,
         GenomicJob.AW5_ARRAY_MANIFEST,
         GenomicJob.AW5_WGS_MANIFEST,
-        GenomicJob.CVL_W2SC_WORKFLOW
+        GenomicJob.CVL_W2SC_WORKFLOW,
+        GenomicJob.CVL_W3SC_WORKFLOW,
+        GenomicJob.CVL_W4WR_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
@@ -528,20 +466,46 @@ def load_awn_manifest_into_raw_table(
     project_id=None,
     provider=None
 ):
-    jobs = {
-        "aw1": GenomicJob.LOAD_AW1_TO_RAW_TABLE,
-        "aw2": GenomicJob.LOAD_AW2_TO_RAW_TABLE,
-        "aw3": GenomicJob.LOAD_AW3_TO_RAW_TABLE,
-        "aw4": GenomicJob.LOAD_AW4_TO_RAW_TABLE,
-        "w2sc": GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
-        "w3sr": GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE
+    raw_jobs_map = {
+        "aw1": {
+            'job_id': GenomicJob.LOAD_AW1_TO_RAW_TABLE,
+            'dao': GenomicAW1RawDao
+        },
+        "aw2": {
+            'job_id': GenomicJob.LOAD_AW2_TO_RAW_TABLE,
+            'dao': GenomicAW2RawDao
+        },
+        "aw3": {
+            'job_id': GenomicJob.LOAD_AW3_TO_RAW_TABLE,
+            'dao': GenomicAW3RawDao
+        },
+        "aw4": {
+            'job_id': GenomicJob.LOAD_AW4_TO_RAW_TABLE,
+            'dao': GenomicAW4RawDao
+        },
+        "w2sc": {
+            'job_id': GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE,
+            'dao': GenomicW2SCRawDao
+        },
+        "w3sc": {
+            'job_id': GenomicJob.LOAD_CVL_W3SC_TO_RAW_TABLE,
+            'dao': GenomicW3SCRawDao
+        },
+        "w3sr": {
+            'job_id': GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE,
+            'dao': GenomicW3SRRawDao
+        },
+        "w4wr": {
+            'job_id': GenomicJob.LOAD_CVL_W4WR_TO_RAW_TABLE,
+            'dao': GenomicW4WRRawDao
+        },
     }
-    job_id = jobs.get(manifest_type)
 
-    if not job_id:
+    raw_job = raw_jobs_map.get(manifest_type)
+    if not raw_job:
         return
 
-    with GenomicJobController(job_id,
+    with GenomicJobController(raw_job.get('job_id'),
                               bq_project_id=project_id,
                               storage_provider=provider) as controller:
-        controller.load_raw_awn_data_from_filepath(file_path)
+        controller.load_raw_awn_data_from_filepath(file_path, raw_job.get('dao'))
