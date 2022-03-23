@@ -55,6 +55,7 @@ class SurveyQuestion(Base):
     validation = Column(String(256))
     validation_min = Column(String(256))
     validation_max = Column(String(256))
+    branching_logic = Column(String(1024))
     display = Column(String(2048))
 
     options: List['SurveyQuestionOption'] = relationship('SurveyQuestionOption', back_populates='question')
