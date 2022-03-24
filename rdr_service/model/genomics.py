@@ -247,6 +247,13 @@ class GenomicSetMember(Base):
     blockResultsReason = Column('block_results_reason', String(255), nullable=True)
     participantOrigin = Column("participant_origin", String(80), nullable=True)
 
+    cvlW1ilPgxJobRunId = Column('cvl_w1il_pgx_job_run_id',
+                                Integer, ForeignKey('genomic_job_run.id'),
+                                nullable=True)
+    cvlW1ilHdrJobRunId = Column('cvl_w1il_hdr_job_run_id',
+                                Integer, ForeignKey('genomic_job_run.id'),
+                                nullable=True)
+
     cvlSecondaryConfFailure = Column('cvl_secondary_conf_failure', String(255), nullable=True)
 
     # PGX / HDR Run IDs
