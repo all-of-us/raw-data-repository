@@ -83,7 +83,7 @@ class GenomicSetMember(Base):
         'cvl_w4wr_pgx_manifest_job_run_id',
         'cvl_w4wr_hdr_manifest_job_run_id',
         'cvl_w3sc_manifest_job_run_id',
-        'cvl_w4wr_manifest_job_run_id'
+        'cvl_w3ns_manifest_job_run_id'
     ]
 
     # Primary Key

@@ -21,8 +21,8 @@ from rdr_service.model.code import CodeType
 from rdr_service.model.site_enums import SiteStatus, EnrollingStatus, DigitalSchedulingStatus, ObsoleteStatus
 
 # revision identifiers, used by Alembic.
-revision = 'fd007e14af0a'
-down_revision = ('d959db7ab8ed', '33b34f5ae271')
+revision = '57515daf8448'
+down_revision = '2bda73fa67b2'
 branch_labels = None
 depends_on = None
 
@@ -80,7 +80,7 @@ def upgrade_rdr():
             DROP COLUMN cvl_w4wr_pgx_manifest_job_run_id,
             DROP COLUMN cvl_w4wr_hdr_manifest_job_run_id,
             DROP COLUMN cvl_w3sc_manifest_job_run_id,
-            DROP COLUMN cvl_w4wr_manifest_job_run_id;
+            DROP COLUMN cvl_w3ns_manifest_job_run_id;
     """)
     op.execute("""
         CREATE TRIGGER genomic_set_member__ai AFTER INSERT ON genomic_set_member FOR EACH ROW
