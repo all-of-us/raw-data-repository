@@ -251,6 +251,8 @@ class W3SRState(GenomicStateBase):
     def transition_function(self, signal):
         if signal == 'sample-failed':
             return ResultsWorkflowState.CVL_W3SC
+        if signal == 'sample-unavailable':
+            return ResultsWorkflowState.CVL_W3NS
 
 
 class GenomicStateHandler:

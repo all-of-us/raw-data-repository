@@ -116,8 +116,9 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W1IL_TO_RAW_TABLE = 59
     LOAD_CVL_W2SC_TO_RAW_TABLE = 60
     LOAD_CVL_W3SR_TO_RAW_TABLE = 61
-    LOAD_CVL_W3SC_TO_RAW_TABLE = 62
-    LOAD_CVL_W4WR_TO_RAW_TABLE = 63
+    LOAD_CVL_W3NS_TO_RAW_TABLE = 62
+    LOAD_CVL_W3SC_TO_RAW_TABLE = 63
+    LOAD_CVL_W4WR_TO_RAW_TABLE = 64
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
