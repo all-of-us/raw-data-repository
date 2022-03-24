@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import auto, Enum
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 from rdr_service.domain_model import response as response_domain_model
 
@@ -303,14 +303,11 @@ class ResponseRequirements:
         self._responses_to_replay = []
 
     def check_for_errors(self, response: response_domain_model.Response) -> Sequence[ValidationError]:
-        errors = []
-        for question_code, conditional in self.requirements.items():
-            errors.extend(conditional.get_errors(response, question_code=question_code))
-
+        errors = self._find_errors(response)
         self._responses_to_replay.append(response)
         return errors
 
-    def _find_errors(self, errors: List[ValidationError], new_response: response_domain_model.Response):
+    def _find_errors(self, new_response: response_domain_model.Response):
         """
         Keep passing through responses until no more errors are found.
         This way, if any errors are found, we'll check again to make sure no other questions get invalidated
@@ -327,12 +324,13 @@ class ResponseRequirements:
 
         new_errors = []
         for question_code, conditional in self.requirements.items():
-            new_errors.extend(conditional.get_errors(response, question_code=question_code))
+            new_errors.extend(conditional.get_errors(new_response, question_code=question_code))
 
         if new_errors:
-            # Track the errors found, and recurse again until there are no new errors found
-            errors.extend(new_errors)
-            self._find_errors(errors, new_response)
+            # Recurse again until there are no new errors found
+            new_errors.extend(self._find_errors(new_response))
+
+        return new_errors
 
     def reset_state(self):
         self._responses_to_replay = []
