@@ -478,15 +478,15 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.cvlW3nsManifestJobRunID is not None for obj in current_members))
         self.assertTrue(all(obj.cvlW3nsManifestJobRunID == w3ns_job_run.id for obj in current_members))
 
-        # current_workflow_states = self.results_workflow_dao.get_all()
-        # self.assertEqual(len(current_workflow_states), 3)
-        # self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
-        # self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
-        #
-        # self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SC for
-        #                     obj in current_workflow_states))
-        # self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SC.name for obj in
-        #                     current_workflow_states))
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3NS for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3NS.name for obj in
+                            current_workflow_states))
 
     def test_w3ns_manifest_to_raw_ingestion(self):
 

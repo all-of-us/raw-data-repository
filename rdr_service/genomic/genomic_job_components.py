@@ -1293,7 +1293,7 @@ class GenomicFileIngester:
 
     def _ingest_cvl_w3ns_manifest(self, rows):
         """
-        Processes the CVL W2NS manifest file data
+        Processes the CVL W3NS manifest file data
         :param rows:
         :return: Result Code
         """
@@ -1302,7 +1302,7 @@ class GenomicFileIngester:
                 self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW3nsManifestJobRunID',
-                    signal='secondary-confirmation',
+                    signal='sample-unavailable',
                     module_type=ResultsModuleType.HDRV1
                 )
 
