@@ -74,7 +74,7 @@ def upgrade_rdr():
             DROP COLUMN cvl_aw1cf_manifest_job_run_id,
             DROP COLUMN cvl_w3sr_manifest_job_run_id,
             DROP COLUMN cvl_w2sc_manifest_job_run_id,
-            DROP COLUMN color_metrics_job_run_id
+            DROP COLUMN color_metrics_job_run_id,
             DROP COLUMN cvl_w1il_pgx_job_run_id,
             DROP COLUMN cvl_w1il_hdr_job_run_id,
             DROP COLUMN cvl_w4wr_pgx_manifest_job_run_id,
@@ -94,68 +94,68 @@ def upgrade_rdr():
                 FROM genomic_set_member AS d
                 WHERE d.id = NEW.id
                     AND (
-                        NEW.id <> OLD.id OR
-                        NEW.created <> OLD.created OR
-                        NEW.genomic_set_id <> OLD.genomic_set_id OR
-                        NEW.participant_id <> OLD.participant_id OR
-                        NEW.ny_flag <> OLD.ny_flag OR
-                        NEW.sex_at_birth <> OLD.sex_at_birth OR
-                        NEW.genome_type <> OLD.genome_type OR
-                        NEW.ai_an <> OLD.ai_an OR
-                        NEW.biobank_id <> OLD.biobank_id OR
-                        NEW.package_id <> OLD.package_id OR
-                        NEW.validation_status <> OLD.validation_status OR
-                        NEW.validation_flags <> OLD.validation_flags OR
-                        NEW.validated_time <> OLD.validated_time OR
-                        NEW.collection_tube_id <> OLD.collection_tube_id OR
-                        NEW.sample_id <> OLD.sample_id OR
-                        NEW.sample_type <> OLD.sample_type OR
-                        NEW.sequencing_file_name <> OLD.sequencing_file_name OR
-                        NEW.gc_site_id <> OLD.gc_site_id OR
-                        NEW.gc_manifest_box_storage_unit_id <> OLD.gc_manifest_box_storage_unit_id OR
-                        NEW.gc_manifest_box_plate_id <> OLD.gc_manifest_box_plate_id OR
-                        NEW.gc_manifest_well_position <> OLD.gc_manifest_well_position OR
-                        NEW.gc_manifest_parent_sample_id <> OLD.gc_manifest_parent_sample_id OR
-                        NEW.gc_manifest_matrix_id <> OLD.gc_manifest_matrix_id OR
-                        NEW.gc_manifest_treatments <> OLD.gc_manifest_treatments OR
-                        NEW.gc_manifest_quantity_ul <> OLD.gc_manifest_quantity_ul OR
-                        NEW.gc_manifest_total_concentration_ng_per_ul <> OLD.gc_manifest_total_concentration_ng_per_ul OR
-                        NEW.gc_manifest_total_dna_ng <> OLD.gc_manifest_total_dna_ng OR
-                        NEW.gc_manifest_visit_description <> OLD.gc_manifest_visit_description OR
-                        NEW.gc_manifest_sample_source <> OLD.gc_manifest_sample_source OR
-                        NEW.gc_manifest_study <> OLD.gc_manifest_study OR
-                        NEW.gc_manifest_tracking_number <> OLD.gc_manifest_tracking_number OR
-                        NEW.gc_manifest_contact <> OLD.gc_manifest_contact OR
-                        NEW.gc_manifest_email <> OLD.gc_manifest_email OR
-                        NEW.gc_manifest_study_pi <> OLD.gc_manifest_study_pi OR
-                        NEW.gc_manifest_test_name <> OLD.gc_manifest_test_name OR
-                        NEW.gc_manifest_failure_mode <> OLD.gc_manifest_failure_mode OR
-                        NEW.gc_manifest_failure_description <> OLD.gc_manifest_failure_description OR
-                        NEW.aw1_file_processed_id <> OLD.aw1_file_processed_id OR
-                        NEW.aw2_file_processed_id <> OLD.aw2_file_processed_id OR
-                        NEW.gem_pass <> OLD.gem_pass OR
-                        NEW.gem_date_of_import <> OLD.gem_date_of_import OR
-                        NEW.aw3_manifest_file_id <> OLD.aw3_manifest_file_id OR
-                        NEW.aw0_manifest_file_id <> OLD.aw0_manifest_file_id OR
-                        NEW.gem_metrics_ancestry_loop_response <> OLD.gem_metrics_ancestry_loop_response OR
-                        NEW.gem_metrics_available_results <> OLD.gem_metrics_available_results OR
-                        NEW.gem_metrics_results_released_at <> OLD.gem_metrics_results_released_at OR
-                        NEW.genomic_workflow_state <> OLD.genomic_workflow_state OR
-                        NEW.genomic_workflow_state_str <> OLD.genomic_workflow_state_str OR
-                        NEW.genomic_workflow_state_modified_time <> OLD.genomic_workflow_state_modified_time OR
-                        NEW.report_consent_removal_date <> OLD.report_consent_removal_date OR
-                        NEW.qc_status <> OLD.qc_status OR
-                        NEW.qc_status_str <> OLD.qc_status_str OR
-                        NEW.fingerprint_path <> OLD.fingerprint_path OR
-                        NEW.dev_note <> OLD.dev_note OR
-                        NEW.replated_member_id <> OLD.replated_member_id OR
-                        NEW.ignore_flag <> OLD.ignore_flag OR
-                        NEW.block_research <> OLD.block_research OR
-                        NEW.block_research_reason <> OLD.block_research_reason OR
-                        NEW.block_results <> OLD.block_results OR
-                        NEW.block_results_reason <> OLD.block_results_reason OR
-                        NEW.participant_origin <> OLD.participant_origin OR
-                        NEW.cvl_secondary_conf_failure <> OLD.cvl_secondary_conf_failure
+                        NEW.id <=> OLD.id OR
+                        NEW.created <=> OLD.created OR
+                        NEW.genomic_set_id <=> OLD.genomic_set_id OR
+                        NEW.participant_id <=> OLD.participant_id OR
+                        NEW.ny_flag <=> OLD.ny_flag OR
+                        NEW.sex_at_birth <=> OLD.sex_at_birth OR
+                        NEW.genome_type <=> OLD.genome_type OR
+                        NEW.ai_an <=> OLD.ai_an OR
+                        NEW.biobank_id <=> OLD.biobank_id OR
+                        NEW.package_id <=> OLD.package_id OR
+                        NEW.validation_status <=> OLD.validation_status OR
+                        NEW.validation_flags <=> OLD.validation_flags OR
+                        NEW.validated_time <=> OLD.validated_time OR
+                        NEW.collection_tube_id <=> OLD.collection_tube_id OR
+                        NEW.sample_id <=> OLD.sample_id OR
+                        NEW.sample_type <=> OLD.sample_type OR
+                        NEW.sequencing_file_name <=> OLD.sequencing_file_name OR
+                        NEW.gc_site_id <=> OLD.gc_site_id OR
+                        NEW.gc_manifest_box_storage_unit_id <=> OLD.gc_manifest_box_storage_unit_id OR
+                        NEW.gc_manifest_box_plate_id <=> OLD.gc_manifest_box_plate_id OR
+                        NEW.gc_manifest_well_position <=> OLD.gc_manifest_well_position OR
+                        NEW.gc_manifest_parent_sample_id <=> OLD.gc_manifest_parent_sample_id OR
+                        NEW.gc_manifest_matrix_id <=> OLD.gc_manifest_matrix_id OR
+                        NEW.gc_manifest_treatments <=> OLD.gc_manifest_treatments OR
+                        NEW.gc_manifest_quantity_ul <=> OLD.gc_manifest_quantity_ul OR
+                        NEW.gc_manifest_total_concentration_ng_per_ul <=> OLD.gc_manifest_total_concentration_ng_per_ul OR
+                        NEW.gc_manifest_total_dna_ng <=> OLD.gc_manifest_total_dna_ng OR
+                        NEW.gc_manifest_visit_description <=> OLD.gc_manifest_visit_description OR
+                        NEW.gc_manifest_sample_source <=> OLD.gc_manifest_sample_source OR
+                        NEW.gc_manifest_study <=> OLD.gc_manifest_study OR
+                        NEW.gc_manifest_tracking_number <=> OLD.gc_manifest_tracking_number OR
+                        NEW.gc_manifest_contact <=> OLD.gc_manifest_contact OR
+                        NEW.gc_manifest_email <=> OLD.gc_manifest_email OR
+                        NEW.gc_manifest_study_pi <=> OLD.gc_manifest_study_pi OR
+                        NEW.gc_manifest_test_name <=> OLD.gc_manifest_test_name OR
+                        NEW.gc_manifest_failure_mode <=> OLD.gc_manifest_failure_mode OR
+                        NEW.gc_manifest_failure_description <=> OLD.gc_manifest_failure_description OR
+                        NEW.aw1_file_processed_id <=> OLD.aw1_file_processed_id OR
+                        NEW.aw2_file_processed_id <=> OLD.aw2_file_processed_id OR
+                        NEW.gem_pass <=> OLD.gem_pass OR
+                        NEW.gem_date_of_import <=> OLD.gem_date_of_import OR
+                        NEW.aw3_manifest_file_id <=> OLD.aw3_manifest_file_id OR
+                        NEW.aw0_manifest_file_id <=> OLD.aw0_manifest_file_id OR
+                        NEW.gem_metrics_ancestry_loop_response <=> OLD.gem_metrics_ancestry_loop_response OR
+                        NEW.gem_metrics_available_results <=> OLD.gem_metrics_available_results OR
+                        NEW.gem_metrics_results_released_at <=> OLD.gem_metrics_results_released_at OR
+                        NEW.genomic_workflow_state <=> OLD.genomic_workflow_state OR
+                        NEW.genomic_workflow_state_str <=> OLD.genomic_workflow_state_str OR
+                        NEW.genomic_workflow_state_modified_time <=> OLD.genomic_workflow_state_modified_time OR
+                        NEW.report_consent_removal_date <=> OLD.report_consent_removal_date OR
+                        NEW.qc_status <=> OLD.qc_status OR
+                        NEW.qc_status_str <=> OLD.qc_status_str OR
+                        NEW.fingerprint_path <=> OLD.fingerprint_path OR
+                        NEW.dev_note <=> OLD.dev_note OR
+                        NEW.replated_member_id <=> OLD.replated_member_id OR
+                        NEW.ignore_flag <=> OLD.ignore_flag OR
+                        NEW.block_research <=> OLD.block_research OR
+                        NEW.block_research_reason <=> OLD.block_research_reason OR
+                        NEW.block_results <=> OLD.block_results OR
+                        NEW.block_results_reason <=> OLD.block_results_reason OR
+                        NEW.participant_origin <=> OLD.participant_origin OR
+                        NEW.cvl_secondary_conf_failure <=> OLD.cvl_secondary_conf_failure
                     );
 
         CREATE TRIGGER genomic_set_member__bd BEFORE DELETE ON genomic_set_member FOR EACH ROW

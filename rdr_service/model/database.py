@@ -264,7 +264,7 @@ class AutoHistoryRevisionGenerator:
         history_column_names = cls._get_history_tracked_columns(schema_class)
 
         updated_tracked_column_check = ' OR\n'.join([
-            f'NEW.{column_name} <> OLD.{column_name}'
+            f'NEW.{column_name} <=> OLD.{column_name}'
             for column_name in history_column_names
         ])
 
