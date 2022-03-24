@@ -11,13 +11,14 @@ import os
 from collections import OrderedDict
 
 from rdr_service.code_constants import PMI_SKIP_CODE
-from rdr_service.services.system_utils import setup_logging, setup_i18n
+from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.bq_questionnaire_dao import BQPDRQuestionnaireResponseGenerator
 from rdr_service.model import BQ_TABLES
 from rdr_service.model.survey import SurveyQuestionType
+
 
 _logger = logging.getLogger("rdr_logger")
 
@@ -27,7 +28,6 @@ tool_cmd = "survey-data-to-redcap"
 tool_desc = "Extracts module response data into a REDCap-conformant format for REDCap import"
 
 class SurveyToRedCapConversion(object):
-
 
     # Static class variables / dicts that will be populated as values are discovered, so they can act as a class cache
     code_display_values = {}
@@ -41,27 +41,32 @@ class SurveyToRedCapConversion(object):
         self.args = args
         self.gcp_env = gcp_env
         self.pid_list = pid_list
+        if pid_list:
+            self.num_pids = len(pid_list)
+        else:
+            self.num_pids = args.number or 25
         self.module = args.module
-        self.set_bq_table(self.args.module)
+        self.bq_table = self.set_bq_table(self.module)
         self.question_code_map = OrderedDict()
         self.redcap_export_rows = list()
 
-    def _generate_pid_list(self, num_records=20, min_authored=None, max_authored=None):
+    def _generate_pid_list(self, min_authored=None, max_authored=None):
         """
-        Select a sample of questionnaire_response_id values for analysis
+        Select a sample of participants with responses for the specified module and save the participant_ids to
+        self.pid_list class instance variable
         """
         sql = """
                select participant_id from questionnaire_response qr
                join questionnaire_concept qc on qc.questionnaire_id = qr.questionnaire_id
                join code c on qc.code_id = c.code_id
                where c.value = :module and qr.classification_type = 0
-               limit :records
+               limit :count
         """
         if min_authored or max_authored:
             pass
 
         with CodeDao().session() as session:
-            results = session.execute(sql, {'module': self.module, 'records': num_records})
+            results = session.execute(sql, {'module': self.module, 'count': self.num_pids})
             self.pid_list = [r.participant_id for r in results]
 
     def get_pdr_bq_table_id(self):
@@ -73,12 +78,13 @@ class SurveyToRedCapConversion(object):
 
     def set_bq_table(self, module):
         """ Set the instance bq_table variable with the appropriate _BQModuleSchema object """
-        self.bq_table = None
+        bq_table = None
 
         # Check the local class cache first for a matching module name
         if module in self.pdr_table_mod_classes.keys():
-            self.bq_table = self.pdr_table_mod_classes[module]()
-            return
+            bq_table = self.pdr_table_mod_classes[module]()
+            self.bq_table = bq_table
+            return bq_table
 
         # If there was no match in the class cache, search the defined BQ_TABLES list for a match
         table_id = f'pdr_mod_{module.lower()}'
@@ -90,7 +96,7 @@ class SurveyToRedCapConversion(object):
                 self.bq_table = bq_table
                 # Cache the mod_class match for this module
                 self.pdr_table_mod_classes[module] = mod_class
-                return
+                return bq_table
 
         raise ValueError(f'A PDR BQ_TABLES table definition for module {module} was not found')
 
@@ -122,21 +128,32 @@ class SurveyToRedCapConversion(object):
             results = session.execute(sql, {'module': module})
             last_question_code_value = None
             for row in results:
+                # Question codes with radio / checkbox answer options will have multiple rows in the results
+                # (one for each answer option).
                 if row.question_code_value == last_question_code_value:
+                    # Keep adding the answer option codes associated with the same "parent" question code
                     self.question_code_map[last_question_code_value]['option_codes'].append(row.option_code_value)
                 else:
+                    # First result for this question code, initialize its map/dict details
                     self.question_code_map[row.question_code_value] = {
                         'question_type': SurveyQuestionType(row.question_type),
                         'option_codes': [row.option_code_value, ] if row.option_code_value else None
                     }
                 last_question_code_value = row.question_code_value
 
+        # The first "column" of the CSV export will contain all the REDCap field names we need to populate values
+        # for.  record_id row will contain RDR questionnaire_response_id values, the rest are based on the hierarchical
+        # code map we just created
         self.redcap_export_rows.append(['record_id', ])
         for field_name, field_details in self.question_code_map.items():
             if field_details['question_type'] in (SurveyQuestionType.TEXT, SurveyQuestionType.RADIO):
                 self.redcap_export_rows.append([self.get_redcap_fieldname(field_name, parent=None), ])
             elif field_details['question_type'] == SurveyQuestionType.CHECKBOX:
                 for code in field_details['option_codes']:
+                    # Multi-select checkbox questions result in related field names associated with the same parent
+                    # question code, for each possible answer selection.  E.g.: sdoh_eds_follow_up_1___sdoh_29,
+                    # sdoh_eds_follow_up_1___sdoh_30, etc.  These take on 0 or 1 values in the export data depending
+                    # on whether the user checked the associated box for that answer option.
                     self.redcap_export_rows.append([self.get_redcap_fieldname(code, parent=field_name), ])
 
     def get_redcap_fieldname(self, code, parent=None):
@@ -216,13 +233,11 @@ class SurveyToRedCapConversion(object):
             return None
         elif ro_session:
             mod_bqgen = BQPDRQuestionnaireResponseGenerator()
-            # The table name is returned as the first output, but is unused here
-            _, mod_bqrs = mod_bqgen.make_bqrecord(pid, self.bq_table.get_schema().get_module_name(),
-                                                      latest=True)
-
+            # The table name is returned as the first output, but is unused here (keeping pylint happy by using _)
+            _, mod_bqrs = mod_bqgen.make_bqrecord(pid, self.bq_table.get_schema().get_module_name(), latest=True)
             if len(mod_bqrs) > 1:
-                # Specifying "latest" should have prevented multiple responses returned
-                _logger.warning(f'Multiple {self.module} responses returned for participant {pid}')
+                # Specifying "latest" should have prevented multiple responses from being returned.
+                _logger.error(f'Multiple {self.module} responses returned for participant {pid}')
 
             response = mod_bqrs[0].to_dict()
             return response
@@ -236,7 +251,6 @@ class SurveyToRedCapConversion(object):
 
         """
         redcap_fields = OrderedDict()
-        # print(f'\n==================\n{response_id}\n==================')
         for col in self.question_code_map:
             # PDR data can have comma-separated code strings for answers to multiselect questions
             answers = list(str(response_dict[col]).split(',')) if response_dict[col] else []
@@ -248,11 +262,12 @@ class SurveyToRedCapConversion(object):
                 if not len(answers) or answers[0] == "0":
                     redcap_fields[self.get_redcap_fieldname(col)] = None
                 elif answers[0] == "1":
-                    # Use empty string vs. None/Null for REDCap import if text was present
+                    # Use empty string vs. None/Null for REDCap import if text was present.  Putting in other text
+                    # like (redacted) caused REDCap import issues.
                     redcap_fields[self.get_redcap_fieldname(col)] = ''
                 else:
                     # "Should never get here" but in case there was an issue with PDR data generation....want the
-                    # REDCap import process to catch that.
+                    # REDCap import process to flag these cases anyway.
                     redcap_fields[self.get_redcap_fieldname(col)] = answers[0]
 
             elif survey_code_type == SurveyQuestionType.RADIO:
@@ -263,7 +278,7 @@ class SurveyToRedCapConversion(object):
                     # the answer as invalid (can't be imported into REDCap)
                     redcap_fields[col.lower()] = ','.join(answers)
                     qr_id = response_dict.get('questionnaire_response_id', None)
-                    _logger.error(f'Multiple selections found for radio button question {col} (response {qr_id}')
+                    _logger.error(f'Multiple selections found for radio button question {col} (response {qr_id})')
                 elif len(answers) and answers[0] != PMI_SKIP_CODE:
                     # REDCap doesn't have anything for "Skip" responses, so only assign a value for other codes
                     redcap_fields[col.lower()] = answers[0]
@@ -271,7 +286,7 @@ class SurveyToRedCapConversion(object):
             elif survey_code_type == SurveyQuestionType.CHECKBOX:
                 for option in self.question_code_map[col]['option_codes']:
                     # Ex. of field name assembled here:   sdoh_eds_follow_up_1___sdoh_29
-                    # Value is 1 if that option/checkbox was checked (in the answers data), 0 otherwise
+                    # Value is 1 if that option/checkbox was checked (exists in the answers data), 0 otherwise
                     field_name = "___".join([col, option.lower()])
                     redcap_fields[field_name] = int(option in answers)
 
@@ -294,9 +309,20 @@ class SurveyToRedCapConversion(object):
         """ Run the survey-to-redcap export conversion tool """
 
         self.gcp_env.activate_sql_proxy(replica=True)
+        clr = self.gcp_env.terminal_colors
+        _logger.info('')
+
+        _logger.info(clr.fmt('\nExport RDR survey response data for REDCap import:', clr.custom_fg_color(156)))
+        _logger.info('')
+        _logger.info('=' * 90)
+        _logger.info('  Target Module       : {0}'.format(clr.fmt(self.module)))
+        _logger.info('  Total PIDS/responses: {0}'.format(clr.fmt(self.num_pids)))
+        _logger.info('=' * 90)
+
         dao = BigQuerySyncDao()
         self.set_bq_table(self.module)
         self.create_survey_code_maps(self.module)
+        processed = 0
         with dao.session() as session:
             if not self.pid_list:
                 self._generate_pid_list()
@@ -304,6 +330,11 @@ class SurveyToRedCapConversion(object):
                 rsp = self.get_module_response_dict(self.module, pid, session)
                 if rsp:
                     self.map_response_to_redcap_dict(rsp)
+                processed += 1
+                if not self.args.debug:
+                    print_progress_bar(
+                        processed, self.num_pids, prefix="{0}/{1}:".format(processed, self.num_pids), suffix="complete"
+                    )
 
         self.export_redcap_csv()
 
@@ -342,6 +373,8 @@ def run():
     parser.add_argument("--account", help="pmi-ops account", default=None)  # noqa
     parser.add_argument("--service-account", help="gcp iam service account", default=None)  # noqa
     parser.add_argument("--module", help="Module name for data export (e.g., TheBasics)", type=str, default='sdoh')
+    parser.add_argument("--number", help="The number of random participants whose module responses should be exported",
+                        type=int, default=25)
     parser.add_argument("--from-file", help="file with participant ids whose module data will be exported",
                          metavar='FILE', type=str, default=None)
     args = parser.parse_args()
