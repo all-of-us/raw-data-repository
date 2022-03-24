@@ -55,6 +55,37 @@ class GenomicSetMember(Base):
 
     __tablename__ = "genomic_set_member"
 
+    history_table = True
+    exclude_column_names_from_history = [
+        'modified',
+        'reconcile_metrics_bb_manifest_job_run_id',
+        'reconcile_gc_manifest_job_run_id',
+        'reconcile_metrics_sequencing_job_run_id',
+        'reconcile_cvl_job_run_id',
+        'gem_a1_manifest_job_run_id',
+        'gem_a2_manifest_job_run_id',
+        'gem_a3_manifest_job_run_id',
+        'aw3_manifest_job_run_id',
+        'aw4_manifest_job_run_id',
+        'aw2f_manifest_job_run_id',
+        'cvl_w1_manifest_job_run_id',
+        'cvl_w2_manifest_job_run_id',
+        'cvl_w3_manifest_job_run_id',
+        'cvl_w4_manifest_job_run_id',
+        'cvl_w4f_manifest_job_run_id',
+        'cvl_aw1c_manifest_job_run_id',
+        'cvl_aw1cf_manifest_job_run_id',
+        'cvl_w3sr_manifest_job_run_id',
+        'cvl_w2sc_manifest_job_run_id',
+        'color_metrics_job_run_id',
+        'cvl_w1il_pgx_job_run_id',
+        'cvl_w1il_hdr_job_run_id',
+        'cvl_w4wr_pgx_manifest_job_run_id',
+        'cvl_w4wr_hdr_manifest_job_run_id',
+        'cvl_w3sc_manifest_job_run_id',
+        'cvl_w3ns_manifest_job_run_id'
+    ]
+
     # Primary Key
     id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
     # have mysql set the creation data for each new order
@@ -223,8 +254,6 @@ class GenomicSetMember(Base):
     genomicWorkflowStateModifiedTime = Column("genomic_workflow_state_modified_time", DateTime, nullable=True)
 
     reportConsentRemovalDate = Column('report_consent_removal_date', DateTime(timezone=True), nullable=True)
-
-    genomicWorkflowStateHistory = Column("genomic_workflow_state_history", JSON, nullable=True)
 
     # Broad QC Status
     qcStatus = Column('qc_status', Enum(GenomicQcStatus), default=GenomicQcStatus.UNSET)
