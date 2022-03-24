@@ -124,7 +124,6 @@ class CleanPDRDataClass(object):
                             suffix="complete"
                         )
 
-
     def delete_resource_pk_ids_from_resource_data(self, resource_type_id):
         """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
         _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
