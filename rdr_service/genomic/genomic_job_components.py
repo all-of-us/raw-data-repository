@@ -1262,7 +1262,8 @@ class GenomicFileIngester:
             result_state_obj.results_workflow_state,
             signal=kwargs.get('signal')
         )
-        if new_results_state and (result_state_obj.results_workflow_state != new_results_state):
+        if (new_results_state and result_state_obj) \
+            and (result_state_obj.results_workflow_state != new_results_state):
             self.results_workflow_dao.update_workflow_state_record(
                 result_state_obj,
                 new_results_state
