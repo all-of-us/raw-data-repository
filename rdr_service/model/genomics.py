@@ -268,13 +268,13 @@ class GenomicSetMember(Base):
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
+    cvlW3nsManifestJobRunID = Column('cvl_w3ns_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
     cvlW3srManifestJobRunID = Column('cvl_w3sr_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
     cvlW3scManifestJobRunID = Column('cvl_w3sc_manifest_job_run_id',
-                                     Integer, ForeignKey("genomic_job_run.id"),
-                                     nullable=True)
-    cvlW4wrManifestJobRunID = Column('cvl_w4wr_manifest_job_run_id',
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
 
@@ -679,6 +679,30 @@ event.listen(GenomicW2SCRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW2SCRaw, 'before_update', model_update_listener)
 
 
+class GenomicW3NSRaw(Base):
+    """
+    Raw data from W3NS files
+    """
+    __tablename__ = 'genomic_w3ns_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    unavailable_reason = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW3NSRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW3NSRaw, 'before_update', model_update_listener)
+
+
 class GenomicW3SRRaw(Base):
     """
     Raw data from W3SR files
@@ -708,6 +732,7 @@ class GenomicW3SRRaw(Base):
 event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
 
+
 class GenomicW3SCRaw(Base):
     """
     Raw data from W3SR files
@@ -730,6 +755,7 @@ class GenomicW3SCRaw(Base):
 
 event.listen(GenomicW3SRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW3SRRaw, 'before_update', model_update_listener)
+
 
 class GenomicW4WRRaw(Base):
     """
