@@ -111,6 +111,13 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in w2sr_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in w2sr_raw_records))
 
+    def test_w1il_record_retrieval(self):
+        from rdr_service.dao.genomics_dao import GenomicQueriesDao
+        dao = GenomicQueriesDao()
+
+        dao.get_data_ready_for_w1il_manifest(module='pgx')
+
+
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w3sr_manifest_generation(self, cloud_task):
         cvl_w2sc_gen_job_run = self.data_generator.create_database_genomic_job_run(

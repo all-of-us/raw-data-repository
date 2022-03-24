@@ -190,6 +190,19 @@ def aw3_wgs_manifest_workflow():
             load_awn_manifest_into_raw_table(manifest['file_path'], "aw3")
 
 
+def cvl_w1il_manifest_workflow():
+    for site in config.GENOMIC_CVL_SITES:
+        with GenomicJobController(
+            GenomicJob.CVL_W1IL_WORKFLOW,
+            bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME
+        ) as controller:
+            controller.cvl_site_id = site
+            controller.generate_manifest(
+                GenomicManifestTypes.CVL_W1IL,
+                _genome_type=config.GENOME_TYPE_WGS
+            )
+
+
 def cvl_w3sr_manifest_workflow():
     """
     Entrypoint for CVL W3SR Workflow
