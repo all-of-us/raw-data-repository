@@ -285,6 +285,7 @@ class GenomicFileIngester:
                 GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
                 GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
                 GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
+                GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
                 GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
                 GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest
             }
@@ -1261,7 +1262,7 @@ class GenomicFileIngester:
             result_state_obj.results_workflow_state,
             signal=kwargs.get('signal')
         )
-        if result_state_obj.results_workflow_state != new_results_state:
+        if new_results_state and (result_state_obj.results_workflow_state != new_results_state):
             self.results_workflow_dao.update_workflow_state_record(
                 result_state_obj,
                 new_results_state
@@ -1280,6 +1281,26 @@ class GenomicFileIngester:
                 self._base_cvl_ingestion(
                     row=row,
                     run_attr='cvlW2scManifestJobRunID',
+                    signal='secondary-confirmation',
+                    module_type=ResultsModuleType.HDRV1
+                )
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w3ns_manifest(self, rows):
+        """
+        Processes the CVL W2NS manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        try:
+            for row in rows:
+                self._base_cvl_ingestion(
+                    row=row,
+                    run_attr='cvlW3nsManifestJobRunID',
                     signal='secondary-confirmation',
                     module_type=ResultsModuleType.HDRV1
                 )
@@ -1695,6 +1716,12 @@ class GenomicFileValidator:
             "sampleid",
         )
 
+        self.CVL_W3NS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "unavailablereason"
+        )
+
         self.CVL_W3SC_SCHEMA = (
             "biobankid",
             "sampleid",
@@ -1942,20 +1969,6 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
-        def cvl_w2_manifest_name_rule():
-            """
-            CVL W2 (secondary validation) manifest name rule
-            UW_AoU_CVL_RequestValidation_Date.csv
-            """
-            return (
-                len(filename_components) == 5 and
-                filename_components[0] in self.VALID_CVL_FACILITIES and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename_components[3] == 'requestvalidation' and
-                filename.lower().endswith('csv')
-            )
-
         def cvl_w2sc_manifest_name_rule():
             """
             CVL W2SC (secondary confirmation) manifest name rule
@@ -1966,6 +1979,19 @@ class GenomicFileValidator:
                 filename_components[1] == 'aou' and
                 filename_components[2] == 'cvl' and
                 filename_components[3] == 'w2sc' and
+                filename.lower().endswith('csv')
+            )
+
+        def cvl_w3ns_manifest_name_rule():
+            """
+            CVL W3NS manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w3ns' and
                 filename.lower().endswith('csv')
             )
 
@@ -2004,25 +2030,6 @@ class GenomicFileValidator:
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
                 filename_components[2] == 'a2' and
-                filename.lower().endswith('csv')
-            )
-
-        def cvl_aw1c_manifest_name_rule():
-            """AW1C Biobank to CVLs manifest name rule"""
-            return (
-                filename_components[0] in self.VALID_GENOME_CENTERS and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename.lower().endswith('csv')
-            )
-
-        def cvl_aw1cf_manifest_name_rule():
-            """AW1F Biobank to CVLs manifest name rule"""
-            return (
-                filename_components[0] in self.VALID_GENOME_CENTERS and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename_components[4] == 'failure.csv' and
                 filename.lower().endswith('csv')
             )
 
@@ -2066,15 +2073,13 @@ class GenomicFileValidator:
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
-            GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
-            GenomicJob.AW1C_INGEST: cvl_aw1c_manifest_name_rule,
-            GenomicJob.AW1CF_INGEST: cvl_aw1cf_manifest_name_rule,
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
             GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
             GenomicJob.CVL_W2SC_WORKFLOW: cvl_w2sc_manifest_name_rule,
+            GenomicJob.CVL_W3NS_WORKFLOW: cvl_w3ns_manifest_name_rule,
             GenomicJob.CVL_W3SC_WORKFLOW: cvl_w3sc_manifest_name_rule,
             GenomicJob.CVL_W4WR_WORKFLOW: cvl_w4wr_manifest_name_rule
         }
@@ -2161,8 +2166,6 @@ class GenomicFileValidator:
                 return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
-            if self.job_id == GenomicJob.W2_INGEST:
-                return self.CVL_W2_SCHEMA
             if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                 return self.AW4_ARRAY_SCHEMA
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
@@ -2177,6 +2180,8 @@ class GenomicFileValidator:
                 return self.AW5_ARRAY_SCHEMA
             if self.job_id == GenomicJob.CVL_W2SC_WORKFLOW:
                 return self.CVL_W2SC_SCHEMA
+            if self.job_id == GenomicJob.CVL_W3NS_WORKFLOW:
+                return self.CVL_W3NS_SCHEMA
             if self.job_id == GenomicJob.CVL_W3SC_WORKFLOW:
                 return self.CVL_W3SC_SCHEMA
             if self.job_id == GenomicJob.CVL_W4WR_WORKFLOW:

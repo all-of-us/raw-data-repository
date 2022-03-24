@@ -7,7 +7,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
-    GenomicW3SCRawDao, GenomicResultWorkflowStateDao
+    GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicSubProcessStatus, \
     GenomicSubProcessResult, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -451,6 +451,70 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w4wr_raw_records))
+
+    def test_w3ns_manifest_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3NS.csv',
+            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3NS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
+        )
+
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w3ns_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3NS_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w3ns_job_run)
+        self.assertEqual(w3ns_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w3ns_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w3sc_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w3sc_file_processed.runId, w3ns_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW3nsManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW3nsManifestJobRunID == w3ns_job_run.id for obj in current_members))
+
+        # current_workflow_states = self.results_workflow_dao.get_all()
+        # self.assertEqual(len(current_workflow_states), 3)
+        # self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        # self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+        #
+        # self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SC for
+        #                     obj in current_workflow_states))
+        # self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SC.name for obj in
+        #                     current_workflow_states))
+
+    def test_w3ns_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3NS.csv',
+            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3NS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
+        )
+
+        w3ns_raw_dao = GenomicW3NSRawDao()
+
+        manifest_type = 'w3ns'
+        w3sc_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w3sc_manifest_file.filePath,
+            manifest_type
+        )
+
+        w3ns_raw_records = w3ns_raw_dao.get_all()
+
+        self.assertEqual(len(w3ns_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.unavailable_reason is not None for obj in w3ns_raw_records))
 
     def test_w3sc_manifest_ingestion(self):
 
