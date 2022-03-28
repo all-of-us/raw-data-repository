@@ -3133,18 +3133,22 @@ class GenomicQueriesDao(BaseDao):
 
             return records.distinct().all()
 
-    def get_data_ready_for_w1il_manifest(self, module: str):
+    def get_data_ready_for_w1il_manifest(self, module: str, cvl_id: str):
         """
         Returns the genomic set member and other data needed for a W1IL manifest.
         :param module: Module to retrieve genomic set members for, either 'pgx' or 'hdr'
+        :param cvl_id: CVL id that the data will go to ('co', 'uw', 'bcm')
         """
+
+        gc_site_id = self.transform_cvl_site_id(cvl_id)
 
         sample_collected_site: Site = aliased(Site)
 
         informing_loop_decision_query = GenomicInformingLoopDao.build_latest_decision_query(
             module=module
         ).with_entities(
-            GenomicInformingLoop.participant_id
+            GenomicInformingLoop.participant_id,
+            GenomicInformingLoop.decision_value
         ).filter(
             GenomicInformingLoop.decision_value.like('yes')
         )
@@ -3154,27 +3158,40 @@ class GenomicQueriesDao(BaseDao):
             query = session.query(
                 GenomicSetMember.biobankId,
                 GenomicSetMember.sampleId,
-                # vcf_raw_path
-                # vcf_raw_index_path
-                # vcf_raw_md5_path
-                # cram_name
-                # sex at birth (F, M)
-                # ny_flag (Y, N)
-                # genome_center (BCM, BI, UW)
-                # consent for gror (Y, N)
-                # genome_type (aou_cvl)
-                # informing_loop_(pgx|hdr) (Y, N)
-                # aou_hdr_coverage
-                # contamination (raw fraction??)
+                GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
+                GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
+                GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
+                GenomicGCValidationMetrics.cramPath.label('cram_name'),
+
+                func.IF(
+                    GenomicSetMember.nyFlag == 1,
+                    sqlalchemy.sql.expression.literal("Y"),
+                    sqlalchemy.sql.expression.literal("N")
+                ).label('ny_flag'),
+                sqlalchemy.func.upper(GenomicSetMember.gcSiteId).label('genome_center'),
+                sqlalchemy.case(
+                    [(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED, 'Y')],
+                    else_='N'
+                ).label('consent_for_gror'),
+                sqlalchemy.literal('aou_cvl').label('genome_type'),
+                sqlalchemy.case(
+                    [(informing_loop_subquery.c.decision_value.like('yes'), 'Y')],
+                    else_='N'
+                ).label(f'informing_loop_{module}'),
+                GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),
+                GenomicGCValidationMetrics.contamination
             ).join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
             ).join(
                 GenomicGCValidationMetrics,
-                GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id
+                and_(
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                    GenomicGCValidationMetrics.ignoreFlag != 1
+                )
             ).join(
                 BiobankStoredSample,
-                GenomicSetMember.collectionTubeId == BiobankStoredSample.biobankStoredSampleId
+                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
             ).join(
                 BiobankOrderIdentifier,
                 BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
@@ -3212,10 +3229,10 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.like('pass'),
                 sample_collected_site.siteType != 'diversion pouch',
+                GenomicSetMember.gcSiteId.like(gc_site_id),
+                ParticipantSummary.participantOrigin != 'careevolution',
 
-                # TODO: load only records for a specific cvl
-
-                ParticipantSummary.participantOrigin != 'careevolution'
+                GenomicSetMember.ignoreFlag != 1
             )
 
             return query.all()
