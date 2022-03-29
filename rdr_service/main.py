@@ -42,6 +42,7 @@ from rdr_service.api.workbench_api import WorkbenchWorkspaceApi, WorkbenchResear
 from rdr_service.api.research_projects_directory_api import ResearchProjectsDirectoryApi
 from rdr_service.api.redcap_workbench_audit_api import RedcapResearcherAuditApi, RedcapWorkbenchAuditApi
 from rdr_service.api.message_broker_api import MessageBrokerApi
+from rdr_service.api.onsite_verification_api import OnsiteVerificationApi
 
 from rdr_service.services.flask import app, API_PREFIX, flask_warmup, flask_start, flask_stop
 from rdr_service.services.gcp_logging import begin_request_logging, end_request_logging, \
@@ -375,6 +376,13 @@ app.add_url_rule(API_PREFIX + "CheckPpiData", endpoint="check_ppi_data", view_fu
 app.add_url_rule(API_PREFIX + "ImportCodebook", endpoint="import_codebook", view_func=import_codebook,
                  methods=["POST"])
 
+api.add_resource(
+    OnsiteVerificationApi,
+    API_PREFIX + "Onsite/Id/Verification",
+    API_PREFIX + "Onsite/Id/Verification/<participant_id:p_id>",
+    endpoint="onsite_id_verification",
+    methods=["POST", "GET"],
+)
 
 app.add_url_rule("/_ah/warmup", endpoint="warmup", view_func=flask_warmup, methods=["GET"])
 app.add_url_rule("/_ah/start", endpoint="start", view_func=flask_start, methods=["GET"])
