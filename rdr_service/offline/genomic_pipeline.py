@@ -330,11 +330,6 @@ def reconcile_informing_loop_responses():
         controller.reconcile_informing_loop_responses()
 
 
-def delete_old_gp_user_events(days=7):
-    with GenomicJobController(GenomicJob.DELETE_OLD_GP_USER_EVENT_METRICS) as controller:
-        controller.delete_old_gp_user_event_metrics(days=days)
-
-
 def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()

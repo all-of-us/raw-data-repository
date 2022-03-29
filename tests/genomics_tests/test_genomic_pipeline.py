@@ -6318,9 +6318,9 @@ class GenomicPipelineTest(BaseTestCase):
                   'gem.informing_loop.screen8_no',
                   'gem.informing_loop.screen8_yes',
                   'hdr.informing_loop.started',
-                  'gem.informing_loop.screen8_maybe_later']
+                  'gem.informing_loop.screen3']
         for p in range(4):
-            for i in range(4):
+            for i in range(len(events)):
                 self.data_generator.create_database_genomic_user_event_metrics(
                     created=clock.CLOCK.now(),
                     modified=clock.CLOCK.now(),
@@ -6415,11 +6415,6 @@ class GenomicPipelineTest(BaseTestCase):
         old_event.created = old_event.created - datetime.timedelta(days=8)
         with event_dao.session() as session:
             session.merge(old_event)
-
-        genomic_pipeline.delete_old_gp_user_events()
-
-        all_events = event_dao.get_all()
-        self.assertEqual(18, len(all_events))
 
     def test_investigation_aw2_ingestion(self):
         self._create_fake_datasets_for_gc_tests(3,
