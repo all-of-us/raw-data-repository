@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 
 import rdr_service.config as config
+from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao
 from rdr_service.dao.bq_participant_summary_dao import BQParticipantSummaryGenerator, rebuild_bq_participant
@@ -54,6 +55,10 @@ def batch_rebuild_participants_task(payload, project_id=None):
         p_id = item['pid']
         patch_data = item.get('patch', None)
         count += 1
+
+        if int(p_id) in SKIP_TEST_PIDS_FOR_PDR:
+            logging.warning(f'Skipping rebuild of test pid {p_id} data')
+            continue
 
         if build_participant_summary:
             rebuild_participant_summary_resource(p_id, res_gen=res_gen, patch_data=patch_data)

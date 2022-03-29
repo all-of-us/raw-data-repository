@@ -39,7 +39,8 @@ from rdr_service.model.genomics import (
     GenomicMemberReportState,
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
-    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw)
+    GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
+    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -852,7 +853,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
-    def update_member_state(self, member, new_state):
+    def update_member_workflow_state(self, member, new_state):
         """
         Sets the member's state to a new state
         :param member: GenomicWorkflowState
@@ -861,6 +862,17 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         member.genomicWorkflowState = new_state
         member.genomicWorkflowStateStr = new_state.name
         member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+        self.update(member)
+
+    def update_member_results_state(self, member, new_state):
+        """
+        Sets the member's state to a new state
+        :param member:  ResultsWorkflowState
+        :param new_state:
+        """
+        member.resultsWorkflowState = new_state
+        member.resultsWorkflowStateStr = new_state.name
+        member.resultsWorkflowStateModifiedTime = clock.CLOCK.now()
         self.update(member)
 
     def get_members_from_date(self, from_days=1):
@@ -2441,10 +2453,46 @@ class GenomicW2SCRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
+class GenomicW3NSRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW3NSRawDao, self).__init__(
+            GenomicW3NSRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
+class GenomicW3SCRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW3SCRawDao, self).__init__(
+            GenomicW3SCRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
 class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW3SRRawDao, self).__init__(
             GenomicW3SRRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
+class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW4WRRawDao, self).__init__(
+            GenomicW4WRRaw, order_by_ending=['id'])
 
     def get_id(self, obj):
         pass
@@ -3061,6 +3109,53 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
             else:
                 return query.all()
+
+
+class GenomicCVLAnalysisDao(BaseDao):
+    def __init__(self):
+        super(GenomicCVLAnalysisDao, self).__init__(
+            GenomicCVLAnalysis, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
+
+
+class GenomicResultWorkflowStateDao(UpdatableDao):
+    validate_version_match = False
+
+    def __init__(self):
+        super(GenomicResultWorkflowStateDao, self).__init__(
+            GenomicResultWorkflowState, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        return obj.id
+
+    def get_by_member_id(self, member_id, module_type=None):
+        with self.session() as session:
+            records = session.query(
+                GenomicResultWorkflowState
+            ).filter(
+                GenomicResultWorkflowState.genomic_set_member_id == member_id
+            )
+            if not module_type:
+                return records.all()
+
+            records = records.filter(
+                GenomicResultWorkflowState.results_module == module_type
+            ).one_or_none()
+
+            return records
+
+    def update_workflow_state_record(self, obj, new_state):
+        obj.results_workflow_state = new_state
+        obj.results_workflow_state_str = new_state.name
+        self.update(obj)
 
 
 class GenomicQueriesDao(BaseDao):

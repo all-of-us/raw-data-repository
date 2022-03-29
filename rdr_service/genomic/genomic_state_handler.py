@@ -1,6 +1,6 @@
 import abc
 
-from rdr_service.genomic_enums import GenomicWorkflowState
+from rdr_service.genomic_enums import GenomicWorkflowState, ResultsWorkflowState
 
 
 class GenomicStateBase:
@@ -233,10 +233,26 @@ class W3State(GenomicStateBase):
             return GenomicWorkflowState.AW1CF_POST
 
 
+class W1ILState(GenomicStateBase):
+    def transition_function(self, signal):
+        if signal == 'secondary-confirmation':
+            return ResultsWorkflowState.CVL_W2SC
+
+        return ResultsWorkflowState.CVL_W4WR
+
+
 class W2SCState(GenomicStateBase):
     def transition_function(self, signal):
         if signal == 'manifest-generated':
-            return GenomicWorkflowState.CVL_W3SR
+            return ResultsWorkflowState.CVL_W3SR
+
+
+class W3SRState(GenomicStateBase):
+    def transition_function(self, signal):
+        if signal == 'sample-failed':
+            return ResultsWorkflowState.CVL_W3SC
+        if signal == 'sample-unavailable':
+            return ResultsWorkflowState.CVL_W3NS
 
 
 class GenomicStateHandler:
@@ -265,7 +281,9 @@ class GenomicStateHandler:
         GenomicWorkflowState.GEM_RPT_DELETED: GEMReportDeleted(),
         # Replating is functionally equivalent to AW0
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
-        GenomicWorkflowState.CVL_W2SC: W2SCState(),
+        ResultsWorkflowState.CVL_W1IL: W1ILState(),
+        ResultsWorkflowState.CVL_W2SC: W2SCState(),
+        ResultsWorkflowState.CVL_W3SR: W3SRState()
     }
 
     @classmethod

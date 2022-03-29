@@ -428,8 +428,7 @@ class GenomicJobController:
 
         def _set_module_type(records):
             mod_type = [obj for obj in records if obj.fieldName in ['module_type', 'result_type'] and obj.valueString]
-            mod_type = mod_type[0].valueString
-            return mod_type
+            return mod_type[0].valueString if mod_type else None
 
         if 'informing_loop' in event_type:
             loop_type = event_type
@@ -440,10 +439,9 @@ class GenomicJobController:
 
             if informing_records:
                 module_type = _set_module_type(informing_records)
-
-                if module_type.lower() != 'gem':
-                    logging.info(f'Cannot insert Message broker data for module {module_type}, only accepting gem '
-                                 f'modules at this time')
+                if not module_type:
+                    logging.warning(f'Cannot find module type in message record id: '
+                                    f'{informing_records[0].messageRecordId}')
                     return
 
                 first_record = informing_records[0]
@@ -470,10 +468,9 @@ class GenomicJobController:
             )
             if result_records:
                 module_type = _set_module_type(result_records)
-
-                if module_type.lower() != 'gem':
-                    logging.info(f'Cannot insert Message broker data for module {module_type}, only accepting gem '
-                                 f'modules at this time')
+                if not module_type:
+                    logging.warning(f'Cannot find module type in message record id: '
+                                    f'{result_records[0].messageRecordId}')
                     return
 
                 first_record = result_records[0]
@@ -1375,10 +1372,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def load_raw_awn_data_from_filepath(self, file_path):
+    def load_raw_awn_data_from_filepath(self, file_path, raw_dao):
         """
-        Loads raw AW1/2/3/4 data to raw table
-
+        Loads raw manifests data to raw table
         :param file_path: "bucket/folder/manifest_file.csv"
         :return:
         """
@@ -1389,7 +1385,7 @@ class GenomicJobController:
                                             target_file=file_path,
                                             _controller=self)
 
-        self.job_result = self.ingester.load_raw_awn_file()
+        self.job_result = self.ingester.load_raw_awn_file(raw_dao)
 
     def create_incident(
         self,

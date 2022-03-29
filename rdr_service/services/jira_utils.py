@@ -131,9 +131,15 @@ class JiraTicketHandler:
         if not descr:
             raise ValueError('Jira ticket description may not be empty')
 
-        ticket = self._jira_connection.create_issue(
-            project=board_id, summary=summary, description=descr, issuetype={"name": issue_type}, components=components
-        )
+        ticket_parameters = {
+            'project': board_id,
+            'summary': summary,
+            'description': descr,
+            'issuetype': {'name': issue_type}
+        }
+        if components:
+            ticket_parameters['components'] = components
+        ticket = self._jira_connection.create_issue(**ticket_parameters)
 
         # pylint: disable=W0511
         #NOTE: the drc api jira account does not have permissions to add watchers. This is a no-op.
