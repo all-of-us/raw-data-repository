@@ -98,7 +98,6 @@
     "reconcile_gc_data_file_to_table_workflow": 1,
     "reconcile_pdr_data": 1,
     "retry_manifest_ingestion_failures": 1,
-    "genomic_delete_old_gp_user_events": 0,
     "reconcile_raw_to_aw1_ingested_workflow": 1,
     "reconcile_raw_to_aw2_ingested_workflow": 1,
     "members_state_resolved_workflow": 1,
