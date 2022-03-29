@@ -257,7 +257,7 @@ class ValidateDateOfBirthApi(Resource):
     @task_auth_required
     @returns_success
     def post(self):
-        task_data = request.json
+        task_data = request.get_json(force=True)
         date_of_birth = parse_date(task_data['date_of_birth'])
 
         ParticipantDataValidation.analyze_date_of_birth(
