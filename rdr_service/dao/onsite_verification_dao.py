@@ -39,14 +39,14 @@ class OnsiteVerificationDao(BaseDao):
                 raise BadRequest(f'{field_name} can not be NULL')
         try:
             if resource_json.get("verificationType") is None:
-                raise BadRequest(f'verificationType can not be None')
+                raise BadRequest('verificationType can not be None')
             OnSiteVerificationType(resource_json.get("verificationType"))
         except TypeError:
             raise BadRequest(f'Invalid field verificationType: {resource_json.get("verificationType")}')
 
         try:
             if resource_json.get("visitType") is None:
-                raise BadRequest(f'visitType can not be None')
+                raise BadRequest('visitType can not be None')
             OnSiteVerificationVisitType(resource_json.get("visitType"))
         except TypeError:
             raise BadRequest(f'Invalid field visitType: {resource_json.get("visitType")}')
