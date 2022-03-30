@@ -63,6 +63,7 @@ from rdr_service.model.hpo_lite_pairing_import_record import HpoLitePairingImpor
 from rdr_service.model.message_broker import MessageBrokerRecord, MessageBrokerMetadata, MessageBrokerDestAuthInfo
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.model.ce_health_reconciliation import CeHealthReconciliation
+from rdr_service.model.onsite_id_verification import OnsiteIdVerification
 
 RETRY_CONNECTION_LIMIT = 10
 
