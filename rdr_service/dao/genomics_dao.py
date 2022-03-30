@@ -2718,19 +2718,19 @@ class GenomicInformingLoopDao(UpdatableDao):
 
     @classmethod
     def build_latest_decision_query(cls, module: str) -> sqlalchemy.orm.Query:
-        informing_loop_alias = aliased(GenomicInformingLoop)
+        later_informing_loop_decision = aliased(GenomicInformingLoop)
         return (
             sqlalchemy.orm.Query(GenomicInformingLoop)
             .outerjoin(
-                informing_loop_alias,
+                later_informing_loop_decision,
                 and_(
-                    informing_loop_alias.participant_id == GenomicInformingLoop.participant_id,
-                    informing_loop_alias.module_type == module,
-                    GenomicInformingLoop.event_authored_time < informing_loop_alias.event_authored_time
+                    later_informing_loop_decision.participant_id == GenomicInformingLoop.participant_id,
+                    later_informing_loop_decision.module_type == module,
+                    GenomicInformingLoop.event_authored_time < later_informing_loop_decision.event_authored_time
                 )
             ).filter(
                 GenomicInformingLoop.module_type == module,
-                informing_loop_alias.event_authored_time.is_(None)
+                later_informing_loop_decision.event_authored_time.is_(None)
             )
         )
 
@@ -3270,7 +3270,7 @@ class GenomicQueriesDao(BaseDao):
                 ).label('consent_for_gror'),
                 sqlalchemy.literal('aou_cvl').label('genome_type'),
                 sqlalchemy.case(
-                    [(informing_loop_subquery.c.decision_value.like('yes'), 'Y')],
+                    [(informing_loop_subquery.decision_value.like('yes'), 'Y')],
                     else_='N'
                 ).label(f'informing_loop_{module}'),
                 GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),

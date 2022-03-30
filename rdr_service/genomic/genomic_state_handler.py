@@ -199,9 +199,6 @@ class GEMReportDeleted(GenomicStateBase):
 class CVLReadyState(GenomicStateBase):
     """State representing the CVL_READY state"""
     def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.CVL_W1IL
-
         if signal == 'unconsented':
             return GenomicWorkflowState.CVL_RPT_PENDING_DELETE
 

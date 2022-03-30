@@ -8,8 +8,8 @@ from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
     GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao
-from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicSubProcessStatus, \
-    GenomicSubProcessResult, ResultsWorkflowState, ResultsModuleType
+from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
+    GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
@@ -136,12 +136,67 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in w2sr_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in w2sr_raw_records))
 
-    def test_w1il_record_retrieval(self):
-        from rdr_service.dao.genomics_dao import GenomicQueriesDao
-        dao = GenomicQueriesDao()
+    @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_w1il_manifest_generation(self, execute_task_mock, sql_exporter_class_mock):
+        summary = self.data_generator.create_database_participant_summary(
+            consentForGenomicsROR=QuestionnaireStatus.SUBMITTED
+        )
+        stored_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=summary.biobankId,
+            biobankOrderIdentifier=self.fake.pyint()
+        )
+        collection_site = self.data_generator.create_database_site(
+            siteType='Clinic Site'
+        )
+        order = self.data_generator.create_database_biobank_order(
+            collectedSiteId=collection_site.siteId
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            value=stored_sample.biobankOrderIdentifier,
+            biobankOrderId=order.biobankOrderId
+        )
+        self.data_generator.create_database_genomic_informing_loop(
+            participant_id=summary.participantId,
+            decision_value='yes',
+            module_type='pgx'
+        )
+        genomic_set_member = self.data_generator.create_database_genomic_set_member(
+            genomicSetId=self.gen_set.id,
+            biobankId=summary.biobankId,
+            sampleId=stored_sample.biobankStoredSampleId,
+            collectionTubeId=stored_sample.biobankStoredSampleId,
+            sexAtBirth='F',
+            nyFlag=0,
+            genomeType='aou_wgs',
+            participantId=summary.participantId,
+            gcSiteId='bcm',
+            qcStatus=GenomicQcStatus.PASS,
+            gcManifestSampleSource='whole blood',
+            genomicWorkflowState=GenomicWorkflowState.CVL_READY
+        )
+        self.data_generator.create_database_genomic_gc_validation_metrics(
+            genomicSetMemberId=genomic_set_member.id,
+            processingStatus='pass',
+            sexConcordance='true',
+            drcSexConcordance='pass',
+            drcFpConcordance='pass',
+            hfVcfReceived=1,
+            hfVcfTbiReceived=1,
+            hfVcfMd5Received=1,
+            cramReceived=1,
+            cramMd5Received=1,
+            craiReceived=1,
+            gvcfReceived=1,
+            gvcfMd5Received=1
+        )
 
-        dao.get_data_ready_for_w1il_manifest(module='pgx')
+        genomic_pipeline.cvl_w1il_manifest_workflow({
+            cvl_site_id: f'{cvl_site_id}_test_bucket'
+            for cvl_site_id in config.GENOMIC_CVL_SITES
+        })
 
+        print(execute_task_mock, sql_exporter_class_mock)
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w3sr_manifest_generation(self, cloud_task):

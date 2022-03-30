@@ -48,6 +48,7 @@ from rdr_service.participant_enums import (
     DeceasedStatus,
     EnrollmentStatus,
     PatientStatusFlag,
+    QuestionnaireStatus,
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -331,7 +332,8 @@ class DataGenerator:
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
-            "isEhrDataAvailable": False
+            "isEhrDataAvailable": False,
+            "consentForStudyEnrollment": QuestionnaireStatus.SUBMITTED
         }
 
         defaults.update(kwargs)
@@ -729,8 +731,10 @@ class DataGenerator:
         return event_metrics
 
     @staticmethod
-    def _genomic_informing_loop(**kwargs):
-        return GenomicInformingLoop(**kwargs)
+    def _genomic_informing_loop(**defaults):
+        if 'event_type' not in defaults:
+            defaults['event_type'] = 'informing_loop_decision'
+        return GenomicInformingLoop(**defaults)
 
     @staticmethod
     def _genomic_gc_data_file(**kwargs):
