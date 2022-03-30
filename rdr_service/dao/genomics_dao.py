@@ -3327,7 +3327,8 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.gcSiteId.like(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
 
-                GenomicSetMember.ignoreFlag != 1
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY
             )
 
             return query.all()

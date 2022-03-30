@@ -164,7 +164,8 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map):
             GenomicJob.CVL_W1IL_WORKFLOW,
             bucket_name=cvl_bucket
         ) as controller:
-            controller.generate_manifest(GenomicManifestTypes.CVL_W1IL, _genome_type=config.GENOME_TYPE_WGS)
+            controller.generate_manifest(GenomicManifestTypes.CVL_W1IL_PGX, _genome_type=config.GENOME_TYPE_WGS)
+            controller.generate_manifest(GenomicManifestTypes.CVL_W1IL_HDR, _genome_type=config.GENOME_TYPE_WGS)
 
 
 def cvl_w3sr_manifest_workflow():
