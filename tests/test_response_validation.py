@@ -49,6 +49,32 @@ class TestValidation(BaseTestCase):
             response_validation.check_for_errors(valid_response)
         )
 
+    def test_invalidation_chaining(self):
+        """If an answer gets marked as invalid, any answer that relied on it need to be invalidated too"""
+
+        # define a rule that says question_b should only be answered if question_a was answered with ans_1
+        response_validation = ResponseRequirements({
+            'question_c': CanOnlyBeAnsweredIf(
+                Question('question_b').is_answered_with('anything')
+            ),
+            'question_b': CanOnlyBeAnsweredIf(
+                Question('question_a').is_answered_with('ans_1')
+            )
+        })
+
+        response_without_answer_to_a = self._build_response({
+            'question_c': [(4, 'test')],
+            'question_b': [(3, 'anything')]
+        })
+        actual = response_validation.check_for_errors(response_without_answer_to_a)
+        self.assertEqual(
+            [
+                ValidationError(answer_id=[3], question_code='question_b'),
+                ValidationError(answer_id=[4], question_code='question_c'),
+            ],
+            actual
+        )
+
     def test_and_conditions(self):
         """Verify that AND-ing conditions requires that they all pass"""
         response_validation = ResponseRequirements({
