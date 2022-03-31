@@ -820,7 +820,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
         self.assertListEqual(expected_rows, actual_rows)
 
-    def expected_w1il_row(self, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
+    @classmethod
+    def expected_w1il_row(cls, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
                           summary: ParticipantSummary):
         return (
             to_client_biobank_id(set_member.biobankId),
@@ -837,23 +838,3 @@ class GenomicCVLPipelineTest(BaseTestCase):
             str(validation_metrics.aouHdrCoverage),
             str(validation_metrics.contamination)
         )
-
-
-class ExpectedManifestFileData:
-    """
-    Helps keep track of rows that are expected to be in a manifest file,
-    and reports if any expected rows were not found.
-    """
-
-    def __init__(self, expected_data):
-        self.remaining_expected_data = expected_data
-
-    def row_expected(self, row_data):
-        """
-        If a row is expected, remove it from the expected data.
-        Otherwise return False to indicate that it wasn't expected
-        """
-        if row_data in self.remaining_expected_data:
-            self.remaining_expected_data.remove(row_data)
-        else:
-            return False

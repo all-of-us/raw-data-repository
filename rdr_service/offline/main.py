@@ -541,7 +541,6 @@ def genomic_aw3_wgs_workflow():
 def genomic_cvl_w1il_workflow():
     genomic_pipeline.cvl_w1il_manifest_workflow(
         cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
-        # TODO: add bucket map to the config
     )
     return '{"success": "true"}'
 
