@@ -255,6 +255,12 @@ class W3SRState(GenomicStateBase):
             return ResultsWorkflowState.CVL_W3NS
 
 
+class W4WRState(GenomicStateBase):
+    def transition_function(self, signal):
+        if signal == 'sample-failed':
+            return ResultsWorkflowState.CVL_W5NF
+
+
 class GenomicStateHandler:
     """
     Basic FSM for Genomic States. Returns call to state's transition_function()
@@ -283,7 +289,8 @@ class GenomicStateHandler:
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
         ResultsWorkflowState.CVL_W1IL: W1ILState(),
         ResultsWorkflowState.CVL_W2SC: W2SCState(),
-        ResultsWorkflowState.CVL_W3SR: W3SRState()
+        ResultsWorkflowState.CVL_W3SR: W3SRState(),
+        ResultsWorkflowState.CVL_W4WR: W4WRState()
     }
 
     @classmethod
