@@ -40,7 +40,7 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw)
+    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2499,6 +2499,18 @@ class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
+class GenomicW5NFRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW5NFRawDao, self).__init__(
+            GenomicW5NFRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
 class GenomicIncidentDao(UpdatableDao, GenomicDaoUtils):
     validate_version_match = False
 
@@ -3103,7 +3115,10 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.all()
 
 
-class GenomicCVLAnalysisDao(BaseDao):
+class GenomicCVLAnalysisDao(UpdatableDao):
+
+    validate_version_match = False
+
     def __init__(self):
         super(GenomicCVLAnalysisDao, self).__init__(
             GenomicCVLAnalysis, order_by_ending=['id'])
@@ -3112,7 +3127,18 @@ class GenomicCVLAnalysisDao(BaseDao):
         pass
 
     def get_id(self, obj):
-        pass
+        return obj.id
+
+    def get_passed_analysis_member_module(self, member_id, module):
+        with self.session() as session:
+            return session.query(
+                GenomicCVLAnalysis
+            ).filter(
+                GenomicCVLAnalysis.genomic_set_member_id == member_id,
+                GenomicCVLAnalysis.clinical_analysis_type == module,
+                GenomicCVLAnalysis.ignore_flag != 1,
+                GenomicCVLAnalysis.failed == 0,
+            ).one_or_none()
 
 
 class GenomicResultWorkflowStateDao(UpdatableDao):
