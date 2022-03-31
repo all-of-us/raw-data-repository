@@ -47,7 +47,7 @@ from rdr_service.participant_enums import (
     WithdrawalStatus,
     SuspensionStatus, DeceasedStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
-    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
+    GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory, ResultsModuleType
 from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
@@ -3236,6 +3236,10 @@ class GenomicQueriesDao(BaseDao):
         """
 
         gc_site_id = self.transform_cvl_site_id(cvl_id)
+        result_module_type = {
+            'pgx': ResultsModuleType.PGXV1,
+            'hdr': ResultsModuleType.HDRV1
+        }[module]
 
         sample_collected_site: Site = aliased(Site)
 
@@ -3298,6 +3302,12 @@ class GenomicQueriesDao(BaseDao):
             ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
+            ).outerjoin(
+                GenomicResultWorkflowState,
+                and_(
+                    GenomicResultWorkflowState.genomic_set_member_id == GenomicSetMember.id,
+                    GenomicResultWorkflowState.results_module == result_module_type
+                )
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.like('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -3327,7 +3337,8 @@ class GenomicQueriesDao(BaseDao):
                 ParticipantSummary.participantOrigin != 'careevolution',
 
                 GenomicSetMember.ignoreFlag != 1,
-                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
+                GenomicResultWorkflowState.id.is_(None)
             )
 
             # TODO: need to look for ResultWorkflowStates

@@ -160,7 +160,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
             ]
         )
         co_summary, co_set_member, co_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bi'}
+            set_member_params={'gcSiteId': 'bi'},
+            result_workflow_state={'results_module': ResultsModuleType.HDRV1}
         )
 
         # Create some records that shouldn't exist in a W1IL for BCM
@@ -185,6 +186,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             set_member_params={'gcSiteId': 'bcm'},
             collection_site_params={'siteType': 'diversion pouch'}
         )
+        # Member with a latest answer of 'no' should not be in a W1IL
         self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm'},
             informing_loop_decision_param_list=[
@@ -198,6 +200,11 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 }
             ]
         )
+        # Member already in a the CVL workflow shouldn't be in a W1IL
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            result_workflow_state={}  # letting defaults get set for the workflow state
+        )
 
         manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
         manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
@@ -205,7 +212,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
         co_w1il_manifest = mock.MagicMock()
         bcm_pgx_w1il_manifest = mock.MagicMock()
         bcm_hdr_w1il_manifest = mock.MagicMock()
-        
+
         def side_effect(file_name):
             if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
                 return bcm_pgx_w1il_manifest
@@ -699,7 +706,8 @@ class GenomicCVLPipelineTest(BaseTestCase):
         collection_site_params=None,
         informing_loop_decision_param_list=None,
         set_member_params=None,
-        validation_metrics_params=None
+        validation_metrics_params=None,
+        result_workflow_state=None
     ) -> Tuple[ParticipantSummary, GenomicSetMember, GenomicGCValidationMetrics]:
 
         participant_summary_params = participant_summary_params or {}
@@ -789,7 +797,20 @@ class GenomicCVLPipelineTest(BaseTestCase):
             },
             **validation_metrics_params
         }
-        validation_metrics = self.data_generator.create_database_genomic_gc_validation_metrics(**validation_metrics_params)
+        validation_metrics = self.data_generator.create_database_genomic_gc_validation_metrics(
+            **validation_metrics_params
+        )
+
+        if result_workflow_state is not None:
+            result_workflow_params = {
+                **{
+                    'genomic_set_member_id': genomic_set_member.id,
+                    'results_workflow_state': ResultsWorkflowState.CVL_W1IL,
+                    'results_module': ResultsModuleType.PGXV1
+                },
+                **result_workflow_state
+            }
+            self.data_generator.create_database_genomic_result_workflow_state(**result_workflow_params)
 
         return summary, genomic_set_member, validation_metrics
 
