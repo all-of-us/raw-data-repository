@@ -22,6 +22,10 @@ class _Requirement(ABC):
         ...
 
     @abstractmethod
+    def observe_response(self, response: response_domain_model.Response):
+        ...
+
+    @abstractmethod
     def reset_state(self):
         ...
 
@@ -56,6 +60,11 @@ class Condition(ABC):
     def reset_state(self):
         ...
 
+    @abstractmethod
+    def get_failure_reason(self) -> str:
+        """Return the reason a condition failed (if it has recently failed)"""
+        ...
+
 
 class CanOnlyBeAnsweredIf(_Requirement):
     """
@@ -66,14 +75,21 @@ class CanOnlyBeAnsweredIf(_Requirement):
     def __init__(self, condition: Condition):
         self.condition = condition
 
-    def get_errors(self, response: response_domain_model.Response, question_code: str) -> Sequence['ValidationError']:
+    def observe_response(self, response: response_domain_model.Response):
         self.condition.process_response(response)
 
-        answers = response.get_answers_for(question_code)
+    def get_errors(self, response: response_domain_model.Response, question_code: str) -> Sequence['ValidationError']:
+        answers = response.get_answers_for(question_code, allow_skips=True)
         if answers and not self.condition.passes():
             for answer in answers:
                 answer.is_valid = False
-            return [ValidationError(question_code, [answer.id for answer in answers])]
+            return [
+                ValidationError(
+                    question_code=question_code,
+                    answer_id=[answer.id for answer in answers],
+                    failure_reason=self.condition.get_failure_reason()
+                )
+            ]
 
         return []
 
@@ -140,6 +156,9 @@ class InAnySurvey(Condition):
         is_passing = self._condition.passes()
         self._condition_found_passing = self._condition_found_passing or is_passing
 
+    def get_failure_reason(self) -> str:
+        return f'{self._condition.get_failure_reason()} in any survey'
+
     def __str__(self):
         return f'in any survey ({self._condition})'
 
@@ -188,6 +207,9 @@ class Not(Condition):
     def process_response(self, response: response_domain_model):
         self._condition.process_response(response)
 
+    def get_failure_reason(self) -> str:
+        return f'({self._condition}) was found to be true'
+
     def __str__(self):
         return f'not ({self._condition})'
 
@@ -208,6 +230,11 @@ class And(Condition):
     def process_response(self, response: response_domain_model):
         for child in self._child_conditions:
             child.process_response(response)
+
+    def get_failure_reason(self) -> str:
+        for child in self._child_conditions:
+            if not child.passes():
+                return child.get_failure_reason()
 
     def __str__(self):
         result = ' and '.join([str(condition) for condition in self._child_conditions])
@@ -231,6 +258,9 @@ class Or(Condition):
         for child in self._child_conditions:
             child.process_response(response)
 
+    def get_failure_reason(self) -> str:
+        return f'none of {self} found true'
+
     def __str__(self):
         result = ' or '.join([str(condition) for condition in self._child_conditions])
         return f'({result})'
@@ -248,6 +278,7 @@ class _HasAnsweredQuestionWith(Condition):
         self.expected_answer_value = answer_value
 
         self._passes = False
+        self._failure_reason = None
 
     def reset_state(self):
         self._passes = False
@@ -256,12 +287,23 @@ class _HasAnsweredQuestionWith(Condition):
         return self._passes
 
     def process_response(self, response: response_domain_model):
-        answer = response.get_single_answer_for(self.question_code)
+        answer = response.get_single_answer_for(self.question_code, allow_invalid=True)
 
-        if self.comparison == _Comparison.EQUALS:
-            self._passes = answer and answer.value == self.expected_answer_value
+        if not answer:
+            self._failure_reason = self._failure_reason or f'{self.question_code} not answered'
+            self._passes = False
+        elif not answer.is_valid:
+            self._failure_reason = f'answer to {self.question_code} is invalid'
+            self._passes = False
+        elif self.comparison == _Comparison.EQUALS:
+            self._failure_reason = f"[{self.question_code}] != {self.expected_answer_value}"
+            self._passes = answer.value.lower() == self.expected_answer_value.lower()
         elif self.comparison == _Comparison.GREATER_THAN:
-            self._passes = answer and answer.value > self.expected_answer_value
+            self._failure_reason = f"[{self.question_code}] <= '{self.expected_answer_value}'"
+            self._passes = float(answer.value) > self.expected_answer_value
+
+    def get_failure_reason(self) -> str:
+        return self._failure_reason
 
     def __str__(self):
         if self.comparison == _Comparison.GREATER_THAN:
@@ -285,7 +327,10 @@ class _HasSelectedOption(Condition):
 
     def process_response(self, response: response_domain_model):
         answers = response.get_answers_for(self.question_code)
-        self._passes = answers and self.expected_selection in [answer.value for answer in answers]
+        self._passes = answers and self.expected_selection.lower() in [answer.value.lower() for answer in answers]
+
+    def get_failure_reason(self) -> str:
+        return f'{self.question_code} does not have {self.expected_selection} selected'
 
     def __str__(self):
         return f"[{self.question_code}({self.expected_selection})] = '1'"
@@ -295,6 +340,7 @@ class _HasSelectedOption(Condition):
 class ValidationError:
     question_code: str
     answer_id: Sequence[int]
+    failure_reason: str
 
 
 class ResponseRequirements:
@@ -307,6 +353,11 @@ class ResponseRequirements:
         self._responses_to_replay.append(response)
         return errors
 
+    def observe_response(self, response: response_domain_model.Response):
+        for conditional in self.requirements.values():
+            conditional.observe_response(response)
+        self._responses_to_replay.append(response)
+
     def _find_errors(self, new_response: response_domain_model.Response):
         """
         Keep passing through responses until no more errors are found.
@@ -316,14 +367,11 @@ class ResponseRequirements:
         self._reset_child_state()
         for response in self._responses_to_replay:
             for question_code, conditional in self.requirements.items():
-                uncaught_errors = conditional.get_errors(response, question_code=question_code)
-                if uncaught_errors:
-                    # Should not be able to get errors on previously passed responses
-                    # (invalid answers should be ignored when checking conditionals)
-                    raise Exception('Invalid answers found in previously checked responses')
+                conditional.observe_response(response)
 
         new_errors = []
         for question_code, conditional in self.requirements.items():
+            conditional.observe_response(new_response)
             new_errors.extend(conditional.get_errors(new_response, question_code=question_code))
 
         if new_errors:
