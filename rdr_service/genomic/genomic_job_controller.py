@@ -1154,6 +1154,8 @@ class GenomicJobController:
             controller=self
         )
 
+        # TODO: need to insert result workflow states
+
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
 

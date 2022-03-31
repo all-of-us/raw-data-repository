@@ -3251,13 +3251,12 @@ class GenomicQueriesDao(BaseDao):
 
         with self.session() as session:
             query = session.query(
-                GenomicSetMember.biobankId,
+                func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
                 GenomicSetMember.sampleId,
                 GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
                 GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
                 GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
                 GenomicGCValidationMetrics.cramPath.label('cram_name'),
-
                 func.IF(
                     GenomicSetMember.nyFlag == 1,
                     sqlalchemy.sql.expression.literal("Y"),
@@ -3330,5 +3329,7 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY
             )
+
+            # TODO: need to look for ResultWorkflowStates
 
             return query.all()

@@ -2,6 +2,7 @@ import csv
 import datetime
 import mock
 import os
+from typing import Tuple
 
 from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
@@ -11,6 +12,9 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcess
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
+from rdr_service.model.config_utils import to_client_biobank_id
+from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
+from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import genomic_pipeline
 from rdr_service.participant_enums import QuestionnaireStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
@@ -138,66 +142,110 @@ class GenomicCVLPipelineTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    def test_w1il_manifest_generation(self, execute_task_mock, sql_exporter_class_mock):
-        summary = self.data_generator.create_database_participant_summary(
-            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
-            consentForGenomicsROR=QuestionnaireStatus.SUBMITTED
+    def test_w1il_manifest_generation(self, _, sql_exporter_class_mock):
+        # Generate some set members that would go on a W1IL for BCM
+        default_summary, default_set_member, default_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'}
         )
-        stored_sample = self.data_generator.create_database_biobank_stored_sample(
-            biobankId=summary.biobankId,
-            biobankOrderIdentifier=self.fake.pyint()
+        ny_summary, ny_set_member, ny_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1})
+        male_summary, male_set_member, male_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}
         )
-        collection_site = self.data_generator.create_database_site(
-            siteType='Clinic Site'
+        hdr_and_pgx_summary, hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
+            informing_loop_decision_param_list=[
+                {},  # default 'yes' for PGX
+                {'module_type': 'hdr'}
+            ]
         )
-        order = self.data_generator.create_database_biobank_order(
-            collectedSiteId=collection_site.siteId
-        )
-        self.data_generator.create_database_biobank_order_identifier(
-            value=stored_sample.biobankOrderIdentifier,
-            biobankOrderId=order.biobankOrderId
-        )
-        self.data_generator.create_database_genomic_informing_loop(
-            participant_id=summary.participantId,
-            decision_value='yes',
-            module_type='pgx'
-        )
-        genomic_set_member = self.data_generator.create_database_genomic_set_member(
-            genomicSetId=self.gen_set.id,
-            biobankId=summary.biobankId,
-            sampleId=stored_sample.biobankStoredSampleId,
-            collectionTubeId=stored_sample.biobankStoredSampleId,
-            sexAtBirth='F',
-            nyFlag=0,
-            genomeType='aou_wgs',
-            participantId=summary.participantId,
-            gcSiteId='bcm',
-            qcStatus=GenomicQcStatus.PASS,
-            gcManifestSampleSource='whole blood',
-            genomicWorkflowState=GenomicWorkflowState.CVL_READY
-        )
-        self.data_generator.create_database_genomic_gc_validation_metrics(
-            genomicSetMemberId=genomic_set_member.id,
-            processingStatus='pass',
-            sexConcordance='true',
-            drcSexConcordance='pass',
-            drcFpConcordance='pass',
-            hfVcfReceived=1,
-            hfVcfTbiReceived=1,
-            hfVcfMd5Received=1,
-            cramReceived=1,
-            cramMd5Received=1,
-            craiReceived=1,
-            gvcfReceived=1,
-            gvcfMd5Received=1
+        co_summary, co_set_member, co_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bi'}
         )
 
-        genomic_pipeline.cvl_w1il_manifest_workflow({
-            cvl_site_id: f'{cvl_site_id}_test_bucket'
-            for cvl_site_id in config.GENOMIC_CVL_SITES
-        })
+        # Create some records that shouldn't exist in a W1IL for BCM
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            informing_loop_decision_param_list=[{'decision_value': 'no'}]
+        )
+        self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'qcStatus': GenomicQcStatus.FAIL})
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            validation_metrics_params={'drcSexConcordance': 'fail'}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            validation_metrics_params={'craiReceived': 0}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            participant_summary_params={'consentForGenomicsROR': QuestionnaireStatus.SUBMITTED_NOT_SURE}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            collection_site_params={'siteType': 'diversion pouch'}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            informing_loop_decision_param_list=[
+                {
+                    'decision_value': 'yes',
+                    'event_authored_time': datetime.datetime(2020, 10, 20)
+                },
+                {
+                    'decision_value': 'no',
+                    'event_authored_time': datetime.datetime(2020, 11, 17)
+                }
+            ]
+        )
 
-        print(execute_task_mock, sql_exporter_class_mock)
+        manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
+        manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
+
+        co_w1il_manifest = mock.MagicMock()
+        bcm_pgx_w1il_manifest = mock.MagicMock()
+        bcm_hdr_w1il_manifest = mock.MagicMock()
+        
+        def side_effect(file_name):
+            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
+                return bcm_pgx_w1il_manifest
+            elif file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
+                return bcm_hdr_w1il_manifest
+            elif file_name == f'W1IL_manifests/CO_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
+                return co_w1il_manifest
+            else:
+                self.fail(f'Unexpected manifest generated: "{file_name}"')
+
+        exporter_instance = sql_exporter_class_mock.return_value
+        exporter_instance.open_cloud_writer.side_effect = side_effect
+
+        with clock.FakeClock(manifest_generation_datetime):
+            genomic_pipeline.cvl_w1il_manifest_workflow({
+                cvl_site_id: f'{cvl_site_id}_test_bucket'
+                for cvl_site_id in config.GENOMIC_CVL_SITES
+            })
+
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=bcm_pgx_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(default_set_member, default_validation_metrics, default_summary),
+                self.expected_w1il_row(ny_set_member, ny_validation_metrics, ny_summary),
+                self.expected_w1il_row(male_set_member, male_validation_metrics, male_summary),
+                self.expected_w1il_row(hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics, hdr_and_pgx_summary)
+            ]
+        )
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=bcm_hdr_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics, hdr_and_pgx_summary)
+            ]
+        )
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=co_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(co_set_member, co_validation_metrics, co_summary)
+            ]
+        )
 
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w3sr_manifest_generation(self, cloud_task):
@@ -645,3 +693,146 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_id is not None for obj in w3sc_raw_records))
         self.assertTrue(all(obj.cvl_secondary_conf_failure is not None for obj in w3sc_raw_records))
 
+    def _generate_cvl_participant(
+        self,
+        participant_summary_params=None,
+        collection_site_params=None,
+        informing_loop_decision_param_list=None,
+        set_member_params=None,
+        validation_metrics_params=None
+    ) -> Tuple[ParticipantSummary, GenomicSetMember, GenomicGCValidationMetrics]:
+
+        participant_summary_params = participant_summary_params or {}
+        collection_site_params = collection_site_params or {}
+        informing_loop_decision_param_list = informing_loop_decision_param_list or [{}]  # Default to having a decision
+        set_member_params = set_member_params or {}
+        validation_metrics_params = validation_metrics_params or {}
+
+        participant_summary_params = {
+            **{
+                'consentForStudyEnrollment': QuestionnaireStatus.SUBMITTED,
+                'consentForGenomicsROR': QuestionnaireStatus.SUBMITTED,
+            },
+            **participant_summary_params
+        }
+        summary = self.data_generator.create_database_participant_summary(**participant_summary_params)
+
+        # Create the stored sample and order information
+        stored_sample = self.data_generator.create_database_biobank_stored_sample(
+            biobankId=summary.biobankId,
+            biobankOrderIdentifier=self.fake.pyint()
+        )
+        collection_site_params = {
+            **{'siteType': 'Clinic Site'},
+            **collection_site_params
+        }
+        collection_site = self.data_generator.create_database_site(**collection_site_params)
+        order = self.data_generator.create_database_biobank_order(
+            collectedSiteId=collection_site.siteId,
+            participantId=summary.participantId
+        )
+        self.data_generator.create_database_biobank_order_identifier(
+            value=stored_sample.biobankOrderIdentifier,
+            biobankOrderId=order.biobankOrderId
+        )
+
+        # Set the informing loop decision
+        for decision_params in informing_loop_decision_param_list:
+            decision_params = {
+                **{
+                    'participant_id': summary.participantId,
+                    'decision_value': 'yes',
+                    'module_type': 'pgx'
+                },
+                **decision_params
+            }
+            self.data_generator.create_database_genomic_informing_loop(**decision_params)
+
+        set_member_params = {
+            **{
+                'genomicSetId': self.gen_set.id,
+                'biobankId': summary.biobankId,
+                'sampleId': stored_sample.biobankStoredSampleId,
+                'collectionTubeId': stored_sample.biobankStoredSampleId,
+                'sexAtBirth': 'F',
+                'nyFlag': 0,
+                'genomeType': 'aou_wgs',
+                'participantId': summary.participantId,
+                'qcStatus': GenomicQcStatus.PASS,
+                'gcManifestSampleSource': 'whole blood',
+                'genomicWorkflowState': GenomicWorkflowState.CVL_READY
+            },
+            **set_member_params
+        }
+        genomic_set_member = self.data_generator.create_database_genomic_set_member(**set_member_params)
+        validation_metrics_params = {
+            **{
+                'genomicSetMemberId': genomic_set_member.id,
+                'processingStatus': 'pass',
+                'sexConcordance': 'true',
+                'drcSexConcordance': 'pass',
+                'drcFpConcordance': 'pass',
+                'hfVcfReceived': 1,
+                'hfVcfTbiReceived': 1,
+                'hfVcfMd5Received': 1,
+                'cramReceived': 1,
+                'cramMd5Received': 1,
+                'craiReceived': 1,
+                'gvcfReceived': 1,
+                'gvcfMd5Received': 1,
+                'hfVcfPath': self.fake.pystr(),
+                'hfVcfTbiPath': self.fake.pystr(),
+                'hfVcfMd5Path': self.fake.pystr(),
+                'cramPath': self.fake.pystr(),
+                'aouHdrCoverage': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100),
+                'contamination': self.fake.pyfloat(right_digits=4, min_value=0, max_value=100)
+            },
+            **validation_metrics_params
+        }
+        validation_metrics = self.data_generator.create_database_genomic_gc_validation_metrics(**validation_metrics_params)
+
+        return summary, genomic_set_member, validation_metrics
+
+    def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
+        write_rows_func = manifest_cloud_writer_mock.__enter__.return_value.write_rows
+        actual_rows = write_rows_func.call_args[0][0]
+
+        self.assertListEqual(expected_rows, actual_rows)
+
+    def expected_w1il_row(self, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
+                          summary: ParticipantSummary):
+        return (
+            to_client_biobank_id(set_member.biobankId),
+            str(set_member.sampleId),
+            validation_metrics.hfVcfPath,
+            validation_metrics.hfVcfTbiPath,
+            validation_metrics.hfVcfMd5Path,
+            validation_metrics.cramPath,
+            'Y' if set_member.nyFlag == 1 else 'N',
+            set_member.gcSiteId.upper(),
+            'Y' if summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED else 'N',
+            'aou_cvl',  # genome type
+            'Y',  # informing loop decision
+            str(validation_metrics.aouHdrCoverage),
+            str(validation_metrics.contamination)
+        )
+
+
+class ExpectedManifestFileData:
+    """
+    Helps keep track of rows that are expected to be in a manifest file,
+    and reports if any expected rows were not found.
+    """
+
+    def __init__(self, expected_data):
+        self.remaining_expected_data = expected_data
+
+    def row_expected(self, row_data):
+        """
+        If a row is expected, remove it from the expected data.
+        Otherwise return False to indicate that it wasn't expected
+        """
+        if row_data in self.remaining_expected_data:
+            self.remaining_expected_data.remove(row_data)
+        else:
+            return False
