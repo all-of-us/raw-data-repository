@@ -83,7 +83,9 @@ class GenomicSetMember(Base):
         'cvl_w4wr_pgx_manifest_job_run_id',
         'cvl_w4wr_hdr_manifest_job_run_id',
         'cvl_w3sc_manifest_job_run_id',
-        'cvl_w3ns_manifest_job_run_id'
+        'cvl_w3ns_manifest_job_run_id',
+        'cvl_w5nf_pgx_manifest_job_run_id',
+        'cvl_w5nf_hdr_manifest_job_run_id'
     ]
 
     # Primary Key
@@ -292,6 +294,13 @@ class GenomicSetMember(Base):
     cvlW4wrHdrManifestJobRunID = Column('cvl_w4wr_hdr_manifest_job_run_id',
                                         Integer, ForeignKey("genomic_job_run.id"),
                                         nullable=True)
+    cvlW5nfPgxManifestJobRunID = Column('cvl_w5nf_pgx_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
+
+    cvlW5nfHdrManifestJobRunID = Column('cvl_w5nf_hdr_manifest_job_run_id',
+                                     Integer, ForeignKey("genomic_job_run.id"),
+                                     nullable=True)
 
     # Only HDR Run IDs
     cvlW2scManifestJobRunID = Column('cvl_w2sc_manifest_job_run_id',
@@ -811,6 +820,33 @@ event.listen(GenomicW4WRRaw, 'before_insert', model_insert_listener)
 event.listen(GenomicW4WRRaw, 'before_update', model_update_listener)
 
 
+class GenomicW5NFRaw(Base):
+    """
+    Raw data from W5NF files
+    """
+    __tablename__ = 'genomic_w5nf_raw'
+
+    id = Column('id', Integer,
+                primary_key=True, autoincrement=True, nullable=False)
+    created = Column('created', DateTime, nullable=True)
+    modified = Column('modified', DateTime, nullable=True)
+
+    file_path = Column('file_path', String(255), nullable=True, index=True)
+    ignore_flag = Column('ignore_flag', SmallInteger, nullable=False, default=0)
+    dev_note = Column('dev_note', String(255), nullable=True)
+
+    biobank_id = Column(String(255), nullable=True)
+    sample_id = Column(String(255), nullable=True)
+    request_reason = Column(String(255), nullable=True)
+    request_reason_free = Column(String(512), nullable=True)
+    health_related_data_file_name = Column(String(255), nullable=True)
+    clinical_analysis_type = Column(String(255), nullable=True)
+
+
+event.listen(GenomicW5NFRaw, 'before_insert', model_insert_listener)
+event.listen(GenomicW5NFRaw, 'before_update', model_update_listener)
+
+
 class GenomicGCValidationMetrics(Base):
     """Genomic Sequencing Metrics model.
     This is the data ingested from
@@ -959,6 +995,9 @@ class GenomicCVLAnalysis(Base):
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False, index=True)
     clinical_analysis_type = Column(String(128), nullable=False)
     health_related_data_file_name = Column(String(512), nullable=False)
+    failed = Column(Integer, nullable=False, default=0)
+    failed_request_reason = Column(String(255), nullable=True)
+    failed_request_reason_free = Column(String(512), nullable=True)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 

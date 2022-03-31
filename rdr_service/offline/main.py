@@ -645,13 +645,6 @@ def genomic_reconcile_pdr_data():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('genomic_delete_old_gp_user_events')
-def genomic_delete_old_gp_user_events():
-    genomic_pipeline.delete_old_gp_user_events(days=7)
-    return '{"success": "true"}'
-
-
-@app_util.auth_required_cron
 @run_genomic_cron_job('daily_ingestion_summary')
 def genomic_data_quality_daily_ingestion_summary():
     genomic_data_quality_pipeline.data_quality_workflow(GenomicJob.DAILY_SUMMARY_REPORT_INGESTIONS)
@@ -989,11 +982,6 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicDataPdrReconcile",
         endpoint="genomic_data_pdr_reconcile",
         view_func=genomic_reconcile_pdr_data, methods=["GET"]
-    )
-    offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicDeleteOldGPUserEvents",
-        endpoint="genomic_delete_old_gp_user_events",
-        view_func=genomic_delete_old_gp_user_events, methods=["GET"]
     )
     offline_app.add_url_rule(
         OFFLINE_PREFIX + "GenomicRetryManifestIngestions",

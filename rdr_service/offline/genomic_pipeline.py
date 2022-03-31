@@ -2,7 +2,8 @@ import logging
 
 from rdr_service import clock
 from rdr_service.dao.genomics_dao import GenomicAW1RawDao, GenomicAW2RawDao, GenomicAW3RawDao, GenomicAW4RawDao, \
-    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao
+    GenomicJobRunDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicW3SCRawDao, GenomicW3NSRawDao, \
+    GenomicW5NFRawDao
 from rdr_service.services.system_utils import JSONObject
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessResult, GenomicManifestTypes
@@ -343,11 +344,6 @@ def reconcile_informing_loop_responses():
         controller.reconcile_informing_loop_responses()
 
 
-def delete_old_gp_user_events(days=7):
-    with GenomicJobController(GenomicJob.DELETE_OLD_GP_USER_EVENT_METRICS) as controller:
-        controller.delete_old_gp_user_event_metrics(days=days)
-
-
 def reconcile_gc_data_file_to_table():
     with GenomicJobController(GenomicJob.RECONCILE_GC_DATA_FILE_TO_TABLE) as controller:
         controller.reconcile_gc_data_file_to_table()
@@ -436,7 +432,8 @@ def dispatch_genomic_job_from_task(_task_data: JSONObject, project_id=None):
         GenomicJob.CVL_W2SC_WORKFLOW,
         GenomicJob.CVL_W3NS_WORKFLOW,
         GenomicJob.CVL_W3SC_WORKFLOW,
-        GenomicJob.CVL_W4WR_WORKFLOW
+        GenomicJob.CVL_W4WR_WORKFLOW,
+        GenomicJob.CVL_W5NF_WORKFLOW
     )
 
     if _task_data.job in ingestion_workflows:
@@ -516,6 +513,10 @@ def load_awn_manifest_into_raw_table(
         "w4wr": {
             'job_id': GenomicJob.LOAD_CVL_W4WR_TO_RAW_TABLE,
             'dao': GenomicW4WRRawDao
+        },
+        "w5nf": {
+            'job_id': GenomicJob.LOAD_CVL_W5NF_TO_RAW_TABLE,
+            'dao': GenomicW5NFRawDao
         },
     }
 

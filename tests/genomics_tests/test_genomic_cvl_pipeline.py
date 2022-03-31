@@ -8,7 +8,7 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
-    GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao
+    GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -56,10 +56,18 @@ class GenomicCVLPipelineTest(BaseTestCase):
                 results_module=kwargs.get('results_module')
             )
 
+            if kwargs.get('set_cvl_analysis_records'):
+                self.data_generator.create_database_genomic_cvl_analysis(
+                    genomic_set_member_id=member.id,
+                    clinical_analysis_type=kwargs.get('results_module'),
+                    health_related_data_file_name=f'HDR_{num}_test_data_file'
+                )
+
         test_file_name = create_ingestion_test_file(
             kwargs.get('test_file'),
             bucket_name,
-            folder=subfolder
+            folder=subfolder,
+            include_sub_num=kwargs.get('include_sub_num')
         )
 
         task_data = {
@@ -569,6 +577,96 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.sample_id is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w4wr_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w4wr_raw_records))
+
+    def test_w5nf_manifest_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            job_id=GenomicJob.CVL_W5NF_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W5NF,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W4WR,
+            results_module=ResultsModuleType.HDRV1,
+            set_cvl_analysis_records=True  # need to set initial cvl analysis records from W4WR
+        )
+
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w5nf_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W5NF_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w5nf_job_run)
+        self.assertEqual(w5nf_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w5nf_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w5nf_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w5nf_file_processed.runId, w5nf_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW5nfHdrManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW5nfHdrManifestJobRunID == w5nf_job_run.id for obj in current_members))
+
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W5NF for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W5NF.name for obj in
+                            current_workflow_states))
+
+        # check cvl analysis records
+        cvl_analysis_dao = GenomicCVLAnalysisDao()
+        current_analysis_results = cvl_analysis_dao.get_all()
+
+        failed_analysis_records = list(filter(lambda x: x.failed == 1, current_analysis_results))
+        new_analysis_records = list(filter(lambda x: x.failed == 0, current_analysis_results))
+
+        member_ids = [obj.id for obj in current_members]
+
+        self.assertEqual(len(current_analysis_results), len(current_members) * 2)
+        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in current_analysis_results))
+        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in current_analysis_results))
+        self.assertTrue(all(obj.clinical_analysis_type == 'HDRV1' for obj in current_analysis_results))
+
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in failed_analysis_records))
+        self.assertTrue(all(obj.failed_request_reason is not None for obj in failed_analysis_records))
+        self.assertTrue(all(obj.failed_request_reason_free is not None for obj in failed_analysis_records))
+
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in new_analysis_records))
+        self.assertTrue(all(obj.failed_request_reason is None for obj in new_analysis_records))
+        self.assertTrue(all(obj.failed_request_reason_free is None for obj in new_analysis_records))
+
+    def test_w5nf_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W5NF_HDRV1_1.csv',
+            job_id=GenomicJob.CVL_W5NF_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W5NF,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W1IL,
+            results_module=ResultsModuleType.HDRV1
+        )
+
+        w5nf_raw_dao = GenomicW5NFRawDao()
+
+        manifest_type = 'w5nf'
+        w5nf_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w5nf_manifest_file.filePath,
+            manifest_type
+        )
+
+        w5nf_raw_records = w5nf_raw_dao.get_all()
+
+        self.assertEqual(len(w5nf_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.request_reason is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.request_reason_free is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w5nf_raw_records))
+        self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w5nf_raw_records))
 
     def test_w3ns_manifest_ingestion(self):
 

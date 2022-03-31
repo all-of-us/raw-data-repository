@@ -40,13 +40,19 @@ class Response:
     answered_codes: Dict[str, List['Answer']] = field(default_factory=lambda: defaultdict(list))
 
     def has_answer_for(self, question_code_str):
-        return question_code_str in self.answered_codes
+        return (
+            question_code_str in self.answered_codes
+            and any([answer.is_valid for answer in self.answered_codes[question_code_str]])
+        )
 
     def get_answers_for(self, question_code_str) -> Optional[List['Answer']]:
-        if question_code_str not in self.answered_codes:
+        if (
+            question_code_str not in self.answered_codes
+            or not any([answer.is_valid for answer in self.answered_codes[question_code_str]])
+        ):
             return None
 
-        return self.answered_codes[question_code_str]
+        return [answer for answer in self.answered_codes[question_code_str] if answer.is_valid]
 
     def get_single_answer_for(self, question_code_str):
         answers = self.get_answers_for(question_code_str)
@@ -63,3 +69,4 @@ class Response:
 class Answer:
     id: int
     value: str
+    is_valid: bool = True
