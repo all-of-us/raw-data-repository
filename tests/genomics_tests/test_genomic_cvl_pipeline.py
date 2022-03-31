@@ -140,6 +140,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w1il_manifest_generation(self, execute_task_mock, sql_exporter_class_mock):
         summary = self.data_generator.create_database_participant_summary(
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
             consentForGenomicsROR=QuestionnaireStatus.SUBMITTED
         )
         stored_sample = self.data_generator.create_database_biobank_stored_sample(

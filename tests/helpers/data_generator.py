@@ -48,7 +48,6 @@ from rdr_service.participant_enums import (
     DeceasedStatus,
     EnrollmentStatus,
     PatientStatusFlag,
-    QuestionnaireStatus,
     QuestionnaireResponseStatus,
     SuspensionStatus,
     UNSET_HPO_ID,
@@ -332,8 +331,7 @@ class DataGenerator:
             "enrollmentStatus": EnrollmentStatus.INTERESTED,
             "participantOrigin": participant.participantOrigin,
             "deceasedStatus": DeceasedStatus.UNSET,
-            "isEhrDataAvailable": False,
-            "consentForStudyEnrollment": QuestionnaireStatus.SUBMITTED
+            "isEhrDataAvailable": False
         }
 
         defaults.update(kwargs)
