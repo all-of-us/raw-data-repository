@@ -311,3 +311,8 @@ class GenomicDaoTest(BaseTestCase):
         self.assertEqual(updated_blocked_aian_member.blockResearch, 1)
         self.assertIsNotNone(updated_blocked_aian_member.blockResearchReason)
         self.assertEqual(updated_blocked_aian_member.blockResearchReason, 'sample_swap')
+
+    def test_genomic_set_member_job_id(self):
+        self.assertFalse(GenomicSetMemberDao._is_valid_set_member_job_field(None))
+        self.assertFalse(GenomicSetMemberDao._is_valid_set_member_job_field('notARealField'))
+        self.assertTrue(GenomicSetMemberDao._is_valid_set_member_job_field('aw2fManifestJobRunID'))
