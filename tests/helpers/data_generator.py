@@ -622,6 +622,8 @@ class DataGenerator:
 
     @staticmethod
     def _genomic_job_run(**kwargs):
+        if 'startTime' not in kwargs:
+            kwargs['startTime'] = datetime.utcnow()
         return GenomicJobRun(**kwargs)
 
     def create_database_genomic_set(self, **kwargs):

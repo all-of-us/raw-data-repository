@@ -703,16 +703,19 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         self.male_summary, self.male_set_member, self.male_validation_metrics = self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}
         )
-        self.hdr_and_pgx_summary, self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
-            informing_loop_decision_param_list=[
-                {},  # default 'yes' for PGX
-                {'module_type': 'hdr'}
-            ]
-        )
+        self.hdr_and_pgx_summary, self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics = \
+            self._generate_cvl_participant(
+                set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
+                informing_loop_decision_param_list=[
+                    {},  # default 'yes' for PGX
+                    {'module_type': 'hdr'}
+                ]
+            )
         self.co_summary, self.co_set_member, self.co_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bi'},
-            result_workflow_state={'results_module': ResultsModuleType.HDRV1}
+            set_member_params={
+                'gcSiteId': 'bi',
+                'cvlW1ilHdrJobRunId': self.data_generator.create_database_genomic_job_run().id
+            }
         )
 
         # Create some records that shouldn't exist in a W1IL for BCM
@@ -751,10 +754,12 @@ class GenomicW1ilGenerationTest(BaseTestCase):
                 }
             ]
         )
-        # Member already in a the CVL workflow shouldn't be in a W1IL
+        # Member that has already been in a W1IL workflow shouldn't be in another one W1IL
         self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            result_workflow_state={}  # letting defaults get set for the workflow state
+            set_member_params={
+                'gcSiteId': 'bcm',
+                'cvlW1ilPgxJobRunId': self.data_generator.create_database_genomic_job_run().id
+            }
         )
 
     @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
@@ -837,8 +842,7 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         collection_site_params=None,
         informing_loop_decision_param_list=None,
         set_member_params=None,
-        validation_metrics_params=None,
-        result_workflow_state=None
+        validation_metrics_params=None
     ) -> Tuple[ParticipantSummary, GenomicSetMember, GenomicGCValidationMetrics]:
 
         participant_summary_params = participant_summary_params or {}
@@ -931,17 +935,6 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         validation_metrics = self.data_generator.create_database_genomic_gc_validation_metrics(
             **validation_metrics_params
         )
-
-        if result_workflow_state is not None:
-            result_workflow_params = {
-                **{
-                    'genomic_set_member_id': genomic_set_member.id,
-                    'results_workflow_state': ResultsWorkflowState.CVL_W1IL,
-                    'results_module': ResultsModuleType.PGXV1
-                },
-                **result_workflow_state
-            }
-            self.data_generator.create_database_genomic_result_workflow_state(**result_workflow_params)
 
         return summary, genomic_set_member, validation_metrics
 
