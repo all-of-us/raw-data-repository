@@ -40,7 +40,8 @@ from rdr_service.model.genomics import (
     GenomicInformingLoop,
     GenomicGcDataFile, GenomicGcDataFileMissing, GcDataFileStaging, GemToGpMigration, UserEventMetrics,
     GenomicResultViewed, GenomicAW3Raw, GenomicAW4Raw, GenomicW2SCRaw, GenomicW3SRRaw, GenomicW4WRRaw,
-    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw)
+    GenomicCVLAnalysis, GenomicW3SCRaw, GenomicResultWorkflowState, GenomicW3NSRaw, GenomicW5NFRaw, GenomicW3SSRaw,
+    GenomicCVLSecondSample)
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.participant_enums import (
     QuestionnaireStatus,
@@ -2487,6 +2488,18 @@ class GenomicW3SRRawDao(BaseDao, GenomicDaoUtils):
         pass
 
 
+class GenomicW3SSRawDao(BaseDao, GenomicDaoUtils):
+    def __init__(self):
+        super(GenomicW3SSRawDao, self).__init__(
+            GenomicW3SSRaw, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+
 class GenomicW4WRRawDao(BaseDao, GenomicDaoUtils):
     def __init__(self):
         super(GenomicW4WRRawDao, self).__init__(
@@ -3113,6 +3126,19 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
                 return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
             else:
                 return query.all()
+
+
+class GenomicCVLSecondSampleDao(BaseDao):
+
+    def __init__(self):
+        super(GenomicCVLSecondSampleDao, self).__init__(
+            GenomicCVLSecondSample, order_by_ending=['id'])
+
+    def from_client_json(self):
+        pass
+
+    def get_id(self, obj):
+        pass
 
 
 class GenomicCVLAnalysisDao(UpdatableDao):
