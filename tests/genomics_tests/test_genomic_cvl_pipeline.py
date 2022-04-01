@@ -148,120 +148,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in w2sr_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in w2sr_raw_records))
 
-    @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
-    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    def test_w1il_manifest_generation(self, _, sql_exporter_class_mock):
-        # Generate some set members that would go on a W1IL for BCM
-        default_summary, default_set_member, default_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'}
-        )
-        ny_summary, ny_set_member, ny_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1})
-        male_summary, male_set_member, male_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}
-        )
-        hdr_and_pgx_summary, hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
-            informing_loop_decision_param_list=[
-                {},  # default 'yes' for PGX
-                {'module_type': 'hdr'}
-            ]
-        )
-        co_summary, co_set_member, co_validation_metrics = self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bi'},
-            result_workflow_state={'results_module': ResultsModuleType.HDRV1}
-        )
-
-        # Create some records that shouldn't exist in a W1IL for BCM
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            informing_loop_decision_param_list=[{'decision_value': 'no'}]
-        )
-        self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'qcStatus': GenomicQcStatus.FAIL})
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            validation_metrics_params={'drcSexConcordance': 'fail'}
-        )
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            validation_metrics_params={'craiReceived': 0}
-        )
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            participant_summary_params={'consentForGenomicsROR': QuestionnaireStatus.SUBMITTED_NOT_SURE}
-        )
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            collection_site_params={'siteType': 'diversion pouch'}
-        )
-        # Member with a latest answer of 'no' should not be in a W1IL
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            informing_loop_decision_param_list=[
-                {
-                    'decision_value': 'yes',
-                    'event_authored_time': datetime.datetime(2020, 10, 20)
-                },
-                {
-                    'decision_value': 'no',
-                    'event_authored_time': datetime.datetime(2020, 11, 17)
-                }
-            ]
-        )
-        # Member already in a the CVL workflow shouldn't be in a W1IL
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            result_workflow_state={}  # letting defaults get set for the workflow state
-        )
-
-        manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
-        manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
-
-        co_w1il_manifest = mock.MagicMock()
-        bcm_pgx_w1il_manifest = mock.MagicMock()
-        bcm_hdr_w1il_manifest = mock.MagicMock()
-
-        def side_effect(file_name):
-            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
-                return bcm_pgx_w1il_manifest
-            elif file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
-                return bcm_hdr_w1il_manifest
-            elif file_name == f'W1IL_manifests/CO_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
-                return co_w1il_manifest
-            else:
-                self.fail(f'Unexpected manifest generated: "{file_name}"')
-
-        exporter_instance = sql_exporter_class_mock.return_value
-        exporter_instance.open_cloud_writer.side_effect = side_effect
-
-        with clock.FakeClock(manifest_generation_datetime):
-            genomic_pipeline.cvl_w1il_manifest_workflow({
-                cvl_site_id: f'{cvl_site_id}_test_bucket'
-                for cvl_site_id in config.GENOMIC_CVL_SITES
-            })
-
-        self.assert_manifest_has_rows(
-            manifest_cloud_writer_mock=bcm_pgx_w1il_manifest,
-            expected_rows=[
-                self.expected_w1il_row(default_set_member, default_validation_metrics, default_summary),
-                self.expected_w1il_row(ny_set_member, ny_validation_metrics, ny_summary),
-                self.expected_w1il_row(male_set_member, male_validation_metrics, male_summary),
-                self.expected_w1il_row(hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics, hdr_and_pgx_summary)
-            ]
-        )
-        self.assert_manifest_has_rows(
-            manifest_cloud_writer_mock=bcm_hdr_w1il_manifest,
-            expected_rows=[
-                self.expected_w1il_row(hdr_and_pgx_set_member, hdr_and_pgx_validation_metrics, hdr_and_pgx_summary)
-            ]
-        )
-        self.assert_manifest_has_rows(
-            manifest_cloud_writer_mock=co_w1il_manifest,
-            expected_rows=[
-                self.expected_w1il_row(co_set_member, co_validation_metrics, co_summary)
-            ]
-        )
-
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
     def test_w3sr_manifest_generation(self, cloud_task):
 
@@ -797,6 +683,153 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.biobank_id is not None for obj in w3sc_raw_records))
         self.assertTrue(all(obj.sample_id is not None for obj in w3sc_raw_records))
         self.assertTrue(all(obj.cvl_secondary_conf_failure is not None for obj in w3sc_raw_records))
+
+
+class GenomicW1ilGenerationTest(BaseTestCase):
+    def setUp(self, *args, **kwargs):
+        super(GenomicW1ilGenerationTest, self).setUp(*args, **kwargs)
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        # Generate some set members that would go on a W1IL for BCM
+        self.default_summary, self.default_set_member, self.default_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'}
+        )
+        self.ny_summary, self.ny_set_member, self.ny_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1})
+        self.male_summary, self.male_set_member, self.male_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'sexAtBirth': 'M'}
+        )
+        self.hdr_and_pgx_summary, self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm', 'nyFlag': 1},
+            informing_loop_decision_param_list=[
+                {},  # default 'yes' for PGX
+                {'module_type': 'hdr'}
+            ]
+        )
+        self.co_summary, self.co_set_member, self.co_validation_metrics = self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bi'},
+            result_workflow_state={'results_module': ResultsModuleType.HDRV1}
+        )
+
+        # Create some records that shouldn't exist in a W1IL for BCM
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            informing_loop_decision_param_list=[{'decision_value': 'no'}]
+        )
+        self._generate_cvl_participant(set_member_params={'gcSiteId': 'bcm', 'qcStatus': GenomicQcStatus.FAIL})
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            validation_metrics_params={'drcSexConcordance': 'fail'}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            validation_metrics_params={'craiReceived': 0}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            participant_summary_params={'consentForGenomicsROR': QuestionnaireStatus.SUBMITTED_NOT_SURE}
+        )
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            collection_site_params={'siteType': 'diversion pouch'}
+        )
+        # Member with a latest answer of 'no' should not be in a W1IL
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            informing_loop_decision_param_list=[
+                {
+                    'decision_value': 'yes',
+                    'event_authored_time': datetime.datetime(2020, 10, 20)
+                },
+                {
+                    'decision_value': 'no',
+                    'event_authored_time': datetime.datetime(2020, 11, 17)
+                }
+            ]
+        )
+        # Member already in a the CVL workflow shouldn't be in a W1IL
+        self._generate_cvl_participant(
+            set_member_params={'gcSiteId': 'bcm'},
+            result_workflow_state={}  # letting defaults get set for the workflow state
+        )
+
+    @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_w1il_manifest_generation(self, _, sql_exporter_class_mock):
+        manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
+        manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
+
+        exporter_instance = sql_exporter_class_mock.return_value
+
+        cvl_bucket_map = {
+            cvl_site_id: f'{cvl_site_id}_test_bucket'
+            for cvl_site_id in config.GENOMIC_CVL_SITES
+        }
+
+        # Check for PGX manifests
+        co_w1il_manifest = mock.MagicMock()
+        bcm_pgx_w1il_manifest = mock.MagicMock()
+
+        def get_manifest_writer_mock(file_name):
+            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
+                return bcm_pgx_w1il_manifest
+            # elif file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
+            #     return bcm_hdr_w1il_manifest
+            elif file_name == f'W1IL_manifests/CO_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
+                return co_w1il_manifest
+            else:
+                self.fail(f'Unexpected manifest generated: "{file_name}"')
+        exporter_instance.open_cloud_writer.side_effect = get_manifest_writer_mock
+
+        with clock.FakeClock(manifest_generation_datetime):
+            genomic_pipeline.cvl_w1il_manifest_workflow(
+                cvl_site_bucket_map=cvl_bucket_map,
+                module_type='pgx'
+            )
+
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=bcm_pgx_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(self.default_set_member, self.default_validation_metrics, self.default_summary),
+                self.expected_w1il_row(self.ny_set_member, self.ny_validation_metrics, self.ny_summary),
+                self.expected_w1il_row(self.male_set_member, self.male_validation_metrics, self.male_summary),
+                self.expected_w1il_row(self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics,
+                                       self.hdr_and_pgx_summary)
+            ]
+        )
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=co_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(self.co_set_member, self.co_validation_metrics, self.co_summary)
+            ]
+        )
+
+        # check for hdr manifest
+        bcm_hdr_w1il_manifest = mock.MagicMock()
+
+        def get_manifest_writer_mock(file_name):
+            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
+                return bcm_hdr_w1il_manifest
+            else:
+                self.fail(f'Unexpected manifest generated: "{file_name}"')
+        exporter_instance.open_cloud_writer.side_effect = get_manifest_writer_mock
+
+        with clock.FakeClock(manifest_generation_datetime):
+            genomic_pipeline.cvl_w1il_manifest_workflow(
+                cvl_site_bucket_map=cvl_bucket_map,
+                module_type='hdr'
+            )
+
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=bcm_hdr_w1il_manifest,
+            expected_rows=[
+                self.expected_w1il_row(self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics, self.hdr_and_pgx_summary)
+            ]
+        )
 
     def _generate_cvl_participant(
         self,

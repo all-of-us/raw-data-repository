@@ -537,10 +537,21 @@ def genomic_aw3_wgs_workflow():
 
 
 @app_util.auth_required_cron
-@run_genomic_cron_job('cvl_w1il_manifest_workflow')
-def genomic_cvl_w1il_workflow():
+@run_genomic_cron_job('cvl_w1il_pgx_manifest_workflow')
+def genomic_cvl_w1il_pgx_workflow():
     genomic_pipeline.cvl_w1il_manifest_workflow(
-        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP)
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
+        module_type='pgx'
+    )
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w1il_hdr_manifest_workflow')
+def genomic_cvl_w1il_hdr_workflow():
+    genomic_pipeline.cvl_w1il_manifest_workflow(
+        cvl_site_bucket_map=config.getSettingJson(config.GENOMIC_CVL_SITE_BUCKET_MAP),
+        module_type='hdr'
     )
     return '{"success": "true"}'
 
@@ -901,9 +912,15 @@ def _build_pipeline_app():
         methods=["GET"]
     )
     offline_app.add_url_rule(
-        OFFLINE_PREFIX + "GenomicCVLW1ILWorkflow",
-        endpoint="genomic_cvl_w1il_workflow",
-        view_func=genomic_cvl_w1il_workflow,
+        OFFLINE_PREFIX + "GenomicCVLW1ILPgxWorkflow",
+        endpoint="genomic_cvl_w1il_pgx_workflow",
+        view_func=genomic_cvl_w1il_pgx_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW1ILHdrWorkflow",
+        endpoint="genomic_cvl_w1il_hdr_workflow",
+        view_func=genomic_cvl_w1il_hdr_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
