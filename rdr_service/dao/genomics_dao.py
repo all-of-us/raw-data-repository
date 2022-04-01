@@ -219,19 +219,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
 
     def __init__(self):
         super(GenomicSetMemberDao, self).__init__(GenomicSetMember, order_by_ending=["id"])
-        self.valid_job_id_fields = (
-            'reconcileMetricsBBManifestJobRunId',
-            'reconcileMetricsSequencingJobRunId',
-            'reconcileCvlJobRunId',
-            'cvlW1ManifestJobRunId',
-            'gemA1ManifestJobRunId',
-            'reconcileGCManifestJobRunId',
-            'gemA3ManifestJobRunId',
-            'cvlW3ManifestJobRunID',
-            'aw3ManifestJobRunID',
-            'aw4ManifestJobRunID',
-            'aw2fManifestJobRunID'
-        )
         self.report_state_dao = GenomicMemberReportStateDao()
 
     def get_id(self, obj):
@@ -738,7 +725,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         :param field: the field for the job-run workflow (i.e. reconciliation, cvl, etc.)
         :return: query result or result code of error
         """
-        if not field or field not in self.valid_job_id_fields:
+        if not self._is_valid_set_member_job_field(job_field_name=field):
             logging.error(f'{field} is not a valid job ID field.')
             return GenomicSubProcessResult.ERROR
 
@@ -832,7 +819,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
         is_job_run=False,
     ):
 
-        if is_job_run and field not in self.valid_job_id_fields:
+        if is_job_run and not self._is_valid_set_member_job_field(job_field_name=field):
             logging.error(f'{field} is not a valid job ID field.')
             return GenomicSubProcessResult.ERROR
         try:
@@ -1124,6 +1111,10 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
     def update(self, obj):
         self.update_member_wf_states(obj)
         super(GenomicSetMemberDao, self).update(obj)
+
+    @classmethod
+    def _is_valid_set_member_job_field(cls, job_field_name):
+        return job_field_name is not None and hasattr(GenomicSetMember, job_field_name)
 
 
 class GenomicJobRunDao(UpdatableDao, GenomicDaoUtils):
