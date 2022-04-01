@@ -3278,7 +3278,7 @@ class GenomicQueriesDao(BaseDao):
             GenomicInformingLoop.participant_id,
             GenomicInformingLoop.decision_value
         ).filter(
-            GenomicInformingLoop.decision_value.like('yes')
+            GenomicInformingLoop.decision_value.ilike('yes')
         )
         informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
 
@@ -3302,7 +3302,7 @@ class GenomicQueriesDao(BaseDao):
                 ).label('consent_for_gror'),
                 sqlalchemy.literal('aou_cvl').label('genome_type'),
                 sqlalchemy.case(
-                    [(informing_loop_subquery.decision_value.like('yes'), 'Y')],
+                    [(informing_loop_subquery.decision_value.ilike('yes'), 'Y')],
                     else_='N'
                 ).label(f'informing_loop_{module}'),
                 GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),
@@ -3338,15 +3338,15 @@ class GenomicQueriesDao(BaseDao):
                     GenomicResultWorkflowState.results_module == result_module_type
                 )
             ).filter(
-                GenomicGCValidationMetrics.processingStatus.like('pass'),
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
                 ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
                 ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
                 ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
-                GenomicGCValidationMetrics.sexConcordance.like('true'),     # check AW2 gives sex concordance as true
-                GenomicGCValidationMetrics.drcSexConcordance.like('pass'),  # check AW4 gives sex concordance as true
+                GenomicGCValidationMetrics.sexConcordance.ilike('true'),     # check AW2 gives sex concordance as true
+                GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
                 GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
-                GenomicSetMember.gcManifestSampleSource.like('whole blood'),
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
 
                 # all data files have been received
@@ -3360,9 +3360,9 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.gvcfMd5Received == 1,
 
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
-                GenomicGCValidationMetrics.drcFpConcordance.like('pass'),
+                GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
                 sample_collected_site.siteType != 'diversion pouch',
-                GenomicSetMember.gcSiteId.like(gc_site_id),
+                GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
 
                 GenomicSetMember.ignoreFlag != 1,
