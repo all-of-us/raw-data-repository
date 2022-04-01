@@ -108,6 +108,12 @@ def upgrade_rdr():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_genomic_cvl_second_sample_genomic_set_member_id'), 'genomic_cvl_second_sample', ['genomic_set_member_id'], unique=False)
+    op.create_index(op.f('ix_genomic_cvl_second_sample_sample_id'), 'genomic_cvl_second_sample', ['sample_id'],
+                    unique=False)
+    op.create_index(op.f('ix_genomic_cvl_second_sample_cvl_sample_id'), 'genomic_cvl_second_sample', ['cvl_sample_id'],
+                    unique=False)
+    op.create_index(op.f('ix_genomic_cvl_second_sample_site_name'), 'genomic_cvl_second_sample', ['site_name'],
+                    unique=False)
     op.add_column('genomic_set_member', sa.Column('cvl_w3ss_manifest_job_run_id', sa.Integer(), nullable=True))
     op.create_foreign_key(None, 'genomic_set_member', 'genomic_job_run', ['cvl_w3ss_manifest_job_run_id'], ['id'])
     # ### end Alembic commands ###
