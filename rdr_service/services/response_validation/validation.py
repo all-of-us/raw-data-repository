@@ -21,6 +21,10 @@ class _Requirement(ABC):
         """
         ...
 
+    @abstractmethod
+    def reset_state(self):
+        ...
+
 
 class Condition(ABC):
     """
@@ -37,7 +41,7 @@ class Condition(ABC):
         """
         Analyze the response data to determine if the response gets the condition to pass.
         Note: this method is a distinct step from returning if this condition passes so that all conditions are
-        able to analyze the response and resolve dependencies between eachother (if there are any).
+        able to analyze the response and resolve dependencies between each other (if there are any).
         """
         ...
 
@@ -47,6 +51,10 @@ class Condition(ABC):
         for char in branching_logic:
             parser.process_char(char)
         return parser.get_resulting_conditional()
+
+    @abstractmethod
+    def reset_state(self):
+        ...
 
 
 class CanOnlyBeAnsweredIf(_Requirement):
@@ -63,9 +71,17 @@ class CanOnlyBeAnsweredIf(_Requirement):
 
         answers = response.get_answers_for(question_code)
         if answers and not self.condition.passes():
+            for answer in answers:
+                answer.is_valid = False
             return [ValidationError(question_code, [answer.id for answer in answers])]
 
         return []
+
+    def reset_state(self):
+        self.condition.reset_state()
+
+    def __str__(self):
+        return str(self.condition)
 
 
 class Question:
@@ -106,11 +122,15 @@ class _Comparison(Enum):
 
 
 class InAnySurvey(Condition):
-    """Condition wrapper that 'remembers' if a condition has passed for any previous survey"""
+    """Condition wrapper that 'remembers' if a condition has passed for any response"""
 
     def __init__(self, condition: Condition):
         self._condition_found_passing = False
         self._condition = condition
+
+    def reset_state(self):
+        self._condition_found_passing = False
+        self._condition.reset_state()
 
     def passes(self) -> bool:
         return self._condition_found_passing
@@ -120,12 +140,67 @@ class InAnySurvey(Condition):
         is_passing = self._condition.passes()
         self._condition_found_passing = self._condition_found_passing or is_passing
 
+    def __str__(self):
+        return f'in any survey ({self._condition})'
+
+
+class InAnyPreviousSurvey(InAnySurvey):
+    """
+    'Remembers' if a condition has passed for any previous response
+    (excluding the response that is currently being processed)
+    """
+    def __init__(self, *args, **kwargs):
+        super(InAnyPreviousSurvey, self).__init__(*args, **kwargs)
+        self._passed_in_last_survey = False
+
+    def reset_state(self):
+        super(InAnyPreviousSurvey, self).reset_state()
+        self._passed_in_last_survey = False
+
+    def process_response(self, response: response_domain_model):
+        # Now processing a new response, if the condition passed in the last response
+        #   (or any before that) set the flag now
+        self._condition_found_passing = self._condition_found_passing or self._passed_in_last_survey
+
+        # Check the current response and record if the condition passes so we'll know for future responses
+        self._condition.process_response(response)
+        self._passed_in_last_survey = self._condition.passes()
+
+    def __str__(self):
+        return f'in previous survey ({self._condition})'
+
+
+class Not(Condition):
+    """
+    Condition wrapper that will result in a failure if the condition provided passes,
+    essentially this will act as a "not" boolean operation
+    """
+
+    def __init__(self, condition: Condition):
+        self._condition = condition
+
+    def reset_state(self):
+        self._condition.reset_state()
+
+    def passes(self) -> bool:
+        return not self._condition.passes()
+
+    def process_response(self, response: response_domain_model):
+        self._condition.process_response(response)
+
+    def __str__(self):
+        return f'not ({self._condition})'
+
 
 class And(Condition):
     """Condition wrapper that checks if all supplied conditions pass"""
 
     def __init__(self, child_conditions: Sequence[Condition]):
         self._child_conditions = child_conditions
+
+    def reset_state(self):
+        for child in self._child_conditions:
+            child.reset_state()
 
     def passes(self) -> bool:
         return all([child.passes() for child in self._child_conditions])
@@ -144,6 +219,10 @@ class Or(Condition):
 
     def __init__(self, child_conditions: Sequence[Condition]):
         self._child_conditions = child_conditions
+
+    def reset_state(self):
+        for child in self._child_conditions:
+            child.reset_state()
 
     def passes(self) -> bool:
         return any([child.passes() for child in self._child_conditions])
@@ -168,6 +247,9 @@ class _HasAnsweredQuestionWith(Condition):
         self.question_code = question_code
         self.expected_answer_value = answer_value
 
+        self._passes = False
+
+    def reset_state(self):
         self._passes = False
 
     def passes(self) -> bool:
@@ -195,6 +277,9 @@ class _HasSelectedOption(Condition):
 
         self._passes = False
 
+    def reset_state(self):
+        self._passes = False
+
     def passes(self) -> bool:
         return self._passes
 
@@ -215,13 +300,45 @@ class ValidationError:
 class ResponseRequirements:
     def __init__(self, requirements: Dict[str, _Requirement]):
         self.requirements = requirements
+        self._responses_to_replay = []
 
     def check_for_errors(self, response: response_domain_model.Response) -> Sequence[ValidationError]:
-        errors = []
-        for question_code, conditional in self.requirements.items():
-            errors.extend(conditional.get_errors(response, question_code=question_code))
-
+        errors = self._find_errors(response)
+        self._responses_to_replay.append(response)
         return errors
+
+    def _find_errors(self, new_response: response_domain_model.Response):
+        """
+        Keep passing through responses until no more errors are found.
+        This way, if any errors are found, we'll check again to make sure no other questions get invalidated
+        by removing an answer.
+        """
+        self._reset_child_state()
+        for response in self._responses_to_replay:
+            for question_code, conditional in self.requirements.items():
+                uncaught_errors = conditional.get_errors(response, question_code=question_code)
+                if uncaught_errors:
+                    # Should not be able to get errors on previously passed responses
+                    # (invalid answers should be ignored when checking conditionals)
+                    raise Exception('Invalid answers found in previously checked responses')
+
+        new_errors = []
+        for question_code, conditional in self.requirements.items():
+            new_errors.extend(conditional.get_errors(new_response, question_code=question_code))
+
+        if new_errors:
+            # Recurse again until there are no new errors found
+            new_errors.extend(self._find_errors(new_response))
+
+        return new_errors
+
+    def reset_state(self):
+        self._responses_to_replay = []
+        self._reset_child_state()
+
+    def _reset_child_state(self):
+        for requirement in self.requirements.values():
+            requirement.reset_state()
 
 
 class _ParserState(Enum):
@@ -450,7 +567,7 @@ class _BranchingLogicParser(_BaseParser):
             return And(all_conditions)
         else:
             # There's a mix of ANDs and ORs, so we'll need to OR each subgroup
-            # and then AND all the subgroups to eachother
+            # and then AND all the subgroups to each other
             sub_groups = [[]]
             last_bool_operation = None
 

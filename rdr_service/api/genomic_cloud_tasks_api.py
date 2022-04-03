@@ -283,9 +283,17 @@ class IngestCVLManifestTaskApi(BaseGenomicTaskApi):
                 'job': GenomicJob.CVL_W3SC_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.CVL_W3SC
             },
+            'w3ss': {
+                'job': GenomicJob.CVL_W3SS_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3SS
+            },
             'w4wr': {
                 'job': GenomicJob.CVL_W4WR_WORKFLOW,
                 'manifest_type': GenomicManifestTypes.CVL_W4WR
+            },
+            'w5nf': {
+                'job': GenomicJob.CVL_W5NF_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W5NF
             }
         }
 

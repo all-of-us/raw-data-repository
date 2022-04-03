@@ -70,6 +70,11 @@ class SchemaID(IntEnum):
 COHORT_1_CUTOFF = datetime(2018, 4, 24, 0, 0, 0)
 COHORT_2_CUTOFF = datetime(2020, 4, 21, 4, 0, 0)
 
+# Workaround:  Allow PDR data rebuild tasks to skip building certain test pids that have so much data associated
+# with them (e.g., high numbers of questionnaire responses) that the PDR generator tasks can exceed time or memory
+# limits and be terminated abnormally.   For now, there is one pid known to cause such task failures
+SKIP_TEST_PIDS_FOR_PDR = [838981439, ]
+
 class ConsentCohortEnum(IntEnum):
     """
     Which cohort does a participant belong too, based on consent date.
