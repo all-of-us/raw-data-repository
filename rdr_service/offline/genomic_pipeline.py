@@ -159,7 +159,7 @@ def aw3_wgs_manifest_workflow():
 
 def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
     for site_id in config.GENOMIC_CVL_SITES:
-        cvl_bucket = cvl_site_bucket_map[site_id]
+        cvl_bucket_name_key = cvl_site_bucket_map[site_id]
         manifest_type = {
             'pgx': GenomicManifestTypes.CVL_W1IL_PGX,
             'hdr': GenomicManifestTypes.CVL_W1IL_HDR
@@ -167,7 +167,7 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
 
         with GenomicJobController(
             GenomicJob.CVL_W1IL_WORKFLOW,
-            bucket_name=cvl_bucket,
+            bucket_name=cvl_bucket_name_key,
             cvl_site_id=site_id
         ) as controller:
             controller.generate_manifest(manifest_type, _genome_type=config.GENOME_TYPE_WGS)

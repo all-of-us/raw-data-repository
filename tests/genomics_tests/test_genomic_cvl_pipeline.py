@@ -768,28 +768,29 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
         manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
 
-        exporter_instance = sql_exporter_class_mock.return_value
+        bcm_pgx_w1il_manifest = mock.MagicMock()
+        bcm_hdr_w1il_manifest = mock.MagicMock()
+        co_w1il_manifest = mock.MagicMock()
+        self.setup_manifest_mocks(
+            sql_exporter_class_mock,
+            {
+                config.getSetting(config.BCM_BUCKET_NAME): {
+                    f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv': bcm_pgx_w1il_manifest,
+                    f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv': bcm_hdr_w1il_manifest
+                },
+                config.getSetting(config.CO_BUCKET_NAME): {
+                    f'W1IL_manifests/CO_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv': co_w1il_manifest
+                }
+            }
+        )
 
         cvl_bucket_map = {
-            cvl_site_id: f'{cvl_site_id}_test_bucket'
-            for cvl_site_id in config.GENOMIC_CVL_SITES
+            'co': config.CO_BUCKET_NAME,
+            'uw': config.UW_BUCKET_NAME,
+            'bcm': config.BCM_BUCKET_NAME
         }
 
         # Check for PGX manifests
-        co_w1il_manifest = mock.MagicMock()
-        bcm_pgx_w1il_manifest = mock.MagicMock()
-
-        def get_manifest_writer_mock(file_name):
-            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
-                return bcm_pgx_w1il_manifest
-            # elif file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
-            #     return bcm_hdr_w1il_manifest
-            elif file_name == f'W1IL_manifests/CO_AoU_CVL_W1IL_PGX_{manifest_file_timestamp_str}.csv':
-                return co_w1il_manifest
-            else:
-                self.fail(f'Unexpected manifest generated: "{file_name}"')
-        exporter_instance.open_cloud_writer.side_effect = get_manifest_writer_mock
-
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=cvl_bucket_map,
@@ -822,15 +823,6 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         )
 
         # check for hdr manifest
-        bcm_hdr_w1il_manifest = mock.MagicMock()
-
-        def get_manifest_writer_mock(file_name):
-            if file_name == f'W1IL_manifests/BCM_AoU_CVL_W1IL_HDR_{manifest_file_timestamp_str}.csv':
-                return bcm_hdr_w1il_manifest
-            else:
-                self.fail(f'Unexpected manifest generated: "{file_name}"')
-        exporter_instance.open_cloud_writer.side_effect = get_manifest_writer_mock
-
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
                 cvl_site_bucket_map=cvl_bucket_map,
@@ -983,3 +975,20 @@ class GenomicW1ilGenerationTest(BaseTestCase):
     def get_manifest_headers(cls, manifest_writer_mock):
         write_header_func = manifest_writer_mock.__enter__.return_value.write_header
         return tuple(write_header_func.call_args[0][0])
+
+    @classmethod
+    def setup_manifest_mocks(cls, sql_exporter_class_mock, mock_map):
+        # Setup the exporter instances to return the pre-initialized mock objects for each manifest
+        def get_manifest_cloud_writer(file_name):
+            last_bucket_name = sql_exporter_class_mock.call_args[0][0]
+            file_manifest_map = mock_map[last_bucket_name]
+
+            if file_name in file_manifest_map:
+                return file_manifest_map[file_name]
+            raise Exception(f'Unexpected manifest "{file_name}" generated for the "{last_bucket_name}" bucket')
+
+        sql_exporter_class_mock.return_value.open_cloud_writer.side_effect = get_manifest_cloud_writer
+
+
+unregistered_mocks = []
+
