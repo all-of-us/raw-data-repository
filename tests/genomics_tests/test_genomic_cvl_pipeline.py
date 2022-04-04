@@ -796,6 +796,14 @@ class GenomicW1ilGenerationTest(BaseTestCase):
                 module_type='pgx'
             )
 
+        # Check that the PGX headers appear as expected
+        self.assertTupleEqual(
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
+             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_pgx',
+             'aou_hdr_coverage', 'contamination'),
+            self.get_manifest_headers(bcm_pgx_w1il_manifest)
+        )
+
         self.assert_manifest_has_rows(
             manifest_cloud_writer_mock=bcm_pgx_w1il_manifest,
             expected_rows=[
@@ -828,6 +836,14 @@ class GenomicW1ilGenerationTest(BaseTestCase):
                 cvl_site_bucket_map=cvl_bucket_map,
                 module_type='hdr'
             )
+
+        # Check that the headers appear as expected
+        self.assertTupleEqual(
+            ('biobank_id', 'sample_id', 'vcf_raw_path', 'vcf_raw_index_path', 'vcf_raw_md5_path', 'cram_name',
+             'sex_at_birth', 'ny_flag', 'genome_center', 'consent_for_gror', 'genome_type', 'informing_loop_hdr',
+             'aou_hdr_coverage', 'contamination'),
+            self.get_manifest_headers(bcm_hdr_w1il_manifest)
+        )
 
         self.assert_manifest_has_rows(
             manifest_cloud_writer_mock=bcm_hdr_w1il_manifest,
@@ -962,3 +978,8 @@ class GenomicW1ilGenerationTest(BaseTestCase):
             str(validation_metrics.aouHdrCoverage),
             str(validation_metrics.contamination)
         )
+
+    @classmethod
+    def get_manifest_headers(cls, manifest_writer_mock):
+        write_header_func = manifest_writer_mock.__enter__.return_value.write_header
+        return tuple(write_header_func.call_args[0][0])
