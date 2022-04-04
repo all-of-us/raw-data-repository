@@ -764,7 +764,7 @@ class GenomicW1ilGenerationTest(BaseTestCase):
 
     @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
     @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
-    def test_w1il_manifest_generation(self, _, sql_exporter_class_mock):
+    def test_w1il_manifest_generation(self, cloud_task_mock, sql_exporter_class_mock):
         manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
         manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
 
@@ -822,6 +822,29 @@ class GenomicW1ilGenerationTest(BaseTestCase):
             ]
         )
 
+        # Check that a task is generated to set the job run ids
+        cloud_task_mock.assert_has_calls([
+            mock.call(
+                {
+                    'member_ids': [self.default_set_member.id, self.ny_set_member.id,
+                                self.male_set_member.id, self.hdr_and_pgx_set_member.id],
+                     'field': 'cvlW1ilPgxJobRunId',
+                     'value': mock.ANY,
+                     'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            ),
+            mock.call(
+                {
+                    'member_ids': [self.co_set_member.id],
+                    'field': 'cvlW1ilPgxJobRunId',
+                    'value': mock.ANY,
+                    'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            )
+        ], any_order=True)
+
         # check for hdr manifest
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
@@ -843,6 +866,19 @@ class GenomicW1ilGenerationTest(BaseTestCase):
                 self.expected_w1il_row(self.hdr_and_pgx_set_member, self.hdr_and_pgx_validation_metrics, self.hdr_and_pgx_summary)
             ]
         )
+
+        # Check that a task is generated to set the job run ids
+        cloud_task_mock.assert_has_calls([
+            mock.call(
+                {
+                    'member_ids': [self.hdr_and_pgx_set_member.id],
+                    'field': 'cvlW1ilHdrJobRunId',
+                    'value': mock.ANY,
+                    'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            )
+        ])
 
     def _generate_cvl_participant(
         self,
