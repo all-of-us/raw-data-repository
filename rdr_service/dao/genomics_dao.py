@@ -10,7 +10,7 @@ from dateutil import parser
 
 from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, Query
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import literal, distinct, delete
 
@@ -19,7 +19,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from rdr_service import clock, config
 from rdr_service.clock import CLOCK
 from rdr_service.config import GAE_PROJECT, GENOMIC_MEMBER_BLOCKLISTS
-from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicSubProcessStatus
+from rdr_service.genomic_enums import GenomicJob, GenomicIncidentStatus, GenomicQcStatus, GenomicSubProcessStatus
 from rdr_service.dao.base_dao import UpdatableDao, BaseDao, UpsertableDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.code import Code
@@ -49,8 +49,11 @@ from rdr_service.participant_enums import (
     SuspensionStatus, DeceasedStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
     GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.site import Site
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
@@ -2730,6 +2733,24 @@ class GenomicInformingLoopDao(UpdatableDao):
     def from_client_json(self):
         pass
 
+    @classmethod
+    def build_latest_decision_query(cls, module: str) -> sqlalchemy.orm.Query:
+        later_informing_loop_decision = aliased(GenomicInformingLoop)
+        return (
+            sqlalchemy.orm.Query(GenomicInformingLoop)
+            .outerjoin(
+                later_informing_loop_decision,
+                and_(
+                    later_informing_loop_decision.participant_id == GenomicInformingLoop.participant_id,
+                    later_informing_loop_decision.module_type == module,
+                    GenomicInformingLoop.event_authored_time < later_informing_loop_decision.event_authored_time
+                )
+            ).filter(
+                GenomicInformingLoop.module_type == module,
+                later_informing_loop_decision.event_authored_time.is_(None)
+            )
+        )
+
     def get_latest_state_for_pid(self, pid, module="gem"):
         """
         Returns latest event_type and decision_value
@@ -2739,22 +2760,12 @@ class GenomicInformingLoopDao(UpdatableDao):
         :return: query result
         """
         with self.session() as session:
-            informing_loop_alias = aliased(GenomicInformingLoop)
-            return session.query(
+            return self.build_latest_decision_query(module).with_entities(
                 GenomicInformingLoop.event_type,
                 GenomicInformingLoop.decision_value
-            ).outerjoin(
-                informing_loop_alias,
-                and_(
-                    informing_loop_alias.participant_id == GenomicInformingLoop.participant_id,
-                    informing_loop_alias.module_type == module,
-                    GenomicInformingLoop.event_authored_time < informing_loop_alias.event_authored_time
-                )
             ).filter(
-                GenomicInformingLoop.module_type == module,
-                informing_loop_alias.event_authored_time.is_(None),
                 GenomicInformingLoop.participant_id == pid
-            ).all()
+            ).with_session(session).all()
 
     def prepare_gem_migration_obj(self, row):
         decision_mappings = {
@@ -3262,3 +3273,112 @@ class GenomicQueriesDao(BaseDao):
                 )
 
             return records.distinct().all()
+
+    def get_data_ready_for_w1il_manifest(self, module: str, cvl_id: str):
+        """
+        Returns the genomic set member and other data needed for a W1IL manifest.
+        :param module: Module to retrieve genomic set members for, either 'pgx' or 'hdr'
+        :param cvl_id: CVL id that the data will go to ('co', 'uw', 'bcm')
+        """
+
+        gc_site_id = self.transform_cvl_site_id(cvl_id)
+        previous_w1il_job_field = {
+            'pgx': GenomicSetMember.cvlW1ilPgxJobRunId,
+            'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
+        }[module]
+
+        sample_collected_site: Site = aliased(Site)
+
+        informing_loop_decision_query = GenomicInformingLoopDao.build_latest_decision_query(
+            module=module
+        ).with_entities(
+            GenomicInformingLoop.participant_id,
+            GenomicInformingLoop.decision_value
+        ).filter(
+            GenomicInformingLoop.decision_value.ilike('yes')
+        )
+        informing_loop_subquery = aliased(GenomicInformingLoop, informing_loop_decision_query.subquery())
+
+        with self.session() as session:
+            query = session.query(
+                func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId),
+                GenomicSetMember.sampleId,
+                GenomicGCValidationMetrics.hfVcfPath.label('vcf_raw_path'),
+                GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
+                GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
+                GenomicGCValidationMetrics.cramPath.label('cram_name'),
+                func.IF(
+                    GenomicSetMember.nyFlag == 1,
+                    sqlalchemy.sql.expression.literal("Y"),
+                    sqlalchemy.sql.expression.literal("N")
+                ).label('ny_flag'),
+                sqlalchemy.func.upper(GenomicSetMember.gcSiteId).label('genome_center'),
+                sqlalchemy.case(
+                    [(ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED, 'Y')],
+                    else_='N'
+                ).label('consent_for_gror'),
+                sqlalchemy.literal('aou_cvl').label('genome_type'),
+                sqlalchemy.case(
+                    [(informing_loop_subquery.decision_value.ilike('yes'), 'Y')],
+                    else_='N'
+                ).label(f'informing_loop_{module}'),
+                GenomicGCValidationMetrics.aouHdrCoverage.label('aou_hdr_coverage'),
+                GenomicGCValidationMetrics.contamination
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                and_(
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                    GenomicGCValidationMetrics.ignoreFlag != 1
+                )
+            ).join(
+                BiobankStoredSample,
+                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+            ).join(
+                BiobankOrderIdentifier,
+                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
+            ).join(
+                BiobankOrder,
+                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
+            ).join(
+                sample_collected_site,
+                sample_collected_site.siteId == BiobankOrder.collectedSiteId
+            ).join(
+                informing_loop_subquery,
+                informing_loop_subquery.participant_id == GenomicSetMember.participantId
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
+                GenomicGCValidationMetrics.sexConcordance.ilike('true'),     # check AW2 gives sex concordance as true
+                GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),  # check AW4 gives sex concordance as true
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+
+                # all data files have been received
+                GenomicGCValidationMetrics.hfVcfReceived == 1,
+                GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
+                GenomicGCValidationMetrics.hfVcfMd5Received == 1,
+                GenomicGCValidationMetrics.cramReceived == 1,
+                GenomicGCValidationMetrics.cramMd5Received == 1,
+                GenomicGCValidationMetrics.craiReceived == 1,
+                GenomicGCValidationMetrics.gvcfReceived == 1,
+                GenomicGCValidationMetrics.gvcfMd5Received == 1,
+
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
+                sample_collected_site.siteType != 'diversion pouch',
+                GenomicSetMember.gcSiteId.ilike(gc_site_id),
+                ParticipantSummary.participantOrigin != 'careevolution',
+
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
+                previous_w1il_job_field.is_(None)
+            )
+
+            return query.all()

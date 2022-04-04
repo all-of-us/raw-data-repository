@@ -622,6 +622,8 @@ class DataGenerator:
 
     @staticmethod
     def _genomic_job_run(**kwargs):
+        if 'startTime' not in kwargs:
+            kwargs['startTime'] = datetime.utcnow()
         return GenomicJobRun(**kwargs)
 
     def create_database_genomic_set(self, **kwargs):
@@ -729,8 +731,10 @@ class DataGenerator:
         return event_metrics
 
     @staticmethod
-    def _genomic_informing_loop(**kwargs):
-        return GenomicInformingLoop(**kwargs)
+    def _genomic_informing_loop(**defaults):
+        if 'event_type' not in defaults:
+            defaults['event_type'] = 'informing_loop_decision'
+        return GenomicInformingLoop(**defaults)
 
     @staticmethod
     def _genomic_gc_data_file(**kwargs):
