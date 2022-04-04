@@ -42,6 +42,7 @@ from rdr_service.model.questionnaire import QuestionnaireConcept
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseAnswer
 from rdr_service.model.site import Site
 from rdr_service.model.genomics import GenomicSet, GenomicSetMember
+from rdr_service.model.genomic_datagen import GenomicDataGenRun
 from rdr_service.model.patient_status import PatientStatus
 from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.requests_log import RequestsLog
