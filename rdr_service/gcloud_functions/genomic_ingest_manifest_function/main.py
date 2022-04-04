@@ -44,6 +44,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             "w2sc": "IngestCVLManifestTaskApi",
             "w3ns": "IngestCVLManifestTaskApi",
             "w3sc": "IngestCVLManifestTaskApi",
+            "w3ss": "IngestCVLManifestTaskApi",
             "w4wr": "IngestCVLManifestTaskApi",
             "w5nf": "IngestCVLManifestTaskApi",
         }
@@ -92,6 +93,10 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w3sc_' in object_id:
             task_key = "w3sc"
 
+        # W3SS files have "_PKG" in their file path (bucket name)
+        elif '_PKG' in object_id:
+            task_key = "w3ss"
+
         # W4WR files have "W2SC" in their file path (bucket name)
         elif '_w4wr_' in object_id:
             task_key = "w4wr"
@@ -124,7 +129,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
-            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w4wr', 'w5nf']
+            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w3ss', 'w4wr', 'w5nf']
 
             # Load into raw table
             if task_key in raw_manifest_keys:

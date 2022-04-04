@@ -8,7 +8,8 @@ from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicFileProcessedDao, GenomicJobRunDao, \
     GenomicManifestFileDao, GenomicW2SCRawDao, GenomicW3SRRawDao, GenomicW4WRRawDao, GenomicCVLAnalysisDao, \
-    GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao
+    GenomicW3SCRawDao, GenomicResultWorkflowStateDao, GenomicW3NSRawDao, GenomicW5NFRawDao, GenomicW3SSRawDao, \
+    GenomicCVLSecondSampleDao
 from rdr_service.genomic_enums import GenomicManifestTypes, GenomicJob, GenomicQcStatus, GenomicSubProcessStatus, \
     GenomicSubProcessResult, GenomicWorkflowState, ResultsWorkflowState, ResultsModuleType
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider
@@ -67,6 +68,7 @@ class GenomicCVLPipelineTest(BaseTestCase):
             kwargs.get('test_file'),
             bucket_name,
             folder=subfolder,
+            include_timestamp=kwargs.get('include_timestamp', True),
             include_sub_num=kwargs.get('include_sub_num')
         )
 
@@ -119,7 +121,6 @@ class GenomicCVLPipelineTest(BaseTestCase):
                             obj in current_workflow_states))
         self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W2SC.name for obj in
                             current_workflow_states))
-
 
     def test_w2sc_manifest_to_raw_ingestion(self):
 
@@ -306,85 +307,207 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.runStatus == GenomicSubProcessStatus.COMPLETED for obj in w3sr_raw_job_runs))
         self.assertTrue(all(obj.runResult == GenomicSubProcessResult.SUCCESS for obj in w3sr_raw_job_runs))
 
-    def test_cvl_skip_week_manifest_generation(self):
+    def test_w3ns_manifest_ingestion(self):
 
-        from rdr_service.offline.main import app, OFFLINE_PREFIX
-        offline_test_client = app.test_client()
-
-        # create initial job run
-        initial_job_run = self.data_generator.create_database_genomic_job_run(
-            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
-            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
-            startTime=clock.CLOCK.now(),
-            endTime=clock.CLOCK.now(),
-            runResult=GenomicSubProcessResult.SUCCESS,
-            runStatus=GenomicSubProcessStatus.COMPLETED,
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3NS.csv',
+            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3NS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
         )
 
-        response = self.send_get(
-            'GenomicCVLW3SRWorkflow',
-            test_client=offline_test_client,
-            prefix=OFFLINE_PREFIX,
-            headers={'X-Appengine-Cron': True},
-            expected_status=500
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w3ns_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3NS_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w3ns_job_run)
+        self.assertEqual(w3ns_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w3ns_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w3ns_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w3ns_file_processed.runId, w3ns_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW3nsManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW3nsManifestJobRunID == w3ns_job_run.id for obj in current_members))
+
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3NS for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3NS.name for obj in
+                            current_workflow_states))
+
+    def test_w3ns_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3NS.csv',
+            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3NS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
         )
 
-        self.assertTrue(response.status_code == 500)
+        w3ns_raw_dao = GenomicW3NSRawDao()
 
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
+        manifest_type = 'w3ns'
+        w3sc_manifest_file = self.manifest_file_dao.get(1)
 
-        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w3sc_manifest_file.filePath,
+            manifest_type
+        )
 
-        with clock.FakeClock(today_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
+        w3ns_raw_records = w3ns_raw_dao.get_all()
 
-        self.assertTrue(response.status_code == 500)
+        self.assertEqual(len(w3ns_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3ns_raw_records))
+        self.assertTrue(all(obj.unavailable_reason is not None for obj in w3ns_raw_records))
 
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
-        self.assertTrue(len(current_job_runs) == 0)
+    def test_w3sc_manifest_ingestion(self):
 
-        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3SC.csv',
+            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SC,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
+        )
 
-        with clock.FakeClock(today_plus_fourteen):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True}
-            )
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
 
-        self.assertTrue(response['success'] == 'true')
+        w3sc_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3SC_WORKFLOW, self.job_run_dao.get_all()))[0]
 
-        current_job_runs = self.job_run_dao.get_all()
-        # remove initial
-        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertIsNotNone(w3sc_job_run)
+        self.assertEqual(w3sc_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w3sc_job_run.runResult, GenomicSubProcessResult.SUCCESS)
 
-        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
-        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w3sc_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w3sc_file_processed.runId, w3sc_job_run.jobId)
 
-        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
+        self.assertTrue(all(obj.cvlW3scManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW3scManifestJobRunID == w3sc_job_run.id for obj in current_members))
 
-        with clock.FakeClock(today_plus_fourteen_plus_seven):
-            response = self.send_get(
-                'GenomicCVLW3SRWorkflow',
-                test_client=offline_test_client,
-                prefix=OFFLINE_PREFIX,
-                headers={'X-Appengine-Cron': True},
-                expected_status=500
-            )
+        self.assertTrue(all(obj.cvlSecondaryConfFailure is not None for obj in current_members))
 
-        self.assertTrue(response.status_code == 500)
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SC for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SC.name for obj in
+                            current_workflow_states))
+
+    def test_w3sc_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_W3SC.csv',
+            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SC,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1
+        )
+
+        w3sc_raw_dao = GenomicW3SCRawDao()
+
+        manifest_type = 'w3sc'
+        w3sc_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w3sc_manifest_file.filePath,
+            manifest_type
+        )
+
+        w3sc_raw_records = w3sc_raw_dao.get_all()
+
+        self.assertEqual(len(w3sc_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3sc_raw_records))
+        self.assertTrue(all(obj.cvl_secondary_conf_failure is not None for obj in w3sc_raw_records))
+
+    def test_w3ss_manifest_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_PKG-1911-229228.csv',
+            job_id=GenomicJob.CVL_W3SS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3NS,
+            results_module=ResultsModuleType.HDRV1,
+            include_timestamp=False
+        )
+
+        current_members = self.member_dao.get_all()
+        self.assertEqual(len(current_members), 3)
+
+        w3ss_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3SS_WORKFLOW, self.job_run_dao.get_all()))[0]
+
+        self.assertIsNotNone(w3ss_job_run)
+        self.assertEqual(w3ss_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
+        self.assertEqual(w3ss_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+
+        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
+        w3ss_file_processed = self.file_processed_dao.get(1)
+        self.assertTrue(w3ss_file_processed.runId, w3ss_job_run.jobId)
+
+        self.assertTrue(all(obj.cvlW3ssManifestJobRunID is not None for obj in current_members))
+        self.assertTrue(all(obj.cvlW3ssManifestJobRunID == w3ss_job_run.id for obj in current_members))
+
+        current_workflow_states = self.results_workflow_dao.get_all()
+        self.assertEqual(len(current_workflow_states), 3)
+        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
+
+        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SS for
+                            obj in current_workflow_states))
+        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SS.name for obj in
+                            current_workflow_states))
+
+        cvl_second_sample_dao = GenomicCVLSecondSampleDao()
+        current_second_sample_records = cvl_second_sample_dao.get_all()
+        member_ids = [obj.id for obj in current_members]
+
+        self.assertEqual(len(current_second_sample_records), len(current_members))
+        self.assertTrue(all(obj.genomic_set_member_id in member_ids for obj in current_second_sample_records))
+
+    def test_w3ss_manifest_to_raw_ingestion(self):
+
+        self.execute_base_cvl_ingestion(
+            test_file='RDR_AoU_CVL_PKG-1911-229228.csv',
+            job_id=GenomicJob.CVL_W3SS_WORKFLOW,
+            manifest_type=GenomicManifestTypes.CVL_W3SS,
+            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
+            results_module=ResultsModuleType.HDRV1,
+            include_timestamp=False
+        )
+
+        w3ss_raw_dao = GenomicW3SSRawDao()
+
+        manifest_type = 'w3ss'
+        w3ss_manifest_file = self.manifest_file_dao.get(1)
+
+        genomic_pipeline.load_awn_manifest_into_raw_table(
+            w3ss_manifest_file.filePath,
+            manifest_type
+        )
+
+        w3ss_raw_records = w3ss_raw_dao.get_all()
+
+        self.assertEqual(len(w3ss_raw_records), 3)
+        self.assertTrue(all(obj.file_path is not None for obj in w3ss_raw_records))
+        self.assertTrue(all(obj.biobank_id is not None for obj in w3ss_raw_records))
+        self.assertTrue(all(obj.sample_id is not None for obj in w3ss_raw_records))
 
     def test_w4wr_manifest_ingestion(self):
 
@@ -554,135 +677,85 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(all(obj.health_related_data_file_name is not None for obj in w5nf_raw_records))
         self.assertTrue(all(obj.clinical_analysis_type is not None for obj in w5nf_raw_records))
 
-    def test_w3ns_manifest_ingestion(self):
+    def test_cvl_skip_week_manifest_generation(self):
 
-        self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W3NS.csv',
-            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W3NS,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
-            results_module=ResultsModuleType.HDRV1
+        from rdr_service.offline.main import app, OFFLINE_PREFIX
+        offline_test_client = app.test_client()
+
+        # create initial job run
+        initial_job_run = self.data_generator.create_database_genomic_job_run(
+            jobId=GenomicJob.CVL_W3SR_WORKFLOW,
+            jobIdStr=GenomicJob.CVL_W3SR_WORKFLOW.name,
+            startTime=clock.CLOCK.now(),
+            endTime=clock.CLOCK.now(),
+            runResult=GenomicSubProcessResult.SUCCESS,
+            runStatus=GenomicSubProcessStatus.COMPLETED,
         )
 
-        current_members = self.member_dao.get_all()
-        self.assertEqual(len(current_members), 3)
-
-        w3ns_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3NS_WORKFLOW, self.job_run_dao.get_all()))[0]
-
-        self.assertIsNotNone(w3ns_job_run)
-        self.assertEqual(w3ns_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
-        self.assertEqual(w3ns_job_run.runResult, GenomicSubProcessResult.SUCCESS)
-
-        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
-        w3sc_file_processed = self.file_processed_dao.get(1)
-        self.assertTrue(w3sc_file_processed.runId, w3ns_job_run.jobId)
-
-        self.assertTrue(all(obj.cvlW3nsManifestJobRunID is not None for obj in current_members))
-        self.assertTrue(all(obj.cvlW3nsManifestJobRunID == w3ns_job_run.id for obj in current_members))
-
-        current_workflow_states = self.results_workflow_dao.get_all()
-        self.assertEqual(len(current_workflow_states), 3)
-        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
-        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
-
-        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3NS for
-                            obj in current_workflow_states))
-        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3NS.name for obj in
-                            current_workflow_states))
-
-    def test_w3ns_manifest_to_raw_ingestion(self):
-
-        self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W3NS.csv',
-            job_id=GenomicJob.CVL_W3NS_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W3NS,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
-            results_module=ResultsModuleType.HDRV1
+        response = self.send_get(
+            'GenomicCVLW3SRWorkflow',
+            test_client=offline_test_client,
+            prefix=OFFLINE_PREFIX,
+            headers={'X-Appengine-Cron': True},
+            expected_status=500
         )
 
-        w3ns_raw_dao = GenomicW3NSRawDao()
+        self.assertTrue(response.status_code == 500)
 
-        manifest_type = 'w3ns'
-        w3sc_manifest_file = self.manifest_file_dao.get(1)
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
 
-        genomic_pipeline.load_awn_manifest_into_raw_table(
-            w3sc_manifest_file.filePath,
-            manifest_type
-        )
+        today_plus_seven = clock.CLOCK.now() + datetime.timedelta(days=7)
 
-        w3ns_raw_records = w3ns_raw_dao.get_all()
+        with clock.FakeClock(today_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
 
-        self.assertEqual(len(w3ns_raw_records), 3)
-        self.assertTrue(all(obj.file_path is not None for obj in w3ns_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in w3ns_raw_records))
-        self.assertTrue(all(obj.sample_id is not None for obj in w3ns_raw_records))
-        self.assertTrue(all(obj.unavailable_reason is not None for obj in w3ns_raw_records))
+        self.assertTrue(response.status_code == 500)
 
-    def test_w3sc_manifest_ingestion(self):
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
+        self.assertTrue(len(current_job_runs) == 0)
 
-        self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W3SC.csv',
-            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W3SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
-            results_module=ResultsModuleType.HDRV1
-        )
+        today_plus_fourteen = clock.CLOCK.now() + datetime.timedelta(days=14)
 
-        current_members = self.member_dao.get_all()
-        self.assertEqual(len(current_members), 3)
+        with clock.FakeClock(today_plus_fourteen):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True}
+            )
 
-        w3sc_job_run = list(filter(lambda x: x.jobId == GenomicJob.CVL_W3SC_WORKFLOW, self.job_run_dao.get_all()))[0]
+        self.assertTrue(response['success'] == 'true')
 
-        self.assertIsNotNone(w3sc_job_run)
-        self.assertEqual(w3sc_job_run.runStatus, GenomicSubProcessStatus.COMPLETED)
-        self.assertEqual(w3sc_job_run.runResult, GenomicSubProcessResult.SUCCESS)
+        current_job_runs = self.job_run_dao.get_all()
+        # remove initial
+        current_job_runs = list(filter(lambda x: x.id != initial_job_run.id, current_job_runs))
 
-        self.assertTrue(len(self.file_processed_dao.get_all()), 1)
-        w3sc_file_processed = self.file_processed_dao.get(1)
-        self.assertTrue(w3sc_file_processed.runId, w3sc_job_run.jobId)
+        self.assertEqual(len(current_job_runs), len(config.GENOMIC_CVL_SITES))
+        self.assertTrue(all(obj.runResult == GenomicSubProcessResult.NO_FILES for obj in current_job_runs))
 
-        self.assertTrue(all(obj.cvlW3scManifestJobRunID is not None for obj in current_members))
-        self.assertTrue(all(obj.cvlW3scManifestJobRunID == w3sc_job_run.id for obj in current_members))
+        today_plus_fourteen_plus_seven = today_plus_fourteen + datetime.timedelta(days=7)
 
-        self.assertTrue(all(obj.cvlSecondaryConfFailure is not None for obj in current_members))
+        with clock.FakeClock(today_plus_fourteen_plus_seven):
+            response = self.send_get(
+                'GenomicCVLW3SRWorkflow',
+                test_client=offline_test_client,
+                prefix=OFFLINE_PREFIX,
+                headers={'X-Appengine-Cron': True},
+                expected_status=500
+            )
 
-        current_workflow_states = self.results_workflow_dao.get_all()
-        self.assertEqual(len(current_workflow_states), 3)
-        self.assertTrue(all(obj.results_workflow_state is not None for obj in current_workflow_states))
-        self.assertTrue(all(obj.results_workflow_state_str is not None for obj in current_workflow_states))
-
-        self.assertTrue(all(obj.results_workflow_state == ResultsWorkflowState.CVL_W3SC for
-                            obj in current_workflow_states))
-        self.assertTrue(all(obj.results_workflow_state_str == ResultsWorkflowState.CVL_W3SC.name for obj in
-                            current_workflow_states))
-
-    def test_w3sc_manifest_to_raw_ingestion(self):
-
-        self.execute_base_cvl_ingestion(
-            test_file='RDR_AoU_CVL_W3SC.csv',
-            job_id=GenomicJob.CVL_W3SC_WORKFLOW,
-            manifest_type=GenomicManifestTypes.CVL_W3SC,
-            current_results_workflow_state=ResultsWorkflowState.CVL_W3SR,
-            results_module=ResultsModuleType.HDRV1
-        )
-
-        w3sc_raw_dao = GenomicW3SCRawDao()
-
-        manifest_type = 'w3sc'
-        w3sc_manifest_file = self.manifest_file_dao.get(1)
-
-        genomic_pipeline.load_awn_manifest_into_raw_table(
-            w3sc_manifest_file.filePath,
-            manifest_type
-        )
-
-        w3sc_raw_records = w3sc_raw_dao.get_all()
-
-        self.assertEqual(len(w3sc_raw_records), 3)
-        self.assertTrue(all(obj.file_path is not None for obj in w3sc_raw_records))
-        self.assertTrue(all(obj.biobank_id is not None for obj in w3sc_raw_records))
-        self.assertTrue(all(obj.sample_id is not None for obj in w3sc_raw_records))
-        self.assertTrue(all(obj.cvl_secondary_conf_failure is not None for obj in w3sc_raw_records))
+        self.assertTrue(response.status_code == 500)
 
 
 class GenomicW1ilGenerationTest(BaseTestCase):
@@ -1024,7 +1097,3 @@ class GenomicW1ilGenerationTest(BaseTestCase):
             raise Exception(f'Unexpected manifest "{file_name}" generated for the "{last_bucket_name}" bucket')
 
         sql_exporter_class_mock.return_value.open_cloud_writer.side_effect = get_manifest_cloud_writer
-
-
-unregistered_mocks = []
-
