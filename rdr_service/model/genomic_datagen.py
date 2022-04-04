@@ -24,7 +24,7 @@ event.listen(GenomicDataGenRun, "before_insert", model_insert_listener)
 event.listen(GenomicDataGenRun, "before_update", model_update_listener)
 
 
-class GenomicDatagenMemeberRun(Base, DatagenBase):
+class GenomicDatagenMemberRun(Base, DatagenBase):
 
     __tablename__ = 'genomic_datagen_member_run'
 
@@ -32,9 +32,8 @@ class GenomicDatagenMemeberRun(Base, DatagenBase):
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     template_name = Column(String(255), nullable=False)
 
-
-event.listen(GenomicDatagenMemeberRun, "before_insert", model_insert_listener)
-event.listen(GenomicDatagenMemeberRun, "before_update", model_update_listener)
+event.listen(GenomicDatagenMemberRun, "before_insert", model_insert_listener)
+event.listen(GenomicDatagenMemberRun, "before_update", model_update_listener)
 
 
 class GenomicDataGenCaseTemplate(Base, DatagenBase):
