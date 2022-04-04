@@ -32,6 +32,7 @@ class GenomicDatagenMemberRun(Base, DatagenBase):
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     template_name = Column(String(255), nullable=False)
 
+
 event.listen(GenomicDatagenMemberRun, "before_insert", model_insert_listener)
 event.listen(GenomicDatagenMemberRun, "before_update", model_update_listener)
 
