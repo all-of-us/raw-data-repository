@@ -751,7 +751,7 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason=f'Answer lower than minimum value'
+                                        reason='Answer lower than minimum value'
                                     )
                                 )
                             if max_value and answer_value > max_value:
@@ -759,7 +759,7 @@ class ResponseValidator:
                                     ValidationError(
                                         question_code_str,
                                         [answer.id],
-                                        reason=f'Answer higher than maximum value'
+                                        reason='Answer higher than maximum value'
                                     )
                                 )
                 else:
