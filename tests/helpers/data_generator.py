@@ -26,7 +26,7 @@ from rdr_service.model.genomics import (
     GenomicManifestFeedback,
     GenomicGcDataFileMissing,
     UserEventMetrics,
-    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis)
+    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis, GenomicCVLSecondSample)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
@@ -804,6 +804,15 @@ class DataGenerator:
     @staticmethod
     def _genomic_cvl_analysis(**kwargs):
         return GenomicCVLAnalysis(**kwargs)
+
+    def create_database_genomic_cvl_second_sample(self, **kwargs):
+        m = self._genomic_cvl_second_sample(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_cvl_second_sample(**kwargs):
+        return GenomicCVLSecondSample(**kwargs)
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

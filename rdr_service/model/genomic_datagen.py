@@ -8,8 +8,8 @@ from rdr_service.model.base import Base, model_insert_listener, model_update_lis
 
 class DatagenBase:
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    created = Column(DateTime, nullable=True)
-    modified = Column(DateTime, nullable=True)
+    created = Column(DateTime, nullable=False)
+    modified = Column(DateTime, nullable=False)
     ignore_flag = Column(SmallInteger, nullable=False, default=0)
 
 
@@ -31,6 +31,7 @@ class GenomicDatagenMemberRun(Base, DatagenBase):
     created_run_id = Column(ForeignKey('genomic_datagen_run.id'), nullable=False)
     genomic_set_member_id = Column(ForeignKey('genomic_set_member.id'), nullable=False)
     template_name = Column(String(255), nullable=False)
+    end_to_end_start = Column(String(255), nullable=True)
 
 
 event.listen(GenomicDatagenMemberRun, "before_insert", model_insert_listener)

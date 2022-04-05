@@ -1,43 +1,62 @@
 import faker
 
 from rdr_service.dao import database_factory
-from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao
-from rdr_service.dao.participant_dao import ParticipantDao
-from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
+from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
+    GenomicDataGenMemberRunDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from tests.helpers.data_generator import DataGenerator
 
 
 class ParticipantGenerator:
     def __init__(
         self,
-        num_participants,
-        template_type='default',
         project='cvl',
-        external_values=None
     ):
-        self.data_generator = self.initialize_data_generator()
-        self.genomic_set = self._set_genomic_set()
-        self.num_participants = num_participants
-        self.template_type = template_type
         self.project = project
-        self.external_values = external_values
-        self.base_calc_value_dict = {}
-        self.template_dao = GenomicDateGenCaseTemplateDao()
+        self.num_participants = None
+        self.template_type = None
+        self.external_values = None
+
+        self.member_ids = []
+        self.default_template_records = []
+        self.template_records = []
+
         self.default_table_map = {
             'participant': {
-                'dao': ParticipantDao,
+                'model': Participant,
             },
             'participant_summary': {
-                'dao': ParticipantSummaryDao,
+                'model': ParticipantSummary,
             },
             'genomic_set_member': {
-                'dao': GenomicSetMemberDao
+                'model': GenomicSetMember
             },
             'genomic_gc_validation_metrics': {
-                'dao': GenomicGCValidationMetricsDao
+                'model': GenomicGCValidationMetrics
             }
         }
+
+    def __enter__(self):
+        self.data_generator = self.initialize_data_generator()
+        self.genomic_set = self._set_genomic_set()
+
+        # init daos
+        self.member_dao = GenomicSetMemberDao()
+        self.datagen_template_dao = GenomicDateGenCaseTemplateDao()
+        self.datagen_run_dao = GenomicDataGenRunDao()
+        self.datagen_member_run_dao = GenomicDataGenMemberRunDao()
+
+        run_obj = self.datagen_run_dao.model_type()
+        run_obj.project_name = self.project
+        self.run_obj = self.datagen_run_dao.insert(run_obj)
+
+        return self
+
+    def __exit__(self, *_, **__):
+        ...
 
     @staticmethod
     def initialize_data_generator():
@@ -46,22 +65,18 @@ class ParticipantGenerator:
         return DataGenerator(session, fake)
 
     def build_participant_default(self):
-        template_records = self.template_dao.get_default_template_records(
-            project=self.project
-        )
-        # will throw exception for invalid expected data struct
-        self.validate_template_records(template_records)
+        if not self.default_template_records:
+            self.default_template_records = self.datagen_template_dao.get_default_template_records(
+                project=self.project
+            )
+            # will throw exception for invalid expected data struct
+            self.validate_template_records(self.default_template_records)
 
         base_participant = None
         for table, table_items in self.default_table_map.items():
-            dao = table_items.get('dao')()
-            col_keys = dao.model_type().__table__.columns.keys()
-            # make sure it has generator
-            gen_method_name = f'create_database_{table}'
-            try:
-                generator_method = getattr(self.data_generator, gen_method_name)
-            except AttributeError:
-                raise Exception(f"Cannot find generator for table: {table}")
+            model = table_items.get('model')
+            # make sure it has generator, will throw exception if not
+            generator_method = self._get_generator_method(table)
 
             if table == 'participant':
                 base_participant = generator_method()
@@ -69,14 +84,15 @@ class ParticipantGenerator:
                 continue
 
             current_table_defaults = list(
-                filter(lambda x: x.rdr_field.split('.')[0].lower() == table, template_records)
+                filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.default_template_records)
             )
 
             attr_dict = {}
             for obj in current_table_defaults:
                 field_name = obj.rdr_field.split('.')[-1].lower()
-                if field_name not in col_keys:
+                if not hasattr(model, self.convert_case(field_name)):
                     raise Exception(f"Field name {field_name} is not present in {table} table")
+
                 value = self.evaluate_value(
                     field_name,
                     obj.field_source,
@@ -91,18 +107,52 @@ class ParticipantGenerator:
                 attr_dict['genomicSetId'] = self.genomic_set.id
 
             try:
-                gen_data = generator_method(**attr_dict)
-                self.default_table_map[table]['obj'] = gen_data
+                generated_obj = generator_method(**attr_dict)
+                self.default_table_map[table]['obj'] = generated_obj
+                if table == 'genomic_set_member':
+                    self.member_ids.append(generated_obj.id)
+
             except Exception as error:
                 raise Exception(f'Error when inserting default records: {error}')
 
     def build_participant_type_records(self):
-        template_records = self.template_dao.get_template_records_template(
-            project=self.project,
-            template_type=''
-        )
-        # will throw exception for invalid expected data struct
-        self.validate_template_records(template_records)
+        if self.template_type == 'default':
+            return
+
+        if not self.template_records:
+            self.template_records = self.datagen_template_dao.get_template_records_template(
+                project=self.project,
+                template_type=self.template_type
+            )
+            # will throw exception for invalid expected data struct
+            self.validate_template_records(self.template_records)
+
+        # if template records have attributes from multiple tables
+        table_names = set([obj.rdr_field.split('.')[0].lower() for obj in self.template_records])
+        for table in table_names:
+            generator_method = self._get_generator_method(table)
+
+            current_table_attrs = list(
+                filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.template_records)
+            )
+
+            attr_dict = {}
+            for obj in current_table_attrs:
+                field_name = obj.rdr_field.split('.')[-1].lower()
+                value = self.evaluate_value(
+                    field_name,
+                    obj.field_source,
+                    obj.field_value
+                )
+
+                attr_dict[field_name] = value
+
+            try:
+                generator_method(**attr_dict)
+            except Exception as error:
+                raise Exception(f'Error when inserting default records: {error}')
+
+        print('Darryl')
 
     @staticmethod
     def convert_case(string_value):
@@ -114,7 +164,7 @@ class ParticipantGenerator:
 
     def validate_template_records(self, records):
         if not records:
-            raise Exception(f"Default template records were not found for project:  {self.project}")
+            raise Exception(f"{self.template_type} template records were not found for project: {self.project}")
 
         source_types = ['system', 'external', 'literal', 'calculated']
         for source_type in source_types:
@@ -140,17 +190,33 @@ class ParticipantGenerator:
         if field_source == 'calculated':
             return self._calc_algo_value(field_value)
 
+    def _get_generator_method(self, table_name):
+        gen_method_name = f'create_database_{table_name}'
+        try:
+            generator_method = getattr(self.data_generator, gen_method_name)
+        except AttributeError:
+            raise Exception(f"Cannot find generator for table: {table_name}")
+
+        return generator_method
+
     def _calc_algo_value(self, field_value):
         # field_value should be %<table_name>.<snake_case_attr>%
         parsed_list, new_list = [val for val in field_value.split('%') if val != ''], []
+
         for val in parsed_list:
             if len(val.split('.')) == 2 and val.split('.')[0] in self.default_table_map.keys():
+
                 table, attribute = val.split('.')
-                # check for now in default map
+                # check in default map should contain all calc attrs
                 obj = self.default_table_map.get(table, {}).get('obj')
+
                 if not obj:
                     raise Exception(f'Cannot find object for calculated value: {field_value}')
                 attr_value = getattr(obj, self.convert_case(attribute))
+
+                if not attr_value or attr_value is None:
+                    raise Exception(f'Cannot find attribute {attribute} in obj')
+
                 new_list.append(str(attr_value))
             else:
                 new_list.append(val)
@@ -160,6 +226,7 @@ class ParticipantGenerator:
         external_value = self.external_values.get(field_name)
         if not external_value:
             raise Exception(f'Value for external field {field_name} is not found')
+
         return external_value
 
     def _set_genomic_set(self):
@@ -169,7 +236,19 @@ class ParticipantGenerator:
             genomicSetVersion=1
         )
 
-    def run_participant_creation(self):
+    def run_participant_creation(self, num_participants, template_type, external_values):
+        self.num_participants = num_participants
+        self.template_type = template_type
+        self.external_values = external_values
+        self.member_ids, self.template_records = [], []
+
         for _ in range(self.num_participants):
             self.build_participant_default()
             self.build_participant_type_records()
+
+        self.datagen_member_run_dao.batch_insert_member_records(
+            self.run_obj.id,
+            self.template_type,
+            self.member_ids
+        )
+
