@@ -199,9 +199,6 @@ class GEMReportDeleted(GenomicStateBase):
 class CVLReadyState(GenomicStateBase):
     """State representing the CVL_READY state"""
     def transition_function(self, signal):
-        if signal == 'manifest-generated':
-            return GenomicWorkflowState.W1
-
         if signal == 'unconsented':
             return GenomicWorkflowState.CVL_RPT_PENDING_DELETE
 
@@ -247,6 +244,12 @@ class W2SCState(GenomicStateBase):
             return ResultsWorkflowState.CVL_W3SR
 
 
+class W3NSState(GenomicStateBase):
+    def transition_function(self, signal):
+        if signal == 'second-sample':
+            return ResultsWorkflowState.CVL_W3SS
+
+
 class W3SRState(GenomicStateBase):
     def transition_function(self, signal):
         if signal == 'sample-failed':
@@ -289,6 +292,7 @@ class GenomicStateHandler:
         GenomicWorkflowState.EXTRACT_REQUESTED: AW0State(),
         ResultsWorkflowState.CVL_W1IL: W1ILState(),
         ResultsWorkflowState.CVL_W2SC: W2SCState(),
+        ResultsWorkflowState.CVL_W3NS: W3NSState(),
         ResultsWorkflowState.CVL_W3SR: W3SRState(),
         ResultsWorkflowState.CVL_W4WR: W4WRState()
     }

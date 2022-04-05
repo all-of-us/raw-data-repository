@@ -118,8 +118,9 @@ class GenomicJob(messages.Enum):
     LOAD_CVL_W3SR_TO_RAW_TABLE = 61
     LOAD_CVL_W3NS_TO_RAW_TABLE = 62
     LOAD_CVL_W3SC_TO_RAW_TABLE = 63
-    LOAD_CVL_W4WR_TO_RAW_TABLE = 64
-    LOAD_CVL_W5NF_TO_RAW_TABLE = 65
+    LOAD_CVL_W3SS_TO_RAW_TABLE = 64
+    LOAD_CVL_W4WR_TO_RAW_TABLE = 65
+    LOAD_CVL_W5NF_TO_RAW_TABLE = 66
 
     # Data Quality Pipeline Jobs
     # Naming matters for reports (timeframe_level_report_target)
@@ -135,9 +136,9 @@ class GenomicJob(messages.Enum):
     CVL_W2SC_WORKFLOW = 201
     CVL_W2W_WORKFLOW = 202
     CVL_W3SR_WORKFLOW = 203
-    CVL_W3SS_WORKFLOW = 204
-    CVL_W3NS_WORKFLOW = 205
-    CVL_W3SC_WORKFLOW = 206
+    CVL_W3NS_WORKFLOW = 204
+    CVL_W3SC_WORKFLOW = 205
+    CVL_W3SS_WORKFLOW = 206
     CVL_W4WR_WORKFLOW = 207
     CVL_W5NF_WORKFLOW = 208
 
@@ -286,7 +287,6 @@ class GenomicManifestTypes(messages.Enum):
     AW1F = 14
     AW5_ARRAY = 15
     AW5_WGS = 16
-    CVL_W1IL = 17
     CVL_W2SC = 18
     CVL_W2W = 19
     CVL_W3SR = 20
@@ -295,6 +295,8 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W3SC = 23
     CVL_W4WR = 24
     CVL_W5NF = 25
+    CVL_W1IL_PGX = 26
+    CVL_W1IL_HDR = 27
 
 
 class GenomicContaminationCategory(messages.Enum):
