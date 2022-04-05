@@ -51,7 +51,6 @@ class Response:
         if (
             question_code_str not in self.answered_codes
             or not any([answer.is_valid for answer in self.answered_codes[question_code_str]])
-            or all([answer.value.lower() == 'pmi_skip' for answer in self.answered_codes[question_code_str]])
         ):
             return None
 
