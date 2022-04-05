@@ -1,9 +1,9 @@
 from typing import Optional
 
 from rdr_service import code_constants
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.questionnaire_response_dao import QuestionnaireResponseDao
 from rdr_service.domain_model.response import Answer, Response, ParticipantResponses
-from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer
 from rdr_service.services.system_utils import list_chunks
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
@@ -224,7 +224,7 @@ class CopeFilterTool(ToolBase):
         super(CopeFilterTool, self).run()
 
         with self.get_session() as session:
-            participant_ids = self._get_all_consented_participant_ids(session)
+            participant_ids = ParticipantSummaryDao.get_all_consented_participant_ids(session)
             cope_survey_codes = ['cope_feb', 'cope_vaccine1', 'cope_vaccine2', 'cope_vaccine3', 'cope_vaccine4']
             invalid_answer_ids = set()
 
@@ -252,11 +252,6 @@ class CopeFilterTool(ToolBase):
                     syncronize_session=False
                 )
                 session.commit()
-
-    @classmethod
-    def _get_all_consented_participant_ids(cls, session):
-        db_results = session.query(ParticipantSummary.participantId).all()
-        return [obj.participantId for obj in db_results]
 
     @classmethod
     def _get_invalid_answers_in_cope_responses(cls, responses: ParticipantResponses):

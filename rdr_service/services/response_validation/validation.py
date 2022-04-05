@@ -1,10 +1,16 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import auto, Enum
-from typing import Dict, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
+from dateutil.parser import parse
+from sqlalchemy.orm import Session
+
+from rdr_service.code_constants import PMI_SKIP_CODE
 from rdr_service.domain_model import response as response_domain_model
-
+from rdr_service.model.code import Code
+from rdr_service.model.survey import Survey, SurveyQuestion, SurveyQuestionType
 
 class _Requirement(ABC):
     """
@@ -73,7 +79,7 @@ class CanOnlyBeAnsweredIf(_Requirement):
         if answers and not self.condition.passes():
             for answer in answers:
                 answer.is_valid = False
-            return [ValidationError(question_code, [answer.id for answer in answers])]
+            return [ValidationError(question_code, [answer.id for answer in answers], reason='branching error')]
 
         return []
 
@@ -295,6 +301,7 @@ class _HasSelectedOption(Condition):
 class ValidationError:
     question_code: str
     answer_id: Sequence[int]
+    reason: str
 
 
 class ResponseRequirements:
@@ -590,3 +597,170 @@ class _BranchingLogicParser(_BaseParser):
 
             or_ops = [process_sub_group(sub_group) for sub_group in sub_groups]
             return And(or_ops)
+
+
+class ResponseValidator:
+    def __init__(self, survey_definition: Survey, session: Session):
+        self._survey_definition = survey_definition
+        self._branching_logic: ResponseRequirements = self._build_branching_logic_checker()
+        self._question_definition_map: Dict[str, SurveyQuestion] = self._build_question_definition_map()
+
+        self.skip_code_id = session.query(Code.codeId).filter(Code.value == PMI_SKIP_CODE).scalar()
+        if self.skip_code_id is None:
+            raise Exception('Unable to load PMI_SKIP code')
+
+    def _build_branching_logic_checker(self) -> ResponseRequirements:
+        branching_logic_requirements = {
+            question.code.value: CanOnlyBeAnsweredIf(
+                Condition.from_branching_logic(question.branching_logic)
+            )
+            for question in self._survey_definition.questions
+            if question.branching_logic
+        }
+        return ResponseRequirements(branching_logic_requirements)
+
+    def _build_question_definition_map(self) -> Dict[str, SurveyQuestion]:
+        return {question.code.value: question for question in self._survey_definition.questions}
+
+    def get_errors_in_responses(self, participant_responses: response_domain_model.ParticipantResponses):
+        errors_by_question = defaultdict(list)
+        for response in participant_responses.in_authored_order:
+            # self._check_for_definition_errors(response, errors_by_question)
+
+            branching_errors = self._branching_logic.check_for_errors(response)
+            for error in branching_errors:
+                errors_by_question[error.question_code].append(error)
+
+        self._branching_logic.reset_state()
+        return dict(errors_by_question)
+
+    def _check_for_definition_errors(self, response: response_domain_model.Response,
+                                     errors_by_question: Dict[str, List[ValidationError]]):
+        for question in self._survey_definition.questions:
+            question_code_str = question.code.value
+            answers = response.get_answers_for(question_code_str)
+
+            if answers:
+                if len(answers) == 1 and answers[0].data_type == response_domain_model.DataType.CODE and \
+                        answers[0].value == PMI_SKIP_CODE:
+                    continue  # Any question can be skipped, no need to check for datatype and min/max if it's skipped
+
+                if question.questionType in [
+                    SurveyQuestionType.DROPDOWN, SurveyQuestionType.RADIO, SurveyQuestionType.CHECKBOX
+                ]:
+                    if question.questionType != SurveyQuestionType.CHECKBOX and len(answers) > 1:
+                        # is radio or dropdown, should only have one answer
+                        errors_by_question[question_code_str].append(
+                            ValidationError(
+                                question_code_str,
+                                answer_id=[answer.id for answer in answers],
+                                reason=f'more than one answer to question of type "{question.questionType}"'
+                            )
+                        )
+
+                    for answer in answers:
+                        if answer.data_type != response_domain_model.DataType.CODE:
+                            errors_by_question[question_code_str].append(
+                                ValidationError(
+                                    question_code_str,
+                                    [answer.id],
+                                    reason=f'Code answer expected, but gave {str(answer.data_type)}'
+                                )
+                            )
+
+                        if answer.value not in [option.code.value for option in question.options]:
+                            errors_by_question[question_code_str].append(
+                                ValidationError(
+                                    question_code_str,
+                                    [answer.id],
+                                    reason=f'Question answered with unexpected code "{answer.value}"'
+                                )
+                            )
+
+                elif question.questionType in [SurveyQuestionType.TEXT, SurveyQuestionType.NOTES]:
+                    if len(answers) > 1:
+                        errors_by_question[question_code_str].append(
+                            ValidationError(
+                                question_code_str,
+                                answer_id=[answer.id for answer in answers],
+                                reason=f'more than one answer to question of type "{question.questionType}"'
+                            )
+                        )
+                    elif len(answers) == 1:
+                        answer = answers[0]
+                        if not question.validation:
+                            if answer.data_type != response_domain_model.DataType.STRING:
+                                errors_by_question[question_code_str].append(
+                                    ValidationError(
+                                        question_code_str,
+                                        [answer.id],
+                                        reason=f'Text answer expected, but gave {str(answer.data_type)}'
+                                    )
+                                )
+                        else:
+                            min_value = None
+                            max_value = None
+                            if question.validation.startswith('date'):
+                                if answer.data_type not in [
+                                    response_domain_model.DataType.DATE, response_domain_model.DataType.DATETIME
+                                ]:
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason=f'Date answer expected, but gave {str(answer.data_type)}'
+                                        )
+                                    )
+                                answer_value = parse(answer.value)
+                                if question.validation_min:
+                                    min_value = parse(question.validation_min)
+                                if question.validation_max:
+                                    max_value = parse(question.validation_max)
+                            elif question.validation == 'integer':
+                                if answer.data_type != response_domain_model.DataType.INTEGER:
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason=f'Integer answer expected, but gave {str(answer.data_type)}'
+                                        )
+                                    )
+                                answer_value = None
+                                try:
+                                    answer_value = int(answer.value)
+                                except ValueError:
+                                    errors_by_question[question_code_str].append(
+                                        ValidationError(
+                                            question_code_str,
+                                            [answer.id],
+                                            reason=f'Unable to parse integer value, found "{answer.value}"'
+                                        )
+                                    )
+                                if answer_value:
+                                    if question.validation_min:
+                                        min_value = int(question.validation_min)
+                                    if question.validation_max:
+                                        max_value = int(question.validation_max)
+                            else:
+                                raise Exception(
+                                    f'Unexpected validation string for question, got "{question.validation}"'
+                                )
+
+                            if min_value and answer_value < min_value:
+                                errors_by_question[question_code_str].append(
+                                    ValidationError(
+                                        question_code_str,
+                                        [answer.id],
+                                        reason=f'Answer lower than minimum value'
+                                    )
+                                )
+                            if max_value and answer_value > max_value:
+                                errors_by_question[question_code_str].append(
+                                    ValidationError(
+                                        question_code_str,
+                                        [answer.id],
+                                        reason=f'Answer higher than maximum value'
+                                    )
+                                )
+                else:
+                    raise Exception(f'Unrecognized question type "{question.questionType}"')
