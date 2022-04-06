@@ -71,7 +71,8 @@ class GenomicJobController:
         bq_project_id=None,
         task_data=None,
         server_config=None,
-        max_num=None
+        max_num=None,
+        cvl_site_id='rdr'
     ):
 
         self.job_id = job_id
@@ -92,7 +93,7 @@ class GenomicJobController:
         self.max_num = max_num
         self.member_ids_for_update = []
         self.manifests_generated = []
-        self.cvl_site_id = 'rdr'
+        self.cvl_site_id = cvl_site_id
 
         # Components
         self.set_dao = GenomicSetDao()
@@ -1152,6 +1153,8 @@ class GenomicJobController:
             max_num=self.max_num,
             controller=self
         )
+
+        # TODO: need to insert result workflow states
 
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')

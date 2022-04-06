@@ -76,7 +76,6 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
-    CVL_W1_MANIFEST_SUBFOLDER,
     CVL_W3_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
@@ -85,7 +84,7 @@ from rdr_service.config import (
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
-    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W3SR_MANIFEST_SUBFOLDER
+    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W1IL_MANIFEST_SUBFOLDER, CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -3356,6 +3355,38 @@ class ManifestDefinitionProvider:
                 "ai_an",
                 "site_id",
             ),
+            GenomicManifestTypes.CVL_W1IL_PGX: (
+                'biobank_id',
+                'sample_id',
+                'vcf_raw_path',
+                'vcf_raw_index_path',
+                'vcf_raw_md5_path',
+                'cram_name',
+                'sex_at_birth',
+                'ny_flag',
+                'genome_center',
+                'consent_for_gror',
+                'genome_type',
+                'informing_loop_pgx',
+                'aou_hdr_coverage',
+                'contamination'
+            ),
+            GenomicManifestTypes.CVL_W1IL_HDR: (
+                'biobank_id',
+                'sample_id',
+                'vcf_raw_path',
+                'vcf_raw_index_path',
+                'vcf_raw_md5_path',
+                'cram_name',
+                'sex_at_birth',
+                'ny_flag',
+                'genome_center',
+                'consent_for_gror',
+                'genome_type',
+                'informing_loop_hdr',
+                'aou_hdr_coverage',
+                'contamination'
+            ),
             GenomicManifestTypes.CVL_W3SR: (
                 "biobank_id",
                 "sample_id",
@@ -3446,11 +3477,6 @@ class ManifestDefinitionProvider:
         """
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         def_config = {
-            GenomicManifestTypes.CVL_W1: {
-                'job_run_field': 'cvlW1ManifestJobRunId',
-                'output_filename': f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
-            },
             GenomicManifestTypes.GEM_A1: {
                 'job_run_field': 'gemA1ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
@@ -3465,6 +3491,28 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW3ManifestJobRunID',
                 'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
                 'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.CVL_W1IL_PGX: {
+                'job_run_field': 'cvlW1ilPgxJobRunId',
+                'output_filename':
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_PGX_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'params': {
+                    'module': 'pgx',
+                    'cvl_id': self.cvl_site_id
+                }
+            },
+            GenomicManifestTypes.CVL_W1IL_HDR: {
+                'job_run_field': 'cvlW1ilHdrJobRunId',
+                'output_filename':
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_HDR_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'params': {
+                    'module': 'hdr',
+                    'cvl_id': self.cvl_site_id
+                }
             },
             GenomicManifestTypes.CVL_W3SR: {
                 'job_run_field': 'cvlW3srManifestJobRunID',
