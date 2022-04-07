@@ -967,7 +967,7 @@ class GenomicFileIngester:
         csv_reader = csv.DictReader(csv_file, delimiter=",")
         data_to_ingest['fieldnames'] = csv_reader.fieldnames
         for row in csv_reader:
-            for key in row:
+            for key in row.copy():
                 if not key:
                     del row[key]
             data_to_ingest['rows'].append(row)
