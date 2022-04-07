@@ -85,7 +85,7 @@ class ResponseDuplicationDetector:
         # bigquery_sync table
 
         if not session:
-            raise RuntimeError(f'Must supply an active session object to perform database operations')
+            raise RuntimeError('Must supply an active session object to perform database operations')
 
         # Delete any records for pdr_mod_* tables that have a pk_id (questionnaire_response_id) that
         # has been marked as duplicate.  Limit how many records are being deleted per commit and inject a brief delay
