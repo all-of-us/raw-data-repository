@@ -64,6 +64,7 @@ CVL_W1_MANIFEST_SUBFOLDER = "w1_wgs_cvl_manifests"
 CVL_W2_MANIFEST_SUBFOLDER = "w2_wgs_cvl_manifests"
 CVL_W3_MANIFEST_SUBFOLDER = "w3_wgs_cvl_manifests"
 CVL_W1IL_MANIFEST_SUBFOLDER = "W1IL_manifests"
+CVL_W2W_MANIFEST_SUBFOLDER = "W2W_manifests"
 CVL_W3SR_MANIFEST_SUBFOLDER = "W3SR_manifests"
 GENOMIC_AW2_SUBFOLDERS = ("aw2_wgs_data_manifest_subfolder_name", "aw2_genotyping_data_manifest_subfolder_name")
 GENOMIC_AW5_WGS_SUBFOLDERS = "aw5_wgs_data_manifest_subfolder_name"

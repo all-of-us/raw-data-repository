@@ -173,6 +173,20 @@ def cvl_w1il_manifest_workflow(cvl_site_bucket_map, module_type):
             controller.generate_manifest(manifest_type, _genome_type=config.GENOME_TYPE_WGS)
 
 
+def cvl_w2w_manifest_workflow(cvl_site_bucket_map):
+    for site_id in config.GENOMIC_CVL_SITES:
+        cvl_bucket_name_key = cvl_site_bucket_map[site_id]
+        with GenomicJobController(
+            GenomicJob.CVL_W2W_WORKFLOW,
+            bucket_name=cvl_bucket_name_key,
+            cvl_site_id=site_id
+        ) as controller:
+            controller.generate_manifest(
+                manifest_type=GenomicManifestTypes.CVL_W2W,
+                _genome_type=config.GENOME_TYPE_WGS
+            )
+
+
 def cvl_w3sr_manifest_workflow():
     """
     Entrypoint for CVL W3SR Workflow

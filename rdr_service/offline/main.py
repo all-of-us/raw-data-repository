@@ -557,6 +557,14 @@ def genomic_cvl_w1il_hdr_workflow():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('cvl_w2w_manifest_workflow')
+@interval_run_schedule(GenomicJob.CVL_W2W_WORKFLOW, 'skip_week')
+def genomic_cvl_w2w_workflow():
+    genomic_pipeline.cvl_w2w_manifest_workflow()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('cvl_w3sr_manifest_workflow')
 @interval_run_schedule(GenomicJob.CVL_W3SR_WORKFLOW, 'skip_week')
 def genomic_cvl_w3sr_workflow():
@@ -921,6 +929,12 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicCVLW1ILHdrWorkflow",
         endpoint="genomic_cvl_w1il_hdr_workflow",
         view_func=genomic_cvl_w1il_hdr_workflow,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "GenomicCVLW2WWorkflow",
+        endpoint="genomic_cvl_w2w_workflow",
+        view_func=genomic_cvl_w2w_workflow,
         methods=["GET"]
     )
     offline_app.add_url_rule(
