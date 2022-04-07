@@ -66,3 +66,18 @@ class GenomicDataGenOutputTemplate(Base, DatagenBase):
 
 event.listen(GenomicDataGenOutputTemplate, "before_insert", model_insert_listener)
 event.listen(GenomicDataGenOutputTemplate, "before_update", model_update_listener)
+
+
+class GenomicDataGenManifestSchema(Base, DatagenBase):
+
+    __tablename__ = 'genomic_datagen_manifest_schema'
+    project_name = Column(String(255), nullable=False)
+    template_name = Column(String(255), nullable=False)
+    field_index = Column(SmallInteger, nullable=False)
+    field_name = Column(String(255), nullable=False)
+    source_type = Column(String(255), nullable=False)
+    source_value = Column(String(255), nullable=False)
+
+
+event.listen(GenomicDataGenManifestSchema, "before_insert", model_insert_listener)
+event.listen(GenomicDataGenManifestSchema, "before_update", model_update_listener)
