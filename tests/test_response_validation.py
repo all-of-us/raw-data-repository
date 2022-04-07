@@ -1,8 +1,9 @@
 from datetime import datetime
+import mock
 from typing import Dict, List, Tuple
 
 from rdr_service.model.questionnaire_response import QuestionnaireResponseStatus
-from rdr_service.domain_model.response import Answer, Response
+from rdr_service.domain_model.response import Answer, DataType, Response
 from rdr_service.services.response_validation.validation import And, CanOnlyBeAnsweredIf, ResponseRequirements, \
     InAnySurvey, Or, Question, ValidationError, Condition
 from tests.helpers.unittest_base import BaseTestCase
@@ -27,7 +28,7 @@ class TestValidation(BaseTestCase):
             'question_b': [(3, 'anything')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[3], question_code='question_b')],
+            [ValidationError(answer_id=[3], question_code='question_b', reason=mock.ANY)],
             response_validation.check_for_errors(response_not_answering_a)
         )
 
@@ -36,7 +37,7 @@ class TestValidation(BaseTestCase):
             'question_a': [(5, 'something')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[4], question_code='question_b')],
+            [ValidationError(answer_id=[4], question_code='question_b', reason=mock.ANY)],
             response_validation.check_for_errors(response_wrong_answer_to_a)
         )
 
@@ -69,8 +70,8 @@ class TestValidation(BaseTestCase):
         actual = response_validation.check_for_errors(response_without_answer_to_a)
         self.assertEqual(
             [
-                ValidationError(answer_id=[3], question_code='question_b'),
-                ValidationError(answer_id=[4], question_code='question_c'),
+                ValidationError(answer_id=[3], question_code='question_b', reason=mock.ANY),
+                ValidationError(answer_id=[4], question_code='question_c', reason=mock.ANY),
             ],
             actual
         )
@@ -93,7 +94,7 @@ class TestValidation(BaseTestCase):
             'question_d': [(5, 'ans_d')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[5], question_code='question_d')],
+            [ValidationError(answer_id=[5], question_code='question_d', reason=mock.ANY)],
             response_validation.check_for_errors(response_skipped_a)
         )
 
@@ -104,7 +105,7 @@ class TestValidation(BaseTestCase):
             'question_d': [(5, 'ans_d')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[5], question_code='question_d')],
+            [ValidationError(answer_id=[5], question_code='question_d', reason=mock.ANY)],
             response_validation.check_for_errors(response_wrong_answer_a)
         )
 
@@ -147,7 +148,7 @@ class TestValidation(BaseTestCase):
             'question_d': [(5, 'ans_d')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[5], question_code='question_d')],
+            [ValidationError(answer_id=[5], question_code='question_d', reason=mock.ANY)],
             response_validation.check_for_errors(response_wrong_answer_all)
         )
 
@@ -180,7 +181,7 @@ class TestValidation(BaseTestCase):
             'question_b': [(4, 'anything')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[4], question_code='question_b')],
+            [ValidationError(answer_id=[4], question_code='question_b', reason=mock.ANY)],
             response_validation.check_for_errors(response_to_b)
         )
 
@@ -194,7 +195,7 @@ class TestValidation(BaseTestCase):
             'question_b': [(8, 'anything')]
         })
         self.assertEqual(
-            [ValidationError(answer_id=[8], question_code='question_b')],
+            [ValidationError(answer_id=[8], question_code='question_b', reason=mock.ANY)],
             response_validation.check_for_errors(response_to_b)
         )
 
@@ -220,7 +221,7 @@ class TestValidation(BaseTestCase):
             authored_datetime=datetime.now(),
             status=QuestionnaireResponseStatus.COMPLETED,
             answered_codes={
-                question_code: [Answer(ans_id, val) for ans_id, val in answer_list]
+                question_code: [Answer(ans_id, val, DataType.STRING) for ans_id, val in answer_list]
                 for question_code, answer_list in answers.items()
             }
         )
