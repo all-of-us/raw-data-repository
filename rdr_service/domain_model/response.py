@@ -45,22 +45,28 @@ class Response:
             and any([answer.is_valid for answer in self.answered_codes[question_code_str]])
         )
 
-    def get_answers_for(self, question_code_str) -> Optional[List['Answer']]:
+    def get_answers_for(self, question_code_str, allow_invalid=False, allow_skips=False) -> Optional[List['Answer']]:
+        if question_code_str not in self.answered_codes:
+            return None
+
         if (
-            question_code_str not in self.answered_codes
-            or not any([answer.is_valid for answer in self.answered_codes[question_code_str]])
+            not allow_invalid
+            and not any([answer.is_valid for answer in self.answered_codes[question_code_str]])
         ):
             return None
 
-        return [answer for answer in self.answered_codes[question_code_str] if answer.is_valid]
+        return [
+            answer for answer in self.answered_codes[question_code_str]
+            if (answer.is_valid or allow_invalid) and (answer.value != 'pmi_skip' or allow_skips)
+        ]
 
-    def get_single_answer_for(self, question_code_str):
-        answers = self.get_answers_for(question_code_str)
+    def get_single_answer_for(self, question_code_str, allow_invalid=False, allow_skips=False):
+        answers = self.get_answers_for(question_code_str, allow_invalid=allow_invalid, allow_skips=allow_skips)
         if not answers:
             return None
 
         if len(answers) > 1 and len({answer.value for answer in answers}) > 1:
-            raise Exception(f'Too many answers found for question "{question_code_str}" (responsed id {self.id})')
+            raise Exception(f'Too many answers found for question "{question_code_str}" (response id {self.id})')
         else:
             return answers[0]
 
