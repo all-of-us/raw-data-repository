@@ -17,6 +17,7 @@ from rdr_service import clock, config
 from rdr_service.dao.code_dao import CodeDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.genomic import genomic_mappings
+from rdr_service.genomic_enums import ResultsModuleType
 from rdr_service.genomic.genomic_data import GenomicQueryClass
 from rdr_service.genomic.genomic_state_handler import GenomicStateHandler
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
@@ -24,7 +25,6 @@ from rdr_service.model.code import Code
 from rdr_service.model.participant_summary import ParticipantRaceAnswers, ParticipantSummary
 from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.resource.generators.genomics import genomic_user_event_metrics_batch_update
-from rdr_service.services.jira_utils import JiraTicketHandler
 from rdr_service.api_util import (
     open_cloud_file,
     copy_cloud_file,
@@ -61,7 +61,8 @@ from rdr_service.dao.genomics_dao import (
     GenomicGcDataFileMissingDao,
     GenomicIncidentDao,
     UserEventMetricsDao,
-    GenomicAW4RawDao, GenomicAW3RawDao, GenomicQueriesDao, GenomicW2SCRawDao, GenomicW3SRRawDao)
+    GenomicQueriesDao,
+    GenomicCVLAnalysisDao, GenomicResultWorkflowStateDao, GenomicCVLSecondSampleDao)
 from rdr_service.dao.biobank_stored_sample_dao import BiobankStoredSampleDao
 from rdr_service.dao.site_dao import SiteDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
@@ -75,17 +76,15 @@ from rdr_service.offline.sql_exporter import SqlExporter
 from rdr_service.config import (
     getSetting,
     GENOMIC_CVL_RECONCILIATION_REPORT_SUBFOLDER,
-    CVL_W1_MANIFEST_SUBFOLDER,
     CVL_W3_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A1_MANIFEST_SUBFOLDER,
     GENOMIC_GEM_A3_MANIFEST_SUBFOLDER,
     GENOME_TYPE_ARRAY,
     GENOME_TYPE_WGS,
-    GAE_PROJECT,
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
-    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W3SR_MANIFEST_SUBFOLDER
+    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W1IL_MANIFEST_SUBFOLDER, CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -131,7 +130,11 @@ class GenomicFileIngester:
         self.manifest_dao = GenomicManifestFileDao()
         self.incident_dao = GenomicIncidentDao()
         self.user_metrics_dao = UserEventMetricsDao()
+        self.cvl_analysis_dao = GenomicCVLAnalysisDao()
+        self.results_workflow_dao = GenomicResultWorkflowStateDao()
+        self.analysis_cols = self.cvl_analysis_dao.model_type.__table__.columns.keys()
         self.set_dao = None
+        self.cvl_second_sample_dao = None
 
     def generate_file_processing_queue(self):
         """
@@ -237,7 +240,6 @@ class GenomicFileIngester:
 
     @staticmethod
     def _clean_row_keys(val):
-
         def str_clean(str_val):
             return str_val.lower() \
                 .replace(' ', '') \
@@ -274,14 +276,18 @@ class GenomicFileIngester:
                 GenomicJob.METRICS_INGESTION: self._process_gc_metrics_data_for_insert,
                 GenomicJob.GEM_A2_MANIFEST: self._ingest_gem_a2_manifest,
                 GenomicJob.GEM_METRICS_INGEST: self._ingest_gem_metrics_manifest,
-                GenomicJob.W2_INGEST: self._ingest_cvl_w2_manifest,
                 GenomicJob.AW4_ARRAY_WORKFLOW: self._ingest_aw4_manifest,
                 GenomicJob.AW4_WGS_WORKFLOW: self._ingest_aw4_manifest,
                 GenomicJob.AW1C_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW1CF_INGEST: self._ingest_aw1c_manifest,
                 GenomicJob.AW5_ARRAY_MANIFEST: self._ingest_aw5_manifest,
                 GenomicJob.AW5_WGS_MANIFEST: self._ingest_aw5_manifest,
-                GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest
+                GenomicJob.CVL_W2SC_WORKFLOW: self._ingest_cvl_w2sc_manifest,
+                GenomicJob.CVL_W3NS_WORKFLOW: self._ingest_cvl_w3ns_manifest,
+                GenomicJob.CVL_W3SS_WORKFLOW: self._ingest_cvl_w3ss_manifest,
+                GenomicJob.CVL_W3SC_WORKFLOW: self._ingest_cvl_w3sc_manifest,
+                GenomicJob.CVL_W4WR_WORKFLOW: self._ingest_cvl_w4wr_manifest,
+                GenomicJob.CVL_W5NF_WORKFLOW: self._ingest_cvl_w5nf_manifest
             }
 
             self.file_validator.valid_schema = None
@@ -303,14 +309,14 @@ class GenomicFileIngester:
 
                 return validation_result
 
-            self._set_manifest_file_resolved()
-
             try:
-                ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
                 ingestion_type = ingestion_map[self.job_id]
+                ingestions = self._set_data_ingest_iterations(data_to_ingest['rows'])
 
                 for row in ingestions:
                     ingestion_type(row)
+
+                self._set_manifest_file_resolved()
 
                 return GenomicSubProcessResult.SUCCESS
 
@@ -541,27 +547,12 @@ class GenomicFileIngester:
             session.add(new_set)
         return new_set
 
-    def load_raw_awn_file(self):
+    def load_raw_awn_file(self, raw_dao):
         """
         Loads raw models with raw data from manifests file
         Ex: genomic_aw1_raw => aw1_manifest
         :return:
         """
-        # Set manifest-specific variables
-        raw_dao_map = {
-            GenomicJob.LOAD_AW1_TO_RAW_TABLE: GenomicAW1RawDao,
-            GenomicJob.LOAD_AW2_TO_RAW_TABLE: GenomicAW2RawDao,
-            GenomicJob.LOAD_AW3_TO_RAW_TABLE: GenomicAW3RawDao,
-            GenomicJob.LOAD_AW4_TO_RAW_TABLE: GenomicAW4RawDao,
-            GenomicJob.LOAD_CVL_W2SC_TO_RAW_TABLE: GenomicW2SCRawDao,
-            GenomicJob.LOAD_CVL_W3SR_TO_RAW_TABLE: GenomicW3SRRawDao,
-        }
-
-        raw_dao = raw_dao_map.get(self.controller.job_id)
-
-        if not raw_dao:
-            logging.error("Job ID not valid load raw job.")
-            return GenomicSubProcessResult.ERROR
 
         dao = raw_dao()
 
@@ -1079,7 +1070,10 @@ class GenomicFileIngester:
         row_obj = {}
         row = self._clean_row_keys(row_data)
 
-        if self.controller.job_id == GenomicJob.LOAD_AW1_TO_RAW_TABLE:
+        if self.controller.job_id in [
+            GenomicJob.LOAD_AW1_TO_RAW_TABLE,
+            GenomicJob.LOAD_CVL_W3SS_TO_RAW_TABLE
+        ]:
             # adjusting for biobank fieldnames
             row = dict(zip([re.sub(r'\([^)]*\)', '', key)for key in row], row.values()))
             row = dict(zip([key.replace('/', '') for key in row], row.values()))
@@ -1244,43 +1238,64 @@ class GenomicFileIngester:
 
         self.member_dao.insert(new_member_wgs)
 
-    def _ingest_cvl_w2_manifest(self, rows):
-        """
-        Processes the CVL W2 manifest file data
-        :param rows:
-        :return: Result Code
-        """
-        try:
-            for row in rows:
-                # change all key names to lower
-                row_copy = self._clean_row_keys(row)
+    @staticmethod
+    def get_result_module(module_str):
+        results_attr_mapping = {
+            'hdrv1': ResultsModuleType.HDRV1,
+            'pgxv1': ResultsModuleType.PGXV1,
+        }
+        return results_attr_mapping.get(module_str)
 
-                biobank_id = row_copy['biobankid']
-                member = self.member_dao.get_member_from_biobank_id(biobank_id, GENOME_TYPE_WGS)
+    def _base_cvl_ingestion(self, **kwargs):
+        row_copy = self._clean_row_keys(kwargs.get('row'))
+        biobank_id = self._clean_alpha_values(row_copy['biobankid'])
+        sample_id = row_copy['sampleid']
 
-                if member is None:
-                    logging.warning(f'Invalid Biobank ID: {biobank_id}')
-                    continue
+        member = self.member_dao.get_member_from_biobank_id_and_sample_id(
+            biobank_id,
+            sample_id
+        )
 
-                member.genomeType = row_copy['testname']
-                member.cvlW2ManifestJobRunID = self.job_run_id
+        if not member:
+            logging.warning(f'Can not find genomic member record for biobank_id: '
+                            f'{biobank_id} and sample_id: {sample_id}, skipping...')
+            return
 
-                # update state and state modifed time only if changed
-                if member.genomicWorkflowState != GenomicStateHandler.get_new_state(
-                    member.genomicWorkflowState, signal='w2-ingestion-success'):
-                    member.genomicWorkflowState = GenomicStateHandler.get_new_state(
-                        member.genomicWorkflowState,
-                        signal='w2-ingestion-success')
+        setattr(member, kwargs.get('run_attr'), self.job_run_id)
+        self.member_dao.update(member)
 
-                    member.genomicWorkflowStateStr = member.genomicWorkflowState.name
-                    member.genomicWorkflowStateModifiedTime = clock.CLOCK.now()
+        # result workflow state
+        result_state_obj = self.results_workflow_dao.get_by_member_id(
+            member.id,
+            module_type=kwargs.get('module_type')
+        )
+        new_results_state = GenomicStateHandler.get_new_state(
+            result_state_obj.results_workflow_state,
+            signal=kwargs.get('signal')
+        )
+        if (new_results_state and result_state_obj) \
+                and (result_state_obj.results_workflow_state != new_results_state):
+            self.results_workflow_dao.update_workflow_state_record(
+                result_state_obj,
+                new_results_state
+            )
 
-                self.member_dao.update(member)
+        return row_copy, member
 
-            return GenomicSubProcessResult.SUCCESS
+    def _base_cvl_analysis_ingestion(self, row_copy, member):
+        # cvl analysis
+        analysis_cols_mapping = {}
+        for column in self.analysis_cols:
+            col_matched = row_copy.get(self._clean_row_keys(column))
+            if col_matched:
+                analysis_cols_mapping[column] = self._clean_row_keys(column)
 
-        except (RuntimeError, KeyError):
-            return GenomicSubProcessResult.ERROR
+        analysis_obj = self.cvl_analysis_dao.model_type()
+        setattr(analysis_obj, 'genomic_set_member_id', member.id)
+
+        for key, val in analysis_cols_mapping.items():
+            setattr(analysis_obj, key, row_copy[val])
+        self.cvl_analysis_dao.insert(analysis_obj)
 
     def _ingest_cvl_w2sc_manifest(self, rows):
         """
@@ -1290,28 +1305,168 @@ class GenomicFileIngester:
         """
         try:
             for row in rows:
-                row_copy = self._clean_row_keys(row)
-
-                biobank_id = row_copy['biobankid']
-                biobank_id = self._clean_alpha_values(biobank_id)
-                sample_id = row_copy['sampleid']
-
-                member = self.member_dao.get_member_from_biobank_id_and_sample_id(
-                    biobank_id,
-                    sample_id
+                self._base_cvl_ingestion(
+                    row=row,
+                    run_attr='cvlW2scManifestJobRunID',
+                    signal='secondary-confirmation',
+                    module_type=ResultsModuleType.HDRV1
                 )
 
-                if not member:
-                    logging.warning(f'Can not find genomic member record for biobank_id: '
-                                    f'{biobank_id} and sample_id: {sample_id}, skipping...')
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w3ns_manifest(self, rows):
+        """
+        Processes the CVL W3NS manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        try:
+            for row in rows:
+                self._base_cvl_ingestion(
+                    row=row,
+                    run_attr='cvlW3nsManifestJobRunID',
+                    signal='sample-unavailable',
+                    module_type=ResultsModuleType.HDRV1
+                )
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w3sc_manifest(self, rows):
+        """
+        Processes the CVL W3SC manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        try:
+            for row in rows:
+                row_copy, member = self._base_cvl_ingestion(
+                    row=row,
+                    run_attr='cvlW3scManifestJobRunID',
+                    signal='sample-failed',
+                    module_type=ResultsModuleType.HDRV1
+                )
+                if not (row_copy and member):
                     continue
 
-                member.cvlW2scManifestJobRunID = self.job_run_id
-                if member.genomicWorkflowState != GenomicWorkflowState.CVL_W2SC:
-                    member.genomicWorkflowState = GenomicWorkflowState.CVL_W2SC
-                    member.genomicWorkflowStateStr = GenomicWorkflowState.CVL_W2SC.name
-
+                member.cvlSecondaryConfFailure = row_copy['cvlsecondaryconffailure']
                 self.member_dao.update(member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w3ss_manifest(self, rows):
+        """
+        Processes the CVL W3SS manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        self.cvl_second_sample_dao = GenomicCVLSecondSampleDao()
+        sample_cols = self.cvl_second_sample_dao.model_type.__table__.columns.keys()
+        try:
+            for row in rows:
+                row_copy, member = self._base_cvl_ingestion(
+                    row=row,
+                    run_attr='cvlW3ssManifestJobRunID',
+                    signal='second-sample',
+                    module_type=ResultsModuleType.HDRV1
+                )
+                if not (row_copy and member):
+                    continue
+
+                row_copy = dict(zip([key.replace('/', '').split('(')[0] for key in row_copy],
+                                    row_copy.values()))
+
+                # cvl second sample
+                second_sample_obj = self.cvl_second_sample_dao.model_type()
+                setattr(second_sample_obj, 'genomic_set_member_id', member.id)
+                for col in sample_cols:
+                    cleaned_col = self._clean_row_keys(col)
+                    col_value = row_copy.get(cleaned_col)
+                    if col_value:
+                        setattr(second_sample_obj, col, col_value)
+
+                self.cvl_second_sample_dao.insert(second_sample_obj)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w4wr_manifest(self, rows):
+        """
+        Processes the CVL W4WR manifest file data
+        :param rows:
+        :return: Result Code
+        """
+        run_attr_mapping = {
+            'hdrv1': 'cvlW4wrHdrManifestJobRunID',
+            'pgxv1': 'cvlW4wrPgxManifestJobRunID'
+        }
+        run_id, module = None, None
+        for result_key in run_attr_mapping.keys():
+            if result_key in self.file_obj.fileName.lower():
+                run_id = run_attr_mapping[result_key]
+                module = self.get_result_module(result_key)
+                break
+        try:
+            for row in rows:
+                row_copy, member = self._base_cvl_ingestion(
+                                        row=row,
+                                        run_attr=run_id,
+                                        module_type=module
+                                    )
+                if not (row_copy and member):
+                    continue
+
+                self._base_cvl_analysis_ingestion(row_copy, member)
+
+            return GenomicSubProcessResult.SUCCESS
+
+        except (RuntimeError, KeyError):
+            return GenomicSubProcessResult.ERROR
+
+    def _ingest_cvl_w5nf_manifest(self, rows):
+        run_attr_mapping = {
+            'hdrv1': 'cvlW5nfHdrManifestJobRunID',
+            'pgxv1': 'cvlW5nfPgxManifestJobRunID'
+        }
+        run_id, module = None, None
+        for result_key in run_attr_mapping.keys():
+            if result_key in self.file_obj.fileName.lower():
+                run_id = run_attr_mapping[result_key]
+                module = self.get_result_module(result_key)
+                break
+        try:
+            for row in rows:
+                row_copy, member = self._base_cvl_ingestion(
+                                        row=row,
+                                        run_attr=run_id,
+                                        module_type=module,
+                                        signal='sample-failed'
+                                    )
+                if not (row_copy and member):
+                    continue
+
+                current_analysis = self.cvl_analysis_dao.get_passed_analysis_member_module(
+                    member.id,
+                    module
+                )
+                # should have initial record
+                if current_analysis:
+                    current_analysis.failed = 1
+                    current_analysis.failed_request_reason = row_copy['requestreason']
+                    current_analysis.failed_request_reason_free = row_copy['requestreasonfree']
+                    self.cvl_analysis_dao.update(current_analysis)
+
+                self._base_cvl_analysis_ingestion(row_copy, member)
 
             return GenomicSubProcessResult.SUCCESS
 
@@ -1578,6 +1733,7 @@ class GenomicFileValidator:
         }
 
         self.VALID_CVL_FACILITIES = ('rdr', 'co', 'uw', 'bcm')
+        self.CVL_ANALYSIS_TYPES = ('hdrv1', 'pgxv1')
         self.VALID_GENOME_CENTERS = ('uw', 'bam', 'bcm', 'bi', 'jh', 'rdr')
         self.DRC_BROAD = 'drc_broad'
 
@@ -1643,6 +1799,68 @@ class GenomicFileValidator:
         self.CVL_W2SC_SCHEMA = (
             "biobankid",
             "sampleid",
+        )
+
+        self.CVL_W3NS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "unavailablereason"
+        )
+
+        self.CVL_W3SC_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "cvlsecondaryconffailure"
+        )
+
+        self.CVL_W3SS_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "packageid",
+            "version",
+            "boxstorageunitid",
+            "boxid/plateid",
+            "wellposition",
+            "cvlsampleid",
+            "parentsampleid",
+            "collectiontubeid",
+            "matrixid",
+            "collectiondate",
+            "sexatbirth",
+            "age",
+            "nystate(y/n)",
+            "sampletype",
+            "treatments",
+            "quantity(ul)",
+            "totalconcentration(ng/ul)",
+            "totaldna(ng)",
+            "visitdescription",
+            "samplesource",
+            "study",
+            "trackingnumber",
+            "contact",
+            "email",
+            "studypi",
+            "sitename",
+            "genometype",
+            "failuremode",
+            "failuremodedesc"
+        )
+
+        self.CVL_W4WR_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "healthrelateddatafilename",
+            "clinicalanalysistype"
+        )
+
+        self.CVL_W5NF_SCHEMA = (
+            "biobankid",
+            "sampleid",
+            "requestreason",
+            "requestreasonfree",
+            "healthrelateddatafilename",
+            "clinicalanalysistype"
         )
 
         self.AW4_ARRAY_SCHEMA = (
@@ -1879,20 +2097,6 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
-        def cvl_w2_manifest_name_rule():
-            """
-            CVL W2 (secondary validation) manifest name rule
-            UW_AoU_CVL_RequestValidation_Date.csv
-            """
-            return (
-                len(filename_components) == 5 and
-                filename_components[0] in self.VALID_CVL_FACILITIES and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename_components[3] == 'requestvalidation' and
-                filename.lower().endswith('csv')
-            )
-
         def cvl_w2sc_manifest_name_rule():
             """
             CVL W2SC (secondary confirmation) manifest name rule
@@ -1906,6 +2110,76 @@ class GenomicFileValidator:
                 filename.lower().endswith('csv')
             )
 
+        def cvl_w3ns_manifest_name_rule():
+            """
+            CVL W3NS manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w3ns' and
+                filename.lower().endswith('csv')
+            )
+
+        def cvl_w3sc_manifest_name_rule():
+            """
+            CVL W3SC manifest name rule
+            """
+            return (
+                len(filename_components) == 5 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w3sc' and
+                filename.lower().endswith('csv')
+            )
+
+        def cvl_w3ss_manifest_name_rule():
+            """
+            CVL W3SS manifest name rule
+            """
+            return (
+                len(filename_components) == 4 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                'pkg' in filename_components[3] and
+                filename.lower().endswith('csv')
+            )
+
+        def cvl_w4wr_manifest_name_rule():
+            """
+            CVL W4WR manifest name rule
+            """
+            return (
+                len(filename_components) == 6 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w4wr' and
+                filename_components[4] in
+                [k.lower() for k in ResultsModuleType.to_dict().keys()]
+                and filename.lower().endswith('csv')
+            )
+
+        def cvl_w5nf_manifest_name_rule():
+            """
+            CVL W5NF manifest name rule
+            """
+            return (
+                len(filename_components) == 7 and
+                filename_components[0] in self.VALID_CVL_FACILITIES and
+                filename_components[1] == 'aou' and
+                filename_components[2] == 'cvl' and
+                filename_components[3] == 'w5nf' and
+                filename_components[4] in
+                [k.lower() for k in ResultsModuleType.to_dict().keys()]
+                and filename_components[5].isalnum() and
+                filename.lower().endswith('csv')
+            )
+
         def gem_a2_manifest_name_rule():
             """GEM A2 manifest name rule: i.e. AoU_GEM_A2_manifest_2020-07-11-00-00-00.csv"""
             return (
@@ -1913,25 +2187,6 @@ class GenomicFileValidator:
                 filename_components[0] == 'aou' and
                 filename_components[1] == 'gem' and
                 filename_components[2] == 'a2' and
-                filename.lower().endswith('csv')
-            )
-
-        def cvl_aw1c_manifest_name_rule():
-            """AW1C Biobank to CVLs manifest name rule"""
-            return (
-                filename_components[0] in self.VALID_GENOME_CENTERS and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename.lower().endswith('csv')
-            )
-
-        def cvl_aw1cf_manifest_name_rule():
-            """AW1F Biobank to CVLs manifest name rule"""
-            return (
-                filename_components[0] in self.VALID_GENOME_CENTERS and
-                filename_components[1] == 'aou' and
-                filename_components[2] == 'cvl' and
-                filename_components[4] == 'failure.csv' and
                 filename.lower().endswith('csv')
             )
 
@@ -1970,24 +2225,26 @@ class GenomicFileValidator:
             # don't have name convention right now, if have in the future, add here
             return filename.lower().endswith('csv')
 
-        name_rules = {
+        ingestion_name_rules = {
             GenomicJob.METRICS_INGESTION: gc_validation_metrics_name_rule,
             GenomicJob.AW1_MANIFEST: bb_to_gc_manifest_name_rule,
             GenomicJob.AW1F_MANIFEST: aw1f_manifest_name_rule,
             GenomicJob.GEM_A2_MANIFEST: gem_a2_manifest_name_rule,
-            GenomicJob.W2_INGEST: cvl_w2_manifest_name_rule,
-            GenomicJob.AW1C_INGEST: cvl_aw1c_manifest_name_rule,
-            GenomicJob.AW1CF_INGEST: cvl_aw1cf_manifest_name_rule,
             GenomicJob.AW4_ARRAY_WORKFLOW: aw4_arr_manifest_name_rule,
             GenomicJob.AW4_WGS_WORKFLOW: aw4_wgs_manifest_name_rule,
             GenomicJob.GEM_METRICS_INGEST: gem_metrics_name_rule,
             GenomicJob.AW5_WGS_MANIFEST: aw5_wgs_manifest_name_rule,
             GenomicJob.AW5_ARRAY_MANIFEST: aw5_array_manifest_name_rule,
-            GenomicJob.CVL_W2SC_WORKFLOW: cvl_w2sc_manifest_name_rule
+            GenomicJob.CVL_W2SC_WORKFLOW: cvl_w2sc_manifest_name_rule,
+            GenomicJob.CVL_W3NS_WORKFLOW: cvl_w3ns_manifest_name_rule,
+            GenomicJob.CVL_W3SC_WORKFLOW: cvl_w3sc_manifest_name_rule,
+            GenomicJob.CVL_W3SS_WORKFLOW: cvl_w3ss_manifest_name_rule,
+            GenomicJob.CVL_W4WR_WORKFLOW: cvl_w4wr_manifest_name_rule,
+            GenomicJob.CVL_W5NF_WORKFLOW: cvl_w5nf_manifest_name_rule
         }
 
         try:
-            is_valid_filename = name_rules[self.job_id]()
+            is_valid_filename = ingestion_name_rules[self.job_id]()
             return is_valid_filename
 
         except KeyError:
@@ -2055,7 +2312,7 @@ class GenomicFileValidator:
         """
         Sets schema via the job id
         :return: schema_to_validate,
-            (tuple from the CSV_SCHEMA or result code of INVALID_FILE_NAME).
+        (tuple from the CSV_SCHEMA or result code of INVALID_FILE_NAME).
         """
         try:
             if self.job_id == GenomicJob.METRICS_INGESTION:
@@ -2068,8 +2325,6 @@ class GenomicFileValidator:
                 return self.AW1_MANIFEST_SCHEMA  # AW1F and AW1 use same schema
             if self.job_id == GenomicJob.GEM_METRICS_INGEST:
                 return self.GEM_METRICS_SCHEMA
-            if self.job_id == GenomicJob.W2_INGEST:
-                return self.CVL_W2_SCHEMA
             if self.job_id == GenomicJob.AW4_ARRAY_WORKFLOW:
                 return self.AW4_ARRAY_SCHEMA
             if self.job_id == GenomicJob.AW4_WGS_WORKFLOW:
@@ -2084,6 +2339,16 @@ class GenomicFileValidator:
                 return self.AW5_ARRAY_SCHEMA
             if self.job_id == GenomicJob.CVL_W2SC_WORKFLOW:
                 return self.CVL_W2SC_SCHEMA
+            if self.job_id == GenomicJob.CVL_W3NS_WORKFLOW:
+                return self.CVL_W3NS_SCHEMA
+            if self.job_id == GenomicJob.CVL_W3SC_WORKFLOW:
+                return self.CVL_W3SC_SCHEMA
+            if self.job_id == GenomicJob.CVL_W3SS_WORKFLOW:
+                return self.CVL_W3SS_SCHEMA
+            if self.job_id == GenomicJob.CVL_W4WR_WORKFLOW:
+                return self.CVL_W4WR_SCHEMA
+            if self.job_id == GenomicJob.CVL_W5NF_WORKFLOW:
+                return self.CVL_W5NF_SCHEMA
 
         except (IndexError, KeyError):
             return GenomicSubProcessResult.ERROR
@@ -2241,7 +2506,7 @@ class GenomicReconciler:
 
         # Update Member
         if next_state and next_state != member.genomicWorkflowState:
-            self.member_dao.update_member_state(member, next_state)
+            self.member_dao.update_member_workflow_state(member, next_state)
 
     def process_missing_data(self, metric, missing_data_files, genome_type):
         missing_files_config = config.getSettingJson(config.GENOMIC_SKIP_MISSING_FILETYPES, {})
@@ -2316,7 +2581,7 @@ class GenomicReconciler:
                                                           signal='unconsented')
 
             if new_state is not None or new_state != member.genomicWorkflowState:
-                self.member_dao.update_member_state(member, new_state)
+                self.member_dao.update_member_workflow_state(member, new_state)
 
                 # Handle withdrawal (gror/primary consent) for reportConsentRemovalDate
                 removal_date = self.member_dao.get_consent_removal_date(member)
@@ -2338,7 +2603,7 @@ class GenomicReconciler:
                                                           signal='reconsented')
 
             if new_state is not None or new_state != member.genomicWorkflowState:
-                self.member_dao.update_member_state(member, new_state)
+                self.member_dao.update_member_workflow_state(member, new_state)
                 self.member_dao.update_report_consent_removal_date(member, None)
 
     def _write_cvl_report_to_file(self, members):
@@ -2663,7 +2928,7 @@ class GenomicBiobankSamplesCoupler:
                                                               signal='manifest-generated')
 
                 if new_state is not None or new_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, new_state)
+                    self.member_dao.update_member_workflow_state(member, new_state)
 
             logging.info(f'{self.__class__.__name__}: Genomic set members created ')
             return GenomicSubProcessResult.SUCCESS
@@ -3090,6 +3355,38 @@ class ManifestDefinitionProvider:
                 "ai_an",
                 "site_id",
             ),
+            GenomicManifestTypes.CVL_W1IL_PGX: (
+                'biobank_id',
+                'sample_id',
+                'vcf_raw_path',
+                'vcf_raw_index_path',
+                'vcf_raw_md5_path',
+                'cram_name',
+                'sex_at_birth',
+                'ny_flag',
+                'genome_center',
+                'consent_for_gror',
+                'genome_type',
+                'informing_loop_pgx',
+                'aou_hdr_coverage',
+                'contamination'
+            ),
+            GenomicManifestTypes.CVL_W1IL_HDR: (
+                'biobank_id',
+                'sample_id',
+                'vcf_raw_path',
+                'vcf_raw_index_path',
+                'vcf_raw_md5_path',
+                'cram_name',
+                'sex_at_birth',
+                'ny_flag',
+                'genome_center',
+                'consent_for_gror',
+                'genome_type',
+                'informing_loop_hdr',
+                'aou_hdr_coverage',
+                'contamination'
+            ),
             GenomicManifestTypes.CVL_W3SR: (
                 "biobank_id",
                 "sample_id",
@@ -3180,11 +3477,6 @@ class ManifestDefinitionProvider:
         """
         now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
         def_config = {
-            GenomicManifestTypes.CVL_W1: {
-                'job_run_field': 'cvlW1ManifestJobRunId',
-                'output_filename': f'{CVL_W1_MANIFEST_SUBFOLDER}/AoU_CVL_Manifest_{now_formatted}.csv',
-                'signal': 'manifest-generated'
-            },
             GenomicManifestTypes.GEM_A1: {
                 'job_run_field': 'gemA1ManifestJobRunId',
                 'output_filename': f'{GENOMIC_GEM_A1_MANIFEST_SUBFOLDER}/AoU_GEM_A1_manifest_{now_formatted}.csv',
@@ -3199,6 +3491,28 @@ class ManifestDefinitionProvider:
                 'job_run_field': 'cvlW3ManifestJobRunID',
                 'output_filename': f'{CVL_W3_MANIFEST_SUBFOLDER}/AoU_CVL_W1_{now_formatted}.csv',
                 'signal': 'manifest-generated'
+            },
+            GenomicManifestTypes.CVL_W1IL_PGX: {
+                'job_run_field': 'cvlW1ilPgxJobRunId',
+                'output_filename':
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_PGX_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'params': {
+                    'module': 'pgx',
+                    'cvl_id': self.cvl_site_id
+                }
+            },
+            GenomicManifestTypes.CVL_W1IL_HDR: {
+                'job_run_field': 'cvlW1ilHdrJobRunId',
+                'output_filename':
+                    f'{CVL_W1IL_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W1IL_HDR_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_data_ready_for_w1il_manifest,
+                'params': {
+                    'module': 'hdr',
+                    'cvl_id': self.cvl_site_id
+                }
             },
             GenomicManifestTypes.CVL_W3SR: {
                 'job_run_field': 'cvlW3srManifestJobRunID',
@@ -3262,6 +3576,7 @@ class ManifestCompiler:
         # Dao components
         self.member_dao = GenomicSetMemberDao()
         self.metrics_dao = GenomicGCValidationMetricsDao()
+        self.results_workflow_dao = GenomicResultWorkflowStateDao()
 
     def generate_and_transfer_manifest(self, manifest_type, genome_type, version=None, **kwargs):
         """
@@ -3378,13 +3693,14 @@ class ManifestCompiler:
 
             # Handle Genomic States for manifests
             if self.manifest_def.signal != "bypass":
-                new_state = GenomicStateHandler.get_new_state(
+                new_wf_state = GenomicStateHandler.get_new_state(
                     member.genomicWorkflowState,
                     signal=self.manifest_def.signal
                 )
+                if new_wf_state or new_wf_state != member.genomicWorkflowState:
+                    self.member_dao.update_member_workflow_state(member, new_wf_state)
 
-                if new_state or new_state != member.genomicWorkflowState:
-                    self.member_dao.update_member_state(member, new_state)
+                # TODO Handle result workflow insert/update for manifest generation
 
         # Updates job run field on set member
         if self.controller.member_ids_for_update:
@@ -3484,36 +3800,3 @@ class ManifestCompiler:
         except RuntimeError:
             return GenomicSubProcessResult.ERROR
 
-
-class GenomicAlertHandler:
-    """
-    Creates a jira ROC ticket using Jira utils
-    """
-    ROC_BOARD_ID = "ROC"
-
-    def __init__(self):
-        self._jira_handler = None
-        self.alert_envs = ["all-of-us-rdr-prod"]
-
-        if GAE_PROJECT in self.alert_envs:
-            self._jira_handler = JiraTicketHandler()
-
-    def make_genomic_alert(self, summary: str, description: str):
-        """
-        Wraps create_ticket with genomic specifics
-        Get's the board ID and adds ticket to sprint
-        :param summary: the 'title' of the ticket
-        :param description: the 'body' of the ticket
-        """
-        if self._jira_handler is not None:
-            ticket = self._jira_handler.create_ticket(summary, description,
-                                                      board_id=self.ROC_BOARD_ID)
-
-            active_sprint = self._jira_handler.get_active_sprint(
-                self._jira_handler.get_board_by_id(self.ROC_BOARD_ID))
-
-            self._jira_handler.add_ticket_to_sprint(ticket, active_sprint)
-
-        else:
-            logging.info('Suppressing alert for missing files')
-            return

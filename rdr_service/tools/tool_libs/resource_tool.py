@@ -41,6 +41,7 @@ from rdr_service.resource import generators
 from rdr_service.resource.generators.genomics import genomic_set_update, genomic_set_member_update, \
     genomic_job_run_update, genomic_gc_validation_metrics_update, genomic_file_processed_update, \
     genomic_manifest_file_update, genomic_manifest_feedback_update
+from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
@@ -124,7 +125,6 @@ class CleanPDRDataClass(object):
                             suffix="complete"
                         )
 
-
     def delete_resource_pk_ids_from_resource_data(self, resource_type_id):
         """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
         _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
@@ -172,7 +172,6 @@ class ParticipantResourceClass(object):
         self.args = args
         self.gcp_env = gcp_env
         self.pid_list = pid_list
-
 
     def update_single_pid(self, pid):
         """
@@ -229,9 +228,9 @@ class ParticipantResourceClass(object):
 
         # queue up a batch of participant ids and send them to be rebuilt.
         for pid in pids:
-
-            batch.append({'pid': pid})
-            count += 1
+            if pid not in SKIP_TEST_PIDS_FOR_PDR:
+                batch.append({'pid': pid})
+                count += 1
 
             if count == batch_size:
                 payload = {'batch': batch,
@@ -297,6 +296,9 @@ class ParticipantResourceClass(object):
 
         for pid in pids:
             count += 1
+            if pid in SKIP_TEST_PIDS_FOR_PDR:
+                _logger.info(f'Skipping PDR data build for test pid {pid}')
+                continue
 
             if self.update_single_pid(pid) != 0:
                 errors += 1
@@ -312,7 +314,6 @@ class ParticipantResourceClass(object):
             _logger.warning(f'\n\nThere were {errors} PIDs not found during processing.')
 
         return 0
-
 
     def run(self):
         """

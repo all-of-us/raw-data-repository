@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from logging.config import fileConfig
-from rdr_service.model import database  # pylint: disable=unused-import
+from rdr_service.model import database
 import sqlalchemy as sa
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -159,6 +159,7 @@ def run_migrations_online():
                 target_metadata=target_metadata.get(name),
                 include_schemas=True,
                 include_object=include_object_fn(name),
+                process_revision_directives=database.AutoHistoryRevisionGenerator.process_revision_directives
             )
             context.run_migrations(engine_name=name)
 

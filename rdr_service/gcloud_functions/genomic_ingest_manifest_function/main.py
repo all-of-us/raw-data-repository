@@ -42,6 +42,11 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
             "aw4": "IngestAW4ManifestTaskApi",
             "aw5": "IngestAW5ManifestTaskApi",
             "w2sc": "IngestCVLManifestTaskApi",
+            "w3ns": "IngestCVLManifestTaskApi",
+            "w3sc": "IngestCVLManifestTaskApi",
+            "w3ss": "IngestCVLManifestTaskApi",
+            "w4wr": "IngestCVLManifestTaskApi",
+            "w5nf": "IngestCVLManifestTaskApi",
         }
 
     def run(self):
@@ -80,6 +85,26 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w2sc_' in object_id:
             task_key = "w2sc"
 
+        # W3SC files have "W3SC" in their file path (bucket name)
+        elif '_w3ns_' in object_id:
+            task_key = "w3ns"
+
+        # W3SC files have "W3SC" in their file path (bucket name)
+        elif '_w3sc_' in object_id:
+            task_key = "w3sc"
+
+        # W3SS files have "_PKG" in their file path (bucket name)
+        elif '_PKG' in object_id:
+            task_key = "w3ss"
+
+        # W4WR files have "W2SC" in their file path (bucket name)
+        elif '_w4wr_' in object_id:
+            task_key = "w4wr"
+
+        # W4WR files have "W2SC" in their file path (bucket name)
+        elif '_w5nf_' in object_id:
+            task_key = "w5nf"
+
         else:
             _logger.info("No files match ingestion criteria.")
             return
@@ -104,10 +129,16 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
                 "cloud_function": True,
             }
 
+            raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w3ss', 'w4wr', 'w5nf']
+
             # Load into raw table
-            if task_key in ['aw1', 'aw2', 'aw4', 'w2sc']:
+            if task_key in raw_manifest_keys:
                 _task = GCPCloudTask()
-                _task.execute(f'{self.task_root}LoadRawAWNManifestDataAPI', payload=data, queue=task_queue)
+                _task.execute(
+                    f'{self.task_root}LoadRawAWNManifestDataAPI',
+                    payload=data,
+                    queue=task_queue
+                )
 
             _task = GCPCloudTask()
             _task.execute(api_route, payload=data, queue=task_queue)

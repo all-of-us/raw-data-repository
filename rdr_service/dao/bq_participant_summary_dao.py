@@ -3,6 +3,7 @@ import json
 import re
 
 from rdr_service import config
+from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.dao.bigquery_sync_dao import BigQuerySyncDao, BigQueryGenerator
 from rdr_service.model.bq_base import BQRecord
 from rdr_service.model.bq_participant_summary import BQParticipantSummarySchema, BQParticipantSummary
@@ -156,4 +157,6 @@ def bq_participant_summary_update_task(p_id):
     Cloud task to update the Participant Summary record for the given participant.
     :param p_id: Participant ID
     """
-    rebuild_bq_participant(p_id)
+
+    if p_id not in SKIP_TEST_PIDS_FOR_PDR:
+        rebuild_bq_participant(p_id)

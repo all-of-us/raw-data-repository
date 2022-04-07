@@ -1161,75 +1161,28 @@ class GenomicCloudTasksApiTest(BaseTestCase):
             called_json_obj.job)
 
     @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
-    def test_load_aw1_raw_data_task_api(self, load_raw_awn_data_mock):
-
-        # Payload for loading AW1 raw data
-        test_file_path = "test-bucket-name/test_aw1_file.csv"
-        data = {"file_path": test_file_path, "file_type": "aw1"}
+    def test_load_manifests_raw_data_task_api(self, load_raw_awn_data_mock):
 
         from rdr_service.resource import main as resource_main
+        raw_manifest_keys = ['aw1', 'aw2', 'aw4', 'w2sc', 'w3ns', 'w3sc', 'w4wr']
 
-        self.send_post(
-            local_path='LoadRawAWNManifestDataAPI',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
+        for key in raw_manifest_keys:
+            test_file_path = f"test-bucket-name/test_{key}_file.csv"
+            data = {
+                "file_path": test_file_path,
+                "file_type": key
+            }
 
-        load_raw_awn_data_mock.assert_called_with(test_file_path, "aw1")
+            self.send_post(
+                local_path='LoadRawAWNManifestDataAPI',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
 
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
-    def test_load_aw2_raw_data_task_api(self, load_raw_awn_data_mock):
+            load_raw_awn_data_mock.assert_called_with(test_file_path, key)
 
-        # Payload for loading AW2 raw data
-        test_file_path = "test-bucket-name/test_aw2_file.csv"
-        data = {"file_path": test_file_path, "file_type": "aw2"}
-
-        from rdr_service.resource import main as resource_main
-
-        self.send_post(
-            local_path='LoadRawAWNManifestDataAPI',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        load_raw_awn_data_mock.assert_called_with(test_file_path, "aw2")
-
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
-    def test_load_aw4_raw_data_task_api(self, load_raw_awn_data_mock):
-
-        # Payload for loading AW2 raw data
-        test_file_path = "test-bucket-name/test_aw4_file.csv"
-        data = {"file_path": test_file_path, "file_type": "aw4"}
-
-        from rdr_service.resource import main as resource_main
-
-        self.send_post(
-            local_path='LoadRawAWNManifestDataAPI',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        load_raw_awn_data_mock.assert_called_with(test_file_path, "aw4")
-
-    @mock.patch('rdr_service.offline.genomic_pipeline.load_awn_manifest_into_raw_table')
-    def test_load_w2sc_raw_data_task_api(self, load_raw_awn_data_mock):
-
-        test_file_path = "test-bucket-name/test_w2sc_file.csv"
-        data = {"file_path": test_file_path, "file_type": "w2sc"}
-
-        from rdr_service.resource import main as resource_main
-
-        self.send_post(
-            local_path='LoadRawAWNManifestDataAPI',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
-
-        load_raw_awn_data_mock.assert_called_with(test_file_path, "w2sc")
+        self.assertEqual(load_raw_awn_data_mock.call_count, len(raw_manifest_keys))
 
     def test_load_samples_from_raw_data_task_api(self):
 
@@ -1419,35 +1372,67 @@ class GenomicCloudTasksApiTest(BaseTestCase):
         self.assertIsNotNone(call_json['file_data'])
 
     @mock.patch('rdr_service.offline.genomic_pipeline.execute_genomic_manifest_file_pipeline')
-    def test_ingest_cvl_w2sc_task_api(self, ingest_mock):
-        cvl_w2sc_file_path = "cvl_samples_secondary_validation/test_cvl_w2sc_file.csv"
-
-        data = {
-            "file_path": cvl_w2sc_file_path,
-            "bucket_name": cvl_w2sc_file_path.split('/')[0],
-            "upload_date": '2020-09-13T20:52:12+00:00',
-            "file_type": "w2sc"
-        }
+    def test_ingest_cvl_job_task_api(self, ingest_mock):
 
         from rdr_service.resource import main as resource_main
 
-        self.send_post(
-            local_path='IngestCVLManifestTaskApi',
-            request_data=data,
-            prefix="/resource/task/",
-            test_client=resource_main.app.test_client(),
-        )
+        cvl_map = {
+            'w2sc': {
+                'job': GenomicJob.CVL_W2SC_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W2SC
+            },
+            'w3ns': {
+                'job': GenomicJob.CVL_W3NS_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3NS
+            },
+            'w3sc': {
+                'job': GenomicJob.CVL_W3SC_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3SC
+            },
+            'w3ss': {
+                'job': GenomicJob.CVL_W3SS_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W3SS
+            },
+            'w4wr': {
+                'job': GenomicJob.CVL_W4WR_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W4WR
+            },
+            'w5nf': {
+                'job': GenomicJob.CVL_W5NF_WORKFLOW,
+                'manifest_type': GenomicManifestTypes.CVL_W5NF
+            }
+        }
 
-        call_json = ingest_mock.call_args[0][0]
+        test_bucket = 'test_cvl_bucket'
 
-        self.assertEqual(ingest_mock.called, True)
-        self.assertEqual(call_json['bucket'], data['bucket_name'])
-        self.assertEqual(call_json['job'], GenomicJob.CVL_W2SC_WORKFLOW)
-        self.assertIsNotNone(call_json['file_data'])
-        self.assertEqual(
-            call_json['file_data']['manifest_type'],
-            GenomicManifestTypes.CVL_W2SC
-        )
+        for cvl_key, cvl_data in cvl_map.items():
+
+            cvl_type_file_path = f"{test_bucket}/test_cvl_{cvl_key}_file.csv"
+
+            data = {
+                "file_path": cvl_type_file_path,
+                "bucket_name": cvl_type_file_path.split('/')[0],
+                "upload_date": '2020-09-13T20:52:12+00:00',
+                "file_type": cvl_key
+            }
+
+            self.send_post(
+                local_path='IngestCVLManifestTaskApi',
+                request_data=data,
+                prefix="/resource/task/",
+                test_client=resource_main.app.test_client(),
+            )
+
+            call_json = ingest_mock.call_args[0][0]
+
+            self.assertEqual(ingest_mock.called, True)
+            self.assertEqual(call_json['bucket'], data['bucket_name'])
+            self.assertEqual(call_json['job'], cvl_data['job'])
+            self.assertIsNotNone(call_json['file_data'])
+            self.assertEqual(
+                call_json['file_data']['manifest_type'],
+                cvl_data['manifest_type']
+            )
 
     def test_ingest_data_files_task_api(self):
 

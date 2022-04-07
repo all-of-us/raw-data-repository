@@ -71,7 +71,8 @@ class GenomicJobController:
         bq_project_id=None,
         task_data=None,
         server_config=None,
-        max_num=None
+        max_num=None,
+        cvl_site_id='rdr'
     ):
 
         self.job_id = job_id
@@ -92,7 +93,7 @@ class GenomicJobController:
         self.max_num = max_num
         self.member_ids_for_update = []
         self.manifests_generated = []
-        self.cvl_site_id = 'rdr'
+        self.cvl_site_id = cvl_site_id
 
         # Components
         self.set_dao = GenomicSetDao()
@@ -1153,6 +1154,8 @@ class GenomicJobController:
             controller=self
         )
 
+        # TODO: need to insert result workflow states
+
         try:
             logging.info(f'Running Manifest Compiler for {manifest_type.name}.')
 
@@ -1372,10 +1375,9 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
-    def load_raw_awn_data_from_filepath(self, file_path):
+    def load_raw_awn_data_from_filepath(self, file_path, raw_dao):
         """
-        Loads raw AW1/2/3/4 data to raw table
-
+        Loads raw manifests data to raw table
         :param file_path: "bucket/folder/manifest_file.csv"
         :return:
         """
@@ -1386,7 +1388,7 @@ class GenomicJobController:
                                             target_file=file_path,
                                             _controller=self)
 
-        self.job_result = self.ingester.load_raw_awn_file()
+        self.job_result = self.ingester.load_raw_awn_file(raw_dao)
 
     def create_incident(
         self,

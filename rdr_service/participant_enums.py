@@ -484,6 +484,21 @@ class MetricsCronJobStage(messages.Enum):
     STAGE_TWO = 2
 
 
+class OnSiteVerificationType(messages.Enum):
+    """Types of on site verification"""
+    PHOTO_AND_ONE_OF_PII = 1
+    TWO_OF_PII = 2
+
+
+class OnSiteVerificationVisitType(messages.Enum):
+    """Types of on site visit"""
+    PMB_INITIAL_VISIT = 1
+    PHYSICAL_MEASUREMENTS_ONLY = 2
+    BIOSPECIMEN_COLLECTION_ONLY = 3
+    BIOSPECIMEN_REDRAW_ONLY = 4
+    RETENTION_ACTIVITIES = 5
+
+
 # M2API age buckets
 AGE_BUCKETS_METRICS_V2_API = ["0-17", "18-25", "26-35", "36-45", "46-55", "56-65", "66-75", "76-85", "86-"]
 AGE_BUCKETS_PUBLIC_METRICS_EXPORT_API = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-"]

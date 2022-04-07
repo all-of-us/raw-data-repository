@@ -89,16 +89,6 @@ cron:
   timezone: America/New_York
   schedule: every monday 05:30
   target: offline
-- description: Genomic AW1C (CVL) Workflow (Manual)
-  url: /offline/GenomicAW1CManifestWorkflow
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
-- description: Genomic AW1CF (CVL) Failures Workflow (Manual)
-  url: /offline/GenomicCVLFailuresWorkflow
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
 - description: Genomic Reconciliation Array Data Workflow
   url: /offline/GenomicArrayReconciliationWorkflow
   timezone: America/New_York
@@ -129,21 +119,6 @@ cron:
   timezone: America/New_York
   schedule: every saturday 05:00
   target: offline
-- description: Genomic CVL W1 Workflow (Manual)
-  url: /offline/GenomicCvlW1Workflow
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
-- description: Genomic CVL W2 Workflow (Manual)
-  url: /offline/GenomicCvlW2Workflow
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
-- description: Genomic CVL W3 Workflow (Manual)
-  url: /offline/GenomicCvlW3Workflow
-  timezone: America/New_York
-  schedule: 1 of jan 12:00
-  target: offline
 - description: Genomic AW3 Array Workflow
   url: /offline/GenomicAW3ArrayWorkflow
   timezone: America/New_York
@@ -153,6 +128,16 @@ cron:
   url: /offline/GenomicAW3WGSWorkflow
   timezone: America/New_York
   schedule: every monday 05:45
+  target: offline
+- description: Genomic CVL W1IL PGX Workflow
+  url: /offline/GenomicCVLW1ILPgxWorkflow
+  timezone: America/New_York
+  schedule: every wednesday 05:00
+  target: offline
+- description: Genomic CVL W1IL HDR Workflow
+  url: /offline/GenomicCVLW1ILHdrWorkflow
+  timezone: America/New_York
+  schedule: every wednesday 05:15
   target: offline
 - description: Genomic CVL W3SR Workflow (bi-weekly runs)
   url: /offline/GenomicCVLW3SRWorkflow
