@@ -80,6 +80,7 @@ class GenomicSetMember(Base):
         'color_metrics_job_run_id',
         'cvl_w1il_pgx_job_run_id',
         'cvl_w1il_hdr_job_run_id',
+        'cvl_w2w_job_run_id',
         'cvl_w4wr_pgx_manifest_job_run_id',
         'cvl_w4wr_hdr_manifest_job_run_id',
         'cvl_w3sc_manifest_job_run_id',
@@ -285,6 +286,10 @@ class GenomicSetMember(Base):
     cvlW1ilHdrJobRunId = Column('cvl_w1il_hdr_job_run_id',
                                 Integer, ForeignKey('genomic_job_run.id'),
                                 nullable=True)
+
+    cvlW2wJobRunId = Column('cvl_w2w_job_run_id',
+                            Integer, ForeignKey('genomic_job_run.id'),
+                            nullable=True)
 
     cvlSecondaryConfFailure = Column('cvl_secondary_conf_failure', String(255), nullable=True)
 

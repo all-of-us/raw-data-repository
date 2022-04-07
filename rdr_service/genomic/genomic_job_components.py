@@ -84,7 +84,10 @@ from rdr_service.config import (
     GENOMIC_AW3_ARRAY_SUBFOLDER,
     GENOMIC_AW3_WGS_SUBFOLDER,
     BIOBANK_AW2F_SUBFOLDER,
-    GENOMIC_INVESTIGATION_GENOME_TYPES, CVL_W1IL_MANIFEST_SUBFOLDER, CVL_W3SR_MANIFEST_SUBFOLDER
+    GENOMIC_INVESTIGATION_GENOME_TYPES,
+    CVL_W1IL_MANIFEST_SUBFOLDER,
+    CVL_W2W_MANIFEST_SUBFOLDER,
+    CVL_W3SR_MANIFEST_SUBFOLDER
 )
 from rdr_service.code_constants import COHORT_1_REVIEW_CONSENT_YES_CODE
 from sqlalchemy.orm import aliased
@@ -3387,6 +3390,11 @@ class ManifestDefinitionProvider:
                 'aou_hdr_coverage',
                 'contamination'
             ),
+            GenomicManifestTypes.CVL_W2W: (
+                'biobank_id',
+                'sample_id',
+                'date_of_consent_removal'
+            ),
             GenomicManifestTypes.CVL_W3SR: (
                 "biobank_id",
                 "sample_id",
@@ -3511,6 +3519,16 @@ class ManifestDefinitionProvider:
                 'query': self.query_dao.get_data_ready_for_w1il_manifest,
                 'params': {
                     'module': 'hdr',
+                    'cvl_id': self.cvl_site_id
+                }
+            },
+            GenomicManifestTypes.CVL_W2W: {
+                'job_run_field': 'cvlW2wJobRunId',
+                'output_filename':
+                    f'{CVL_W2W_MANIFEST_SUBFOLDER}/{self.cvl_site_id.upper()}_AoU_CVL_W2W_{now_formatted}.csv',
+                'signal': 'manifest-generated',
+                'query': self.query_dao.get_data_ready_for_w2w_manifest,
+                'params': {
                     'cvl_id': self.cvl_site_id
                 }
             },
