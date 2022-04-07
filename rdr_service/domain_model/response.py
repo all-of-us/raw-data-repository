@@ -1,9 +1,11 @@
+from enum import auto, Enum
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from rdr_service.model.questionnaire_response import QuestionnaireResponseStatus
+from rdr_service.model.questionnaire_response import QuestionnaireResponseAnswer, QuestionnaireResponseStatus
 
 
 class ParticipantResponses:
@@ -71,8 +73,55 @@ class Response:
             return answers[0]
 
 
+class DataType(Enum):
+    BOOLEAN = auto()
+    CODE = auto()
+    DATE = auto()
+    DATETIME = auto()
+    DECIMAL = auto()
+    INTEGER = auto()
+    STRING = auto()
+    URI = auto()
+
+
 @dataclass
 class Answer:
     id: int
     value: str
+    data_type: DataType
     is_valid: bool = True
+
+    @classmethod
+    def from_db_model(cls, db_answer: QuestionnaireResponseAnswer):
+        if db_answer.valueBoolean is not None:
+            answer_str = str(db_answer.valueBoolean)
+            answer_type = DataType.BOOLEAN
+        elif db_answer.valueCodeId is not None:
+            answer_str = db_answer.code.value
+            answer_type = DataType.CODE
+        elif db_answer.valueDate is not None:
+            answer_str = str(db_answer.valueDate)
+            answer_type = DataType.DATE
+        elif db_answer.valueDateTime is not None:
+            answer_str = str(db_answer.valueDateTime)
+            answer_type = DataType.DATETIME
+        elif db_answer.valueDecimal is not None:
+            answer_str = str(db_answer.valueDecimal)
+            answer_type = DataType.DECIMAL
+        elif db_answer.valueInteger is not None:
+            answer_str = str(db_answer.valueInteger)
+            answer_type = DataType.INTEGER
+        elif db_answer.valueString is not None:
+            answer_str = db_answer.valueString
+            answer_type = DataType.STRING
+        elif db_answer.valueUri is not None:
+            answer_str = db_answer.valueUri
+            answer_type = DataType.URI
+        else:
+            raise Exception(f'Unable to parse answer with id "{db_answer.questionnaireResponseAnswerId}')
+
+        return Answer(
+            id=db_answer.questionnaireResponseAnswerId,
+            value=answer_str,
+            data_type=answer_type
+        )
