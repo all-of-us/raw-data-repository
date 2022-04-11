@@ -287,7 +287,6 @@ class GenomicManifestTypes(messages.Enum):
     AW1F = 14
     AW5_ARRAY = 15
     AW5_WGS = 16
-    CVL_W1IL = 17
     CVL_W2SC = 18
     CVL_W2W = 19
     CVL_W3SR = 20
@@ -296,6 +295,8 @@ class GenomicManifestTypes(messages.Enum):
     CVL_W3SC = 23
     CVL_W4WR = 24
     CVL_W5NF = 25
+    CVL_W1IL_PGX = 26
+    CVL_W1IL_HDR = 27
 
 
 class GenomicContaminationCategory(messages.Enum):

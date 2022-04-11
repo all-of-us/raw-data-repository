@@ -1116,6 +1116,11 @@ class ParticipantSummaryDao(UpdatableDao):
         summary.ehrUpdateTime = update_time
         return summary
 
+    @classmethod
+    def get_all_consented_participant_ids(cls, session):
+        db_results = session.query(ParticipantSummary.participantId).all()
+        return [obj.participantId for obj in db_results]
+
     def get_participant_ids_with_ehr_data_available(self):
         with self.session() as session:
             result = session.query(ParticipantSummary.participantId).filter(

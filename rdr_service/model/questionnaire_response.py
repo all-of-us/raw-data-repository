@@ -153,6 +153,7 @@ class QuestionnaireResponseAnswer(Base):
     that can provide further context on the reason for ignoring the answer.
     """
 
+    code = relationship("Code")
 
 class QuestionnaireResponseExtension(Base):
     """

@@ -1238,7 +1238,8 @@ class QuestionnaireResponseDao(BaseDao):
         session: Session,
         participant_ids: List[int],
         include_ignored_answers=False,
-        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None
+        sent_statuses: Optional[List[QuestionnaireResponseStatus]] = None,
+        classification_types: Optional[List[QuestionnaireResponseClassificationType]] = None
     ) -> Dict[int, response_domain_model.ParticipantResponses]:
         """
         Retrieve questionnaire response data (returned as a domain model) for the specified participant ids
@@ -1256,10 +1257,11 @@ class QuestionnaireResponseDao(BaseDao):
 
         if sent_statuses is None:
             sent_statuses = [QuestionnaireResponseStatus.COMPLETED]
+        if classification_types is None:
+            classification_types = [QuestionnaireResponseClassificationType.COMPLETE]
 
         # Build query for all the questions answered by the given participants for the given survey codes
         question_code = aliased(Code)
-        answer_code = aliased(Code)
         survey_code = aliased(Code)
         query = (
             session.query(
@@ -1268,18 +1270,7 @@ class QuestionnaireResponseDao(BaseDao):
                 QuestionnaireResponse.questionnaireResponseId,
                 QuestionnaireResponse.authored,
                 survey_code.value,
-                func.coalesce(
-                    QuestionnaireResponseAnswer.valueDate,
-                    func.lower(answer_code.value),
-                    QuestionnaireResponseAnswer.valueBoolean,
-                    QuestionnaireResponseAnswer.valueDateTime,
-                    QuestionnaireResponseAnswer.valueDecimal,
-                    QuestionnaireResponseAnswer.valueInteger,
-                    QuestionnaireResponseAnswer.valueString,
-                    QuestionnaireResponseAnswer.valueSystem,
-                    QuestionnaireResponseAnswer.valueUri
-                ),
-                QuestionnaireResponseAnswer.questionnaireResponseAnswerId,
+                QuestionnaireResponseAnswer,
                 QuestionnaireResponse.status
             )
             .select_from(QuestionnaireResponseAnswer)
@@ -1293,11 +1284,12 @@ class QuestionnaireResponseDao(BaseDao):
                     QuestionnaireConcept.questionnaireVersion == QuestionnaireResponse.questionnaireVersion
                 )
             ).join(survey_code, survey_code.codeId == QuestionnaireConcept.codeId)
-            .outerjoin(answer_code, answer_code.codeId == QuestionnaireResponseAnswer.valueCodeId)
+            .options(joinedload(QuestionnaireResponseAnswer.code))
             .filter(
                 survey_code.value.in_(survey_codes),
                 QuestionnaireResponse.participantId.in_(participant_ids),
-                QuestionnaireResponse.status.in_(sent_statuses)
+                QuestionnaireResponse.status.in_(sent_statuses),
+                QuestionnaireResponse.classificationType.in_(classification_types)
             )
         )
 
@@ -1311,8 +1303,8 @@ class QuestionnaireResponseDao(BaseDao):
 
         # build dict with participant ids as keys and ParticipantResponse objects as values
         participant_response_map = defaultdict(response_domain_model.ParticipantResponses)
-        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer_value, \
-                answer_id, status in query.all():
+        for question_code_str, participant_id, response_id, authored_datetime, survey_code_str, answer, \
+                status in query.all():
             # Get the collection of responses for the participant
             response_collection_for_participant = participant_response_map[participant_id]
 
@@ -1329,10 +1321,7 @@ class QuestionnaireResponseDao(BaseDao):
                 response_collection_for_participant.responses[response_id] = response
 
             response.answered_codes[question_code_str].append(
-                response_domain_model.Answer(
-                    id=answer_id,
-                    value=answer_value
-                )
+                response_domain_model.Answer.from_db_model(answer)
             )
 
         return dict(participant_response_map)

@@ -65,6 +65,9 @@
   "drc_broad_bucket_name": [
     "dev-drc-broad"
   ],
+  "co_bucket_name": ["dev-co"],
+  "uw_bucket_name": ["dev-uw"],
+  "bcm_bucket_name": ["dev-bcm"],
   "aw1_array_subfolder_name": [
     "AW1_genotyping_sample_manifests"
   ],
