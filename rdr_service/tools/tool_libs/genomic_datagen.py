@@ -8,7 +8,8 @@ import logging
 import os
 import sys
 
-from rdr_service.services.genomic_datagen import ParticipantGenerator
+from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao
+from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -30,15 +31,51 @@ class ParticipantGeneratorTool(ToolBase):
             return 1
 
         self.gcp_env.activate_sql_proxy()
-        _ = self.get_server_config()
+        datagen_run_dao = GenomicDataGenRunDao()
+
+        def _generate_file_name():
+            pass
+
+        def _build_external_values(row_dict):
+            excluded_keys = ['participant_count', 'template_name']
+            cleaned_row = dict(zip([key for key in row_dict if key not in excluded_keys], row_dict.values()))
+            return cleaned_row
 
         if self.args.output_only_run_id:
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_run_id=self.args.output_only_run_id
+            )
+            generator_output = template_output.run_output_creation()
+
+            output_local_csv(
+                filename=_generate_file_name(),
+                data=generator_output['data']
+            )
             return 0  # bypass generator
 
         if self.args.output_only_sample_ids:
+
+            samples_id_list = []
+            for sample in self.args.output_only_sample_ids.split(','):
+                samples_id_list.append(sample.strip())
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_sample_ids=samples_id_list
+            )
+            generator_output = template_output.run_output_creation()
+
+            output_local_csv(
+                filename=_generate_file_name(),
+                data=generator_output['data']
+            )
+
             return 0  # bypass generator
 
         if self.args.spec_path:
+
             if not os.path.exists(self.args.spec_path):
                 _logger.error(f'File {self.args.spec_path} was not found.')
                 return 1
@@ -48,10 +85,21 @@ class ParticipantGeneratorTool(ToolBase):
                     csv_reader = csv.DictReader(file)
                     for row in csv_reader:
                         participant_generator.run_participant_creation(
-                            num_participants='',
-                            template_type='w3ss',
-                            external_values=row
+                            num_participants=row['participant_count'],
+                            template_type=row['template_name'],
+                            external_values=_build_external_values(row)
                         )
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_run_id=datagen_run_dao.get_max_run_id()
+            )
+            generator_output = template_output.run_output_creation()
+
+            output_local_csv(
+                filename=_generate_file_name(),
+                data=generator_output['data']
+            )
             return 0
 
 
@@ -95,11 +143,11 @@ def run():
                                                                "members in the datagen_member_run table",
                               default=None)  # noqa
     participants.add_argument("--spec-path", help="path to the request form", default=None)  # noqa
-    participants.add_argument("--test-project", help="type of project being tested ie. 'cvl'", default=None,
+    participants.add_argument("--test-project", help="type of project being tested ie. 'cvl'", default='cvl',
                               required=True)  # noqa
     participants.add_argument("--output-template-name", help="template name for output type, "
                                                              "specified in datagen_output_template",
-                              default=None, required=True)  # noqa
+                              default='default', required=True)  # noqa
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

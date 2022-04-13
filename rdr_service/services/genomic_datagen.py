@@ -2,7 +2,7 @@ import faker
 
 from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
-    GenomicDataGenMemberRunDao
+    GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
 from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
 from rdr_service.model.participant import Participant
@@ -10,7 +10,53 @@ from rdr_service.model.participant_summary import ParticipantSummary
 from tests.helpers.data_generator import DataGenerator
 
 
-class ParticipantGenerator:
+class GeneratorMixin:
+
+    @staticmethod
+    def _get_clean_field_list(string):
+        return [val for val in string.split('%') if val != '']
+
+    @staticmethod
+    def validate_template_records(
+        records,
+        template_type,
+        validation_step,
+        project='cvl',
+        external_values=None
+    ):
+        if not records:
+            raise Exception(f"{template_type} template records were not found for project: {project}")
+
+        if validation_step == 'generation':
+            source_types = ['system', 'external', 'literal', 'calculated']
+            for source_type in source_types:
+                source_records = list(filter(lambda x: x.field_source == source_type, records))
+                for record in source_records:
+                    value = record.field_value
+                    source = record.field_source
+
+                    if value and source == 'system':
+                        raise Exception(f'System sources cannot have values, Record ID: {record.id}')
+                    if not value and (source == 'literal' or source == 'calculated' or source == 'external'):
+                        raise Exception(f'Literal/Calculated sources require value, Record ID: {record.id}')
+                    if source == 'external' and not external_values.get(value):
+                        raise Exception(f'External key was not found, Record ID: {record.id}')
+
+        if validation_step == 'output':
+            source_types = ['literal', 'model']
+            for source_type in source_types:
+                source_records = list(filter(lambda x: x.source_type == source_type, records))
+                for record in source_records:
+                    value = record.source_value
+                    source = record.source_type
+
+                    if not value:
+                        raise Exception(f'Literal/Model sources require value, Record ID: {record.id}')
+                    if source == 'model' and ('.' not in value and len(value.split('.')) != 2):
+                        raise Exception(f'Model source format is incorrect, Record ID: {record.id}')
+
+
+class ParticipantGenerator(GeneratorMixin):
     def __init__(
         self,
         project='cvl',
@@ -64,13 +110,26 @@ class ParticipantGenerator:
         fake = faker.Faker()
         return DataGenerator(session, fake)
 
+    @staticmethod
+    def convert_case(string_value):
+        converted = string_value[0].lower() + string_value.title()[1:].replace("_", "")
+        if 'Ror' in converted:
+            converted, _ = converted.split('Ror')
+            converted = converted + 'ROR'
+        return converted
+
     def build_participant_default(self):
         if not self.default_template_records:
             self.default_template_records = self.datagen_template_dao.get_default_template_records(
                 project=self.project
             )
             # will throw exception for invalid expected data struct
-            self.validate_template_records(self.default_template_records)
+            self.validate_template_records(
+                records=self.default_template_records,
+                template_type=self.template_type,
+                validation_step='generation',
+                external_values=self.external_values
+            )
 
         base_participant = None
         for table, table_items in self.default_table_map.items():
@@ -125,7 +184,12 @@ class ParticipantGenerator:
                 template_type=self.template_type
             )
             # will throw exception for invalid expected data struct
-            self.validate_template_records(self.template_records)
+            self.validate_template_records(
+                records=self.default_template_records,
+                template_type=self.template_type,
+                validation_step='generation',
+                external_values=self.external_values
+            )
 
         # if template records have attributes from multiple tables
         table_names = set([obj.rdr_field.split('.')[0].lower() for obj in self.template_records])
@@ -152,43 +216,25 @@ class ParticipantGenerator:
             except Exception as error:
                 raise Exception(f'Error when inserting default records: {error}')
 
-        print('Darryl')
-
-    @staticmethod
-    def convert_case(string_value):
-        converted = string_value[0].lower() + string_value.title()[1:].replace("_", "")
-        if 'Ror' in converted:
-            converted, _ = converted.split('Ror')
-            converted = converted + 'ROR'
-        return converted
-
-    def validate_template_records(self, records):
-        if not records:
-            raise Exception(f"{self.template_type} template records were not found for project: {self.project}")
-
-        source_types = ['system', 'external', 'literal', 'calculated']
-        for source_type in source_types:
-            source_records = list(filter(lambda x: x.field_source == source_type, records))
-            for record in source_records:
-                value = record.field_value
-                source = record.field_source
-                name = record.rdr_field.split('.')[-1].lower()
-
-                if value and (source == 'system' or source == 'external'):
-                    raise Exception(f'System/External sources cannot have values, Record ID: {record.id}')
-                if not value and (source == 'literal' or source == 'calculated'):
-                    raise Exception(f'Literal/Calculated sources require value, Record ID: {record.id}')
-                if source == 'external' and not self.external_values.get(name):
-                    raise Exception(f'External key was not found, Record ID: {record.id}')
-
     def evaluate_value(self, field_name, field_source, field_value):
         field_source = field_source.lower()
         if field_source == 'literal':
             return field_value
         if field_source == 'external':
-            return self._get_from_external_data(field_name)
+            if 'informing_loop_' in field_value:
+                return self._handle_external_loop_data(field_name, field_value)
+            return self._get_from_external_data(field_value)
         if field_source == 'calculated':
             return self._calc_algo_value(field_value)
+
+    def _handle_external_loop_data(self, name, value):
+        loop_map = {
+            'module_type': value.split('_', 2)[-1]
+        }
+        if loop_map.get(name):
+            return f'{loop_map.get(name)}v1'
+
+        return self._get_from_external_data(value)
 
     def _get_generator_method(self, table_name):
         gen_method_name = f'create_database_{table_name}'
@@ -201,15 +247,13 @@ class ParticipantGenerator:
 
     def _calc_algo_value(self, field_value):
         # field_value should be %<table_name>.<snake_case_attr>%
-        parsed_list, new_list = [val for val in field_value.split('%') if val != ''], []
+        parsed_list, new_list = self._get_clean_field_list(field_value), []
 
         for val in parsed_list:
             if len(val.split('.')) == 2 and val.split('.')[0] in self.default_table_map.keys():
-
                 table, attribute = val.split('.')
                 # check in default map should contain all calc attrs
                 obj = self.default_table_map.get(table, {}).get('obj')
-
                 if not obj:
                     raise Exception(f'Cannot find object for calculated value: {field_value}')
                 attr_value = getattr(obj, self.convert_case(attribute))
@@ -236,10 +280,10 @@ class ParticipantGenerator:
             genomicSetVersion=1
         )
 
-    def run_participant_creation(self, num_participants, template_type, external_values):
-        self.num_participants = num_participants
-        self.template_type = template_type
-        self.external_values = external_values
+    def run_participant_creation(self, **kwargs):
+        self.num_participants = kwargs.get('num_participants')
+        self.template_type = kwargs.get('template_type')
+        self.external_values = kwargs.get('external_values')
         self.member_ids, self.template_records = [], []
 
         for _ in range(self.num_participants):
@@ -252,3 +296,82 @@ class ParticipantGenerator:
             self.member_ids
         )
 
+
+class GeneratorOutputTemplate(GeneratorMixin):
+    def __init__(
+        self,
+        output_template_name,
+        output_run_id=None,
+        output_sample_ids=None,
+        project='cvl',
+    ):
+        self.output_template_name = output_template_name
+        self.output_run_id = output_run_id
+        self.output_sample_ids = output_sample_ids
+        self.project = project
+        self.data_records = None
+
+        self.output_template_dao = GenomicDataGenOutputTemplateDao()
+        self.datagen_run_dao = GenomicDataGenRunDao()
+
+    def _get_output_template(self):
+        self.output_template_records = self.output_template_dao.get_output_template_records(
+            project=self.project,
+            template_type=self.output_template_name
+        )
+        self.validate_template_records(
+            records=self.output_template_records,
+            template_type=self.output_template_name,
+            validation_step='output'
+        )
+
+    def build_output_records(self):
+        template_records = []
+        for data_record in self.data_records:
+            row_dict = {}
+
+            for record in self.output_template_records:
+                value = None
+                if record.source_type == 'literal':
+                    value = record.source_value
+                elif record.source_type == 'model':
+                    attribute = record.source_value.split('.')[-1]
+                    value = getattr(data_record, attribute)
+
+                row_dict[record.field_name] = self._parse_enum_strings(value)
+
+            template_records.append(row_dict)
+        return template_records
+
+    def _get_template_model_source(self):
+        calc_records = list(filter(lambda x: x.source_type == 'model', self.output_template_records))
+        attr_records = [obj.source_value for obj in calc_records]
+        return attr_records
+
+    @staticmethod
+    def _parse_enum_strings(value):
+        if not hasattr(value, 'name'):
+            return value
+        return value.name.lower()
+
+    def run_output_creation(self):
+        self._get_output_template()
+
+        attr_records = self._get_template_model_source()
+        if not any('GenomicSetMember' in obj for obj in attr_records):
+            raise Exception('Attribute for GenomicSetMember required')
+
+        self.data_records = self.datagen_run_dao.get_output_template_data(
+            attr_records=attr_records,
+            datagen_run_id=self.output_run_id,
+            sample_ids=self.output_sample_ids,
+        )
+
+        if not self.data_records:
+            exception_msg = None
+            if self.output_run_id:
+                exception_msg = f'No records for run id: {self.output_run_id} were found'
+            if self.output_sample_ids:
+                exception_msg = f'No records for sample ids: {self.output_sample_ids} were found'
+            raise Exception(exception_msg)
+        return self.build_output_records()
