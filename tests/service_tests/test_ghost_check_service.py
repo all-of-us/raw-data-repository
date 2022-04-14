@@ -58,6 +58,7 @@ class GhostCheckServiceTest(BaseTestCase):
         ])
 
         self.participant_dao_mock.update_ghost_participant.assert_not_called()
+        self.assertEqual(self.pdr_rebuild_mock.call_count, 0)
 
     def test_logging_for_vibrent_server_anomalies(self):
         """Vibrent could have ids we don't know about, or participants with missing DRC ids"""
