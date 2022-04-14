@@ -7,7 +7,7 @@ from sqlalchemy.sql import functions
 from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, GenomicDatagenMemberRun,\
     GenomicDataGenOutputTemplate
-from rdr_service.model.genomics import *
+from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
