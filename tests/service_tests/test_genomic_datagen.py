@@ -1,6 +1,6 @@
 import random
 
-from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao
+from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenOutputTemplateDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao, \
     GenomicCVLSecondSampleDao, GenomicInformingLoopDao
 from rdr_service.dao.participant_dao import ParticipantDao
@@ -357,6 +357,8 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
         self.datagen_run_dao = GenomicDataGenRunDao()
         self.datagen_member_run_dao = GenomicDataGenMemberRunDao()
 
+        self.datagen_output_template_dao = GenomicDataGenOutputTemplateDao()
+
         self.default_output_template_field_map = {
             'template_name': 'default',
             'withdrawal_status': 'ParticipantSummary.withdrawalStatus',
@@ -470,6 +472,9 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
         # build template datagen w1il template data
         self.build_cvl_template_based_data(template_name, w1il_template)
 
+        hdr_loop_answer = 'yes'
+        pgx_loop_answer = 'no'
+
         with ParticipantGenerator() as participant_generator:
             participant_generator.run_participant_creation(
                 num_participants=1,
@@ -478,8 +483,8 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
                     'requesting_site': 'uw',
                     'withdrawal_status': 1,
                     'gror_status': 1,
-                    'informing_loop_hdr': 'yes',
-                    'informing_loop_pgx': 'no'
+                    'informing_loop_hdr': hdr_loop_answer,
+                    'informing_loop_pgx': pgx_loop_answer
                 }
             )
 
@@ -502,7 +507,22 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
         )
         generator_output = template_output.run_output_creation()
 
+        members_in_run = self.datagen_member_run_dao.get_set_members_from_run_id(datagen_run_id)
+        self.assertEqual(len(members_in_run), 1)
+
+        member = members_in_run[0]
+
         for item in generator_output:
             should_have_keys = self.default_output_template_field_map.keys()
             self.assertTrue(item.keys() == should_have_keys)
+
+        self.assertTrue(all(obj['template_name'] == 'default' for obj in generator_output))
+        self.assertTrue(all(obj['biobank_id'] in member.biobankId for obj in generator_output))
+        self.assertTrue(all(obj['sample_id'] in member.sampleId for obj in generator_output))
+        self.assertTrue(all(obj['withdrawal_status'] == WithdrawalStatus.NOT_WITHDRAWN.name.lower() for obj in
+                            generator_output))
+        self.assertTrue(all(obj['gror_status'] == QuestionnaireStatus.SUBMITTED.name.lower() for obj in
+                            generator_output))
+        self.assertTrue(all(obj['informing_loop_pgx'] == pgx_loop_answer for obj in generator_output))
+        self.assertTrue(all(obj['informing_loop_hdr'] == hdr_loop_answer for obj in generator_output))
 
