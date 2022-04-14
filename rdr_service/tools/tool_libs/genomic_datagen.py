@@ -92,7 +92,7 @@ class ParticipantGeneratorTool(ToolBase):
 
             template_output = GeneratorOutputTemplate(
                 output_template_name=self.args.output_template_name,
-                output_run_id=datagen_run_dao.get_max_run_id()
+                output_run_id=datagen_run_dao.get_max_run_id()[0]
             )
             generator_output = template_output.run_output_creation()
 

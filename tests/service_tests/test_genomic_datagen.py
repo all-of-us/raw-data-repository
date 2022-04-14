@@ -287,14 +287,22 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
                     'requesting_site': 'uw',
                     'withdrawal_status': 1,
                     'gror_status': 1,
-                    'informing_loop_hdr': 'yes'
+                    'informing_loop_hdr': 'yes',
+                    'informing_loop_pgx': 'yes'
                 }
             )
 
+        participant_summary = self.participant_summary_dao.get_all()
+        self.assertEqual(len(participant_summary), 1)
+
+        participant_summary_id = participant_summary[0].participantId
+
         informing_loops = self.informing_loop_dao.get_all()
-        self.assertEqual(len(informing_loops), 1)
+        self.assertEqual(len(informing_loops), 2)
+
+        self.assertTrue(all(obj.participant_id == participant_summary_id for obj in informing_loops))
         self.assertTrue(all(obj.event_type == 'informing_loop_decision' for obj in informing_loops))
-        self.assertTrue(all(obj.module_type == 'hdrv1' for obj in informing_loops))
+        self.assertTrue(all(obj.module_type in ['hdrv1', 'pgxv1'] for obj in informing_loops))
         self.assertTrue(all(obj.decision_value == 'yes' for obj in informing_loops))
 
         self.clear_table_after_test('genomic_datagen_member_run')
@@ -354,7 +362,9 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
             'withdrawal_status': 'ParticipantSummary.withdrawalStatus',
             'gror_status': 'ParticipantSummary.consentForGenomicsROR',
             'biobank_id': 'GenomicSetMember.biobankId',
-            'sample_id': 'GenomicSetMember.sampleId'
+            'sample_id': 'GenomicSetMember.sampleId',
+            # 'informing_loop_pgx': 'GenomicInformingLoop.decisionValue',
+            # 'informing_loop_hdr': 'GenomicInformingLoop.decisionValue'
         }
 
         # build default datagen template data
@@ -365,7 +375,6 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
             s_type = 'literal'
             if type(value) is str and '.' in value:
                 s_type = 'model'
-
             s_value = value
 
             self.data_generator.create_database_genomic_datagen_output_template(
@@ -392,9 +401,10 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
 
     def test_get_output_data_by_run_id_base_models(self):
 
-        self.build_default_output_template_records(self.default_output_template_field_map)
         # use generator to insert participants
         self.run_base_participant_generator()
+
+        self.build_default_output_template_records(self.default_output_template_field_map)
 
         # get datagen run id
         datagen_run = self.datagen_run_dao.get_all()[0]
@@ -424,9 +434,10 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
 
     def test_get_output_data_by_sample_ids(self):
 
-        self.build_default_output_template_records(self.default_output_template_field_map)
         # use generator to insert participants
         self.run_base_participant_generator()
+
+        self.build_default_output_template_records(self.default_output_template_field_map)
 
         # get datagen run id
         datagen_run = self.datagen_run_dao.get_all()[0]
@@ -444,5 +455,4 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
 
         self.assertEqual(len(generator_output), len(random_sample_id))
         self.assertTrue(generator_output[0]['sample_id'] == random_sample_id[0])
-
 

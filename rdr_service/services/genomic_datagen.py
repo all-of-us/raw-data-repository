@@ -4,9 +4,6 @@ from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
     GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics
-from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
 from tests.helpers.data_generator import DataGenerator
 
 
@@ -71,18 +68,10 @@ class ParticipantGenerator(GeneratorMixin):
         self.template_records = []
 
         self.default_table_map = {
-            'participant': {
-                'model': Participant,
-            },
-            'participant_summary': {
-                'model': ParticipantSummary,
-            },
-            'genomic_set_member': {
-                'model': GenomicSetMember
-            },
-            'genomic_gc_validation_metrics': {
-                'model': GenomicGCValidationMetrics
-            }
+            'participant': {},
+            'participant_summary': {},
+            'genomic_set_member': {},
+            'genomic_gc_validation_metrics': {}
         }
 
     def __enter__(self):
@@ -132,13 +121,19 @@ class ParticipantGenerator(GeneratorMixin):
             )
 
         base_participant = None
-        for table, table_items in self.default_table_map.items():
-            model = table_items.get('model')
+        for table in self.default_table_map:
             # make sure it has generator, will throw exception if not
             generator_method = self._get_generator_method(table)
 
             if table == 'participant':
-                base_participant = generator_method()
+                participant_id = self.member_dao.get_random_id()
+                biobank_id = self.member_dao.get_random_id()
+                research_id = self.member_dao.get_random_id()
+                base_participant = generator_method(
+                    participantId=participant_id,
+                    biobankId=biobank_id,
+                    researchId=research_id
+                )
                 self.default_table_map[table]['obj'] = base_participant
                 continue
 
@@ -146,19 +141,7 @@ class ParticipantGenerator(GeneratorMixin):
                 filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.default_template_records)
             )
 
-            attr_dict = {}
-            for obj in current_table_defaults:
-                field_name = obj.rdr_field.split('.')[-1].lower()
-                if not hasattr(model, self.convert_case(field_name)):
-                    raise Exception(f"Field name {field_name} is not present in {table} table")
-
-                value = self.evaluate_value(
-                    field_name,
-                    obj.field_source,
-                    obj.field_value
-                )
-
-                attr_dict[self.convert_case(field_name)] = value
+            attr_dict = self._get_type_attr_dict(current_table_defaults)
 
             if table == 'participant_summary' and base_participant:
                 attr_dict['participant'] = base_participant
@@ -194,47 +177,58 @@ class ParticipantGenerator(GeneratorMixin):
         # if template records have attributes from multiple tables
         table_names = set([obj.rdr_field.split('.')[0].lower() for obj in self.template_records])
         for table in table_names:
-            generator_method = self._get_generator_method(table)
-
             current_table_attrs = list(
                 filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.template_records)
             )
 
-            attr_dict = {}
-            for obj in current_table_attrs:
-                field_name = obj.rdr_field.split('.')[-1].lower()
-                value = self.evaluate_value(
-                    field_name,
-                    obj.field_source,
-                    obj.field_value
-                )
+            if table == 'genomic_informing_loop':
+                self.generate_loop_records(table, current_table_attrs)
+                continue
 
-                attr_dict[field_name] = value
+            attr_dict = self._get_type_attr_dict(current_table_attrs, case=False)
 
-            try:
-                generator_method(**attr_dict)
-            except Exception as error:
-                raise Exception(f'Error when inserting default records: {error}')
+            self.generate_type_records(table, attr_dict)
 
-    def evaluate_value(self, field_name, field_source, field_value):
+    def generate_loop_records(self, table, current_table_attrs):
+        loop_dict = {key: value for key, value in self.external_values.items() if 'informing_loop_' in key}
+
+        for loop_type, loop_value in loop_dict.items():
+            module_type = f'{loop_type.split("_", 2)[-1]}v1'
+            non_external_attrs = [obj for obj in current_table_attrs if obj.field_source != 'external']
+
+            attr_dict = self._get_type_attr_dict(non_external_attrs, case=False)
+            # implicit for now
+            attr_dict['module_type'] = module_type
+            attr_dict['decision_value'] = loop_value
+
+            self.generate_type_records(table, attr_dict)
+
+    def generate_type_records(self, table, attr_dict):
+        generator_method = self._get_generator_method(table)
+        try:
+            generator_method(**attr_dict)
+        except Exception as error:
+            raise Exception(f'Error when inserting default records: {error}')
+
+    def evaluate_value(self, field_source, field_value):
         field_source = field_source.lower()
         if field_source == 'literal':
             return field_value
         if field_source == 'external':
-            if 'informing_loop_' in field_value:
-                return self._handle_external_loop_data(field_name, field_value)
             return self._get_from_external_data(field_value)
         if field_source == 'calculated':
             return self._calc_algo_value(field_value)
 
-    def _handle_external_loop_data(self, name, value):
-        loop_map = {
-            'module_type': value.split('_', 2)[-1]
-        }
-        if loop_map.get(name):
-            return f'{loop_map.get(name)}v1'
-
-        return self._get_from_external_data(value)
+    def _get_type_attr_dict(self, table_attrs, case=True):
+        attr_dict = {}
+        for obj in table_attrs:
+            field_name = obj.rdr_field.split('.')[-1].lower()
+            value = self.evaluate_value(
+                obj.field_source,
+                obj.field_value
+            )
+            attr_dict[self.convert_case(field_name) if case else field_name] = value
+        return attr_dict
 
     def _get_generator_method(self, table_name):
         gen_method_name = f'create_database_{table_name}'

@@ -7,7 +7,6 @@ from rdr_service.dao.base_dao import BaseDao
 from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, GenomicDatagenMemberRun,\
     GenomicDataGenOutputTemplate
 from rdr_service.model.genomics import *
-from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
@@ -26,6 +25,8 @@ class GenomicDataGenRunDao(BaseDao):
         with self.session() as session:
             return session.query(
                 functions.max(GenomicDataGenRun.id)
+            ).filter(
+                GenomicDataGenRun.ignore_flag != 1
             ).one()
 
     def get_output_template_data(
@@ -37,14 +38,11 @@ class GenomicDataGenRunDao(BaseDao):
         # build base tables
         eval_attrs = [eval(obj) for obj in attr_records]
         with self.session() as session:
-            records = Query(eval_attrs, session=session)
+            records = Query(eval_attrs, session)
             # base joins
             records = records.join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
-            ).join(
-                Participant,
-                ParticipantSummary.participantId == Participant.participantId
             )
             if datagen_run_id:
                 records = records.join(

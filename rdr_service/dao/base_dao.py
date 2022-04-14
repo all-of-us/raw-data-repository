@@ -489,7 +489,7 @@ class BaseDao(object):
         return query
 
     @staticmethod
-    def _get_random_id():
+    def get_random_id():
         return random.randint(_MIN_ID, _MAX_ID)
 
     @staticmethod
@@ -506,7 +506,7 @@ class BaseDao(object):
                 if field == 'researchId':
                     rand_id = self._get_random_research_id()
                 else:
-                    rand_id = self._get_random_id()
+                    rand_id = self.get_random_id()
                 tried_ids[field] = rand_id
                 setattr(obj, field, rand_id)
             all_tried_ids.append(tried_ids)
