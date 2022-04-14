@@ -3,16 +3,12 @@ from logging import Logger
 
 from sqlalchemy.orm import Session
 
-from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ghost_check_dao import GhostCheckDao, GhostFlagModification
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id
-from rdr_service.resource.tasks import batch_rebuild_participants_task
+from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.services.ptsc_client import PtscClient
-from rdr_service.services.system_utils import list_chunks
-from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
-
 
 class GhostCheckService:
     def __init__(self, session: Session, logger: Logger, ptsc_config: dict):
@@ -57,7 +53,7 @@ class GhostCheckService:
                         )
                         ids_not_found.remove(participant_id)
                         if ghost_change:
-                            pdr_rebuild_list.append({'pid': participant_id})
+                            pdr_rebuild_list.append(participant_id)
                     else:
                         self._logger.error(f'Vibrent had unknown id: {participant_id}')
 
@@ -72,17 +68,11 @@ class GhostCheckService:
                 participant=participant_map[participant_id]
             )
             if ghost_change:
-                pdr_rebuild_list.append({'pid': participant_id})
+                pdr_rebuild_list.append(participant_id)
 
-        task = GCPCloudTask()
-        for batch in list_chunks(pdr_rebuild_list, 100):
-            # PDR/BQ module views select the test(/ghost) setting from the participant data; don't need module rebuild
-            payload = {'batch': batch, 'build_modules': False}
-            if GAE_PROJECT == 'localhost':  # e.g., unittest case
-                batch_rebuild_participants_task(payload)
-            else:
-                task.execute('rebuild_participants_task', payload=payload, project_id=GAE_PROJECT,
-                             queue='resource-rebuild', in_seconds=15, quiet=True)
+        if len(pdr_rebuild_list):
+            # PDR BQ module views select the test/ghost flag from participant data; don't need to rebuild module data
+            dispatch_participant_rebuild_tasks(pdr_rebuild_list, build_modules=False)
 
     def _record_ghost_result(self, is_ghost_response: bool, participant: Participant) -> bool:
         """ Update the participant isGhostId status if needed.  Returns true if update was performed """

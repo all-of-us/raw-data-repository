@@ -28,7 +28,7 @@ class GhostCheckServiceTest(BaseTestCase):
         self.ghost_dao_mock = dao_patch.start()
         self.addCleanup(dao_patch.stop)
 
-        pdr_rebuild_patch = mock.patch('rdr_service.services.ghost_check_service.batch_rebuild_participants_task')
+        pdr_rebuild_patch = mock.patch('rdr_service.services.ghost_check_service.dispatch_participant_rebuild_tasks')
         self.pdr_rebuild_mock = pdr_rebuild_patch.start()
         self.addCleanup(pdr_rebuild_patch.stop)
 
@@ -120,6 +120,5 @@ class GhostCheckServiceTest(BaseTestCase):
         ])
         # Assert the PDR data rebuild was invoked with both pids in the batch list
         self.assertEqual(1, self.pdr_rebuild_mock.call_count)
-        pdr_rebuild_payload = self.pdr_rebuild_mock.call_args[0][0]
-        self.assertEqual(pdr_rebuild_payload.get('batch'),
-                         [{'pid': 1123}, {'pid': 4567}])
+        self.assertListEqual(self.pdr_rebuild_mock.call_args[0][0], [1123, 4567])
+

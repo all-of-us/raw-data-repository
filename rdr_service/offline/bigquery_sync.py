@@ -35,7 +35,8 @@ class BigQueryJobError(BaseException):
 _bq_env = ['localhost', 'pmi-drc-api-test', 'all-of-us-rdr-sandbox', 'all-of-us-rdr-stable', 'all-of-us-rdr-prod']
 
 
-def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_PROJECT, build_locally=None):
+def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_PROJECT, build_locally=None,
+                                       build_modules=True, build_participant_summary=True):
     """
     A utility routine to handle dispatching batched requests for rebuilding participants.  Is also called
     from other cron job endpoint handlers (e.g., biobank reconciliation and EHR status update jobs)
@@ -45,6 +46,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
     :param build_locally: Boolean value indicating whether to build participant summaries in this process.
         If False is given, GCP tasks are created for rebuilding participants. Defaults to True if config.GAE_PROJECT
         is localhost.
+    :param build_participant_summary:  Boolean value indicating whether PDR participant summary data should be rebuilt
+    :param build_modules: Boolean value indicating whether PDR module data for the participant should be rebuilt
     """
 
     if config.GAE_PROJECT not in _bq_env:
@@ -70,7 +73,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
         count += 1
 
         if count == batch_size:
-            payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': True}
+            payload = {'batch': batch, 'build_participant_summary': build_participant_summary,
+                       'build_modules': build_modules}
 
             if build_locally:
                 batch_rebuild_participants_task(payload, project_id=project_id)
@@ -85,7 +89,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
 
     # send last batch if needed.
     if count:
-        payload = {'batch': batch, 'build_participant_summary': True, 'build_modules': True}
+        payload = {'batch': batch, 'build_participant_summary': build_participant_summary,
+                   'build_modules': build_modules}
         batch_count += 1
         if build_locally:
             batch_rebuild_participants_task(payload, project_id=project_id)
