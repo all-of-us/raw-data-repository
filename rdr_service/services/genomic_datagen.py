@@ -1,4 +1,5 @@
 import faker
+import os
 
 from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
@@ -46,11 +47,11 @@ class GeneratorMixin:
                 for record in source_records:
                     value = record.source_value
                     source = record.source_type
-
                     if not value:
                         raise Exception(f'Literal/Model sources require value, Record ID: {record.id}')
-                    if source == 'model' and ('.' not in value and len(value.split('.')) != 2):
-                        raise Exception(f'Model source format is incorrect, Record ID: {record.id}')
+                    if source == 'model':
+                        if '.' not in value and len(value.split('.')) != 2:
+                            raise Exception(f'Model source format is incorrect, Record ID: {record.id}')
 
 
 class ParticipantGenerator(GeneratorMixin):
@@ -126,14 +127,17 @@ class ParticipantGenerator(GeneratorMixin):
             generator_method = self._get_generator_method(table)
 
             if table == 'participant':
-                participant_id = self.member_dao.get_random_id()
-                biobank_id = self.member_dao.get_random_id()
-                research_id = self.member_dao.get_random_id()
-                base_participant = generator_method(
-                    participantId=participant_id,
-                    biobankId=biobank_id,
-                    researchId=research_id
-                )
+                if os.environ["UNITTEST_FLAG"] == "1":
+                    base_participant = generator_method()
+                else:
+                    participant_id = self.member_dao.get_random_id()
+                    biobank_id = self.member_dao.get_random_id()
+                    research_id = self.member_dao.get_random_id()
+                    base_participant = generator_method(
+                        participantId=participant_id,
+                        biobankId=biobank_id,
+                        researchId=research_id
+                    )
                 self.default_table_map[table]['obj'] = base_participant
                 continue
 
@@ -193,7 +197,7 @@ class ParticipantGenerator(GeneratorMixin):
         loop_dict = {key: value for key, value in self.external_values.items() if 'informing_loop_' in key}
 
         for loop_type, loop_value in loop_dict.items():
-            module_type = f'{loop_type.split("_", 2)[-1]}v1'
+            module_type = f'{loop_type.split("_", 2)[-1]}'
             non_external_attrs = [obj for obj in current_table_attrs if obj.field_source != 'external']
 
             attr_dict = self._get_type_attr_dict(non_external_attrs, case=False)
@@ -305,6 +309,8 @@ class GeneratorOutputTemplate(GeneratorMixin):
         self.project = project
         self.data_records = None
 
+        self.loop_string = 'informing_loop_'
+
         self.output_template_dao = GenomicDataGenOutputTemplateDao()
         self.datagen_run_dao = GenomicDataGenRunDao()
 
@@ -323,7 +329,6 @@ class GeneratorOutputTemplate(GeneratorMixin):
         template_records = []
         for data_record in self.data_records:
             row_dict = {}
-
             for record in self.output_template_records:
                 value = None
                 if record.source_type == 'literal':
@@ -331,16 +336,22 @@ class GeneratorOutputTemplate(GeneratorMixin):
                 elif record.source_type == 'model':
                     attribute = record.source_value.split('.')[-1]
                     value = getattr(data_record, attribute)
-
                 row_dict[record.field_name] = self._parse_enum_strings(value)
-
             template_records.append(row_dict)
         return template_records
 
     def _get_template_model_source(self):
-        calc_records = list(filter(lambda x: x.source_type == 'model', self.output_template_records))
+        calc_records = list(filter(
+            lambda x: self.loop_string not in x.field_name
+                      and x.source_type == 'model',
+            self.output_template_records)
+        )
         attr_records = [obj.source_value for obj in calc_records]
         return attr_records
+
+    def _get_loop_types_from_template_records(self):
+        return [obj.field_name.split('_', 2)[-1] for obj in self.output_template_records if self.loop_string in
+                obj.field_name]
 
     @staticmethod
     def _parse_enum_strings(value):
@@ -350,7 +361,7 @@ class GeneratorOutputTemplate(GeneratorMixin):
 
     def run_output_creation(self):
         self._get_output_template()
-
+        loop_types = self._get_loop_types_from_template_records()
         attr_records = self._get_template_model_source()
         if not any('GenomicSetMember' in obj for obj in attr_records):
             raise Exception('Attribute for GenomicSetMember required')
@@ -359,6 +370,7 @@ class GeneratorOutputTemplate(GeneratorMixin):
             attr_records=attr_records,
             datagen_run_id=self.output_run_id,
             sample_ids=self.output_sample_ids,
+            loop_types=loop_types
         )
 
         if not self.data_records:

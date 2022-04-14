@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy.orm import Query
+from sqlalchemy import and_
+from sqlalchemy.orm import Query, aliased
 from sqlalchemy.sql import functions
 
 from rdr_service.dao.base_dao import BaseDao
@@ -33,28 +34,52 @@ class GenomicDataGenRunDao(BaseDao):
         self,
         attr_records,
         datagen_run_id=None,
-        sample_ids=None
+        sample_ids=None,
+        loop_types=None
     ):
-        # build base tables
         eval_attrs = [eval(obj) for obj in attr_records]
+        hdr_informing_loop_decision = aliased(GenomicInformingLoop)
+        pgx_informing_loop_decision = aliased(GenomicInformingLoop)
+
+        loop_attrs_map = {
+            'hdr': hdr_informing_loop_decision.decision_value.label('hdr_decision_value'),
+            'pgx': pgx_informing_loop_decision.decision_value.label('pgx_decision_value')
+        }
+        for loop in loop_types:
+            eval_attrs.append(loop_attrs_map.get(loop))
+
+        records = Query(eval_attrs)
+
         with self.session() as session:
-            records = Query(eval_attrs, session)
-            # base joins
             records = records.join(
                 ParticipantSummary,
                 ParticipantSummary.participantId == GenomicSetMember.participantId
+            )
+            records = records.outerjoin(
+                hdr_informing_loop_decision,
+                and_(
+                    hdr_informing_loop_decision.participant_id == GenomicSetMember.participantId,
+                    hdr_informing_loop_decision.module_type.ilike('hdr')
+                )
+            )
+            records = records.outerjoin(
+                pgx_informing_loop_decision,
+                and_(
+                    pgx_informing_loop_decision.participant_id == GenomicSetMember.participantId,
+                    pgx_informing_loop_decision.module_type.ilike('pgx')
+                )
             )
             if datagen_run_id:
                 records = records.join(
                     GenomicDatagenMemberRun,
                     GenomicDatagenMemberRun.created_run_id == datagen_run_id
                 )
-                return records.distinct().all()
+                return records.with_session(session).distinct().all()
             if sample_ids:
                 records = records.filter(
                     GenomicSetMember.sampleId.in_(sample_ids)
                 )
-                return records.distinct().all()
+                return records.with_session(session).distinct().all()
 
 
 class GenomicDataGenMemberRunDao(BaseDao):

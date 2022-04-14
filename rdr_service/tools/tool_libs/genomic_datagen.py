@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 
+from rdr_service import clock
 from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao
 from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate
 from rdr_service.services.system_utils import setup_logging, setup_i18n
@@ -31,10 +32,9 @@ class ParticipantGeneratorTool(ToolBase):
             return 1
 
         self.gcp_env.activate_sql_proxy()
-        datagen_run_dao = GenomicDataGenRunDao()
 
-        def _generate_file_name():
-            pass
+        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
+        datagen_run_dao = GenomicDataGenRunDao()
 
         def _build_external_values(row_dict):
             excluded_keys = ['participant_count', 'template_name']
@@ -50,7 +50,7 @@ class ParticipantGeneratorTool(ToolBase):
             generator_output = template_output.run_output_creation()
 
             output_local_csv(
-                filename=_generate_file_name(),
+                filename=f'datagen_run_id_{self.args.output_only_run_id}_{now_formatted}.csv',
                 data=generator_output['data']
             )
             return 0  # bypass generator
@@ -68,7 +68,7 @@ class ParticipantGeneratorTool(ToolBase):
             generator_output = template_output.run_output_creation()
 
             output_local_csv(
-                filename=_generate_file_name(),
+                filename=f'datagen_sample_ids_{now_formatted}.csv',
                 data=generator_output['data']
             )
 
@@ -90,14 +90,16 @@ class ParticipantGeneratorTool(ToolBase):
                             external_values=_build_external_values(row)
                         )
 
+            current_run_id = datagen_run_dao.get_max_run_id()[0]
+
             template_output = GeneratorOutputTemplate(
                 output_template_name=self.args.output_template_name,
-                output_run_id=datagen_run_dao.get_max_run_id()[0]
+                output_run_id=current_run_id
             )
             generator_output = template_output.run_output_creation()
 
             output_local_csv(
-                filename=_generate_file_name(),
+                filename=f'datagen_run_id_{current_run_id}_{now_formatted}.csv',
                 data=generator_output['data']
             )
             return 0

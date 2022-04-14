@@ -302,7 +302,7 @@ class GenomicDataGenParticipantGeneratorTest(GenomicDataGenMixin):
 
         self.assertTrue(all(obj.participant_id == participant_summary_id for obj in informing_loops))
         self.assertTrue(all(obj.event_type == 'informing_loop_decision' for obj in informing_loops))
-        self.assertTrue(all(obj.module_type in ['hdrv1', 'pgxv1'] for obj in informing_loops))
+        self.assertTrue(all(obj.module_type in ['hdr', 'pgx'] for obj in informing_loops))
         self.assertTrue(all(obj.decision_value == 'yes' for obj in informing_loops))
 
         self.clear_table_after_test('genomic_datagen_member_run')
@@ -363,8 +363,6 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
             'gror_status': 'ParticipantSummary.consentForGenomicsROR',
             'biobank_id': 'GenomicSetMember.biobankId',
             'sample_id': 'GenomicSetMember.sampleId',
-            # 'informing_loop_pgx': 'GenomicInformingLoop.decisionValue',
-            # 'informing_loop_hdr': 'GenomicInformingLoop.decisionValue'
         }
 
         # build default datagen template data
@@ -455,4 +453,56 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
 
         self.assertEqual(len(generator_output), len(random_sample_id))
         self.assertTrue(generator_output[0]['sample_id'] == random_sample_id[0])
+
+    def test_get_output_data_by_run_id_with_loop_models(self):
+
+        # use generator to insert participants
+        w1il_template = {
+            'genomic_informing_loop': {
+                'participant_id': '%genomic_set_member.participant_id%',
+                'event_type': 'informing_loop_decision',
+                'module_type': 'external_informing_loop_hdr',
+                'decision_value': 'external_informing_loop_hdr'
+            }
+        }
+        template_name = 'w1il'
+
+        # build template datagen w1il template data
+        self.build_cvl_template_based_data(template_name, w1il_template)
+
+        with ParticipantGenerator() as participant_generator:
+            participant_generator.run_participant_creation(
+                num_participants=1,
+                template_type=template_name,
+                external_values={
+                    'requesting_site': 'uw',
+                    'withdrawal_status': 1,
+                    'gror_status': 1,
+                    'informing_loop_hdr': 'yes',
+                    'informing_loop_pgx': 'no'
+                }
+            )
+
+        self.default_output_template_field_map.update({
+            'informing_loop_pgx': 'GenomicInformingLoop.pgx_decision_value',
+            'informing_loop_hdr': 'GenomicInformingLoop.hdr_decision_value'
+        })
+
+        self.build_default_output_template_records(
+            self.default_output_template_field_map
+        )
+
+        # get datagen run id
+        datagen_run = self.datagen_run_dao.get_all()[0]
+        datagen_run_id = datagen_run.id
+
+        template_output = GeneratorOutputTemplate(
+            output_template_name='default',
+            output_run_id=datagen_run_id
+        )
+        generator_output = template_output.run_output_creation()
+
+        for item in generator_output:
+            should_have_keys = self.default_output_template_field_map.keys()
+            self.assertTrue(item.keys() == should_have_keys)
 
