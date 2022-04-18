@@ -31,7 +31,6 @@ from rdr_service.code_constants import (
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
-    CONSENT_FOR_WEAR,
     CONSENT_PERMISSION_YES_CODE,
     DATE_OF_BIRTH_QUESTION_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -42,6 +41,7 @@ from rdr_service.code_constants import (
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PMI_SKIP_CODE,
+    PMI_YES,
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
@@ -53,6 +53,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE,
+    WEAR_CONSENT_QUESTION_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
@@ -711,6 +712,11 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                         except ValueError:
                             logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
+                    elif code.value.lower() == WEAR_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == PMI_YES:
+                            self.consents_provided.append(ConsentType.WEAR)
+
 
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
@@ -798,8 +804,6 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.digitalHealthSharingStatus, code.value.lower(), authored)
                         if something_changed:
                             setattr(participant_summary, summary_field, digital_health_sharing_status)
-                    elif code.value == CONSENT_FOR_WEAR:
-                        self.consents_provided.append(ConsentType.WEAR)
 
                     if summary_field != QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD \
                         and getattr(participant_summary, summary_field) != new_status:
