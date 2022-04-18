@@ -231,10 +231,13 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
-        return pdf.has_text([(
-            'Consent to Receive DNA Results',
-            'Consentimiento para Recibir Resultados de ADN'
-        )])
+        return pdf.has_text([
+            (
+                'Consent to Receive DNA Results',
+                'Consentimiento para Recibir Resultados de ADN'
+            ),
+            ('Consent to Get DNA Results',)
+        ])
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
         return False  # CE doesn't have cohort 1 participants to have needed re-consents
