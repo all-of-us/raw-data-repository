@@ -193,7 +193,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         )
 
     def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
-        raise NotImplemented('Wear consent validation not implemented for Vibrent')
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -216,7 +216,7 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
         )
 
     def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
-        raise NotImplemented('Wear consent validation not implemented for Vibrent')
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
