@@ -31,6 +31,7 @@ from rdr_service.code_constants import (
     CONSENT_FOR_GENOMICS_ROR_MODULE,
     CONSENT_FOR_ELECTRONIC_HEALTH_RECORDS_MODULE,
     CONSENT_FOR_STUDY_ENROLLMENT_MODULE,
+    CONSENT_FOR_WEAR,
     CONSENT_PERMISSION_YES_CODE,
     DATE_OF_BIRTH_QUESTION_CODE,
     DVEHRSHARING_CONSENT_CODE_NOT_SURE,
@@ -797,6 +798,8 @@ class QuestionnaireResponseDao(BaseDao):
                             participant_summary.digitalHealthSharingStatus, code.value.lower(), authored)
                         if something_changed:
                             setattr(participant_summary, summary_field, digital_health_sharing_status)
+                    elif code.value == CONSENT_FOR_WEAR:
+                        self.consents_provided.append(ConsentType.WEAR)
 
                     if summary_field != QUESTIONNAIRE_ON_DIGITAL_HEALTH_SHARING_FIELD \
                         and getattr(participant_summary, summary_field) != new_status:
@@ -901,7 +904,7 @@ class QuestionnaireResponseDao(BaseDao):
         to determine if the new response is a new consent for the participant.
         """
         if len(self.consents_provided) == 0:
-            # If the new response doesn't give any consent at all, then there's no reason for a check
+            # If the new response doesn't give any consent at all, then there's no need to validate a PDF
             return
 
         # Load previously received consent authored dates for the participant
