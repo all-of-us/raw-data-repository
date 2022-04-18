@@ -234,9 +234,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
         return pdf.has_text([
             (
                 'Consent to Receive DNA Results',
-                'Consentimiento para Recibir Resultados de ADN'
-            ),
-            ('Consent to Get DNA Results',)
+                'Consentimiento para Recibir Resultados de ADN',
+                'Consent to Get DNA Results'
+            )
         ])
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
