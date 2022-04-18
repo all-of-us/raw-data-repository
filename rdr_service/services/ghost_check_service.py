@@ -3,6 +3,7 @@ from logging import Logger
 
 from sqlalchemy.orm import Session
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ghost_check_dao import GhostCheckDao, GhostFlagModification
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant
@@ -17,7 +18,7 @@ class GhostCheckService:
         self._config = ptsc_config
         self._participant_dao = ParticipantDao()
 
-    def run_ghost_check(self, start_date: date, end_date: date = None):
+    def run_ghost_check(self, start_date: date, end_date: date = None, project=GAE_PROJECT):
         """
         Finds all the participants that need to be checked to see if they're ghosts and calls out to Vibrent's API
         to check them, recording the result.
@@ -72,7 +73,7 @@ class GhostCheckService:
 
         if len(pdr_rebuild_list):
             # PDR BQ module views select the test/ghost flag from participant data; don't need to rebuild module data
-            dispatch_participant_rebuild_tasks(pdr_rebuild_list, build_modules=False)
+            dispatch_participant_rebuild_tasks(pdr_rebuild_list, project=project, build_modules=False)
 
     def _record_ghost_result(self, is_ghost_response: bool, participant: Participant) -> bool:
         """ Update the participant isGhostId status if needed.  Returns true if update was performed """
