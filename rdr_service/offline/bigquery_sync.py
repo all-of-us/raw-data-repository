@@ -44,8 +44,8 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
     :param batch_size:  Size of the batch of participant IDs to include in the rebuild task payload
     :param project_id: String identifier for the GAE project
     :param build_locally: Boolean value indicating whether to build participant summaries in this process.
-        If False is given, GCP tasks are created for rebuilding participants. Defaults to True if config.GAE_PROJECT
-        is localhost.
+        If False is given, GCP tasks are created for rebuilding participants. Defaults to True if the project_id value
+        is localhost
     :param build_participant_summary:  Boolean value indicating whether PDR participant summary data should be rebuilt
     :param build_modules: Boolean value indicating whether PDR module data for the participant should be rebuilt
     """
@@ -60,7 +60,7 @@ def dispatch_participant_rebuild_tasks(pid_list, batch_size=100, project_id=GAE_
     task = GCPCloudTask()
 
     if build_locally is None:
-        build_locally = config.GAE_PROJECT == 'localhost'
+        build_locally = project_id == 'localhost'
 
     # queue up a batch of participant ids and send them to be rebuilt.
     for pid_data in pid_list:
