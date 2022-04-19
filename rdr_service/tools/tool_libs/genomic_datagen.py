@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 
-from rdr_service.services.genomic_datagen import ParticipantGenerator
+from rdr_service.services.genomic_datagen import ParticipantGenerator, ManifestGenerator
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -55,18 +55,82 @@ class ParticipantGeneratorTool(ToolBase):
             return 0
 
 
-def output_local_csv(*, filename, data):
+class ManifestGeneratorTool(ToolBase):
+
+    def run(self):
+        if self.args.project == 'all-of-us-rdr-prod':
+            _logger.error(f'Manifest generator cannot be used on project: {self.args.project}')
+            return 1
+
+        self.gcp_env.activate_sql_proxy()
+        _ = self.get_server_config()
+
+        manifest_params = {
+            "template_name": None,
+            "sample_ids": None,
+            "update_samples": self.args.update_samples,
+            "logger": _logger,
+        }
+
+        if self.args.manifest_template:
+            manifest_params["template_name"] = self.args.manifest_template
+
+        if self.args.sample_id_file:
+            if not os.path.exists(self.args.sample_id_file):
+                _logger.error(f'File {self.args.sample_id_file} was not found.')
+                return 1
+
+            with open(self.args.sample_id_file, encoding='utf-8-sig') as file:
+                csv_reader = csv.DictReader(file)
+                sample_ids = []
+
+                for row in csv_reader:
+                    sample_ids.append(row)
+
+                manifest_params["sample_ids"] = sample_ids
+
+        # Execute the manifest generator process or the job controller
+        with ManifestGenerator(**manifest_params) as manifest_generator:
+            _logger.info("running...")
+            results = manifest_generator.generate_manifest_data()
+            _logger.info(results['status'])
+            _logger.info(results['message'])
+
+            if results['manifest_data']:
+
+                if self.args.output_manifest_directory:
+                    output_path = self.args.output_manifest_directory
+                else:
+                    output_path = os.getcwd() + "/"
+
+                if self.args.output_manifest_filename:
+                    output_path += self.args.output_manifest_filename
+                else:
+                    output_path += results['output_filename']
+
+                _logger.info("output path: " + output_path)
+
+                # write file
+                output_local_csv(output_path, results['manifest_data'])
+
+                _logger.info("File Created: " + output_path)
+
+                return 0
+
+            return 1
+
+
+def output_local_csv(filename, data):
     with open(filename, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=[k for k in data[0]])
         writer.writeheader()
         writer.writerows(data)
 
-    _logger.info(f'Generated output template csv: {os.getcwd()}/{filename}')
-
 
 def get_datagen_process_for_run(args, gcp_env):
     datagen_map = {
         'participant_generator': ParticipantGeneratorTool(args, gcp_env),
+        'manifest_generator': ManifestGeneratorTool(args, gcp_env),
     }
     return datagen_map.get(args.process)
 
@@ -100,6 +164,22 @@ def run():
     participants.add_argument("--output-template-name", help="template name for output type, "
                                                              "specified in datagen_output_template",
                               default=None, required=True)  # noqa
+
+    manifest = subparser.add_parser("manifest_generator")
+    manifest.add_argument("--manifest-template", help="which manifest to generate",
+                          default=None,
+                          required=True)  # noqa
+    manifest.add_argument("--sample-id-file", help="path to the list of sample_ids to include in manifest. "
+                                                   "Leave blank for End-to-End manifest (pulls all eligible samples)",
+                              default=None)  # noqa
+    manifest.add_argument("--update-samples",
+                          help="update the result state and manifest job run id field on completion",
+                          default=False, required=False, action="store_true")  # noqa
+    manifest.add_argument("--output-manifest-directory", help="local output directory for the generated manifest"
+                                                       , default=None)  # noqa
+    manifest.add_argument("--output-manifest-filename", help="what to name the output file",
+                              default=None, required=False)  # noqa
+
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:
@@ -108,7 +188,7 @@ def run():
             exit_code = datagen_process.run()
         # pylint: disable=broad-except
         except Exception as e:
-            _logger.info(f'Error has occured, {e}. For help use "genomic --help".')
+            _logger.info(f'Error has occured, {e}. For help use "genomic_datagen --help".')
             exit_code = 1
 
         return exit_code

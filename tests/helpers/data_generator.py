@@ -9,7 +9,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
-from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate
+from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenManifestSchema
 from rdr_service.model.genomics import (
     GenomicManifestFile,
     GenomicJobRun,
@@ -793,6 +793,15 @@ class DataGenerator:
 
     def create_database_datagen_template(self, **kwargs):
         m = self._genomic_datagen_template(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_datagen_manifest_schema(**kwargs):
+        return GenomicDataGenManifestSchema(**kwargs)
+
+    def create_database_genomic_datagen_manifest_schema(self, **kwargs):
+        m = self._genomic_datagen_manifest_schema(**kwargs)
         self._commit_to_database(m)
         return m
 

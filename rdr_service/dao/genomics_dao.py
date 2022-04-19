@@ -458,6 +458,25 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 )
             return member.first()
 
+    def get_members_from_sample_ids(self, sample_ids, genome_type=None):
+        """
+        Returns genomicSetMember objects for list of sample IDs.
+        :param sample_ids:
+        :param genome_type:
+        :return:
+        """
+        with self.session() as session:
+            members = session.query(GenomicSetMember).filter(
+                GenomicSetMember.sampleId.in_(sample_ids),
+                GenomicSetMember.genomicWorkflowState != GenomicWorkflowState.IGNORE,
+            )
+
+            if genome_type:
+                members = members.filter(
+                    GenomicSetMember.genomeType == genome_type
+                )
+            return members.all()
+
     def get_members_from_member_ids(self, member_ids):
         with self.session() as session:
             return session.query(GenomicSetMember).filter(
@@ -3229,6 +3248,7 @@ class GenomicQueriesDao(BaseDao):
 
     def get_w3sr_records(self, **kwargs):
         site_id = self.transform_cvl_site_id(kwargs.get('site_id'))
+        sample_ids = kwargs.get('sample_ids')
 
         with self.session() as session:
             records = session.query(
@@ -3272,9 +3292,14 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.gcSiteId == site_id.lower()
                 )
 
+            if sample_ids:
+                records = records.filter(
+                    GenomicSetMember.sampleId.in_(sample_ids)
+                )
+
             return records.distinct().all()
 
-    def get_data_ready_for_w1il_manifest(self, module: str, cvl_id: str):
+    def get_data_ready_for_w1il_manifest(self, module: str, cvl_id: str, sample_ids=None):
         """
         Returns the genomic set member and other data needed for a W1IL manifest.
         :param module: Module to retrieve genomic set members for, either 'pgx' or 'hdr'
@@ -3380,5 +3405,10 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.genomicWorkflowState == GenomicWorkflowState.CVL_READY,
                 previous_w1il_job_field.is_(None)
             )
+
+            if sample_ids:
+                query = query.filter(
+                    GenomicSetMember.sampleId.in_(sample_ids)
+                )
 
             return query.all()
