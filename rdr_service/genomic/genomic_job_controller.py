@@ -807,6 +807,24 @@ class GenomicJobController:
         except RuntimeError:
             self.job_result = GenomicSubProcessResult.ERROR
 
+    def calculate_informing_loop_ready_flags(self):
+        calculate_limit = config.getSetting(config.CALCULATE_READY_FLAG_LIMIT, None)
+        members = self.member_dao.get_members_for_informing_loop_ready(
+            limit=calculate_limit
+        )
+
+        if not members:
+            logging.info(f'No members found for setting informing loop ready flags.')
+            self.job_result = GenomicSubProcessResult.SUCCESS
+            return
+
+        logging.info(f'Setting informing loop ready flags for {len(members)} members.')
+
+        for member in members:
+            self.member_dao.set_informing_loop_ready(member)
+
+        self.job_result = GenomicSubProcessResult.SUCCESS
+
     @staticmethod
     def set_aw1_attributes_from_raw(rec: tuple):
         """

@@ -189,8 +189,6 @@ class BiobankQuestOrderSiteAddress(Base):
         return Column("biobank_order_id", String(80), ForeignKey("biobank_order.biobank_order_id"), nullable=False)
 
 
-
-
 class BiobankOrderIdentifierBase(object):
     system = Column("system", String(80), primary_key=True)
     """

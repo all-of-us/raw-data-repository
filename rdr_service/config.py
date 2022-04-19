@@ -96,6 +96,7 @@ GENOMIC_INGESTIONS = "genomic_ingestions"
 GENOMIC_SKIP_MISSING_FILETYPES = "genomic_skip_missing_file_types"
 GENOMIC_GC_ID_MAPPING = "gc_name_to_id_mapping"
 GENOMIC_PIPELINE_IDS = "genomic_pipeline_ids"
+CALCULATE_READY_FLAG_LIMIT = 'calculate_ready_flag_limit'
 DRC_BROAD_BUCKET_NAME = "drc_broad_bucket_name"
 CO_BUCKET_NAME = "co_bucket_name"
 UW_BUCKET_NAME = "uw_bucket_name"
