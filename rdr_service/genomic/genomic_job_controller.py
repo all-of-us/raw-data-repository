@@ -809,6 +809,11 @@ class GenomicJobController:
 
     def calculate_informing_loop_ready_flags(self):
         calculate_limit = config.getSetting(config.CALCULATE_READY_FLAG_LIMIT, None)
+
+        if not calculate_limit:
+            self.job_result = GenomicSubProcessResult.SUCCESS
+            return
+
         members = self.member_dao.get_members_for_informing_loop_ready(
             limit=calculate_limit
         )

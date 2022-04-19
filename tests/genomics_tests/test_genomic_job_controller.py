@@ -906,15 +906,7 @@ class GenomicJobControllerTest(BaseTestCase):
                     sexConcordance='True',
                     drcFpConcordance='Pass',
                     drcSexConcordance='Pass',
-                    processingStatus='Pass',
-                    hfVcfReceived=1,
-                    hfVcfTbiReceived=1,
-                    hfVcfMd5Received=1,
-                    cramReceived=1,
-                    cramMd5Received=1,
-                    craiReceived=1,
-                    gvcfReceived=1,
-                    gvcfMd5Received=1,
+                    processingStatus='Pass'
                 )
 
 
@@ -924,6 +916,13 @@ class GenomicJobControllerTest(BaseTestCase):
         current_set_members = self.member_dao.get_all()
         self.assertTrue(all(obj.informingLoopReadyFlag == 0 for obj in current_set_members))
         self.assertTrue(all(obj.informingLoopReadyFlagModified is None for obj in current_set_members))
+
+        with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+            controller.calculate_informing_loop_ready_flags()
+
+        # no config object, controller method should return
+        members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
+        self.assertEqual(len(members_for_ready_loop), num_participants)
 
         calculation_limit = 2
         config.override_setting(config.CALCULATE_READY_FLAG_LIMIT, [calculation_limit])
