@@ -2,14 +2,14 @@ import datetime
 import mock
 import random
 
-from rdr_service import clock
+from rdr_service import clock, config
 from rdr_service.api_util import open_cloud_file
 from rdr_service.clock import FakeClock
 from rdr_service.dao.genomics_dao import GenomicGcDataFileDao, GenomicGCValidationMetricsDao, GenomicIncidentDao, \
     GenomicInformingLoopDao, GenomicResultViewedDao, GenomicSetMemberDao, UserEventMetricsDao, GenomicJobRunDao
 from rdr_service.dao.message_broker_dao import MessageBrokenEventDataDao
 from rdr_service.genomic_enums import GenomicIncidentCode, GenomicJob, GenomicWorkflowState, GenomicSubProcessResult, \
-    GenomicSubProcessStatus, GenomicManifestTypes
+    GenomicSubProcessStatus, GenomicManifestTypes, GenomicQcStatus
 from rdr_service.genomic.genomic_job_components import GenomicFileIngester
 from rdr_service.genomic.genomic_job_controller import GenomicJobController
 from rdr_service.model.genomics import GenomicGcDataFile, GenomicIncident, GenomicSetMember, GenomicGCValidationMetrics
@@ -860,3 +860,94 @@ class GenomicJobControllerTest(BaseTestCase):
         mock_buckets = set([obj[0][0]['bucket_name'] for obj in call_args])
         self.assertTrue(len(mock_buckets), 1)
         self.assertTrue(list(mock_buckets)[0] == bucket_name)
+
+    def test_calculate_informing_loop_ready_flags(self):
+        num_participants = 4
+        gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        for num in range(num_participants):
+            plus_num = clock.CLOCK.now() + datetime.timedelta(minutes=num)
+            plus_num = plus_num.replace(microsecond=0)
+            with FakeClock(plus_num):
+                summary = self.data_generator.create_database_participant_summary(
+                    consentForStudyEnrollment=1,
+                    consentForGenomicsROR=1
+                )
+                stored_sample = self.data_generator.create_database_biobank_stored_sample(
+                    biobankId=summary.biobankId,
+                    biobankOrderIdentifier=self.fake.pyint()
+                )
+                collection_site = self.data_generator.create_database_site(
+                    siteType='Clinic'
+                )
+                order = self.data_generator.create_database_biobank_order(
+                    collectedSiteId=collection_site.siteId,
+                    participantId=summary.participantId,
+                    finalizedTime=plus_num
+                )
+                self.data_generator.create_database_biobank_order_identifier(
+                    value=stored_sample.biobankOrderIdentifier,
+                    biobankOrderId=order.biobankOrderId
+                )
+                member = self.data_generator.create_database_genomic_set_member(
+                    genomicSetId=gen_set.id,
+                    participantId=summary.participantId,
+                    genomeType=config.GENOME_TYPE_WGS,
+                    qcStatus=GenomicQcStatus.PASS,
+                    gcManifestSampleSource='Whole Blood',
+                    collectionTubeId=stored_sample.biobankStoredSampleId
+                )
+                self.data_generator.create_database_genomic_gc_validation_metrics(
+                    genomicSetMemberId=member.id,
+                    sexConcordance='True',
+                    drcFpConcordance='Pass',
+                    drcSexConcordance='Pass',
+                    processingStatus='Pass'
+                )
+
+
+        members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
+        self.assertEqual(len(members_for_ready_loop), num_participants)
+
+        current_set_members = self.member_dao.get_all()
+        self.assertTrue(all(obj.informingLoopReadyFlag == 0 for obj in current_set_members))
+        self.assertTrue(all(obj.informingLoopReadyFlagModified is None for obj in current_set_members))
+
+        with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+            controller.calculate_informing_loop_ready_flags()
+
+        # no config object, controller method should return
+        members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
+        self.assertEqual(len(members_for_ready_loop), num_participants)
+
+        calculation_limit = 2
+        config.override_setting(config.CALCULATE_READY_FLAG_LIMIT, [calculation_limit])
+
+        with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+            controller.calculate_informing_loop_ready_flags()
+
+        current_set_members = self.member_dao.get_all()
+        self.assertTrue(any(obj.informingLoopReadyFlag == 1 for obj in current_set_members))
+        self.assertTrue(any(obj.informingLoopReadyFlagModified is not None for obj in current_set_members))
+
+        current_loops_set = [obj for obj in current_set_members if obj.informingLoopReadyFlag == 1
+                             and obj.informingLoopReadyFlagModified is not None]
+        self.assertEqual(len(current_loops_set), calculation_limit)
+
+        members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
+        self.assertEqual(len(members_for_ready_loop), num_participants // 2)
+
+        with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+            controller.calculate_informing_loop_ready_flags()
+
+        current_set_members = self.member_dao.get_all()
+        self.assertTrue(all(obj.informingLoopReadyFlag == 1 for obj in current_set_members))
+        self.assertTrue(all(obj.informingLoopReadyFlagModified is not None for obj in current_set_members))
+
+        members_for_ready_loop = self.member_dao.get_members_for_informing_loop_ready()
+        self.assertEqual(len(members_for_ready_loop), 0)
+

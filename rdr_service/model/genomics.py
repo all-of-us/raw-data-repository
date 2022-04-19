@@ -325,6 +325,9 @@ class GenomicSetMember(Base):
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
 
+    informingLoopReadyFlag = Column('informing_loop_ready_flag', Integer, nullable=False, default=0)
+    informingLoopReadyFlagModified = Column("informing_loop_ready_flag_modified", DateTime, nullable=True)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)

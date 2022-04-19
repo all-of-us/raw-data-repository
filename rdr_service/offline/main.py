@@ -657,6 +657,20 @@ def genomic_retry_manifest_ingestion_failures():
 
 
 @app_util.auth_required_cron
+@run_genomic_cron_job('calculate_informing_loops_ready_weekly')
+def genomic_calculate_informing_loop_ready_flags_weekly():
+    genomic_pipeline.calculate_informing_loop_ready_flags()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
+@run_genomic_cron_job('calculate_informing_loops_ready_daily')
+def genomic_calculate_informing_loop_ready_flags_daily():
+    genomic_pipeline.calculate_informing_loop_ready_flags()
+    return '{"success": "true"}'
+
+
+@app_util.auth_required_cron
 @run_genomic_cron_job('reconcile_pdr_data')
 def genomic_reconcile_pdr_data():
     genomic_pipeline.reconcile_pdr_data()
@@ -1018,6 +1032,18 @@ def _build_pipeline_app():
         OFFLINE_PREFIX + "GenomicRetryManifestIngestions",
         endpoint="retry_manifest_ingestion_failures",
         view_func=genomic_retry_manifest_ingestion_failures,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CalculateInformingLoopReadyStatusWeekly",
+        endpoint="informing_loop_ready_flags_weekly",
+        view_func=genomic_calculate_informing_loop_ready_flags_weekly,
+        methods=["GET"]
+    )
+    offline_app.add_url_rule(
+        OFFLINE_PREFIX + "CalculateInformingLoopReadyStatusDaily",
+        endpoint="informing_loop_ready_flags_daily",
+        view_func=genomic_calculate_informing_loop_ready_flags_daily,
         methods=["GET"]
     )
     # END Genomic Pipeline Jobs

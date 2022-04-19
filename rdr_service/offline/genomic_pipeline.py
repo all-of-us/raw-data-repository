@@ -385,6 +385,11 @@ def retry_manifest_ingestions():
         controller.retry_manifest_ingestions()
 
 
+def calculate_informing_loop_ready_flags():
+    with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+        controller.calculate_informing_loop_ready_flags()
+
+
 def create_aw2f_manifest(feedback_record):
     with GenomicJobController(GenomicJob.AW2F_MANIFEST,
                               bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
