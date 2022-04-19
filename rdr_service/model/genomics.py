@@ -325,6 +325,8 @@ class GenomicSetMember(Base):
                                      Integer, ForeignKey("genomic_job_run.id"),
                                      nullable=True)
 
+    diversionPouchSiteFlag = Column('diversion_pouch_site_flag', SmallInteger, nullable=False, default=0)
+
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
