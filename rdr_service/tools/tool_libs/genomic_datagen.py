@@ -8,7 +8,9 @@ import logging
 import os
 import sys
 
-from rdr_service.services.genomic_datagen import ParticipantGenerator, ManifestGenerator
+from rdr_service import clock
+from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao
+from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate, ManifestGenerator
 from rdr_service.services.system_utils import setup_logging, setup_i18n
 
 from rdr_service.tools.tool_libs import GCPProcessContext
@@ -30,12 +32,46 @@ class ParticipantGeneratorTool(ToolBase):
             return 1
 
         self.gcp_env.activate_sql_proxy()
-        _ = self.get_server_config()
+
+        now_formatted = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
+        datagen_run_dao = GenomicDataGenRunDao()
+
+        def _build_external_values(row_dict):
+            excluded_keys = ['participant_count', 'template_name']
+            cleaned_row = dict(zip([key for key in row_dict if key not in excluded_keys], row_dict.values()))
+            return cleaned_row
 
         if self.args.output_only_run_id:
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_run_id=self.args.output_only_run_id
+            )
+            generator_output = template_output.run_output_creation()
+
+            output_local_csv(
+                filename=f'datagen_run_id_{self.args.output_only_run_id}_{now_formatted}.csv',
+                data=generator_output['data']
+            )
             return 0  # bypass generator
 
         if self.args.output_only_sample_ids:
+
+            samples_id_list = []
+            for sample in self.args.output_only_sample_ids.split(','):
+                samples_id_list.append(sample.strip())
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_sample_ids=samples_id_list
+            )
+            generator_output = template_output.run_output_creation()
+
+            output_local_csv(
+                filename=f'datagen_sample_ids_{now_formatted}.csv',
+                data=generator_output['data']
+            )
+
             return 0  # bypass generator
 
         if self.args.spec_path:
@@ -48,10 +84,28 @@ class ParticipantGeneratorTool(ToolBase):
                     csv_reader = csv.DictReader(file)
                     for row in csv_reader:
                         participant_generator.run_participant_creation(
-                            num_participants='',
-                            template_type='w3ss',
-                            external_values=row
+                            num_participants=row['participant_count'],
+                            template_type=row['template_name'],
+                            external_values=_build_external_values(row)
                         )
+
+            current_run_id = datagen_run_dao.get_max_run_id()[0]
+
+            template_output = GeneratorOutputTemplate(
+                output_template_name=self.args.output_template_name,
+                output_run_id=current_run_id
+            )
+            generator_output = template_output.run_output_creation()
+
+            fname = f'datagen_run_id_{current_run_id}_{now_formatted}.csv'
+
+            output_local_csv(
+                filename=fname,
+                data=generator_output['data']
+            )
+
+            _logger.info(f'Generated output template csv: {os.getcwd()}/{fname}')
+
             return 0
 
 
@@ -111,7 +165,7 @@ class ManifestGeneratorTool(ToolBase):
                 _logger.info("output path: " + output_path)
 
                 # write file
-                output_local_csv(output_path, results['manifest_data'])
+                output_local_csv(filename=output_path, data=results['manifest_data'])
 
                 _logger.info("File Created: " + output_path)
 
@@ -120,19 +174,19 @@ class ManifestGeneratorTool(ToolBase):
             return 1
 
 
-def output_local_csv(filename, data):
+def output_local_csv(*, filename, data):
     with open(filename, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=[k for k in data[0]])
         writer.writeheader()
         writer.writerows(data)
 
 
-def get_datagen_process_for_run(args, gcp_env):
+def get_datagen_process_for_run(_args, _gcp_env):
     datagen_map = {
-        'participant_generator': ParticipantGeneratorTool(args, gcp_env),
-        'manifest_generator': ManifestGeneratorTool(args, gcp_env),
+        'participant_generator': ParticipantGeneratorTool(_args, _gcp_env),
+        'manifest_generator': ManifestGeneratorTool(_args, _gcp_env),
     }
-    return datagen_map.get(args.process)
+    return datagen_map.get(_args.process)
 
 
 def run():
@@ -159,11 +213,12 @@ def run():
                                                                "members in the datagen_member_run table",
                               default=None)  # noqa
     participants.add_argument("--spec-path", help="path to the request form", default=None)  # noqa
-    participants.add_argument("--test-project", help="type of project being tested ie. 'cvl'", default=None,
+
+    participants.add_argument("--test-project", help="type of project being tested ie. 'cvl'", default='cvl',
                               required=True)  # noqa
     participants.add_argument("--output-template-name", help="template name for output type, "
                                                              "specified in datagen_output_template",
-                              default=None, required=True)  # noqa
+                              default='default', required=True)  # noqa
 
     manifest = subparser.add_parser("manifest_generator")
     manifest.add_argument("--manifest-template", help="which manifest to generate",

@@ -3,12 +3,13 @@ from logging import Logger
 
 from sqlalchemy.orm import Session
 
+from rdr_service.config import GAE_PROJECT
 from rdr_service.dao.ghost_check_dao import GhostCheckDao, GhostFlagModification
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.model.participant import Participant
 from rdr_service.model.utils import from_client_participant_id
+from rdr_service.offline.bigquery_sync import dispatch_participant_rebuild_tasks
 from rdr_service.services.ptsc_client import PtscClient
-
 
 class GhostCheckService:
     def __init__(self, session: Session, logger: Logger, ptsc_config: dict):
@@ -17,11 +18,13 @@ class GhostCheckService:
         self._config = ptsc_config
         self._participant_dao = ParticipantDao()
 
-    def run_ghost_check(self, start_date: date, end_date: date = None):
+    def run_ghost_check(self, start_date: date, end_date: date = None, project=GAE_PROJECT):
         """
         Finds all the participants that need to be checked to see if they're ghosts and calls out to Vibrent's API
         to check them, recording the result.
         """
+        # PDR-855:  Need to rebuild the PDR participant summary data for pids whose ghost status has changed
+        pdr_rebuild_list = list()
         db_participants = GhostCheckDao.get_participants_needing_checked(
             session=self._session,
             earliest_signup_time=start_date,
@@ -45,11 +48,13 @@ class GhostCheckService:
                 else:
                     participant_id = from_client_participant_id(participant_id_str)
                     if participant_id in ids_not_found:
-                        self._record_ghost_result(
+                        ghost_change = self._record_ghost_result(
                             is_ghost_response=False,
                             participant=participant_map[participant_id]
                         )
                         ids_not_found.remove(participant_id)
+                        if ghost_change:
+                            pdr_rebuild_list.append(participant_id)
                     else:
                         self._logger.error(f'Vibrent had unknown id: {participant_id}')
 
@@ -59,12 +64,19 @@ class GhostCheckService:
             # Individually check each participant not seen in the API data yet (their date might be a little off).
             response = client.get_participant_lookup(participant_id=participant_id)
             is_ghost_response = response is None
-            self._record_ghost_result(
+            ghost_change = self._record_ghost_result(
                 is_ghost_response=is_ghost_response,
                 participant=participant_map[participant_id]
             )
+            if ghost_change:
+                pdr_rebuild_list.append(participant_id)
 
-    def _record_ghost_result(self, is_ghost_response: bool, participant: Participant):
+        if len(pdr_rebuild_list):
+            # PDR BQ module views select the test/ghost flag from participant data; don't need to rebuild module data
+            dispatch_participant_rebuild_tasks(pdr_rebuild_list, project=project, build_modules=False)
+
+    def _record_ghost_result(self, is_ghost_response: bool, participant: Participant) -> bool:
+        """ Update the participant isGhostId status if needed.  Returns true if update was performed """
         ghost_flag_change_made = None
         is_ghost_database = bool(participant.isGhostId)
         if is_ghost_database and not is_ghost_response:
@@ -86,3 +98,6 @@ class GhostCheckService:
             modification_performed=ghost_flag_change_made
         )
         self._session.commit()
+
+        return True if ghost_flag_change_made else False
+

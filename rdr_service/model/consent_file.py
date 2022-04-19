@@ -21,6 +21,7 @@ class ConsentType(messages.Enum):
     GROR = 4
     UNKNOWN = 5
     PRIMARY_UPDATE = 6
+    WEAR = 7
 
 
 class ConsentSyncStatus(messages.Enum):

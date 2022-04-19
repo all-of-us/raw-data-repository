@@ -43,6 +43,7 @@ from rdr_service.resource.generators.genomics import genomic_set_update, genomic
     genomic_manifest_file_update, genomic_manifest_feedback_update
 from rdr_service.resource.constants import SKIP_TEST_PIDS_FOR_PDR
 from rdr_service.resource.tasks import batch_rebuild_consent_metrics_task
+from rdr_service.services.response_duplication_detector import ResponseDuplicationDetector
 from rdr_service.services.system_utils import setup_logging, setup_i18n, print_progress_bar
 from rdr_service.tools.tool_libs import GCPProcessContext, GCPEnvConfigObject
 
@@ -83,6 +84,7 @@ class CleanPDRDataClass(object):
         else:
             self.pk_id_list = pk_id_list
 
+
     def delete_pk_ids_from_bigquery_sync(self, table_id):
         """
         Delete the requested records from the bigquery_sync table.  Note, that to restore an unintentional delete,
@@ -98,6 +100,7 @@ class CleanPDRDataClass(object):
         else:
             dao = BigQuerySyncDao()
             with dao.session() as session:
+
                 # Verify the table_id matches at least some existing records in the bigquery_sync table
                 query = session.query(BigQuerySync.id)\
                     .filter(BigQuerySync.projectId == project_id).filter(BigQuerySync.datasetId == dataset_id)\
@@ -129,6 +132,7 @@ class CleanPDRDataClass(object):
         """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
         _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
 
+
     def run(self):
         """
         Main program process
@@ -153,13 +157,20 @@ class CleanPDRDataClass(object):
         _logger.info('=' * 90)
         _logger.info('')
 
-        if self.args.bq_table_id:
-            self.delete_pk_ids_from_bigquery_sync(self.args.bq_table_id)
+        if self.args.pdr_mod_responses:
+            # This option/use case is primarily for orphaned responses due to retroactively flagged duplicate
+            # questionnaire responses. Use the cleanup code already in the ResponseDuplicationDetector class
+            dao = BigQuerySyncDao()
+            with dao.session() as session:
+                ResponseDuplicationDetector.clean_pdr_module_data(self.pk_id_list, session, self.gcp_env.project)
+        else:
+            if self.args.bq_table_id:
+                self.delete_pk_ids_from_bigquery_sync(self.args.bq_table_id)
 
-        # Can delete from both tables on the same run as long as the bigquery_sync.pk_id matches the
-        # resource_data.resource_pk_id for the resource_type_id specified.
-        if self.args.resource_type_id:
-            self.delete_resource_pk_ids_from_resource_data(self.resource_type_id)
+            # Can delete from both bigquery_sync and resource data tables on the same run as long as the
+            # bigquery_sync.pk_id matches the resource_data.resource_pk_id for the resource_type_id specified.
+            if self.args.resource_type_id:
+                self.delete_resource_pk_ids_from_resource_data(self.resource_type_id)
 
 
 class ParticipantResourceClass(object):
@@ -1453,7 +1464,8 @@ def run():
                                    help='table_id value whose bigquery_sync records should be cleaned')
     clean_pdr_data_parser.add_argument('--resource-type-id', type=int, default=None,
                                    help='resource_type_id whose resource_data records should be cleaned')
-
+    clean_pdr_data_parser.add_argument('--pdr-mod-responses', default=False, action='store_true',
+                                        help="clean all pdr_mod_* tables based on questionnaire_response_id list")
     args = parser.parse_args()
 
     with GCPProcessContext(tool_cmd, args.project, args.account, args.service_account) as gcp_env:

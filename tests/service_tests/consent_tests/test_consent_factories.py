@@ -210,11 +210,14 @@ class CeConsentFactoryTest(BaseConsentFactoryTest):
             text_in_file='Consentimiento para Recibir Resultados de ADN'
         )
 
+        self.wear_file = self._mock_pdf(name='wear_test.pdf', text_in_file='All of Us WEAR Study')
+
         self.storage_provider_mock.list.return_value = [
             self.primary_file, self.spanish_primary,
             self.cabor_file, self.spanish_cabor,
             self.ehr_file, self.spanish_ehr,
-            self.gror_file, self.spanish_gror
+            self.gror_file, self.spanish_gror,
+            self.wear_file
         ]
 
         self.ce_factory = files.ConsentFileAbstractFactory.get_file_factory(
@@ -266,6 +269,13 @@ class CeConsentFactoryTest(BaseConsentFactoryTest):
             expected_class=files.CeGrorConsentFile,
             expected_files=[self.gror_file, self.spanish_gror],
             actual_files=self.ce_factory.get_gror_consents()
+        )
+
+    def test_ce_wear_consent(self):
+        self.assertConsentListEquals(
+            expected_class=files.CeWearConsentFile,
+            expected_files=[self.wear_file],
+            actual_files=self.ce_factory.get_wear_consents()
         )
 
     @classmethod

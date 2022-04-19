@@ -28,6 +28,10 @@ class GhostCheckServiceTest(BaseTestCase):
         self.ghost_dao_mock = dao_patch.start()
         self.addCleanup(dao_patch.stop)
 
+        pdr_rebuild_patch = mock.patch('rdr_service.services.ghost_check_service.dispatch_participant_rebuild_tasks')
+        self.pdr_rebuild_mock = pdr_rebuild_patch.start()
+        self.addCleanup(pdr_rebuild_patch.stop)
+
         self.service = GhostCheckService(
             session=mock.MagicMock(),
             ptsc_config=mock.MagicMock(),
@@ -54,6 +58,7 @@ class GhostCheckServiceTest(BaseTestCase):
         ])
 
         self.participant_dao_mock.update_ghost_participant.assert_not_called()
+        self.assertEqual(self.pdr_rebuild_mock.call_count, 0)
 
     def test_logging_for_vibrent_server_anomalies(self):
         """Vibrent could have ids we don't know about, or participants with missing DRC ids"""
@@ -113,3 +118,7 @@ class GhostCheckServiceTest(BaseTestCase):
                 session=mock.ANY
             )
         ])
+        # Assert the PDR data rebuild was invoked with both pids in the batch list
+        self.assertEqual(1, self.pdr_rebuild_mock.call_count)
+        self.assertListEqual(self.pdr_rebuild_mock.call_args[0][0], [1123, 4567])
+

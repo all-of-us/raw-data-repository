@@ -17,7 +17,7 @@ from rdr_service.model.config_utils import to_client_biobank_id
 from rdr_service.model.genomics import GenomicGCValidationMetrics, GenomicSetMember
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.offline import genomic_pipeline
-from rdr_service.participant_enums import QuestionnaireStatus
+from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
 from tests.genomics_tests.test_genomic_pipeline import create_ingestion_test_file
 from tests.helpers.unittest_base import BaseTestCase
 
@@ -758,7 +758,41 @@ class GenomicCVLPipelineTest(BaseTestCase):
         self.assertTrue(response.status_code == 500)
 
 
-class GenomicW1ilGenerationTest(BaseTestCase):
+class ManifestGenerationTestMixin:
+    def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
+        write_rows_func = manifest_cloud_writer_mock.__enter__.return_value.write_rows
+        actual_rows = write_rows_func.call_args[0][0]
+
+        self.assertListEqual(expected_rows, actual_rows)
+
+    @classmethod
+    def get_manifest_headers(cls, manifest_writer_mock):
+        write_header_func = manifest_writer_mock.__enter__.return_value.write_header
+        return tuple(write_header_func.call_args[0][0])
+
+    @classmethod
+    def setup_manifest_mocks(cls, sql_exporter_class_mock, mock_map):
+        # Setup the exporter instances to return the pre-initialized mock objects for each manifest
+        def get_manifest_cloud_writer(file_name):
+            last_bucket_name = sql_exporter_class_mock.call_args[0][0]
+            file_manifest_map = mock_map[last_bucket_name]
+
+            if file_name in file_manifest_map:
+                return file_manifest_map[file_name]
+            raise Exception(f'Unexpected manifest "{file_name}" generated for the "{last_bucket_name}" bucket')
+
+        sql_exporter_class_mock.return_value.open_cloud_writer.side_effect = get_manifest_cloud_writer
+
+    @classmethod
+    def _get_cvl_bucket_map(cls):
+        return {
+            'co': config.CO_BUCKET_NAME,
+            'uw': config.UW_BUCKET_NAME,
+            'bcm': config.BCM_BUCKET_NAME
+        }
+
+
+class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
     def setUp(self, *args, **kwargs):
         super(GenomicW1ilGenerationTest, self).setUp(*args, **kwargs)
         self.gen_set = self.data_generator.create_database_genomic_set(
@@ -857,16 +891,10 @@ class GenomicW1ilGenerationTest(BaseTestCase):
             }
         )
 
-        cvl_bucket_map = {
-            'co': config.CO_BUCKET_NAME,
-            'uw': config.UW_BUCKET_NAME,
-            'bcm': config.BCM_BUCKET_NAME
-        }
-
         # Check for PGX manifests
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
-                cvl_site_bucket_map=cvl_bucket_map,
+                cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='pgx'
             )
 
@@ -921,7 +949,7 @@ class GenomicW1ilGenerationTest(BaseTestCase):
         # check for hdr manifest
         with clock.FakeClock(manifest_generation_datetime):
             genomic_pipeline.cvl_w1il_manifest_workflow(
-                cvl_site_bucket_map=cvl_bucket_map,
+                cvl_site_bucket_map=self._get_cvl_bucket_map(),
                 module_type='hdr'
             )
 
@@ -1055,12 +1083,6 @@ class GenomicW1ilGenerationTest(BaseTestCase):
 
         return summary, genomic_set_member, validation_metrics
 
-    def assert_manifest_has_rows(self, manifest_cloud_writer_mock, expected_rows):
-        write_rows_func = manifest_cloud_writer_mock.__enter__.return_value.write_rows
-        actual_rows = write_rows_func.call_args[0][0]
-
-        self.assertListEqual(expected_rows, actual_rows)
-
     @classmethod
     def expected_w1il_row(cls, set_member: GenomicSetMember, validation_metrics: GenomicGCValidationMetrics,
                           summary: ParticipantSummary):
@@ -1080,20 +1102,143 @@ class GenomicW1ilGenerationTest(BaseTestCase):
             str(validation_metrics.contamination)
         )
 
-    @classmethod
-    def get_manifest_headers(cls, manifest_writer_mock):
-        write_header_func = manifest_writer_mock.__enter__.return_value.write_header
-        return tuple(write_header_func.call_args[0][0])
+
+class GenomicW2wGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
+    def setUp(self, *args, **kwargs):
+        super(GenomicW2wGenerationTest, self).setUp(*args, **kwargs)
+        self.gen_set = self.data_generator.create_database_genomic_set(
+            genomicSetName='.',
+            genomicSetCriteria='.',
+            genomicSetVersion=1
+        )
+
+        # Generate some set members that should appear in a W2W for different sites
+        self.first_withdrawn_member, self.first_summary = self._generate_participant_data(
+            set_member_params={'gcSiteId': 'bcm'},
+            withdrawal_status=WithdrawalStatus.NO_USE
+        )
+        self.second_withdrawn_member, self.second_summary = self._generate_participant_data(
+            set_member_params={'gcSiteId': 'bcm'},
+            withdrawal_status=WithdrawalStatus.NO_USE
+        )
+        self.co_withdrawal, self.co_summary = self._generate_participant_data(
+            set_member_params={'gcSiteId': 'bi'},
+            withdrawal_status=WithdrawalStatus.EARLY_OUT
+        )
+
+        # Generate some participants that should not appear on the W2W manifest
+        self._generate_participant_data(
+            set_member_params={
+                'gcSiteId': 'bcm',
+                'cvlW2wJobRunId': self.data_generator.create_database_genomic_job_run().id
+            },
+            withdrawal_status=WithdrawalStatus.NO_USE
+        )
+        self._generate_participant_data(
+            set_member_params={
+                'gcSiteId': 'bcm',
+                'genomeType': config.GENOME_TYPE_ARRAY
+            },
+            withdrawal_status=WithdrawalStatus.NO_USE
+        )
+
+    @mock.patch('rdr_service.genomic.genomic_job_components.SqlExporter')
+    @mock.patch('rdr_service.genomic.genomic_job_controller.GenomicJobController.execute_cloud_task')
+    def test_w2w_manifest_generation(self, cloud_task_mock, sql_exporter_class_mock):
+        manifest_generation_datetime = datetime.datetime(2021, 2, 7, 1, 13)
+        manifest_file_timestamp_str = manifest_generation_datetime.strftime("%Y-%m-%d-%H-%M-%S")
+
+        bcm_w2w_manifest = mock.MagicMock()
+        co_w2w_manifest = mock.MagicMock()
+        self.setup_manifest_mocks(
+            sql_exporter_class_mock,
+            {
+                config.getSetting(config.BCM_BUCKET_NAME): {
+                    f'W2W_manifests/BCM_AoU_CVL_W2W_{manifest_file_timestamp_str}.csv': bcm_w2w_manifest
+                },
+                config.getSetting(config.CO_BUCKET_NAME): {
+                    f'W2W_manifests/CO_AoU_CVL_W2W_{manifest_file_timestamp_str}.csv': co_w2w_manifest
+                }
+            }
+        )
+
+        with clock.FakeClock(manifest_generation_datetime):
+            genomic_pipeline.cvl_w2w_manifest_workflow(cvl_site_bucket_map=self._get_cvl_bucket_map())
+
+        # Check that the expected headers are written
+        self.assertTupleEqual(
+            ('biobank_id', 'sample_id', 'date_of_consent_removal'),
+            self.get_manifest_headers(bcm_w2w_manifest)
+        )
+
+        # Check that each manifest has the expected participants
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=bcm_w2w_manifest,
+            expected_rows=[
+                self.expected_w2w_row(set_member=self.first_withdrawn_member, summary=self.first_summary),
+                self.expected_w2w_row(set_member=self.second_withdrawn_member, summary=self.second_summary)
+            ]
+        )
+        self.assert_manifest_has_rows(
+            manifest_cloud_writer_mock=co_w2w_manifest,
+            expected_rows=[
+                self.expected_w2w_row(set_member=self.co_withdrawal, summary=self.co_summary)
+            ]
+        )
+
+        # Check that a task is generated to set the job run ids
+        cloud_task_mock.assert_has_calls([
+            mock.call(
+                {
+                    'member_ids': [self.first_withdrawn_member.id, self.second_withdrawn_member.id],
+                     'field': 'cvlW2wJobRunId',
+                     'value': mock.ANY,
+                     'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            ),
+            mock.call(
+                {
+                    'member_ids': [self.co_withdrawal.id],
+                    'field': 'cvlW2wJobRunId',
+                    'value': mock.ANY,
+                    'is_job_run': True
+                },
+                'genomic_set_member_update_task'
+            )
+        ], any_order=True)
+
+    def _generate_participant_data(self, set_member_params, withdrawal_status):
+        summary_params = {
+            'withdrawalStatus': withdrawal_status
+        }
+        if withdrawal_status != WithdrawalStatus.NOT_WITHDRAWN:
+            summary_params['withdrawalAuthored'] = self.fake.date_time_this_year()
+        summary = self.data_generator.create_database_participant_summary(**summary_params)
+
+        sample = self.data_generator.create_database_biobank_stored_sample()
+        set_member_params = {
+            **{
+                'genomicSetId': self.gen_set.id,
+                'biobankId': summary.biobankId,
+                'participantId': summary.participantId,
+                'genomeType': config.GENOME_TYPE_WGS,
+                'sampleId': sample.biobankStoredSampleId
+            },
+            **set_member_params
+        }
+        if 'cvlW1ilPgxJobRunId' not in set_member_params:
+            set_member_params['cvlW1ilPgxJobRunId'] = self.data_generator.create_database_genomic_job_run().id
+        if 'cvlW2scManifestJobRunID' not in set_member_params:
+            set_member_params['cvlW2scManifestJobRunID'] = self.data_generator.create_database_genomic_job_run().id
+        set_member = self.data_generator.create_database_genomic_set_member(**set_member_params)
+
+        return set_member, summary
 
     @classmethod
-    def setup_manifest_mocks(cls, sql_exporter_class_mock, mock_map):
-        # Setup the exporter instances to return the pre-initialized mock objects for each manifest
-        def get_manifest_cloud_writer(file_name):
-            last_bucket_name = sql_exporter_class_mock.call_args[0][0]
-            file_manifest_map = mock_map[last_bucket_name]
-
-            if file_name in file_manifest_map:
-                return file_manifest_map[file_name]
-            raise Exception(f'Unexpected manifest "{file_name}" generated for the "{last_bucket_name}" bucket')
-
-        sql_exporter_class_mock.return_value.open_cloud_writer.side_effect = get_manifest_cloud_writer
+    def expected_w2w_row(cls, set_member: GenomicSetMember, summary: ParticipantSummary):
+        return (
+            to_client_biobank_id(set_member.biobankId),
+            str(set_member.sampleId),
+            summary.withdrawalAuthored.strftime('%Y-%m-%dT%H:%M:%S+00:00')
+        )

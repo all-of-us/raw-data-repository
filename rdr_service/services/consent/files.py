@@ -90,6 +90,13 @@ class ConsentFileAbstractFactory(ABC):
             if self._is_primary_update_consent(blob_wrapper, consent_date)
         ]
 
+    def get_wear_consents(self) -> List['WearConsentFile']:
+        return [
+            self._build_wear_consent(blob_wrapper)
+            for blob_wrapper in self.consent_blobs
+            if self._is_wear_consent(blob_wrapper)
+        ]
+
     @abstractmethod
     def _is_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         ...
@@ -111,6 +118,10 @@ class ConsentFileAbstractFactory(ABC):
         ...
 
     @abstractmethod
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        ...
+
+    @abstractmethod
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         ...
 
@@ -129,6 +140,10 @@ class ConsentFileAbstractFactory(ABC):
     @abstractmethod
     def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
             -> 'PrimaryConsentUpdateFile':
+        ...
+
+    @abstractmethod
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
         ...
 
     @abstractmethod
@@ -177,6 +192,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             )
         )
 
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
+
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return VibrentPrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
@@ -196,6 +214,9 @@ class VibrentConsentFactory(ConsentFileAbstractFactory):
             blob=blob_wrapper.blob,
             consent_date=consent_date
         )
+
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
+        raise NotImplementedError('Wear consent validation not implemented for Vibrent')
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['vibrent']
@@ -231,13 +252,23 @@ class CeConsentFactory(ConsentFileAbstractFactory):
 
     def _is_gror_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
         pdf = blob_wrapper.get_parsed_pdf()
-        return pdf.has_text([(
-            'Consent to Receive DNA Results',
-            'Consentimiento para Recibir Resultados de ADN'
-        )])
+        return pdf.has_text([
+            (
+                'Consent to Receive DNA Results',
+                'Consentimiento para Recibir Resultados de ADN',
+                'Consent to Get DNA Results'
+            )
+        ])
 
     def _is_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) -> bool:
         return False  # CE doesn't have cohort 1 participants to have needed re-consents
+
+    def _is_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> bool:
+        pdf = blob_wrapper.get_parsed_pdf()
+        return pdf.has_text([(
+            'All of Us WEAR Study',
+            'el Estudio WEAR de All of Us'
+        )])
 
     def _build_primary_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'PrimaryConsentFile':
         return CePrimaryConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
@@ -254,6 +285,9 @@ class CeConsentFactory(ConsentFileAbstractFactory):
     def _build_primary_update_consent(self, blob_wrapper: '_ConsentBlobWrapper', consent_date: datetime) \
             -> 'PrimaryConsentUpdateFile':
         pass  # CE doesn't have cohort 1 participants to have needed re-consents
+
+    def _build_wear_consent(self, blob_wrapper: '_ConsentBlobWrapper') -> 'WearConsentFile':
+        return CeWearConsentFile(pdf=blob_wrapper.get_parsed_pdf(), blob=blob_wrapper.blob)
 
     def _get_source_bucket(self) -> str:
         return config.getSettingJson(config.CONSENT_PDF_BUCKET)['careevolution']
@@ -368,6 +402,10 @@ class PrimaryConsentUpdateFile(PrimaryConsentFile, ABC):
             )
         ])
         return update_agreement_page_number is not None
+
+
+class WearConsentFile(PrimaryConsentFile, ABC):
+    ...
 
 
 class VibrentPrimaryConsentFile(PrimaryConsentFile):
@@ -688,6 +726,18 @@ class CeGrorConsentFile(GrorConsentFile):
 
     def _get_confirmation_check_elements(self):
         return []
+
+
+class CeWearConsentFile(WearConsentFile):
+    def __init__(self, *args, **kwargs):
+        super(CeWearConsentFile, self).__init__(*args, **kwargs)
+        self.pdf_wrapper = CeFileWrapper(self.pdf)
+
+    def get_signature_on_file(self):
+        return self.pdf_wrapper.get_signature_on_file()
+
+    def _get_date_signed_str(self):
+        return self.pdf_wrapper.get_date_signed_str()
 
 
 class Pdf:

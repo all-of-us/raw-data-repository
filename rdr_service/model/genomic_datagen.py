@@ -1,4 +1,3 @@
-
 from sqlalchemy import (
     Column, DateTime, ForeignKey, Integer,
     String, SmallInteger, event
@@ -56,6 +55,7 @@ event.listen(GenomicDataGenCaseTemplate, "before_update", model_update_listener)
 class GenomicDataGenOutputTemplate(Base, DatagenBase):
 
     __tablename__ = 'genomic_datagen_output_template'
+
     project_name = Column(String(255), nullable=False)
     template_name = Column(String(255), nullable=False)
     field_index = Column(SmallInteger, nullable=False)
@@ -71,6 +71,7 @@ event.listen(GenomicDataGenOutputTemplate, "before_update", model_update_listene
 class GenomicDataGenManifestSchema(Base, DatagenBase):
 
     __tablename__ = 'genomic_datagen_manifest_schema'
+
     project_name = Column(String(255), nullable=False)
     template_name = Column(String(255), nullable=False)
     field_index = Column(SmallInteger, nullable=False)

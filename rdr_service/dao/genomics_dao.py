@@ -3412,3 +3412,33 @@ class GenomicQueriesDao(BaseDao):
                 )
 
             return query.all()
+
+    def get_data_ready_for_w2w_manifest(self, cvl_id: str):
+        gc_site_id = self.transform_cvl_site_id(cvl_id)
+
+        with self.session() as session:
+            query = (
+                session.query(
+                    func.concat(get_biobank_id_prefix(), GenomicSetMember.biobankId).label('biobank_id'),
+                    GenomicSetMember.sampleId.label('sample_id'),
+                    func.date_format(
+                        ParticipantSummary.withdrawalAuthored,
+                        '%Y-%m-%dT%H:%i:%S+00:00'
+                    ).label('date_of_consent_removal')
+                ).join(
+                    ParticipantSummary,
+                    GenomicSetMember.participantId == ParticipantSummary.participantId
+                ).filter(
+                    GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                    or_(
+                        GenomicSetMember.cvlW1ilPgxJobRunId.isnot(None),
+                        GenomicSetMember.cvlW1ilHdrJobRunId.isnot(None)
+                    ),
+                    GenomicSetMember.cvlW2scManifestJobRunID.isnot(None),
+                    GenomicSetMember.cvlW2wJobRunId.is_(None),
+                    ParticipantSummary.withdrawalStatus != WithdrawalStatus.NOT_WITHDRAWN,
+                    GenomicSetMember.gcSiteId.ilike(gc_site_id),
+                    GenomicSetMember.ignoreFlag != 1
+                )
+            )
+            return query.all()
