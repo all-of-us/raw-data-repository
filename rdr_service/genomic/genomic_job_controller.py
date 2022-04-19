@@ -814,7 +814,7 @@ class GenomicJobController:
         )
 
         if not members:
-            logging.info(f'No members found for setting informing loop ready flags.')
+            logging.info('No members found for setting informing loop ready flags.')
             self.job_result = GenomicSubProcessResult.SUCCESS
             return
 
