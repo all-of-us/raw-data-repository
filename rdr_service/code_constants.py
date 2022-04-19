@@ -36,6 +36,7 @@ DVEHR_SHARING_QUESTION_CODE = "DVEHRSharing_AreYouInterested"
 CABOR_SIGNATURE_QUESTION_CODE = "ExtraConsent_CABoRSignature"
 GROR_CONSENT_QUESTION_CODE = "ResultsConsent_CheckDNA"
 COPE_CONSENT_QUESTION_CODE = "section_participation"
+WEAR_CONSENT_QUESTION_CODE = "resultsconsent_wear"
 PRIMARY_CONSENT_UPDATE_QUESTION_CODE = "Reconsent_ReviewConsentAgree"
 
 DATE_OF_BIRTH_QUESTION_CODE = "PIIBirthInformation_BirthDate"
@@ -77,6 +78,7 @@ PMI_PREFER_NOT_TO_ANSWER_CODE = "PMI_PreferNotToAnswer"
 PMI_OTHER_CODE = "PMI_Other"
 PMI_FREE_TEXT_CODE = "PMI_FreeText"
 PMI_UNANSWERED_CODE = "PMI_Unanswered"
+PMI_YES = "pmi_yes"
 
 # Gender answer codes. 'GenderIdentity_MoreThanOne' is also an option, set in participant enums.
 GENDER_MAN_CODE = "GenderIdentity_Man"
