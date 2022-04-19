@@ -25,7 +25,8 @@ class GhostCheckScript(ToolBase):
                 logger=logger,
                 ptsc_config=server_config
             )
-            service.run_ghost_check(start_date=start_date, end_date=end_date)
+            service.run_ghost_check(start_date=start_date, end_date=end_date,
+                                    project=self.gcp_env.project)
 
 
 def add_additional_arguments(parser: argparse.ArgumentParser):
