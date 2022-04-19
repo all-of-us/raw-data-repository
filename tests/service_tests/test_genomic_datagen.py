@@ -1,13 +1,17 @@
 import random
+import datetime
 
-from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenOutputTemplateDao
+from rdr_service import clock
+from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenOutputTemplateDao, \
+    GenomicDataGenManifestSchemaDao
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao, \
-    GenomicCVLSecondSampleDao, GenomicInformingLoopDao
+    GenomicCVLSecondSampleDao, GenomicInformingLoopDao, GenomicResultWorkflowStateDao
 from rdr_service.dao.participant_dao import ParticipantDao
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao, GenomicDataGenMemberRunDao
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
-from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate
+from rdr_service.services.genomic_datagen import ParticipantGenerator, GeneratorOutputTemplate, ManifestGenerator
+from rdr_service.genomic_enums import ResultsWorkflowState
 from tests.helpers.unittest_base import BaseTestCase
 
 
@@ -525,4 +529,202 @@ class GenomicDataGeneratorOutputTemplateTest(GenomicDataGenMixin):
                             generator_output))
         self.assertTrue(all(obj['informing_loop_pgx'] == pgx_loop_answer for obj in generator_output))
         self.assertTrue(all(obj['informing_loop_hdr'] == hdr_loop_answer for obj in generator_output))
+
+
+class GenomicDataGenManifestGeneratorTest(BaseTestCase):
+    def setUp(self):
+        super(GenomicDataGenManifestGeneratorTest, self).setUp()
+
+        self.member_dao = GenomicSetMemberDao()
+        self.metrics_dao = GenomicGCValidationMetricsDao()
+
+        self.participant_dao = ParticipantDao()
+        self.participant_summary_dao = ParticipantSummaryDao()
+
+        self.datagen_manifest_schema_dao = GenomicDataGenManifestSchemaDao()
+
+        self.data_generator.create_database_genomic_set(
+            genomicSetName=".",
+            genomicSetCriteria=".",
+            genomicSetVersion=1
+        )
+
+        # The default map is structured as below:
+        # 'manifest_name": {"field_name_in_manifest": ("source", "value")}
+        # 'source' is either 'model' or 'literal'
+        self.defaults_map = {
+            "W3NS": {
+                "biobank_id": ('model', 'GenomicSetMember.biobankId'),
+                "sample_id": ('model', 'GenomicSetMember.sampleId'),
+                "unavailable_reason": ('literal', 'test unavailable reason')
+            },
+        }
+
+        self.build_manifest_schema(self.defaults_map)
+
+    def build_manifest_schema(self, _dict):
+        for template_name, attributes in _dict.items():
+            for i, (field, source) in enumerate(attributes.items()):
+                self.data_generator.create_database_genomic_datagen_manifest_schema(
+                    project_name="cvl",
+                    template_name=template_name,
+                    field_index=i,
+                    field_name=field,
+                    source_type=source[0],
+                    source_value=source[1],
+                )
+
+    def build_default_genomic_set_member(self, _i=0, **kwargs):
+        summary = self.data_generator.create_database_participant_summary(
+            consentForGenomicsROR=QuestionnaireStatus.SUBMITTED,
+            consentForStudyEnrollment=QuestionnaireStatus.SUBMITTED,
+        )
+
+        member = self.data_generator.create_database_genomic_set_member(
+            participantId=summary.participantId,
+            biobankId=summary.biobankId,
+            genomicSetId=1,
+            genomeType="aou_wgs",
+            collectionTubeId=100+_i,
+            sampleId=1000+_i,
+            **kwargs,
+        )
+        return member
+
+    def test_build_manifest_template_inserted_correctly(self):
+        manifest_schemata = self.datagen_manifest_schema_dao.get_all()
+
+        for name, attributes in self.defaults_map.items():
+            table_template_items = list(filter(lambda x: name == x.template_name,
+                                               manifest_schemata))
+            self.assertTrue(len(table_template_items), len(attributes))
+
+    def test_execute_external_manifest_query(self):
+        # create test genomic_set_members
+        for i in range(1, 3):
+            self.build_default_genomic_set_member(i)
+
+        # run manifest
+        dt = datetime.datetime(2022, 4, 6)
+        with clock.FakeClock(dt):
+            with ManifestGenerator(
+                project_name='cvl',
+                template_name="W3NS",
+                sample_ids=['1001', '1002'],
+                update_samples=False,
+            ) as manifest_generator:
+                results = manifest_generator.generate_manifest_data()
+
+        self.assertEqual("SUCCESS", results['status'].name)
+        self.assertEqual("Completed W3NS Manifest Generation. W3NS Manifest Included 2 records.",
+                         results['message'])
+        self.assertEqual('1001', results['manifest_data'][0].get('sample_id'))
+        self.assertEqual('test unavailable reason',
+                         results['manifest_data'][0].get('unavailable_reason'))
+
+        self.assertEqual('W3NS_manifests/RDR_AoU_CVL_W3NS_2022-04-06-00-00-00.csv', results['output_filename'])
+
+    def test_execute_external_manifest_query_field_validation(self):
+        manifest_generator = ManifestGenerator(
+            project_name='cvl',
+            template_name="W3NS",
+            sample_ids=['1001', '1002'],
+            update_samples=True,
+            member_run_id_column="cvl_bad_manifest_job_run_id"
+        )
+
+        with self.assertRaises(ValueError):
+            manifest_generator.__enter__()
+
+        manifest_generator.member_run_id_column = "cvlW3nsManifestJobRunID"
+
+        with self.assertRaises(ValueError):
+            manifest_generator.__enter__()
+
+        manifest_generator.member_run_id_column = "cvl_w3ns_manifest_job_run_id"
+
+        manifest_generator.__enter__()
+        self.assertEqual("cvlW3nsManifestJobRunID", manifest_generator.member_run_id_attribute)
+
+    def test_execute_external_manifest_members_updated(self):
+        # create test genomic_set_members
+        for i in range(1, 3):
+            self.build_default_genomic_set_member(i)
+
+        test_samples = ['1001', '1002']
+
+        # run manifest generation
+        with ManifestGenerator(
+            project_name='cvl',
+            template_name="W3NS",
+            sample_ids=test_samples,
+            update_samples=True,
+        ) as manifest_generator:
+            manifest_generator.generate_manifest_data()
+
+        members = self.member_dao.get_members_from_sample_ids(test_samples)
+        self.assertEqual(2, len(members))
+
+        self.result_state_dao = GenomicResultWorkflowStateDao()
+
+        for member in members:
+            result_state = self.result_state_dao.get_by_member_id(member.id)
+            self.assertEqual("CVL_W3NS", result_state[0].results_workflow_state_str)
+            self.assertEqual(ResultsWorkflowState.CVL_W3NS, result_state[0].results_workflow_state)
+            self.assertEqual(1, member.cvlW3nsManifestJobRunID)
+
+    def test_execute_internal_manifest_generation(self):
+        self.data_generator.create_database_genomic_job_run(startTime=clock.CLOCK.now())
+
+        for i in range(1, 3):
+            self.build_default_genomic_set_member(i, cvlW2scManifestJobRunID=1, gcSiteId='rdr')
+
+        dt = datetime.datetime(2022, 4, 6)
+        with clock.FakeClock(dt):
+            # run manifest generation
+            with ManifestGenerator(
+                project_name='cvl',
+                template_name="W3SR",
+                update_samples=True,
+            ) as manifest_generator:
+                results = manifest_generator.generate_manifest_data()
+
+        # Test Manifest Data
+        self.assertEqual('1001', results['manifest_data'][0].get('sample_id'))
+        self.assertEqual('101', results['manifest_data'][0].get('collection_tubeid'))
+        self.assertEqual('1002', results['manifest_data'][1].get('sample_id'))
+        self.assertEqual('102', results['manifest_data'][1].get('collection_tubeid'))
+
+        self.assertEqual('W3SR_manifests/RDR_AoU_CVL_W3SR_2022-04-06-00-00-00.csv', results['output_filename'])
+
+        # Test Job Run ID and State
+        members = self.member_dao.get_members_from_sample_ids(['1001', '1002'])
+        self.assertEqual(2, len(members))
+
+        self.result_state_dao = GenomicResultWorkflowStateDao()
+
+        for member in members:
+            result_state = self.result_state_dao.get_by_member_id(member.id)
+            self.assertEqual("CVL_W3SR", result_state[0].results_workflow_state_str)
+            self.assertEqual(ResultsWorkflowState.CVL_W3SR, result_state[0].results_workflow_state)
+            self.assertEqual(2, member.cvlW3srManifestJobRunID)
+
+    def test_execute_internal_manifest_with_sample_ids(self):
+        self.data_generator.create_database_genomic_job_run(startTime=clock.CLOCK.now())
+
+        for i in range(1, 3):
+            self.build_default_genomic_set_member(i, cvlW2scManifestJobRunID=1, gcSiteId='rdr')
+
+        # run manifest generation
+        with ManifestGenerator(
+            project_name='cvl',
+            template_name="W3SR",
+            sample_ids=['1001'],
+            update_samples=True,
+        ) as manifest_generator:
+            results = manifest_generator.generate_manifest_data()
+
+        # Test Manifest Data
+        self.assertEqual(1, len(results['manifest_data']))
+        self.assertEqual('1001', results['manifest_data'][0].get('sample_id'))
 

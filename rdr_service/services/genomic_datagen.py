@@ -1,10 +1,21 @@
 import faker
 import os
+import logging
 
+from sqlalchemy import literal
+from sqlalchemy.inspection import inspect
+from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
-    GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao
+    GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao, GenomicDataGenManifestSchemaDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, GenomicResultWorkflowStateDao
+from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
+from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
+    ResultsWorkflowState, GenomicManifestTypes
+from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicInformingLoop, \
+    GenomicResultWorkflowState
+from rdr_service.model.participant import Participant
+from rdr_service.model.participant_summary import ParticipantSummary
 from tests.helpers.data_generator import DataGenerator
 
 
@@ -381,3 +392,248 @@ class GeneratorOutputTemplate(GeneratorMixin):
                 exception_msg = f'No records for sample ids: {self.output_sample_ids} were found'
             raise Exception(exception_msg)
         return self.build_output_records()
+
+
+class ManifestGenerator:
+    def __init__(
+        self,
+        project_name='cvl',
+        template_name=None,
+        sample_ids=None,
+        update_samples=False,
+        member_run_id_column=None,
+        logger=logging
+    ):
+        # Params
+        self.project_name = project_name
+        self.template_name = template_name
+        self.sample_ids = sample_ids
+        self.update_samples = update_samples
+        self.member_run_id_column = member_run_id_column  # only used for testing
+        self.logger = logger
+
+        # Job vars
+        self.job = GenomicJob.DATAGEN_MANIFEST_GENERATION
+        self.job_run = None
+        self.member_run_id_attribute = None
+        self.pipeline_state = None
+
+        # Dao
+        self.manifest_datagen_dao = GenomicDataGenManifestSchemaDao()
+        self.manifest_compiler = None
+        self.manifest_def_provider = None
+
+        # Operational vars
+        self.template_fields = None
+        self.internal_manifest_type_name = f"{self.project_name.upper()}_{self.template_name}"
+
+        self.run_results = {
+            "status": None,
+            "message": "",
+            "manifest_data": []
+        }
+
+        self.default_table_map = {
+            'participant': {
+                'model': Participant,
+            },
+            'participant_summary': {
+                'model': ParticipantSummary,
+            },
+            'genomic_set_member': {
+                'model': GenomicSetMember
+            },
+            'genomic_gc_validation_metrics': {
+                'model': GenomicGCValidationMetrics
+            },
+            'genomic_informing_loop': {
+                'model': GenomicInformingLoop
+            }
+        }
+
+    def __enter__(self):
+        if self.update_samples:
+            # Create job run ID like controller
+            self.job_run_dao = GenomicJobRunDao()
+            self.job_run = self.job_run_dao.insert_run_record(self.job)
+            self.member_dao = GenomicSetMemberDao()
+            self.results_state_dao = GenomicResultWorkflowStateDao()
+
+            self._set_member_run_id_attribute()
+            self._set_pipeline_state()
+
+        return self
+
+    def __exit__(self, *_, **__):
+        if self.update_samples:
+            self.job_run_dao.update_run_record(self.job_run.id,
+                                               self.run_results['status'],
+                                               GenomicSubProcessStatus.COMPLETED)
+
+    def generate_manifest_data(self):
+        manifest_query_result = None
+        # Lookup in template table
+        self.template_fields = self.manifest_datagen_dao.get_template_by_name(self.project_name,
+                                                                  self.template_name)
+        if self.template_fields:
+            self.logger.info("Manifest name found in template table. Running external manifest.")
+
+            if not self.sample_ids:
+                self.run_results['status'] = GenomicSubProcessResult.ERROR
+                self.run_results['message'] = f"Sample IDs required for external manifest."
+                return self.run_results
+
+            manifest_query_result = self.execute_external_manifest_query()
+
+        else:
+            # check manifest defs
+            self.manifest_def_provider = ManifestDefinitionProvider(kwargs={})
+            rdr_manifest_names = [a.name for a in self.manifest_def_provider.manifest_columns_config.keys()]
+
+            if self.internal_manifest_type_name in rdr_manifest_names:
+                self.logger.info("Manifest name found in RDR defs.")
+                manifest_query_result = self.execute_internal_manifest_query()
+
+            else:
+                self.run_results['status'] = GenomicSubProcessResult.ERROR
+                self.run_results['message'] = f"Template name not valid: {self.template_name}."
+
+        if manifest_query_result:
+            self.run_results['manifest_data'] = [self.manifest_datagen_dao.to_dict(result)
+                                                 if not isinstance(result, dict) else result
+                                                 for result in manifest_query_result]
+
+            self.run_results['message'] = f"Completed {self.template_name} Manifest Generation. "
+            self.run_results['message'] += f"{self.template_name} Manifest Included" \
+                                           f" {len(self.run_results['manifest_data'])} records."
+
+            self.run_results['status'] = GenomicSubProcessResult.SUCCESS
+
+            if not self.run_results.get('output_filename'):
+                dt = clock.CLOCK.now().strftime("%Y-%m-%d-%H-%M-%S")
+                self.run_results.update(
+                    {'output_filename':
+                        f"{self.template_name}_manifests/RDR_AoU_CVL_{self.template_name}_{dt}.csv"}
+                )
+
+            if self.update_samples:
+                self.update_samples_status()
+
+        return self.run_results
+
+    def execute_external_manifest_query(self):
+        # Get fields to pull for query
+        columns = []
+
+        for field in self.template_fields:
+            if field.source_type == 'model':
+                columns.append(self._prepare_model_column(field))
+
+            elif field.source_type == 'literal':
+                columns.append(self._prepare_literal_column(field))
+
+            else:
+                self.run_results['status'] = GenomicSubProcessResult.ERROR
+                self.run_results['message'] = f"Invalid source_type: {field.source_type}."
+
+                return
+
+        # Run the manifest query for sample IDs.
+        return self.manifest_datagen_dao.execute_manifest_query(columns, self.sample_ids)
+
+    def execute_internal_manifest_query(self):
+        # If sample IDs, use sample ID injection
+        if self.sample_ids:
+            pass
+
+        self.manifest_compiler = ManifestCompiler()
+        manifest_type = GenomicManifestTypes.lookup_by_name(self.internal_manifest_type_name)
+
+        self.manifest_compiler.manifest_def = self.manifest_def_provider.get_def(manifest_type)
+
+        if self.sample_ids:
+            # For executing only for specific sample ids,
+            # the query must have the filter set up
+            self.manifest_compiler.manifest_def.params.update({'sample_ids': self.sample_ids})
+
+        manifest_data = self.manifest_compiler.pull_source_data()
+
+        if not manifest_data:
+            self.run_results['status'] = GenomicSubProcessResult.NO_FILES
+            self.run_results['status'] = f"No records found for {self.template_name} manifest"
+            return
+
+        # Manifest data found, set filename
+        self.run_results.update(
+            {'output_filename': self.manifest_compiler.manifest_def.output_filename}
+        )
+
+        # Headers are RDR attributes, so need to remap to column names
+        headers = self.manifest_compiler.manifest_def.columns
+        manifest_data_with_headers = []
+
+        for result in manifest_data:
+            remapped_result = {k: v for k, v in zip(headers, result)}
+            manifest_data_with_headers.append(remapped_result)
+
+        return manifest_data_with_headers
+
+    def update_samples_status(self):
+        if self.run_results['status'] != GenomicSubProcessResult.SUCCESS:
+            self.run_results['status'] = GenomicSubProcessResult.ERROR
+            self.run_results['messge'] = "Cannot update samples in RDR. Manifest data pull was unsuccessful."
+
+            return self.run_results
+
+        if not self.sample_ids:
+            # All Internal manifests have sample_id
+            self.sample_ids = [result.get('sample_id') for result in self.run_results['manifest_data']]
+
+        members = self.member_dao.get_members_from_sample_ids(self.sample_ids)
+        member_ids = [m.id for m in members]
+
+        # Update job run ID
+        self.member_dao.update_member_job_run_id(member_ids, self.job_run.id, self.member_run_id_attribute)
+
+        # Insert results workflow state
+        for member in members:
+            self.results_state_dao.insert(
+                GenomicResultWorkflowState(
+                    genomic_set_member_id=member.id,
+                    results_workflow_state=self.pipeline_state,
+                    results_workflow_state_str=self.pipeline_state.name,
+                )
+            )
+
+    @staticmethod
+    def _prepare_model_column(field):
+        field_tuple = (field.source_value.split('.')[0],
+                       field.source_value.split('.')[1],
+                       field.field_name)
+
+        return getattr(eval(field_tuple[0]), field_tuple[1]).label(field_tuple[2])
+
+    @staticmethod
+    def _prepare_literal_column(field):
+        return literal(field.source_value).label(field.field_name)
+
+    def _set_member_run_id_attribute(self):
+        if not self.member_run_id_column:
+            # have to clean b/c of attribute name convention: [proj]_[manifest]_manifest_job_run_id,
+            # ex: cvl_w3sr_manifest_job_run_id
+            self.member_run_id_column = f"{self.project_name.lower()}_{self.template_name.lower()}_manifest_job_run_id"
+
+        member_attr = inspect(GenomicSetMember).c
+        columns = {column[1].name: column[0] for column in member_attr.items()}
+
+        if self.member_run_id_column not in columns:
+            message = f"Attempting to update a job run field that doesn't exist: {self.member_run_id_column}"
+            raise ValueError(message)
+
+        self.member_run_id_attribute = columns[self.member_run_id_column]
+
+    def _set_pipeline_state(self):
+        state_name = f"{self.project_name.upper()}_{self.template_name.upper()}"
+        self.pipeline_state = ResultsWorkflowState.lookup_by_name(state_name)
+        return self.pipeline_state
+

@@ -5,9 +5,9 @@ from sqlalchemy.orm import Query, aliased
 from sqlalchemy.sql import functions
 
 from rdr_service.dao.base_dao import BaseDao
-from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, GenomicDatagenMemberRun,\
-    GenomicDataGenOutputTemplate
 from rdr_service.model.genomics import GenomicInformingLoop, GenomicSetMember
+from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenRun, \
+    GenomicDatagenMemberRun, GenomicDataGenOutputTemplate, GenomicDataGenManifestSchema
 from rdr_service.model.participant_summary import ParticipantSummary
 
 
@@ -169,3 +169,31 @@ class GenomicDataGenOutputTemplateDao(BaseDao):
                 GenomicDataGenOutputTemplate.field_index
             ).all()
 
+
+class GenomicDataGenManifestSchemaDao(BaseDao):
+    def __init__(self):
+        super(GenomicDataGenManifestSchemaDao, self).__init__(
+            GenomicDataGenManifestSchema, order_by_ending=['id'])
+
+    def get_id(self, obj):
+        pass
+
+    def from_client_json(self):
+        pass
+
+    def get_template_by_name(self, project_name, template_name):
+        with self.session() as session:
+            return session.query(GenomicDataGenManifestSchema).filter(
+                GenomicDataGenManifestSchema.project_name == project_name,
+                GenomicDataGenManifestSchema.template_name == template_name,
+                GenomicDataGenManifestSchema.ignore_flag == 0
+            ).order_by(GenomicDataGenManifestSchema.field_index).all()
+
+    def execute_manifest_query(self, columns, sample_ids):
+        with self.session() as session:
+            return session.query(
+                *columns
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).filter(GenomicSetMember.sampleId.in_(sample_ids)).all()
