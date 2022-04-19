@@ -191,13 +191,12 @@ def cvl_w3sr_manifest_workflow():
     """
     Entrypoint for CVL W3SR Workflow
     """
-    for site in config.GENOMIC_CVL_SITES:
+    for site_id in config.GENOMIC_CVL_SITES:
         with GenomicJobController(
             GenomicJob.CVL_W3SR_WORKFLOW,
-            bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME
+            bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
+            cvl_site_id=site_id
         ) as controller:
-
-            controller.cvl_site_id = site
             controller.generate_manifest(
                 GenomicManifestTypes.CVL_W3SR,
                 _genome_type=config.GENOME_TYPE_WGS,
