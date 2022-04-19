@@ -10,6 +10,7 @@ from rdr_service.cloud_utils.gcp_cloud_tasks import GCPCloudTask
 from rdr_service.dao.database_factory import get_database
 from rdr_service.model.questionnaire_response import QuestionnaireResponse, QuestionnaireResponseClassificationType
 from rdr_service.model.bigquery_sync import BigQuerySync
+from rdr_service.model.bq_base import BQTable
 from rdr_service.resource.tasks import batch_rebuild_participants_task
 from rdr_service.services.system_utils import list_chunks
 
@@ -90,10 +91,11 @@ class ResponseDuplicationDetector:
         # Delete any records for pdr_mod_* tables that have a pk_id (questionnaire_response_id) that
         # has been marked as duplicate.  Limit how many records are being deleted per commit and inject a brief delay
         # between commits to avoid potential blocks in the database.
+        pdr_project_id, pdr_dataset, _ = BQTable.get_project_map(project)[0]
         for pk_ids in list_chunks(duplicate_responses, 100):
             session.query(BigQuerySync
-                          ).filter(BigQuerySync.projectId == project,
-                                   BigQuerySync.datasetId == 'rdr_ops_data_view',
+                          ).filter(BigQuerySync.projectId == pdr_project_id,
+                                   BigQuerySync.datasetId == pdr_dataset,
                                    BigQuerySync.tableId.like('pdr_mod_%')
                           ).filter(BigQuerySync.pk_id.in_(pk_ids)).delete(synchronize_session=False)
 
@@ -110,10 +112,10 @@ class ResponseDuplicationDetector:
             # Just want to rebuild the participant summary data (not the full modules), to remove remaining references
             # to the newly flagged duplicate responses from the participant summary / participant_module nested data
             payload = {'build_modules': False, 'batch': batch}
-            if GAE_PROJECT == 'localhost':    # e.g., unittest case
+            if project == 'localhost':    # e.g., unittest case
                 batch_rebuild_participants_task(payload)
             else:
-                task.execute('rebuild_participants_task', payload=payload, project_id=GAE_PROJECT,
+                task.execute('rebuild_participants_task', payload=payload, project_id=project,
                              queue='resource-rebuild', in_seconds=15, quiet=True)
 
     def flag_duplicate_responses(self, num_days_ago=2, from_ts=datetime.utcnow()):
