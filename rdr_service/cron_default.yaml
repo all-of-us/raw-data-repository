@@ -214,3 +214,13 @@ cron:
   timezone: America/New_York
   schedule: every day 02:00
   target: offline
+- description: Genomic Calculate Informing Loop Ready Status (Weekly)
+  url: /offline/CalculateInformingLoopReadyStatusWeekly
+  timezone: America/New_York
+  schedule: every monday 10:00
+  target: offline
+- description: Genomic Calculate Informing Loop Ready Status (Daily)
+  url: /offline/CalculateInformingLoopReadyStatusDaily
+  timezone: America/New_York
+  schedule: every day 10:00
+  target: offline

@@ -842,6 +842,11 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             logging.error(e)
             return GenomicSubProcessResult.ERROR
 
+    def set_informing_loop_ready(self, member):
+        member.informingLoopReadyFlag = 1
+        member.informingLoopReadyFlagModified = clock.CLOCK.now()
+        self.update(member)
+
     def update_member_workflow_state(self, member, new_state):
         """
         Sets the member's state to a new state
@@ -1044,6 +1049,58 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 GenomicSetMember.genomeType == record.test_name,
                 GenomicSetMember.sampleId.is_(None)
             ).first()
+
+    def get_members_for_informing_loop_ready(self, limit=None):
+        with self.session() as session:
+            records = session.query(
+                GenomicSetMember
+            ).join(
+                ParticipantSummary,
+                ParticipantSummary.participantId == GenomicSetMember.participantId
+            ).join(
+                GenomicGCValidationMetrics,
+                and_(
+                    GenomicGCValidationMetrics.genomicSetMemberId == GenomicSetMember.id,
+                    GenomicGCValidationMetrics.ignoreFlag != 1
+                )
+            ).join(
+                BiobankStoredSample,
+                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
+            ).join(
+                BiobankOrderIdentifier,
+                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
+            ).join(
+                BiobankOrder,
+                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
+            ).join(
+                Site,
+                Site.siteId == BiobankOrder.collectedSiteId
+            ).filter(
+                GenomicGCValidationMetrics.processingStatus.ilike('pass'),
+                GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
+                ParticipantSummary.withdrawalStatus == WithdrawalStatus.NOT_WITHDRAWN,
+                ParticipantSummary.suspensionStatus == SuspensionStatus.NOT_SUSPENDED,
+                ParticipantSummary.deceasedStatus == DeceasedStatus.UNSET,
+                GenomicGCValidationMetrics.sexConcordance.ilike('true'),
+                GenomicGCValidationMetrics.drcSexConcordance.ilike('pass'),
+                GenomicSetMember.qcStatus == GenomicQcStatus.PASS,
+                GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
+                ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
+                ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
+                GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
+                Site.siteType != 'diversion pouch',
+                ParticipantSummary.participantOrigin != 'careevolution',
+                GenomicSetMember.ignoreFlag != 1,
+                GenomicSetMember.blockResults != 1,
+                GenomicSetMember.informingLoopReadyFlag != 1,
+                GenomicSetMember.informingLoopReadyFlagModified.is_(None)
+            ).order_by(
+                BiobankOrder.finalizedTime
+            )
+            if limit:
+                return records.limit(limit).all()
+
+            return records.all()
 
     def handle_control_samples_from_raw_aw1(self, record):
         """ Create control samples from aw1 raw data """
