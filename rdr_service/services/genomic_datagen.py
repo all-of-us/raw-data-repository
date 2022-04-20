@@ -12,6 +12,7 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, 
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.model.genomics import GenomicSetMember, GenomicResultWorkflowState
 from tests.helpers.data_generator import DataGenerator
 
@@ -481,6 +482,13 @@ class ManifestGenerator:
             self.run_results['manifest_data'] = [self.manifest_datagen_dao.to_dict(result)
                                                  if not isinstance(result, dict) else result
                                                  for result in manifest_query_result]
+            # Add biobank_id prefix
+            for result in self.run_results['manifest_data']:
+                bid_field = "biobank_id"
+                if "biobankid" in result.keys():
+                    bid_field = "biobankid"
+                if result[bid_field][0] not in [get_biobank_id_prefix(), 'T']:
+                    result[bid_field] = f"{get_biobank_id_prefix()}{result[bid_field]}"
 
             self.run_results['message'] = f"Completed {self.template_name} Manifest Generation. "
             self.run_results['message'] += f"{self.template_name} Manifest Included" \

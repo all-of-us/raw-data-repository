@@ -7,6 +7,7 @@ from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, G
 from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicGCValidationMetricsDao, \
     GenomicCVLSecondSampleDao, GenomicInformingLoopDao, GenomicResultWorkflowStateDao
 from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.model.config_utils import get_biobank_id_prefix
 from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.dao.genomic_datagen_dao import GenomicDataGenRunDao, GenomicDataGenMemberRunDao
 from rdr_service.participant_enums import QuestionnaireStatus, WithdrawalStatus
@@ -618,6 +619,7 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
         self.assertEqual("SUCCESS", results['status'].name)
         self.assertEqual("Completed W3NS Manifest Generation. W3NS Manifest Included 2 records.",
                          results['message'])
+        self.assertEqual(f"{get_biobank_id_prefix()}500000000", results['manifest_data'][0].get('biobank_id'))
         self.assertEqual('1001', results['manifest_data'][0].get('sample_id'))
         self.assertEqual('test unavailable reason',
                          results['manifest_data'][0].get('unavailable_reason'))
@@ -690,6 +692,7 @@ class GenomicDataGenManifestGeneratorTest(BaseTestCase):
                 results = manifest_generator.generate_manifest_data()
 
         # Test Manifest Data
+        self.assertEqual(f"{get_biobank_id_prefix()}500000000", results['manifest_data'][0].get('biobank_id'))
         self.assertEqual('1001', results['manifest_data'][0].get('sample_id'))
         self.assertEqual('101', results['manifest_data'][0].get('collection_tubeid'))
         self.assertEqual('1002', results['manifest_data'][1].get('sample_id'))
