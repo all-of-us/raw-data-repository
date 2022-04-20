@@ -837,15 +837,10 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
         )
         self._generate_cvl_participant(
             set_member_params={'gcSiteId': 'bcm'},
-            validation_metrics_params={'craiReceived': 0}
-        )
-        self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
             participant_summary_params={'consentForGenomicsROR': QuestionnaireStatus.SUBMITTED_NOT_SURE}
         )
         self._generate_cvl_participant(
-            set_member_params={'gcSiteId': 'bcm'},
-            collection_site_params={'siteType': 'diversion pouch'}
+            set_member_params={'gcSiteId': 'bcm', 'diversionPouchSiteFlag': 1},
         )
         # Member with a latest answer of 'no' should not be in a W1IL
         self._generate_cvl_participant(

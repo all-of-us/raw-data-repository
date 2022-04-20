@@ -53,7 +53,6 @@ from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
 from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
-from rdr_service.model.site import Site
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
 from rdr_service.genomic.genomic_mappings import genome_type_to_aw1_aw2_file_prefix as genome_type_map
 from rdr_service.genomic.genomic_mappings import informing_loop_event_mappings
@@ -1072,9 +1071,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).join(
                 BiobankOrder,
                 BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
-            ).join(
-                Site,
-                Site.siteId == BiobankOrder.collectedSiteId
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -1088,7 +1084,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
-                Site.siteType != 'diversion pouch',
+                GenomicSetMember.diversionPouchSiteFlag != 1,
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.blockResults != 1,
@@ -3344,7 +3340,6 @@ class GenomicQueriesDao(BaseDao):
             'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
         }[module]
 
-        sample_collected_site: Site = aliased(Site)
 
         informing_loop_decision_query = GenomicInformingLoopDao.build_latest_decision_query(
             module=module
@@ -3391,18 +3386,6 @@ class GenomicQueriesDao(BaseDao):
                     GenomicGCValidationMetrics.ignoreFlag != 1
                 )
             ).join(
-                BiobankStoredSample,
-                BiobankStoredSample.biobankStoredSampleId == GenomicSetMember.collectionTubeId
-            ).join(
-                BiobankOrderIdentifier,
-                BiobankOrderIdentifier.value == BiobankStoredSample.biobankOrderIdentifier
-            ).join(
-                BiobankOrder,
-                BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
-            ).join(
-                sample_collected_site,
-                sample_collected_site.siteId == BiobankOrder.collectedSiteId
-            ).join(
                 informing_loop_subquery,
                 informing_loop_subquery.participant_id == GenomicSetMember.participantId
             ).filter(
@@ -3417,19 +3400,9 @@ class GenomicQueriesDao(BaseDao):
                 GenomicSetMember.gcManifestSampleSource.ilike('whole blood'),
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
 
-                # all data files have been received
-                GenomicGCValidationMetrics.hfVcfReceived == 1,
-                GenomicGCValidationMetrics.hfVcfTbiReceived == 1,
-                GenomicGCValidationMetrics.hfVcfMd5Received == 1,
-                GenomicGCValidationMetrics.cramReceived == 1,
-                GenomicGCValidationMetrics.cramMd5Received == 1,
-                GenomicGCValidationMetrics.craiReceived == 1,
-                GenomicGCValidationMetrics.gvcfReceived == 1,
-                GenomicGCValidationMetrics.gvcfMd5Received == 1,
-
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
-                sample_collected_site.siteType != 'diversion pouch',
+                GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
 
