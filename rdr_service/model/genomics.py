@@ -330,8 +330,6 @@ class GenomicSetMember(Base):
     informingLoopReadyFlag = Column('informing_loop_ready_flag', Integer, nullable=False, default=0)
     informingLoopReadyFlagModified = Column("informing_loop_ready_flag_modified", DateTime, nullable=True)
 
-    diversionPouchSiteFlag = Column('diversion_pouch_site_flag', SmallInteger, nullable=False, default=0)
-
 
 event.listen(GenomicSetMember, "before_insert", model_insert_listener)
 event.listen(GenomicSetMember, "before_update", model_update_listener)
