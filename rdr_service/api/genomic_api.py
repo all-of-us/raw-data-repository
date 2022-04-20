@@ -47,7 +47,7 @@ class GenomicOutreachApi(BaseApi):
         super(GenomicOutreachApi, self).__init__(GenomicOutreachDao())
         self.member_dao = GenomicSetMemberDao()
 
-    @auth_required(RDR_AND_PTC)
+    @auth_required([GEM] + RDR_AND_PTC)
     def get(self, mode=None):
         self._check_mode(mode)
 
