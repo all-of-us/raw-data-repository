@@ -49,6 +49,8 @@ from rdr_service.participant_enums import (
     SuspensionStatus, DeceasedStatus)
 from rdr_service.genomic_enums import GenomicSetStatus, GenomicSetMemberStatus, GenomicWorkflowState, \
     GenomicSubProcessResult, GenomicManifestTypes, GenomicReportState, GenomicContaminationCategory
+from rdr_service.model.biobank_order import BiobankOrder, BiobankOrderIdentifier
+from rdr_service.model.biobank_stored_sample import BiobankStoredSample
 from rdr_service.model.participant import Participant
 from rdr_service.model.participant_summary import ParticipantSummary
 from rdr_service.query import FieldFilter, Operator, OrderBy, Query
@@ -1069,9 +1071,6 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
             ).join(
                 BiobankOrder,
                 BiobankOrder.biobankOrderId == BiobankOrderIdentifier.biobankOrderId
-            ).join(
-                Site,
-                Site.siteId == BiobankOrder.collectedSiteId
             ).filter(
                 GenomicGCValidationMetrics.processingStatus.ilike('pass'),
                 GenomicSetMember.genomeType == config.GENOME_TYPE_WGS,
@@ -1085,7 +1084,7 @@ class GenomicSetMemberDao(UpdatableDao, GenomicDaoUtils):
                 ParticipantSummary.consentForStudyEnrollment == QuestionnaireStatus.SUBMITTED,
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
-                Site.siteType != 'diversion pouch',
+                GenomicSetMember.diversionPouchSiteFlag != 1,
                 ParticipantSummary.participantOrigin != 'careevolution',
                 GenomicSetMember.ignoreFlag != 1,
                 GenomicSetMember.blockResults != 1,
@@ -3403,7 +3402,7 @@ class GenomicQueriesDao(BaseDao):
 
                 ParticipantSummary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED,
                 GenomicGCValidationMetrics.drcFpConcordance.ilike('pass'),
-                GenomicSetMember.diversionPouchSiteFlag == 0,
+                GenomicSetMember.diversionPouchSiteFlag != 1,
                 GenomicSetMember.gcSiteId.ilike(gc_site_id),
                 ParticipantSummary.participantOrigin != 'careevolution',
 
