@@ -67,6 +67,39 @@
       "topic_project": "all-of-us-rdr-prod"
     },
     {
+      "bucket": "prod-genomics-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "49",
+      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "56",
+      "object_name_prefix": "W3SS_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "57",
+      "object_name_prefix": "W3NS_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
       "bucket": "prod-genomics-broad",
       "event_types": [
         "OBJECT_FINALIZE"
@@ -221,6 +254,50 @@
       "topic_project": "all-of-us-rdr-prod"
     },
     {
+      "bucket": "prod-genomics-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "61",
+      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "62",
+      "object_name_prefix": "AW1F_genotyping_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "65",
+      "object_name_prefix": "W3SS_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "66",
+      "object_name_prefix": "W3NS_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
       "bucket": "prod-genomics-data-baylor",
       "event_types": [
         "OBJECT_FINALIZE"
@@ -273,6 +350,105 @@
       "object_name_prefix": "Wgs_sample_raw_data/",
       "payload_format": "JSON_API_V1",
       "topic_name": "genomic_data_files_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "42",
+      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "52",
+      "object_name_prefix": "W1IL_manifests_pgx/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "53",
+      "object_name_prefix": "W1IL_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "54",
+      "object_name_prefix": "W2SC_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "55",
+      "object_name_prefix": "W2W_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "56",
+      "object_name_prefix": "W3SC_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "57",
+      "object_name_prefix": "W4WR_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "58",
+      "object_name_prefix": "W4WR_manifests_pgx/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-baylor",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "59",
+      "object_name_prefix": "W5NF_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
       "topic_project": "all-of-us-rdr-prod"
     },
     {
@@ -386,6 +562,116 @@
       "topic_project": "all-of-us-rdr-prod"
     },
     {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "49",
+      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "50",
+      "object_name_prefix": "AW1F_genotyping_accessioning_results/AW1F_pre_results/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "63",
+      "object_name_prefix": "W5NF_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "64",
+      "object_name_prefix": "W4WR_manifests_pgx/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "65",
+      "object_name_prefix": "W4WR_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "66",
+      "object_name_prefix": "W3SC_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "67",
+      "object_name_prefix": "W2SC_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "68",
+      "object_name_prefix": "W2W_manifests/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "69",
+      "object_name_prefix": "W1IL_manifests_hdr/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
+      "bucket": "prod-genomics-data-northwest",
+      "event_types": [
+        "OBJECT_FINALIZE"
+      ],
+      "id": "70",
+      "object_name_prefix": "W1IL_manifests_pgx/",
+      "payload_format": "JSON_API_V1",
+      "topic_name": "genomic_manifest_upload",
+      "topic_project": "all-of-us-rdr-prod"
+    },
+    {
       "bucket": "prod-drc-broad",
       "event_types": [
         "OBJECT_FINALIZE"
@@ -441,44 +727,11 @@
       "topic_project": "all-of-us-rdr-prod"
     },
     {
-      "bucket": "prod-genomics-baylor",
-      "event_types": [
-        "OBJECT_FINALIZE"
-      ],
-      "id": "42",
-      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
-      "payload_format": "JSON_API_V1",
-      "topic_name": "genomic_manifest_upload",
-      "topic_project": "all-of-us-rdr-prod"
-    },
-    {
-      "bucket": "prod-genomics-northwest",
-      "event_types": [
-        "OBJECT_FINALIZE"
-      ],
-      "id": "49",
-      "object_name_prefix": "AW1F_wgs_accessioning_results/AW1F_pre_results/",
-      "payload_format": "JSON_API_V1",
-      "topic_name": "genomic_manifest_upload",
-      "topic_project": "all-of-us-rdr-prod"
-    },
-    {
-      "bucket": "prod-genomics-northwest",
-      "event_types": [
-        "OBJECT_FINALIZE"
-      ],
-      "id": "50",
-      "object_name_prefix": "AW1F_genotyping_accessioning_results/AW1F_pre_results/",
-      "payload_format": "JSON_API_V1",
-      "topic_name": "genomic_manifest_upload",
-      "topic_project": "all-of-us-rdr-prod"
-    },
-    {
       "bucket": "prod-color-rhp",
       "event_types": [
         "OBJECT_FINALIZE"
       ],
-      "id": "51",
+      "id": "17",
       "object_name_prefix": "user_events/",
       "payload_format": "JSON_API_V1",
       "topic_name": "genomic_metric_files_upload",

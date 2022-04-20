@@ -7,7 +7,8 @@ from pprint import pprint
 from google.cloud import storage
 from google.api_core.exceptions import NotFound
 
-from rdr_service.config import PUBSUB_NOTIFICATION_BUCKETS_PROD, PUBSUB_NOTIFICATION_BUCKETS_SANDBOX
+from rdr_service.config import PUBSUB_NOTIFICATION_BUCKETS_PROD, PUBSUB_NOTIFICATION_BUCKETS_SANDBOX, \
+    PUBSUB_NOTIFICATION_BUCKETS_STABLE
 from rdr_service.tools.tool_libs.tool_base import cli_run, ToolBase
 
 tool_cmd = 'pubsub-manager'
@@ -18,6 +19,7 @@ _logger = logging.getLogger("rdr_logger")
 CONFIG_ROOT = os.path.join(os.path.dirname(__file__), '../../config')
 SUPPORTED_PROJECT_CONFIGS = {
     'all-of-us-rdr-prod': 'pub_sub_config_prod.json',
+    'all-of-us-rdr-stable': 'pub_sub_config_stable.json',
     'all-of-us-rdr-sandbox': 'pub_sub_config_sandbox.json'
 }
 
@@ -42,6 +44,7 @@ class PubSubNotificationManager(ToolBase):
         # Get buckets
         project_bucket_mappings = {
             'all-of-us-rdr-prod': PUBSUB_NOTIFICATION_BUCKETS_PROD,
+            'all-of-us-rdr-stable': PUBSUB_NOTIFICATION_BUCKETS_STABLE,
             'all-of-us-rdr-sandbox': PUBSUB_NOTIFICATION_BUCKETS_SANDBOX,
         }
 

@@ -101,7 +101,7 @@ class GenomicIngestManifestFunction(FunctionPubSubHandler):
         elif '_w4wr_' in object_id:
             task_key = "w4wr"
 
-        # W4WR files have "W2SC" in their file path (bucket name)
+        # W5NF files have "W5NF" in their file path (bucket name)
         elif '_w5nf_' in object_id:
             task_key = "w5nf"
 
