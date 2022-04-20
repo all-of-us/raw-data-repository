@@ -9,6 +9,7 @@ from rdr_service.model.code import Code, CodeType
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.deceased_report import DeceasedReport
 from rdr_service.model.ehr import ParticipantEhrReceipt
+from rdr_service.model.genomic_datagen import GenomicDataGenCaseTemplate, GenomicDataGenOutputTemplate
 from rdr_service.model.genomics import (
     GenomicManifestFile,
     GenomicJobRun,
@@ -25,7 +26,7 @@ from rdr_service.model.genomics import (
     GenomicManifestFeedback,
     GenomicGcDataFileMissing,
     UserEventMetrics,
-    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis)
+    GenomicResultViewed, GenomicResultWorkflowState, GenomicCVLAnalysis, GenomicCVLSecondSample)
 from rdr_service.model.log_position import LogPosition
 from rdr_service.model.hpro_consent_files import HealthProConsentFile
 from rdr_service.model.hpo import HPO
@@ -787,6 +788,15 @@ class DataGenerator:
         return m
 
     @staticmethod
+    def _genomic_datagen_template(**kwargs):
+        return GenomicDataGenCaseTemplate(**kwargs)
+
+    def create_database_datagen_template(self, **kwargs):
+        m = self._genomic_datagen_template(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
     def _genomic_result_workflow_state(**kwargs):
         return GenomicResultWorkflowState(**kwargs)
 
@@ -798,6 +808,24 @@ class DataGenerator:
     @staticmethod
     def _genomic_cvl_analysis(**kwargs):
         return GenomicCVLAnalysis(**kwargs)
+
+    def create_database_genomic_cvl_second_sample(self, **kwargs):
+        m = self._genomic_cvl_second_sample(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_datagen_output_template(**kwargs):
+        return GenomicDataGenOutputTemplate(**kwargs)
+
+    def create_database_genomic_datagen_output_template(self, **kwargs):
+        m = self._genomic_datagen_output_template(**kwargs)
+        self._commit_to_database(m)
+        return m
+
+    @staticmethod
+    def _genomic_cvl_second_sample(**kwargs):
+        return GenomicCVLSecondSample(**kwargs)
 
     def create_withdrawn_participant(self, withdrawal_reason_justification, is_native_american=False,
                                      requests_ceremony=None, withdrawal_time=datetime.utcnow()):

@@ -41,6 +41,7 @@ from rdr_service.code_constants import (
     GENDER_IDENTITY_QUESTION_CODE,
     LANGUAGE_OF_CONSENT,
     PMI_SKIP_CODE,
+    PMI_YES,
     PPI_EXTRA_SYSTEM,
     PPI_SYSTEM,
     RACE_QUESTION_CODE,
@@ -52,6 +53,7 @@ from rdr_service.code_constants import (
     CONSENT_COPE_NO_CODE,
     CONSENT_COPE_DEFERRED_CODE,
     COPE_CONSENT_QUESTION_CODE,
+    WEAR_CONSENT_QUESTION_CODE,
     STREET_ADDRESS_QUESTION_CODE,
     STREET_ADDRESS2_QUESTION_CODE,
     EHR_CONSENT_EXPIRED_YES,
@@ -710,6 +712,11 @@ class QuestionnaireResponseDao(BaseDao):
                                 something_changed = True
                         except ValueError:
                             logging.error(f'Invalid value given for cohort group: received "{answer.valueString}"')
+                    elif code.value.lower() == WEAR_CONSENT_QUESTION_CODE:
+                        answer_value = code_dao.get(answer.valueCodeId).value
+                        if answer_value.lower() == PMI_YES:
+                            self.consents_provided.append(ConsentType.WEAR)
+
 
 
         # If the answer for line 2 of the street address was left out then it needs to be clear on summary.
@@ -901,7 +908,7 @@ class QuestionnaireResponseDao(BaseDao):
         to determine if the new response is a new consent for the participant.
         """
         if len(self.consents_provided) == 0:
-            # If the new response doesn't give any consent at all, then there's no reason for a check
+            # If the new response doesn't give any consent at all, then there's no need to validate a PDF
             return
 
         # Load previously received consent authored dates for the participant

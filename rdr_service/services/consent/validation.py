@@ -352,7 +352,8 @@ class ConsentValidationController:
             ConsentType.CABOR: validator.get_cabor_validation_results,
             ConsentType.EHR: validator.get_ehr_validation_results,
             ConsentType.GROR: validator.get_gror_validation_results,
-            ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results
+            ConsentType.PRIMARY_UPDATE: validator.get_primary_update_validation_results,
+            ConsentType.WEAR: validator.get_wear_validation_results
         }
 
         for consent_response in consent_responses:
@@ -617,6 +618,13 @@ class ConsentValidator:
             ),
             consent_type=ConsentType.PRIMARY_UPDATE,
             additional_validation=extra_primary_update_checks,
+            expected_sign_datetime=expected_signing_date
+        )
+
+    def get_wear_validation_results(self, expected_signing_date: datetime = None) -> List[ParsingResult]:
+        return self._generate_validation_results(
+            consent_files=self.factory.get_wear_consents(),
+            consent_type=ConsentType.WEAR,
             expected_sign_datetime=expected_signing_date
         )
 

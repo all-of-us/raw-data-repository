@@ -191,13 +191,12 @@ def cvl_w3sr_manifest_workflow():
     """
     Entrypoint for CVL W3SR Workflow
     """
-    for site in config.GENOMIC_CVL_SITES:
+    for site_id in config.GENOMIC_CVL_SITES:
         with GenomicJobController(
             GenomicJob.CVL_W3SR_WORKFLOW,
-            bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME
+            bucket_name=config.BIOBANK_SAMPLES_BUCKET_NAME,
+            cvl_site_id=site_id
         ) as controller:
-
-            controller.cvl_site_id = site
             controller.generate_manifest(
                 GenomicManifestTypes.CVL_W3SR,
                 _genome_type=config.GENOME_TYPE_WGS,
@@ -384,6 +383,11 @@ def reconcile_pdr_data():
 def retry_manifest_ingestions():
     with GenomicJobController(GenomicJob.RETRY_MANIFEST_INGESTIONS) as controller:
         controller.retry_manifest_ingestions()
+
+
+def calculate_informing_loop_ready_flags():
+    with GenomicJobController(GenomicJob.CALCULATE_INFORMING_LOOP_READY) as controller:
+        controller.calculate_informing_loop_ready_flags()
 
 
 def create_aw2f_manifest(feedback_record):
