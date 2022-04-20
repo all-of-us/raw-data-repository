@@ -35,7 +35,8 @@ class BiobankDataComparisonTest(BaseTestCase):
             biobankOrderIdentifier=order_id,
             confirmed=confirmed_time,
             disposed=disposed_time,
-            status=SampleStatus.CONSUMED
+            status=SampleStatus.CONSUMED,
+            rdrCreated=confirmed_time
         )
         self.comparator = BiobankSampleComparator(SamplePair(api_data=self.api_data, report_data=self.report_data))
 
@@ -110,3 +111,13 @@ class BiobankDataComparisonTest(BaseTestCase):
         self.report_data.status = SampleStatus.UNKNOWN
         self.api_data.status = 'In Circulation'
         self.assertEqual([], self.comparator.get_differences())
+
+    def test_ignoring_outdated_sir_status(self):
+        # Samples that are disposed after 10 days of first appearing on the SIR will not be updated by the SIR
+        # process. So the SIR data is showing these samples as received still, but the API data will show them
+        # as disposed. This should be ignored from the comparison results.
+        self.report_data.status = SampleStatus.RECEIVED
+        self.report_data.rdrCreated = self.api_data.disposalDate - timedelta(days=13)
+
+        differences = self.comparator.get_differences()
+        self.assertEqual(0, len(differences))
