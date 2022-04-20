@@ -142,7 +142,7 @@ CE_HEALTH_DATA_BUCKET_NAME = "ce_health_data_bucket_name"
 # Buckets to listen for Pub/Sub notifications
 PUBSUB_NOTIFICATION_BUCKETS_PROD = [
     "prod-genomics-baylor",
-    "prod-genomics-color"
+    "prod-genomics-color",
     "prod-genomics-broad",
     "prod-genomics-northwest",
     "prod-genomics-data-baylor",

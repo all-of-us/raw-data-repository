@@ -50,7 +50,9 @@ class PubSubNotificationManager(ToolBase):
 
         bucket_list = [self.args.bucket] if self.args.bucket else project_bucket_mappings[self.gcp_env.project]
 
-        notifications_dict = {"notifications": []}
+        notifications_dict = {
+            "notifications": []
+        }
 
         for bucket_name in bucket_list:
             # call storage api
