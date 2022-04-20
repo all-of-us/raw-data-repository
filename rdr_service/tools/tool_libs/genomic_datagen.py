@@ -113,7 +113,6 @@ class ManifestGeneratorTool(ToolBase):
             return 1
 
         self.gcp_env.activate_sql_proxy()
-        _ = self.get_server_config()
 
         manifest_params = {
             "template_name": None,

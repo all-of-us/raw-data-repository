@@ -12,10 +12,7 @@ from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, 
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
-from rdr_service.model.genomics import GenomicSetMember, GenomicGCValidationMetrics, GenomicInformingLoop, \
-    GenomicResultWorkflowState
-from rdr_service.model.participant import Participant
-from rdr_service.model.participant_summary import ParticipantSummary
+from rdr_service.model.genomics import GenomicSetMember, GenomicResultWorkflowState
 from tests.helpers.data_generator import DataGenerator
 
 
@@ -433,24 +430,6 @@ class ManifestGenerator:
             "manifest_data": []
         }
 
-        self.default_table_map = {
-            'participant': {
-                'model': Participant,
-            },
-            'participant_summary': {
-                'model': ParticipantSummary,
-            },
-            'genomic_set_member': {
-                'model': GenomicSetMember
-            },
-            'genomic_gc_validation_metrics': {
-                'model': GenomicGCValidationMetrics
-            },
-            'genomic_informing_loop': {
-                'model': GenomicInformingLoop
-            }
-        }
-
     def __enter__(self):
         if self.update_samples:
             # Create job run ID like controller
@@ -542,10 +521,6 @@ class ManifestGenerator:
         return self.manifest_datagen_dao.execute_manifest_query(columns, self.sample_ids)
 
     def execute_internal_manifest_query(self):
-        # If sample IDs, use sample ID injection
-        if self.sample_ids:
-            pass
-
         self.manifest_compiler = ManifestCompiler()
         manifest_type = GenomicManifestTypes.lookup_by_name(self.internal_manifest_type_name)
 
