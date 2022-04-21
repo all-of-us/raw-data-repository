@@ -3169,18 +3169,20 @@ class UserEventMetricsDao(BaseDao, GenomicDaoUtils):
             else:
                 return query.all()
 
-    def get_all_event_objects_for_pid_list(self, pid_list, module=None):
+    def get_all_event_objects_for_pid_list(self, pid_list, module=None, event_list=None):
         with self.session() as session:
             query = session.query(
                 UserEventMetrics
             ).filter(
                 UserEventMetrics.participant_id.in_(pid_list)
             )
+            if event_list:
+                query = query.filter(UserEventMetrics.event_name.in_(event_list))
 
             if module:
-                return query.filter(UserEventMetrics.event_name.like(f"{module}.informing%")).all()
-            else:
-                return query.all()
+                query = query.filter(UserEventMetrics.event_name.like(f"{module}.informing%"))
+
+            return query.all()
 
 
 class GenomicCVLSecondSampleDao(BaseDao):
