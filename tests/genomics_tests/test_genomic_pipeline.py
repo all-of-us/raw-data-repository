@@ -6399,14 +6399,22 @@ class GenomicPipelineTest(BaseTestCase):
 
         genomic_pipeline.reconcile_informing_loop_responses()
 
-        # Test data ingested correctly
-        incident = self.incident_dao.get(1)
-        self.assertEqual('RECONCILE_INFORMING_LOOP_RESPONSES: Informing Loop out of sync with User Events! PID: 5',
-                         incident.message)
-        self.assertEqual('5', incident.participant_id)
+        # Test no incident created for "started" event mismatch
+        incidents = self.incident_dao.get_all()
+        self.assertEqual(0, len(incidents))
 
+        # Test data ingested correctly
         pid_list = [1, 2, 3, 6, 7]
-        updated_events = event_dao.get_all_event_objects_for_pid_list(pid_list, module='gem')
+        event_list = ['gem.informing_loop.screen8_no',
+                      'gem.informing_loop.screen8_yes',
+                      'gem.informing_loop.screen8_maybe_later']
+
+        updated_events = event_dao.get_all_event_objects_for_pid_list(
+            pid_list,
+            module='gem',
+            event_list=event_list
+        )
+
         for event in updated_events:
             self.assertEqual(2, event.reconcile_job_run_id)
 
