@@ -3279,7 +3279,7 @@ class ManifestDefinitionProvider:
         job_run_id=None,
         bucket_name=None,
         genome_type=None,
-        cvl_site_id=None,
+        cvl_site_id='rdr',
         **kwargs
     ):
         # Attributes
@@ -3578,7 +3578,7 @@ class ManifestCompiler:
     """
     def __init__(
         self,
-        run_id,
+        run_id=None,
         bucket_name=None,
         max_num=None,
         controller=None
@@ -3613,7 +3613,7 @@ class ManifestCompiler:
         )
 
         self.manifest_def = self.def_provider.get_def(manifest_type)
-        source_data = self._pull_source_data()
+        source_data = self.pull_source_data()
 
         if not source_data:
             logging.info(f'No records found for manifest type: {manifest_type}.')
@@ -3733,7 +3733,7 @@ class ManifestCompiler:
             "code": GenomicSubProcessResult.SUCCESS,
         }
 
-    def _pull_source_data(self):
+    def pull_source_data(self):
         """
         Runs the source data query
         :return: result set

@@ -153,6 +153,9 @@ class GenomicJob(messages.Enum):
     AW4_ARRAY_INVESTIGATION_WORKFLOW = 2003
     AW4_WGS_INVESTIGATION_WORKFLOW = 2004
 
+    # Datagen Manifest Workflows
+    DATAGEN_MANIFEST_GENERATION = 3001
+
 
 class GenomicWorkflowState(messages.Enum):
     """Genomic State Definitions. States are not in any order. """
