@@ -199,4 +199,3 @@ def dispatch_check_consent_errors_task(created_since, in_seconds=30, quiet=True,
                      queue='resource-tasks', quiet=quiet, project_id=project_id)
 
         logging.info(f'Dispatched consent error reporting task to run in {in_seconds} seconds')
-
