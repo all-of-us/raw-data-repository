@@ -308,7 +308,7 @@ class ConsentMetricGenerator(generators.BaseGenerator):
         return data
 
     def get_consent_validation_records(self, dao=None, id_list=None, sync_statuses=None, consent_types=None,
-                                       created_since_ts=None, origin='vibrent', date_filter='2021-06-01'):
+                                       created_since_ts=None, origin=None, date_filter='2021-06-01'):
         """
         Retrieve consent_file validation records based on provided filter(s)
         :param dao:  Read-only DAO object if one was already instantiated by the caller
@@ -352,11 +352,13 @@ class ConsentMetricGenerator(generators.BaseGenerator):
                                   HPO.name.label('hpo_name'),
                                   Organization.organizationId,
                                   Organization.displayName.label('organization_name'))\
-                  .join(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
-                  .join(Participant, Participant.participantId == ConsentFile.participant_id)\
+                  .outerjoin(ParticipantSummary, ParticipantSummary.participantId == ConsentFile.participant_id)\
+                  .outerjoin(Participant, Participant.participantId == ConsentFile.participant_id)\
                   .outerjoin(HPO, HPO.hpoId == ParticipantSummary.hpoId)\
-                  .outerjoin(Organization, ParticipantSummary.organizationId == Organization.organizationId)\
-                  .filter(Participant.participantOrigin == origin)
+                  .outerjoin(Organization, ParticipantSummary.organizationId == Organization.organizationId)
+
+            if origin:
+                query = query.filter(Participant.participantOrigin == origin)
 
             # List of ids takes precedence over date/datetime filters
             if id_list and len(id_list):
@@ -433,7 +435,7 @@ class ConsentErrorReportGenerator(ConsentMetricGenerator):
 
     def get_error_records(self, ids=None, created_since=None, origin=None):
         """
-        Retrieve NEEDS_CORRECTING consent metrics records based on a list of primary key ids, or a created_since filter
+        Retrieve NEEDS_CORRECTING consent metrics records
         Will also identify any records in the id list or created_since date range that have invalid DOB/age at consent
         error conditions (not part of the consent PDF validation, file may have passed validation as READY_TO_SYNC)
         :param ids:  List of ConsentFile table primary key ids.  Overrides created_since filter

@@ -35,6 +35,7 @@ from rdr_service.model.bigquery_sync import BigQuerySync
 from rdr_service.model.bq_questionnaires import PDR_MODULE_LIST
 from rdr_service.model.consent_file import ConsentFile
 from rdr_service.model.participant import Participant
+from rdr_service.model.resource_data import ResourceData
 from rdr_service.model.retention_eligible_metrics import RetentionEligibleMetrics
 from rdr_service.offline.bigquery_sync import batch_rebuild_participants_task
 from rdr_service.resource import generators
@@ -129,9 +130,27 @@ class CleanPDRDataClass(object):
                         )
 
     def delete_resource_pk_ids_from_resource_data(self, resource_type_id):
-        """ TODO:  Implement deletions from the resource_data table based on resource_pk_id field matches """
-        _logger.error(f'resource_data table cleanup not yet implemented, cannot clean {resource_type_id}')
+        """ Perform deletions from the resource_data table based on resource_pk_id field matches """
 
+        dao = ResourceDataDao()
+        with dao.session() as session:
+            batch_count = 500
+            batch_total = len(self.pk_id_list)
+            processed = 0
+            for pk_ids in chunks(self.pk_id_list, batch_count):
+                session.query(ResourceData
+                              ).filter(ResourceData.resourceTypeID == resource_type_id
+                              ).filter(ResourceData.resourcePKID.in_(pk_ids)
+                              ).delete(synchronize_session=False)
+                # Inject a short delay between chunk-sized delete operations to avoid blocking other table updates
+                session.commit()
+                sleep(0.5)
+                processed += len(pk_ids)
+                if not self.args.debug:
+                    print_progress_bar(
+                        processed, batch_total, prefix="{0}/{1}:".format(processed, batch_total),
+                        suffix="complete"
+                    )
 
     def run(self):
         """
@@ -170,7 +189,7 @@ class CleanPDRDataClass(object):
             # Can delete from both bigquery_sync and resource data tables on the same run as long as the
             # bigquery_sync.pk_id matches the resource_data.resource_pk_id for the resource_type_id specified.
             if self.args.resource_type_id:
-                self.delete_resource_pk_ids_from_resource_data(self.resource_type_id)
+                self.delete_resource_pk_ids_from_resource_data(self.args.resource_type_id)
 
 
 class ParticipantResourceClass(object):
@@ -1462,7 +1481,7 @@ def run():
 
     clean_pdr_data_parser.add_argument('--bq-table-id', type=str, default=None,
                                    help='table_id value whose bigquery_sync records should be cleaned')
-    clean_pdr_data_parser.add_argument('--resource-type-id', type=int, default=None,
+    clean_pdr_data_parser.add_argument('--resource-type-id', dest='resource_type_id', type=int, default=None,
                                    help='resource_type_id whose resource_data records should be cleaned')
     clean_pdr_data_parser.add_argument('--pdr-mod-responses', default=False, action='store_true',
                                         help="clean all pdr_mod_* tables based on questionnaire_response_id list")
