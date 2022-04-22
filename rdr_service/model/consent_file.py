@@ -65,7 +65,21 @@ class ConsentFile(Base):
     """Id of a record linking the consent to the QuestionnaireResponse that provided the consent."""
 
     consent_response = relationship('ConsentResponse')
+    consent_error_report = relationship('ConsentErrorReport')
+
+# DA-2611:  Track which consent_file records with validation errors already had error reports generated.
+# Table schema may expand to include other details as warranted
+class ConsentErrorReport(Base):
+    __tablename__ = 'consent_error_report'
+    id = Column("id", Integer, primary_key=True, autoincrement=True, nullable=False)
+    created = Column(UTCDateTime)
+    modified = Column(UTCDateTime)
+    consent_file_id = Column(Integer, ForeignKey(ConsentFile.id), nullable=False)
+    notes = Column(String(2048))
+    """ May contain additional details about the error report, such as a corresponding PTSC SD ticket number """
 
 
 event.listen(ConsentFile, "before_insert", model_insert_listener)
 event.listen(ConsentFile, "before_update", model_update_listener)
+event.listen(ConsentErrorReport, "before_insert", model_insert_listener)
+event.listen(ConsentErrorReport, "before_update", model_insert_listener)
