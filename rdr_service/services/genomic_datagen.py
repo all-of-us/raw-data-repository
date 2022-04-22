@@ -400,6 +400,7 @@ class ManifestGenerator:
         sample_ids=None,
         update_samples=False,
         member_run_id_column=None,
+        cvl_site_id=None,
         logger=logging
     ):
         # Params
@@ -408,6 +409,7 @@ class ManifestGenerator:
         self.sample_ids = sample_ids
         self.update_samples = update_samples
         self.member_run_id_column = member_run_id_column  # only used for testing
+        self.cvl_site_id = cvl_site_id
         self.logger = logger
 
         # Job vars
@@ -466,8 +468,11 @@ class ManifestGenerator:
             manifest_query_result = self.execute_external_manifest_query()
 
         else:
+            # Get manifest defitions and set site
+            site = self.cvl_site_id if self.cvl_site_id else "rdr"
+            self.manifest_def_provider = ManifestDefinitionProvider(cvl_site_id=site, kwargs={})
+
             # check manifest defs
-            self.manifest_def_provider = ManifestDefinitionProvider(kwargs={})
             rdr_manifest_names = [a.name for a in self.manifest_def_provider.manifest_columns_config.keys()]
 
             if self.internal_manifest_type_name in rdr_manifest_names:

@@ -117,6 +117,7 @@ class ManifestGeneratorTool(ToolBase):
         manifest_params = {
             "template_name": None,
             "sample_ids": None,
+            "cvl_site_id": None,
             "update_samples": self.args.update_samples,
             "logger": _logger,
         }
@@ -130,13 +131,16 @@ class ManifestGeneratorTool(ToolBase):
                 return 1
 
             with open(self.args.sample_id_file, encoding='utf-8-sig') as file:
-                csv_reader = csv.DictReader(file)
+                csv_reader = csv.reader(file)
                 sample_ids = []
 
                 for row in csv_reader:
-                    sample_ids.append(row)
+                    sample_ids.append(row[0])
 
                 manifest_params["sample_ids"] = sample_ids
+
+        if self.args.cvl_site_id:
+            manifest_params["cvl_site_id"] = self.args.cvl_site_id
 
         # Execute the manifest generator process or the job controller
         with ManifestGenerator(**manifest_params) as manifest_generator:
@@ -148,7 +152,7 @@ class ManifestGeneratorTool(ToolBase):
             if results['manifest_data']:
 
                 if self.args.output_manifest_directory:
-                    output_path = self.args.output_manifest_directory
+                    output_path = self.args.output_manifest_directory + "/"
                 else:
                     output_path = os.getcwd() + "/"
 
@@ -170,6 +174,9 @@ class ManifestGeneratorTool(ToolBase):
 
 
 def output_local_csv(filename, data):
+    # Create output path if it doesn't exist
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
     with open(filename, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=[k for k in data[0]])
         writer.writeheader()
@@ -228,6 +235,8 @@ def run():
                                                        , default=None)  # noqa
     manifest.add_argument("--output-manifest-filename", help="what to name the output file",
                               default=None, required=False)  # noqa
+    manifest.add_argument("--cvl-site-id", help="cvl site to pass to manifest query",
+                          default=None, required=False)  # noqa
 
     args = parser.parse_args()
 
