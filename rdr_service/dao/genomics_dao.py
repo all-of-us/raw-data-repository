@@ -3367,7 +3367,6 @@ class GenomicQueriesDao(BaseDao):
             'hdr': GenomicSetMember.cvlW1ilHdrJobRunId
         }[module]
 
-
         informing_loop_decision_query = GenomicInformingLoopDao.build_latest_decision_query(
             module=module
         ).with_entities(
@@ -3386,6 +3385,7 @@ class GenomicQueriesDao(BaseDao):
                 GenomicGCValidationMetrics.hfVcfTbiPath.label('vcf_raw_index_path'),
                 GenomicGCValidationMetrics.hfVcfMd5Path.label('vcf_raw_md5_path'),
                 GenomicGCValidationMetrics.cramPath.label('cram_name'),
+                GenomicSetMember.sexAtBirth.label('sex_at_birth'),
                 func.IF(
                     GenomicSetMember.nyFlag == 1,
                     sqlalchemy.sql.expression.literal("Y"),
@@ -3445,7 +3445,7 @@ class GenomicQueriesDao(BaseDao):
 
             return query.all()
 
-    def get_data_ready_for_w2w_manifest(self, cvl_id: str):
+    def get_data_ready_for_w2w_manifest(self, cvl_id: str, sample_ids=None):
         gc_site_id = self.transform_cvl_site_id(cvl_id)
 
         with self.session() as session:
@@ -3473,4 +3473,10 @@ class GenomicQueriesDao(BaseDao):
                     GenomicSetMember.ignoreFlag != 1
                 )
             )
+
+            if sample_ids:
+                query = query.filter(
+                    GenomicSetMember.sampleId.in_(sample_ids)
+                )
+
             return query.all()
