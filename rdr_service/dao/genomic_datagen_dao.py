@@ -79,7 +79,10 @@ class GenomicDataGenRunDao(BaseDao):
                 )
                 return records.with_session(session).distinct().all()
             if sample_ids:
-                records = records.filter(
+                records = records.join(
+                    GenomicDatagenMemberRun,
+                    GenomicSetMember.id == GenomicDatagenMemberRun.genomic_set_member_id
+                ).filter(
                     GenomicSetMember.sampleId.in_(sample_ids)
                 )
                 return records.with_session(session).distinct().all()
