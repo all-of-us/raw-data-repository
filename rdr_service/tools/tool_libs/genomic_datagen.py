@@ -21,7 +21,7 @@ _logger = logging.getLogger("rdr_logger")
 # Tool_cmd and tool_desc name are required.
 # Remember to add/update bash completion in 'tool_lib/tools.bash'
 tool_cmd = "genomic_datagen"
-tool_desc = ""
+tool_desc = "Genomic participant/manifest generator tool"
 
 
 class ParticipantGeneratorTool(ToolBase):
@@ -37,9 +37,13 @@ class ParticipantGeneratorTool(ToolBase):
         datagen_run_dao = GenomicDataGenRunDao()
 
         def _build_external_values(row_dict):
-            excluded_keys = ['participant_count', 'template_name']
-            cleaned_row = dict(zip([key for key in row_dict if key not in excluded_keys], row_dict.values()))
-            return cleaned_row
+            excluded_keys = ['participant_count', 'end_to_end_start', 'template_name']
+            for key in excluded_keys:
+                del row_dict[key]
+            for key, value in row_dict.items():
+                if value.isnumeric():
+                    row_dict[key] = int(value)
+            return row_dict
 
         if self.args.output_only_run_id:
 
@@ -49,10 +53,16 @@ class ParticipantGeneratorTool(ToolBase):
             )
             generator_output = template_output.run_output_creation()
 
+            file_name = f'datagen_run_id_{self.args.output_only_run_id}_{now_formatted}.csv'
+
             output_local_csv(
-                filename=f'datagen_run_id_{self.args.output_only_run_id}_{now_formatted}.csv',
-                data=generator_output['data']
+                filename=file_name,
+                data=generator_output
             )
+
+            output_path = f'{os.getcwd()}/{file_name}'
+            _logger.info("File Created: " + output_path)
+
             return 0  # bypass generator
 
         if self.args.output_only_sample_ids:
@@ -67,25 +77,30 @@ class ParticipantGeneratorTool(ToolBase):
             )
             generator_output = template_output.run_output_creation()
 
+            file_name = f'datagen_sample_ids_{now_formatted}.csv'
             output_local_csv(
-                filename=f'datagen_sample_ids_{now_formatted}.csv',
-                data=generator_output['data']
+                filename=file_name,
+                data=generator_output
             )
+
+            output_path = f'{os.getcwd()}/{file_name}'
+            _logger.info("File Created: " + output_path)
 
             return 0  # bypass generator
 
         if self.args.spec_path:
-
             if not os.path.exists(self.args.spec_path):
                 _logger.error(f'File {self.args.spec_path} was not found.')
                 return 1
 
-            with ParticipantGenerator() as participant_generator:
+            with ParticipantGenerator(
+                logger=_logger
+            ) as participant_generator:
                 with open(self.args.spec_path, encoding='utf-8-sig') as file:
                     csv_reader = csv.DictReader(file)
                     for row in csv_reader:
                         participant_generator.run_participant_creation(
-                            num_participants=row['participant_count'],
+                            num_participants=int(row['participant_count']),
                             template_type=row['template_name'],
                             external_values=_build_external_values(row)
                         )
@@ -98,10 +113,15 @@ class ParticipantGeneratorTool(ToolBase):
             )
             generator_output = template_output.run_output_creation()
 
+            file_name = f'datagen_run_id_{current_run_id}_{now_formatted}.csv'
             output_local_csv(
-                filename=f'datagen_run_id_{current_run_id}_{now_formatted}.csv',
-                data=generator_output['data']
+                filename=file_name,
+                data=generator_output
             )
+
+            output_path = f'{os.getcwd()}/{file_name}'
+            _logger.info("File Created: " + output_path)
+
             return 0
 
 
