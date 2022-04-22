@@ -46,7 +46,7 @@ class GeneratorMixin:
                         raise Exception(f'System sources cannot have values, Record ID: {record.id}')
                     if not value and (source == 'literal' or source == 'calculated' or source == 'external'):
                         raise Exception(f'Literal/Calculated sources require value, Record ID: {record.id}')
-                    if source == 'external' and not external_values.get(value):
+                    if source == 'external' and external_values.get(value) is None:
                         raise Exception(f'External key was not found, Record ID: {record.id}')
 
         if validation_step == 'output':
@@ -136,7 +136,7 @@ class ParticipantGenerator(GeneratorMixin):
             generator_method = self._get_generator_method(table)
 
             if table == 'participant':
-                if os.environ["UNITTEST_FLAG"] == "1":
+                if os.environ.get('UNITTEST_FLAG') == "1":
                     base_participant = generator_method()
                 else:
                     participant_id = self.member_dao.get_random_id()
@@ -154,21 +154,22 @@ class ParticipantGenerator(GeneratorMixin):
                 filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.default_template_records)
             )
 
-            attr_dict = self._get_type_attr_dict(current_table_defaults)
+            if current_table_defaults:
+                attr_dict = self._get_type_attr_dict(current_table_defaults)
 
-            if table == 'participant_summary' and base_participant:
-                attr_dict['participant'] = base_participant
-            if table == 'genomic_set_member' and self.genomic_set:
-                attr_dict['genomicSetId'] = self.genomic_set.id
+                if table == 'participant_summary' and base_participant:
+                    attr_dict['participant'] = base_participant
+                if table == 'genomic_set_member' and self.genomic_set:
+                    attr_dict['genomicSetId'] = self.genomic_set.id
 
-            try:
-                generated_obj = generator_method(**attr_dict)
-                self.default_table_map[table]['obj'] = generated_obj
-                if table == 'genomic_set_member':
-                    self.member_ids.append(generated_obj.id)
+                try:
+                    generated_obj = generator_method(**attr_dict)
+                    self.default_table_map[table]['obj'] = generated_obj
+                    if table == 'genomic_set_member':
+                        self.member_ids.append(generated_obj.id)
 
-            except Exception as error:
-                raise Exception(f'Error when inserting default records: {error}')
+                except Exception as error:
+                    raise Exception(f'Error when inserting default records: {error}')
 
     def build_participant_type_records(self):
         if self.template_type == 'default':
@@ -194,13 +195,14 @@ class ParticipantGenerator(GeneratorMixin):
                 filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.template_records)
             )
 
-            if table == 'genomic_informing_loop':
-                self.generate_loop_records(table, current_table_attrs)
-                continue
+            if current_table_attrs:
+                if table == 'genomic_informing_loop':
+                    self.generate_loop_records(table, current_table_attrs)
+                    continue
 
-            attr_dict = self._get_type_attr_dict(current_table_attrs, case=False)
+                attr_dict = self._get_type_attr_dict(current_table_attrs, case=False)
 
-            self.generate_type_records(table, attr_dict)
+                self.generate_type_records(table, attr_dict)
 
     def generate_loop_records(self, table, current_table_attrs):
         loop_dict = {key: value for key, value in self.external_values.items() if 'informing_loop_' in key}
@@ -275,14 +277,14 @@ class ParticipantGenerator(GeneratorMixin):
 
     def _get_from_external_data(self, field_name):
         external_value = self.external_values.get(field_name)
-        if not external_value:
+        if external_value is None:
             raise Exception(f'Value for external field {field_name} is not found')
 
         return external_value
 
     def _set_genomic_set(self):
         return self.data_generator.create_database_genomic_set(
-            genomicSetName=".",
+            genomicSetName=f"generator_{clock.CLOCK.now()}",
             genomicSetCriteria=".",
             genomicSetVersion=1
         )
