@@ -1063,7 +1063,7 @@ class GenomicCVLSecondSample(Base):
     biobank_id = Column(String(255), nullable=True)
     sample_id = Column(String(255), nullable=True, index=True)
 
-    packageId = Column(String(250), nullable=True)
+    package_id = Column(String(250), nullable=True)
     version = Column(String(255), nullable=False, default=0)
     box_storageunit_id = Column(String(255), nullable=True)
     box_id_plate_id = Column(String(255), nullable=True)
