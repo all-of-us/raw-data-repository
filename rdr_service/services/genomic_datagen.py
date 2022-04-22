@@ -8,7 +8,10 @@ from rdr_service import clock
 from rdr_service.dao import database_factory
 from rdr_service.dao.genomic_datagen_dao import GenomicDateGenCaseTemplateDao, GenomicDataGenRunDao, \
     GenomicDataGenMemberRunDao, GenomicDataGenOutputTemplateDao, GenomicDataGenManifestSchemaDao
-from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, GenomicResultWorkflowStateDao
+from rdr_service.dao.genomics_dao import GenomicSetMemberDao, GenomicJobRunDao, GenomicResultWorkflowStateDao, \
+    GenomicGCValidationMetricsDao
+from rdr_service.dao.participant_dao import ParticipantDao
+from rdr_service.dao.participant_summary_dao import ParticipantSummaryDao
 from rdr_service.genomic.genomic_job_components import ManifestDefinitionProvider, ManifestCompiler
 from rdr_service.genomic_enums import GenomicJob, GenomicSubProcessStatus, GenomicSubProcessResult, \
     ResultsWorkflowState, GenomicManifestTypes
@@ -67,29 +70,35 @@ class ParticipantGenerator(GeneratorMixin):
     def __init__(
         self,
         project='cvl',
+        logger=None
     ):
         self.project = project
         self.num_participants = None
         self.template_type = None
         self.external_values = None
+        self.logger = logger or logging
 
         self.member_ids = []
         self.default_template_records = []
         self.template_records = []
-
-        self.default_table_map = {
-            'participant': {},
-            'participant_summary': {},
-            'genomic_set_member': {},
-            'genomic_gc_validation_metrics': {}
-        }
+        self.default_table_map = {}
 
     def __enter__(self):
         self.data_generator = self.initialize_data_generator()
         self.genomic_set = self._set_genomic_set()
 
         # init daos
-        self.member_dao = GenomicSetMemberDao()
+        self.participant_dao = ParticipantDao()
+        self.participant_summary_dao = ParticipantSummaryDao()
+        self.genomic_set_member_dao = GenomicSetMemberDao()
+        self.genomic_gc_validation_metrics_dao = GenomicGCValidationMetricsDao()
+
+        self.base_daos = list(filter(lambda x: '_dao' in x and 'datagen' not in x, vars(self).keys()))
+
+        for dao in self.base_daos:
+            map_key = dao.split('_dao')[0]
+            self.default_table_map[map_key] = {}
+
         self.datagen_template_dao = GenomicDateGenCaseTemplateDao()
         self.datagen_run_dao = GenomicDataGenRunDao()
         self.datagen_member_run_dao = GenomicDataGenMemberRunDao()
@@ -139,9 +148,9 @@ class ParticipantGenerator(GeneratorMixin):
                 if os.environ.get('UNITTEST_FLAG') == "1":
                     base_participant = generator_method()
                 else:
-                    participant_id = self.member_dao.get_random_id()
-                    biobank_id = self.member_dao.get_random_id()
-                    research_id = self.member_dao.get_random_id()
+                    participant_id = self.genomic_set_member_dao.get_random_id()
+                    biobank_id = self.genomic_set_member_dao.get_random_id()
+                    research_id = self.genomic_set_member_dao.get_random_id()
                     base_participant = generator_method(
                         participantId=participant_id,
                         biobankId=biobank_id,
@@ -210,7 +219,20 @@ class ParticipantGenerator(GeneratorMixin):
                     self.generate_loop_records(table, current_table_attrs)
                     continue
 
-                attr_dict = self._get_type_attr_dict(current_table_attrs, case=False)
+                case, need_update_exisiting_obj = False, False
+
+                if table in self.default_table_map.keys():
+                    case, need_update_exisiting_obj = True, True
+
+                attr_dict = self._get_type_attr_dict(current_table_attrs, case=case)
+
+                if need_update_exisiting_obj:
+                    dao_name = list(filter(lambda x: x.split('_dao')[0] == table, self.base_daos))[0]
+                    dao = getattr(self, dao_name)
+                    current_obj = self.default_table_map.get(table, {}).get('obj')
+                    current_obj.__dict__.update(**attr_dict)
+                    dao.update(current_obj)
+                    return
 
                 self.generate_type_records(table, attr_dict)
 
@@ -239,7 +261,7 @@ class ParticipantGenerator(GeneratorMixin):
         try:
             generator_method(**attr_dict)
         except Exception as error:
-            raise Exception(f'Error when inserting default records: {error}')
+            raise Exception(f'Error when inserting template type records: {error}')
 
     def evaluate_value(self, field_source, field_value):
         field_source = field_source.lower()
@@ -311,6 +333,8 @@ class ParticipantGenerator(GeneratorMixin):
         self.external_values = kwargs.get('external_values')
         self.member_ids, self.template_records = [], []
 
+        self.logger.info(f'Running template type {self.template_type} for {self.num_participants} participants.')
+
         for _ in range(self.num_participants):
             self.build_participant_default()
             self.build_participant_type_records()
@@ -320,6 +344,8 @@ class ParticipantGenerator(GeneratorMixin):
             self.template_type,
             self.member_ids
         )
+
+        self.logger.info(f'{self.template_type}: {self.num_participants} created.')
 
 
 class GeneratorOutputTemplate(GeneratorMixin):

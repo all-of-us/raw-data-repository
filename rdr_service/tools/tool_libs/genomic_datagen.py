@@ -93,7 +93,9 @@ class ParticipantGeneratorTool(ToolBase):
                 _logger.error(f'File {self.args.spec_path} was not found.')
                 return 1
 
-            with ParticipantGenerator() as participant_generator:
+            with ParticipantGenerator(
+                logger=_logger
+            ) as participant_generator:
                 with open(self.args.spec_path, encoding='utf-8-sig') as file:
                     csv_reader = csv.DictReader(file)
                     for row in csv_reader:
