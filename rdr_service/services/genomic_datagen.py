@@ -182,7 +182,7 @@ class ParticipantGenerator(GeneratorMixin):
             )
             # will throw exception for invalid expected data struct
             self.validate_template_records(
-                records=self.default_template_records,
+                records=self.template_records,
                 template_type=self.template_type,
                 validation_step='generation',
                 external_values=self.external_values
@@ -190,12 +190,22 @@ class ParticipantGenerator(GeneratorMixin):
 
         # if template records have attributes from multiple tables
         table_names = set([obj.rdr_field.split('.')[0].lower() for obj in self.template_records])
+
+        # loop in externals not in template
+        if 'genomic_informing_loop' not in table_names \
+                and any('informing_loop_' in key for key in self.external_values.keys()):
+            self.generate_loop_records(
+                'genomic_informing_loop'
+            )
+
         for table in table_names:
             current_table_attrs = list(
-                filter(lambda x: x.rdr_field.split('.')[0].lower() == table, self.template_records)
+                filter(lambda x: x.rdr_field.split('.')[0].lower() == table and x.field_source != 'bypass',
+                       self.template_records)
             )
 
             if current_table_attrs:
+                # loop in externals and in template
                 if table == 'genomic_informing_loop':
                     self.generate_loop_records(table, current_table_attrs)
                     continue
@@ -204,15 +214,21 @@ class ParticipantGenerator(GeneratorMixin):
 
                 self.generate_type_records(table, attr_dict)
 
-    def generate_loop_records(self, table, current_table_attrs):
+    def generate_loop_records(self, table, current_table_attrs=None):
         loop_dict = {key: value for key, value in self.external_values.items() if 'informing_loop_' in key}
 
         for loop_type, loop_value in loop_dict.items():
             module_type = f'{loop_type.split("_", 2)[-1]}'
-            non_external_attrs = [obj for obj in current_table_attrs if obj.field_source != 'external']
+            non_external_attrs = [obj for obj in current_table_attrs if obj.field_source != 'external'] if \
+                current_table_attrs else []
 
             attr_dict = self._get_type_attr_dict(non_external_attrs, case=False)
+
             # implicit for now
+            if not attr_dict.get('participant_id'):
+                participant_id = self.default_table_map['participant']['obj'].participantId
+                attr_dict['participant_id'] = participant_id
+
             attr_dict['module_type'] = module_type
             attr_dict['decision_value'] = loop_value
 
