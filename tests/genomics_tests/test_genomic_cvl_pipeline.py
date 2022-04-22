@@ -1088,6 +1088,7 @@ class GenomicW1ilGenerationTest(ManifestGenerationTestMixin, BaseTestCase):
             validation_metrics.hfVcfTbiPath,
             validation_metrics.hfVcfMd5Path,
             validation_metrics.cramPath,
+            set_member.sexAtBirth,
             'Y' if set_member.nyFlag == 1 else 'N',
             set_member.gcSiteId.upper(),
             'Y' if summary.consentForGenomicsROR == QuestionnaireStatus.SUBMITTED else 'N',
